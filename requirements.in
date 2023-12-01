@@ -1,0 +1,3 @@
+pylibmc
+coverage
+pytest

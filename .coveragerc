@@ -1,0 +1,19 @@
+[run]
+branch = True
+include =
+    ./*.py
+    rules/*.py
+omit =
+    */venv/*
+    finder_colors.py
+    pdscache.py
+    pdslogger.py
+    translator.py
+    rules/pytest_support.py
+
+[html]
+Title = Coverage Report for PdsFile
+
+[report]
+exclude_lines =
+  pragma: no cover
