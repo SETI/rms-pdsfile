@@ -119,40 +119,12 @@ associations_to_calibrated = translator.TranslatorByRegex([
 ])
 
 associations_to_previews = translator.TranslatorByRegex([
-
-    # COISS_1xxx and COISS_2xxx
-    (r'.*/(COISS_[12]xxx)(|_v[0-9\.]+)/(COISS_....)/(data|extras/\w+)/(\w+/[NW][0-9]{10}_[0-9]+).*', 0,
-            [r'previews/\1/\3/data/\5_full.png',
-             r'previews/\1/\3/data/\5_med.jpg',
-             r'previews/\1/\3/data/\5_small.jpg',
-             r'previews/\1/\3/data/\5_thumb.jpg',
+    (r'.*/(cassini_iss/cassini_iss\w*/data(.*|_[a-z]*])/.*)\.[a-z]{3}', 0,
+            [r'previews/\1_full.png',
+            r'previews/\1_med.png',
+            r'previews/\1_small.png',
+            r'previews/\1_thumb.png',
             ]),
-    (r'.*/(COISS_[12]xxx)(|_v[0-9\.]+)/(COISS_....)/(data|extras/\w+)(|/\w+)', 0,
-            r'previews/\1/\3/data\5'),
-    (r'.*/(COISS_[12])999.*', 0,
-            r'previews/\1xxx'),
-
-    # COISS_3xxx
-    (r'.*/(COISS_3xxx.*/COISS_3...)/(data|extras/\w+)/(images/\w+[A-Z]+)(|_[a-z]+)\..*', 0,
-            [r'previews/\1/data/\3_full.jpg',
-             r'previews/\1/data/\3_med.jpg',
-             r'previews/\1/data/\3_small.jpg',
-             r'previews/\1/data/\3_thumb.jpg',
-            ]),
-    (r'.*/(COISS_3xxx.*/COISS_3...)/(data|extras/\w+)/(maps/\w+_SMN).*', 0,
-            [r'previews/\1/data/\3_full.png',
-             r'previews/\1/data/\3_med.png',
-             r'previews/\1/data/\3_small.png',
-             r'previews/\1/data/\3_thumb.png',
-            ]),
-    (r'.*/(COISS_3xxx.*/COISS_3...)/(data|extras/\w+)(|/images|/maps)', 0,
-            [r'previews/\1/data/\3',
-             r'previews/\1/extras/browse/\3',
-             r'previews/\1/extras/thumbnail/\3',
-             r'previews/\1/extras/full/\3',
-            ]),
-    (r'.*/(COISS_3xxx.*/COISS_3...)/extras', 0,
-            r'previews/\1/data'),
 ])
 
 associations_to_metadata = translator.TranslatorByRegex([
