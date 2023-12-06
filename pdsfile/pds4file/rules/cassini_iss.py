@@ -67,14 +67,10 @@ associations_to_volumes = translator.TranslatorByRegex([
 ])
 
 associations_to_calibrated = translator.TranslatorByRegex([
-    (r'.*/(COISS_[12]xxx)(|_v[0-9\.]+)/(COISS_....)/(data|extras/\w+)/(\w+/[NW][0-9]{10}_[0-9]+).*', 0,
-            [r'calibrated/\1/\3/data/\5_CALIB.IMG',
-             r'calibrated/\1/\3/data/\5_CALIB.LBL',
-            ]),
-    (r'.*/(COISS_[12]xxx)(|_v[0-9\.]+)/(COISS_....)/(data|extras/\w+)(|/\w+)', 0,
-            r'calibrated/\1/\3/data\5'),
-    (r'.*/(COISS_[12])999.*', 0,
-            r'calibrated/\1xxx'),
+    (r'.*/((cassini_iss/cassini_iss\w*)/(data|browse)(.*|_[a-z]*]/.*))\.[a-z]{3}', 0,
+        [r'calibrated/\1_CALIB.IMG',
+         r'calibrated/\1_CALIB.LBL',
+        ]),
 ])
 
 associations_to_previews = translator.TranslatorByRegex([

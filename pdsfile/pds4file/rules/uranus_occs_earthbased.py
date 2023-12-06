@@ -68,17 +68,6 @@ associations_to_volumes = translator.TranslatorByRegex([
         ]),
 ])
 
-associations_to_calibrated = translator.TranslatorByRegex([
-    (r'.*/(COISS_[12]xxx)(|_v[0-9\.]+)/(COISS_....)/(data|extras/\w+)/(\w+/[NW][0-9]{10}_[0-9]+).*', 0,
-            [r'calibrated/\1/\3/data/\5_CALIB.IMG',
-             r'calibrated/\1/\3/data/\5_CALIB.LBL',
-            ]),
-    (r'.*/(COISS_[12]xxx)(|_v[0-9\.]+)/(COISS_....)/(data|extras/\w+)(|/\w+)', 0,
-            r'calibrated/\1/\3/data\5'),
-    (r'.*/(COISS_[12])999.*', 0,
-            r'calibrated/\1xxx'),
-])
-
 associations_to_previews = translator.TranslatorByRegex([
     (r'.*/(uranus_occs_earthbased/uranus_occ_u.*/data(.*|_[a-z]*])/.*)\.[a-z]{3}', 0,
         [r'previews/\1_full.png',
@@ -344,7 +333,6 @@ class uranus_occs_earthbased(pds4file.Pds4File):
 
     ASSOCIATIONS = pds4file.Pds4File.ASSOCIATIONS.copy()
     ASSOCIATIONS['volumes']    += associations_to_volumes
-    ASSOCIATIONS['calibrated'] += associations_to_calibrated
     ASSOCIATIONS['previews']   += associations_to_previews
     ASSOCIATIONS['metadata']   += associations_to_metadata
     ASSOCIATIONS['documents']  += associations_to_documents
