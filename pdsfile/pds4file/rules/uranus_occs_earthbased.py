@@ -95,10 +95,10 @@ associations_to_metadata = translator.TranslatorByRegex([
 ])
 
 associations_to_documents = translator.TranslatorByRegex([
-    (r'(volumes|calibrated)/COISS_[0-3]xxx(|_[\w\.]+)(|/COISS_[0-3]\d\d\d)', 0,
-            r'documents/COISS_0xxx/*'),
-    (r'(volumes|calibrated)/COISS_[0-3]xxx.*/COISS_[0-3]\d\d\d/.+', 0,
-            r'documents/COISS_0xxx'),
+    (r'bundles/(curanus_occs_earthbased/uranus_occ_u.*).*', 0,
+         r'documents/\1/*'),
+    (r'bundles/(curanus_occs_earthbased/uranus_occ_u.*)', 0,
+         r'documents/\1'),
 ])
 
 ##########################################################################################

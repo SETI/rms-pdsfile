@@ -93,10 +93,12 @@ associations_to_metadata = translator.TranslatorByRegex([
 ])
 
 associations_to_documents = translator.TranslatorByRegex([
-    (r'(volumes|calibrated)/COISS_[0-3]xxx(|_[\w\.]+)(|/COISS_[0-3]\d\d\d)', 0,
-            r'documents/COISS_0xxx/*'),
-    (r'(volumes|calibrated)/COISS_[0-3]xxx.*/COISS_[0-3]\d\d\d/.+', 0,
-            r'documents/COISS_0xxx'),
+    (r'bundles/(cassini_vims/cassini_vims\w*).*', 0,
+         r'documents/\1/*'),
+    (r'bundles/(cassini_vims/cassini_vims\w*)', 0,
+         r'documents/\1'),
+    (r'previews/(cassini_vims/cassini_vims\w*)', 0,
+        r'documents/\1/VIMS-Preview-Interpretation-Guide.pdf'),
 ])
 
 ##########################################################################################
