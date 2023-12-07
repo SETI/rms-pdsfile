@@ -95,10 +95,10 @@ associations_to_metadata = translator.TranslatorByRegex([
 ])
 
 associations_to_documents = translator.TranslatorByRegex([
-    (r'bundles/(curanus_occs_earthbased/uranus_occ_u.*).*', 0,
-         r'documents/\1/*'),
-    (r'bundles/(curanus_occs_earthbased/uranus_occ_u.*)', 0,
-         r'documents/\1'),
+    (r'bundles/uranus_occs_earthbased/.*', 0,
+         r'documents/uranus_occs_earthbased/*'),
+    (r'bundles/uranus_occs_earthbased', 0,
+         r'documents/uranus_occs_earthbased'),
 ])
 
 ##########################################################################################

@@ -100,10 +100,10 @@ associations_to_metadata = translator.TranslatorByRegex([
 ])
 
 associations_to_documents = translator.TranslatorByRegex([
-    (r'(bundles|calibrated).*/(cassini_iss/cassini_iss\w*).*', 0,
-         r'documents/\2/*'),
-    (r'(bundles|calibrated).*/(cassini_iss/cassini_iss\w*)', 0,
-         r'documents/\2'),
+    (r'(bundles|calibrated)/cassini_iss/.*', 0,
+         r'documents/cassini_iss/*'),
+    (r'(bundles|calibrated)/cassini_iss', 0,
+         r'documents/cassini_iss'),
 ])
 
 ##########################################################################################
