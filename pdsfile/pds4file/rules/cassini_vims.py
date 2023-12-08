@@ -67,7 +67,7 @@ associations_to_volumes = translator.TranslatorByRegex([
 ])
 
 associations_to_previews = translator.TranslatorByRegex([
-    (r'.*/(cassini_vims/cassini_vims\w*/data(.*|_[a-z]*])/.*)\.[a-z]{3}', 0,
+    (r'.*/(cassini_vims/cassini_vims\w*/(data|browse)(.*|_[a-z]*])/.*)\.[a-z]{3}', 0,
         [r'previews/\1_full.png',
          r'previews/\1_med.png',
          r'previews/\1_small.png',
@@ -76,20 +76,14 @@ associations_to_previews = translator.TranslatorByRegex([
 ])
 
 associations_to_metadata = translator.TranslatorByRegex([
-    (r'.*/(COISS_[12]xxx)(|_v[0-9\.]+)/(COISS_....)/(data|extras/w+)/\w+/([NW][0-9]{10}_[0-9]+).*', 0,
-            [r'metadata/\1/\3/\3_index.tab/\5',
-             r'metadata/\1/\3/\3_ring_summary.tab/\5',
-             r'metadata/\1/\3/\3_moon_summary.tab/\5',
-             r'metadata/\1/\3/\3_saturn_summary.tab/\5',
-             r'metadata/\1/\3/\3_jupiter_summary.tab/\5',
-            ]),
-    (r'metadata/(COISS_.xxx/COISS_[12])...', 0,
-            r'metadata/\g<1>999'),
-    (r'metadata/(COISS_.xxx/COISS_[12]).../(COISS_.)..._(.*)\..*', 0,
-            [r'metadata/\g<1>999/\g<2>999_\3.tab',
-             r'metadata/\g<1>999/\g<2>999_\3.csv',
-             r'metadata/\g<1>999/\g<2>999_\3.lbl',
-            ]),
+    (r'.*/(cassini_vims)/(cassini_vims\w*)/(data|browse)(.*|_[a-z]*])/(.*)\.[a-z]{3}', 0,
+        [r'metadata/\1/\2/\2_index.tab/\5',
+         r'metadata/\1/\2/\2_supplemental_index.tab/\5',
+         r'metadata/\1/\2/\2_ring_summary.tab/\5',
+         r'metadata/\1/\2/\2_moon_summary.tab/\5',
+         r'metadata/\1/\2/\2_saturn_summary.tab/\5',
+         r'metadata/\1/\2/\2_jupiter_summary.tab/\5',
+        ]),
 ])
 
 associations_to_documents = translator.TranslatorByRegex([
@@ -317,12 +311,6 @@ class cassini_vims(pds4file.Pds4File):
     ASSOCIATIONS['documents']  += associations_to_documents
 
     pds4file.Pds4File.FILESPEC_TO_BUNDLESET = filespec_to_bundleset + pds4file.Pds4File.FILESPEC_TO_BUNDLESET
-
-    def FILENAME_KEYLEN(self):
-        if self.volset[:10] == 'COISS_3xxx':
-            return 0
-        else:
-            return 11   # trim off suffixes
 
 # Global attribute shared by all subclasses
 pds4file.Pds4File.OPUS_ID_TO_SUBCLASS = translator.TranslatorByRegex([(r'co-vims-.*', 0, cassini_vims)]) + \

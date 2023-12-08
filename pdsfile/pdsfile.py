@@ -1220,7 +1220,7 @@ class PdsFile(object):
         """
 
         # Checksum files need special handling
-        if '/holdings/checksums-' in abspath:
+        if f'/{cls.PDS_HOLDINGS}/checksums-' in abspath:
             testpath = abspath.replace('/checksums-', '/')
 
             for voltype in cls.VOLTYPES:
@@ -1283,11 +1283,11 @@ class PdsFile(object):
                 pass
 
             # Maybe it's associated with something else in the infoshelf tree
-            if '/holdings/' in abspath:
+            if f'/{cls.PDS_HOLDINGS}/' in abspath:
 
                 # Maybe there's an associated directory in the infoshelf tree
-                shelf_abspath = abspath.replace('/holdings/',
-                                                '/holdings/_infoshelf-')
+                shelf_abspath = abspath.replace(f'/{cls.PDS_HOLDINGS}/',
+                                                f'/{cls.PDS_HOLDINGS}/_infoshelf-')
                 if cls.os_path_exists(shelf_abspath):
                     return True
 
@@ -1341,11 +1341,11 @@ class PdsFile(object):
                 pass
 
             # Maybe it's associated with something else in the infoshelf tree
-            if '/holdings/' in abspath:
+            if f'/{cls.PDS_HOLDINGS}/' in abspath:
 
                 # Maybe there's an associated directory in the infoshelf tree
-                shelf_abspath = abspath.replace('/holdings/',
-                                                '/holdings/_infoshelf-')
+                shelf_abspath = abspath.replace(f'/{cls.PDS_HOLDINGS}/',
+                                                f'/{cls.PDS_HOLDINGS}/_infoshelf-')
                 if os.path.exists(shelf_abspath):
                     return True
 
@@ -1400,7 +1400,7 @@ class PdsFile(object):
                 return basenames
 
             # Deal with checksums-archives directories
-            if '/holdings/checksums-archives-' in abspath:
+            if f'/{cls.PDS_HOLDINGS}/checksums-archives-' in abspath:
                 if abspath.endswith('.txt'):
                     return []
 
@@ -1417,14 +1417,14 @@ class PdsFile(object):
                 raise ValueError('Invalid abspath for os_listdir: ' + abspath)
 
             # Deal with checksums directories
-            if '/holdings/checksums-' in abspath:
+            if f'/{cls.PDS_HOLDINGS}/checksums-' in abspath:
                 if abspath.endswith('_md5.txt'):
                     return []
 
                 testpath = abspath.replace('/checksums-','/')
                 results = cls.os_listdir(testpath)
 
-                after = abspath.rpartition('/holdings/checksums-')[-1]
+                after = abspath.rpartition(f'/{cls.PDS_HOLDINGS}/checksums-')[-1]
                 parts = after.split('/')
                 if len(parts) == 1:         # category-level call
                     return results
@@ -1436,14 +1436,14 @@ class PdsFile(object):
                     return [r + '_' + voltype + '_md5.txt' for r in results]
 
             # Deal with archive directories
-            if '/holdings/archives-' in abspath:
+            if f'/{cls.PDS_HOLDINGS}/archives-' in abspath:
                 if abspath.endswith('.tar.gz'):
                     return []
 
                 testpath = abspath.replace('/archives-','/')
                 results = cls.os_listdir(testpath)
 
-                after = abspath.rpartition('/holdings/archives-')[-1]
+                after = abspath.rpartition(f'/{cls.PDS_HOLDINGS}/archives-')[-1]
                 parts = after.split('/')
                 if len(parts) == 1:         # category-level call
                     return results
@@ -1455,11 +1455,11 @@ class PdsFile(object):
                     return [r + '_' + voltype + '.tar.gz' for r in results]
 
             # Deal with other holdings directories, e.g., holdings/volumes
-            if '/holdings/' in abspath:
+            if f'/{cls.PDS_HOLDINGS}/' in abspath:
 
                 # Maybe there's an associated directory in the infoshelf tree
-                shelf_abspath = abspath.replace('/holdings/',
-                                                '/holdings/_infoshelf-')
+                shelf_abspath = abspath.replace(f'/{cls.PDS_HOLDINGS}/',
+                                                f'/{cls.PDS_HOLDINGS}/_infoshelf-')
                 try:
                     results = os.listdir(shelf_abspath)
                 except FileNotFoundError:
@@ -1473,7 +1473,7 @@ class PdsFile(object):
                 if not results:
                     return []
 
-                after = abspath.rpartition('/holdings/')[-1]
+                after = abspath.rpartition(f'/{cls.PDS_HOLDINGS}/')[-1]
                 parts = after.split('/')
                 if len(parts) == 1:         # category-level call
                     return results
@@ -1534,9 +1534,9 @@ class PdsFile(object):
             (pattern, key) = cls.shelf_path_and_key_for_abspath(abspath, 'info')
         except ValueError:
             # For a category-level holdings dir, this might still work
-            if '/holdings/' in abspath:
-                pattern = abspath.replace('/holdings/',
-                                          '/holdings/_infoshelf-')
+            if f'/{cls.PDS_HOLDINGS}/' in abspath:
+                pattern = abspath.replace(f'/{cls.PDS_HOLDINGS}/',
+                                          f'/{cls.PDS_HOLDINGS}/_infoshelf-')
                 key = None  # Below, None indicates that we handled this error
             else:
                 pattern = ''
@@ -1557,17 +1557,17 @@ class PdsFile(object):
         # If the check for an exact shelf file failed, just convert the list
         # of shelf/info directories back to holdings directories
         if key is None:
-            return [p.replace('/holdings/_infoshelf-', '/holdings/')
+            return [p.replace(f'/{cls.PDS_HOLDINGS}/_infoshelf-', f'/{cls.PDS_HOLDINGS}/')
                     for p in shelf_paths]
 
         # Gather the matching entries in each shelf
         abspaths = []
         for shelf_path in shelf_paths:
             shelf = cls._get_shelf(shelf_path)
-            parts = shelf_path.split('/holdings/_infoshelf-')
+            parts = shelf_path.split(f'/{cls.PDS_HOLDINGS}/_infoshelf-')
             assert len(parts) == 2
 
-            root_ = parts[0] + '/holdings/' + parts[1].split('_info.')[0] + '/'
+            root_ = parts[0] + f'/{cls.PDS_HOLDINGS}/' + parts[1].split('_info.')[0] + '/'
 
             if needs_glob(key):
                 # Since shelf files are always in alphabetical order, we can
@@ -1797,13 +1797,14 @@ class PdsFile(object):
         blank otherwise.
         """
 
+        cls = type(self)
         if self._indexshelf_abspath is None:
             if self.extension not in ('.tab', '.TAB'):
                 self._indexshelf_abspath = ''
             else:
                 abspath = self.abspath
-                abspath = abspath.replace('/holdings/',
-                                          '/holdings/_indexshelf-')
+                abspath = abspath.replace(f'/{cls.PDS_HOLDINGS}/',
+                                          f'/{cls.PDS_HOLDINGS}/_indexshelf-')
                 abspath = abspath.replace('.tab', '.pickle')
                 abspath = abspath.replace('.TAB', '.pickle')
                 self._indexshelf_abspath = abspath
@@ -3784,9 +3785,11 @@ class PdsFile(object):
         # Search for "holdings"
         parts_lc = [p.lower() for p in parts]
         try:
-            PDS_HOLDINGS_index = parts_lc.index(cls.PDS_HOLDINGS) # Change variable name to distinguish from PDS3
+            # Change variable name to distinguish from PDS3
+            PDS_HOLDINGS_index = parts_lc.index(cls.PDS_HOLDINGS)
         except ValueError:
-            raise ValueError('"{}" directory not found in: '.format(cls.PDS_HOLDINGS) + abspath)
+            raise ValueError('"{}" directory not found in: '.format(cls.PDS_HOLDINGS)
+                             + abspath)
         ### Pause the cache
         cls.CACHE.pause()
         try:
@@ -3885,7 +3888,7 @@ class PdsFile(object):
                                        caching='default', lifetime=None):
         """Return a PdsFile based on either an absolute or a logical path."""
 
-        if '/holdings/' in path:
+        if f'/{cls.PDS_HOLDINGS}/' in path:
             return cls.from_abspath(path,
                                     fix_case=False, must_exist=False,
                                     caching='default', lifetime=None)
@@ -5046,7 +5049,7 @@ class PdsFile(object):
         """
 
         # No checksum shelf files allowed
-        (root, _, logical_path) = abspath.partition('/holdings/')
+        (root, _, logical_path) = abspath.partition(f'/{cls.PDS_HOLDINGS}/')
         if logical_path.startswith('checksums'):
             raise ValueError('No shelf files for checksums: ' + logical_path)
 
@@ -5059,7 +5062,7 @@ class PdsFile(object):
                 raise ValueError('Archive shelves require bundle sets: ' +
                                  logical_path)
 
-            shelf_abspath = ''.join([root, '/holdings/', dir_prefix,
+            shelf_abspath = ''.join([root, f'/{cls.PDS_HOLDINGS}/', dir_prefix,
                                      parts[0], '/', parts[1],
                                      file_suffix, '.pickle'])
             key = '/'.join(parts[2:])
@@ -5071,7 +5074,7 @@ class PdsFile(object):
                 raise ValueError('Non-archive shelves require bundle names: ' +
                                  logical_path)
 
-            shelf_abspath = ''.join([root, '/holdings/', dir_prefix,
+            shelf_abspath = ''.join([root, f'/{cls.PDS_HOLDINGS}/', dir_prefix,
                                      parts[0], '/', parts[1], '/', parts[2],
                                      file_suffix, '.pickle'])
             key = '/'.join(parts[3:])
