@@ -52,7 +52,7 @@ default_viewables = translator.TranslatorByRegex([
 # ASSOCIATIONS
 ##########################################################################################
 
-associations_to_volumes = translator.TranslatorByRegex([
+associations_to_bundles = translator.TranslatorByRegex([
     (r'.*/(cassini_vims/cassini_vims\w*)/(data|browse)(.*|_[a-z]*]/.*)\.[a-z]{3}', 0,
         [r'bundles/\1/data\3.qub',
          r'bundles/\1/data\3.xml',
@@ -305,7 +305,7 @@ class cassini_vims(pds4file.Pds4File):
     VIEWABLES = {'default': default_viewables}
 
     ASSOCIATIONS = pds4file.Pds4File.ASSOCIATIONS.copy()
-    ASSOCIATIONS['bundles']    += associations_to_volumes
+    ASSOCIATIONS['bundles']    += associations_to_bundles
     ASSOCIATIONS['previews']   += associations_to_previews
     ASSOCIATIONS['metadata']   += associations_to_metadata
     ASSOCIATIONS['documents']  += associations_to_documents
