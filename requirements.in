@@ -4,3 +4,4 @@ pylibmc
 pytest
 rms-pdslogger
 rms-pdstable
+rms-translator

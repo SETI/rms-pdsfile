@@ -49,6 +49,8 @@ rms-textkernel==1.0.0
     # via
     #   rms-julian
     #   rms-pdslogger
+rms-translator==0.0.1
+    # via -r requirements.in
 tomli==2.0.1
     # via pytest
 xattr==1.0.0
