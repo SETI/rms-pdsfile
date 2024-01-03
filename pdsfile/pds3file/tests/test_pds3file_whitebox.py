@@ -7,7 +7,6 @@ import os
 import pdsfile.pds3file as pds3file
 from pdsfile.general_helper import PDS_HOLDINGS_DIR
 from pdsfile import pdsviewable
-import pdsgroup
 import pytest
 import re
 
