@@ -17,12 +17,12 @@ import re
 import time
 
 import pdslogger
-import pdsviewable
 import pdstable
 import pdsparser
 import translator
 
-from pdsfile import pdscache
+from pdsfile import (pdscache,
+                     pdsviewable)
 
 # Import module for memcached if possible, otherwise flag
 try: # pragma: no cover

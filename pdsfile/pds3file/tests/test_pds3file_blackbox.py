@@ -1,5 +1,5 @@
 import pdsfile.pds3file as pds3file
-import pdsviewable
+from pdsfile import pdsviewable
 import pdsfile.pds3file.rules as rules
 from pdsfile.pdsfile import (logical_path_from_abspath,
                              repair_case,

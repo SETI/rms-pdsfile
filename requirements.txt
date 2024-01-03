@@ -4,19 +4,52 @@
 #
 #    pip-compile
 #
+cffi==1.16.0
+    # via xattr
 coverage==7.3.2
     # via -r requirements.in
 exceptiongroup==1.2.0
     # via pytest
 iniconfig==2.0.0
     # via pytest
+numpy==1.26.3
+    # via
+    #   rms-julian
+    #   rms-pdslogger
+    #   rms-textkernel
 packaging==23.2
     # via pytest
+pillow==10.2.0
+    # via -r requirements.in
 pluggy==1.3.0
     # via pytest
+pycparser==2.21
+    # via cffi
 pylibmc==1.6.3
     # via -r requirements.in
+pyparsing==3.1.1
+    # via
+    #   rms-julian
+    #   rms-pdslogger
+    #   rms-pdsparser
+    #   rms-textkernel
 pytest==7.4.3
     # via -r requirements.in
+rms-julian==2.0.0
+    # via
+    #   rms-pdstable
+    #   rms-textkernel
+rms-pdslogger==0.0.5
+    # via -r requirements.in
+rms-pdsparser==0.0.4
+    # via rms-pdstable
+rms-pdstable==0.0.5
+    # via -r requirements.in
+rms-textkernel==1.0.0
+    # via
+    #   rms-julian
+    #   rms-pdslogger
 tomli==2.0.1
     # via pytest
+xattr==1.0.0
+    # via rms-pdslogger
