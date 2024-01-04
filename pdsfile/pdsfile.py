@@ -71,7 +71,7 @@ def logical_path_from_abspath(abspath, cls):
     raise ValueError('Not compatible with a logical path: ', abspath)
 
 def _clean_join(a, b):
-#     joined = os.path.join(a,b).replace('\\', '/')
+#     joined = _clean_join(a,b).replace('\\', '/')
     if a:
         return a + '/' + b
     else:
@@ -208,17 +208,17 @@ def abspath_for_logical_path(path, cls):
 
     # With exactly one holdings/ directory, the answer is easy
     if len(holdings_list) == 1:
-        return os.path.join(holdings_list[0], path)
+        return _clean_join(holdings_list[0], path)
 
     # Otherwise search among the available holdings directories in order
     for root in holdings_list:
-        abspath = os.path.join(root, path)
+        abspath = _clean_join(root, path)
         matches = cls.glob_glob(abspath)
         if matches: return matches[0]
 
     # File doesn't exist. Just pick one.
     if holdings_list:
-        return os.path.join(holdings_list[0], path)
+        return _clean_join(holdings_list[0], path)
 
     raise ValueError('No holdings directory for logical path ' + path)
 
@@ -5854,7 +5854,7 @@ class PdsFile(object):
             label_basename = self.label_basename
             if label_basename:
                 parent_abspath = os.path.split(self.abspath)[0]
-                label_abspath = os.path.join(parent_abspath, label_basename)
+                label_abspath = _clean_join(parent_abspath, label_basename)
                 if label_abspath not in abspaths:
                     abspaths.append(label_abspath)
 
