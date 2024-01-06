@@ -7,7 +7,7 @@ import datetime
 import os
 import pdsfile.pds3file as pds3file
 from pdsfile.general_helper import PDS_HOLDINGS_DIR
-import pdsviewable
+from pdsfile import pdsviewable
 import pytest
 
 from .helper import instantiate_target_pdsfile

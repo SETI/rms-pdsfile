@@ -6,7 +6,7 @@
 import os
 import pdsfile.pds4file as pds4file
 from pdsfile.general_helper import PDS4_BUNDLES_DIR
-import pdsviewable
+from pdsfile import pdsviewable
 import pytest
 
 from .helper import *

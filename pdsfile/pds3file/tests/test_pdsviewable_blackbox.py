@@ -3,7 +3,7 @@
 # Blackbox tests for pdsviewable
 ##########################################################################################
 
-import pdsviewable
+from pdsfile import pdsviewable
 import pytest
 
 from .helper import instantiate_target_pdsfile
