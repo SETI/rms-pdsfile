@@ -1,7 +1,7 @@
-coverage==7.3.2
-pillow==10.2.0
-pylibmc==1.6.3
-pytest==7.4.3
-rms-pdslogger==0.0.5
-rms-pdstable==0.0.5
-rms-translator==0.0.1
+coverage
+pillow
+pylibmc
+pytest
+rms-pdslogger
+rms-pdstable
+rms-translator
