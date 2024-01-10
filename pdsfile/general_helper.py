@@ -10,13 +10,13 @@ import os
 try:
     PDS_HOLDINGS_DIR = os.environ['PDS_HOLDINGS_DIR']
 except KeyError: # pragma: no cover
-    raise KeyError("Missing 'PDS_HOLDINGS_DIR' in the environment variable")
+    raise KeyError("'PDS_HOLDINGS_DIR' environment variable not set")
 
 try:
     PDS4_HOLDINGS_DIR = os.environ['PDS4_HOLDINGS_DIR']
 except KeyError: # pragma: no cover
     # TODO: update this when we know the actual path of pds4 holdings on the webserver
-    raise KeyError("Missing 'PDS4_HOLDINGS_DIR' in the environment variable")
+    raise KeyError("'PDS4_HOLDINGS_DIR' environment variable not set")
 
 PDS4_BUNDLES_DIR = f'{PDS4_HOLDINGS_DIR}/bundles'
 
