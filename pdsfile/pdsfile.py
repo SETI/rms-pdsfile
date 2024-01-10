@@ -17,12 +17,12 @@ import re
 import time
 
 import pdslogger
-import pdsviewable
 import pdstable
 import pdsparser
 import translator
 
-from pdsfile import pdscache
+from pdsfile import (pdscache,
+                     pdsviewable)
 
 # Import module for memcached if possible, otherwise flag
 try: # pragma: no cover
@@ -70,21 +70,21 @@ def logical_path_from_abspath(abspath, cls):
 
     raise ValueError('Not compatible with a logical path: ', abspath)
 
-def clean_join(a, b):
-#     joined = os.path.join(a,b).replace('\\', '/')
+def _clean_join(a, b):
+#     joined = _clean_join(a,b).replace('\\', '/')
     if a:
         return a + '/' + b
     else:
         return b
 
-def clean_abspath(path):
+def _clean_abspath(path):
     abspath = os.path.abspath(path)
     if os.sep == '\\':
         abspath = abspath.replace('\\', '/')
     return abspath
 
 @functools.lru_cache(maxsize=_GLOB_CACHE_SIZE)
-def clean_glob(cls, pattern, force_case_sensitive=False):
+def _clean_glob(cls, pattern, force_case_sensitive=False):
     results = glob.glob(pattern)
     if os.sep == '\\':
         results = [x.replace('\\', '/') for x in results]
@@ -101,7 +101,7 @@ def clean_glob(cls, pattern, force_case_sensitive=False):
     else:
         return results
 
-def needs_glob(pattern):
+def _needs_glob(pattern):
     """Return True if the given expression contains wildcards
 
     Keyword arguments:
@@ -119,7 +119,7 @@ def repair_case(abspath, cls):
     """
 
     trailing_slash = abspath.endswith('/')  # must preserve a trailing slash!
-    abspath = clean_abspath(abspath)
+    abspath = _clean_abspath(abspath)
 
     # Fields are separated by slashes
     parts = abspath.split('/')
@@ -208,17 +208,17 @@ def abspath_for_logical_path(path, cls):
 
     # With exactly one holdings/ directory, the answer is easy
     if len(holdings_list) == 1:
-        return os.path.join(holdings_list[0], path)
+        return _clean_join(holdings_list[0], path)
 
     # Otherwise search among the available holdings directories in order
     for root in holdings_list:
-        abspath = os.path.join(root, path)
+        abspath = _clean_join(root, path)
         matches = cls.glob_glob(abspath)
         if matches: return matches[0]
 
     # File doesn't exist. Just pick one.
     if holdings_list:
-        return os.path.join(holdings_list[0], path)
+        return _clean_join(holdings_list[0], path)
 
     raise ValueError('No holdings directory for logical path ' + path)
 
@@ -704,7 +704,7 @@ class PdsFile(object):
             cls      -- the class calling the method
         """
 
-        volinfo_path = clean_join(holdings, '_volinfo')
+        volinfo_path = _clean_join(holdings, '_volinfo')
 
         volinfo_dict = {}           # the master dictionary of high-level paths vs.
                                     # (description, icon_type, version ID,
@@ -725,7 +725,7 @@ class PdsFile(object):
                 continue
 
             # Read the file
-            table_path = clean_join(volinfo_path, child)
+            table_path = _clean_join(volinfo_path, child)
             with open(table_path, 'r', encoding='utf-8') as f:
                 recs = f.readlines()
 
@@ -819,7 +819,7 @@ class PdsFile(object):
         if not isinstance(holdings_list, (list,tuple)):
             holdings_list = [holdings_list]
 
-        holdings_list = [clean_abspath(h) for h in holdings_list]
+        holdings_list = [_clean_abspath(h) for h in holdings_list]
 
         # Use cache as requested
         if (port == 0 and cls.MEMCACHE_PORT == 0) or not HAS_PYLIBMC:
@@ -1008,7 +1008,7 @@ class PdsFile(object):
                     _preload_dir(pdsdir, cls)
 
                 # Load the icons
-                icon_path = clean_join(holdings, '_icons')
+                icon_path = _clean_join(holdings, '_icons')
                 if os.path.exists(icon_path):
                     icon_url = '/holdings' + (str(h) if h > 0 else '') + '/_icons'
                     pdsviewable.load_icons(icon_path, icon_url, icon_color, cls.LOGGER)
@@ -1520,14 +1520,14 @@ class PdsFile(object):
 
         # We can save a lot of trouble if there's no match pattern
         # This also enables support for index row notation "index.tab/whatever"
-        if not needs_glob(abspath):
+        if not _needs_glob(abspath):
             if cls.os_path_exists(abspath, force_case_sensitive):
                 return [abspath]
             else:
                 return []
 
         if not cls.SHELVES_ONLY:
-            return clean_glob(cls, abspath, force_case_sensitive)
+            return _clean_glob(cls, abspath, force_case_sensitive)
 
         # Find the shelf file(s) if any
         abspath = abspath.rstrip('/')
@@ -1544,8 +1544,8 @@ class PdsFile(object):
 
         if not pattern:
             shelf_paths = []
-        elif needs_glob(pattern):
-            shelf_paths = clean_glob(cls, pattern)
+        elif _needs_glob(pattern):
+            shelf_paths = _clean_glob(cls, pattern)
         elif os.path.exists(pattern):
             shelf_paths = [pattern]
         else:
@@ -1553,7 +1553,7 @@ class PdsFile(object):
 
         # If there are no exact infoshelf files, revert to the file system
         if not shelf_paths:
-            return clean_glob(cls, abspath, force_case_sensitive)
+            return _clean_glob(cls, abspath, force_case_sensitive)
 
         # If the check for an exact shelf file failed, just convert the list
         # of shelf/info directories back to holdings directories
@@ -1570,7 +1570,7 @@ class PdsFile(object):
 
             root_ = parts[0] + '/holdings/' + parts[1].split('_info.')[0] + '/'
 
-            if needs_glob(key):
+            if _needs_glob(key):
                 # Since shelf files are always in alphabetical order, we can
                 # use a binary search to figure out where to start comparing
                 # strings. This is useful because there can be a lot of
@@ -3484,7 +3484,7 @@ class PdsFile(object):
                         basename = self.childnames[k]
 
             # Create the logical path and return from cache if available
-            child_logical_path = clean_join(self.logical_path, basename)
+            child_logical_path = _clean_join(self.logical_path, basename)
             try:
                 pdsf = cls.CACHE[child_logical_path.lower()]
             except KeyError:
@@ -3498,7 +3498,7 @@ class PdsFile(object):
             # Fill in the absolute path if possible. This will fail for children
             # of category-level directories; we address that case later
             if self.abspath:
-                child_abspath = clean_join(self.abspath, basename)
+                child_abspath = _clean_join(self.abspath, basename)
             else:
                 child_abspath = None
 
@@ -3524,7 +3524,7 @@ class PdsFile(object):
             this.basename = basename
 
             if self.interior:               # if parent is inside a bundle
-                this.interior = clean_join(self.interior, basename)
+                this.interior = _clean_join(self.interior, basename)
                 return this._complete(must_exist, caching, lifetime)
 
             if self.bundlename_:               # if parent is a bundle
@@ -4367,7 +4367,7 @@ class PdsFile(object):
         key = self.find_selected_row_key(selection, flag=flag)
 
         # If we already have a PdsFile keyed by this absolute path, return it
-        new_abspath = clean_join(self.abspath, key)
+        new_abspath = _clean_join(self.abspath, key)
         try:
             return cls.CACHE[new_abspath.lower()]
         except KeyError:
@@ -4533,7 +4533,7 @@ class PdsFile(object):
         patterns = [abspath_for_logical_path(p, cls) for p in paths]
         matches = []
         for pattern in patterns:
-            if needs_glob(pattern):
+            if _needs_glob(pattern):
                 abspaths = cls.glob_glob(pattern, force_case_sensitive=True)
             elif cls.os_path_exists(pattern, force_case_sensitive=True):
                 abspaths = [pattern]
@@ -5388,7 +5388,7 @@ class PdsFile(object):
                 parts[3:] = [self.basename_is_label(basename)] + parts[3:]
 
             if dirs_first or dirs_last:
-                isdir = cls.os_path_isdir(clean_join(self.abspath,
+                isdir = cls.os_path_isdir(_clean_join(self.abspath,
                                                           basename))
                 if dirs_first:
                     # If this is a directory, put False in front of the sort key
@@ -5712,7 +5712,7 @@ class PdsFile(object):
     def abspaths_for_basenames(self, basenames, must_exist=False):
         # shortcut
         if self.abspath and not must_exist:
-            return [clean_join(self.abspath, b) for b in basenames]
+            return [_clean_join(self.abspath, b) for b in basenames]
 
         pdsfiles = self.pdsfiles_for_basenames(basenames, must_exist=must_exist)
         return [pdsf.abspath for pdsf in pdsfiles]
@@ -5720,7 +5720,7 @@ class PdsFile(object):
     def logicals_for_basenames(self, basenames, must_exist=False):
         # shortcut
         if not must_exist:
-            return [clean_join(self.logical_path, b) for b in basenames]
+            return [_clean_join(self.logical_path, b) for b in basenames]
 
         pdsfiles = self.pdsfiles_for_basenames(basenames, must_exist=must_exist)
         return [pdsf.logical_path for pdsf in pdsfiles]
@@ -5828,7 +5828,7 @@ class PdsFile(object):
                 suffix = ''
 
             # Find the file(s) that match the pattern
-            if not must_exist and not needs_glob(pattern):
+            if not must_exist and not _needs_glob(pattern):
                 test_abspaths = [pattern]
             else:
                 test_abspaths = cls.glob_glob(pattern,
@@ -5854,7 +5854,7 @@ class PdsFile(object):
             label_basename = self.label_basename
             if label_basename:
                 parent_abspath = os.path.split(self.abspath)[0]
-                label_abspath = os.path.join(parent_abspath, label_basename)
+                label_abspath = _clean_join(parent_abspath, label_basename)
                 if label_abspath not in abspaths:
                     abspaths.append(label_abspath)
 
