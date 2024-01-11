@@ -19,24 +19,24 @@ jobs:
         # Because we can run multiple tests at the same time
         # under Linux, we can do our multi-Python-version test
         # there, and then just run a single version under
-        # Windows and MacOS to make sure the code still works there.
+        # Windows to make sure the code still works there.
         #
         # MacOS: Python 3.8-3.10 does not currently work on MacOS.
         include:
-          # - os: self-hosted-linux
-          #   python-version: "3.8"
-          # - os: self-hosted-linux
-          #   python-version: "3.9"
-          # - os: self-hosted-linux
-          #   python-version: "3.10"
-          # - os: self-hosted-linux
-          #   python-version: "3.11"
-          # - os: self-hosted-linux
-          #   python-version: "3.12"
-          # - os: self-hosted-macos
-          #   python-version: "3.11"
-          # - os: self-hosted-macos
-          #   python-version: "3.12"
+          - os: self-hosted-linux
+            python-version: "3.8"
+          - os: self-hosted-linux
+            python-version: "3.9"
+          - os: self-hosted-linux
+            python-version: "3.10"
+          - os: self-hosted-linux
+            python-version: "3.11"
+          - os: self-hosted-linux
+            python-version: "3.12"
+          - os: self-hosted-macos
+            python-version: "3.11"
+          - os: self-hosted-macos
+            python-version: "3.12"
           - os: self-hosted-windows
             python-version: "3.12"
       fail-fast: true
