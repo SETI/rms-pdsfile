@@ -480,7 +480,7 @@ def load_icons(path, url, color='blue', logger=None):
                 continue
 
             # Create the PdsViewable
-            abspath = os.path.join(root, basename)
+            abspath = os.path.join(root, basename).replace('\\', '/')
             url = icon_url_ + abspath[len(icon_path_):]
             try:
                 im = Image.open(abspath)
