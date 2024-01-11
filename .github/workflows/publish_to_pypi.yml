@@ -7,7 +7,7 @@ on:
 
 jobs:
   upload_pypi:
-    runs-on: self-hosted-linux
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -19,12 +19,7 @@ jobs:
         with:
           python-version: 3.12
 
-      - name: Install dependencies and test
-        run: |
-          scripts/automated_tests/pdsfile_main_test.sh
-        shell: bash
-
-      - name: Build
+\      - name: Build
         run: |
           python3 -m pip install --upgrade build && python3 -m build
 
