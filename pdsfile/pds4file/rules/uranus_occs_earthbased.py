@@ -281,30 +281,18 @@ opus_products = translator.TranslatorByRegex([
 ##########################################################################################
 # OPUS_ID
 ##########################################################################################
-
-#opus_id = translator.TranslatorByRegex([
-#    (r'.*/COISS_[12]xxx.*/([NW][0-9]{10})_[0-9]+.*', 0, r'co-iss-#LOWER#\1'),
-#])
-
-# Although ideally would use LID to create unique OPUS ID, more straightforward to use file basename with translator.py?
-# Based on LID
-#opus_id = translator.TranslatorByRegex([
-#    (r'urn:nasa:pds:(uranus_occ_u\d{0,4}_[a-z]*_(fos|\d{2,3}cm)):.*:(\d{3,4}nm_.*)', 0, r'\1-\3'),
-#])
-
-#opus_id = translator.TranslatorByRegex([
-#    (r'urn:nasa:pds:(.+):\w+:(.+)', 0, r'\1-\2'),
-#])
-
-
-# Based on filepath
-#opus_id = translator.TranslatorByRegex([
-#    (r'.*/uranus_occs_earthbased/(uranus_occ_u\d{0,4}_[a-z]*_(fos|\d{2,3}cm))/.*/.*/u\d{0,4}_[a-z]*_(fos|\d{2,3}cm)_(\d{3,4}nm_.*).[a-z]{3}', 0, r'\1-\4'),
-#])
-
-# OPUS ID is bundle name
+# Note: instead of "Generic InSb High Speed Photometer" that the ground-based telescopes use, the KAO uses "Generic Visual High Speed Photometer", hence using "vis" instead of "insb" in the instrument component of the OPUS ID
 opus_id = translator.TranslatorByRegex([
-    (r'.*/uranus_occs_earthbased/(uranus_occ_u\d{0,4}_[a-z]*_(fos|\d{2,3}cm))/.*/.*/u\d{0,4}_[a-z]*_(fos|\d{2,3}cm)_(\d{3,4}nm_.*).[a-z]{3}', 0, r'\1'),
+    (r'.*/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/[a-z]+/atmosphere/(u0)_kao_91cm_734nm_counts-v-time_atmos_([a-z])[a-z]?gress\.[a-z]{3}', 0, r'kao0m91-vis-occ-1977-069-\1-uranus-\2'), #browse/ and data/
+    (r'.*/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/(u0)_kao_91cm_734nm_radius_equator_([a-z])[a-z]?gress_\d{3,4}m\.[a-z]{3}', 0, r'kao0m91-vis-occ-1977-069-\1-ringpl-\2'), 
+    (r'.*/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/(u0)_kao_91cm_734nm_counts-v-time_occult\.[a-z]{3}', 0, r'kao0m91-vis-occ-1977-069-\1-ringpl-b'), # entire occultation hence "-b" 
+    (r'.*/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/browse/global/(u0)_kao_91cm_734nm_counts-v-time_[a-zA-Z]+\.[a-z]{3}', 0, r'kao0m91-vis-occ-1977-069-\1-ringpl-b'), # includes both atmosphere and rings occultation, so should this be 'kao0m91-vis-occ-1977-069-\1-uranus-b'?
+   (r'.*/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/browse/global/(u0)_kao_91cm_734nm_(alt|earth|obs_geom)\.[a-z]{3}', 0, r'kao0m91-vis-occ-1977-069-\1-b'), # does not include ring name as e.g. u0_kao_91cm_734nm_earth.pdf shows plot of Earth viewed from Uranus at mid-occultation
+    (r'.*/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/(u0)_kao_91cm_734nm_radius_([a-z]*)_([a-z])[a-z]?gress_\d{3,4}m\.[a-z]{3}', 0, r'kao0m91-vis-occ-1977-069-\1-\2-\3'),
+    (r'.*/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/(u0)_kao_91cm_734nm_counts-v-time_rings_([a-z])[a-z]?gress\.[a-z]{3}', 0, r'kao0m91-vis-occ-1977-069-\1-ringpl-\2'), 
+    (r'.*/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/browse/rings/(u0)_kao_91cm_734nm_radius_equator_([a-z])[a-z]?gress_\d{4}m.[a-z]{3}', 0, r'kao0m91-vis-occ-1977-069-\1-ringpl-\2'),  
+    (r'.*/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/browse/rings/(u0)_kao_91cm_734nm_counts-v-time_rings_([a-z])[a-z]?gress.[a-z]{3}', 0, r'kao0m91-vis-occ-1977-069-\1-ringpl-\2'),
+    (r'.*/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/browse/rings/(u0)_kao_91cm_734nm_counts-v-time_rings_indiv.[a-z]{3}', 0, r'kao0m91-vis-occ-1977-069-\1-b') # since multiple individual ring observations, rather than entire ring plane, omit <ringname> from opus_id
 ])
 
 ##########################################################################################
