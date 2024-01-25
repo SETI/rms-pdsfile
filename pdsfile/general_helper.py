@@ -3,7 +3,6 @@
 # Helper functions being used in tests, the parent class & both pds3 & pds4 subclasses
 ##########################################################################################
 import os
-import pdsgroup
 
 ##########################################################################################
 # Configurations
@@ -11,13 +10,13 @@ import pdsgroup
 try:
     PDS_HOLDINGS_DIR = os.environ['PDS_HOLDINGS_DIR']
 except KeyError: # pragma: no cover
-    raise KeyError("Missing 'PDS_HOLDINGS_DIR' in the environment variable")
+    raise KeyError("'PDS_HOLDINGS_DIR' environment variable not set")
 
 try:
     PDS4_HOLDINGS_DIR = os.environ['PDS4_HOLDINGS_DIR']
 except KeyError: # pragma: no cover
     # TODO: update this when we know the actual path of pds4 holdings on the webserver
-    raise KeyError("Missing 'PDS4_HOLDINGS_DIR' in the environment variable")
+    raise KeyError("'PDS4_HOLDINGS_DIR' environment variable not set")
 
 PDS4_BUNDLES_DIR = f'{PDS4_HOLDINGS_DIR}/bundles'
 
@@ -46,14 +45,6 @@ def get_pdsfiles_for_class(paths, cls, holdings_dir, is_abspath=True):
             target_pdsfile = cls.from_logical_path(TESTFILE_PATH)
             pdsfiles_arr.append(target_pdsfile)
     return pdsfiles_arr
-
-def get_pdsgroups_for_class(paths_group, cls, holdings_dir, is_abspath=True):
-    pdsgroups_arr = []
-    for paths in paths_group:
-        pdsfiles = get_pdsfiles_for_class(paths, cls, holdings_dir, is_abspath)
-        target_pdsgroup = pdsgroup.PdsGroup(pdsfiles=pdsfiles)
-        pdsgroups_arr.append(target_pdsgroup)
-    return pdsgroups_arr
 
 def opus_products_test_for_class(
     input_path, cls, holdings_dir, expected, is_abspath=True
