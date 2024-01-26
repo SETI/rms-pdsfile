@@ -6,11 +6,11 @@
 import datetime
 import os
 import pdsfile.pds3file as pds3file
-from pdsfile.general_helper import PDS_HOLDINGS_DIR
 from pdsfile import pdsviewable
 import pytest
 
-from .helper import instantiate_target_pdsfile
+from .helper import (PDS_HOLDINGS_DIR,
+                     instantiate_target_pdsfile)
 
 try:
     PDS_TESTING_ROOT = PDS_HOLDINGS_DIR[:PDS_HOLDINGS_DIR.rindex('pdsdata')]
