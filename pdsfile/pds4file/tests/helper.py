@@ -7,9 +7,19 @@
 import os
 import pdsfile.pds4file as pds4file
 
-from pdsfile.general_helper import (PDS4_BUNDLES_DIR,
-                                    instantiate_target_pdsfile_for_class)
+try:
+    PDS4_HOLDINGS_DIR = os.environ['PDS4_HOLDINGS_DIR']
+except KeyError: # pragma: no cover
+    # TODO: update this when we know the actual path of pds4 holdings on the webserver
+    raise KeyError("'PDS4_HOLDINGS_DIR' environment variable not set")
+
+PDS4_BUNDLES_DIR = f'{PDS4_HOLDINGS_DIR}/bundles'
 
 def instantiate_target_pdsfile(path, is_abspath=True):
-    return instantiate_target_pdsfile_for_class(path, pds4file.Pds4File,
-                                                PDS4_BUNDLES_DIR, is_abspath)
+    if is_abspath:
+        TESTFILE_PATH = PDS4_BUNDLES_DIR + '/' + path
+        target_pdsfile = pds4file.Pds4File.from_abspath(TESTFILE_PATH)
+    else:
+        TESTFILE_PATH = path
+        target_pdsfile = pds4file.Pds4File.from_logical_path(TESTFILE_PATH)
+    return target_pdsfile
