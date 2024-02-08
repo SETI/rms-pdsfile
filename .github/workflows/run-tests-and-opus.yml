@@ -1,5 +1,5 @@
-name: Run OPUS Tests
-run-name: "Run OPUS Tests: ${{ github.ref_type }} ${{ github.ref_name }} by ${{ github.triggering_actor }}"
+name: Run Tests and OPUS
+run-name: "Run Tests and OPUS: ${{ github.ref_type }} ${{ github.ref_name }} by ${{ github.triggering_actor }}"
 
 on:
   workflow_dispatch:
@@ -11,8 +11,13 @@ defaults:
     shell: bash
 
 jobs:
-  test:
+  test_pdsfile:
+    name: Test pdsfile
+    uses: ./.github/workflows/run-tests.yml
+
+  test_opus:
     name: Test pdsfile with OPUS
+    needs: [test_pdsfile]
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
