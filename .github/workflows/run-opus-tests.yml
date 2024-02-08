@@ -12,7 +12,7 @@ defaults:
 
 jobs:
   test:
-    name: Test pdsfile
+    name: Test pdsfile with OPUS
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -47,7 +47,7 @@ jobs:
           cd $GITHUB_WORKSPACE/rms-opus
           python -m pip install -r requirements.txt
           python -m pip uninstall -y rms-pdsfile
-          python -m pip install -e $GITHUB_WORKSPACE/rms-pdsfile
+          python -m pip install -e $GITHUB_WORKSPACE
           scripts/automated_tests/opus_main_test.sh
 
       - name: Check coverage level
