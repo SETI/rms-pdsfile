@@ -46,7 +46,7 @@ jobs:
         run: |
           cd $GITHUB_WORKSPACE/rms-opus
           python -m pip install -r requirements.txt
-          python -m pip uninstall rms-pdsfile
+          python -m pip uninstall -y rms-pdsfile
           python -m pip install -e $GITHUB_WORKSPACE/rms-pdsfile
           scripts/automated_tests/opus_main_test.sh
 
