@@ -1,5 +1,5 @@
-name: Run Tests
-run-name: "Run Tests: ${{ github.ref_type }} ${{ github.ref_name }} by ${{ github.triggering_actor }}"
+name: Run PDSFile Tests
+run-name: "Run PDSFile Tests: ${{ github.ref_type }} ${{ github.ref_name }} by ${{ github.triggering_actor }}"
 
 on:
   workflow_dispatch:

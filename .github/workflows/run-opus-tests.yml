@@ -36,7 +36,6 @@ jobs:
         with:
           repository: SETI/rms-opus
           path: rms-opus
-          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
