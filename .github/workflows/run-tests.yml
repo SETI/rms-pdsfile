@@ -1,5 +1,5 @@
 name: Run Tests
-run-name: Run Tests triggered by ${{ github.ref_type }} ${{ github.ref_name }} or ${{ github.triggering_actor }}
+run-name: "Run Tests: ${{ github.ref_type }} ${{ github.ref_name }} by ${{ github.triggering_actor }}"
 
 on:
   workflow_dispatch:
@@ -9,6 +9,10 @@ on:
     branches: [ main ]
   schedule:
     - cron: "00 08 * * *"   # 12am PST, 1am PDT
+
+defaults:
+  run:
+    shell: bash
 
 jobs:
   test:
@@ -41,7 +45,7 @@ jobs:
             python-version: "3.12"
       fail-fast: true
     steps:
-      - name: Checkout
+      - name: Checkout rms-pdsfile
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
@@ -54,7 +58,6 @@ jobs:
       - name: Test with coverage
         run: |
           scripts/automated_tests/pdsfile_main_test.sh
-        shell: bash
 
       - name: Upload coverage report to codecov
         uses: codecov/codecov-action@v3

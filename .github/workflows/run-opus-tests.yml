@@ -1,0 +1,57 @@
+name: Run OPUS Tests
+run-name: "Run OPUS Tests: ${{ github.ref_type }} ${{ github.ref_name }} by ${{ github.triggering_actor }}"
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [ main ]
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  test:
+    name: Test pdsfile
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        # We only need to test the platforms, not the Python versions
+        include:
+          - os: self-hosted-linux
+            python-version: "3.12"
+          - os: self-hosted-macos
+            python-version: "3.12"
+          - os: self-hosted-windows
+            python-version: "3.12"
+      fail-fast: true
+    steps:
+      - name: Checkout rms-pdsfile
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Checkout rms-opus
+        uses: actions/checkout@v4
+        with:
+          repository: SETI/rms-opus
+          path: rms-opus
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Test with coverage
+        run: |
+          cd $GITHUB_WORKSPACE/rms-opus
+          python -m pip install -r requirements.txt
+          python -m pip uninstall rms-pdsfile
+          python -m pip install -e $GITHUB_WORKSPACE/rms-pdsfile
+          scripts/automated_tests/opus_main_test.sh
+
+      - name: Check coverage level
+        run: |
+          cd $GITHUB_WORKSPACE/rms-opus
+          scripts/automated_tests/opus_check_coverage.sh
