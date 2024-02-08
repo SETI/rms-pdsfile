@@ -444,10 +444,10 @@ opus_id_to_primary_logical_path = translator.TranslatorByRegex([
 ])
 
 ##########################################################################################
-# FILESPEC_TO_VOLSET
+# FILESPEC_TO_BUNDLESET
 ##########################################################################################
 
-filespec_to_volset = translator.TranslatorByRegex([
+filespec_to_bundleset = translator.TranslatorByRegex([
     (r'NH..(MV|LO)_\d{4}.*', 0, r'NHxx\1_xxxx'),
 ])
 
@@ -549,7 +549,7 @@ class NHxxxx_xxxx(pds3file.Pds3File):
 pds3file.Pds3File.OPUS_ID_TO_SUBCLASS = translator.TranslatorByRegex([(r'nh-.*', 0, NHxxxx_xxxx)]) + \
                                         pds3file.Pds3File.OPUS_ID_TO_SUBCLASS
 
-pds3file.Pds3File.FILESPEC_TO_VOLSET = filespec_to_volset + pds3file.Pds3File.FILESPEC_TO_VOLSET
+pds3file.Pds3File.FILESPEC_TO_BUNDLESET = filespec_to_bundleset + pds3file.Pds3File.FILESPEC_TO_BUNDLESET
 
 ##########################################################################################
 # Update the global dictionary of subclasses

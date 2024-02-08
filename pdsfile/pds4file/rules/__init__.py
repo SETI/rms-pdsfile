@@ -572,14 +572,14 @@ OPUS_ID_TO_SUBCLASS = translator.TranslatorByRegex([])
 OPUS_ID_TO_PRIMARY_LOGICAL_PATH = translator.TranslatorByRegex([])
 
 ##########################################################################################
-# FILESPEC_TO_VOLSET
+# FILESPEC_TO_BUNDLESET
 #
 # Translates a file specification, starting from the volume ID, to a logical path. It is shared by all subclasses. Default behavior
 # is to replace the last three characters of the volume name by "xxx". This needs to be overridden for volsets that have a different
 # number of x's in their names.
 ##########################################################################################
 
-FILESPEC_TO_VOLSET = translator.TranslatorByRegex([
+FILESPEC_TO_BUNDLESET = translator.TranslatorByRegex([
     (r'([A-Z0-9]{2,6}_\d)\d{3}.*', 0, r'\1xxx'),
 ])
 

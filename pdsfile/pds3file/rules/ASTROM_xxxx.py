@@ -7,10 +7,10 @@ import translator
 import re
 
 ##########################################################################################
-# FILESPEC_TO_VOLSET
+# FILESPEC_TO_BUNDLESET
 ##########################################################################################
 
-filespec_to_volset = translator.TranslatorByRegex([
+filespec_to_bundleset = translator.TranslatorByRegex([
     (r'ASTROM_\d{4}.*', 0, r'ASTROM_xxxx'),
 ])
 
@@ -23,7 +23,7 @@ class ASTROM_xxxx(pds3file.Pds3File):
     pds3file.Pds3File.VOLSET_TRANSLATOR = translator.TranslatorByRegex([('ASTROM_xxxx', re.I, 'ASTROM_xxxx')]) + \
                                           pds3file.Pds3File.VOLSET_TRANSLATOR
 
-pds3file.Pds3File.FILESPEC_TO_VOLSET = filespec_to_volset + pds3file.Pds3File.FILESPEC_TO_VOLSET
+pds3file.Pds3File.FILESPEC_TO_BUNDLESET = filespec_to_bundleset + pds3file.Pds3File.FILESPEC_TO_BUNDLESET
 
 ##########################################################################################
 # Update the global dictionary of subclasses

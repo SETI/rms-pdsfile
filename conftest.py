@@ -7,8 +7,8 @@
 import os
 from pdsfile import (Pds3File,
                      Pds4File)
-from pdsfile.general_helper import (PDS4_HOLDINGS_DIR,
-                                    PDS_HOLDINGS_DIR)
+from pdsfile.pds3file.tests.helper import PDS_HOLDINGS_DIR
+from pdsfile.pds4file.tests.helper import PDS4_HOLDINGS_DIR
 import pdslogger
 import pytest
 

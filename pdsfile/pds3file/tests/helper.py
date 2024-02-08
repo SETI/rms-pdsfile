@@ -6,18 +6,31 @@
 
 import os
 import pdsfile.pds3file as pds3file
-from pdsfile.general_helper import (PDS_HOLDINGS_DIR,
-                                    get_pdsfiles_for_class,
-                                    instantiate_target_pdsfile_for_class,
-                                    opus_products_test_for_class)
+
+try:
+    PDS_HOLDINGS_DIR = os.environ['PDS_HOLDINGS_DIR']
+except KeyError: # pragma: no cover
+    raise KeyError("'PDS_HOLDINGS_DIR' environment variable not set")
 
 def instantiate_target_pdsfile(path, is_abspath=True):
-    return instantiate_target_pdsfile_for_class(path, pds3file.Pds3File,
-                                                PDS_HOLDINGS_DIR, is_abspath)
+    if is_abspath:
+        TESTFILE_PATH = PDS_HOLDINGS_DIR + '/' + path
+        target_pdsfile = pds3file.Pds3File.from_abspath(TESTFILE_PATH)
+    else:
+        TESTFILE_PATH = path
+        target_pdsfile = pds3file.Pds3File.from_logical_path(TESTFILE_PATH)
+    return target_pdsfile
 
 def get_pdsfiles(paths, is_abspath=True):
-    return get_pdsfiles_for_class(paths, pds3file.Pds3File, PDS_HOLDINGS_DIR, is_abspath)
-
-def opus_products_test(input_path, expected):
-    return opus_products_test_for_class(input_path, pds3file.Pds3File,
-                                        PDS_HOLDINGS_DIR, expected)
+    pdsfiles_arr = []
+    if is_abspath:
+        for path in paths:
+            TESTFILE_PATH = PDS_HOLDINGS_DIR + '/' +  path
+            target_pdsfile = pds3file.Pds3File.from_abspath(TESTFILE_PATH)
+            pdsfiles_arr.append(target_pdsfile)
+    else:
+        for path in paths:
+            TESTFILE_PATH = path
+            target_pdsfile = pds3file.Pds3File.from_logical_path(TESTFILE_PATH)
+            pdsfiles_arr.append(target_pdsfile)
+    return pdsfiles_arr
