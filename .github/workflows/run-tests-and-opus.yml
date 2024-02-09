@@ -41,18 +41,35 @@ jobs:
         with:
           repository: SETI/rms-opus
           path: rms-opus
-
+          # Currently we just checkout the current master branch for OPUS.
+          # We really need some way to specify a branch so that we can do
+          # parallel inter-dependent development on PdsFile and OPUS.
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Test with coverage
+        # Because self-hosted runners keep a global Python environment that
+        # isn't wiped between runs, the various requirements.txt files will
+        # interfere with each other. As a result, we use a venv for cases
+        # where it matters.
         run: |
           cd $GITHUB_WORKSPACE/rms-opus
+          echo
+          env
+          echo
+          rm -rf venv
+          python -m venv venv
+          source venv/bin/activate
+          python -m pip install --upgrade pip
+          python -m pip install wheel
           python -m pip install -r requirements.txt
           python -m pip uninstall -y rms-pdsfile
           python -m pip install -e $GITHUB_WORKSPACE
+          echo
+          python -m pip freeze
+          echo
           scripts/automated_tests/opus_main_test.sh
 
       - name: Check coverage level
