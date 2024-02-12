@@ -4,8 +4,8 @@
 ##########################################################################################
 
 import pdslogger
-import pdscache
 
+from pdsfile import pdscache
 from pdsfile.pdsfile import PdsFile
 from . import rules
 from pdsfile.preload_and_cache import cache_lifetime_for_class
@@ -48,8 +48,7 @@ class Pds3File(PdsFile):
     OPUS_ID_TO_PRIMARY_LOGICAL_PATH = rules.OPUS_ID_TO_PRIMARY_LOGICAL_PATH
 
     OPUS_ID_TO_SUBCLASS = rules.OPUS_ID_TO_SUBCLASS
-    FILESPEC_TO_VOLSET = rules.FILESPEC_TO_VOLSET
-    FILESPEC_TO_BUNDLESET = FILESPEC_TO_VOLSET
+    FILESPEC_TO_BUNDLESET = rules.FILESPEC_TO_BUNDLESET
 
     def __init__(self):
         super().__init__()

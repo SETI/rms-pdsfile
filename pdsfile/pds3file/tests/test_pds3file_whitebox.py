@@ -5,13 +5,12 @@
 
 import os
 import pdsfile.pds3file as pds3file
-from pdsfile.general_helper import PDS_HOLDINGS_DIR
-import pdsviewable
-import pdsgroup
+from pdsfile import pdsviewable
 import pytest
 import re
 
-from .helper import instantiate_target_pdsfile
+from .helper import (PDS_HOLDINGS_DIR,
+                     instantiate_target_pdsfile)
 
 PDS_PDSDATA_PATH = PDS_HOLDINGS_DIR[:PDS_HOLDINGS_DIR.index('holdings')]
 

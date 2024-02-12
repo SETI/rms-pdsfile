@@ -16,10 +16,10 @@ associations_to_documents = translator.TranslatorByRegex([
 ])
 
 ##########################################################################################
-# FILESPEC_TO_VOLSET
+# FILESPEC_TO_BUNDLESET
 ##########################################################################################
 
-filespec_to_volset = translator.TranslatorByRegex([
+filespec_to_bundleset = translator.TranslatorByRegex([
     (r'NHSP_\d{4}.*', 0, r'NHSP_xxxx'),
 ])
 
@@ -45,7 +45,7 @@ class NHSP_xxxx(pds3file.Pds3File):
 
     INFO_FILE_BASENAMES = info_file_basenames + pds3file.Pds3File.INFO_FILE_BASENAMES
 
-pds3file.Pds3File.FILESPEC_TO_VOLSET = filespec_to_volset + pds3file.Pds3File.FILESPEC_TO_VOLSET
+pds3file.Pds3File.FILESPEC_TO_BUNDLESET = filespec_to_bundleset + pds3file.Pds3File.FILESPEC_TO_BUNDLESET
 
 ##########################################################################################
 # Update the global dictionary of subclasses

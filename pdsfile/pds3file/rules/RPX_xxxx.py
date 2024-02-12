@@ -179,10 +179,10 @@ view_options = translator.TranslatorByRegex([
 ])
 
 ##########################################################################################
-# FILESPEC_TO_VOLSET
+# FILESPEC_TO_BUNDLESET
 ##########################################################################################
 
-filespec_to_volset = translator.TranslatorByRegex([
+filespec_to_bundleset = translator.TranslatorByRegex([
     (r'RPX_\d{4}.*', 0, r'RPX_xxxx'),
 ])
 
@@ -228,7 +228,7 @@ class RPX_xxxx(pds3file.Pds3File):
 
         return 0
 
-pds3file.Pds3File.FILESPEC_TO_VOLSET = filespec_to_volset + pds3file.Pds3File.FILESPEC_TO_VOLSET
+pds3file.Pds3File.FILESPEC_TO_BUNDLESET = filespec_to_bundleset + pds3file.Pds3File.FILESPEC_TO_BUNDLESET
 
 ##########################################################################################
 # Update the global dictionary of subclasses

@@ -2,55 +2,139 @@
 # pds3file/rules/pytest_support.py
 ##########################################################################################
 
+from pdsfile.pdsfile import abspath_for_logical_path
 import pdsfile.pds3file as pds3file
-from pdsfile.general_helper import (PDS_HOLDINGS_DIR,
-                                    get_pdsfiles_for_class,
-                                    get_pdsgroups_for_class,
-                                    instantiate_target_pdsfile_for_class,
-                                    opus_products_test_for_class,
-                                    translate_first_for_class,
-                                    translate_all_for_class,
-                                    unmatched_patterns_for_class,
-                                    versions_test_for_class)
 import translator
 import re
 import os
 
 def translate_first(trans, path):
-    """Logical paths of "first" files found using given translator on path."""
+    """Return the logical paths of "first" files found using given translator on path.
 
-    return translate_first_for_class(trans, path, pds3file.Pds3File)
+    Keyword arguments:
+        trans -- a translator instance
+        path  -- a file path
+    """
+
+    patterns = trans.first(path)
+    if not patterns:
+        return []
+
+    if isinstance(patterns, str):
+        patterns = [patterns]
+
+    patterns = [p for p in patterns if p]       # skip empty translations
+    patterns = pds3file.Pds3File.abspaths_for_logicals(patterns)
+
+    abspaths = []
+    for pattern in patterns:
+        abspaths += pds3file.Pds3File.glob_glob(pattern)
+
+    return abspaths
 
 def translate_all(trans, path):
-    """Logical paths of all files found using given translator on path."""
+    """Return logical paths of all files found using given translator on path.
 
-    return translate_all_for_class(trans, path, pds3file.Pds3File)
+    Keyword arguments:
+        trans -- a translator instance
+        path  -- a file path
+    """
+
+    patterns = trans.all(path)
+    if not patterns:
+        return []
+
+    if isinstance(patterns, str):
+        patterns = [patterns]
+
+    patterns = [p for p in patterns if p]       # skip empty translations
+    patterns = pds3file.Pds3File.abspaths_for_logicals(patterns)
+
+    abspaths = []
+    for pattern in patterns:
+        abspaths += pds3file.Pds3File.glob_glob(pattern)
+
+    return abspaths
 
 def unmatched_patterns(trans, path):
-    """List all translated patterns that did not find a matching path in the
-    file system."""
+    """Return a list of all translated patterns that did not find a matching path in the
+    file system.
 
-    return unmatched_patterns_for_class(trans, path, pds3file.Pds3File)
+    Keyword arguments:
+        trans -- a translator instance
+        path  -- a file path
+    """
+
+    patterns = trans.all(path)
+    patterns = [p for p in patterns if p]       # skip empty translations
+    patterns = pds3file.Pds3File.abspaths_for_logicals(patterns)
+
+    unmatched = []
+    for pattern in patterns:
+        abspaths = pds3file.Pds3File.glob_glob(pattern)
+        if not abspaths:
+            unmatched.append(pattern)
+
+    return unmatched
 
 ##########################################################################################
 # Dave's test suite helpers
 ##########################################################################################
 
 def instantiate_target_pdsfile(path, is_abspath=True):
-    return instantiate_target_pdsfile_for_class(path, pds3file.Pds3File,
-                                                PDS_HOLDINGS_DIR, is_abspath)
+    if is_abspath:
+        TESTFILE_PATH = abspath_for_logical_path(path, pds3file.Pds3File)
+        target_pdsfile = pds3file.Pds3File.from_abspath(TESTFILE_PATH)
+    else:
+        TESTFILE_PATH = path
+        target_pdsfile = pds3file.Pds3File.from_logical_path(TESTFILE_PATH)
+    return target_pdsfile
 
-def get_pdsfiles(paths, is_abspath=True):
-    return get_pdsfiles_for_class(paths, pds3file.Pds3File, PDS_HOLDINGS_DIR, is_abspath)
+def get_pdsfiles(paths, holdings_dir, is_abspath=True):
+    pdsfiles_arr = []
+    if is_abspath:
+        for path in paths:
+            TESTFILE_PATH = abspath_for_logical_path(path, pds3file.Pds3File)
+            target_pdsfile = pds3file.Pds3File.from_abspath(TESTFILE_PATH)
+            pdsfiles_arr.append(target_pdsfile)
+    else:
+        for path in paths:
+            TESTFILE_PATH = path
+            target_pdsfile = pds3file.Pds3File.from_logical_path(TESTFILE_PATH)
+            pdsfiles_arr.append(target_pdsfile)
+    return pdsfiles_arr
 
-def get_pdsgroups(paths_group, is_abspath=True):
-    return get_pdsgroups_for_class(paths_group, pds3file.Pds3File,
-                                   PDS_HOLDINGS_DIR, is_abspath)
+def opus_products_test(
+    input_path, expected, is_abspath=True
+):
+    target_pdsfile = instantiate_target_pdsfile(input_path, is_abspath)
+    results = target_pdsfile.opus_products()
+    # Note that messages are more useful if extra values are identified before
+    # missing values. That's because extra items are generally more diagnostic
+    # of the issue at hand.
+    for key in results:
+        assert key in expected, f'Extra key: {key}'
+    for key in expected:
+        assert key in results, f'Missing key: {key}'
+    for key in results:
+        result_paths = []       # flattened list of logical paths
+        for pdsfiles in results[key]:
+            result_paths += pds3file.Pds3File.logicals_for_pdsfiles(pdsfiles)
+        for path in result_paths:
+            assert path in expected[key], f'Extra file under key {key}: {path}'
+        for path in expected[key]:
+            assert path in result_paths, f'Missing file under key {key}: {path}'
 
-def opus_products_test(input_path, expected):
-    opus_products_test_for_class(input_path, pds3file.Pds3File,
-                                 PDS_HOLDINGS_DIR, expected)
-
-def versions_test(input_path, expected):
-    versions_test_for_class(input_path, pds3file.Pds3File,
-                            PDS_HOLDINGS_DIR, expected)
+def versions_test(input_path, expected, is_abspath=True):
+    target_pdsfile = instantiate_target_pdsfile(input_path, is_abspath)
+    res = target_pdsfile.all_versions()
+    keys = list(res.keys())
+    keys.sort(reverse=True)
+    for key in keys:
+        assert key in expected, f'"{key}" not expected'
+        assert res[key].logical_path == expected[key], \
+               f'value mismatch at "{key}": {expected[key]}'
+    keys = list(expected.keys())
+    keys.sort(reverse=True)
+    for key in keys:
+        assert key in res, f'"{key}" missing'
