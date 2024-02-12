@@ -1,43 +1,30 @@
-name: Run Tests
-run-name: "Run Tests: ${{ github.ref_type }} ${{ github.ref_name }} by ${{ github.triggering_actor }}"
+name: Run Tests and OPUS
+run-name: "Run Tests and OPUS: ${{ github.ref_type }} ${{ github.ref_name }} by ${{ github.triggering_actor }}"
 
 on:
   workflow_dispatch:
-  workflow_call:
-  push:
+  pull_request:
     branches: [ main ]
-  schedule:
-    - cron: "00 08 * * *"   # 12am PST, 1am PDT
 
 defaults:
   run:
     shell: bash
 
 jobs:
-  test:
+  test_pdsfile:
     name: Test pdsfile
+    uses: ./.github/workflows/run-tests.yml
+
+  test_opus:
+    name: Test pdsfile with OPUS
+    needs: [test_pdsfile]
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        # Because we can run multiple tests at the same time
-        # under Linux, we can do our multi-Python-version test
-        # there, and then just run a single version under
-        # Windows to make sure the code still works there.
-        #
-        # MacOS: Python 3.8-3.10 does not currently work on MacOS.
+        # We only need to test the platforms, not the Python versions
         include:
           - os: self-hosted-linux
-            python-version: "3.8"
-          - os: self-hosted-linux
-            python-version: "3.9"
-          - os: self-hosted-linux
-            python-version: "3.10"
-          - os: self-hosted-linux
-            python-version: "3.11"
-          - os: self-hosted-linux
             python-version: "3.12"
-          - os: self-hosted-macos
-            python-version: "3.11"
           - os: self-hosted-macos
             python-version: "3.12"
           - os: self-hosted-windows
@@ -49,6 +36,14 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
+      - name: Checkout rms-opus
+        uses: actions/checkout@v4
+        with:
+          repository: SETI/rms-opus
+          path: rms-opus
+          # Currently we just checkout the current master branch for OPUS.
+          # We really need some way to specify a branch so that we can do
+          # parallel inter-dependent development on PdsFile and OPUS.
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
@@ -60,6 +55,7 @@ jobs:
         # interfere with each other. As a result, we use a venv for cases
         # where it matters.
         run: |
+          cd $GITHUB_WORKSPACE/rms-opus
           echo
           env
           echo
@@ -73,14 +69,14 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install wheel
           python -m pip install -r requirements.txt
+          python -m pip uninstall -y rms-pdsfile
+          python -m pip install -e $GITHUB_WORKSPACE
           echo
           python -m pip freeze
           echo
-          scripts/automated_tests/pdsfile_main_test.sh
+          scripts/automated_tests/opus_main_test.sh
 
-      - name: Upload coverage report to codecov
-        uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage.xml
-          verbose: true
+      - name: Check coverage level
+        run: |
+          cd $GITHUB_WORKSPACE/rms-opus
+          scripts/automated_tests/opus_check_coverage.sh
