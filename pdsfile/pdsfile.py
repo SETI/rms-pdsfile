@@ -193,8 +193,8 @@ def abspath_for_logical_path(path, cls):
     elif cls.LOCAL_HOLDINGS_DIRS:
         holdings_list = cls.LOCAL_HOLDINGS_DIRS
 
-    elif 'PDS_HOLDINGS_DIR' in os.environ:
-        holdings_list = [os.environ['PDS_HOLDINGS_DIR']]
+    elif 'PDS3_HOLDINGS_DIR' in os.environ:
+        holdings_list = [os.environ['PDS3_HOLDINGS_DIR']]
         cls.LOCAL_HOLDINGS_DIRS = holdings_list
 
     # Without a preload or an environment variable, check the
