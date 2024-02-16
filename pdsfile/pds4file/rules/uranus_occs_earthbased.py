@@ -78,11 +78,8 @@ associations_to_previews = translator.TranslatorByRegex([
 ])
 
 associations_to_metadata = translator.TranslatorByRegex([
-    (r'.*/(uranus_occs_earthbased)/(uranus_occ_u.*)/(data|browse)(.*|_[a-z]*])/(.*)\.[a-z]{3}', 0,
-        [r'metadata/\1/\2/\2_index.tab/\5',
-         r'metadata/\1/\2/\2_supplemental_index.tab/\5',
-         r'metadata/\1/\2/\2_profile_index.tab/\5',
-        ]),
+    (r'.*/(uranus_occs_earthbased)/(uranus_occ_u.*)/(data|browse)(.*|_[a-z]*])/(rings|global)/(.*)\.[a-z]{3}', 0,
+         r'metadata/\1/\2/occ_\5.csv/\6'),
 ])
 
 associations_to_documents = translator.TranslatorByRegex([
@@ -366,8 +363,35 @@ from .pytest_support import *
             'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_small.png',
             'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_thumb.png'
          ]),
-        # TODO: add test case for documents & metadata when correct document files, index
-        # files & _indexshelf-metadata are added
+        ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress.xml',
+         'previews',
+         [
+            'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_full.png',
+            'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_med.png',
+            'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_small.png',
+            'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_thumb.png'
+         ]),
+        ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_alpha_egress_100m.xml',
+         'metadata',
+         [
+            'metadata/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/occ_rings.csv/u0_kao_91cm_734nm_radius_alpha_egress_100m',
+         ]),
+        ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_delta_ingress_1000m.tab',
+         'metadata',
+         [
+            'metadata/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/occ_rings.csv/u0_kao_91cm_734nm_radius_delta_ingress_1000ms',
+         ]),
+        ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_ingress_500m.tab',
+         'metadata',
+         [
+            'metadata/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/occ_global.csv/u0_kao_91cm_734nm_radius_equator_ingress_500m',
+         ]),
+        ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_egress_100m.xml',
+         'metadata',
+         [
+            'metadata/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/occ_global.csv/u0_kao_91cm_734nm_radius_equator_egress_100m',
+         ]),
+        # TODO: add test case for documents when correct document files are added
     ]
 )
 def test_associated_abspaths(input_path, category, expected):
