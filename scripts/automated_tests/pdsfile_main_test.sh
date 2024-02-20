@@ -8,7 +8,7 @@ if [[ -z ${PDS3_HOLDINGS_DIR+x} ]]; then
     exit -1
 fi
 if [[ -z ${PDS4_HOLDINGS_DIR+x} ]]; then
-    echo "PDS3_HOLDINGS_DIR is not set"
+    echo "PDS4_HOLDINGS_DIR is not set"
     exit -1
 fi
 
