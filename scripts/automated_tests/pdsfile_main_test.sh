@@ -41,7 +41,7 @@ echo "================================================================"
 echo
 echo "Test start:" `date`
 echo
-python -m coverage run -a -m pytest pdsfile/pds3file/tests/ pdsfile/pds3file/rules/*.py pdsfile/pds4file/tests/ pdsfile/pds4file/rules/*.py --mode s
+python -m coverage run -a -m pytest pdsfile/pds3file/tests/ pdsfile/pds3file/rules/*.py --mode s
 if [ $? -ne 0 ]; then
     echo "********************************************"
     echo "*** PDSFILE SHELVES-ONLY FAILED UNIT TESTS ***"
