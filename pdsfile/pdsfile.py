@@ -5833,9 +5833,7 @@ class PdsFile(object):
             if not must_exist and not _needs_glob(pattern):
                 test_abspaths = [pattern]
             else:
-                test_abspaths = cls.glob_glob(pattern,
-                                                  force_case_sensitive=True)
-
+                test_abspaths = cls.glob_glob(pattern, force_case_sensitive=True)
             # With a suffix, make sure it matches a row of the index
             if suffix:
                 filtered_abspaths = []

@@ -62,10 +62,7 @@ associations_to_bundles = translator.TranslatorByRegex([
          r'bundles/\1/browse\3.xml',
         ]),
     (r'documents/uranus_occs_earthbased.*', 0,
-        [r'bundles/uranus_occs_earthbased',
-         r'bundles/uranus_occs_earthbased',
-         r'bundles/uranus_occs_earthbased',
-        ]),
+        r'bundles/uranus_occs_earthbased'),
 ])
 
 associations_to_previews = translator.TranslatorByRegex([
@@ -78,8 +75,9 @@ associations_to_previews = translator.TranslatorByRegex([
 ])
 
 associations_to_metadata = translator.TranslatorByRegex([
-    (r'.*/(uranus_occs_earthbased)/(uranus_occ_u.*)/(data|browse)(.*|_[a-z]*])/(rings|global)/(.*)\.[a-z]{3}', 0,
-         r'metadata/\1/\2/occ_\5.csv/\6'),
+    (r'.*/(uranus_occs_earthbased)/(uranus_occ_u.*)/(data|browse)(.*|_[a-z]*])/(rings|global|atmos).*/(.*)\.[a-z]{3}', 0,
+         r'metadata/\1/uranus_\5_occultations_index.tab/\6'),
+        # r'metadata/\1/\2/occ_\5.csv/\6'),
 ])
 
 associations_to_documents = translator.TranslatorByRegex([
