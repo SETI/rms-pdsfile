@@ -166,7 +166,7 @@ def repair_case(abspath, cls):
 
 def formatted_file_size(size):
     order = int(math.log10(size) // 3) if size else 0
-    return '{:.3g} {}'.format(size / 1000.**order, FILE_BYTE_UNITS[order])
+    return f'{size / 1000.**order:.3g} {FILE_BYTE_UNITS[order]}'
 
 def abspath_for_logical_path(path, cls):
     """Return the absolute path derived from the given logical path.
@@ -3789,8 +3789,7 @@ class PdsFile(object):
             # Change variable name to distinguish from PDS3
             PDS_HOLDINGS_index = parts_lc.index(cls.PDS_HOLDINGS)
         except ValueError:
-            raise ValueError('"{}" directory not found in: '.format(cls.PDS_HOLDINGS)
-                             + abspath)
+            raise ValueError(f'"{cls.PDS_HOLDINGS}" directory not found in: {abspath}')
         ### Pause the cache
         cls.CACHE.pause()
         try:
