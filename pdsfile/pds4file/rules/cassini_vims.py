@@ -399,6 +399,7 @@ def test_associated_abspaths(input_path, category, expected):
     res = target_pdsfile.associated_abspaths(category=category)
     result_paths = []
     result_paths += pds4file.Pds4File.logicals_for_abspaths(res)
+    assert len(result_paths) != 0
     for path in result_paths:
         assert path in expected
 

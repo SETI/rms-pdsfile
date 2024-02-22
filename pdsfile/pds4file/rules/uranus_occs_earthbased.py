@@ -77,7 +77,6 @@ associations_to_previews = translator.TranslatorByRegex([
 associations_to_metadata = translator.TranslatorByRegex([
     (r'.*/(uranus_occs_earthbased)/(uranus_occ_u.*)/(data|browse)(.*|_[a-z]*])/(rings|global|atmos).*/(.*)\.[a-z]{3}', 0,
          r'metadata/\1/uranus_\5_occultations_index.tab/\6'),
-        # r'metadata/\1/\2/occ_\5.csv/\6'),
 ])
 
 associations_to_documents = translator.TranslatorByRegex([
@@ -397,7 +396,6 @@ def test_associated_abspaths(input_path, category, expected):
     res = target_pdsfile.associated_abspaths(category=category)
     result_paths = []
     result_paths += pds4file.Pds4File.logicals_for_abspaths(res)
-    print(result_paths)
     assert len(result_paths) != 0
     for path in result_paths:
         assert path in expected

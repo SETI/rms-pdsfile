@@ -444,6 +444,7 @@ def test_associated_abspaths(input_path, category, expected):
         category=category)
     result_paths = []
     result_paths += pds3file.Pds3File.logicals_for_abspaths(res)
+    assert len(result_paths) != 0
     for path in result_paths:
         assert path in expected
 
