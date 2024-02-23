@@ -75,15 +75,17 @@ associations_to_previews = translator.TranslatorByRegex([
 ])
 
 associations_to_metadata = translator.TranslatorByRegex([
+    (r'.*/(uranus_occs_earthbased)/.*', 0,
+        r'metadata/\1'),
     (r'.*/(uranus_occs_earthbased)/(uranus_occ_u.*)/(data|browse)(.*|_[a-z]*])/(rings|global|atmos).*/(.*)\.[a-z]{3}', 0,
-         r'metadata/\1/uranus_\5_occultations_index.tab/\6'),
+        r'metadata/\1/uranus_\5_occultations_index.tab/\6'),
 ])
 
 associations_to_documents = translator.TranslatorByRegex([
     (r'bundles/uranus_occs_earthbased/.*', 0,
-         r'documents/uranus_occs_earthbased/*'),
+        r'documents/uranus_occs_earthbased/*'),
     (r'bundles/uranus_occs_earthbased', 0,
-         r'documents/uranus_occs_earthbased'),
+        r'documents/uranus_occs_earthbased'),
 ])
 
 ##########################################################################################
@@ -368,26 +370,37 @@ from .pytest_support import *
             'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_small.png',
             'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_thumb.png'
          ]),
-        ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_alpha_egress_100m.xml',
+        ('uranus_occs_earthbased',
          'metadata',
          [
-            'metadata/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/occ_rings.csv/u0_kao_91cm_734nm_radius_alpha_egress_100m',
+            'metadata/uranus_occs_earthbased',
          ]),
-        ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_delta_ingress_1000m.tab',
+        ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm',
          'metadata',
          [
-            'metadata/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/occ_rings.csv/u0_kao_91cm_734nm_radius_delta_ingress_1000ms',
+            'metadata/uranus_occs_earthbased',
          ]),
-        ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_ingress_500m.tab',
-         'metadata',
-         [
-            'metadata/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/occ_global.csv/u0_kao_91cm_734nm_radius_equator_ingress_500m',
-         ]),
-        ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_egress_100m.xml',
-         'metadata',
-         [
-            'metadata/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/occ_global.csv/u0_kao_91cm_734nm_radius_equator_egress_100m',
-         ]),
+        # TODO: when we have index shelf files available, we can test the following cases
+        # ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_alpha_egress_100m.xml',
+        #  'metadata',
+        #  [
+        #     'metadata/uranus_occs_earthbased/uranus_rings_occultations_index.tab/u0_kao_91cm_734nm_radius_alpha_egress_100m',
+        #  ]),
+        # ('uranus_occs_earthbased/data/rings/u0_kao_91cm_734nm_radius_delta_ingress_1000m.tab',
+        #  'metadata',
+        #  [
+        #     'metadata/uranus_occs_earthbased/uranus_rings_occultations_index.tab/u0_kao_91cm_734nm_radius_delta_ingress_1000ms',
+        #  ]),
+        # ('uranus_occs_earthbased/data/global/u0_kao_91cm_734nm_radius_equator_ingress_500m.tab',
+        #  'metadata',
+        #  [
+        #     'metadata/uranus_occs_earthbased/uranus_global_occultations_index.tab/u0_kao_91cm_734nm_radius_equator_ingress_500m',
+        #  ]),
+        # ('uranus_occs_earthbased/data/global/u0_kao_91cm_734nm_radius_equator_egress_100m.xml',
+        #  'metadata',
+        #  [
+        #     'metadata/uranus_occs_earthbased/uranus_global_occultations_index.tab/u0_kao_91cm_734nm_radius_equator_egress_100m',
+        #  ]),
         # TODO: add test case for documents when correct document files are added
     ]
 )
