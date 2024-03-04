@@ -16,7 +16,7 @@ jobs:
     uses: ./.github/workflows/run-tests.yml
 
   test_opus:
-    name: Test pdsfile with OPUS
+    name: Test pdsfile via OPUS
     needs: [test_pdsfile]
     runs-on: ${{ matrix.os }}
     strategy:
