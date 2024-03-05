@@ -779,10 +779,10 @@ opus_id = translator.TranslatorByRegex([
 ])
 
 ##########################################################################################
-# FILESPEC_TO_VOLSET
+# FILESPEC_TO_BUNDLESET
 ##########################################################################################
 
-filespec_to_volset = translator.TranslatorByRegex([
+filespec_to_bundleset = translator.TranslatorByRegex([
     (r'VG_28\d{2}.*', 0, r'VG_28xx'),
 ])
 
@@ -862,7 +862,7 @@ pds3file.Pds3File.OPUS_ID_TO_SUBCLASS = translator.TranslatorByRegex([
                                             (r'vg-(pps|uvs|rss)-.*occ-.*', 0, VG_28xx),
                                             (r'vg-iss.*prof', 0, VG_28xx)]) + pds3file.Pds3File.OPUS_ID_TO_SUBCLASS
 
-pds3file.Pds3File.FILESPEC_TO_VOLSET = filespec_to_volset + pds3file.Pds3File.FILESPEC_TO_VOLSET
+pds3file.Pds3File.FILESPEC_TO_BUNDLESET = filespec_to_bundleset + pds3file.Pds3File.FILESPEC_TO_BUNDLESET
 
 ##########################################################################################
 # Update the global dictionary of subclasses
