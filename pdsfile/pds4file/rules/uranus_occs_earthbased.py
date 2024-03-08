@@ -281,14 +281,95 @@ opus_products = translator.TranslatorByRegex([
 ##########################################################################################
 # OPUS_ID
 ##########################################################################################
-# Note: instead of "Generic InSb High Speed Photometer" that the ground-based telescopes use, the KAO uses "Generic Visual High Speed Photometer", hence using "vis" instead of "insb" in the instrument component of the OPUS ID
-opus_id = translator.TranslatorByRegex([
-    (r'.*/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_([ei])(gress|ngress)\.[a-z]{3}', 0, r'kao0m91-vis-occ-1977-069-u0-uranus-\1'), 
-    (r'.*/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_counts-v-time_occult\.[a-z]{3}', 0, r'kao0m91-vis-occ-1977-069-u0-ringpl-b'), # entire occultation hence "-b" and entire ring system hence "ringpl"? 
-    (r'.*/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_([ei])(gress|ngress)_\d{3,4}m\.[a-z]{3}', 0, r'kao0m91-vis-occ-1977-069-u0-ringpl-\1'), # entire ring system, hence "ringpl"? 
-    (r'.*/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_counts-v-time_rings_([ei])(gress|ngress)\.[a-z]{3}', 0, r'kao0m91-vis-occ-1977-069-u0-\1'), # for ring only, if no ring name is specified then more than one ring is covered 
-    (r'.*/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_([a-z]+)_([ei])(gress|ngress)_\d{3,4}m\.[a-z]{3}', 0, r'kao0m91-vis-occ-1977-069-u0-\1-\2'),
-])
+# OPUS ID Abbrev is based on the telescope name from the collection_context.csv
+# Detector:
+# 'ir':   'Generic IR High Speed Photometer', 'Generic NICMOS IR Camera'
+# 'vis':  'Generic Visual High Speed Photometer'
+# 'insb': 'Generic InSb High Speed Photometer'
+# 'gaas': 'Generic GaAs High Speed Photometer'
+# 'ccd': 'Generic CCD Camera'
+
+# prefix_mapping: (
+#   bundle prefix,
+#   opus id prefix for egress, under rings & global,
+#   opus id prefix for egress, under rings & global,
+#   opus id prefix for egress and ingress under atmosphere
+# )
+# if opus id prefix for ingress & atomsphere are None, it's the same as the opus id prefix
+# for egress (same start date) or None.
+prefix_mapping = {
+    ('u0_kao_91cm',         'kao0m91-vis-occ-1977-069-u0',      None,                               None),
+    ('u0201_palomar_508cm', 'pal5m08-insb-occ-2002-210-u0201',  None,                               None),
+    ('u2_teide_155cm',      'tei1m55-ir-occ-1977-357-u2',       None,                               None),
+    ('u5_lco_250cm',        'lascam2m5-insb-occ-1978-100-u5',   None,                               None),
+    ('u9_lco_250cm',        'lascam2m5-insb-occ-1979-161-u9',   None,                               None),
+    ('u11_ctio_400cm',      'ctio4m0-insb-occ-1980-080-u11',    None,                               None),
+    ('u12_ctio_400cm',      'ctio4m0-insb-occ-1980-229-u12',    'ctio4m0-insb-occ-1980-228-u12',    'ctio4m0-insb-occ-1980-228-u12'),
+    ('u12_eso_104cm',       'esosil1m04-insb-occ-1980-229-u12', 'esosil1m04-insb-occ-1980-228-u12', 'esosil1m04-insb-occ-1980-229-u12'),
+    ('u12_eso_360cm',       'esosil3m6-insb-occ-1980-229-u12',  'esosil3m6-insb-occ-1980-228-u12',  'esosil3m6-insb-occ-1980-229-u12'),
+    ('u12_lco_250cm',       'lascam2m5-insb-occ-1980-229-u12',  'lascam2m5-insb-occ-1980-228-u12',  None),
+    ('u13_sso_390cm',       'sso3m9-insb-occ-1981-116-u13',     None,                               None),
+    ('u14_ctio_150cm',      'ctio1m50-insb-occ-1982-112-u14',   None,                               None),
+    ('u14_ctio_400cm',      'ctio4m0-ir-occ-1982-112-u14',      None,                               None),
+    ('u14_eso_104cm',       'esosil1m04-insb-occ-1982-112-u14', None,                               None),
+    ('u14_lco_100cm',       'lascam1m0-ir-occ-1982-112-u14',    None,                               None),
+    ('u14_lco_250cm',       'lascam2m5-insb-occ-1982-112-u14',  None,                               None),
+    ('u14_opmt_106cm',      'pic1m06-gaas-occ-1982-112-u14',    None,                               None),
+    ('u14_opmt_200cm',      'pic2m0-insb-occ-1982-112-u14',     None,                               None),
+    ('u14_teide_155cm',     'tei1m55-ir-occ-1982-112-u14',      None,                               None),
+    ('u15_mso_190cm',       'mtstr1m9-insb-occ-1982-121-u15',   None,                               None),
+    ('u16_palomar_508cm',   'pal5m08-insb-occ-1982-155-u16',    None,                               None),
+    ('u17b_saao_188cm',     'saao1m88-insb-occ-1983-084-u17b',  None,                               None),
+    ('u23_ctio_400cm',      'ctio4m0-insb-occ-1985-124-u23',    None,                               None),
+    ('u23_mcdonald_270cm',  'mcd2m7-insb-occ-1985-124-u23',     None,                               None),
+    ('u23_teide_155cm',     'tei1m55-insb-occ-1985-124-u23',    None,                               None),
+    ('u25_ctio_400cm',      'ctio4m0-insb-occ-1985-144-u25',    None,                               None),
+    ('u25_mcdonald_270cm',  'mcd2m7-insb-occ-1985-144-u25',     None,                               None),
+    ('u25_palomar_508cm',   'pal5m08-insb-occ-1985-144-u25',    None,                               None),
+    ('u28_irtf_320cm',      'irtf3m2-insb-occ-1986-116-u28',    None,                               None),
+    ('u34_irtf_320cm',      'irtf3m2-insb-occ-1987-057-u34',    None,                               None),
+    ('u36_ctio_400cm',      'ctio4m0-insb-occ-1987-092-u36',    None,                               None),
+    ('u36_irtf_320cm',      'irtf3m2-insb-occ-1987-092-u36',    'irtf3m2-insb-occ-1987-089-u36',    None),
+    ('u36_maunakea_380cm',  'mk3m8-insb-occ-1987-092-u36',      'mk3m8-insb-occ-1987-089-u36',      None),
+    ('u36_sso_230cm',       'sso2m3-insb-occ-1987-092-u36',     None,                               None),
+    ('u36_sso_390cm',       'sso3m9-insb-occ-1987-092-u36',     None,                               None),
+    ('u65_irtf_320cm',      'irtf3m2-insb-occ-1990-172-u65',    None,                               None),
+    ('u83_irtf_320cm',      'irtf3m2-insb-occ-1991-176-u83',    None,                               None),
+    ('u84_irtf_320cm',      'irtf3m2-insb-occ-1991-179-u84',    None,                               None),
+    ('u102a_irtf_320cm',    'irtf3m2-insb-occ-1992-190-u102a',  None,                               None),
+    ('u102b_irtf_320cm',    'irtf3m2-insb-occ-1992-190-u102b',  None,                               None),
+    ('u103_eso_220cm',      'esosil2m2-insb-occ-1992-193-u103', None,                               None),
+    ('u103_palomar_508cm',  'pal5m08-insb-occ-1992-193-u103',   None,                               None),
+    ('u134_saao_188cm',     'saao1m88-insb-occ-1995-252-u134',  None,                               None),
+    ('u137_hst_fos',        'hstfos-wfc3-occ-1996-076-u137',    None,                               None),
+    ('u137_irtf_320cm',     'irtf3m2-insb-occ-1996-076-u137',   None,                               None),
+    ('u138_hst_fos',        'hstfos-wfc3-occ-1996-101-u138',    None,                               None),
+    ('u138_palomar_508cm',  'pal5m08-insb-occ-1996-101-u138',   None,                               None),
+    ('u144_caha_123cm',     'caha1m23-ir-occ-1997-273-u144',    None,                               None),
+    ('u144_saao_188cm',     'saao1m88-insb-occ-1997-273-u144',  None,                               None),
+    ('u149_irtf_320cm',     'irtf3m2-insb-occ-1998-310-u149',   None,                               None),
+    ('u149_lowell_180cm',   'low1m83-ccd-occ-1998-310-u149',    None,                               None),
+    ('u1052_irtf_320cm',    'irtf3m2-insb-occ-1988-133-u1052',  None,                               None),
+    ('u9539_ctio_400cm',    'ctio4m0-insb-occ-1993-181-u9539',  None,                               None),
+}
+opus_id_list = []
+for bundle_prefix, opus_id_prefix_e, opus_id_prefix_i, opus_id_prefix_a in prefix_mapping:
+    if opus_id_prefix_i is None:
+        opus_id_list += [
+            (rf'.*/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/atmosphere/{bundle_prefix}_\d+nm_counts-v-time_atmos_([ei])(gress|ngress)\.[a-z]{{3}}', 0, fr'{opus_id_prefix_e}-uranus-\1'),
+            (rf'.*/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/global/{bundle_prefix}_\d+nm_radius_equator_([ei])(gress|ngress)_\d{{3,4}}m\.[a-z]{{3}}', 0, rf'{opus_id_prefix_e}-ringpl-\1'),
+            (rf'.*/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/rings/{bundle_prefix}_\d+nm_radius_([a-z]+)_([ei])(gress|ngress)_\d{{3,4}}m\.[a-z]{{3}}', 0, rf'{opus_id_prefix_e}-\1-\2')
+        ]
+    else:
+        opus_id_list += [
+            (rf'.*/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/atmosphere/{bundle_prefix}_\d+nm_counts-v-time_atmos_(e)gress\.[a-z]{{3}}', 0, fr'{opus_id_prefix_a}-uranus-\1'),
+            (rf'.*/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/atmosphere/{bundle_prefix}_\d+nm_counts-v-time_atmos_(i)ngress\.[a-z]{{3}}', 0, fr'{opus_id_prefix_a}-uranus-\1'),
+            (rf'.*/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/global/{bundle_prefix}_\d+nm_radius_equator_(e)gress_\d{{3,4}}m\.[a-z]{{3}}', 0, rf'{opus_id_prefix_e}-ringpl-\1'),
+            (rf'.*/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/global/{bundle_prefix}_\d+nm_radius_equator_(i)ngress_\d{{3,4}}m\.[a-z]{{3}}', 0, rf'{opus_id_prefix_i}-ringpl-\1'),
+            (rf'.*/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/rings/{bundle_prefix}_\d+nm_radius_([a-z]+)_(e)gress_\d{{3,4}}m\.[a-z]{{3}}', 0, rf'{opus_id_prefix_e}-\1-\2'),
+            (rf'.*/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/rings/{bundle_prefix}_\d+nm_radius_([a-z]+)_(i)ngress_\d{{3,4}}m\.[a-z]{{3}}', 0, rf'{opus_id_prefix_i}-\1-\2')
+        ]
+opus_id = translator.TranslatorByRegex(opus_id_list)
 
 ##########################################################################################
 # FILESPEC_TO_BUNDLESET
@@ -307,7 +388,7 @@ opus_id_to_primary_logical_path = translator.TranslatorByRegex([
     (r'kao0m91-vis-occ-1977-069-u0-ringpl-b', 0, r'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_counts-v-time_occult.tab'),
     (r'kao0m91-vis-occ-1977-069-u0-ringpl-([ei])', 0, r'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_\1*gress_100m.tab'), # highest resolution is primary filespec
     (r'kao0m91-vis-occ-1977-069-u0-([ei])', 0, r'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_counts-v-time_rings_\1*.tab'),
-    (r'kao0m91-vis-occ-1977-069-u0-([a-z]*)-([ei])', 0, r'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_\1_\2*_100m.tab'), 
+    (r'kao0m91-vis-occ-1977-069-u0-([a-z]*)-([ei])', 0, r'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_\1_\2*_100m.tab'),
 ])
 
 ##########################################################################################
@@ -494,7 +575,7 @@ def test_opus_id_to_primary_logical_path():
         #        product_pdsfiles += pdsf_list
 
         # Filter out the metadata/documents products and format files
-        #product_pdsfiles = [pdsf for pdsf in product_pdsfiles 
+        #product_pdsfiles = [pdsf for pdsf in product_pdsfiles
         #                         if pdsf.voltype_ != 'metadata/'
         #                         and pdsf.voltype_ != 'documents/']
         #product_pdsfiles = [pdsf for pdsf in product_pdsfiles
