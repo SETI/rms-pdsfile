@@ -82,6 +82,7 @@ def unmatched_patterns(trans, path):
 ##########################################################################################
 
 def instantiate_target_pdsfile(path, is_abspath=True):
+    path = 'bundles/'+path
     if is_abspath:
         TESTFILE_PATH = abspath_for_logical_path(path, pds4file.Pds4File)
         target_pdsfile = pds4file.Pds4File.from_abspath(TESTFILE_PATH)
