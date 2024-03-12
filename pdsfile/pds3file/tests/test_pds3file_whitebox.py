@@ -9,10 +9,10 @@ from pdsfile import pdsviewable
 import pytest
 import re
 
-from .helper import (PDS_HOLDINGS_DIR,
+from .helper import (PDS3_HOLDINGS_DIR,
                      instantiate_target_pdsfile)
 
-PDS_PDSDATA_PATH = PDS_HOLDINGS_DIR[:PDS_HOLDINGS_DIR.index('holdings')]
+PDS_PDSDATA_PATH = PDS3_HOLDINGS_DIR[:PDS3_HOLDINGS_DIR.index('holdings')]
 
 ##########################################################################################
 # Whitebox test for functions & properties in PdsFile class
@@ -314,9 +314,9 @@ class TestPdsFileWhiteBox:
         'input_path,expected',
         [
             ('volumes',
-             'Pds3File.COCIRS_xxxx("' + PDS_HOLDINGS_DIR + '/volumes/COCIRS_0xxx")'),
+             'Pds3File.COCIRS_xxxx("' + PDS3_HOLDINGS_DIR + '/volumes/COCIRS_0xxx")'),
             # ('volumes/ASTROM_xxxx/ASTROM_0001',
-            #  'Pds3File.ASTROM_xxxx("' + PDS_HOLDINGS_DIR + '/volumes/ASTROM_xxxx/ASTROM_0001/VOLDESC.CAT")'),
+            #  'Pds3File.ASTROM_xxxx("' + PDS3_HOLDINGS_DIR + '/volumes/ASTROM_xxxx/ASTROM_0001/VOLDESC.CAT")'),
         ]
     )
     def test__repr__(self, input_path, expected):
@@ -425,7 +425,7 @@ class TestPdsFileWhiteBox:
         'input_path,expected',
         [
             ('archives-volumes/COUVIS_0xxx/COUVIS_0001.tar.gz',
-             PDS_HOLDINGS_DIR + '/archives-volumes/COUVIS_0xxx/COUVIS_0001.tar.gz'),
+             PDS3_HOLDINGS_DIR + '/archives-volumes/COUVIS_0xxx/COUVIS_0001.tar.gz'),
 
         ]
     )
@@ -437,7 +437,7 @@ class TestPdsFileWhiteBox:
         'input_path,expected',
         [
             ('checksums-archives-volumes/ASTROM_xxxx_md5.txt',
-             PDS_HOLDINGS_DIR + '/checksums-archives-volumes/ASTROM_xxxx_md5.txt'),
+             PDS3_HOLDINGS_DIR + '/checksums-archives-volumes/ASTROM_xxxx_md5.txt'),
         ]
     )
     def test_volset_abspath(self, input_path, expected):
@@ -564,8 +564,8 @@ class TestPdsFileWhiteBox:
                 'volumes/HSTNx_xxxx/HSTN0_7176/DATA/VISIT_01/N4BI01L4Q.LBL'
              ],
              [
-                 PDS_HOLDINGS_DIR + '/volumes/COISS_1xxx/COISS_1001/data/1294561143_1295221348/W1294561202_1.LBL',
-                 PDS_HOLDINGS_DIR + '/volumes/HSTNx_xxxx/HSTN0_7176/DATA/VISIT_01/N4BI01L4Q.LBL'
+                 PDS3_HOLDINGS_DIR + '/volumes/COISS_1xxx/COISS_1001/data/1294561143_1295221348/W1294561202_1.LBL',
+                 PDS3_HOLDINGS_DIR + '/volumes/HSTNx_xxxx/HSTN0_7176/DATA/VISIT_01/N4BI01L4Q.LBL'
              ])
         ]
     )
@@ -630,8 +630,8 @@ class TestPdsFileWhiteBox:
         'input_path,expected',
         [
             ([
-                PDS_HOLDINGS_DIR + '/volumes/COISS_1xxx/COISS_1001/data/1294561143_1295221348/W1294561202_1.LBL',
-                PDS_HOLDINGS_DIR + '/volumes/HSTNx_xxxx/HSTN0_7176/DATA/VISIT_01/N4BI01L4Q.LBL'
+                PDS3_HOLDINGS_DIR + '/volumes/COISS_1xxx/COISS_1001/data/1294561143_1295221348/W1294561202_1.LBL',
+                PDS3_HOLDINGS_DIR + '/volumes/HSTNx_xxxx/HSTN0_7176/DATA/VISIT_01/N4BI01L4Q.LBL'
              ],
              ['W1294561202_1.LBL', 'N4BI01L4Q.LBL'])
         ]
@@ -685,7 +685,7 @@ class TestPdsFileWhiteBox:
         [
             ('volumes/COISS_0xxx/COISS_0001/data/wacfm/bit_wght/13302',
              ['133020.lbl'],
-             [PDS_HOLDINGS_DIR + '/volumes/COISS_0xxx/COISS_0001/data/wacfm/bit_wght/13302/133020.lbl'])
+             [PDS3_HOLDINGS_DIR + '/volumes/COISS_0xxx/COISS_0001/data/wacfm/bit_wght/13302/133020.lbl'])
         ]
     )
     def test_abspaths_for_basenames(self, input_path, basenames, expected):
@@ -871,8 +871,8 @@ class TestPdsFileWhiteBox:
     @pytest.mark.parametrize(
         'input_path,expected',
         [
-            (PDS_HOLDINGS_DIR + '/volumes/COISS_0xxx/COISS_0001',
-             PDS_HOLDINGS_DIR + '/volumes/COISS_0xxx/COISS_0001'),
+            (PDS3_HOLDINGS_DIR + '/volumes/COISS_0xxx/COISS_0001',
+             PDS3_HOLDINGS_DIR + '/volumes/COISS_0xxx/COISS_0001'),
         ]
     )
     def test_from_abspath(self, input_path, expected):
