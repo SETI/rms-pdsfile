@@ -351,16 +351,6 @@ class uranus_occs_earthbased(pds4file.Pds4File):
 
     pds4file.Pds4File.FILESPEC_TO_BUNDLESET = filespec_to_bundleset + \
                                               pds4file.Pds4File.FILESPEC_TO_BUNDLESET
-
-<<<<<<< HEAD
-#    def FILENAME_KEYLEN(self):
-#        if self.volset[:10] == 'COISS_3xxx':
-#            return 0
-#        else:
-#            return 11   # trim off suffixes
-
-=======
->>>>>>> origin/main
 # Global attribute shared by all subclasses
 opus_id_to_subclass_set = set()
 for bundle_prefix, opus_id_prefix_e, opus_id_prefix_i, opus_id_prefix_a in prefix_mapping:
