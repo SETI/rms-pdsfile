@@ -577,26 +577,26 @@ def test_associations():
         (( 2, 5, 1, 0, 1), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev007'),
         (( 8, 5, 0, 0, 1), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev007/Rev007E'),
         (( 8, 1, 4, 0, 1), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev007/Rev007E/Rev007E_RSS_2005_123_K34_E'),
-        ((20, 1, 4, 3, 1), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev007/Rev007E/Rev007E_RSS_2005_123_K34_E/RSS_2005_123_K34_E_TAU_01KM.TAB'),
-        ((20, 1, 4, 3, 1), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev007/Rev007E/Rev007E_RSS_2005_123_K34_E/RSS_2005_123_K34_E_TAU_01KM.LBL'),
-        ((20, 1, 4, 3, 1), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev007/Rev007E/Rev007E_RSS_2005_123_K34_E/RSS_2005_123_K34_E_TAU_10KM.TAB'),
+        ((20, 1, 4, 2, 1), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev007/Rev007E/Rev007E_RSS_2005_123_K34_E/RSS_2005_123_K34_E_TAU_01KM.TAB'),
+        ((20, 1, 4, 2, 1), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev007/Rev007E/Rev007E_RSS_2005_123_K34_E/RSS_2005_123_K34_E_TAU_01KM.LBL'),
+        ((20, 1, 4, 2, 1), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev007/Rev007E/Rev007E_RSS_2005_123_K34_E/RSS_2005_123_K34_E_TAU_10KM.TAB'),
         ((20, 1, 4, 1, 1), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev007/Rev007E/Rev007E_RSS_2005_123_K34_E/RSS_2005_123_K34_E_CAL.TAB'),
         ((20, 1, 4, 1, 1), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev007/Rev007E/Rev007E_RSS_2005_123_K34_E/RSS_2005_123_K34_E_DLP_500M.TAB'),
         ((20, 1, 4, 1, 1), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev007/Rev007E/Rev007E_RSS_2005_123_K34_E/RSS_2005_123_K34_E_GEO.TAB'),
         (( 8, 5, 0, 0, 1), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev054/Rev054CE'),
         (( 8, 1, 4, 0, 1), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev054/Rev054CE/Rev054CE_RSS_2007_353_K55_E'),
-        ((20, 1, 4, 3, 1), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev054/Rev054CE/Rev054CE_RSS_2007_353_K55_E/RSS_2007_353_K55_E_TAU_01KM.TAB'),
-        ((20, 1, 4, 3, 1), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev054/Rev054CE/Rev054CE_RSS_2007_353_K55_E/RSS_2007_353_K55_E_TAU_01KM.LBL'),
-        ((20, 1, 4, 3, 1), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev054/Rev054CE/Rev054CE_RSS_2007_353_K55_E/RSS_2007_353_K55_E_TAU_10KM.TAB'),
+        ((20, 1, 4, 2, 1), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev054/Rev054CE/Rev054CE_RSS_2007_353_K55_E/RSS_2007_353_K55_E_TAU_01KM.TAB'),
+        ((20, 1, 4, 2, 1), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev054/Rev054CE/Rev054CE_RSS_2007_353_K55_E/RSS_2007_353_K55_E_TAU_01KM.LBL'),
+        ((20, 1, 4, 2, 1), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev054/Rev054CE/Rev054CE_RSS_2007_353_K55_E/RSS_2007_353_K55_E_TAU_10KM.TAB'),
         ((20, 1, 4, 1, 1), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev054/Rev054CE/Rev054CE_RSS_2007_353_K55_E/RSS_2007_353_K55_E_CAL.TAB'),
         ((20, 1, 4, 1, 1), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev054/Rev054CE/Rev054CE_RSS_2007_353_K55_E/RSS_2007_353_K55_E_DLP_500M.TAB'),
         ((20, 1, 4, 1, 1), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev054/Rev054CE/Rev054CE_RSS_2007_353_K55_E/RSS_2007_353_K55_E_GEO.TAB'),
         ((20, 1, 4, 1, 1), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev054/Rev054CE/Rev054CE_RSS_2007_353_K55_E/Rev054CE_RSS_2007_353_K55_E_Summary.pdf'),
         (( 2, 2, 1, 1, 1), 'volumes/CORSS_8xxx_v1/CORSS_8001/EASYDATA'),
         (( 1, 1, 4, 0, 1), 'volumes/CORSS_8xxx_v1/CORSS_8001/EASYDATA/Rev07E_RSS_2005_123_K34_E'),
-        (( 1, 1, 4, 3, 1), 'volumes/CORSS_8xxx_v1/CORSS_8001/EASYDATA/Rev07E_RSS_2005_123_X43_E/RSS_2005_123_X43_E_TAU_01KM.TAB'),
-        (( 1, 1, 4, 3, 1), 'volumes/CORSS_8xxx_v1/CORSS_8001/EASYDATA/Rev07E_RSS_2005_123_X43_E/RSS_2005_123_X43_E_TAU_01KM.LBL'),
-        (( 1, 1, 4, 3, 1), 'volumes/CORSS_8xxx_v1/CORSS_8001/EASYDATA/Rev07E_RSS_2005_123_X43_E/RSS_2005_123_X43_E_TAU_10KM.TAB'),
+        (( 1, 1, 4, 2, 1), 'volumes/CORSS_8xxx_v1/CORSS_8001/EASYDATA/Rev07E_RSS_2005_123_X43_E/RSS_2005_123_X43_E_TAU_01KM.TAB'),
+        (( 1, 1, 4, 2, 1), 'volumes/CORSS_8xxx_v1/CORSS_8001/EASYDATA/Rev07E_RSS_2005_123_X43_E/RSS_2005_123_X43_E_TAU_01KM.LBL'),
+        (( 1, 1, 4, 2, 1), 'volumes/CORSS_8xxx_v1/CORSS_8001/EASYDATA/Rev07E_RSS_2005_123_X43_E/RSS_2005_123_X43_E_TAU_10KM.TAB'),
         (( 1, 1, 4, 1, 1), 'volumes/CORSS_8xxx_v1/CORSS_8001/EASYDATA/Rev07E_RSS_2005_123_X43_E/RSS_2005_123_X43_E_CAL.TAB'),
         (( 1, 1, 4, 1, 1), 'volumes/CORSS_8xxx_v1/CORSS_8001/EASYDATA/Rev07E_RSS_2005_123_X43_E/RSS_2005_123_X43_E_GEO.TAB'),
         (( 1, 1, 4, 0, 1), 'volumes/CORSS_8xxx_v1/CORSS_8001/EASYDATA/Rev07E_RSS_2005_123_X43_E/Rev07E_RSS_2005_123_X43_E_Summary.pdf'),
@@ -623,13 +623,17 @@ def test_associations():
         trimmed = [p.rpartition('holdings/')[-1] for p in unmatched]
         assert len(unmatched) == 0, f'Unmatched: {path} {trimmed}'
 
-        abspaths = translate_all(associations_to_metadata, path)
+        abspaths = translate_all(associations_to_diagrams, path)
         trimmed = [p.rpartition('holdings/')[-1] for p in abspaths]
         assert len(abspaths) == counts[2], f'Miscount: {path} {len(abspaths)} {trimmed}'
 
-        abspaths = translate_all(associations_to_documents, path)
+        abspaths = translate_all(associations_to_metadata, path)
         trimmed = [p.rpartition('holdings/')[-1] for p in abspaths]
         assert len(abspaths) == counts[3], f'Miscount: {path} {len(abspaths)} {trimmed}'
+
+        abspaths = translate_all(associations_to_documents, path)
+        trimmed = [p.rpartition('holdings/')[-1] for p in abspaths]
+        assert len(abspaths) == counts[4], f'Miscount: {path} {len(abspaths)} {trimmed}'
 
 @pytest.mark.parametrize(
     'input_path,expected',
