@@ -677,7 +677,7 @@ def test_opus_products_count():
            False): ['metadata/NHxxLO_xxxx/NHLALO_1001/NHLALO_1001_index.tab',
                     'metadata/NHxxLO_xxxx/NHLALO_1001/NHLALO_1001_index.lbl'],
           ('metadata',
-           9,
+           8,
            'supplemental_index',
            'Supplemental Index',
            False): ['metadata/NHxxLO_xxxx/NHLALO_1001/NHLALO_1001_supplemental_index.tab',
