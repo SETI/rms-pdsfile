@@ -1050,6 +1050,8 @@ class TestPds3FileBlackBox:
             ('COISS_0001', PDS3_HOLDINGS_DIR + '/volumes/COISS_0xxx/COISS_0001'),
             ('COISS_1001/data/1294561143_1295221348/W1294561202_1.IMG',
              PDS3_HOLDINGS_DIR + '/volumes/COISS_1xxx/COISS_1001/data/1294561143_1295221348/W1294561202_1.IMG'),
+            ('HSTI1_3667/DATA/VISIT_01/ICOK01H9Q.LBL',
+             PDS3_HOLDINGS_DIR + '/volumes/HSTIx_xxxx/HSTI1_3667/DATA/VISIT_01/ICOK01H9Q.LBL'),
         ]
     )
     def test_from_filespec(self, filespec, expected):
