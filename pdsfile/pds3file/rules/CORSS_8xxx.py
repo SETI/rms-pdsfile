@@ -501,26 +501,26 @@ import pytest
 from .pytest_support import *
 
 def test_default_viewables():
-    # ((number of default viewables, diagrams, skyviews, dsntracks, timelines), logical_path)
+    # ((number of default viewables, diagrams, profiles, skyviews, dsntracks, timelines), logical_path)
     TESTS = [
-        ((4, 0, 0, 4, 0), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev007/Rev007_DSN_Elevation.LBL'),
-        ((4, 0, 0, 4, 0), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev007/Rev007_DSN_Elevation.pdf'),
-        ((4, 0, 0, 0, 4), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev007/Rev007_TimeLine_Figure.pdf'),
-        ((4, 0, 0, 0, 0), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev007/Rev007_TimeLine_Table.pdf'),
-        ((4, 0, 4, 4, 4), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev007/Rev007E'),
-        ((4, 4, 4, 4, 4), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev007/Rev007E/Rev007E_RSS_2005_123_K34_E'),
-        ((0, 0, 0, 0, 0), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev007/Rev007E/Rev007E_RSS_2005_123_K34_E/RSS_2005_123_K34_E_CAL.TAB'),
-        ((0, 0, 0, 0, 0), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev007/Rev007E/Rev007E_RSS_2005_123_K34_E/RSS_2005_123_K34_E_DLP_500M.TAB'),
-        ((4, 4, 0, 0, 0), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev007/Rev007E/Rev007E_RSS_2005_123_K34_E/RSS_2005_123_K34_E_GEO.TAB'),
-        ((4, 4, 0, 0, 0), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev007/Rev007E/Rev007E_RSS_2005_123_K34_E/RSS_2005_123_K34_E_TAU_01KM.TAB'),
-        ((4, 4, 0, 0, 0), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev007/Rev007E/Rev007E_RSS_2005_123_K34_E/RSS_2005_123_K34_E_TAU_10KM.TAB'),
-        ((4, 4, 0, 0, 0), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev137/Rev137E/Rev137E_RSS_2010_245_S24_E/RSS_2010_245_S24_E_TAU_1600M.TAB'),
-        ((4, 0, 4, 0, 0), 'volumes/CORSS_8xxx/CORSS_8001/browse/Rev007_OccTrack_Geometry.pdf'),
-        ((4, 0, 0, 0, 0), 'volumes/CORSS_8xxx_v1/CORSS_8001/EASYDATA/Rev07E_RSS_2005_123_X43_E/Rev07E_RSS_2005_123_X43_E_Summary.pdf'),
-        ((0, 0, 0, 0, 0), 'volumes/CORSS_8xxx_v1/CORSS_8001/EASYDATA/Rev07E_RSS_2005_123_X43_E/RSS_2005_123_X43_E_CAL.TAB'),
-        ((4, 4, 0, 0, 0), 'volumes/CORSS_8xxx_v1/CORSS_8001/EASYDATA/Rev07E_RSS_2005_123_X43_E/RSS_2005_123_X43_E_GEO.TAB'),
-        ((4, 4, 0, 0, 0), 'volumes/CORSS_8xxx_v1/CORSS_8001/EASYDATA/Rev07E_RSS_2005_123_X43_E/RSS_2005_123_X43_E_TAU_01KM.TAB'),
-        ((4, 4, 0, 0, 0), 'volumes/CORSS_8xxx_v1/CORSS_8001/EASYDATA/Rev07E_RSS_2005_123_X43_E/RSS_2005_123_X43_E_TAU_10KM.TAB'),
+        ((4, 0, 0, 0, 4, 0), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev007/Rev007_DSN_Elevation.LBL'),
+        ((4, 0, 0, 0, 4, 0), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev007/Rev007_DSN_Elevation.pdf'),
+        ((4, 0, 0, 0, 0, 4), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev007/Rev007_TimeLine_Figure.pdf'),
+        ((4, 0, 0, 0, 0, 0), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev007/Rev007_TimeLine_Table.pdf'),
+        ((4, 0, 0, 4, 4, 4), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev007/Rev007E'),
+        ((4, 4, 4, 4, 4, 4), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev007/Rev007E/Rev007E_RSS_2005_123_K34_E'),
+        ((0, 0, 0, 0, 0, 0), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev007/Rev007E/Rev007E_RSS_2005_123_K34_E/RSS_2005_123_K34_E_CAL.TAB'),
+        ((0, 0, 0, 0, 0, 0), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev007/Rev007E/Rev007E_RSS_2005_123_K34_E/RSS_2005_123_K34_E_DLP_500M.TAB'),
+        ((4, 4, 0, 0, 0, 0), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev007/Rev007E/Rev007E_RSS_2005_123_K34_E/RSS_2005_123_K34_E_GEO.TAB'),
+        ((4, 4, 4, 0, 0, 0), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev007/Rev007E/Rev007E_RSS_2005_123_K34_E/RSS_2005_123_K34_E_TAU_01KM.TAB'),
+        ((4, 4, 4, 0, 0, 0), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev007/Rev007E/Rev007E_RSS_2005_123_K34_E/RSS_2005_123_K34_E_TAU_10KM.TAB'),
+        ((4, 4, 4, 0, 0, 0), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev137/Rev137E/Rev137E_RSS_2010_245_S24_E/RSS_2010_245_S24_E_TAU_1600M.TAB'),
+        ((4, 0, 0, 4, 0, 0), 'volumes/CORSS_8xxx/CORSS_8001/browse/Rev007_OccTrack_Geometry.pdf'),
+        ((4, 0, 0, 0, 0, 0), 'volumes/CORSS_8xxx_v1/CORSS_8001/EASYDATA/Rev07E_RSS_2005_123_X43_E/Rev07E_RSS_2005_123_X43_E_Summary.pdf'),
+        ((0, 0, 0, 0, 0, 0), 'volumes/CORSS_8xxx_v1/CORSS_8001/EASYDATA/Rev07E_RSS_2005_123_X43_E/RSS_2005_123_X43_E_CAL.TAB'),
+        ((4, 4, 0, 0, 0, 0), 'volumes/CORSS_8xxx_v1/CORSS_8001/EASYDATA/Rev07E_RSS_2005_123_X43_E/RSS_2005_123_X43_E_GEO.TAB'),
+        ((4, 4, 4, 0, 0, 0), 'volumes/CORSS_8xxx_v1/CORSS_8001/EASYDATA/Rev07E_RSS_2005_123_X43_E/RSS_2005_123_X43_E_TAU_01KM.TAB'),
+        ((4, 4, 4, 0, 0, 0), 'volumes/CORSS_8xxx_v1/CORSS_8001/EASYDATA/Rev07E_RSS_2005_123_X43_E/RSS_2005_123_X43_E_TAU_10KM.TAB'),
     ]
 
     for (counts, path) in TESTS:
@@ -532,17 +532,21 @@ def test_default_viewables():
         trimmed = [p.rpartition('holdings/')[-1] for p in abspaths]
         assert len(abspaths) == counts[1], f'{path} {len(abspaths)} {trimmed}'
 
-        abspaths = translate_all(skyview_viewables, path)
+        abspaths = translate_all(profile_viewables, path)
         trimmed = [p.rpartition('holdings/')[-1] for p in abspaths]
         assert len(abspaths) == counts[2], f'{path} {len(abspaths)} {trimmed}'
 
-        abspaths = translate_all(dsntrack_viewables, path)
+        abspaths = translate_all(skyview_viewables, path)
         trimmed = [p.rpartition('holdings/')[-1] for p in abspaths]
         assert len(abspaths) == counts[3], f'{path} {len(abspaths)} {trimmed}'
 
-        abspaths = translate_all(timeline_viewables, path)
+        abspaths = translate_all(dsntrack_viewables, path)
         trimmed = [p.rpartition('holdings/')[-1] for p in abspaths]
         assert len(abspaths) == counts[4], f'{path} {len(abspaths)} {trimmed}'
+
+        abspaths = translate_all(timeline_viewables, path)
+        trimmed = [p.rpartition('holdings/')[-1] for p in abspaths]
+        assert len(abspaths) == counts[5], f'{path} {len(abspaths)} {trimmed}'
 
 def test_associations():
     # ((number of volume associations, previews, diagrams, metadata, documents), logical_path)
