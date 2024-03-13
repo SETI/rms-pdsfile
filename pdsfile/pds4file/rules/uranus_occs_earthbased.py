@@ -6,6 +6,8 @@ import pdsfile.pds4file as pds4file
 import translator
 import re
 
+from .uranus_occs_earthbased_primary_filespec import PRIMARY_FILESPEC_LIST
+
 ##########################################################################################
 # DESCRIPTION_AND_ICON
 ##########################################################################################
@@ -361,9 +363,11 @@ for bundle_prefix, opus_id_prefix_e, opus_id_prefix_i, opus_id_prefix_a in prefi
             (rf'.*/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/rings/{bundle_prefix}_\d+nm_radius_([a-z]+)_([ei])(gress|ngress)_\d{{3,4}}m\.[a-z]{{3}}', 0, rf'{opus_id_prefix_e}-\1-\2')
         ]
     else:
+        if opus_id_prefix_a is not None:
+            opus_id_list += [
+                (rf'.*/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/atmosphere/{bundle_prefix}_\d+nm_counts-v-time_atmos_([ei])(gress|ngress)\.[a-z]{{3}}', 0, fr'{opus_id_prefix_a}-uranus-\1'),
+            ]
         opus_id_list += [
-            (rf'.*/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/atmosphere/{bundle_prefix}_\d+nm_counts-v-time_atmos_(e)gress\.[a-z]{{3}}', 0, fr'{opus_id_prefix_a}-uranus-\1'),
-            (rf'.*/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/atmosphere/{bundle_prefix}_\d+nm_counts-v-time_atmos_(i)ngress\.[a-z]{{3}}', 0, fr'{opus_id_prefix_a}-uranus-\1'),
             (rf'.*/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/global/{bundle_prefix}_\d+nm_radius_equator_(e)gress_\d{{3,4}}m\.[a-z]{{3}}', 0, rf'{opus_id_prefix_e}-ringpl-\1'),
             (rf'.*/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/global/{bundle_prefix}_\d+nm_radius_equator_(i)ngress_\d{{3,4}}m\.[a-z]{{3}}', 0, rf'{opus_id_prefix_i}-ringpl-\1'),
             (rf'.*/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/rings/{bundle_prefix}_\d+nm_radius_([a-z]+)_(e)gress_\d{{3,4}}m\.[a-z]{{3}}', 0, rf'{opus_id_prefix_e}-\1-\2'),
@@ -382,25 +386,42 @@ filespec_to_bundleset = translator.TranslatorByRegex([
 ##########################################################################################
 # OPUS_ID_TO_PRIMARY_LOGICAL_PATH
 ##########################################################################################
+# highest resolution is primary filespec
+opus_id_to_primary_filespec_list = []
+for bundle_prefix, opus_id_prefix_e, opus_id_prefix_i, opus_id_prefix_a in prefix_mapping:
+    if opus_id_prefix_i is None:
+        opus_id_to_primary_filespec_list += [
+            (rf'{opus_id_prefix_e}-uranus-([ei])', 0, rf'bundles/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/atmosphere/{bundle_prefix}_*nm_counts-v-time_atmos_\1*gress.tab'),
+            (rf'{opus_id_prefix_e}-ringpl-([ei])', 0, rf'bundles/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/global/{bundle_prefix}_*nm_radius_equator_\1*gress_100m.tab'),
+            (rf'{opus_id_prefix_e}-([a-z]*)-([ei])', 0, rf'bundles/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/rings/{bundle_prefix}_*nm_radius_\1_\2*_100m.tab'),
+        ]
+    else:
+        if opus_id_prefix_a is not None:
+            opus_id_to_primary_filespec_list += [
+                (rf'{opus_id_prefix_a}-uranus-([ei])', 0, rf'bundles/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/atmosphere/{bundle_prefix}_*nm_counts-v-time_atmos_\1*gress.tab'),
+            ]
+        opus_id_to_primary_filespec_list += [
+            (rf'{opus_id_prefix_e}-ringpl-(e)', 0, rf'bundles/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/global/{bundle_prefix}_*nm_radius_equator_\1*gress_100m.tab'),
+            (rf'{opus_id_prefix_i}-ringpl-(i)', 0, rf'bundles/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/global/{bundle_prefix}_*nm_radius_equator_\1*gress_100m.tab'),
+            (rf'{opus_id_prefix_e}-([a-z]*)-(e)', 0, rf'bundles/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/rings/{bundle_prefix}_*nm_radius_\1_\2*_100m.tab'),
+            (rf'{opus_id_prefix_i}-([a-z]*)-(i)', 0, rf'bundles/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/rings/{bundle_prefix}_*nm_radius_\1_\2*_100m.tab'),
+        ]
 
-opus_id_to_primary_logical_path = translator.TranslatorByRegex([
-    (r'kao0m91-vis-occ-1977-069-u0-uranus-([ei])', 0, r'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_\1*gress.tab'),
-    (r'kao0m91-vis-occ-1977-069-u0-ringpl-b', 0, r'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_counts-v-time_occult.tab'),
-    (r'kao0m91-vis-occ-1977-069-u0-ringpl-([ei])', 0, r'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_\1*gress_100m.tab'), # highest resolution is primary filespec
-    (r'kao0m91-vis-occ-1977-069-u0-([ei])', 0, r'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_counts-v-time_rings_\1*.tab'),
-    (r'kao0m91-vis-occ-1977-069-u0-([a-z]*)-([ei])', 0, r'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_\1_\2*_100m.tab'),
-])
+opus_id_to_primary_logical_path = translator.TranslatorByRegex(opus_id_to_primary_filespec_list)
 
 ##########################################################################################
 # Subclass definition
 ##########################################################################################
 
 class uranus_occs_earthbased(pds4file.Pds4File):
-
-    pds4file.Pds4File.VOLSET_TRANSLATOR = translator.TranslatorByRegex([('uranus_occ_u0_kao_91cm', re.I, 'uranus_occs_earthbased')]) + \
+    volset_list = []
+    for bundle_prefix, _, _, _ in prefix_mapping:
+        volset_list += [(f'uranus_occ_{bundle_prefix}', re.I, 'uranus_occs_earthbased')]
+    pds4file.Pds4File.VOLSET_TRANSLATOR = translator.TranslatorByRegex(volset_list) + \
                                           pds4file.Pds4File.VOLSET_TRANSLATOR
 
-    DESCRIPTION_AND_ICON = description_and_icon_by_regex + pds4file.Pds4File.DESCRIPTION_AND_ICON
+    DESCRIPTION_AND_ICON = description_and_icon_by_regex + \
+                           pds4file.Pds4File.DESCRIPTION_AND_ICON
     VIEW_OPTIONS = view_options + pds4file.Pds4File.VIEW_OPTIONS
     NEIGHBORS = neighbors + pds4file.Pds4File.NEIGHBORS
     SORT_KEY = sort_key + pds4file.Pds4File.SORT_KEY
@@ -420,7 +441,8 @@ class uranus_occs_earthbased(pds4file.Pds4File):
     ASSOCIATIONS['metadata']   += associations_to_metadata
     ASSOCIATIONS['documents']  += associations_to_documents
 
-    pds4file.Pds4File.FILESPEC_TO_BUNDLESET = filespec_to_bundleset + pds4file.Pds4File.FILESPEC_TO_BUNDLESET
+    pds4file.Pds4File.FILESPEC_TO_BUNDLESET = filespec_to_bundleset + \
+                                              pds4file.Pds4File.FILESPEC_TO_BUNDLESET
 
 #    def FILENAME_KEYLEN(self):
 #        if self.volset[:10] == 'COISS_3xxx':
@@ -429,8 +451,17 @@ class uranus_occs_earthbased(pds4file.Pds4File):
 #            return 11   # trim off suffixes
 
 # Global attribute shared by all subclasses
-pds4file.Pds4File.OPUS_ID_TO_SUBCLASS = translator.TranslatorByRegex([(r'kao0m91-vis-occ-1977-069-u0.*', 0, uranus_occs_earthbased)]) + \
-                                        pds4file.Pds4File.OPUS_ID_TO_SUBCLASS
+opus_id_to_subclass_set = set()
+for bundle_prefix, opus_id_prefix_e, opus_id_prefix_i, opus_id_prefix_a in prefix_mapping:
+    opus_id_to_subclass_set.add((rf'{opus_id_prefix_e}.*', 0, uranus_occs_earthbased))
+    if opus_id_prefix_i is not None:
+        opus_id_to_subclass_set.add((rf'{opus_id_prefix_i}.*', 0, uranus_occs_earthbased))
+    if opus_id_prefix_a is not None:
+        opus_id_to_subclass_set.add((rf'{opus_id_prefix_a}.*', 0, uranus_occs_earthbased))
+pds4file.Pds4File.OPUS_ID_TO_SUBCLASS = (
+    translator.TranslatorByRegex(list(opus_id_to_subclass_set)) +
+    pds4file.Pds4File.OPUS_ID_TO_SUBCLASS
+)
 
 ##########################################################################################
 # Update the global dictionary of subclasses
@@ -549,16 +580,7 @@ def xtest_opus_products(input_path, expected):
     opus_products_test(input_path, expected)
 
 def test_opus_id_to_primary_logical_path():
-    TESTS = [
- 	'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_ingress.tab',
-        'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress.tab',
-        'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_counts-v-time_occult.tab',
- 	'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_egress_100m.tab', # highest-resolution used as primary
-  	'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_ingress_100m.tab',
-   	'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_counts-v-time_rings_egress.tab',
-   	'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_counts-v-time_rings_ingress.tab',
-        'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_alpha_egress_100m.tab',
-]
+    TESTS = PRIMARY_FILESPEC_LIST
 
     for logical_path in TESTS:
         test_pdsf = pds4file.Pds4File.from_logical_path(logical_path)

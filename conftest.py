@@ -7,7 +7,7 @@
 import os
 from pdsfile import (Pds3File,
                      Pds4File)
-from pdsfile.pds3file.tests.helper import PDS_HOLDINGS_DIR
+from pdsfile.pds3file.tests.helper import PDS3_HOLDINGS_DIR
 from pdsfile.pds4file.tests.helper import PDS4_HOLDINGS_DIR
 import pdslogger
 import pytest
@@ -37,5 +37,5 @@ def setup(request):
         Pds4File.use_shelves_only(True)
 
     # turn_on_logger("test_log.txt")
-    Pds3File.preload(PDS_HOLDINGS_DIR)
+    Pds3File.preload(PDS3_HOLDINGS_DIR)
     Pds4File.preload(PDS4_HOLDINGS_DIR)
