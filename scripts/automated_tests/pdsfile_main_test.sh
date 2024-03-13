@@ -54,7 +54,7 @@ echo
 echo "Test end:" `date`
 echo
 
-python -m coverage report -m
+python -m coverage report
 if [ $? -ne 0 ]; then exit -1; fi
 python -m coverage xml
 if [ $? -ne 0 ]; then exit -1; fi
