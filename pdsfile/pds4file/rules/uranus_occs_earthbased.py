@@ -42,7 +42,7 @@ description_and_icon_by_regex = translator.TranslatorByRegex([
 ##########################################################################################
 
 default_viewables = translator.TranslatorByRegex([
-        (r'.*/(uranus_occs_earthbased/uranus_occ_u.*/data(.*|_[a-z]*])/.*)\.[a-z]{3}', 0,
+    (r'.*/(uranus_occs_earthbased/uranus_occ_u.*/data(.*|_[a-z]*])/.*)\.[a-z]{3}', 0,
         [r'previews/\1_full.png',
          r'previews/\1_med.png',
          r'previews/\1_small.png',
@@ -54,131 +54,40 @@ default_viewables = translator.TranslatorByRegex([
 # ASSOCIATIONS
 ##########################################################################################
 
-associations_to_volumes = translator.TranslatorByRegex([
-
-    # COISS_1xxx and COISS_2xxx
-    (r'.*/(COISS_[12]xxx.*/COISS_....)/(data|extras/\w+)/(\w+/[NW][0-9]{10}_[0-9]+).*', 0,
-            [r'volumes/\1/data/\3.IMG',
-             r'volumes/\1/data/\3.LBL',
-             r'volumes/\1/extras/thumbnail/\3.IMG.jpeg_small',
-             r'volumes/\1/extras/browse/\3.IMG.jpeg',
-             r'volumes/\1/extras/full/\3.IMG.png',
-             r'volumes/\1/extras/tiff/\3.IMG.tiff',
-            ]),
-    (r'.*/(COISS_[12]xxx.*/COISS_....)/(data|extras/\w+)(|/\w+)', 0,
-            [r'volumes/\1/data\3',
-             r'volumes/\1/extras/thumbnail\3',
-             r'volumes/\1/extras/browse\3',
-             r'volumes/\1/extras/full\3',
-            ]),
-    (r'.*/(COISS_[12]xxx.*/COISS_....)/extras', 0,
-            r'volumes/\1/data'),
-    (r'.*/(COISS_[12])999.*', 0,
-            r'volumes/\1xxx'),
-    (r'documents/COISS_0xxx.*', 0,
-            [r'volumes/COISS_0xxx',
-             r'volumes/COISS_1xxx',
-             r'volumes/COISS_2xxx',
-            ]),
-
-    # COISS_3xxx
-    (r'.*/(COISS_3xxx.*/COISS_3...)/(data|extras/\w+)/(images/\w+[A-Z]+)(|_[a-z]+)\..*', 0,
-            [r'volumes/\1/data/\3.IMG',
-             r'volumes/\1/extras/browse/\3.IMG.jpeg',
-             r'volumes/\1/extras/thumbnail/\3.IMG.jpeg_small',
-             r'volumes/\1/extras/full/\3.IMG.png',
-            ]),
-    (r'.*/(COISS_3xxx.*/COISS_3...)/(data|extras/\w+)/(maps/\w+_SMN).*', 0,
-            [r'volumes/\1/data/\3.lbl',
-             r'volumes/\1/data/\3.PDF',
-             r'volumes/\1/extras/browse/\3.jpg',
-             r'volumes/\1/extras/browse/\3_browse.jpg',
-             r'volumes/\1/extras/browse/\3.PDF.jpeg',
-             r'volumes/\1/extras/thumbnail/\3.jpg',
-             r'volumes/\1/extras/thumbnail/\3_thumb.jpg',
-             r'volumes/\1/extras/thumbnail/\3.PDF.jpeg',
-             r'volumes/\1/extras/full/\3.PDF.png',
-            ]),
-    (r'.*/(COISS_3xxx.*/COISS_3...)/(data|extras/\w+)(|/images|/maps)', 0,
-            [r'volumes/\1/data/\3',
-             r'volumes/\1/extras/browse/\3',
-             r'volumes/\1/extras/thumbnail/\3',
-             r'volumes/\1/extras/full/\3',
-            ]),
-    (r'.*/(COISS_3xxx.*/COISS_3...)/extras', 0,
-            r'volumes/\1/data'),
-])
-
-associations_to_calibrated = translator.TranslatorByRegex([
-    (r'.*/(COISS_[12]xxx)(|_v[0-9\.]+)/(COISS_....)/(data|extras/\w+)/(\w+/[NW][0-9]{10}_[0-9]+).*', 0,
-            [r'calibrated/\1/\3/data/\5_CALIB.IMG',
-             r'calibrated/\1/\3/data/\5_CALIB.LBL',
-            ]),
-    (r'.*/(COISS_[12]xxx)(|_v[0-9\.]+)/(COISS_....)/(data|extras/\w+)(|/\w+)', 0,
-            r'calibrated/\1/\3/data\5'),
-    (r'.*/(COISS_[12])999.*', 0,
-            r'calibrated/\1xxx'),
+associations_to_bundles = translator.TranslatorByRegex([
+    (r'.*/(uranus_occs_earthbased/uranus_occ_u.*)/(data|browse)(.*|_[a-z]*]/.*)\.[a-z]{3}', 0,
+        [r'bundles/\1/data\3.tab',
+         r'bundles/\1/data\3.xml',
+         r'bundles/\1/data\3.txt',
+         r'bundles/\1/data\3.pdf',
+         r'bundles/\1/browse\3.pdf',
+         r'bundles/\1/browse\3.xml',
+        ]),
+    (r'documents/uranus_occs_earthbased.*', 0,
+        r'bundles/uranus_occs_earthbased'),
 ])
 
 associations_to_previews = translator.TranslatorByRegex([
-
-    # COISS_1xxx and COISS_2xxx
-    (r'.*/(COISS_[12]xxx)(|_v[0-9\.]+)/(COISS_....)/(data|extras/\w+)/(\w+/[NW][0-9]{10}_[0-9]+).*', 0,
-            [r'previews/\1/\3/data/\5_full.png',
-             r'previews/\1/\3/data/\5_med.jpg',
-             r'previews/\1/\3/data/\5_small.jpg',
-             r'previews/\1/\3/data/\5_thumb.jpg',
-            ]),
-    (r'.*/(COISS_[12]xxx)(|_v[0-9\.]+)/(COISS_....)/(data|extras/\w+)(|/\w+)', 0,
-            r'previews/\1/\3/data\5'),
-    (r'.*/(COISS_[12])999.*', 0,
-            r'previews/\1xxx'),
-
-    # COISS_3xxx
-    (r'.*/(COISS_3xxx.*/COISS_3...)/(data|extras/\w+)/(images/\w+[A-Z]+)(|_[a-z]+)\..*', 0,
-            [r'previews/\1/data/\3_full.jpg',
-             r'previews/\1/data/\3_med.jpg',
-             r'previews/\1/data/\3_small.jpg',
-             r'previews/\1/data/\3_thumb.jpg',
-            ]),
-    (r'.*/(COISS_3xxx.*/COISS_3...)/(data|extras/\w+)/(maps/\w+_SMN).*', 0,
-            [r'previews/\1/data/\3_full.png',
-             r'previews/\1/data/\3_med.png',
-             r'previews/\1/data/\3_small.png',
-             r'previews/\1/data/\3_thumb.png',
-            ]),
-    (r'.*/(COISS_3xxx.*/COISS_3...)/(data|extras/\w+)(|/images|/maps)', 0,
-            [r'previews/\1/data/\3',
-             r'previews/\1/extras/browse/\3',
-             r'previews/\1/extras/thumbnail/\3',
-             r'previews/\1/extras/full/\3',
-            ]),
-    (r'.*/(COISS_3xxx.*/COISS_3...)/extras', 0,
-            r'previews/\1/data'),
+    (r'.*/(uranus_occs_earthbased/uranus_occ_u.*/(data|browse)(.*|_[a-z]*])/.*)\.[a-z]{3}', 0,
+        [r'previews/\1_full.png',
+         r'previews/\1_med.png',
+         r'previews/\1_small.png',
+         r'previews/\1_thumb.png',
+        ])
 ])
 
 associations_to_metadata = translator.TranslatorByRegex([
-    (r'.*/(COISS_[12]xxx)(|_v[0-9\.]+)/(COISS_....)/(data|extras/w+)/\w+/([NW][0-9]{10}_[0-9]+).*', 0,
-            [r'metadata/\1/\3/\3_index.tab/\5',
-             r'metadata/\1/\3/\3_ring_summary.tab/\5',
-             r'metadata/\1/\3/\3_moon_summary.tab/\5',
-             r'metadata/\1/\3/\3_saturn_summary.tab/\5',
-             r'metadata/\1/\3/\3_jupiter_summary.tab/\5',
-            ]),
-    (r'metadata/(COISS_.xxx/COISS_[12])...', 0,
-            r'metadata/\g<1>999'),
-    (r'metadata/(COISS_.xxx/COISS_[12]).../(COISS_.)..._(.*)\..*', 0,
-            [r'metadata/\g<1>999/\g<2>999_\3.tab',
-             r'metadata/\g<1>999/\g<2>999_\3.csv',
-             r'metadata/\g<1>999/\g<2>999_\3.lbl',
-            ]),
+    (r'.*/(uranus_occs_earthbased)/.*', 0,
+        r'metadata/\1'),
+    (r'.*/(uranus_occs_earthbased)/(uranus_occ_u.*)/(data|browse)(.*|_[a-z]*])/(rings|global|atmos).*/(.*)\.[a-z]{3}', 0,
+        r'metadata/\1/uranus_\5_occultations_index.tab/\6'),
 ])
 
 associations_to_documents = translator.TranslatorByRegex([
-    (r'(volumes|calibrated)/COISS_[0-3]xxx(|_[\w\.]+)(|/COISS_[0-3]\d\d\d)', 0,
-            r'documents/COISS_0xxx/*'),
-    (r'(volumes|calibrated)/COISS_[0-3]xxx.*/COISS_[0-3]\d\d\d/.+', 0,
-            r'documents/COISS_0xxx'),
+    (r'bundles/uranus_occs_earthbased/.*', 0,
+        r'documents/uranus_occs_earthbased/*'),
+    (r'bundles/uranus_occs_earthbased', 0,
+        r'documents/uranus_occs_earthbased'),
 ])
 
 ##########################################################################################
@@ -435,8 +344,7 @@ class uranus_occs_earthbased(pds4file.Pds4File):
     VIEWABLES = {'default': default_viewables}
 
     ASSOCIATIONS = pds4file.Pds4File.ASSOCIATIONS.copy()
-    ASSOCIATIONS['volumes']    += associations_to_volumes
-    ASSOCIATIONS['calibrated'] += associations_to_calibrated
+    ASSOCIATIONS['bundles']    += associations_to_bundles
     ASSOCIATIONS['previews']   += associations_to_previews
     ASSOCIATIONS['metadata']   += associations_to_metadata
     ASSOCIATIONS['documents']  += associations_to_documents
@@ -444,12 +352,15 @@ class uranus_occs_earthbased(pds4file.Pds4File):
     pds4file.Pds4File.FILESPEC_TO_BUNDLESET = filespec_to_bundleset + \
                                               pds4file.Pds4File.FILESPEC_TO_BUNDLESET
 
+<<<<<<< HEAD
 #    def FILENAME_KEYLEN(self):
 #        if self.volset[:10] == 'COISS_3xxx':
 #            return 0
 #        else:
 #            return 11   # trim off suffixes
 
+=======
+>>>>>>> origin/main
 # Global attribute shared by all subclasses
 opus_id_to_subclass_set = set()
 for bundle_prefix, opus_id_prefix_e, opus_id_prefix_i, opus_id_prefix_a in prefix_mapping:
@@ -477,107 +388,74 @@ import pytest
 from .pytest_support import *
 
 @pytest.mark.parametrize(
-    'input_path,expected',
+    'input_path,category,expected',
     [
-        ('volumes/COISS_1xxx/COISS_1001/data/1294561143_1295221348/W1294561202_1.IMG',
-         {('Cassini ISS',
-           0,
-           'coiss_raw',
-           'Raw Image',
-           True): ['volumes/COISS_1xxx/COISS_1001/data/1294561143_1295221348/W1294561202_1.IMG',
-                   'volumes/COISS_1xxx/COISS_1001/data/1294561143_1295221348/W1294561202_1.LBL',
-                   'volumes/COISS_1xxx/COISS_1001/label/prefix.fmt',
-                   'volumes/COISS_1xxx/COISS_1001/label/tlmtab.fmt'],
-          ('Cassini ISS',
-           110,
-           'coiss_thumb',
-           'Extra Preview (thumbnail)',
-           False): ['volumes/COISS_1xxx/COISS_1001/extras/thumbnail/1294561143_1295221348/W1294561202_1.IMG.jpeg_small'],
-          ('Cassini ISS',
-           120,
-           'coiss_medium',
-           'Extra Preview (medium)',
-           False): ['volumes/COISS_1xxx/COISS_1001/extras/browse/1294561143_1295221348/W1294561202_1.IMG.jpeg'],
-          ('Cassini ISS',
-           10,
-           'coiss_calib',
-           'Calibrated Image',
-           True): ['calibrated/COISS_1xxx/COISS_1001/data/1294561143_1295221348/W1294561202_1_CALIB.IMG',
-                   'calibrated/COISS_1xxx/COISS_1001/data/1294561143_1295221348/W1294561202_1_CALIB.LBL',
-                   'calibrated/COISS_1xxx_v1/COISS_1001/data/1294561143_1295221348/W1294561202_1_CALIB.IMG',
-                   'calibrated/COISS_1xxx_v1/COISS_1001/data/1294561143_1295221348/W1294561202_1_CALIB.LBL',
-                   'calibrated/COISS_1xxx_v2/COISS_1001/data/1294561143_1295221348/W1294561202_1_CALIB.IMG',
-                   'calibrated/COISS_1xxx_v2/COISS_1001/data/1294561143_1295221348/W1294561202_1_CALIB.LBL'],
-          ('browse',
-           10,
-           'browse_thumb',
-           'Browse Image (thumbnail)',
-           False): ['previews/COISS_1xxx/COISS_1001/data/1294561143_1295221348/W1294561202_1_thumb.jpg'],
-          ('browse',
-           20,
-           'browse_small',
-           'Browse Image (small)',
-           False): ['previews/COISS_1xxx/COISS_1001/data/1294561143_1295221348/W1294561202_1_small.jpg'],
-          ('browse',
-           30,
-           'browse_medium',
-           'Browse Image (medium)',
-           False): ['previews/COISS_1xxx/COISS_1001/data/1294561143_1295221348/W1294561202_1_med.jpg'],
-          ('browse',
-           40,
-           'browse_full',
-           'Browse Image (full)',
-           True): ['previews/COISS_1xxx/COISS_1001/data/1294561143_1295221348/W1294561202_1_full.png'],
-          ('metadata',
-           20,
-           'planet_geometry',
-           'Planet Geometry Index',
-           False): ['metadata/COISS_1xxx/COISS_1001/COISS_1001_jupiter_summary.tab',
-                    'metadata/COISS_1xxx/COISS_1001/COISS_1001_jupiter_summary.lbl'],
-          ('metadata',
-           30,
-           'moon_geometry',
-           'Moon Geometry Index',
-           False): ['metadata/COISS_1xxx/COISS_1001/COISS_1001_moon_summary.tab',
-                    'metadata/COISS_1xxx/COISS_1001/COISS_1001_moon_summary.lbl'],
-          ('metadata',
-           40,
-           'ring_geometry',
-           'Ring Geometry Index',
-           False): ['metadata/COISS_1xxx/COISS_1001/COISS_1001_ring_summary.tab',
-                    'metadata/COISS_1xxx/COISS_1001/COISS_1001_ring_summary.lbl'],
-          ('metadata',
-           10,
-           'inventory',
-           'Target Body Inventory',
-           False): ['metadata/COISS_1xxx/COISS_1001/COISS_1001_inventory.csv',
-                    'metadata/COISS_1xxx/COISS_1001/COISS_1001_inventory.lbl'],
-          ('metadata',
-           5,
-           'rms_index',
-           'RMS Node Augmented Index',
-           False): ['metadata/COISS_1xxx/COISS_1001/COISS_1001_index.tab',
-                    'metadata/COISS_1xxx/COISS_1001/COISS_1001_index.lbl'],
-          ('Cassini ISS',
-           140,
-           'coiss_documentation',
-           'Documentation',
-           False): ['documents/COISS_0xxx/VICAR-File-Format.pdf',
-                    'documents/COISS_0xxx/ISS-Users-Guide.pdf',
-                    'documents/COISS_0xxx/ISS-Users-Guide.docx',
-                    'documents/COISS_0xxx/Data-Product-SIS.txt',
-                    'documents/COISS_0xxx/Data-Product-SIS.pdf',
-                    'documents/COISS_0xxx/Cassini-ISS-Final-Report.pdf',
-                    'documents/COISS_0xxx/Calibration-Theoretical-Basis.pdf',
-                    'documents/COISS_0xxx/Calibration-Plan.pdf',
-                    'documents/COISS_0xxx/CISSCAL-Users-Guide.pdf',
-                    'documents/COISS_0xxx/Archive-SIS.txt',
-                    'documents/COISS_0xxx/Archive-SIS.pdf']}
-        ),
+        ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress.xml',
+         'bundles',
+         [
+            'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress.tab',
+            'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress.xml',
+            'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/browse/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress.pdf',
+            'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/browse/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress.xml'
+         ]),
+        ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress.xml',
+         'previews',
+         [
+            'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_full.png',
+            'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_med.png',
+            'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_small.png',
+            'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_thumb.png'
+         ]),
+        ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress.xml',
+         'previews',
+         [
+            'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_full.png',
+            'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_med.png',
+            'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_small.png',
+            'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_thumb.png'
+         ]),
+        ('uranus_occs_earthbased',
+         'metadata',
+         [
+            'metadata/uranus_occs_earthbased',
+         ]),
+        ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm',
+         'metadata',
+         [
+            'metadata/uranus_occs_earthbased',
+         ]),
+        # TODO: when we have index shelf files available, we can test the following cases
+        # ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_alpha_egress_100m.xml',
+        #  'metadata',
+        #  [
+        #     'metadata/uranus_occs_earthbased/uranus_rings_occultations_index.tab/u0_kao_91cm_734nm_radius_alpha_egress_100m',
+        #  ]),
+        # ('uranus_occs_earthbased/data/rings/u0_kao_91cm_734nm_radius_delta_ingress_1000m.tab',
+        #  'metadata',
+        #  [
+        #     'metadata/uranus_occs_earthbased/uranus_rings_occultations_index.tab/u0_kao_91cm_734nm_radius_delta_ingress_1000ms',
+        #  ]),
+        # ('uranus_occs_earthbased/data/global/u0_kao_91cm_734nm_radius_equator_ingress_500m.tab',
+        #  'metadata',
+        #  [
+        #     'metadata/uranus_occs_earthbased/uranus_global_occultations_index.tab/u0_kao_91cm_734nm_radius_equator_ingress_500m',
+        #  ]),
+        # ('uranus_occs_earthbased/data/global/u0_kao_91cm_734nm_radius_equator_egress_100m.xml',
+        #  'metadata',
+        #  [
+        #     'metadata/uranus_occs_earthbased/uranus_global_occultations_index.tab/u0_kao_91cm_734nm_radius_equator_egress_100m',
+        #  ]),
+        # TODO: add test case for documents when correct document files are added
     ]
 )
-def xtest_opus_products(input_path, expected):
-    opus_products_test(input_path, expected)
+def test_associated_abspaths(input_path, category, expected):
+    target_pdsfile = instantiate_target_pdsfile(input_path)
+    res = target_pdsfile.associated_abspaths(category=category)
+    result_paths = []
+    result_paths += pds4file.Pds4File.logicals_for_abspaths(res)
+    assert len(result_paths) != 0
+    for path in result_paths:
+        assert path in expected
 
 def test_opus_id_to_primary_logical_path():
     TESTS = PRIMARY_FILESPEC_LIST

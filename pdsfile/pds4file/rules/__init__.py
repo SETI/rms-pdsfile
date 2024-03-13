@@ -263,8 +263,8 @@ DESCRIPTION_AND_ICON = translator.TranslatorByRegex([
 ##########################################################################################
 
 ASSOCIATIONS = {
-    'volumes'   : translator.TranslatorByRegex([
-                        (r'documents/([A-Z][A-Z0-9x]{1,5}_....).*', 0, r'volumes/\1'),
+    'bundles'   : translator.TranslatorByRegex([
+                        (r'documents/(\w.*)/.*', 0, r'bundles/\1'),
                     ]),
     'previews'  : translator.NullTranslator(),
     'calibrated': translator.NullTranslator(),
