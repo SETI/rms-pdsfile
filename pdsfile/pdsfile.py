@@ -650,7 +650,6 @@ class PdsFile(object):
                 for bundleset in pdsf0.childnames:
                     if bundleset.endswith('.txt') or bundleset.endswith('.tar.gz'):
                         continue
-
                     # Get the entry keyed by the logical path
                     pdsf1 = cls.CACHE[category + '/' + bundleset.lower()]
 
@@ -1251,7 +1250,7 @@ class PdsFile(object):
                                     sensitive (default False)
         """
 
-        if 'holdings/_infoshelf' in abspath:
+        if f'{cls.PDS_HOLDINGS}/_infoshelf' in abspath:
             return os.path.exists(abspath)
 
         # Handle index rows
@@ -1265,7 +1264,7 @@ class PdsFile(object):
 
         # If it's for documentation, we don't create shelf files, we will just use the
         # os.path.exists
-        if cls.SHELVES_ONLY and 'holdings/documents' not in abspath:
+        if cls.SHELVES_ONLY and f'{cls.PDS_HOLDINGS}/documents' not in abspath:
             try:
                 (shelf_abspath,
                  key) = cls.shelf_path_and_key_for_abspath(abspath, 'info')
@@ -1279,7 +1278,8 @@ class PdsFile(object):
                                     # empty key, so this avoids an unnecessary
                                     # open of the file.
                 else:
-                    return False
+                    # Check the filesystem if we can't find the shelf file
+                    return os.path.exists(abspath)
             except (ValueError, IndexError, IOError, OSError):
                 pass
 
@@ -1296,7 +1296,10 @@ class PdsFile(object):
                 if cls.os_path_exists(shelf_abspath + '_info.pickle'):
                     return True
 
-                # Checksum files need special handling
+                # Checksum files need special handling, before doing special handling,
+                # check if the checksums directory exist
+                if 'checksums-' in abspath and not os.path.exists(abspath):
+                    return False
                 testpath = cls._non_checksum_abspath(abspath)
                 if testpath and cls.os_path_exists(testpath):
                     return True
@@ -1337,7 +1340,8 @@ class PdsFile(object):
                                     # empty key, so this avoids an unnecessary
                                     # open of the file.
                 else:
-                    return False
+                    # Check the filesystem if we can't find the shelf file
+                    return os.path.isdir(abspath)
             except (ValueError, IndexError, IOError, OSError):
                 pass
 
@@ -1355,6 +1359,9 @@ class PdsFile(object):
                     return True
 
                 # Checksum files need special handling
+                # Check the filesystem first
+                if 'checksums-' in abspath and not os.path.isdir(abspath):
+                    return False
                 testpath = cls._non_checksum_abspath(abspath)
                 if testpath and cls.os_path_exists(testpath):
                     # If the testpath exists, then whether it is a directory or
@@ -1409,11 +1416,11 @@ class PdsFile(object):
                 results = cls.os_listdir(testpath)
 
                 for voltype in cls.VOLTYPES:
-                  if '-' + voltype in abspath:
-                    if voltype == 'volumes':
-                        return [r + '_md5.txt' for r in results]
-                    else:
-                        return [r + '_' + voltype + '_md5.txt' for r in results]
+                    if '-' + voltype in abspath:
+                        if voltype == 'volumes':
+                            return [r + '_md5.txt' for r in results]
+                        else:
+                            return [r + '_' + voltype + '_md5.txt' for r in results]
 
                 raise ValueError('Invalid abspath for os_listdir: ' + abspath)
 
@@ -1431,7 +1438,7 @@ class PdsFile(object):
                     return results
 
                 voltype = parts[0]
-                if voltype == 'volumes':
+                if voltype == 'volumes' or voltype == 'bundles':
                     return [r + '_md5.txt' for r in results]
                 else:
                     return [r + '_' + voltype + '_md5.txt' for r in results]
@@ -3933,7 +3940,7 @@ class PdsFile(object):
             pass
 
         # Strip off a "holdings" directory if found
-        k = path_lc.find('holdings')
+        k = path_lc.find(cls.PDS_HOLDINGS)
         if k >= 0:
             path = path[k:]
             path = path.partition('/')[2]   # remove up to the next slash
