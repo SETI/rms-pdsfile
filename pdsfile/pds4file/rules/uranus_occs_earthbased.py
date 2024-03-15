@@ -80,7 +80,7 @@ associations_to_metadata = translator.TranslatorByRegex([
     (r'.*/(uranus_occs_earthbased)/.*', 0,
         r'metadata/\1'),
     (r'.*/(uranus_occs_earthbased)/(uranus_occ_u.*)/(data|browse)(.*|_[a-z]*])/(rings|global|atmos).*/(.*)\.[a-z]{3}', 0,
-        r'metadata/\1/uranus_\5_occultations_index.tab/\6'),
+        r'metadata/\1/\2/\2_\5_index.csv/\6'),
 ])
 
 associations_to_documents = translator.TranslatorByRegex([
@@ -418,22 +418,22 @@ from .pytest_support import *
         # ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_alpha_egress_100m.xml',
         #  'metadata',
         #  [
-        #     'metadata/uranus_occs_earthbased/uranus_rings_occultations_index.tab/u0_kao_91cm_734nm_radius_alpha_egress_100m',
+        #     'metadata/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/uranus_occ_u0_kao_91cm_rings_index.csv/u0_kao_91cm_734nm_radius_alpha_egress_100m',
         #  ]),
         # ('uranus_occs_earthbased/data/rings/u0_kao_91cm_734nm_radius_delta_ingress_1000m.tab',
         #  'metadata',
         #  [
-        #     'metadata/uranus_occs_earthbased/uranus_rings_occultations_index.tab/u0_kao_91cm_734nm_radius_delta_ingress_1000ms',
+        #     'metadata/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/uranus_occ_u0_kao_91cm_rings_index.csv/u0_kao_91cm_734nm_radius_delta_ingress_1000ms',
         #  ]),
         # ('uranus_occs_earthbased/data/global/u0_kao_91cm_734nm_radius_equator_ingress_500m.tab',
         #  'metadata',
         #  [
-        #     'metadata/uranus_occs_earthbased/uranus_global_occultations_index.tab/u0_kao_91cm_734nm_radius_equator_ingress_500m',
+        #     'metadata/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/uranus_occ_u0_kao_91cm_global_index.csv/u0_kao_91cm_734nm_radius_equator_ingress_500m',
         #  ]),
         # ('uranus_occs_earthbased/data/global/u0_kao_91cm_734nm_radius_equator_egress_100m.xml',
         #  'metadata',
         #  [
-        #     'metadata/uranus_occs_earthbased/uranus_global_occultations_index.tab/u0_kao_91cm_734nm_radius_equator_egress_100m',
+        #     'metadata/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/uranus_occ_u0_kao_91cm_global_index.csv/u0_kao_91cm_734nm_radius_equator_egress_100m',
         #  ]),
         # TODO: add test case for documents when correct document files are added
     ]
