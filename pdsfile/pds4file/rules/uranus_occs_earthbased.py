@@ -77,9 +77,11 @@ associations_to_previews = translator.TranslatorByRegex([
 ])
 
 associations_to_metadata = translator.TranslatorByRegex([
-    (r'.*/(uranus_occs_earthbased)/.*', 0,
+    (r'.*/(uranus_occs_earthbased)/*', 0,
         r'metadata/\1'),
-    (r'.*/(uranus_occs_earthbased)/(uranus_occ_u.*)/(data|browse)(.*|_[a-z]*])/(rings|global|atmos).*/(.*)\.[a-z]{3}', 0,
+    (r'.*/(uranus_occs_earthbased/uranus_occ_u[a-z0-9\_]*)/*', 0,
+        r'metadata/\1'),
+    (r'.*/(uranus_occs_earthbased)/(uranus_occ_u[a-z0-9\_]*)/(data|browse)(.*|_[a-z]*])/(rings|global|atmos).*/(.*)\.[a-z]{3}', 0,
         r'metadata/\1/\2/\2_\5_index.csv/\6'),
 ])
 
@@ -412,7 +414,7 @@ from .pytest_support import *
         ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm',
          'metadata',
          [
-            'metadata/uranus_occs_earthbased',
+            'metadata/uranus_occs_earthbased/uranus_occ_u0_kao_91cm',
          ]),
         # TODO: when we have index shelf files available, we can test the following cases
         # ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_alpha_egress_100m.xml',
