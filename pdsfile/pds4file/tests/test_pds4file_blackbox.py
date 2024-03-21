@@ -530,3 +530,55 @@ class TestPds4FileBlackBox:
         else:
             # For the case when viewset is None, the function will return False
             assert res == expected
+
+    @pytest.mark.parametrize(
+    'input_path,expected',
+    [
+        # Rings/ring models
+        ('bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_alpha_egress_100m.xml',
+        'ebur_occ_ring_0100'),
+        ('bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_beta_ingress_500m.tab',
+        'ebur_occ_ring_0500'),
+        ('bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_delta_ingress_1000m.xml',
+        'ebur_occ_ring_1000'),
+        ('bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_counts-v-time_rings_ingress.tab',
+        'ebur_occ_ring_time'),
+        ('bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/ring_models/u0_kao_91cm_734nm_fitted_ring_event_times.tab',
+        'ebur_occ_ring_sqw_model'),
+        ('bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/ring_models/u0_kao_91cm_734nm_ring_six_egress_sqw.txt',
+        'ebur_occ_ring_sqw_model'),
+        ('bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/ring_models/u0_kao_91cm_734nm_wavelengths.csv',
+        'ebur_occ_ring_sqw_model'),
+        # Atomosphere
+        ('bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_ingress.tab',
+        'ebur_occ_atmos'),
+        # Global
+        ('bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_egress_100m.tab',
+        'ebur_occ_global_0100'),
+        ('bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_ingress_500m.tab',
+        'ebur_occ_global_0500'),
+        ('bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_egress_1000m.xml',
+        'ebur_occ_global_1000'),
+        ('bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_counts-v-time_occult.xml',
+        'ebur_occ_global_time'),
+        # Uranus occ support
+        ('bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_20201201.xml',
+        'ebur_occ_global_ring_fit'),
+        ('bundles/uranus_occs_earthbased/uranus_occ_support/document/supplemental_docs/uranus_occultations_index.xml',
+        'ebur_occ_orig_index'),
+        ('bundles/uranus_occs_earthbased/uranus_occ_support/document/supplemental_docs/uranus_ringocc_bundles_quality_rating.csv',
+        'ebur_occ_quality_rating'),
+        ('bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/earth-based-uranus-stellar-occultation-user-guide.pdf',
+        'ebur_occ_documentation'),
+        ('bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/fk/uranus_ringframes_french_et_al_1988_v1.tf',
+        'ebur_occ_kernels'),
+        ('bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/spk/urkao_v1.bsp',
+        'ebur_occ_kernels'),
+        # TODO: Add preview and diagram images when they are available
+    ]
+    )
+    def test_opus_type(self, input_path, expected):
+        """opus_type: return self._opus_type_filled"""
+        target_pdsfile = instantiate_target_pdsfile(input_path, False)
+        res = target_pdsfile.opus_type
+        assert res[2] == expected
