@@ -180,35 +180,59 @@ opus_format = translator.TranslatorByRegex([
 ##########################################################################################
 # OPUS_PRODUCTS
 ##########################################################################################
-
+# call .opus_products() on primary filespec
 opus_products = translator.TranslatorByRegex([
-    (r'.*/(COISS_[12]xxx)(|_v[0-9\.]+)/(COISS_[12]...)/data/(\w+/[NW][0-9]{10}_[0-9]+).*', 0,
-            [r'volumes/\1*/\3/data/\4.IMG',
-             r'volumes/\1*/\3/data/\4.LBL',
-             r'volumes/\1*/\3/extras/thumbnail/\4.IMG.jpeg_small',
-             r'volumes/\1*/\3/extras/browse/\4.IMG.jpeg',
-             r'volumes/\1*/\3/extras/full/\4.IMG.png',
-             r'volumes/\1*/\3/extras/tiff/\4.IMG.tiff',
-             r'calibrated/\1*/\3/data/\4_CALIB.IMG',
-             r'calibrated/\1*/\3/data/\4_CALIB.LBL',
-             r'previews/\1/\3/data/\4_full.png',
-             r'previews/\1/\3/data/\4_med.jpg',
-             r'previews/\1/\3/data/\4_small.jpg',
-             r'previews/\1/\3/data/\4_thumb.jpg',
-             r'metadata/\1/\3/\3_moon_summary.tab',
-             r'metadata/\1/\3/\3_moon_summary.lbl',
-             r'metadata/\1/\3/\3_ring_summary.tab',
-             r'metadata/\1/\3/\3_ring_summary.lbl',
-             r'metadata/\1/\3/\3_saturn_summary.tab',
-             r'metadata/\1/\3/\3_saturn_summary.lbl',
-             r'metadata/\1/\3/\3_jupiter_summary.tab',
-             r'metadata/\1/\3/\3_jupiter_summary.lbl',
-             r'metadata/\1/\3/\3_inventory.csv',
-             r'metadata/\1/\3/\3_inventory.lbl',
-             r'metadata/\1/\3/\3_index.tab',
-             r'metadata/\1/\3/\3_index.lbl',
-             r'documents/COISS_0xxx/*.[!lz]*',
-            ]),
+    # Rings specific products
+    (r'.*/(uranus_occs_earthbased/uranus_occ_([a-zA-Z0-9\_]+))/(data/rings)/.*_radius_(.*)_(egress|ingress)([\_0-9m]*)\.[a-z]{3}', 0,
+        [r'bundles/\1/\3/\2*_radius_\4_\5_*.tab',
+         r'bundles/\1/\3/\2*_radius_\4_\5_*.xml',
+         r'bundles/\1/\3/\2*_counts-v-time_rings_\5.tab',
+         r'bundles/\1/\3/\2*_counts-v-time_rings_\5.xml',
+         r'bundles/\1/data/ring_models/\2*_ring_\4_\5_sqw*.pdf',
+         r'bundles/\1/data/ring_models/\2*_ring_\4_\5_sqw*.txt',
+         r'bundles/\1/data/ring_models/\2*_ring_\4_\5_sqw*.xml',
+         r'bundles/\1/data/ring_models/\2*_fitted_*.pdf',
+         r'bundles/\1/data/ring_models/\2*_fitted_*.tab',
+         r'bundles/\1/data/ring_models/\2*_fitted_*.xml',
+         r'bundles/\1/data/ring_models/\2*_predicted_*.pdf',
+         r'bundles/\1/data/ring_models/\2*_predicted_*.tab',
+         r'bundles/\1/data/ring_models/\2*_predicted_*.xml',
+         r'bundles/\1/data/ring_models/\2*_wavelengths.csv',
+         r'bundles/\1/data/ring_models/\2*_wavelengths.xml',
+        ]
+    ),
+    # Atmosphere specific products
+    (r'.*/(uranus_occs_earthbased/uranus_occ_([a-zA-Z0-9\_]+))/(data/atmosphere)/.*_counts-v-time_atmos_(egress|ingress)\.[a-z]{3}', 0,
+        [r'bundles/\1/\3/\2*_counts-v-time_atmos_\4.tab',
+         r'bundles/\1/\3/\2*_counts-v-time_atmos_\4.xml',
+        ]
+    ),
+    # Global, available for all rings and atomosphere occs as well
+    (r'.*/(uranus_occs_earthbased/uranus_occ_([a-zA-Z0-9\_]+))/data/(rings|atmosphere|global)/.*(egress|ingress)([\_0-9m]*)\.[a-z]{3}', 0,
+        [r'bundles/\1/data/global/\2*_radius_equator_\4_*.tab',
+         r'bundles/\1/data/global/\2*_radius_equator_\4_*.xml',
+         r'bundles/\1/data/global/\2*_counts-v-time_occult.tab',
+         r'bundles/\1/data/global/\2*_counts-v-time_occult.xml',
+        ]
+    ),
+    # Uranus occ support, available for all occs
+    (r'.*/(uranus_occs_earthbased)/uranus_occ_.*\.[a-z]{3}', 0,
+        [r'bundles/\1/uranus_occ_support/data/*_ring_fit_rfrench*.csv',
+         r'bundles/\1/uranus_occ_support/data/*_ring_fit_rfrench*.tab',
+         r'bundles/\1/uranus_occ_support/data/*_ring_fit_rfrench*.txt',
+         r'bundles/\1/uranus_occ_support/data/*_ring_fit_rfrench*.xml',
+         r'bundles/\1/uranus_occ_support/document/supplemental_docs/*_index.tab',
+         r'bundles/\1/uranus_occ_support/document/supplemental_docs/*_index.xml',
+         r'bundles/\1/uranus_occ_support/document/supplemental_docs/*_quality_rating.csv',
+         r'bundles/\1/uranus_occ_support/document/supplemental_docs/*_quality_rating.xml',
+         r'bundles/\1/uranus_occ_support/document/user_guide/*-user-guide.pdf',
+         r'bundles/\1/uranus_occ_support/document/user_guide/*-user-guide.xml',
+         r'bundles/\1/uranus_occ_support/spice_kernels/fk/*.tf',
+         r'bundles/\1/uranus_occ_support/spice_kernels/fk/*.xml',
+         r'bundles/\1/uranus_occ_support/spice_kernels/spk/*.bsp',
+         r'bundles/\1/uranus_occ_support/spice_kernels/spk/*.xml',
+        ]
+    ),
 ])
 
 ##########################################################################################
