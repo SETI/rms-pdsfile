@@ -157,14 +157,15 @@ opus_type = translator.TranslatorByRegex([
     (r'bundles/uranus_occs.*/.*/data/global/.*_counts-v-time_occult.*\.(tab|xml)',          0, ('Uranus Earth-based Occultations', 100, 'ebur_occ_global_time', 'Occultation Global Time', True)),
 
     # Uranus occ support
-    (r'.*uranus_occ_support/data/.*_ring_fit_rfrench.*\.(csv|tab|txt|xml)',                 0, ('Uranus Earth-based Occultations', 140, 'ebur_occ_global_ring_fit', 'Occultation Global Ring Fit', False)),
-    (r'.*uranus_occ_support/document/supplemental_docs/uranus_occ.*_index\.(tab|xml)',      0, ('Uranus Earth-based Occultations', 150, 'ebur_occ_orig_index', 'Occultation Original Index', False)),
-    (r'.*uranus_occ_support/document/supplemental_docs/uranus_ringocc.*_rating\.(csv|xml)', 0, ('Uranus Earth-based Occultations', 160, 'ebur_occ_quality_rating', 'Occultation Quality Rating', False)),
-    (r'.*uranus_occ_support/document/user_guide/.*occultation-user-guide\.(pdf|xml)',       0, ('Uranus Earth-based Occultations', 170, 'ebur_occ_documentation', 'Occultation Documentation', False)),
-    (r'.*uranus_occ_support/spice_kernels/fk/.*\.(tf|xml)',                                 0, ('Uranus Earth-based Occultations', 180, 'ebur_occ_kernels', 'Occultation Kernels', False)),
-    (r'.*uranus_occ_support/spice_kernels/spk/.*\.(bsp|xml)',                               0, ('Uranus Earth-based Occultations', 180, 'ebur_occ_kernels', 'Occultation Kernels', False)),
+    (r'.*uranus_occ_support/data/.*_ring_fit_rfrench.*\.(csv|tab|txt|xml)',                 0, ('Uranus Earth-based Occultations', 110, 'ebur_occ_global_ring_fit', 'Occultation Global Ring Fit', False)),
+    (r'.*uranus_occ_support/document/supplemental_docs/uranus_occ.*_index\.(tab|xml)',      0, ('Uranus Earth-based Occultations', 120, 'ebur_occ_orig_index', 'Occultation Original Index', False)),
+    (r'.*uranus_occ_support/document/supplemental_docs/uranus_ringocc.*_rating\.(csv|xml)', 0, ('Uranus Earth-based Occultations', 130, 'ebur_occ_quality_rating', 'Occultation Quality Rating', False)),
+    (r'.*uranus_occ_support/document/user_guide/.*occultation-user-guide\.(pdf|xml)',       0, ('Uranus Earth-based Occultations', 140, 'ebur_occ_documentation', 'Occultation Documentation', False)),
+    (r'.*uranus_occ_support/spice_kernels/fk/.*\.(tf|xml)',                                 0, ('Uranus Earth-based Occultations', 150, 'ebur_occ_kernels', 'Occultation Kernels', False)),
+    (r'.*uranus_occ_support/spice_kernels/spk/.*\.(bsp|xml)',                               0, ('Uranus Earth-based Occultations', 150, 'ebur_occ_kernels', 'Occultation Kernels', False)),
 
-    # rms_index exists in the rules/__init__.py
+    # rms_index
+    (r'metadata/uranus_occs.*/.*/.*_index.csv',                                             0, ('metadata', 160, 'rms_index', 'RMS Node Augmented Index',     False)),
     # TODO: Add preview and diagram images when they are available
 ])
 
@@ -199,21 +200,24 @@ opus_products = translator.TranslatorByRegex([
          r'bundles/\1/data/ring_models/\2*_predicted_*.xml',
          r'bundles/\1/data/ring_models/\2*_wavelengths.csv',
          r'bundles/\1/data/ring_models/\2*_wavelengths.xml',
-        ]
+         r'metadata/\1/uranus_occ_\2_rings_index.csv']
     ),
     # Atmosphere specific products
     (r'.*/(uranus_occs_earthbased/uranus_occ_([a-zA-Z0-9\_]+))/(data/atmosphere)/.*_counts-v-time_atmos_(egress|ingress)\.[a-z]{3}', 0,
         [r'bundles/\1/\3/\2*_counts-v-time_atmos_\4.tab',
          r'bundles/\1/\3/\2*_counts-v-time_atmos_\4.xml',
-        ]
+         r'metadata/\1/uranus_occ_\2_atmos_index.csv']
     ),
     # Global, available for all rings and atomosphere occs as well
     (r'.*/(uranus_occs_earthbased/uranus_occ_([a-zA-Z0-9\_]+))/data/(rings|atmosphere|global)/.*(egress|ingress)([\_0-9m]*)\.[a-z]{3}', 0,
         [r'bundles/\1/data/global/\2*_radius_equator_\4_*.tab',
          r'bundles/\1/data/global/\2*_radius_equator_\4_*.xml',
          r'bundles/\1/data/global/\2*_counts-v-time_occult.tab',
-         r'bundles/\1/data/global/\2*_counts-v-time_occult.xml',
-        ]
+         r'bundles/\1/data/global/\2*_counts-v-time_occult.xml']
+    ),
+    # Global specific products
+    (r'.*/(uranus_occs_earthbased/uranus_occ_([a-zA-Z0-9\_]+))/data/global/.*(egress|ingress)([\_0-9m]*)\.[a-z]{3}', 0,
+        [r'metadata/\1/uranus_occ_\2_global_index.csv']
     ),
     # Uranus occ support, available for all occs
     (r'.*/(uranus_occs_earthbased)/uranus_occ_.*\.[a-z]{3}', 0,
@@ -230,10 +234,9 @@ opus_products = translator.TranslatorByRegex([
          r'bundles/\1/uranus_occ_support/spice_kernels/fk/*.tf',
          r'bundles/\1/uranus_occ_support/spice_kernels/fk/*.xml',
          r'bundles/\1/uranus_occ_support/spice_kernels/spk/*.bsp',
-         r'bundles/\1/uranus_occ_support/spice_kernels/spk/*.xml',
-        ]
+         r'bundles/\1/uranus_occ_support/spice_kernels/spk/*.xml']
     ),
-    # TODO: Add rms index files, preview and diagram images when they are available
+    # TODO: Add preview and diagram images when they are available
 ])
 
 ##########################################################################################
@@ -508,8 +511,15 @@ from .pytest_support import *
                 'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_counts-v-time_occult.xml',
                 'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_counts-v-time_occult.tab'
             ],
+          ('metadata',
+           160,
+           'rms_index',
+           'RMS Node Augmented Index',
+           False): [
+               'metadata/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/uranus_occ_u0_kao_91cm_rings_index.csv'
+            ],
           ('Uranus Earth-based Occultations',
-           140,
+           110,
            'ebur_occ_global_ring_fit',
            'Occultation Global Ring Fit',
            False): [
@@ -522,7 +532,7 @@ from .pytest_support import *
                 'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_20201201.tab'
             ],
           ('Uranus Earth-based Occultations',
-           150,
+           120,
            'ebur_occ_orig_index',
            'Occultation Original Index',
            False): [
@@ -530,7 +540,7 @@ from .pytest_support import *
                 'bundles/uranus_occs_earthbased/uranus_occ_support/document/supplemental_docs/uranus_occultations_index.tab'
             ],
           ('Uranus Earth-based Occultations',
-           160,
+           130,
            'ebur_occ_quality_rating',
            'Occultation Quality Rating',
            False): [
@@ -538,7 +548,7 @@ from .pytest_support import *
                 'bundles/uranus_occs_earthbased/uranus_occ_support/document/supplemental_docs/uranus_ringocc_bundles_quality_rating.csv'
             ],
           ('Uranus Earth-based Occultations',
-           170,
+           140,
            'ebur_occ_documentation',
            'Occultation Documentation',
            False): [
@@ -546,7 +556,7 @@ from .pytest_support import *
                 'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/earth-based-uranus-stellar-occultation-user-guide.pdf'
             ],
           ('Uranus Earth-based Occultations',
-           180,
+           150,
            'ebur_occ_kernels',
            'Occultation Kernels',
            False): [
@@ -599,8 +609,15 @@ from .pytest_support import *
                 'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_counts-v-time_occult.xml',
                 'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_counts-v-time_occult.tab'
             ],
+          ('metadata',
+            160,
+            'rms_index',
+            'RMS Node Augmented Index',
+            False): [
+                'metadata/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/uranus_occ_u0_kao_91cm_atmos_index.csv'
+            ],
           ('Uranus Earth-based Occultations',
-           140,
+           110,
            'ebur_occ_global_ring_fit',
            'Occultation Global Ring Fit',
            False): [
@@ -613,7 +630,7 @@ from .pytest_support import *
                 'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_20201201.tab'
             ],
           ('Uranus Earth-based Occultations',
-           150,
+           120,
            'ebur_occ_orig_index',
            'Occultation Original Index',
            False): [
@@ -621,7 +638,7 @@ from .pytest_support import *
                 'bundles/uranus_occs_earthbased/uranus_occ_support/document/supplemental_docs/uranus_occultations_index.tab'
             ],
           ('Uranus Earth-based Occultations',
-           160,
+           130,
            'ebur_occ_quality_rating',
            'Occultation Quality Rating',
            False): [
@@ -629,7 +646,7 @@ from .pytest_support import *
                 'bundles/uranus_occs_earthbased/uranus_occ_support/document/supplemental_docs/uranus_ringocc_bundles_quality_rating.csv'
             ],
           ('Uranus Earth-based Occultations',
-           170,
+           140,
            'ebur_occ_documentation',
            'Occultation Documentation',
            False): [
@@ -637,7 +654,7 @@ from .pytest_support import *
                 'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/earth-based-uranus-stellar-occultation-user-guide.pdf'
             ],
           ('Uranus Earth-based Occultations',
-           180,
+           150,
            'ebur_occ_kernels',
            'Occultation Kernels',
            False): [
@@ -683,8 +700,15 @@ from .pytest_support import *
                 'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_counts-v-time_occult.xml',
                 'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_counts-v-time_occult.tab'
             ],
+          ('metadata',
+            160,
+            'rms_index',
+            'RMS Node Augmented Index',
+            False): [
+                'metadata/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/uranus_occ_u0_kao_91cm_global_index.csv'
+            ],
           ('Uranus Earth-based Occultations',
-           140,
+           110,
            'ebur_occ_global_ring_fit',
            'Occultation Global Ring Fit',
            False): [
@@ -694,9 +718,10 @@ from .pytest_support import *
                 'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_input_data_20201201.tab',
                 'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_20201201.xml',
                 'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_20201201.txt',
-                'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_20201201.tab'],
+                'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_20201201.tab'
+            ],
           ('Uranus Earth-based Occultations',
-           150,
+           120,
            'ebur_occ_orig_index',
            'Occultation Original Index',
            False): [
@@ -704,7 +729,7 @@ from .pytest_support import *
                 'bundles/uranus_occs_earthbased/uranus_occ_support/document/supplemental_docs/uranus_occultations_index.tab'
             ],
           ('Uranus Earth-based Occultations',
-           160,
+           130,
            'ebur_occ_quality_rating',
            'Occultation Quality Rating',
            False): [
@@ -712,7 +737,7 @@ from .pytest_support import *
                 'bundles/uranus_occs_earthbased/uranus_occ_support/document/supplemental_docs/uranus_ringocc_bundles_quality_rating.csv'
             ],
           ('Uranus Earth-based Occultations',
-           170,
+           140,
            'ebur_occ_documentation',
            'Occultation Documentation',
            False): [
@@ -720,7 +745,7 @@ from .pytest_support import *
                 'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/earth-based-uranus-stellar-occultation-user-guide.pdf'
             ],
           ('Uranus Earth-based Occultations',
-           180,
+           150,
            'ebur_occ_kernels',
            'Occultation Kernels',
            False): [
