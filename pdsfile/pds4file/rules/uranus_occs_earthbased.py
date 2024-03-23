@@ -427,6 +427,7 @@ from .pytest_support import *
 @pytest.mark.parametrize(
     'input_path,expected',
     [
+        # rings
         ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_delta_egress_100m.xml',
          {('Uranus Earth-based Occultations',
            20,
@@ -480,82 +481,255 @@ from .pytest_support import *
            'ebur_occ_global_0100',
            'Occultation Global Profile (100m)',
            True): [
-               'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_egress_100m.xml',
-               'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_egress_100m.tab'
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_egress_100m.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_egress_100m.tab'
             ],
           ('Uranus Earth-based Occultations',
            90,
            'ebur_occ_global_1000',
            'Occultation Global Profile (1000m)',
            True): [
-               'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_egress_1000m.xml',
-               'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_egress_1000m.tab'
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_egress_1000m.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_egress_1000m.tab'
             ],
           ('Uranus Earth-based Occultations',
            80,
            'ebur_occ_global_0500',
            'Occultation Global Profile (500m)',
            True): [
-               'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_egress_500m.xml',
-               'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_egress_500m.tab'
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_egress_500m.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_egress_500m.tab'
             ],
           ('Uranus Earth-based Occultations',
            100,
            'ebur_occ_global_time',
            'Occultation Global Time',
            True): [
-               'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_counts-v-time_occult.xml',
-               'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_counts-v-time_occult.tab'
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_counts-v-time_occult.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_counts-v-time_occult.tab'
             ],
           ('Uranus Earth-based Occultations',
            140,
            'ebur_occ_global_ring_fit',
            'Occultation Global Ring Fit',
            False): [
-               'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_input_stars_20201201.csv',
-               'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_input_observatories_20201201.tab',
-               'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_input_events_20201201.tab',
-               'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_input_data_20201201.tab',
-               'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_20201201.xml',
-               'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_20201201.txt',
-               'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_20201201.tab'
+                'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_input_stars_20201201.csv',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_input_observatories_20201201.tab',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_input_events_20201201.tab',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_input_data_20201201.tab',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_20201201.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_20201201.txt',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_20201201.tab'
             ],
           ('Uranus Earth-based Occultations',
            150,
            'ebur_occ_orig_index',
            'Occultation Original Index',
            False): [
-               'bundles/uranus_occs_earthbased/uranus_occ_support/document/supplemental_docs/uranus_occultations_index.xml',
-               'bundles/uranus_occs_earthbased/uranus_occ_support/document/supplemental_docs/uranus_occultations_index.tab'
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/supplemental_docs/uranus_occultations_index.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/supplemental_docs/uranus_occultations_index.tab'
             ],
           ('Uranus Earth-based Occultations',
            160,
            'ebur_occ_quality_rating',
            'Occultation Quality Rating',
            False): [
-               'bundles/uranus_occs_earthbased/uranus_occ_support/document/supplemental_docs/uranus_ringocc_bundles_quality_rating.xml',
-               'bundles/uranus_occs_earthbased/uranus_occ_support/document/supplemental_docs/uranus_ringocc_bundles_quality_rating.csv'
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/supplemental_docs/uranus_ringocc_bundles_quality_rating.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/supplemental_docs/uranus_ringocc_bundles_quality_rating.csv'
             ],
           ('Uranus Earth-based Occultations',
            170,
            'ebur_occ_documentation',
            'Occultation Documentation',
            False): [
-               'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/earth-based-uranus-stellar-occultation-user-guide.xml',
-               'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/earth-based-uranus-stellar-occultation-user-guide.pdf'
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/earth-based-uranus-stellar-occultation-user-guide.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/earth-based-uranus-stellar-occultation-user-guide.pdf'
             ],
           ('Uranus Earth-based Occultations',
            180,
            'ebur_occ_kernels',
            'Occultation Kernels',
            False): [
-               'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/spk/urkao_v1.xml',
-               'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/spk/urkao_v1.bsp',
-               'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/fk/uranus_ringframes_rfrench20201201_v1.xml',
-               'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/fk/uranus_ringframes_rfrench20201201_v1.tf',
-               'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/fk/uranus_ringframes_french_et_al_1988_v1.xml',
-               'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/fk/uranus_ringframes_french_et_al_1988_v1.tf'
+                'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/spk/urkao_v1.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/spk/urkao_v1.bsp',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/fk/uranus_ringframes_rfrench20201201_v1.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/fk/uranus_ringframes_rfrench20201201_v1.tf',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/fk/uranus_ringframes_french_et_al_1988_v1.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/fk/uranus_ringframes_french_et_al_1988_v1.tf'
             ]}
+        ),
+        # atmosphere
+        ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_ingress.xml',
+         {('Uranus Earth-based Occultations',
+           60,
+           'ebur_occ_atmos',
+           'Occultation Atomosphere Time',
+           True): [
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_ingress.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_ingress.tab'
+            ],
+          ('Uranus Earth-based Occultations',
+           70,
+           'ebur_occ_global_0100',
+           'Occultation Global Profile (100m)',
+           True): [
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_ingress_100m.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_ingress_100m.tab'
+            ],
+          ('Uranus Earth-based Occultations',
+           80,
+           'ebur_occ_global_0500',
+           'Occultation Global Profile (500m)',
+           True): [
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_ingress_500m.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_ingress_500m.tab'],
+          ('Uranus Earth-based Occultations',
+           90,
+           'ebur_occ_global_1000',
+           'Occultation Global Profile (1000m)',
+           True): [
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_ingress_1000m.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_ingress_1000m.tab'
+            ],
+          ('Uranus Earth-based Occultations',
+           100,
+           'ebur_occ_global_time',
+           'Occultation Global Time',
+           True): [
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_counts-v-time_occult.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_counts-v-time_occult.tab'
+            ],
+          ('Uranus Earth-based Occultations',
+           140,
+           'ebur_occ_global_ring_fit',
+           'Occultation Global Ring Fit',
+           False): [
+                'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_input_stars_20201201.csv',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_input_observatories_20201201.tab',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_input_events_20201201.tab',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_input_data_20201201.tab',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_20201201.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_20201201.txt',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_20201201.tab'
+            ],
+          ('Uranus Earth-based Occultations',
+           150,
+           'ebur_occ_orig_index',
+           'Occultation Original Index',
+           False): [
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/supplemental_docs/uranus_occultations_index.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/supplemental_docs/uranus_occultations_index.tab'
+            ],
+          ('Uranus Earth-based Occultations',
+           160,
+           'ebur_occ_quality_rating',
+           'Occultation Quality Rating',
+           False): [
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/supplemental_docs/uranus_ringocc_bundles_quality_rating.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/supplemental_docs/uranus_ringocc_bundles_quality_rating.csv'
+            ],
+          ('Uranus Earth-based Occultations',
+           170,
+           'ebur_occ_documentation',
+           'Occultation Documentation',
+           False): [
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/earth-based-uranus-stellar-occultation-user-guide.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/earth-based-uranus-stellar-occultation-user-guide.pdf'
+            ],
+          ('Uranus Earth-based Occultations',
+           180,
+           'ebur_occ_kernels',
+           'Occultation Kernels',
+           False): [
+                'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/spk/urkao_v1.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/spk/urkao_v1.bsp',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/fk/uranus_ringframes_rfrench20201201_v1.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/fk/uranus_ringframes_rfrench20201201_v1.tf',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/fk/uranus_ringframes_french_et_al_1988_v1.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/fk/uranus_ringframes_french_et_al_1988_v1.tf'
+            ]}
+        ),
+        # global
+        ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_ingress_100m.xml',
+         {('Uranus Earth-based Occultations',
+           70,
+           'ebur_occ_global_0100',
+           'Occultation Global Profile (100m)',
+           True): [
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_ingress_100m.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_ingress_100m.tab'
+            ],
+          ('Uranus Earth-based Occultations',
+           80,
+           'ebur_occ_global_0500',
+           'Occultation Global Profile (500m)',
+           True): [
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_ingress_500m.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_ingress_500m.tab'
+            ],
+          ('Uranus Earth-based Occultations',
+           90,
+           'ebur_occ_global_1000',
+           'Occultation Global Profile (1000m)',
+           True): [
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_ingress_1000m.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_ingress_1000m.tab'
+            ],
+          ('Uranus Earth-based Occultations',
+           100,
+           'ebur_occ_global_time',
+           'Occultation Global Time',
+           True): [
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_counts-v-time_occult.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_counts-v-time_occult.tab'
+            ],
+          ('Uranus Earth-based Occultations',
+           140,
+           'ebur_occ_global_ring_fit',
+           'Occultation Global Ring Fit',
+           False): [
+                'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_input_stars_20201201.csv',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_input_observatories_20201201.tab',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_input_events_20201201.tab',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_input_data_20201201.tab',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_20201201.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_20201201.txt',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_20201201.tab'],
+          ('Uranus Earth-based Occultations',
+           150,
+           'ebur_occ_orig_index',
+           'Occultation Original Index',
+           False): [
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/supplemental_docs/uranus_occultations_index.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/supplemental_docs/uranus_occultations_index.tab'
+            ],
+          ('Uranus Earth-based Occultations',
+           160,
+           'ebur_occ_quality_rating',
+           'Occultation Quality Rating',
+           False): [
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/supplemental_docs/uranus_ringocc_bundles_quality_rating.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/supplemental_docs/uranus_ringocc_bundles_quality_rating.csv'
+            ],
+          ('Uranus Earth-based Occultations',
+           170,
+           'ebur_occ_documentation',
+           'Occultation Documentation',
+           False): [
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/earth-based-uranus-stellar-occultation-user-guide.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/earth-based-uranus-stellar-occultation-user-guide.pdf'
+            ],
+          ('Uranus Earth-based Occultations',
+           180,
+           'ebur_occ_kernels',
+           'Occultation Kernels',
+           False): [
+                'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/spk/urkao_v1.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/spk/urkao_v1.bsp',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/fk/uranus_ringframes_rfrench20201201_v1.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/fk/uranus_ringframes_rfrench20201201_v1.tf',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/fk/uranus_ringframes_french_et_al_1988_v1.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/fk/uranus_ringframes_french_et_al_1988_v1.tf']}
         )
     ]
 )
