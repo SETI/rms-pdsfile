@@ -1278,8 +1278,7 @@ class PdsFile(object):
                                     # empty key, so this avoids an unnecessary
                                     # open of the file.
                 else:
-                    # Check the filesystem if we can't find the shelf file
-                    return os.path.exists(abspath)
+                    return False
             except (ValueError, IndexError, IOError, OSError):
                 pass
 
@@ -1297,9 +1296,6 @@ class PdsFile(object):
                     return True
 
                 # Checksum files need special handling, before doing special handling,
-                # check if the checksums directory exist
-                if 'checksums-' in abspath and not os.path.exists(abspath):
-                    return False
                 testpath = cls._non_checksum_abspath(abspath)
                 if testpath and cls.os_path_exists(testpath):
                     return True
@@ -1340,8 +1336,7 @@ class PdsFile(object):
                                     # empty key, so this avoids an unnecessary
                                     # open of the file.
                 else:
-                    # Check the filesystem if we can't find the shelf file
-                    return os.path.isdir(abspath)
+                    return False
             except (ValueError, IndexError, IOError, OSError):
                 pass
 
@@ -1359,9 +1354,6 @@ class PdsFile(object):
                     return True
 
                 # Checksum files need special handling
-                # Check the filesystem first
-                if 'checksums-' in abspath and not os.path.isdir(abspath):
-                    return False
                 testpath = cls._non_checksum_abspath(abspath)
                 if testpath and cls.os_path_exists(testpath):
                     # If the testpath exists, then whether it is a directory or
