@@ -77,9 +77,7 @@ associations_to_metadata = translator.TranslatorByRegex([
     (r'volumes/EBROCC_xxxx(|_v[0-9\.]+)/(EBROCC_....)/(DATA|BROWSE|SORCDATA|GEOMETRY)/\w+/(\w+)\.\w+', 0,
            r'metadata/EBROCC_xxxx/\2/\2_index.tab/\4'),
     (r'volumes/EBROCC_xxxx(|_v[0-9\.]+)/(EBROCC_....)/DATA/\w+/(\w+)\.\w+', 0,
-           [r'metadata/EBROCC_xxxx/\2/\2_profile_index.tab/\4',
-            r'metadata/EBROCC_xxxx/\2/\2_supplemental_index.tab/\4',
-           ]),
+           r'metadata/EBROCC_xxxx/\2/\2_supplemental_index.tab/\4'),
 ])
 
 ##########################################################################################
@@ -95,12 +93,12 @@ view_options = translator.TranslatorByRegex([
 ##########################################################################################
 
 opus_type = translator.TranslatorByRegex([
-    (r'volumes/.*/DATA/\w+/\w+\.(TAB|LBL)',          0, ('Earth-based Occultations',  0, 'ebro_profile', 'Occultation Profile', True)),
-    (r'volumes/.*/GEOMETRY/\w+/\w+\.(TAB|LBL)',      0, ('Earth-based Occultations', 10, 'ebro_geom',    'Geometry Table',      True)),
-    (r'volumes/.*/BROWSE/\w+/\w+PB\.(PDF|PS|LBL)',   0, ('Earth-based Occultations', 20, 'ebro_preview', 'Preview Plot',        True)),
-    (r'volumes/.*/BROWSE/\w+/\w+GB\.(PDF|PS|LBL)',   0, ('Earth-based Occultations', 30, 'ebro_diagram', 'Geometry Diagram',    False)),
-    (r'volumes/.*/SORCDATA/\w+/\w+_GEOMETRY\..*',    0, ('Earth-based Occultations', 40, 'ebro_source',  'Source Data',         False)),
-    (r'volumes/.*/SORCDATA/\w+/\w+GRESS\.(OUT|LBL)', 0, ('Earth-based Occultations', 40, 'ebro_source',  'Source Data',         False)),
+    (r'volumes/.*/DATA/\w+/\w+\.(TAB|LBL)',          0, ('Earth-based Occultations',  0, 'ebro_occ_profile', 'Occultation Profile', True)),
+    (r'volumes/.*/GEOMETRY/\w+/\w+\.(TAB|LBL)',      0, ('Earth-based Occultations', 10, 'ebro_occ_geom',    'Geometry Table',      True)),
+    (r'volumes/.*/BROWSE/\w+/\w+PB\.(PDF|PS|LBL)',   0, ('Earth-based Occultations', 20, 'ebro_occ_preview', 'Preview Plot',        True)),
+    (r'volumes/.*/BROWSE/\w+/\w+GB\.(PDF|PS|LBL)',   0, ('Earth-based Occultations', 30, 'ebro_occ_diagram', 'Geometry Diagram',    False)),
+    (r'volumes/.*/SORCDATA/\w+/\w+_GEOMETRY\..*',    0, ('Earth-based Occultations', 40, 'ebro_occ_source',  'Source Data',         False)),
+    (r'volumes/.*/SORCDATA/\w+/\w+GRESS\.(OUT|LBL)', 0, ('Earth-based Occultations', 40, 'ebro_occ_source',  'Source Data',         False)),
 ])
 
 ##########################################################################################
@@ -143,8 +141,6 @@ opus_products = translator.TranslatorByRegex([
             r'previews/EBROCC_xxxx/\2/BROWSE/\4PB_thumb.jpg',
             r'metadata/EBROCC_xxxx/\2/\2_index.lbl',
             r'metadata/EBROCC_xxxx/\2/\2_index.tab',
-            r'metadata/EBROCC_xxxx/\2/\2_profile_index.lbl',
-            r'metadata/EBROCC_xxxx/\2/\2_profile_index.tab',
             r'metadata/EBROCC_xxxx/\2/\2_supplemental_index.lbl',
             r'metadata/EBROCC_xxxx/\2/\2_supplemental_index.tab',
            ]),
@@ -155,12 +151,12 @@ opus_products = translator.TranslatorByRegex([
 ##########################################################################################
 
 opus_id = translator.TranslatorByRegex([
-    (r'.*/EBROCC_xxxx.*/\w+/ESO1M/ES1_(I|E).*',  0, r'eso1m-apph-occ-1989-184-28sgr-#LOWER#\1'),
-    (r'.*/EBROCC_xxxx.*/\w+/ESO22M/ES2_(I|E).*', 0, r'eso22m-apph-occ-1989-184-28sgr-#LOWER#\1'),
-    (r'.*/EBROCC_xxxx.*/\w+/IRTF/IRT_(I|E).*',   0, r'irtf-urac-occ-1989-184-28sgr-#LOWER#\1'),
+    (r'.*/EBROCC_xxxx.*/\w+/ESO1M/ES1_(I|E).*',  0, r'esosil1m04-apph-occ-1989-184-28sgr-#LOWER#\1'),
+    (r'.*/EBROCC_xxxx.*/\w+/ESO22M/ES2_(I|E).*', 0, r'esosil2m2-apph-occ-1989-184-28sgr-#LOWER#\1'),
+    (r'.*/EBROCC_xxxx.*/\w+/IRTF/IRT_(I|E).*',   0, r'irtf3m2-urac-occ-1989-184-28sgr-#LOWER#\1'),
     (r'.*/EBROCC_xxxx.*/\w+/LICK1M/LIC_(I|E).*', 0, r'lick1m-ccdc-occ-1989-184-28sgr-#LOWER#\1'),
-    (r'.*/EBROCC_xxxx.*/\w+/MCD27M/MCD_(I|E).*', 0, r'mcd27m-iirar-occ-1989-184-28sgr-#LOWER#\1'),
-    (r'.*/EBROCC_xxxx.*/\w+/PAL200/PAL_(I|E).*', 0, r'pal200-circ-occ-1989-184-28sgr-#LOWER#\1')
+    (r'.*/EBROCC_xxxx.*/\w+/MCD27M/MCD_(I|E).*', 0, r'mcd2m7-iirar-occ-1989-184-28sgr-#LOWER#\1'),
+    (r'.*/EBROCC_xxxx.*/\w+/PAL200/PAL_(I|E).*', 0, r'pal5m08-circ-occ-1989-184-28sgr-#LOWER#\1')
 ])
 
 ##########################################################################################
@@ -168,12 +164,12 @@ opus_id = translator.TranslatorByRegex([
 ##########################################################################################
 
 opus_id_to_primary_logical_path = translator.TranslatorByRegex([
-    (r'eso1m-apph-occ-1989-184-28sgr-(.*)',   0, r'volumes/EBROCC_xxxx/EBROCC_0001/DATA/ESO1M/ES1_#UPPER#\1PD.TAB'),
-    (r'eso22m-apph-occ-1989-184-28sgr-(.*)',  0, r'volumes/EBROCC_xxxx/EBROCC_0001/DATA/ESO22M/ES2_#UPPER#\1PD.TAB'),
-    (r'irtf-urac-occ-1989-184-28sgr-(.*)',    0, r'volumes/EBROCC_xxxx/EBROCC_0001/DATA/IRTF/IRT_#UPPER#\1PD.TAB'),
+    (r'esosil1m04-apph-occ-1989-184-28sgr-(.*)',   0, r'volumes/EBROCC_xxxx/EBROCC_0001/DATA/ESO1M/ES1_#UPPER#\1PD.TAB'),
+    (r'esosil2m2-apph-occ-1989-184-28sgr-(.*)',  0, r'volumes/EBROCC_xxxx/EBROCC_0001/DATA/ESO22M/ES2_#UPPER#\1PD.TAB'),
+    (r'irtf3m2-urac-occ-1989-184-28sgr-(.*)',    0, r'volumes/EBROCC_xxxx/EBROCC_0001/DATA/IRTF/IRT_#UPPER#\1PD.TAB'),
     (r'lick1m-ccdc-occ-1989-184-28sgr-(.*)',  0, r'volumes/EBROCC_xxxx/EBROCC_0001/DATA/LICK1M/LIC_#UPPER#\1PD.TAB'),
-    (r'mcd27m-iirar-occ-1989-184-28sgr-(.*)', 0, r'volumes/EBROCC_xxxx/EBROCC_0001/DATA/MCD27M/MCD_#UPPER#\1PD.TAB'),
-    (r'pal200-circ-occ-1989-184-28sgr-(.*)',  0, r'volumes/EBROCC_xxxx/EBROCC_0001/DATA/PAL200/PAL_#UPPER#\1PD.TAB'),
+    (r'mcd2m7-iirar-occ-1989-184-28sgr-(.*)', 0, r'volumes/EBROCC_xxxx/EBROCC_0001/DATA/MCD27M/MCD_#UPPER#\1PD.TAB'),
+    (r'pal5m08-circ-occ-1989-184-28sgr-(.*)',  0, r'volumes/EBROCC_xxxx/EBROCC_0001/DATA/PAL200/PAL_#UPPER#\1PD.TAB'),
 ])
 
 ##########################################################################################
@@ -252,8 +248,7 @@ def test_opus_products_count():
         (4, 'volumes.*/SORCDATA/.*'),
         (4, 'previews.*/DATA/.*'),
         (8, 'previews/.*/BROWSE/.*'),
-        (6, 'metadata.*index.*'),
-        (2, 'metadata.*profile.*'),
+        (4, 'metadata.*index.*'),
         (2, 'metadata.*supplemental.*'),
     ]
 
@@ -273,13 +268,13 @@ def test_opus_products_count():
         ('volumes/EBROCC_xxxx/EBROCC_0001/DATA/ESO1M/ES1_EPD.TAB',
         {('Earth-based Occultations',
           0,
-          'ebro_profile',
+          'ebro_occ_profile',
           'Occultation Profile',
           True): ['volumes/EBROCC_xxxx/EBROCC_0001/DATA/ESO1M/ES1_EPD.TAB',
                   'volumes/EBROCC_xxxx/EBROCC_0001/DATA/ESO1M/ES1_EPD.LBL'],
          ('Earth-based Occultations',
           30,
-          'ebro_diagram',
+          'ebro_occ_diagram',
           'Geometry Diagram',
           False): ['volumes/EBROCC_xxxx/EBROCC_0001/BROWSE/ESO1M/ES1_EGB.PS',
                    'volumes/EBROCC_xxxx/EBROCC_0001/BROWSE/ESO1M/ES1_EGB.PDF',
@@ -287,7 +282,7 @@ def test_opus_products_count():
                    'volumes/EBROCC_xxxx/EBROCC_0001/BROWSE/ESO1M/ES1_EGB.LBL'],
          ('Earth-based Occultations',
           20,
-          'ebro_preview',
+          'ebro_occ_preview',
           'Preview Plot',
           True): ['volumes/EBROCC_xxxx/EBROCC_0001/BROWSE/ESO1M/ES1_EPB.PS',
                   'volumes/EBROCC_xxxx/EBROCC_0001/BROWSE/ESO1M/ES1_EPB.PDF',
@@ -295,13 +290,13 @@ def test_opus_products_count():
                   'volumes/EBROCC_xxxx/EBROCC_0001/BROWSE/ESO1M/ES1_EPB.LBL'],
          ('Earth-based Occultations',
           10,
-          'ebro_geom',
+          'ebro_occ_geom',
           'Geometry Table',
           True): ['volumes/EBROCC_xxxx/EBROCC_0001/GEOMETRY/ESO1M/ES1_EGD.TAB',
                   'volumes/EBROCC_xxxx/EBROCC_0001/GEOMETRY/ESO1M/ES1_EGD.LBL'],
          ('Earth-based Occultations',
           40,
-          'ebro_source',
+          'ebro_occ_source',
           'Source Data',
           False): ['volumes/EBROCC_xxxx/EBROCC_0001/SORCDATA/ESO1M/ES1_EGRESS_GEOMETRY.DAT',
                    'volumes/EBROCC_xxxx/EBROCC_0001/SORCDATA/ESO1M/ES1_EGRESS_GEOMETRY.LBL',
@@ -343,12 +338,6 @@ def test_opus_products_count():
                    'metadata/EBROCC_xxxx/EBROCC_0001/EBROCC_0001_index.lbl'],
          ('metadata',
           8,
-          'profile_index',
-          'Profile Index',
-          False): ['metadata/EBROCC_xxxx/EBROCC_0001/EBROCC_0001_profile_index.tab',
-                   'metadata/EBROCC_xxxx/EBROCC_0001/EBROCC_0001_profile_index.lbl'],
-         ('metadata',
-          9,
           'supplemental_index',
           'Supplemental Index',
           False): ['metadata/EBROCC_xxxx/EBROCC_0001/EBROCC_0001_supplemental_index.tab',

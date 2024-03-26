@@ -594,7 +594,7 @@ opus_type = translator.TranslatorByRegex([
 
     # CUBE 0xxx/1xxx
     # Cube index
-    (r'metadata/COCIRS_[01]xxx.*/.*cube.*(?<!supplemental)_index\..*',      0, ('metadata',       8, 'cube_index',        'Cube Index',           False)),
+    (r'metadata/COCIRS_[01]xxx.*/.*cube.*(?<!supplemental)_index\..*',      0, ('metadata',       4, 'cube_index',        'Cube Index',           False)),
     # Data
     (r'volumes/COCIRS_[01]xxx.*/DATA/CUBE/.*',             0, ('Cassini CIRS', 10, 'cocirs_cube',  'Spectral Image Cube', True)),
     # Extra viewable image
@@ -1019,13 +1019,13 @@ def test_associations_to_diagrams():
           'Browse Image (thumbnail)',
           False): ['previews/COCIRS_0xxx/COCIRS_0406/DATA/CUBE/POINT_PERSPECTIVE/000IA_PRESOI001____RI____699_F4_038P_thumb.jpg'],
          ('metadata',
-          8,
+          4,
           'cube_index',
           'Cube Index',
           False): ['metadata/COCIRS_0xxx/COCIRS_0406/COCIRS_0406_cube_point_index.tab',
                    'metadata/COCIRS_0xxx/COCIRS_0406/COCIRS_0406_cube_point_index.lbl'],
          ('metadata',
-          9,
+          8,
           'supplemental_index',
           'Supplemental Index',
           False): ['metadata/COCIRS_0xxx/COCIRS_0406/COCIRS_0406_cube_point_supplemental_index.tab',
