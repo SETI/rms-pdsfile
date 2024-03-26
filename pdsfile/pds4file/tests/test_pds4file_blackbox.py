@@ -547,9 +547,11 @@ class TestPds4FileBlackBox:
         'ebur_occ_ring_sqw_model'),
         ('bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/ring_models/u0_kao_91cm_734nm_ring_six_egress_sqw.txt',
         'ebur_occ_ring_sqw_model'),
+        ('bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/ring_models/u0_kao_91cm_734nm_ring_six_egress_sqw_h.tab',
+        'ebur_occ_ring_sqw_model'),
         ('bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/ring_models/u0_kao_91cm_734nm_wavelengths.csv',
         'ebur_occ_ring_sqw_model'),
-        # Atomosphere
+        # Atmosphere
         ('bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_ingress.tab',
         'ebur_occ_atmos'),
         # Global
@@ -570,6 +572,12 @@ class TestPds4FileBlackBox:
         'ebur_occ_quality_rating'),
         ('bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/earth-based-uranus-stellar-occultation-user-guide.pdf',
         'ebur_occ_documentation'),
+        ('bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/ring_longitude_example.py',
+        'ebur_occ_software'),
+        ('bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/plot_epsilon_ring_example.pro',
+        'ebur_occ_software'),
+        ('bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/plot_epsilon_ring_example_IDL.pdf',
+        'ebur_occ_software'),
         ('bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/fk/uranus_ringframes_french_et_al_1988_v1.tf',
         'ebur_occ_kernels'),
         ('bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/spk/urkao_v1.bsp',
@@ -581,4 +589,5 @@ class TestPds4FileBlackBox:
         """opus_type: return self._opus_type_filled"""
         target_pdsfile = instantiate_target_pdsfile(input_path, False)
         res = target_pdsfile.opus_type
+        assert res != '', 'No opus_type returned'
         assert res[2] == expected
