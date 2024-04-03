@@ -210,18 +210,27 @@ opus_products = translator.TranslatorByRegex([
     (r'.*/(uranus_occs_earthbased/uranus_occ_([a-zA-Z0-9\_]+))/(data/atmosphere)/.*_counts-v-time_atmos_(egress|ingress)\.[a-z]{3}', 0,
         [r'bundles/\1/\3/\2*_counts-v-time_atmos_\4.tab',
          r'bundles/\1/\3/\2*_counts-v-time_atmos_\4.xml',
-         r'metadata/\1/uranus_occ_\2_atmos_index.csv']
+         r'metadata/\1/uranus_occ_\2_atmos*_index.csv']
     ),
-    # Global, available for all rings and atmosphere occs as well
-    (r'.*/(uranus_occs_earthbased/uranus_occ_([a-zA-Z0-9\_]+))/data/(rings|atmosphere|global)/.*(egress|ingress)([\_0-9m]*)\.[a-z]{3}', 0,
-        [r'bundles/\1/data/global/\2*_radius_equator_\4_*.tab',
-         r'bundles/\1/data/global/\2*_radius_equator_\4_*.xml',
-         r'bundles/\1/data/global/\2*_counts-v-time_occult.tab',
-         r'bundles/\1/data/global/\2*_counts-v-time_occult.xml']
-    ),
-    # Global-specific products
+    # Global-specific products, include all "Occultation Ring Model" products
     (r'.*/(uranus_occs_earthbased/uranus_occ_([a-zA-Z0-9\_]+))/data/global/.*(egress|ingress)([\_0-9m]*)\.[a-z]{3}', 0,
-        [r'metadata/\1/uranus_occ_\2_global_index.csv']
+        [r'bundles/\1/data/global/\2*_radius_equator_\3_*.tab',
+         r'bundles/\1/data/global/\2*_radius_equator_\3_*.xml',
+         r'bundles/\1/data/global/\2*_counts-v-time_occult.tab',
+         r'bundles/\1/data/global/\2*_counts-v-time_occult.xml'
+         r'bundles/\1/data/ring_models/\2*_ring_\3_\4_sqw*.pdf',
+         r'bundles/\1/data/ring_models/\2*_ring_\3_\4_sqw*.tab',
+         r'bundles/\1/data/ring_models/\2*_ring_\3_\4_sqw*.txt',
+         r'bundles/\1/data/ring_models/\2*_ring_\3_\4_sqw*.xml',
+         r'bundles/\1/data/ring_models/\2*_fitted_*.pdf',
+         r'bundles/\1/data/ring_models/\2*_fitted_*.tab',
+         r'bundles/\1/data/ring_models/\2*_fitted_*.xml',
+         r'bundles/\1/data/ring_models/\2*_predicted_*.pdf',
+         r'bundles/\1/data/ring_models/\2*_predicted_*.tab',
+         r'bundles/\1/data/ring_models/\2*_predicted_*.xml',
+         r'bundles/\1/data/ring_models/\2*_wavelengths.csv',
+         r'bundles/\1/data/ring_models/\2*_wavelengths.xml',
+         r'metadata/\1/uranus_occ_\2_global_index.csv']
     ),
     # Uranus occ support, available for all occs
     (r'.*/(uranus_occs_earthbased)/uranus_occ_.*\.[a-z]{3}', 0,
