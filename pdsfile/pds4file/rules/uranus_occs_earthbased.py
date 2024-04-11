@@ -6,6 +6,8 @@ import pdsfile.pds4file as pds4file
 import translator
 import re
 
+from .uranus_occs_earthbased_primary_filespec import PRIMARY_FILESPEC_LIST
+
 ##########################################################################################
 # DESCRIPTION_AND_ICON
 ##########################################################################################
@@ -75,10 +77,12 @@ associations_to_previews = translator.TranslatorByRegex([
 ])
 
 associations_to_metadata = translator.TranslatorByRegex([
-    (r'.*/(uranus_occs_earthbased)/.*', 0,
+    (r'.*/(uranus_occs_earthbased)/*', 0,
         r'metadata/\1'),
-    (r'.*/(uranus_occs_earthbased)/(uranus_occ_u.*)/(data|browse)(.*|_[a-z]*])/(rings|global|atmos).*/(.*)\.[a-z]{3}', 0,
-        r'metadata/\1/uranus_\5_occultations_index.tab/\6'),
+    (r'.*/(uranus_occs_earthbased/uranus_occ_u[a-z0-9\_]*)/*', 0,
+        r'metadata/\1'),
+    (r'.*/(uranus_occs_earthbased)/(uranus_occ_u[a-z0-9\_]*)/(data|browse)(.*|_[a-z]*])/(rings|global|atmos).*/(.*)\.[a-z]{3}', 0,
+        r'metadata/\1/\2/\2_\5_index.csv/\6'),
 ])
 
 associations_to_documents = translator.TranslatorByRegex([
@@ -134,14 +138,38 @@ sort_key = translator.TranslatorByRegex([
 ##########################################################################################
 
 opus_type = translator.TranslatorByRegex([
-    (r'volumes/.*\.(IMG|LBL)',                      0, ('Cassini ISS',  0,  'coiss_raw',    'Raw Image',                 True )),
-    (r'calibrated/.*_CALIB\.(IMG|LBL)',             0, ('Cassini ISS', 10,  'coiss_calib',  'Calibrated Image',          True )),
-    (r'volumes/.*/extras/thumbnail/.*\.jpeg_small', 0, ('Cassini ISS', 110, 'coiss_thumb',  'Extra Preview (thumbnail)', False)),
-    (r'volumes/.*/extras/browse/.*\.jpeg',          0, ('Cassini ISS', 120, 'coiss_medium', 'Extra Preview (medium)',    False)),
-    (r'volumes/.*/extras/(tiff|full)/.*\.\w+',      0, ('Cassini ISS', 130, 'coiss_full',   'Extra Preview (full)',      False)),
-    (r'volumes/.*/extras/(tiff|full)/.*\.\w+',      0, ('Cassini ISS', 130, 'coiss_full',   'Extra Preview (full)',      False)),
-    # Documentation
-    (r'documents/COISS_0xxx/.*',                    0, ('Cassini ISS', 140, 'coiss_documentation', 'Documentation', False)),
+    # Rings
+    (r'bundles/uranus_occs.*/.*/data/rings/.*_radius_.*_100m\.(tab|xml)',                      0, ('Uranus Earth-based Occultations', 10,  'ebur_occ_ring_0100', 'Occultation Ring Profile (100 m)', True)),
+    (r'bundles/uranus_occs.*/.*/data/rings/.*_radius_.*_500m\.(tab|xml)',                      0, ('Uranus Earth-based Occultations', 20,  'ebur_occ_ring_0500', 'Occultation Ring Profile (500 m)', True)),
+    (r'bundles/uranus_occs.*/.*/data/rings/.*_radius_.*_1000m\.(tab|xml)',                     0, ('Uranus Earth-based Occultations', 30,  'ebur_occ_ring_1000', 'Occultation Ring Profile (1 km)', True)),
+    (r'bundles/uranus_occs.*/.*/data/rings/.*_counts-v-time_rings_.*\.(tab|xml)',              0, ('Uranus Earth-based Occultations', 40,  'ebur_occ_ring_time', 'Occultation Ring Time Series', False)),
+    (r'bundles/uranus_occs.*/.*/data/ring_models/.*_ring_.*_sqw.*\.(pdf|tab|txt|xml)',         0, ('Uranus Earth-based Occultations', 50,  'ebur_occ_ring_sqw_model', 'Occultation Ring Model', False)),
+    (r'bundles/uranus_occs.*/.*/data/ring_models/.*(fitted|predicted)_.*\.(pdf|tab|xml|txt|)', 0, ('Uranus Earth-based Occultations', 50,  'ebur_occ_ring_sqw_model', 'Occultation Ring Model', False)),
+    (r'bundles/uranus_occs.*/.*/data/ring_models/.*_wavelengths\.(csv|xml)',                   0, ('Uranus Earth-based Occultations', 50,  'ebur_occ_ring_sqw_model', 'Occultation Ring Model', False)),
+
+    # Atmosphere
+    (r'bundles/uranus_occs.*/.*/data/atmosphere/.*_counts-v-time_atmos.*\.(tab|xml)',          0, ('Uranus Earth-based Occultations', 60,  'ebur_occ_atmos', 'Occultation Atmosphere Time Series', True)),
+
+    # Global
+    (r'bundles/uranus_occs.*/.*/data/global/.*_radius_equator_.*_100m\.(tab|xml)',             0, ('Uranus Earth-based Occultations', 70,  'ebur_occ_global_0100', 'Occultation Ring-Plane Profile (100 m)', True)),
+    (r'bundles/uranus_occs.*/.*/data/global/.*_radius_equator_.*_500m\.(tab|xml)',             0, ('Uranus Earth-based Occultations', 80,  'ebur_occ_global_0500', 'Occultation Ring-Plane Profile (500 m)', True)),
+    (r'bundles/uranus_occs.*/.*/data/global/.*_radius_equator_.*_1000m\.(tab|xml)',            0, ('Uranus Earth-based Occultations', 90,  'ebur_occ_global_1000', 'Occultation Ring-Plane Profile (1 km)', True)),
+    (r'bundles/uranus_occs.*/.*/data/global/.*_counts-v-time_occult.*\.(tab|xml)',             0, ('Uranus Earth-based Occultations', 100, 'ebur_occ_global_time', 'Occultation Ring-Plane Time Series', False)),
+
+    # Uranus occ support
+    (r'.*uranus_occ_support/data/.*_ring_fit_rfrench.*\.(csv|tab|txt|xml)',                    0, ('Uranus Earth-based Occultations', 110, 'ebur_occ_global_ring_fit', 'Global Ring Orbital Fit', False)),
+    (r'.*uranus_occ_support/document/supplemental_docs/uranus_occ.*_index\.(tab|xml)',         0, ('Uranus Earth-based Occultations', 120, 'ebur_occ_orig_index', 'Original Index', False)),
+    (r'.*uranus_occ_support/document/supplemental_docs/uranus_ringocc.*_rating\.(csv|xml)',    0, ('Uranus Earth-based Occultations', 130, 'ebur_occ_quality_rating', 'Quality Ratings', False)),
+    (r'.*uranus_occ_support/document/supplemental_docs/rings.*\.(txt|xml)',                    0, ('Uranus Earth-based Occultations', 140, 'ebur_occ_rings_definitions', 'Ring Dictionary Definitions', False)),
+    (r'.*uranus_occ_support/document/user_guide/.*occultation-user-guide\.(pdf|xml)',          0, ('Uranus Earth-based Occultations', 150, 'ebur_occ_documentation', 'Documentation', False)),
+    (r'.*uranus_occ_support/document/user_guide/.*\.(pro|py)',                                 0, ('Uranus Earth-based Occultations', 160, 'ebur_occ_software', 'Software', False)),
+    (r'.*uranus_occ_support/document/user_guide/plot.*\.pdf',                                  0, ('Uranus Earth-based Occultations', 160, 'ebur_occ_software', 'Software', False)),
+    (r'.*uranus_occ_support/spice_kernels/fk/.*\.(tf|xml)',                                    0, ('Uranus Earth-based Occultations', 170, 'ebur_occ_kernels', 'SPICE Kernels', False)),
+    (r'.*uranus_occ_support/spice_kernels/spk/.*\.(bsp|xml)',                                  0, ('Uranus Earth-based Occultations', 170, 'ebur_occ_kernels', 'SPICE Kernels', False)),
+
+    # rms_index
+    (r'metadata/uranus_occs.*/.*/.*_index.csv',                                                0, ('metadata', 5, 'rms_index', 'RMS Node Augmented Index',     False)),
+    # TODO: Add preview and diagram images when they are available
 ])
 
 ##########################################################################################
@@ -156,65 +184,163 @@ opus_format = translator.TranslatorByRegex([
 ##########################################################################################
 # OPUS_PRODUCTS
 ##########################################################################################
-
+# call .opus_products() on primary filespec
 opus_products = translator.TranslatorByRegex([
-    (r'.*/(COISS_[12]xxx)(|_v[0-9\.]+)/(COISS_[12]...)/data/(\w+/[NW][0-9]{10}_[0-9]+).*', 0,
-            [r'volumes/\1*/\3/data/\4.IMG',
-             r'volumes/\1*/\3/data/\4.LBL',
-             r'volumes/\1*/\3/extras/thumbnail/\4.IMG.jpeg_small',
-             r'volumes/\1*/\3/extras/browse/\4.IMG.jpeg',
-             r'volumes/\1*/\3/extras/full/\4.IMG.png',
-             r'volumes/\1*/\3/extras/tiff/\4.IMG.tiff',
-             r'calibrated/\1*/\3/data/\4_CALIB.IMG',
-             r'calibrated/\1*/\3/data/\4_CALIB.LBL',
-             r'previews/\1/\3/data/\4_full.png',
-             r'previews/\1/\3/data/\4_med.jpg',
-             r'previews/\1/\3/data/\4_small.jpg',
-             r'previews/\1/\3/data/\4_thumb.jpg',
-             r'metadata/\1/\3/\3_moon_summary.tab',
-             r'metadata/\1/\3/\3_moon_summary.lbl',
-             r'metadata/\1/\3/\3_ring_summary.tab',
-             r'metadata/\1/\3/\3_ring_summary.lbl',
-             r'metadata/\1/\3/\3_saturn_summary.tab',
-             r'metadata/\1/\3/\3_saturn_summary.lbl',
-             r'metadata/\1/\3/\3_jupiter_summary.tab',
-             r'metadata/\1/\3/\3_jupiter_summary.lbl',
-             r'metadata/\1/\3/\3_inventory.csv',
-             r'metadata/\1/\3/\3_inventory.lbl',
-             r'metadata/\1/\3/\3_index.tab',
-             r'metadata/\1/\3/\3_index.lbl',
-             r'documents/COISS_0xxx/*.[!lz]*',
-            ]),
+    # Rings-specific products
+    (r'.*/(uranus_occs_earthbased/uranus_occ_([a-zA-Z0-9\_]+))/(data/rings)/.*_radius_(.*)_(egress|ingress)([\_0-9m]*)\.[a-z]{3}', 0,
+        [r'bundles/\1/\3/\2*_radius_\4_\5_*.tab',
+         r'bundles/\1/\3/\2*_radius_\4_\5_*.xml',
+         r'bundles/\1/\3/\2*_counts-v-time_rings_\5.tab',
+         r'bundles/\1/\3/\2*_counts-v-time_rings_\5.xml',
+         r'bundles/\1/data/ring_models/\2*_ring_\4_\5_sqw*.pdf',
+         r'bundles/\1/data/ring_models/\2*_ring_\4_\5_sqw*.tab',
+         r'bundles/\1/data/ring_models/\2*_ring_\4_\5_sqw*.txt',
+         r'bundles/\1/data/ring_models/\2*_ring_\4_\5_sqw*.xml',
+         r'bundles/\1/data/ring_models/\2*_fitted_*.pdf',
+         r'bundles/\1/data/ring_models/\2*_fitted_*.tab',
+         r'bundles/\1/data/ring_models/\2*_fitted_*.xml',
+         r'bundles/\1/data/ring_models/\2*_predicted_*.pdf',
+         r'bundles/\1/data/ring_models/\2*_predicted_*.tab',
+         r'bundles/\1/data/ring_models/\2*_predicted_*.xml',
+         r'bundles/\1/data/ring_models/\2*_wavelengths.csv',
+         r'bundles/\1/data/ring_models/\2*_wavelengths.xml',
+         r'metadata/\1/uranus_occ_\2_rings_index.csv']
+    ),
+    # Atmosphere-specific products
+    (r'.*/(uranus_occs_earthbased/uranus_occ_([a-zA-Z0-9\_]+))/(data/atmosphere)/.*_counts-v-time_atmos_(egress|ingress)\.[a-z]{3}', 0,
+        [r'bundles/\1/\3/\2*_counts-v-time_atmos_\4.tab',
+         r'bundles/\1/\3/\2*_counts-v-time_atmos_\4.xml',
+         r'metadata/\1/uranus_occ_\2_atmos*_index.csv']
+    ),
+    # Global-specific products, include all "Occultation Ring Model" products
+    (r'.*/(uranus_occs_earthbased/uranus_occ_([a-zA-Z0-9\_]+))/data/global/.*(egress|ingress)([\_0-9m]*)\.[a-z]{3}', 0,
+        [r'bundles/\1/data/global/\2*_radius_equator_\3_*.tab',
+         r'bundles/\1/data/global/\2*_radius_equator_\3_*.xml',
+         r'bundles/\1/data/global/\2*_counts-v-time_occult.tab',
+         r'bundles/\1/data/global/\2*_counts-v-time_occult.xml',
+         r'metadata/\1/uranus_occ_\2_global_index.csv']
+    ),
+    # Uranus occ support
+    # Only available for rings & global occs
+    (r'.*/(uranus_occs_earthbased)/uranus_occ_.*/data/(rings|global)/.*\.[a-z]{3}', 0,
+        [r'bundles/\1/uranus_occ_support/data/*_ring_fit_rfrench*.csv',
+         r'bundles/\1/uranus_occ_support/data/*_ring_fit_rfrench*.tab',
+         r'bundles/\1/uranus_occ_support/data/*_ring_fit_rfrench*.txt',
+         r'bundles/\1/uranus_occ_support/data/*_ring_fit_rfrench*.xml',]
+    ),
+    # Available for all occs
+    (r'.*/(uranus_occs_earthbased)/uranus_occ_.*\.[a-z]{3}', 0,
+        [r'bundles/\1/uranus_occ_support/document/supplemental_docs/*_index.tab',
+         r'bundles/\1/uranus_occ_support/document/supplemental_docs/*_index.xml',
+         r'bundles/\1/uranus_occ_support/document/supplemental_docs/*_quality_rating.csv',
+         r'bundles/\1/uranus_occ_support/document/supplemental_docs/*_quality_rating.xml',
+         r'bundles/\1/uranus_occ_support/document/user_guide/*-user-guide.pdf',
+         r'bundles/\1/uranus_occ_support/document/user_guide/*-user-guide.xml',
+         r'bundles/\1/uranus_occ_support/document/user_guide/*.pro',
+         r'bundles/\1/uranus_occ_support/document/user_guide/*.py',
+         r'bundles/\1/uranus_occ_support/document/user_guide/plot*.pdf',
+         r'bundles/\1/uranus_occ_support/spice_kernels/fk/*.tf',
+         r'bundles/\1/uranus_occ_support/spice_kernels/fk/*.xml',
+         r'bundles/\1/uranus_occ_support/spice_kernels/spk/*.bsp',
+         r'bundles/\1/uranus_occ_support/spice_kernels/spk/*.xml']
+    ),
+    # TODO: Add preview and diagram images when they are available
 ])
 
 ##########################################################################################
 # OPUS_ID
 ##########################################################################################
+# OPUS ID Abbrev is based on the telescope name from the collection_context.csv
+# Detector:
+# 'ir':   'Generic IR High Speed Photometer'
+# 'vis':  'Generic Visual High Speed Photometer'
+# 'insb': 'Generic InSb High Speed Photometer'
+# 'gaas': 'Generic GaAs High Speed Photometer'
+# 'ccd': 'Generic CCD Camera'
 
-#opus_id = translator.TranslatorByRegex([
-#    (r'.*/COISS_[12]xxx.*/([NW][0-9]{10})_[0-9]+.*', 0, r'co-iss-#LOWER#\1'),
-#])
-
-# Although ideally would use LID to create unique OPUS ID, more straightforward to use file basename with translator.py?
-# Based on LID
-#opus_id = translator.TranslatorByRegex([
-#    (r'urn:nasa:pds:(uranus_occ_u\d{0,4}_[a-z]*_(fos|\d{2,3}cm)):.*:(\d{3,4}nm_.*)', 0, r'\1-\3'),
-#])
-
-#opus_id = translator.TranslatorByRegex([
-#    (r'urn:nasa:pds:(.+):\w+:(.+)', 0, r'\1-\2'),
-#])
-
-
-# Based on filepath
-#opus_id = translator.TranslatorByRegex([
-#    (r'.*/uranus_occs_earthbased/(uranus_occ_u\d{0,4}_[a-z]*_(fos|\d{2,3}cm))/.*/.*/u\d{0,4}_[a-z]*_(fos|\d{2,3}cm)_(\d{3,4}nm_.*).[a-z]{3}', 0, r'\1-\4'),
-#])
-
-# OPUS ID is bundle name
-opus_id = translator.TranslatorByRegex([
-    (r'.*/uranus_occs_earthbased/(uranus_occ_u\d{0,4}_[a-z]*_(fos|\d{2,3}cm))/.*/.*/u\d{0,4}_[a-z]*_(fos|\d{2,3}cm)_(\d{3,4}nm_.*).[a-z]{3}', 0, r'\1'),
-])
+# prefix_mapping: (
+#   bundle prefix,
+#   opus id prefix for egress, under rings & global,
+#   opus id prefix for egress, under rings & global,
+#   opus id prefix for egress and ingress under atmosphere
+# )
+# if opus id prefix for ingress & atomsphere are None, it's the same as the opus id prefix
+# for egress (same start date) or None.
+prefix_mapping = {
+    ('u0_kao_91cm',         'kao0m91-vis-occ-1977-069-u0',       None,                               None),
+    ('u0201_palomar_508cm', 'pal5m08-insb-occ-2002-210-u0201',   None,                               None),
+    ('u2_teide_155cm',      'tei1m55-ir-occ-1977-357-u2',        None,                               None),
+    ('u5_lco_250cm',        'lascam2m5-insb-occ-1978-100-u5',    None,                               None),
+    ('u9_lco_250cm',        'lascam2m5-insb-occ-1979-161-u9',    None,                               None),
+    ('u11_ctio_400cm',      'ctio4m0-insb-occ-1980-080-u11',     None,                               None),
+    ('u12_ctio_400cm',      'ctio4m0-insb-occ-1980-229-u12',     'ctio4m0-insb-occ-1980-228-u12',    'ctio4m0-insb-occ-1980-228-u12'),
+    ('u12_eso_104cm',       'esosil1m04-insb-occ-1980-229-u12',  'esosil1m04-insb-occ-1980-228-u12', 'esosil1m04-insb-occ-1980-229-u12'),
+    ('u12_eso_360cm',       'esosil3m6-insb-occ-1980-229-u12',   'esosil3m6-insb-occ-1980-228-u12',  'esosil3m6-insb-occ-1980-229-u12'),
+    ('u12_lco_250cm',       'lascam2m5-insb-occ-1980-229-u12',   'lascam2m5-insb-occ-1980-228-u12',  None),
+    ('u13_sso_390cm',       'sso3m9-insb-occ-1981-116-u13',      None,                               None),
+    ('u14_ctio_150cm',      'ctio1m50-insb-occ-1982-112-u14',    None,                               None),
+    ('u14_ctio_400cm',      'ctio4m0-ir-occ-1982-112-u14',       None,                               None),
+    ('u14_eso_104cm',       'esosil1m04-insb-occ-1982-112-u14',  None,                               None),
+    ('u14_lco_100cm',       'lascam1m0-ir-occ-1982-112-u14',     None,                               None),
+    ('u14_lco_250cm',       'lascam2m5-insb-occ-1982-112-u14',   None,                               None),
+    ('u14_opmt_106cm',      'pic1m06-gaas-occ-1982-112-u14',     None,                               None),
+    ('u14_opmt_200cm',      'pic2m0-insb-occ-1982-112-u14',      None,                               None),
+    ('u14_teide_155cm',     'tei1m55-ir-occ-1982-112-u14',       None,                               None),
+    ('u15_mso_190cm',       'mtstr1m9-insb-occ-1982-121-u15',    None,                               None),
+    ('u16_palomar_508cm',   'pal5m08-insb-occ-1982-155-u16',     None,                               None),
+    ('u17b_saao_188cm',     'saao1m88-insb-occ-1983-084-u17b',   None,                               None),
+    ('u23_ctio_400cm',      'ctio4m0-insb-occ-1985-124-u23',     None,                               None),
+    ('u23_mcdonald_270cm',  'mcd2m7-insb-occ-1985-124-u23',      None,                               None),
+    ('u23_teide_155cm',     'tei1m55-insb-occ-1985-124-u23',     None,                               None),
+    ('u25_ctio_400cm',      'ctio4m0-insb-occ-1985-144-u25',     None,                               None),
+    ('u25_mcdonald_270cm',  'mcd2m7-insb-occ-1985-144-u25',      None,                               None),
+    ('u25_palomar_508cm',   'pal5m08-insb-occ-1985-144-u25',     None,                               None),
+    ('u28_irtf_320cm',      'irtf3m2-insb-occ-1986-116-u28',     None,                               None),
+    ('u34_irtf_320cm',      'irtf3m2-insb-occ-1987-057-u34',     None,                               None),
+    ('u36_ctio_400cm',      'ctio4m0-insb-occ-1987-092-u36',     None,                               None),
+    ('u36_irtf_320cm',      'irtf3m2-insb-occ-1987-092-u36',     'irtf3m2-insb-occ-1987-089-u36',    None),
+    ('u36_maunakea_380cm',  'mk3m8-insb-occ-1987-092-u36',       'mk3m8-insb-occ-1987-089-u36',      None),
+    ('u36_sso_230cm',       'sso2m3-insb-occ-1987-092-u36',      None,                               None),
+    ('u36_sso_390cm',       'sso3m9-insb-occ-1987-092-u36',      None,                               None),
+    ('u65_irtf_320cm',      'irtf3m2-insb-occ-1990-172-u65',     None,                               None),
+    ('u83_irtf_320cm',      'irtf3m2-insb-occ-1991-176-u83',     None,                               None),
+    ('u84_irtf_320cm',      'irtf3m2-insb-occ-1991-179-u84',     None,                               None),
+    ('u102a_irtf_320cm',    'irtf3m2-insb-occ-1992-190-u102a',   None,                               None),
+    ('u102b_irtf_320cm',    'irtf3m2-insb-occ-1992-190-u102b',   None,                               None),
+    ('u103_eso_220cm',      'esosil2m2-insb-occ-1992-193-u103',  None,                               None),
+    ('u103_palomar_508cm',  'pal5m08-insb-occ-1992-193-u103',    None,                               None),
+    ('u134_saao_188cm',     'saao1m88-insb-occ-1995-252-u134',   None,                               None),
+    ('u137_hst_fos',        'hst-fos-occ-1996-076-u137',         None,                               None),
+    ('u137_irtf_320cm',     'irtf3m2-insb-occ-1996-076-u137',    None,                               None),
+    ('u138_hst_fos',        'hst-fos-occ-1996-101-u138',         None,                               None),
+    ('u138_palomar_508cm',  'pal5m08-insb-occ-1996-101-u138',    None,                               None),
+    ('u144_caha_123cm',     'caha1m23-nicmos-occ-1997-273-u144', None,                               None),
+    ('u144_saao_188cm',     'saao1m88-insb-occ-1997-273-u144',   None,                               None),
+    ('u149_irtf_320cm',     'irtf3m2-insb-occ-1998-310-u149',    None,                               None),
+    ('u149_lowell_180cm',   'low1m83-ccd-occ-1998-310-u149',     None,                               None),
+    ('u1052_irtf_320cm',    'irtf3m2-insb-occ-1988-133-u1052',   None,                               None),
+    ('u9539_ctio_400cm',    'ctio4m0-insb-occ-1993-181-u9539',   None,                               None),
+}
+opus_id_list = []
+for bundle_prefix, opus_id_prefix_e, opus_id_prefix_i, opus_id_prefix_a in prefix_mapping:
+    if opus_id_prefix_i is None:
+        opus_id_list += [
+            (rf'.*/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/atmosphere/{bundle_prefix}_\d+nm_counts-v-time_atmos_([ei])(gress|ngress)\.[a-z]{{3}}', 0, fr'{opus_id_prefix_e}-uranus-\1'),
+            (rf'.*/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/global/{bundle_prefix}_\d+nm_radius_equator_([ei])(gress|ngress)_\d{{3,4}}m\.[a-z]{{3}}', 0, rf'{opus_id_prefix_e}-ringpl-\1'),
+            (rf'.*/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/rings/{bundle_prefix}_\d+nm_radius_([a-z]+)_([ei])(gress|ngress)_\d{{3,4}}m\.[a-z]{{3}}', 0, rf'{opus_id_prefix_e}-\1-\2')
+        ]
+    else:
+        if opus_id_prefix_a is not None:
+            opus_id_list += [
+                (rf'.*/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/atmosphere/{bundle_prefix}_\d+nm_counts-v-time_atmos_([ei])(gress|ngress)\.[a-z]{{3}}', 0, fr'{opus_id_prefix_a}-uranus-\1'),
+            ]
+        opus_id_list += [
+            (rf'.*/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/global/{bundle_prefix}_\d+nm_radius_equator_(e)gress_\d{{3,4}}m\.[a-z]{{3}}', 0, rf'{opus_id_prefix_e}-ringpl-\1'),
+            (rf'.*/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/global/{bundle_prefix}_\d+nm_radius_equator_(i)ngress_\d{{3,4}}m\.[a-z]{{3}}', 0, rf'{opus_id_prefix_i}-ringpl-\1'),
+            (rf'.*/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/rings/{bundle_prefix}_\d+nm_radius_([a-z]+)_(e)gress_\d{{3,4}}m\.[a-z]{{3}}', 0, rf'{opus_id_prefix_e}-\1-\2'),
+            (rf'.*/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/rings/{bundle_prefix}_\d+nm_radius_([a-z]+)_(i)ngress_\d{{3,4}}m\.[a-z]{{3}}', 0, rf'{opus_id_prefix_i}-\1-\2')
+        ]
+opus_id = translator.TranslatorByRegex(opus_id_list)
 
 ##########################################################################################
 # FILESPEC_TO_BUNDLESET
@@ -227,85 +353,42 @@ filespec_to_bundleset = translator.TranslatorByRegex([
 ##########################################################################################
 # OPUS_ID_TO_PRIMARY_LOGICAL_PATH
 ##########################################################################################
+# highest resolution is primary filespec
+opus_id_to_primary_filespec_list = []
+for bundle_prefix, opus_id_prefix_e, opus_id_prefix_i, opus_id_prefix_a in prefix_mapping:
+    if opus_id_prefix_i is None:
+        opus_id_to_primary_filespec_list += [
+            (rf'{opus_id_prefix_e}-uranus-([ei])', 0, rf'bundles/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/atmosphere/{bundle_prefix}_*nm_counts-v-time_atmos_\1*gress.xml'),
+            (rf'{opus_id_prefix_e}-ringpl-([ei])', 0, rf'bundles/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/global/{bundle_prefix}_*nm_radius_equator_\1*gress_100m.xml'),
+            (rf'{opus_id_prefix_e}-([a-z]*)-([ei])', 0, rf'bundles/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/rings/{bundle_prefix}_*nm_radius_\1_\2*_100m.xml'),
+        ]
+    else:
+        if opus_id_prefix_a is not None:
+            opus_id_to_primary_filespec_list += [
+                (rf'{opus_id_prefix_a}-uranus-([ei])', 0, rf'bundles/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/atmosphere/{bundle_prefix}_*nm_counts-v-time_atmos_\1*gress.xml'),
+            ]
+        opus_id_to_primary_filespec_list += [
+            (rf'{opus_id_prefix_e}-ringpl-(e)', 0, rf'bundles/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/global/{bundle_prefix}_*nm_radius_equator_\1*gress_100m.xml'),
+            (rf'{opus_id_prefix_i}-ringpl-(i)', 0, rf'bundles/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/global/{bundle_prefix}_*nm_radius_equator_\1*gress_100m.xml'),
+            (rf'{opus_id_prefix_e}-([a-z]*)-(e)', 0, rf'bundles/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/rings/{bundle_prefix}_*nm_radius_\1_\2*_100m.xml'),
+            (rf'{opus_id_prefix_i}-([a-z]*)-(i)', 0, rf'bundles/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/rings/{bundle_prefix}_*nm_radius_\1_\2*_100m.xml'),
+        ]
 
-# By identifying the first three digits of the spacecraft clock with a range of volumes, we speed things up quite a bit
-opus_id_to_primary_logical_path = translator.TranslatorByRegex([
-    (r'co-iss-([nw]188.*)',     0,  r'volumes/COISS_2xxx/COISS_211[5-6]/data/*/#UPPER#\1_*.IMG'),
-    (r'co-iss-([nw]187.*)',     0,  r'volumes/COISS_2xxx/COISS_211[2-5]/data/*/#UPPER#\1_*.IMG'),
-    (r'co-iss-([nw]186.*)',     0, [r'volumes/COISS_2xxx/COISS_2109/data/*/#UPPER#\1_*.IMG',
-                                    r'volumes/COISS_2xxx/COISS_211[0-2]/data/*/#UPPER#\1_*.IMG']),
-    (r'co-iss-([nw]185.*)',     0,  r'volumes/COISS_2xxx/COISS_210[6-9]/data/*/#UPPER#\1_*.IMG'),
-    (r'co-iss-([nw]184.*)',     0,  r'volumes/COISS_2xxx/COISS_210[4-6]/data/*/#UPPER#\1_*.IMG'),
-    (r'co-iss-([nw]183.*)',     0,  r'volumes/COISS_2xxx/COISS_210[1-4]/data/*/#UPPER#\1_*.IMG'),
-    (r'co-iss-([nw]182.*)',     0, [r'volumes/COISS_2xxx/COISS_209[8-9]/data/*/#UPPER#\1_*.IMG',
-                                    r'volumes/COISS_2xxx/COISS_210[0-1]/data/*/#UPPER#\1_*.IMG']),
-    (r'co-iss-([nw]181.*)',     0,  r'volumes/COISS_2xxx/COISS_209[6-8]/data/*/#UPPER#\1_*.IMG'),
-    (r'co-iss-([nw]180.*)',     0,  r'volumes/COISS_2xxx/COISS_209[4-6]/data/*/#UPPER#\1_*.IMG'),
-    (r'co-iss-([nw]179.*)',     0,  r'volumes/COISS_2xxx/COISS_209[1-4]/data/*/#UPPER#\1_*.IMG'),
-    (r'co-iss-([nw]178.*)',     0,  r'volumes/COISS_2xxx/COISS_209[0-1]/data/*/#UPPER#\1_*.IMG'),
-    (r'co-iss-([nw]177.*)',     0, [r'volumes/COISS_2xxx/COISS_208[8-9]/data/*/#UPPER#\1_*.IMG',
-                                    r'volumes/COISS_2xxx/COISS_2090/data/*/#UPPER#\1_*.IMG']),
-    (r'co-iss-([nw]176.*)',     0,  r'volumes/COISS_2xxx/COISS_208[6-8]/data/*/#UPPER#\1_*.IMG'),
-    (r'co-iss-([nw]175.*)',     0,  r'volumes/COISS_2xxx/COISS_208[3-6]/data/*/#UPPER#\1_*.IMG'),
-    (r'co-iss-([nw]174.*)',     0,  r'volumes/COISS_2xxx/COISS_208[0-3]/data/*/#UPPER#\1_*.IMG'),
-    (r'co-iss-([nw]173.*)',     0, [r'volumes/COISS_2xxx/COISS_207[8-9]/data/*/#UPPER#\1_*.IMG',
-                                    r'volumes/COISS_2xxx/COISS_2080/data/*/#UPPER#\1_*.IMG']),
-    (r'co-iss-([nw]172.*)',     0,  r'volumes/COISS_2xxx/COISS_207[6-8]/data/*/#UPPER#\1_*.IMG'),
-    (r'co-iss-([nw]171.*)',     0,  r'volumes/COISS_2xxx/COISS_207[2-6]/data/*/#UPPER#\1_*.IMG'),
-    (r'co-iss-([nw]170.*)',     0,  r'volumes/COISS_2xxx/COISS_207[1-2]/data/*/#UPPER#\1_*.IMG'),
-    (r'co-iss-([nw]169.*)',     0, [r'volumes/COISS_2xxx/COISS_2069/data/*/#UPPER#\1_*.IMG',
-                                    r'volumes/COISS_2xxx/COISS_207[0-1]/data/*/#UPPER#\1_*.IMG']),
-    (r'co-iss-([nw]168.*)',     0,  r'volumes/COISS_2xxx/COISS_206[7-9]/data/*/#UPPER#\1_*.IMG'),
-    (r'co-iss-([nw]167.*)',     0,  r'volumes/COISS_2xxx/COISS_206[6-7]/data/*/#UPPER#\1_*.IMG'),
-    (r'co-iss-([nw]166.*)',     0,  r'volumes/COISS_2xxx/COISS_206[4-6]/data/*/#UPPER#\1_*.IMG'),
-    (r'co-iss-([nw]165.*)',     0,  r'volumes/COISS_2xxx/COISS_206[2-4]/data/*/#UPPER#\1_*.IMG'),
-    (r'co-iss-([nw]164.*)',     0, [r'volumes/COISS_2xxx/COISS_2059/data/*/#UPPER#\1_*.IMG',
-                                    r'volumes/COISS_2xxx/COISS_206[0-2]/data/*/#UPPER#\1_*.IMG']),
-    (r'co-iss-([nw]163.*)',     0,  r'volumes/COISS_2xxx/COISS_205[7-9]/data/*/#UPPER#\1_*.IMG'),
-    (r'co-iss-([nw]162.*)',     0,  r'volumes/COISS_2xxx/COISS_205[4-7]/data/*/#UPPER#\1_*.IMG'),
-    (r'co-iss-([nw]161.*)',     0,  r'volumes/COISS_2xxx/COISS_205[2-4]/data/*/#UPPER#\1_*.IMG'),
-    (r'co-iss-([nw]160.*)',     0, [r'volumes/COISS_2xxx/COISS_204[8-9]/data/*/#UPPER#\1_*.IMG',
-                                    r'volumes/COISS_2xxx/COISS_205[0-2]/data/*/#UPPER#\1_*.IMG']),
-    (r'co-iss-([nw]159.*)',     0,  r'volumes/COISS_2xxx/COISS_204[5-8]/data/*/#UPPER#\1_*.IMG'),
-    (r'co-iss-([nw]158.*)',     0,  r'volumes/COISS_2xxx/COISS_204[1-5]/data/*/#UPPER#\1_*.IMG'),
-    (r'co-iss-([nw]157.*)',     0, [r'volumes/COISS_2xxx/COISS_203[8-9]/data/*/#UPPER#\1_*.IMG',
-                                    r'volumes/COISS_2xxx/COISS_204[0-1]/data/*/#UPPER#\1_*.IMG']),
-    (r'co-iss-([nw]156.*)',     0,  r'volumes/COISS_2xxx/COISS_203[2-8]/data/*/#UPPER#\1_*.IMG'),
-    (r'co-iss-([nw]155.*)',     0, [r'volumes/COISS_2xxx/COISS_2029/data/*/#UPPER#\1_*.IMG',
-                                    r'volumes/COISS_2xxx/COISS_203[0-2]/data/*/#UPPER#\1_*.IMG']),
-    (r'co-iss-([nw]154.*)',     0,  r'volumes/COISS_2xxx/COISS_202[6-9]/data/*/#UPPER#\1_*.IMG'),
-    (r'co-iss-([nw]153.*)',     0,  r'volumes/COISS_2xxx/COISS_202[3-6]/data/*/#UPPER#\1_*.IMG'),
-    (r'co-iss-([nw]152.*)',     0,  r'volumes/COISS_2xxx/COISS_202[0-3]/data/*/#UPPER#\1_*.IMG'),
-    (r'co-iss-([nw]151.*)',     0, [r'volumes/COISS_2xxx/COISS_201[6-9]/data/*/#UPPER#\1_*.IMG',
-                                    r'volumes/COISS_2xxx/COISS_2020/data/*/#UPPER#\1_*.IMG']),
-    (r'co-iss-([nw]150.*)',     0,  r'volumes/COISS_2xxx/COISS_201[4-6]/data/*/#UPPER#\1_*.IMG'),
-    (r'co-iss-([nw]149.*)',     0,  r'volumes/COISS_2xxx/COISS_201[0-4]/data/*/#UPPER#\1_*.IMG'),
-    (r'co-iss-([nw]148.*)',     0, [r'volumes/COISS_2xxx/COISS_200[8-9]/data/*/#UPPER#\1_*.IMG',
-                                    r'volumes/COISS_2xxx/COISS_2010/data/*/#UPPER#\1_*.IMG']),
-    (r'co-iss-([nw]147.*)',     0,  r'volumes/COISS_2xxx/COISS_200[5-8]/data/*/#UPPER#\1_*.IMG'),
-    (r'co-iss-([nw]146.*)',     0,  r'volumes/COISS_2xxx/COISS_200[1-5]/data/*/#UPPER#\1_*.IMG'),
-    (r'co-iss-([nw]145.*)',     0, [r'volumes/COISS_1xxx/COISS_1009/data/*/#UPPER#\1_*.IMG',
-                                    r'volumes/COISS_2xxx/COISS_2001/data/*/#UPPER#\1_*.IMG']),
-    (r'co-iss-([nw]144.*)',     0,  r'volumes/COISS_1xxx/COISS_100[8-9]/data/*/#UPPER#\1_*.IMG'),
-    (r'co-iss-([nw]14[123].*)', 0,  r'volumes/COISS_1xxx/COISS_1008/data/*/#UPPER#\1_*.IMG'),
-    (r'co-iss-([nw]140.*)',     0,  r'volumes/COISS_1xxx/COISS_100[7-8]/data/*/#UPPER#\1_*.IMG'),
-    (r'co-iss-([nw]13[789].*)', 0,  r'volumes/COISS_1xxx/COISS_1007/data/*/#UPPER#\1_*.IMG'),
-    (r'co-iss-([nw]136.*)',     0,  r'volumes/COISS_1xxx/COISS_100[6-7]/data/*/#UPPER#\1_*.IMG'),
-    (r'co-iss-([nw]135.*)',     0,  r'volumes/COISS_1xxx/COISS_100[1-6]/data/*/#UPPER#\1_*.IMG'),
-    (r'co-iss-([nw]13[0-4].*)', 0,  r'volumes/COISS_1xxx/COISS_1001/data/*/#UPPER#\1_*.IMG'),
-    (r'co-iss-([nw]12.*)',      0,  r'volumes/COISS_1xxx/COISS_1001/data/*/#UPPER#\1_*.IMG'),
-])
+opus_id_to_primary_logical_path = translator.TranslatorByRegex(opus_id_to_primary_filespec_list)
 
 ##########################################################################################
 # Subclass definition
 ##########################################################################################
 
 class uranus_occs_earthbased(pds4file.Pds4File):
-
-    pds4file.Pds4File.VOLSET_TRANSLATOR = translator.TranslatorByRegex([('uranus_occs_earthbased', re.I, 'uranus_occs_earthbased')]) + \
+    volset_list = []
+    for bundle_prefix, _, _, _ in prefix_mapping:
+        volset_list += [(f'uranus_occ_{bundle_prefix}', re.I, 'uranus_occs_earthbased')]
+    pds4file.Pds4File.VOLSET_TRANSLATOR = translator.TranslatorByRegex(volset_list) + \
                                           pds4file.Pds4File.VOLSET_TRANSLATOR
 
-    DESCRIPTION_AND_ICON = description_and_icon_by_regex + pds4file.Pds4File.DESCRIPTION_AND_ICON
+    DESCRIPTION_AND_ICON = description_and_icon_by_regex + \
+                           pds4file.Pds4File.DESCRIPTION_AND_ICON
     VIEW_OPTIONS = view_options + pds4file.Pds4File.VIEW_OPTIONS
     NEIGHBORS = neighbors + pds4file.Pds4File.NEIGHBORS
     SORT_KEY = sort_key + pds4file.Pds4File.SORT_KEY
@@ -324,11 +407,20 @@ class uranus_occs_earthbased(pds4file.Pds4File):
     ASSOCIATIONS['metadata']   += associations_to_metadata
     ASSOCIATIONS['documents']  += associations_to_documents
 
-    pds4file.Pds4File.FILESPEC_TO_BUNDLESET = filespec_to_bundleset + pds4file.Pds4File.FILESPEC_TO_BUNDLESET
-
+    pds4file.Pds4File.FILESPEC_TO_BUNDLESET = filespec_to_bundleset + \
+                                              pds4file.Pds4File.FILESPEC_TO_BUNDLESET
 # Global attribute shared by all subclasses
-pds4file.Pds4File.OPUS_ID_TO_SUBCLASS = translator.TranslatorByRegex([(r'uranus-occ-.*', 0, uranus_occs_earthbased)]) + \
-                                        pds4file.Pds4File.OPUS_ID_TO_SUBCLASS
+opus_id_to_subclass_set = set()
+for bundle_prefix, opus_id_prefix_e, opus_id_prefix_i, opus_id_prefix_a in prefix_mapping:
+    opus_id_to_subclass_set.add((rf'{opus_id_prefix_e}.*', 0, uranus_occs_earthbased))
+    if opus_id_prefix_i is not None:
+        opus_id_to_subclass_set.add((rf'{opus_id_prefix_i}.*', 0, uranus_occs_earthbased))
+    if opus_id_prefix_a is not None:
+        opus_id_to_subclass_set.add((rf'{opus_id_prefix_a}.*', 0, uranus_occs_earthbased))
+pds4file.Pds4File.OPUS_ID_TO_SUBCLASS = (
+    translator.TranslatorByRegex(list(opus_id_to_subclass_set)) +
+    pds4file.Pds4File.OPUS_ID_TO_SUBCLASS
+)
 
 ##########################################################################################
 # Update the global dictionary of subclasses
@@ -342,6 +434,326 @@ pds4file.Pds4File.SUBCLASSES['uranus_occs_earthbased'] = uranus_occs_earthbased
 
 import pytest
 from .pytest_support import *
+
+@pytest.mark.parametrize(
+    'input_path,expected',
+    [
+        # rings
+        ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_delta_egress_100m.xml',
+         {('Uranus Earth-based Occultations',
+           20,
+           'ebur_occ_ring_0500',
+           'Occultation Ring Profile (500 m)',
+           True): [
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_delta_egress_500m.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_delta_egress_500m.tab'
+            ],
+          ('Uranus Earth-based Occultations',
+           10,
+           'ebur_occ_ring_0100',
+           'Occultation Ring Profile (100 m)',
+           True): [
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_delta_egress_100m.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_delta_egress_100m.tab'
+            ],
+          ('Uranus Earth-based Occultations',
+           30,
+           'ebur_occ_ring_1000',
+           'Occultation Ring Profile (1 km)',
+           True): [
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_delta_egress_1000m.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_delta_egress_1000m.tab'
+            ],
+          ('Uranus Earth-based Occultations',
+           40,
+           'ebur_occ_ring_time',
+           'Occultation Ring Time Series',
+           False): [
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_counts-v-time_rings_egress.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_counts-v-time_rings_egress.tab'
+            ],
+          ('Uranus Earth-based Occultations',
+           50,
+           'ebur_occ_ring_sqw_model',
+           'Occultation Ring Model', False): [
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/ring_models/u0_kao_91cm_734nm_wavelengths.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/ring_models/u0_kao_91cm_734nm_wavelengths.csv',
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/ring_models/u0_kao_91cm_734nm_ring_delta_egress_sqw.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/ring_models/u0_kao_91cm_734nm_ring_delta_egress_sqw.txt',
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/ring_models/u0_kao_91cm_734nm_ring_delta_egress_sqw.pdf',
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/ring_models/u0_kao_91cm_734nm_predicted_ring_event_times.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/ring_models/u0_kao_91cm_734nm_predicted_ring_event_times.tab',
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/ring_models/u0_kao_91cm_734nm_predicted_ring_event_times.pdf',
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/ring_models/u0_kao_91cm_734nm_fitted_ring_event_times.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/ring_models/u0_kao_91cm_734nm_fitted_ring_event_times.tab',
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/ring_models/u0_kao_91cm_734nm_ring_delta_egress_sqw_s.tab',
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/ring_models/u0_kao_91cm_734nm_ring_delta_egress_sqw_p.tab',
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/ring_models/u0_kao_91cm_734nm_ring_delta_egress_sqw_i.tab',
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/ring_models/u0_kao_91cm_734nm_ring_delta_egress_sqw_h.tab',
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/ring_models/u0_kao_91cm_734nm_ring_delta_egress_sqw_c.tab'
+            ],
+          ('Uranus Earth-based Occultations',
+           160,
+           'ebur_occ_software',
+           'Software',
+           False): [
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/ring_longitude_example.py',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/ring_longitude_example.pro',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/plot_epsilon_ring_example_python.pdf',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/plot_epsilon_ring_example_IDL.pdf',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/plot_epsilon_ring_example.py',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/plot_epsilon_ring_example.pro',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/occgeom_example2.py',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/occgeom_example2.pro',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/occgeom_example1.py',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/occgeom_example1.pro',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/create_uranus_ringframes_french_et_al_1988_v1.pro',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/UranusPoleExample2.py',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/UranusPoleExample1.py'
+            ],
+          ('metadata',
+           5,
+           'rms_index',
+           'RMS Node Augmented Index',
+           False): [
+               'metadata/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/uranus_occ_u0_kao_91cm_rings_index.csv'
+            ],
+          ('Uranus Earth-based Occultations',
+           110,
+           'ebur_occ_global_ring_fit',
+           'Global Ring Orbital Fit',
+           False): [
+                'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_input_stars_20201201.csv',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_input_observatories_20201201.tab',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_input_events_20201201.tab',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_input_data_20201201.tab',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_20201201.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_20201201.txt',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_20201201.tab'
+            ],
+          ('Uranus Earth-based Occultations',
+           120,
+           'ebur_occ_orig_index',
+           'Original Index',
+           False): [
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/supplemental_docs/uranus_occultations_index.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/supplemental_docs/uranus_occultations_index.tab'
+            ],
+          ('Uranus Earth-based Occultations',
+           130,
+           'ebur_occ_quality_rating',
+           'Quality Ratings',
+           False): [
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/supplemental_docs/uranus_ringocc_bundles_quality_rating.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/supplemental_docs/uranus_ringocc_bundles_quality_rating.csv'
+            ],
+          ('Uranus Earth-based Occultations',
+           150,
+           'ebur_occ_documentation',
+           'Documentation',
+           False): [
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/earth-based-uranus-stellar-occultation-user-guide.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/earth-based-uranus-stellar-occultation-user-guide.pdf'
+            ],
+          ('Uranus Earth-based Occultations',
+           170,
+           'ebur_occ_kernels',
+           'SPICE Kernels',
+           False): [
+                'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/spk/urkao_v1.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/spk/urkao_v1.bsp',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/fk/uranus_ringframes_rfrench20201201_v1.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/fk/uranus_ringframes_rfrench20201201_v1.tf',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/fk/uranus_ringframes_french_et_al_1988_v1.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/fk/uranus_ringframes_french_et_al_1988_v1.tf'
+            ]}
+        ),
+        # atmosphere
+        ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_ingress.xml',
+         {('Uranus Earth-based Occultations',
+           60,
+           'ebur_occ_atmos',
+           'Occultation Atmosphere Time Series',
+           True): [
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_ingress.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_ingress.tab'
+            ],
+          ('Uranus Earth-based Occultations',
+           160,
+           'ebur_occ_software',
+           'Software',
+           False): [
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/ring_longitude_example.py',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/ring_longitude_example.pro',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/plot_epsilon_ring_example_python.pdf',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/plot_epsilon_ring_example_IDL.pdf',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/plot_epsilon_ring_example.py',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/plot_epsilon_ring_example.pro',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/occgeom_example2.py',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/occgeom_example2.pro',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/occgeom_example1.py',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/occgeom_example1.pro',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/create_uranus_ringframes_french_et_al_1988_v1.pro',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/UranusPoleExample2.py',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/UranusPoleExample1.py'
+            ],
+          ('metadata',
+           5,
+           'rms_index',
+           'RMS Node Augmented Index',
+           False): [
+                'metadata/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/uranus_occ_u0_kao_91cm_atmosphere_index.csv'
+            ],
+          ('Uranus Earth-based Occultations',
+           120,
+           'ebur_occ_orig_index',
+           'Original Index',
+           False): [
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/supplemental_docs/uranus_occultations_index.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/supplemental_docs/uranus_occultations_index.tab'
+            ],
+          ('Uranus Earth-based Occultations',
+           130,
+           'ebur_occ_quality_rating',
+           'Quality Ratings',
+           False): [
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/supplemental_docs/uranus_ringocc_bundles_quality_rating.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/supplemental_docs/uranus_ringocc_bundles_quality_rating.csv'
+            ],
+          ('Uranus Earth-based Occultations',
+           150,
+           'ebur_occ_documentation',
+           'Documentation',
+           False): [
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/earth-based-uranus-stellar-occultation-user-guide.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/earth-based-uranus-stellar-occultation-user-guide.pdf'
+            ],
+          ('Uranus Earth-based Occultations',
+           170,
+           'ebur_occ_kernels',
+           'SPICE Kernels',
+           False): [
+                'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/spk/urkao_v1.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/spk/urkao_v1.bsp',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/fk/uranus_ringframes_rfrench20201201_v1.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/fk/uranus_ringframes_rfrench20201201_v1.tf',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/fk/uranus_ringframes_french_et_al_1988_v1.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/fk/uranus_ringframes_french_et_al_1988_v1.tf'
+            ]}
+        ),
+        # global
+        ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_ingress_100m.xml',
+         {('Uranus Earth-based Occultations',
+           70,
+           'ebur_occ_global_0100',
+           'Occultation Ring-Plane Profile (100 m)',
+           True): [
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_ingress_100m.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_ingress_100m.tab'
+            ],
+          ('Uranus Earth-based Occultations',
+           80,
+           'ebur_occ_global_0500',
+           'Occultation Ring-Plane Profile (500 m)',
+           True): [
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_ingress_500m.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_ingress_500m.tab'
+            ],
+          ('Uranus Earth-based Occultations',
+           90,
+           'ebur_occ_global_1000',
+           'Occultation Ring-Plane Profile (1 km)',
+           True): [
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_ingress_1000m.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_ingress_1000m.tab'
+            ],
+          ('Uranus Earth-based Occultations',
+           100,
+           'ebur_occ_global_time',
+           'Occultation Ring-Plane Time Series',
+           False): [
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_counts-v-time_occult.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_counts-v-time_occult.tab'
+            ],
+          ('Uranus Earth-based Occultations',
+           160,
+           'ebur_occ_software',
+           'Software',
+           False): [
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/ring_longitude_example.py',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/ring_longitude_example.pro',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/plot_epsilon_ring_example_python.pdf',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/plot_epsilon_ring_example_IDL.pdf',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/plot_epsilon_ring_example.py',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/plot_epsilon_ring_example.pro',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/occgeom_example2.py',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/occgeom_example2.pro',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/occgeom_example1.py',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/occgeom_example1.pro',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/create_uranus_ringframes_french_et_al_1988_v1.pro',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/UranusPoleExample2.py',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/UranusPoleExample1.py'
+            ],
+          ('metadata',
+           5,
+           'rms_index',
+           'RMS Node Augmented Index',
+           False): [
+                'metadata/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/uranus_occ_u0_kao_91cm_global_index.csv'
+            ],
+          ('Uranus Earth-based Occultations',
+           110,
+           'ebur_occ_global_ring_fit',
+           'Global Ring Orbital Fit',
+           False): [
+                'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_input_stars_20201201.csv',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_input_observatories_20201201.tab',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_input_events_20201201.tab',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_input_data_20201201.tab',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_20201201.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_20201201.txt',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_20201201.tab'
+            ],
+          ('Uranus Earth-based Occultations',
+           120,
+           'ebur_occ_orig_index',
+           'Original Index',
+           False): [
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/supplemental_docs/uranus_occultations_index.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/supplemental_docs/uranus_occultations_index.tab'
+            ],
+          ('Uranus Earth-based Occultations',
+           130,
+           'ebur_occ_quality_rating',
+           'Quality Ratings',
+           False): [
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/supplemental_docs/uranus_ringocc_bundles_quality_rating.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/supplemental_docs/uranus_ringocc_bundles_quality_rating.csv'
+            ],
+          ('Uranus Earth-based Occultations',
+           150,
+           'ebur_occ_documentation',
+           'Documentation',
+           False): [
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/earth-based-uranus-stellar-occultation-user-guide.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/document/user_guide/earth-based-uranus-stellar-occultation-user-guide.pdf'
+            ],
+          ('Uranus Earth-based Occultations',
+           170,
+           'ebur_occ_kernels',
+           'SPICE Kernels',
+           False): [
+                'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/spk/urkao_v1.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/spk/urkao_v1.bsp',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/fk/uranus_ringframes_rfrench20201201_v1.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/fk/uranus_ringframes_rfrench20201201_v1.tf',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/fk/uranus_ringframes_french_et_al_1988_v1.xml',
+                'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/fk/uranus_ringframes_french_et_al_1988_v1.tf']}
+        )
+    ]
+)
+def test_opus_products(input_path, expected):
+    opus_products_test(input_path, expected)
 
 @pytest.mark.parametrize(
     'input_path,category,expected',
@@ -378,28 +790,28 @@ from .pytest_support import *
         ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm',
          'metadata',
          [
-            'metadata/uranus_occs_earthbased',
+            'metadata/uranus_occs_earthbased/uranus_occ_u0_kao_91cm',
          ]),
         # TODO: when we have index shelf files available, we can test the following cases
         # ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_alpha_egress_100m.xml',
         #  'metadata',
         #  [
-        #     'metadata/uranus_occs_earthbased/uranus_rings_occultations_index.tab/u0_kao_91cm_734nm_radius_alpha_egress_100m',
+        #     'metadata/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/uranus_occ_u0_kao_91cm_rings_index.csv/u0_kao_91cm_734nm_radius_alpha_egress_100m',
         #  ]),
         # ('uranus_occs_earthbased/data/rings/u0_kao_91cm_734nm_radius_delta_ingress_1000m.tab',
         #  'metadata',
         #  [
-        #     'metadata/uranus_occs_earthbased/uranus_rings_occultations_index.tab/u0_kao_91cm_734nm_radius_delta_ingress_1000ms',
+        #     'metadata/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/uranus_occ_u0_kao_91cm_rings_index.csv/u0_kao_91cm_734nm_radius_delta_ingress_1000ms',
         #  ]),
         # ('uranus_occs_earthbased/data/global/u0_kao_91cm_734nm_radius_equator_ingress_500m.tab',
         #  'metadata',
         #  [
-        #     'metadata/uranus_occs_earthbased/uranus_global_occultations_index.tab/u0_kao_91cm_734nm_radius_equator_ingress_500m',
+        #     'metadata/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/uranus_occ_u0_kao_91cm_global_index.csv/u0_kao_91cm_734nm_radius_equator_ingress_500m',
         #  ]),
         # ('uranus_occs_earthbased/data/global/u0_kao_91cm_734nm_radius_equator_egress_100m.xml',
         #  'metadata',
         #  [
-        #     'metadata/uranus_occs_earthbased/uranus_global_occultations_index.tab/u0_kao_91cm_734nm_radius_equator_egress_100m',
+        #     'metadata/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/uranus_occ_u0_kao_91cm_global_index.csv/u0_kao_91cm_734nm_radius_equator_egress_100m',
         #  ]),
         # TODO: add test case for documents when correct document files are added
     ]
@@ -412,5 +824,47 @@ def test_associated_abspaths(input_path, category, expected):
     assert len(result_paths) != 0
     for path in result_paths:
         assert path in expected
+
+def test_opus_id_to_primary_logical_path():
+    for logical_path in PRIMARY_FILESPEC_LIST:
+        test_pdsf = pds4file.Pds4File.from_logical_path(logical_path)
+        opus_id = test_pdsf.opus_id
+        opus_id_pdsf = pds4file.Pds4File.from_opus_id(opus_id)
+        assert opus_id_pdsf.logical_path == logical_path
+        # Temporarily, before writing OPUS products code, comment out remaining code below
+
+        # Gather all the associated OPUS products
+        #product_dict = test_pdsf.opus_products()
+        #product_pds4files = []
+        #for pdsf_lists in product_dict.values():
+        #    for pdsf_list in pdsf_lists:
+        #        product_pdsfiles += pdsf_list
+
+        # Filter out the metadata/documents products and format files
+        #product_pdsfiles = [pdsf for pdsf in product_pdsfiles
+        #                         if pdsf.voltype_ != 'metadata/'
+        #                         and pdsf.voltype_ != 'documents/']
+        #product_pdsfiles = [pdsf for pdsf in product_pdsfiles
+        #                         if pdsf.extension.lower() != '.fmt']
+
+        # Gather the set of absolute paths
+        #opus_id_abspaths = set()
+        #for pdsf in product_pdsfiles:
+        #    opus_id_abspaths.add(pdsf.abspath)
+
+        #for pdsf in product_pdsfiles:
+            # Every version is in the product set
+        #    for version_pdsf in pdsf.all_versions().values():
+        #        assert version_pdsf.abspath in opus_id_abspaths
+
+            # Every viewset is in the product set
+        #    for viewset in pdsf.all_viewsets.values():
+        #        for viewable in viewset.viewables:
+        #            assert viewable.abspath in opus_id_abspaths
+
+            # Every associated product is in the product set except metadata
+        #    for category in ('volumes', 'calibrated', 'previews'):
+        #        for abspath in pdsf.associated_abspaths(category):
+        #            assert abspath in opus_id_abspaths
 
 ##########################################################################################

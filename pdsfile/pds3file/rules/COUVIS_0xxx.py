@@ -350,7 +350,7 @@ from .pytest_support import *
            False): ['metadata/COUVIS_0xxx/COUVIS_0001/COUVIS_0001_index.tab',
                     'metadata/COUVIS_0xxx/COUVIS_0001/COUVIS_0001_index.lbl'],
           ('metadata',
-           9,
+           8,
            'supplemental_index',
            'Supplemental Index',
            False): ['metadata/COUVIS_0xxx/COUVIS_0001/COUVIS_0001_supplemental_index.tab',

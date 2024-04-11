@@ -470,7 +470,7 @@ def test_opus_products_count():
           False): ['metadata/COVIMS_0xxx/COVIMS_0006/COVIMS_0006_index.tab',
            'metadata/COVIMS_0xxx/COVIMS_0006/COVIMS_0006_index.lbl'],
          ('metadata',
-          9,
+          8,
           'supplemental_index',
           'Supplemental Index',
           False): ['metadata/COVIMS_0xxx/COVIMS_0006/COVIMS_0006_supplemental_index.tab',

@@ -520,8 +520,7 @@ OPUS_TYPE = translator.TranslatorByRegex([
     (r'metadata/.*_\d+_index\..*',         0, ('metadata', 5, 'rms_index',          'RMS Node Augmented Index',     False)),
     (r'metadata/.*_hstfiles\..*',          0, ('metadata', 6, 'hstfiles_index',     'HST Files Associations Index', False)),
     (r'metadata/.*raw_image_index\..*',    0, ('metadata', 7, 'raw_image_index',    'Raw Image Index',              False)),
-    (r'metadata/.*profile_index\..*',      0, ('metadata', 8, 'profile_index',      'Profile Index',                False)),
-    (r'metadata/.*supplemental_index\..*', 0, ('metadata', 9, 'supplemental_index', 'Supplemental Index',           False)),
+    (r'metadata/.*supplemental_index\..*', 0, ('metadata', 8, 'supplemental_index', 'Supplemental Index',           False)),
 ])
 
 ##########################################################################################
