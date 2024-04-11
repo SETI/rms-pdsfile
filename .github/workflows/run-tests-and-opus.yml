@@ -41,7 +41,7 @@ jobs:
         with:
           repository: SETI/rms-opus
           path: rms-opus
-          ref: uranus_occs_earthbased
+          # ref: uranus_occs_earthbased
           # Currently we just checkout the current master branch for OPUS.
           # We really need some way to specify a branch so that we can do
           # parallel inter-dependent development on PdsFile and OPUS.
