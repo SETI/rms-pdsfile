@@ -350,7 +350,7 @@ from .pytest_support import *
            False): ['metadata/COUVIS_0xxx/COUVIS_0001/COUVIS_0001_index.tab',
                     'metadata/COUVIS_0xxx/COUVIS_0001/COUVIS_0001_index.lbl'],
           ('metadata',
-           9,
+           8,
            'supplemental_index',
            'Supplemental Index',
            False): ['metadata/COUVIS_0xxx/COUVIS_0001/COUVIS_0001_supplemental_index.tab',
@@ -444,6 +444,7 @@ def test_associated_abspaths(input_path, category, expected):
         category=category)
     result_paths = []
     result_paths += pds3file.Pds3File.logicals_for_abspaths(res)
+    assert len(result_paths) != 0
     for path in result_paths:
         assert path in expected
 

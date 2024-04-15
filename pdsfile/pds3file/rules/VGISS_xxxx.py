@@ -723,7 +723,7 @@ from .pytest_support import *
           False): ['metadata/VGISS_5xxx/VGISS_5101/VGISS_5101_raw_image_index.tab',
                    'metadata/VGISS_5xxx/VGISS_5101/VGISS_5101_raw_image_index.lbl'],
          ('metadata',
-          9,
+          8,
           'supplemental_index',
           'Supplemental Index',
           False): ['metadata/VGISS_5xxx/VGISS_5101/VGISS_5101_supplemental_index.tab',

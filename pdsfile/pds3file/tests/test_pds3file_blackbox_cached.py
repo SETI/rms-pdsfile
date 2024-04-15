@@ -9,11 +9,11 @@ import pdsfile.pds3file as pds3file
 from pdsfile import pdsviewable
 import pytest
 
-from .helper import (PDS_HOLDINGS_DIR,
+from .helper import (PDS3_HOLDINGS_DIR,
                      instantiate_target_pdsfile)
 
 try:
-    PDS_TESTING_ROOT = PDS_HOLDINGS_DIR[:PDS_HOLDINGS_DIR.rindex('pdsdata')]
+    PDS_TESTING_ROOT = PDS3_HOLDINGS_DIR[:PDS3_HOLDINGS_DIR.rindex('pdsdata')]
 except ValueError: # pragma: no cover
     PDS_TESTING_ROOT = '/Library/WebServer/Documents/'
 
@@ -322,15 +322,15 @@ class TestPdsFileBlackBox:
         [
             ('volumes/COUVIS_0xxx_v1/COUVIS_0009/DATA/D2004_274/EUV2004_274_01_39.LBL',
              [
-                (58, 'EUV2004_274_01_39.DAT', PDS_HOLDINGS_DIR + '/volumes/COUVIS_0xxx_v1/COUVIS_0009/DATA/D2004_274/EUV2004_274_01_39.DAT'),
+                (58, 'EUV2004_274_01_39.DAT', PDS3_HOLDINGS_DIR + '/volumes/COUVIS_0xxx_v1/COUVIS_0009/DATA/D2004_274/EUV2004_274_01_39.DAT'),
              ]),
             ('volumes/COCIRS_0xxx/COCIRS_0012/DATA', []),
             ('previews/COISS_1xxx/COISS_1001/data/1294561143_1295221348/W1294561261_1_thumb.jpg', []),
             ('volumes/COCIRS_0xxx/COCIRS_0012/DATA/NAV_DATA/GEO00120100.LBL',
              [
-                (24, 'GEO00120100.DAT', PDS_HOLDINGS_DIR + '/volumes/COCIRS_0xxx/COCIRS_0012/DATA/NAV_DATA/GEO00120100.DAT'),
-                (25, 'GEO00120100.DAT', PDS_HOLDINGS_DIR + '/volumes/COCIRS_0xxx/COCIRS_0012/DATA/NAV_DATA/GEO00120100.DAT'),
-                (32, 'GEO.FMT', PDS_HOLDINGS_DIR + '/volumes/COCIRS_0xxx/COCIRS_0012/DATA/NAV_DATA/GEO.FMT')
+                (24, 'GEO00120100.DAT', PDS3_HOLDINGS_DIR + '/volumes/COCIRS_0xxx/COCIRS_0012/DATA/NAV_DATA/GEO00120100.DAT'),
+                (25, 'GEO00120100.DAT', PDS3_HOLDINGS_DIR + '/volumes/COCIRS_0xxx/COCIRS_0012/DATA/NAV_DATA/GEO00120100.DAT'),
+                (32, 'GEO.FMT', PDS3_HOLDINGS_DIR + '/volumes/COCIRS_0xxx/COCIRS_0012/DATA/NAV_DATA/GEO.FMT')
              ])
         ]
     )

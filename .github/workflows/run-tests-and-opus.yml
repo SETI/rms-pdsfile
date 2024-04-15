@@ -16,7 +16,7 @@ jobs:
     uses: ./.github/workflows/run-tests.yml
 
   test_opus:
-    name: Test pdsfile with OPUS
+    name: Test pdsfile via OPUS
     needs: [test_pdsfile]
     runs-on: ${{ matrix.os }}
     strategy:
@@ -41,6 +41,7 @@ jobs:
         with:
           repository: SETI/rms-opus
           path: rms-opus
+          # ref: uranus_occs_earthbased
           # Currently we just checkout the current master branch for OPUS.
           # We really need some way to specify a branch so that we can do
           # parallel inter-dependent development on PdsFile and OPUS.

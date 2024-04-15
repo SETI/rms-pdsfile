@@ -1,21 +1,21 @@
 #!/bin/bash
 echo "Clean up previous coverage record"
 coverage erase
-count=1
-numOfModes=2
-declare -a mode_arr
-mode_arr=( [1]="s" [2]="ns" )
-declare -a mode_desc
-mode_desc=( [1]="use shelves" [2]="no shelves" )
+if [ $? -ne 0 ]; then exit -1; fi
 
-while [ $count -le $numOfModes ]
-do
-    echo "Run with ${mode_desc[$count]}"
-    coverage run -a -m pytest pdsfile/pds3file/tests/ \
-    pdsfile/pds3file/rules/*.py pdsfile/pds4file/tests/ pdsfile/pds4file/rules/*.py --mode ${mode_arr[$count]}
+echo "Run with use shelves on PDS3"
+coverage run --parallel-mode -m pytest pdsfile/pds3file/tests/ \
+    pdsfile/pds3file/rules/*.py --mode s
+if [ $? -ne 0 ]; then exit -1; fi
+echo "Run with no shelves on PDS3"
+coverage run --parallel-mode -m pytest pdsfile/pds3file/tests/ \
+    pdsfile/pds3file/rules/*.py --mode ns
+if [ $? -ne 0 ]; then exit -1; fi
+echo "Run with no shelves on PDS4"
+coverage run --parallel-mode -m pytest pdsfile/pds4file/tests/ \
+    pdsfile/pds4file/rules/*.py --mode ns
+if [ $? -ne 0 ]; then exit -1; fi
 
-    count=`expr $count + 1`
-done
 echo "Combine results from all modes"
 coverage combine
 echo "Generate html"

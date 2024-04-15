@@ -82,6 +82,7 @@ def unmatched_patterns(trans, path):
 ##########################################################################################
 
 def instantiate_target_pdsfile(path, is_abspath=True):
+    path = 'bundles/'+path
     if is_abspath:
         TESTFILE_PATH = abspath_for_logical_path(path, pds4file.Pds4File)
         target_pdsfile = pds4file.Pds4File.from_abspath(TESTFILE_PATH)
@@ -113,9 +114,9 @@ def opus_products_test(
     # missing values. That's because extra items are generally more diagnostic
     # of the issue at hand.
     for key in results:
-        assert key in expected, f'Extra key: {key}'
+        assert key in expected, f'Extra key: {key} = {results[key]}'
     for key in expected:
-        assert key in results, f'Missing key: {key}'
+        assert key in results, f'Missing key: {key} = {expected[key]}'
     for key in results:
         result_paths = []       # flattened list of logical paths
         for pdsfiles in results[key]:
