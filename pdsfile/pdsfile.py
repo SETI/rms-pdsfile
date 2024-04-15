@@ -986,7 +986,9 @@ class PdsFile(object):
                 cls.LOGGER.info('Pre-loading ' + holdings)
 
                 # Load volume info
-                cls.load_volume_info(holdings)
+                # PDS4 will ignore _volinfo directory
+                if cls.__name__ != 'Pds4File':
+                    cls.load_volume_info(holdings)
 
                 # Load directories starting from here
                 holdings_ = holdings.rstrip('/') + '/'
