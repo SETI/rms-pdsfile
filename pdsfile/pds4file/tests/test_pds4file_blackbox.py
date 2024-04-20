@@ -568,28 +568,25 @@ class TestPds4FileBlackBox:
             # ),
             ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_delta_egress_100m.xml',
              [
-                 f'/{PDS4_HOLDINGS_NAME}/previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_delta_egress_preview_full.jpg',
-                 f'/{PDS4_HOLDINGS_NAME}/previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_delta_egress_preview_med.jpg',
-                 f'/{PDS4_HOLDINGS_NAME}/previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_delta_egress_preview_small.jpg',
-                 f'/{PDS4_HOLDINGS_NAME}/previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_delta_egress_preview_thumb.jpg',
-                 f'/{PDS4_HOLDINGS_NAME}/previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_delta_egress_preview_thumb.png',
+                 f'/{PDS4_HOLDINGS_NAME}/previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_delta_egress_preview_full.png',
+                 f'/{PDS4_HOLDINGS_NAME}/previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_delta_egress_preview_med.png',
+                 f'/{PDS4_HOLDINGS_NAME}/previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_delta_egress_preview_small.png',
+                 f'/{PDS4_HOLDINGS_NAME}/previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_delta_egress_preview_thumb.png'
              ]
             ),
             ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress.xml',
              [
-                 f'/{PDS4_HOLDINGS_NAME}/previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_preview_full.jpg',
-                 f'/{PDS4_HOLDINGS_NAME}/previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_preview_med.jpg',
-                 f'/{PDS4_HOLDINGS_NAME}/previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_preview_small.jpg',
-                 f'/{PDS4_HOLDINGS_NAME}/previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_preview_thumb.jpg',
-                 f'/{PDS4_HOLDINGS_NAME}/previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_preview_thumb.png',
+                 f'/{PDS4_HOLDINGS_NAME}/previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_preview_full.png',
+                 f'/{PDS4_HOLDINGS_NAME}/previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_preview_med.png',
+                 f'/{PDS4_HOLDINGS_NAME}/previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_preview_small.png',
+                 f'/{PDS4_HOLDINGS_NAME}/previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_preview_thumb.png'
              ]
             ),
             ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_ingress_100m.xml',
              [
-                 f'/{PDS4_HOLDINGS_NAME}/previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_ingress_preview_full.jpg',
-                 f'/{PDS4_HOLDINGS_NAME}/previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_ingress_preview_med.jpg',
-                 f'/{PDS4_HOLDINGS_NAME}/previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_ingress_preview_small.jpg',
-                 f'/{PDS4_HOLDINGS_NAME}/previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_ingress_preview_thumb.jpg',
+                 f'/{PDS4_HOLDINGS_NAME}/previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_ingress_preview_full.png',
+                 f'/{PDS4_HOLDINGS_NAME}/previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_ingress_preview_med.png',
+                 f'/{PDS4_HOLDINGS_NAME}/previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_ingress_preview_small.png',
                  f'/{PDS4_HOLDINGS_NAME}/previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_ingress_preview_thumb.png'
              ]
             ),
