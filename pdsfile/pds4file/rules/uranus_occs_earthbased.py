@@ -620,34 +620,6 @@ from .pytest_support import *
                 'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/fk/uranus_ringframes_french_et_al_1988_v1.xml',
                 'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/fk/uranus_ringframes_french_et_al_1988_v1.tf'
             ],
-          ('browse',
-           40,
-           'browse_full',
-           'Browse Image (full)',
-           True): [
-               'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_delta_egress_preview_full.png'
-            ],
-          ('browse',
-           30,
-           'browse_medium',
-           'Browse Image (medium)',
-           False): [
-                'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_delta_egress_preview_med.png'
-            ],
-          ('browse',
-           20,
-           'browse_small',
-           'Browse Image (small)',
-           False): [
-                'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_delta_egress_preview_small.png'
-            ],
-          ('browse',
-           10,
-           'browse_thumb',
-           'Browse Image (thumbnail)',
-           False): [
-                'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_delta_egress_preview_thumb.png'
-            ],
           ('diagram',
            40,
            'diagram_full',
@@ -748,34 +720,6 @@ from .pytest_support import *
                 'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/fk/uranus_ringframes_rfrench20201201_v1.tf',
                 'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/fk/uranus_ringframes_french_et_al_1988_v1.xml',
                 'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/fk/uranus_ringframes_french_et_al_1988_v1.tf'
-            ],
-          ('browse',
-           40,
-           'browse_full',
-           'Browse Image (full)',
-           True): [
-               'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_ingress_preview_full.png'
-            ],
-          ('browse',
-           30,
-           'browse_medium',
-           'Browse Image (medium)',
-           False): [
-                'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_ingress_preview_med.png'
-            ],
-          ('browse',
-           20,
-           'browse_small',
-           'Browse Image (small)',
-           False): [
-               'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_ingress_preview_small.png'
-            ],
-          ('browse',
-           10,
-           'browse_thumb',
-           'Browse Image (thumbnail)',
-           False): [
-               'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_ingress_preview_thumb.png'
             ],
           ('diagram',
            40,
@@ -914,34 +858,6 @@ from .pytest_support import *
                 'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/fk/uranus_ringframes_rfrench20201201_v1.tf',
                 'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/fk/uranus_ringframes_french_et_al_1988_v1.xml',
                 'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/fk/uranus_ringframes_french_et_al_1988_v1.tf'],
-          ('browse',
-           40,
-           'browse_full',
-           'Browse Image (full)',
-           True): [
-               'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_ingress_preview_full.png'
-            ],
-          ('browse',
-           30,
-           'browse_medium',
-           'Browse Image (medium)',
-           False): [
-               'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_ingress_preview_med.png'
-            ],
-          ('browse',
-           20,
-           'browse_small',
-           'Browse Image (small)',
-           False): [
-               'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_ingress_preview_small.png'
-            ],
-          ('browse',
-           10,
-           'browse_thumb',
-           'Browse Image (thumbnail)',
-           False): [
-               'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_ingress_preview_thumb.png'
-            ],
           ('diagram',
            40,
            'diagram_full',
@@ -987,22 +903,22 @@ def test_opus_products(input_path, expected):
             'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/browse/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress.pdf',
             'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/browse/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress.xml'
          ]),
-        ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress.xml',
-         'previews',
-         [
-            'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_preview_full.png',
-            'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_preview_med.png',
-            'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_preview_small.png',
-            'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_preview_thumb.png',
-         ]),
-        ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress.xml',
-         'previews',
-         [
-            'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_preview_full.png',
-            'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_preview_med.png',
-            'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_preview_small.png',
-            'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_preview_thumb.png',
-         ]),
+        # ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress.xml',
+        #  'previews',
+        #  [
+        #     'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_preview_full.png',
+        #     'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_preview_med.png',
+        #     'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_preview_small.png',
+        #     'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_preview_thumb.png',
+        #  ]),
+        # ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress.xml',
+        #  'previews',
+        #  [
+        #     'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_preview_full.png',
+        #     'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_preview_med.png',
+        #     'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_preview_small.png',
+        #     'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_preview_thumb.png',
+        #  ]),
         ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress.xml',
          'diagrams',
          [
