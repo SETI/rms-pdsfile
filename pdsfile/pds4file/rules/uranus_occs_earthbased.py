@@ -43,16 +43,16 @@ description_and_icon_by_regex = translator.TranslatorByRegex([
 
 default_viewables = translator.TranslatorByRegex([
     (r'.*/(uranus_occs_earthbased/uranus_occ_u.*/data/atmosphere/.*-v-.*)\.[a-z]{3}', 0,
-        [r'previews/\1_preview_full.png',
-         r'previews/\1_preview_med.png',
-         r'previews/\1_preview_small.png',
-         r'previews/\1_preview_thumb.png',
+        [r'diagrams/\1_diagram_full.png',
+         r'diagrams/\1_diagram_med.png',
+         r'diagrams/\1_diagram_small.png',
+         r'diagrams/\1_diagram_thumb.png',
     ]),
     (r'.*/(uranus_occs_earthbased/uranus_occ_u.*/data/(rings|global))/(.*)_\d+m\.[a-z]{3}', 0,
-        [r'previews/\1/\3_preview_full.png',
-         r'previews/\1/\3_preview_med.png',
-         r'previews/\1/\3_preview_small.png',
-         r'previews/\1/\3_preview_thumb.png',
+        [r'diagrams/\1/\3_diagram_full.png',
+         r'diagrams/\1/\3_diagram_med.png',
+         r'diagrams/\1/\3_diagram_small.png',
+         r'diagra,s/\1/\3_diagram_thumb.png',
     ]),
 ])
 
