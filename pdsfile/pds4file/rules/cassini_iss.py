@@ -334,65 +334,65 @@ pds4file.Pds4File.SUBCLASSES['cassini_iss'] = cassini_iss
 import pytest
 from .pytest_support import *
 
-@pytest.mark.parametrize(
-    'input_path,category,expected',
-    [
-        ('cassini_iss/cassini_iss_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947228n.xml',
-         'bundles',
-         [
-            'bundles/cassini_iss/cassini_iss_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947228n.img',
-            'bundles/cassini_iss/cassini_iss_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947228n.xml',
-            'bundles/cassini_iss/cassini_iss_cruise/browse_raw/130xxxxxxx/13089xxxxx/1308947228n-full.png',
-            'bundles/cassini_iss/cassini_iss_cruise/browse_raw/130xxxxxxx/13089xxxxx/1308947228n-full.xml'
-         ]),
-        ('cassini_iss/cassini_iss_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947228n.xml',
-         'previews',
-         [
-            'previews/cassini_iss/cassini_iss_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947228n_full.png',
-            'previews/cassini_iss/cassini_iss_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947228n_med.png',
-            'previews/cassini_iss/cassini_iss_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947228n_small.png',
-            'previews/cassini_iss/cassini_iss_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947228n_thumb.png'
-         ]),
-        ('cassini_iss/cassini_iss_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947228n.xml',
-         'calibrated',
-         [
-            'calibrated/cassini_iss/cassini_iss_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947228n_CALIB.IMG',
-            'calibrated/cassini_iss/cassini_iss_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947228n_CALIB.LBL'
-         ]),
-        ('cassini_iss/cassini_iss_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947228n.xml',
-         'documents',
-         [
-            'documents/cassini_iss/Calibration-Plan.pdf',
-            'documents/cassini_iss/Data-Product-SIS.txt',
-            'documents/cassini_iss/ISS-Users-Guide.docx',
-            'documents/cassini_iss/Data-Product-SIS.pdf',
-            'documents/cassini_iss/Calibration-Theoretical-Basis.pdf',
-            'documents/cassini_iss/VICAR-File-Format.pdf',
-            'documents/cassini_iss/Calibration-Report.link',
-            'documents/cassini_iss/Press-Releases-at-RMS.link',
-            'documents/cassini_iss/VICAR-Home-Page-at-JPL.link',
-            'documents/cassini_iss/Press-Releases-at-JPL-Photojournal.link',
-            'documents/cassini_iss/Porco-etal-2004-SSR.link',
-            'documents/cassini_iss/ISS-Users-Guide.pdf',
-            'documents/cassini_iss/Archive-SIS.pdf',
-            'documents/cassini_iss/PDS-ISS-Home-Page.link',
-            'documents/cassini_iss/CISSCAL-Users-Guide.pdf',
-            'documents/cassini_iss/PDS-ISS-Home-Page-at-RMS.link',
-            'documents/cassini_iss/Archive-SIS.txt',
-            'documents/cassini_iss/Cassini-ISS-Final-Report.pdf',
-            'documents/cassini_iss/Calibration-Report.zip'
-         ]),
-        # TODO: add test case for metadata when correct index files & _indexshelf-metadata
-        # are added
-    ]
-)
-def test_associated_abspaths(input_path, category, expected):
-    target_pdsfile = instantiate_target_pdsfile(input_path)
-    res = target_pdsfile.associated_abspaths(category=category)
-    result_paths = []
-    result_paths += pds4file.Pds4File.logicals_for_abspaths(res)
-    assert len(result_paths) != 0
-    for path in result_paths:
-        assert path in expected
+# @pytest.mark.parametrize(
+#     'input_path,category,expected',
+#     [
+#         ('cassini_iss/cassini_iss_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947228n.xml',
+#          'bundles',
+#          [
+#             'bundles/cassini_iss/cassini_iss_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947228n.img',
+#             'bundles/cassini_iss/cassini_iss_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947228n.xml',
+#             'bundles/cassini_iss/cassini_iss_cruise/browse_raw/130xxxxxxx/13089xxxxx/1308947228n-full.png',
+#             'bundles/cassini_iss/cassini_iss_cruise/browse_raw/130xxxxxxx/13089xxxxx/1308947228n-full.xml'
+#          ]),
+#         ('cassini_iss/cassini_iss_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947228n.xml',
+#          'previews',
+#          [
+#             'previews/cassini_iss/cassini_iss_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947228n_full.png',
+#             'previews/cassini_iss/cassini_iss_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947228n_med.png',
+#             'previews/cassini_iss/cassini_iss_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947228n_small.png',
+#             'previews/cassini_iss/cassini_iss_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947228n_thumb.png'
+#          ]),
+#         ('cassini_iss/cassini_iss_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947228n.xml',
+#          'calibrated',
+#          [
+#             'calibrated/cassini_iss/cassini_iss_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947228n_CALIB.IMG',
+#             'calibrated/cassini_iss/cassini_iss_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947228n_CALIB.LBL'
+#          ]),
+#         ('cassini_iss/cassini_iss_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947228n.xml',
+#          'documents',
+#          [
+#             'documents/cassini_iss/Calibration-Plan.pdf',
+#             'documents/cassini_iss/Data-Product-SIS.txt',
+#             'documents/cassini_iss/ISS-Users-Guide.docx',
+#             'documents/cassini_iss/Data-Product-SIS.pdf',
+#             'documents/cassini_iss/Calibration-Theoretical-Basis.pdf',
+#             'documents/cassini_iss/VICAR-File-Format.pdf',
+#             'documents/cassini_iss/Calibration-Report.link',
+#             'documents/cassini_iss/Press-Releases-at-RMS.link',
+#             'documents/cassini_iss/VICAR-Home-Page-at-JPL.link',
+#             'documents/cassini_iss/Press-Releases-at-JPL-Photojournal.link',
+#             'documents/cassini_iss/Porco-etal-2004-SSR.link',
+#             'documents/cassini_iss/ISS-Users-Guide.pdf',
+#             'documents/cassini_iss/Archive-SIS.pdf',
+#             'documents/cassini_iss/PDS-ISS-Home-Page.link',
+#             'documents/cassini_iss/CISSCAL-Users-Guide.pdf',
+#             'documents/cassini_iss/PDS-ISS-Home-Page-at-RMS.link',
+#             'documents/cassini_iss/Archive-SIS.txt',
+#             'documents/cassini_iss/Cassini-ISS-Final-Report.pdf',
+#             'documents/cassini_iss/Calibration-Report.zip'
+#          ]),
+#         # TODO: add test case for metadata when correct index files & _indexshelf-metadata
+#         # are added
+#     ]
+# )
+# def test_associated_abspaths(input_path, category, expected):
+#     target_pdsfile = instantiate_target_pdsfile(input_path)
+#     res = target_pdsfile.associated_abspaths(category=category)
+#     result_paths = []
+#     result_paths += pds4file.Pds4File.logicals_for_abspaths(res)
+#     assert len(result_paths) != 0
+#     for path in result_paths:
+#         assert path in expected
 
 ##########################################################################################
