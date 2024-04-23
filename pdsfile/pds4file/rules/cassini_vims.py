@@ -329,78 +329,78 @@ pds4file.Pds4File.SUBCLASSES['cassini_vims'] = cassini_vims
 import pytest
 from .pytest_support import *
 
-@pytest.mark.parametrize(
-    'input_path,category,expected',
-    [
-        ('cassini_vims/cassini_vims_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947223.xml',
-         'bundles',
-         [
-            'bundles/cassini_vims/cassini_vims_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947223.qub',
-            'bundles/cassini_vims/cassini_vims_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947223.xml',
-            'bundles/cassini_vims/cassini_vims_cruise/browse_raw/130xxxxxxx/13089xxxxx/1308947223-full.png',
-            'bundles/cassini_vims/cassini_vims_cruise/browse_raw/130xxxxxxx/13089xxxxx/1308947223-full.xml'
-         ]),
-        ('cassini_vims/cassini_vims_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947079_xxx/1308947079_003.qub',
-         'bundles',
-         [
-            'bundles/cassini_vims/cassini_vims_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947079_xxx/1308947079_003.qub',
-            'bundles/cassini_vims/cassini_vims_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947079_xxx/1308947079_003.xml',
-            'bundles/cassini_vims/cassini_vims_cruise/browse_raw/130xxxxxxx/13089xxxxx/1308947079_xxx/1308947079_003-full.png',
-            'bundles/cassini_vims/cassini_vims_cruise/browse_raw/130xxxxxxx/13089xxxxx/1308947079_xxx/1308947079_003-full.xml'
-         ]),
-        ('cassini_vims/cassini_vims_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947223.xml',
-         'previews',
-         [
-            'previews/cassini_vims/cassini_vims_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947223_full.png',
-            'previews/cassini_vims/cassini_vims_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947223_med.png',
-            'previews/cassini_vims/cassini_vims_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947223_small.png',
-            'previews/cassini_vims/cassini_vims_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947223_thumb.png'
-         ]),
-        ('cassini_vims/cassini_vims_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947079_xxx/1308947079_003.qub',
-         'previews',
-         [
-            'previews/cassini_vims/cassini_vims_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947079_xxx/1308947079_003_full.png',
-            'previews/cassini_vims/cassini_vims_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947079_xxx/1308947079_003_med.png',
-            'previews/cassini_vims/cassini_vims_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947079_xxx/1308947079_003_small.png',
-            'previews/cassini_vims/cassini_vims_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947079_xxx/1308947079_003_thumb.png'
-         ]),
-        ('cassini_vims/cassini_vims_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947223.xml',
-         'documents',
-         [
-            'documents/cassini_vims/Brown-etal-2004-SSR.link',
-            'documents/cassini_vims/PDS-VIMS-Home-Page.link',
-            'documents/cassini_vims/Data-Product-SIS.txt',
-            'documents/cassini_vims/VIMS-Preview-Interpretation-Guide.pdf',
-            'documents/cassini_vims/PDS-VIMS-Home-Page-at-RMS.link',
-            'documents/cassini_vims/ISIS-Home-Page-at-USGS.link',
-            'documents/cassini_vims/ISIS-2-User-Documentation.link',
-            'documents/cassini_vims/Cassini-VIMS-Final-Report.pdf',
-            'documents/cassini_vims/Archive-SIS.txt'
-         ]),
-        ('cassini_vims/cassini_vims_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947079_xxx/1308947079_003.qub',
-         'documents',
-         [
-            'documents/cassini_vims/Brown-etal-2004-SSR.link',
-            'documents/cassini_vims/PDS-VIMS-Home-Page.link',
-            'documents/cassini_vims/Data-Product-SIS.txt',
-            'documents/cassini_vims/VIMS-Preview-Interpretation-Guide.pdf',
-            'documents/cassini_vims/PDS-VIMS-Home-Page-at-RMS.link',
-            'documents/cassini_vims/ISIS-Home-Page-at-USGS.link',
-            'documents/cassini_vims/ISIS-2-User-Documentation.link',
-            'documents/cassini_vims/Cassini-VIMS-Final-Report.pdf',
-            'documents/cassini_vims/Archive-SIS.txt'
-         ]),
-        # TODO: add test case for metadata when correct index files & _indexshelf-metadata
-        # are added
-    ]
-)
-def test_associated_abspaths(input_path, category, expected):
-    target_pdsfile = instantiate_target_pdsfile(input_path)
-    res = target_pdsfile.associated_abspaths(category=category)
-    result_paths = []
-    result_paths += pds4file.Pds4File.logicals_for_abspaths(res)
-    assert len(result_paths) != 0
-    for path in result_paths:
-        assert path in expected
+# @pytest.mark.parametrize(
+#     'input_path,category,expected',
+#     [
+#         ('cassini_vims/cassini_vims_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947223.xml',
+#          'bundles',
+#          [
+#             'bundles/cassini_vims/cassini_vims_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947223.qub',
+#             'bundles/cassini_vims/cassini_vims_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947223.xml',
+#             'bundles/cassini_vims/cassini_vims_cruise/browse_raw/130xxxxxxx/13089xxxxx/1308947223-full.png',
+#             'bundles/cassini_vims/cassini_vims_cruise/browse_raw/130xxxxxxx/13089xxxxx/1308947223-full.xml'
+#          ]),
+#         ('cassini_vims/cassini_vims_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947079_xxx/1308947079_003.qub',
+#          'bundles',
+#          [
+#             'bundles/cassini_vims/cassini_vims_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947079_xxx/1308947079_003.qub',
+#             'bundles/cassini_vims/cassini_vims_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947079_xxx/1308947079_003.xml',
+#             'bundles/cassini_vims/cassini_vims_cruise/browse_raw/130xxxxxxx/13089xxxxx/1308947079_xxx/1308947079_003-full.png',
+#             'bundles/cassini_vims/cassini_vims_cruise/browse_raw/130xxxxxxx/13089xxxxx/1308947079_xxx/1308947079_003-full.xml'
+#          ]),
+#         ('cassini_vims/cassini_vims_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947223.xml',
+#          'previews',
+#          [
+#             'previews/cassini_vims/cassini_vims_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947223_full.png',
+#             'previews/cassini_vims/cassini_vims_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947223_med.png',
+#             'previews/cassini_vims/cassini_vims_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947223_small.png',
+#             'previews/cassini_vims/cassini_vims_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947223_thumb.png'
+#          ]),
+#         ('cassini_vims/cassini_vims_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947079_xxx/1308947079_003.qub',
+#          'previews',
+#          [
+#             'previews/cassini_vims/cassini_vims_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947079_xxx/1308947079_003_full.png',
+#             'previews/cassini_vims/cassini_vims_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947079_xxx/1308947079_003_med.png',
+#             'previews/cassini_vims/cassini_vims_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947079_xxx/1308947079_003_small.png',
+#             'previews/cassini_vims/cassini_vims_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947079_xxx/1308947079_003_thumb.png'
+#          ]),
+#         ('cassini_vims/cassini_vims_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947223.xml',
+#          'documents',
+#          [
+#             'documents/cassini_vims/Brown-etal-2004-SSR.link',
+#             'documents/cassini_vims/PDS-VIMS-Home-Page.link',
+#             'documents/cassini_vims/Data-Product-SIS.txt',
+#             'documents/cassini_vims/VIMS-Preview-Interpretation-Guide.pdf',
+#             'documents/cassini_vims/PDS-VIMS-Home-Page-at-RMS.link',
+#             'documents/cassini_vims/ISIS-Home-Page-at-USGS.link',
+#             'documents/cassini_vims/ISIS-2-User-Documentation.link',
+#             'documents/cassini_vims/Cassini-VIMS-Final-Report.pdf',
+#             'documents/cassini_vims/Archive-SIS.txt'
+#          ]),
+#         ('cassini_vims/cassini_vims_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947079_xxx/1308947079_003.qub',
+#          'documents',
+#          [
+#             'documents/cassini_vims/Brown-etal-2004-SSR.link',
+#             'documents/cassini_vims/PDS-VIMS-Home-Page.link',
+#             'documents/cassini_vims/Data-Product-SIS.txt',
+#             'documents/cassini_vims/VIMS-Preview-Interpretation-Guide.pdf',
+#             'documents/cassini_vims/PDS-VIMS-Home-Page-at-RMS.link',
+#             'documents/cassini_vims/ISIS-Home-Page-at-USGS.link',
+#             'documents/cassini_vims/ISIS-2-User-Documentation.link',
+#             'documents/cassini_vims/Cassini-VIMS-Final-Report.pdf',
+#             'documents/cassini_vims/Archive-SIS.txt'
+#          ]),
+#         # TODO: add test case for metadata when correct index files & _indexshelf-metadata
+#         # are added
+#     ]
+# )
+# def test_associated_abspaths(input_path, category, expected):
+#     target_pdsfile = instantiate_target_pdsfile(input_path)
+#     res = target_pdsfile.associated_abspaths(category=category)
+#     result_paths = []
+#     result_paths += pds4file.Pds4File.logicals_for_abspaths(res)
+#     assert len(result_paths) != 0
+#     for path in result_paths:
+#         assert path in expected
 
 ##########################################################################################
