@@ -941,7 +941,7 @@ class PdsFile(object):
             pdsdir.permanent = True
 
             # Make recursive calls and cache
-            for basename in pdsdir.childnames:
+            for basename in list(pdsdir.childnames):
                 try:
                     child = pdsdir.child(basename, fix_case=False, lifetime=0)
                     _preload_dir(child, cls)
@@ -3212,35 +3212,35 @@ class PdsFile(object):
     @property
     def is_bundle_dir(self):
         """Return True if this is the root level directory of a bundle."""
-        return (self.bundlename_ and not self.interior) # Note that a bundle set will return an empty string '' rather than False
+        return bool(self.bundlename_ and not self.interior) # Note that a bundle set will return an empty string '' rather than False
         #return (self.volname_ and not self.interior or False) # MJTM: 'or False' account for bundle sets
 
     @property
     def is_bundle_file(self):
         """Return True if this is a bundle-level checksum or archive file."""
-        return (self.bundlename and not self.bundlename_) # Note that a bundle set will return an empty string '' rather than False
+        return bool(self.bundlename and not self.bundlename_) # Note that a bundle set will return an empty string '' rather than False
         #return (self.volname and not self.volname_ or False) # MJTM: 'or False' account for bundle sets
 
     @property
     def is_bundle(self):
         """Return True if this is a bundle-level file, be it a directory or a
         checksum or archive file."""
-        return self.is_bundle_dir or self.is_bundle_file
+        return bool(self.is_bundle_dir or self.is_bundle_file)
 
     @property
     def is_bundleset_dir(self):
         """Return True if this is the root level directory of a bundleset."""
-        return (self.bundleset and not self.bundlename and self.isdir)
+        return bool(self.bundleset and not self.bundlename and self.isdir)
 
     @property
     def is_bundleset_file(self):
         """Return True if this is a bundleset-level checksum or AAREADME file."""
-        return (self.bundleset and not self.bundlename and not self.isdir)
+        return bool(self.bundleset and not self.bundlename and not self.isdir)
 
     @property
     def is_bundleset(self):
         """Return True if this is a bundleset-level directory or file."""
-        return (self.bundleset and not self.bundlename)
+        return bool(self.bundleset and not self.bundlename)
 
     @property
     def is_category_dir(self):
