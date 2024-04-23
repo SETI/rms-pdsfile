@@ -180,7 +180,7 @@ class TestPds4FileBlackBox:
         'input_path,expected',
         [
             ('uranus_occs_earthbased/',
-             ''), # bundlesets currently have empty string instead of False
+             False),
             ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm',
              True),
             ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/bundle.xml',
@@ -222,13 +222,13 @@ class TestPds4FileBlackBox:
             ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/xml_schema/collection_xml_schema.csv',
              False),
             ('uranus_occs_earthbased',
-             ''), # Bundlesets return empty string, rather than False at the moment
+             False),
             ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/bundle.xml',
              False),
             ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress.xml',
              False),
             ('uranus_occs_earthbased/',
-             ''), # bundlesets currently have empty string instead of False
+             False),
             # ('cassini_iss',
             #  ''), # bundlesets currently have empty string instead of False
             # ('cassini_iss/cassini_iss_cruise',
