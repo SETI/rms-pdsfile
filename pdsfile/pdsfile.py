@@ -433,6 +433,14 @@ class PdsFile(object):
                                 # for always.
     }
 
+    # At bundleset level childnames, we will ignore directories with these strings
+    IGNORE_BUNDLESET_CHILDNAMES = [
+        'superseded',
+        'support',
+        'checksum',
+        '.',
+    ]
+
     def sort_labels_after(self, labels_after):
         """If True, all label files will appear after their associated data
         files when sorted.
@@ -1868,6 +1876,15 @@ class PdsFile(object):
         self._childnames_filled = []
         if self.isdir and self.abspath:
             childnames = cls.os_listdir(self.abspath)
+
+            # At bundleset level, childnames with strings in IGNORE_BUNDLESET_CHILDNAMES
+            # will be ignored, and won't show up in the returned list
+            _, _, bundleset = self.abspath.rpartition('/')
+            if bundleset == self.bundleset:
+                for name in list(childnames):
+                    for s in self.IGNORE_BUNDLESET_CHILDNAMES:
+                        if s in name:
+                            childnames.remove(name)
 
             # Save child names in default order
             self._childnames_filled = self.sort_basenames(childnames,

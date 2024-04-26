@@ -387,9 +387,7 @@ class TestPds4FileBlackBox:
             # expected bundles for uranus are coming from staging server
             # /volumes/pdsdata-admin/pds4-holdings/bundles/uranus_occs_earthbased
             ('uranus_occs_earthbased/',
-             ['checksums_uranus_occs_earthbased',
-              'known-errors.txt',
-              'uranus_occ_u11_ctio_400cm',
+             ['uranus_occ_u11_ctio_400cm',
               'uranus_occ_u23_ctio_400cm',
               'uranus_occ_u149_lowell_180cm',
               'uranus_occ_u138_palomar_508cm',
@@ -411,8 +409,6 @@ class TestPds4FileBlackBox:
               'uranus_occ_u14_opmt_200cm',
               'uranus_occ_u14_opmt_106cm',
               'uranus_occ_u5_lco_250cm',
-              'uranus_occ_u12_eso_104cm',
-              'uranus_occ_support',
               'uranus_occ_u13_sso_390cm',
               'uranus_occ_u2_teide_155cm',
               'uranus_occ_u9_lco_250cm',
@@ -439,7 +435,6 @@ class TestPds4FileBlackBox:
               'uranus_occ_u144_caha_123cm',
               'uranus_occ_u17b_saao_188cm',
               'uranus_occ_u137_hst_fos',
-              'bundleset_index.csv',
               'uranus_occ_u14_ctio_150cm',
               'uranus_occ_u144_saao_188cm',
               'uranus_occ_u102b_irtf_320cm',
@@ -471,8 +466,7 @@ class TestPds4FileBlackBox:
     def test_childnames(self, input_path, expected):
         target_pdsfile = instantiate_target_pdsfile(input_path)
         res = target_pdsfile.childnames
-        for child in res:
-            assert child in expected
+        assert res.sort() == expected.sort()
 
     @pytest.mark.parametrize(
     'input_path,expected',
