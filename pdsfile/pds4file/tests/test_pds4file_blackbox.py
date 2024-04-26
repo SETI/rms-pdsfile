@@ -387,7 +387,10 @@ class TestPds4FileBlackBox:
             # expected bundles for uranus are coming from staging server
             # /volumes/pdsdata-admin/pds4-holdings/bundles/uranus_occs_earthbased
             ('uranus_occs_earthbased/',
-             ['uranus_occ_u11_ctio_400cm',
+             ['checksums_uranus_occs_earthbased',
+              'superseded',
+              'uranus_occ_support',
+              'uranus_occ_u11_ctio_400cm',
               'uranus_occ_u23_ctio_400cm',
               'uranus_occ_u149_lowell_180cm',
               'uranus_occ_u138_palomar_508cm',
