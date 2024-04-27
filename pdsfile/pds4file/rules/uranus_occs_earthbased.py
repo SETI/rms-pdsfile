@@ -326,7 +326,6 @@ prefix_mapping = {
     ('u9_lco_250cm',        'lascam2m5-insb-occ-1979-161-u9',    None,                               None),
     ('u11_ctio_400cm',      'ctio4m0-insb-occ-1980-080-u11',     None,                               None),
     ('u12_ctio_400cm',      'ctio4m0-insb-occ-1980-229-u12',     'ctio4m0-insb-occ-1980-228-u12',    'ctio4m0-insb-occ-1980-228-u12'),
-    ('u12_eso_104cm',       'esosil1m04-insb-occ-1980-229-u12',  'esosil1m04-insb-occ-1980-228-u12', 'esosil1m04-insb-occ-1980-229-u12'),
     ('u12_eso_360cm',       'esosil3m6-insb-occ-1980-229-u12',   'esosil3m6-insb-occ-1980-228-u12',  'esosil3m6-insb-occ-1980-229-u12'),
     ('u12_lco_250cm',       'lascam2m5-insb-occ-1980-229-u12',   'lascam2m5-insb-occ-1980-228-u12',  None),
     ('u13_sso_390cm',       'sso3m9-insb-occ-1981-116-u13',      None,                               None),
