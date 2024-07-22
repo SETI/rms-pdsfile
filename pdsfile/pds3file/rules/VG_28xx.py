@@ -319,6 +319,37 @@ description_and_icon_by_regex = translator.TranslatorByRegex([
 ])
 
 ##########################################################################################
+# VIEWABLES
+##########################################################################################
+
+default_viewables = translator.TranslatorByRegex([
+    (r'volumes/VG_28xx(|_v[0-9\.]+)/(VG_2801)/.*/(P[SUN]\d.*)\.(TAB|LBL)', 0,
+            [r'previews/VG_28xx/\2/EASYDATA/KM005/\3_preview_full.png',
+             r'previews/VG_28xx/\2/EASYDATA/KM005/\3_preview_med.png',
+             r'previews/VG_28xx/\2/EASYDATA/KM005/\3_preview_small.png',
+             r'previews/VG_28xx/\2/EASYDATA/KM005/\3_preview_thumb.png',
+            ]),
+    (r'volumes/VG_28xx(|_v[0-9\.]+)/(VG_2802)/.*/(U[SUN]\d.*)\.(TAB|LBL)', 0,
+            [r'previews/VG_28xx/\2/EASYDATA/FILTER05/\3_preview_full.png',
+             r'previews/VG_28xx/\2/EASYDATA/FILTER05/\3_preview_med.png',
+             r'previews/VG_28xx/\2/EASYDATA/FILTER05/\3_preview_small.png',
+             r'previews/VG_28xx/\2/EASYDATA/FILTER05/\3_preview_thumb.png',
+            ]),
+    (r'volumes/VG_28xx(|_v[0-9\.]+)/(VG_2803)/([SU]_RINGS)/.*/(R[SU]\d.*)\.(TAB|LBL)', 0,
+            [r'previews/VG_28xx/\2/\3/EASYDATA/KM050/\4_preview_full.png',
+             r'previews/VG_28xx/\2/\3/EASYDATA/KM050/\4_preview_med.png',
+             r'previews/VG_28xx/\2/\3/EASYDATA/KM050/\4_preview_small.png',
+             r'previews/VG_28xx/\2/\3/EASYDATA/KM050/\4_preview_thumb.png',
+            ]),
+    (r'volumes/VG_28xx(|_v[0-9\.]+)/(VG_2810)/.*/(IS\d.*)\.(TAB|LBL)', 0,
+            [r'previews/VG_28xx/\2/DATA/\3_preview_full.png',
+             r'previews/VG_28xx/\2/DATA/\3_preview_med.png',
+             r'previews/VG_28xx/\2/DATA/\3_preview_small.png',
+             r'previews/VG_28xx/\2/DATA/\3_preview_thumb.png',
+            ]),
+])
+
+##########################################################################################
 # ASSOCIATIONS
 ##########################################################################################
 
@@ -369,6 +400,33 @@ associations_to_volumes = translator.TranslatorByRegex([
     (r'volumes/VG_28xx(|_v[\d\.]+)/VG_2803/([SU]_RINGS)/\w+(|/\w+)/(R[SU]\d)[A-Z]\d(S|U)(\w+)\.\w+', 0,
             [r'volumes/VG_28xx\1/VG_2803/\2/*/\4..\5.*',
              r'volumes/VG_28xx\1/VG_2803/\2/*/*/\4..\5.*',
+            ]),
+])
+
+associations_to_previews = translator.TranslatorByRegex([
+    (r'volumes/VG_28xx(|_v[0-9\.]+)/(VG_2801)/.*/(P[SUN]\d.*)\.(TAB|LBL)', 0,
+            [r'previews/VG_28xx/\2/EASYDATA/KM005/\3_preview_full.png',
+             r'previews/VG_28xx/\2/EASYDATA/KM005/\3_preview_med.png',
+             r'previews/VG_28xx/\2/EASYDATA/KM005/\3_preview_small.png',
+             r'previews/VG_28xx/\2/EASYDATA/KM005/\3_preview_thumb.png',
+            ]),
+    (r'volumes/VG_28xx(|_v[0-9\.]+)/(VG_2802)/.*/(P[SUN]\d.*)\.(TAB|LBL)', 0,
+            [r'previews/VG_28xx/\2/EASYDATA/FILTER05/\4_preview_full.png',
+             r'previews/VG_28xx/\2/EASYDATA/FILTER05/\4_preview_med.png',
+             r'previews/VG_28xx/\2/EASYDATA/FILTER05/\4_preview_small.png',
+             r'previews/VG_28xx/\2/EASYDATA/FILTER05/\4_preview_thumb.png',
+            ]),
+    (r'volumes/VG_28xx(|_v[0-9\.]+)/(VG_2803)/.*/(R[SU]\d.*)\.(TAB|LBL)', 0,
+            [r'previews/VG_28xx/\2/EASYDATA/KM050/\3_preview_full.png',
+             r'previews/VG_28xx/\2/EASYDATA/KM050/\3_preview_med.png',
+             r'previews/VG_28xx/\2/EASYDATA/KM050/\3_preview_small.png',
+             r'previews/VG_28xx/\2/EASYDATA/KM050/\3_preview_thumb.png',
+            ]),
+    (r'volumes/VG_28xx(|_v[0-9\.]+)/(VG_2810)/.*/(IS\d.*)\.(TAB|LBL)', 0,
+            [r'previews/VG_28xx/\2/DATA/\3_preview_full.png',
+             r'previews/VG_28xx/\2/DATA/\3_preview_med.png',
+             r'previews/VG_28xx/\2/DATA/\3_preview_small.png',
+             r'previews/VG_28xx/\2/DATA/\3_preview_thumb.png',
             ]),
 ])
 
@@ -528,7 +586,6 @@ opus_type = translator.TranslatorByRegex([
 ##########################################################################################
 
 # Use of explicit file names means we don't need to invoke glob.glob(); this goes much faster
-# TODO: Need to add previews when they are available
 opus_products = translator.TranslatorByRegex([
     # VG_2801
     (r'.*/VG_28xx/(VG_2801)/.*/(PS[12]).*', 0,
@@ -609,6 +666,12 @@ opus_products = translator.TranslatorByRegex([
              r'metadata/VG_28xx/\1/\1_supplemental_index.lbl',
              r'metadata/VG_28xx/\1/\1_supplemental_index.tab',
             ]),
+    (r'.*/VG_28xx/(VG_2801)/.*/(P.*)\..*', 0,
+            [r'previews/VG_28xx/\1/EASYDATA/KM005/\2_preview_full.png',
+             r'previews/VG_28xx/\1/EASYDATA/KM005/\2_preview_med.png',
+             r'previews/VG_28xx/\1/EASYDATA/KM005/\2_preview_small.png',
+             r'previews/VG_28xx/\1/EASYDATA/KM005/\2_preview_thumb.png',
+            ]),
 
     # VG_2802
     (r'.*/VG_28xx/(VG_2802)/.*/(US1).*', 0,
@@ -686,6 +749,12 @@ opus_products = translator.TranslatorByRegex([
              r'metadata/VG_28xx/\1/\1_supplemental_index.lbl',
              r'metadata/VG_28xx/\1/\1_supplemental_index.tab',
             ]),
+    (r'.*/VG_28xx/(VG_2802)/.*/(U[SUN]\d.*)\.(TAB|LBL)', 0,
+            [r'previews/VG_28xx/\1/EASYDATA/FILTER05/\2_preview_full.png',
+             r'previews/VG_28xx/\1/EASYDATA/FILTER05/\2_preview_med.png',
+             r'previews/VG_28xx/\1/EASYDATA/FILTER05/\2_preview_small.png',
+             r'previews/VG_28xx/\1/EASYDATA/FILTER05/\2_preview_thumb.png',
+            ]),
 
     # VG_2803, best of old pole (RxxP1) and all of new pole (RxxP2)
     (r'.*/VG_28xx/(VG_2803)/S_RINGS/.*/RS...(S|X).*', 0,
@@ -706,6 +775,12 @@ opus_products = translator.TranslatorByRegex([
              r'metadata/VG_28xx/\1/\1_supplemental_index.lbl',
              r'metadata/VG_28xx/\1/\1_supplemental_index.tab',
             ]),
+    (r'.*/VG_28xx(|_v[0-9\.]+)/(VG_2803)/([SU]_RINGS)/.*/(R[SU]\d.*)\.(TAB|LBL)', 0,
+            [r'previews/VG_28xx/\2/\3/EASYDATA/KM050/\4_preview_full.png',
+             r'previews/VG_28xx/\2/\3/EASYDATA/KM050/\4_preview_med.png',
+             r'previews/VG_28xx/\2/\3/EASYDATA/KM050/\4_preview_small.png',
+             r'previews/VG_28xx/\2/\3/EASYDATA/KM050/\4_preview_thumb.png',
+            ]),
 
     # VG_2810
     (r'.*/VG_28xx/(VG_2810)/DATA/(IS[12]).*', 0,
@@ -717,6 +792,10 @@ opus_products = translator.TranslatorByRegex([
              r'metadata/VG_28xx/\1/\1_index.tab',
              r'metadata/VG_28xx/\1/\1_supplemental_index.lbl',
              r'metadata/VG_28xx/\1/\1_supplemental_index.tab',
+             r'previews/VG_28xx/\1/DATA/\2_preview_full.png',
+             r'previews/VG_28xx/\1/DATA/\2_preview_med.png',
+             r'previews/VG_28xx/\1/DATA/\2_preview_small.png',
+             r'previews/VG_28xx/\1/DATA/\2_preview_thumb.png',
             ]),
 ])
 
@@ -846,12 +925,17 @@ class VG_28xx(pds3file.Pds3File):
 
     OPUS_TYPE = opus_type + pds3file.Pds3File.OPUS_TYPE
     OPUS_FORMAT = opus_format + pds3file.Pds3File.OPUS_FORMAT
-    OPUS_PRODUCTS = opus_products
+    OPUS_PRODUCTS = opus_products + pds3file.Pds3File.OPUS_PRODUCTS
     OPUS_ID = opus_id
     OPUS_ID_TO_PRIMARY_LOGICAL_PATH = opus_id_to_primary_logical_path
 
+    VIEWABLES = {
+        'default': default_viewables,
+    }
+
     ASSOCIATIONS = pds3file.Pds3File.ASSOCIATIONS.copy()
     ASSOCIATIONS['volumes']   += associations_to_volumes
+    ASSOCIATIONS['previews'] += associations_to_previews
     ASSOCIATIONS['metadata']  += associations_to_metadata
     ASSOCIATIONS['documents'] += associations_to_documents
 
