@@ -4657,7 +4657,7 @@ class PdsFile(object):
         for pdsf in data_pdsfiles:
             key = opus_type_for_abspath.get(pdsf.abspath, pdsf.opus_type)
             if key == '':
-                cls.LOGGER.error('Unknown opus_type for ', pdsf.abspath)
+                cls.LOGGER.error('Unknown opus_type for', pdsf.abspath)
             if key not in pdsfile_dict:
                 pdsfile_dict[key] = []
 
