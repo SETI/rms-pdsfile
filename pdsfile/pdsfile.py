@@ -800,7 +800,7 @@ class PdsFile(object):
 
     @classmethod
     def preload(cls, holdings_list, port=0, clear=False, force_reload=False,
-                icon_color='blue'):
+                icon_url=None, icon_color='blue'):
         """Cache the top-level directories, starting from the given holdings directories.
 
         Keyword arguments:
@@ -810,8 +810,10 @@ class PdsFile(object):
             clear         -- True to clear the cache before preloading
             force_reload  -- Re-load the cache regardless of whether the cache appears to
                              contain the needed holdings
-            icon_color    -- color of the icons to load from each holdings directory (
-                             default 'blue')
+            icon_url      -- URL root to use for loading icons; defaults to
+                             "/holdings/_icons" or "/holdings<n>/_icons" as needed
+            icon_color    -- color of the icons to load from each holdings directory
+                             (default 'blue')
         """
 
         # Convert holdings to a list of absolute paths
@@ -1011,8 +1013,11 @@ class PdsFile(object):
                 # Load the icons
                 icon_path = _clean_join(holdings, '_icons')
                 if os.path.exists(icon_path):
-                    icon_url = '/holdings' + (str(h) if h > 0 else '') + '/_icons'
-                    pdsviewable.load_icons(icon_path, icon_url, icon_color, cls.LOGGER)
+                    final_icon_url = icon_url
+                    if final_icon_url is None:
+                        final_icon_url = '/holdings' + (str(h) if h > 0 else '') + '/_icons'
+                    pdsviewable.load_icons(icon_path, final_icon_url, icon_color,
+                                           cls.LOGGER)
 
         finally:
             cls.CACHE.set('$PRELOADED', cls.LOCAL_PRELOADED, lifetime=0)
