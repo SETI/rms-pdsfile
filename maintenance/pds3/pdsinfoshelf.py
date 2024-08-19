@@ -694,7 +694,7 @@ if __name__ == '__main__':
 
     # Initialize the logger
     logger = pdslogger.PdsLogger(LOGNAME)
-    pdsfile.PdsFile.set_log_root(args.log)
+    pdsfile.Pds3File.set_log_root(args.log)
 
     if not args.quiet:
         logger.add_handler(pdslogger.stdout_handler)
@@ -728,13 +728,13 @@ if __name__ == '__main__':
 
         # Convert to a list of absolute paths that exist (volsets or volumes)
         try:
-            pdsf = pdsfile.PdsFile.from_abspath(path, must_exist=True)
+            pdsf = pdsfile.Pds3File.from_abspath(path, must_exist=True)
             abspaths.append(pdsf.abspath)
 
         except (ValueError, IOError):
             # Allow a volume name to stand in for a .tar.gz archive
             (dir, basename) = os.path.split(path)
-            pdsdir = pdsfile.PdsFile.from_abspath(dir)
+            pdsdir = pdsfile.Pds3File.from_abspath(dir)
             if pdsdir.archives_ and '.' not in basename:
                 if pdsdir.voltype_ == 'volumes/':
                     basename += '.tar.gz'
@@ -753,7 +753,7 @@ if __name__ == '__main__':
     # Generate a list of tuples (pdsfile, selection)
     info = []
     for path in abspaths:
-        pdsf = pdsfile.PdsFile.from_abspath(path)
+        pdsf = pdsfile.Pds3File.from_abspath(path)
 
         if pdsf.is_volset_dir:
             # Info about archive directories is stored by volset

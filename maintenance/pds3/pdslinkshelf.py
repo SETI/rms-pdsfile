@@ -680,7 +680,7 @@ def generate_links(dirpath, old_links={},
     """
 
     dirpath = os.path.abspath(dirpath)
-    pdsdir = pdsfile.PdsFile.from_abspath(dirpath)
+    pdsdir = pdsfile.Pds3File.from_abspath(dirpath)
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsdir.root_)
@@ -1112,7 +1112,7 @@ def load_links(dirpath, limits={}, logger=None):
     absolute paths."""
 
     dirpath = os.path.abspath(dirpath)
-    pdsdir = pdsfile.PdsFile.from_abspath(dirpath)
+    pdsdir = pdsfile.Pds3File.from_abspath(dirpath)
 
     dirpath_ = dirpath.rstrip('/') + '/'
 
@@ -1171,7 +1171,7 @@ def write_linkdict(dirpath, link_dict, limits={}, logger=None):
 
     # Initialize
     dirpath = os.path.abspath(dirpath)
-    pdsdir = pdsfile.PdsFile.from_abspath(dirpath)
+    pdsdir = pdsfile.Pds3File.from_abspath(dirpath)
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsdir.root_)
@@ -1191,7 +1191,7 @@ def write_linkdict(dirpath, link_dict, limits={}, logger=None):
                     if link_abspath[:lskip] == prefix:
                         new_list.append((basename, recno, link_abspath[lskip:]))
                     else:      # link outside this volume
-                        link = pdsfile.PdsFile.from_abspath(link_abspath)
+                        link = pdsfile.Pds3File.from_abspath(link_abspath)
                         if (link.category_ == pdsdir.category_ and
                             link.volset == pdsdir.volset and
                             link.suffix == pdsdir.suffix):
@@ -1293,7 +1293,7 @@ def write_linkdict(dirpath, link_dict, limits={}, logger=None):
 def validate_links(dirpath, dirdict, shelfdict, limits={}, logger=None):
 
     dirpath = os.path.abspath(dirpath)
-    pdsdir = pdsfile.PdsFile.from_abspath(dirpath)
+    pdsdir = pdsfile.Pds3File.from_abspath(dirpath)
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsdir.root_)
@@ -1604,7 +1604,7 @@ if __name__ == '__main__':
 
     # Initialize the logger
     logger = pdslogger.PdsLogger(LOGNAME)
-    pdsfile.PdsFile.set_log_root(args.log)
+    pdsfile.Pds3File.set_log_root(args.log)
 
     if not args.quiet:
         logger.add_handler(pdslogger.stdout_handler)
@@ -1626,7 +1626,7 @@ if __name__ == '__main__':
             sys.exit(1)
 
         path = os.path.abspath(path)
-        pdsf = pdsfile.PdsFile.from_abspath(path)
+        pdsf = pdsfile.Pds3File.from_abspath(path)
 
         if pdsf.checksums_:
             print('No link shelf files for checksum files: ' + path)
@@ -1647,7 +1647,7 @@ if __name__ == '__main__':
     try:
         for path in paths:
 
-            pdsdir = pdsfile.PdsFile.from_abspath(path)
+            pdsdir = pdsfile.Pds3File.from_abspath(path)
             if not pdsdir.isdir:    # skip volset-level readme files
                 continue
 

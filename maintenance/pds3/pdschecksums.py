@@ -155,7 +155,7 @@ def read_checksums(check_path, selection=None, limits={}, logger=None):
     is returned."""
 
     check_path = os.path.abspath(check_path)
-    pdscheck = pdsfile.PdsFile.from_abspath(check_path)
+    pdscheck = pdsfile.Pds3File.from_abspath(check_path)
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdscheck.root_)
@@ -213,7 +213,7 @@ def read_checksums(check_path, selection=None, limits={}, logger=None):
 def checksum_dict(dirpath, logger=None):
 
     dirpath = os.path.abspath(dirpath)
-    pdsdir = pdsfile.PdsFile.from_abspath(dirpath)
+    pdsdir = pdsfile.Pds3File.from_abspath(dirpath)
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsdir.root_)
@@ -237,7 +237,7 @@ def write_checksums(check_path, abspairs,
     """Write a checksum table containing the given pairs (abspath, checksum)."""
 
     check_path = os.path.abspath(check_path)
-    pdscheck = pdsfile.PdsFile.from_abspath(check_path)
+    pdscheck = pdsfile.Pds3File.from_abspath(check_path)
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdscheck.root_)
@@ -661,7 +661,7 @@ if __name__ == '__main__':
 
     # Initialize the logger
     logger = pdslogger.PdsLogger(LOGNAME)
-    pdsfile.PdsFile.set_log_root(args.log)
+    pdsfile.Pds3File.set_log_root(args.log)
 
     if not args.quiet:
         logger.add_handler(pdslogger.stdout_handler)
@@ -695,13 +695,13 @@ if __name__ == '__main__':
 
         # Convert to a list of absolute paths that exist (volsets or volumes)
         try:
-            pdsf = pdsfile.PdsFile.from_abspath(path, must_exist=True)
+            pdsf = pdsfile.Pds3File.from_abspath(path, must_exist=True)
             abspaths.append(pdsf.abspath)
 
         except (ValueError, IOError):
             # Allow a volume name to stand in for a .tar.gz archive
             (dir, basename) = os.path.split(path)
-            pdsdir = pdsfile.PdsFile.from_abspath(dir)
+            pdsdir = pdsfile.Pds3File.from_abspath(dir)
             if pdsdir.archives_ and '.' not in basename:
                 if pdsdir.voltype_ == 'volumes/':
                     basename += '.tar.gz'
@@ -720,7 +720,7 @@ if __name__ == '__main__':
     # Generate a list of tuples (pdsfile, selection)
     info = []
     for path in abspaths:
-        pdsf = pdsfile.PdsFile.from_abspath(path)
+        pdsf = pdsfile.Pds3File.from_abspath(path)
 
         if pdsf.is_volset_dir:
             # Archive directories are checksumed by volset
@@ -854,7 +854,3 @@ if __name__ == '__main__':
         new_list = [a for a in new_list if a not in ('--infoshelf', '-i')]
         status = os.system(' '.join(new_list))
         sys.exit(status)
-
-    else:
-        sys.exit(1)
-

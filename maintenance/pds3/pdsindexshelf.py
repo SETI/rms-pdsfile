@@ -4,7 +4,7 @@
 #
 # Syntax:
 #   pdsindexshelf.py --task index_path.tab [index_path.tab ...]
-# 
+#
 # Enter the --help option to see more information.
 ################################################################################
 
@@ -69,7 +69,7 @@ def write_indexdict(pdsf, index_dict, logger=None):
     logger.open('Writing index shelf file info for', pdsf.abspath)
 
     try:
-        pdsfile.PdsFile.close_all_shelves() # prevents using a cached shelf file
+        pdsfile.Pds3File.close_all_shelves() # prevents using a cached shelf file
 
         shelf_path = pdsf.indexshelf_abspath
         logger.info('Index shelf file', shelf_path)
@@ -373,7 +373,7 @@ if __name__ == '__main__':
 
     # Initialize the logger
     logger = pdslogger.PdsLogger(LOGNAME)
-    pdsfile.PdsFile.set_log_root(args.log)
+    pdsfile.Pds3File.set_log_root(args.log)
 
     if not args.quiet:
         logger.add_handler(pdslogger.stdout_handler)
@@ -386,7 +386,7 @@ if __name__ == '__main__':
         error_handler = pdslogger.error_handler(path)
         logger.add_handler(error_handler)
 
-    # Generate a list of PdsFile objects before logging
+    # Generate a list of Pds3File objects before logging
     pdsfiles = []
     for path in args.table:
 
@@ -395,7 +395,7 @@ if __name__ == '__main__':
             sys.exit(1)
 
         path = os.path.abspath(path)
-        pdsf = pdsfile.PdsFile.from_abspath(path)
+        pdsf = pdsfile.Pds3File.from_abspath(path)
 
         if pdsf.isdir:
             if not '/metadata/' in path:
@@ -410,7 +410,7 @@ if __name__ == '__main__':
                 print('No .tab files in directory: ' + path)
                 sys.exit(1)
 
-            pdsfiles += pdsfile.PdsFile.pdsfiles_for_abspaths(tables)
+            pdsfiles += pdsfile.Pds3File.pdsfiles_for_abspaths(tables)
 
         else:
             if not '/metadata/' in path:
