@@ -30,7 +30,7 @@ LOGDIRS = []
 REPAIRS = translator.TranslatorByRegex([
 
     # COCIRS
-    ('.*/COCIRS_[01].*/DATAINFO\.TXT', 0,
+    (r'.*/COCIRS_[01].*/DATAINFO\.TXT', 0,
       translator.TranslatorByDict(
         {'DIAG.FMT'             : 'UNCALIBR/DIAG.FMT',
          'FRV.FMT'              : 'UNCALIBR/FRV.FMT',
@@ -43,26 +43,26 @@ REPAIRS = translator.TranslatorByRegex([
          'POI.FMT'              : 'NAV_DATA/POI.FMT',
          'RIN.FMT'              : 'NAV_DATA/RIN.FMT',
          'TAR.FMT'              : 'NAV_DATA/TAR.FMT'})),
-    ('.*/COCIRS_[01].*/AAREADME\.TXT', 0,
+    (r'.*/COCIRS_[01].*/AAREADME\.TXT', 0,
       translator.TranslatorByDict(
         {'DATASIS.TXT'          : 'DOCUMENT/DATASIS.PDF',
          'VOLSYS.TXT'           : 'DOCUMENT/VOLSYS.PDF'})),
-    ('.*/COCIRS_[01].*/DATASET\.CAT', 0,
+    (r'.*/COCIRS_[01].*/DATASET\.CAT', 0,
       translator.TranslatorByDict(
         {'DATASIS.TXT'          : 'DATASIS.PDF'})),
-    ('.*/COCIRS_[01].*/SOFTWARE/DOC/SDOCINFO\.TXT', 0,
+    (r'.*/COCIRS_[01].*/SOFTWARE/DOC/SDOCINFO\.TXT', 0,
       translator.TranslatorByDict(
         {'vanilla_guide.htm'    : 'vanilla-guide.html',
          'vanilla_guide.pdf'    : 'vanilla-guide.pdf'})),
-    ('.*/COCIRS_[01].*/DOCUMENT/DOCINFO\.TXT', 0,
+    (r'.*/COCIRS_[01].*/DOCUMENT/DOCINFO\.TXT', 0,
       translator.TranslatorByDict(
         {'cirs_fov_overview.fig1.tiff' : 'cirs_fov_overview_fig1.tiff',
          'cirs_fov_overview.fig2.tiff' : 'cirs_fov_overview_fig2.tiff',
          'cirs_fov_overview.fig3.tiff' : 'cirs_fov_overview_fig3.tiff'})),
-    ('.*/COCIRS_[01].*/CUBE/.*\.(LBL|lbl)', 0,
+    (r'.*/COCIRS_[01].*/CUBE/.*\.(LBL|lbl)', 0,
       translator.TranslatorByRegex([
         (r'([0-9A-Z_]+)\.DAT', 0, r'\1.tar.gz')])),
-    ('.*/COCIRS_[56].*/TUTORIAL\.TXT', 0,
+    (r'.*/COCIRS_[56].*/TUTORIAL\.TXT', 0,
       translator.TranslatorByDict(
         {'GEODATA.FMT'          : '../DATA/GEODATA/GEODATA.FMT',
          'ISPMDATA.FMT'         : '../DATA/ISPMDATA/ISPMDATA.FMT',
@@ -70,7 +70,7 @@ REPAIRS = translator.TranslatorByRegex([
          'RINDATA.FMT'          : '../DATA/RINDATA/RINDATA.FMT',
          'TARDATA.FMT'          : '../DATA/TARDATA/TARDATA.FMT',
          'filename.FMT'         : ''})),
-    ('.*/COCIRS_[56].*/BROWSE/.*\.LBL', 0,
+    (r'.*/COCIRS_[56].*/BROWSE/.*\.LBL', 0,
       translator.TranslatorByRegex([
         (r'(SPEC[0-9]{10}_FP[134]\.DAT)', 0, r'../../DATA/APODSPEC/\1'),
         (r'(ISPM[0-9]{10}_FP[134]\.TAB)', 0, r'../../DATA/ISPMDATA/\1'),
@@ -78,55 +78,55 @@ REPAIRS = translator.TranslatorByRegex([
         (r'(POI[0-9]{10}_FP[134]\.TAB)',  0, r'../../DATA/POIDATA/\1'),
         (r'(TAR[0-9]{10}_FP[134]\.TAB)',  0, r'../../DATA/TARDATA/\1'),
         (r'(GEO[0-9]{10}_[0-9]{3}\.TAB)', 0, r'../../DATA/GEODATA/\1')])),
-    ('.*/COCIRS_[56].*/DATA/APODSPEC/.*\.LBL', 0,
+    (r'.*/COCIRS_[56].*/DATA/APODSPEC/.*\.LBL', 0,
       translator.TranslatorByRegex([
         (r'(ISPM[0-9]{10}_FP[134]\.TAB)', 0, r'../ISPMDATA/\1'),
         (r'(RIN[0-9]{10}_FP[134]\.TAB)',  0, r'../RINDATA/\1'),
         (r'(POI[0-9]{10}_FP[134]\.TAB)',  0, r'../POIDATA/\1'),
         (r'(TAR[0-9]{10}_FP[134]\.TAB)',  0, r'../TARDATA/\1')])),
-    ('.*/COCIRS_[56].*/DATA/ISPMDATA/.*\.LBL', 0,
+    (r'.*/COCIRS_[56].*/DATA/ISPMDATA/.*\.LBL', 0,
       translator.TranslatorByRegex([
         (r'(SPEC[0-9]{10}_FP[134]\.DAT)', 0, r'../APODSPEC/\1'),
         (r'(RIN[0-9]{10}_FP[134]\.TAB)',  0, r'../RINDATA/\1'),
         (r'(POI[0-9]{10}_FP[134]\.TAB)',  0, r'../POIDATA/\1'),
         (r'(TAR[0-9]{10}_FP[134]\.TAB)',  0, r'../TARDATA/\1')])),
-    ('.*/COCIRS_[56].*/DATA/RINDATA/.*\.LBL', 0,
+    (r'.*/COCIRS_[56].*/DATA/RINDATA/.*\.LBL', 0,
       translator.TranslatorByRegex([
         (r'(SPEC[0-9]{10}_FP[134]\.DAT)', 0, r'../APODSPEC/\1'),
         (r'(ISPM[0-9]{10}_FP[134]\.TAB)', 0, r'../ISPMDATA/\1'),
         (r'(POI[0-9]{10}_FP[134]\.TAB)',  0, r'../POIDATA/\1'),
         (r'(TAR[0-9]{10}_FP[134]\.TAB)',  0, r'../TARDATA/\1')])),
-    ('.*/COCIRS_[56].*/DATA/POIDATA/.*\.LBL', 0,
+    (r'.*/COCIRS_[56].*/DATA/POIDATA/.*\.LBL', 0,
       translator.TranslatorByRegex([
         (r'(SPEC[0-9]{10}_FP[134]\.DAT)', 0, r'../APODSPEC/\1'),
         (r'(ISPM[0-9]{10}_FP[134]\.TAB)', 0, r'../ISPMDATA/\1'),
         (r'(RIN[0-9]{10}_FP[134]\.TAB)',  0, r'../RINDATA/\1'),
         (r'(TAR[0-9]{10}_FP[134]\.TAB)',  0, r'../TARDATA/\1')])),
-    ('.*/COCIRS_[56].*/DATA/TARDATA/.*\.LBL', 0,
+    (r'.*/COCIRS_[56].*/DATA/TARDATA/.*\.LBL', 0,
       translator.TranslatorByRegex([
         (r'(SPEC[0-9]{10}_FP[134]\.DAT)', 0, r'../APODSPEC/\1'),
         (r'(ISPM[0-9]{10}_FP[134]\.TAB)', 0, r'../ISPMDATA/\1'),
         (r'(RIN[0-9]{10}_FP[134]\.TAB)',  0, r'../RINDATA/\1'),
         (r'(POI[0-9]{10}_FP[134]\.TAB)',  0, r'../POIDATA/\1')])),
-    ('.*/COCIRS_[56].*/AAREADME\.TXT', 0,
+    (r'.*/COCIRS_[56].*/AAREADME\.TXT', 0,
       translator.TranslatorByDict(
         {'REF.CAT'              : 'CATALOG/CIRSREF.CAT'})),
 
     # COISS
-    ('.*/COISS_0.*\.lbl', 0,
+    (r'.*/COISS_0.*\.lbl', 0,
       translator.TranslatorByDict(
         {'PREFIX8.FMT'          : 'prefix.fmt'})),
-    ('.*/COISS_00.*/aareadme\.txt', 0,
+    (r'.*/COISS_00.*/aareadme\.txt', 0,
       translator.TranslatorByDict(
         {'calinfo.txt'          : '../COISS_0011/calib/calinfo.txt',
          'extrinfo.txt'         : '../COISS_0011/extras/extrinfo.txt'})),
-    ('.*/COISS_0.*/index\.lbl', 0,
+    (r'.*/COISS_0.*/index\.lbl', 0,
       translator.TranslatorByDict(
         {'CUMINDEX.TAB'         : 'index.tab'})),
-    ('.*/COISS_0011/calib/darkcurrent/wac_\w+_dark_parameters04222\.lbl', 0,
+    (r'.*/COISS_0011/calib/darkcurrent/wac_\w+_dark_parameters04222\.lbl', 0,
       translator.TranslatorByRegex([
         (r'wac_(\w+)_dark_parameters04228\.xdr', 0, r'wac_\1_dark_parameters04222.xdr')])),
-    ('.*/COISS_[012].*/aareadme\.txt', 0,
+    (r'.*/COISS_[012].*/aareadme\.txt', 0,
       translator.TranslatorByDict(
         {'Calds.CAT'            : '../../COISS_0xxx/COISS_0001/catalog/calds.cat',
          'calds.cat'            : '../../COISS_0xxx/COISS_0001/catalog/calds.cat',
@@ -144,7 +144,7 @@ REPAIRS = translator.TranslatorByRegex([
          'theoretical_basis.lbl': '../../COISS_0xxx/COISS_0011/document/theoretical_basis.lbl',
          'theoretical_basis.ps' : '../../COISS_0xxx/COISS_0011/document/theoretical_basis.pdf',
          'cisscal.tar.gz'       : '../../COISS_0xxx/COISS_0011/extras/cisscal.tar.gz'})),
-    ('.*/COISS_[012].*/archsis\.txt', 0,
+    (r'.*/COISS_[012].*/archsis\.txt', 0,
       translator.TranslatorByDict(
         {'Calds.CAT'            : '../../../COISS_0xxx/COISS_0001/catalog/calds.cat',
          'calds.cat'            : '../../../COISS_0xxx/COISS_0001/catalog/calds.cat',
@@ -154,10 +154,10 @@ REPAIRS = translator.TranslatorByRegex([
          'saturnds.cat'         : '../../../COISS_2xxx/COISS_2001/catalog/saturnds.cat'})),
 
     # COUVIS
-    ('.*/COUVIS_0.*/INDEX\.LBL', 0,
+    (r'.*/COUVIS_0.*/INDEX\.LBL', 0,
       translator.TranslatorByDict(
         {'CUBEDS.CAT'           : '../CATALOG/SCUBEDS.CAT'})),
-    ('.*/COUVIS_0.*/AAREADME\.TXT', 0,
+    (r'.*/COUVIS_0.*/AAREADME\.TXT', 0,
       translator.TranslatorByDict(
         {'INST.CAT'             : 'CATALOG/UVISINST.CAT',
          'XCALDS.CAT'           : 'CATALOG/SCALDS.CAT',
@@ -165,44 +165,44 @@ REPAIRS = translator.TranslatorByRegex([
          'XSPECDS.CAT'          : 'CATALOG/SSPECDS.CAT',
          'XSSBDS.CAT'           : 'CATALOG/SSSBDS.CAT',
          'XWAVDS.CAT'           : 'CATALOG/SWAVDS.CAT'})),
-    ('.*/COUVIS_0.*/CATALOG/.*\.CAT', 0,
+    (r'.*/COUVIS_0.*/CATALOG/.*\.CAT', 0,
       translator.TranslatorByDict(
         {'SPECDS.CAT'           : 'SSPECDS.CAT',
          'CUBEDS.CAT'           : 'SCUBEDS.CAT'})),
-    ('.*/COUVIS_0.*/SOFTWARE/READERS/READERS_README.TXT', 0,
+    (r'.*/COUVIS_0.*/SOFTWARE/READERS/READERS_README.TXT', 0,
       translator.TranslatorByDict(
         {'CATALOG/CUBEDS.CAT'   : '../../CATALOG/SCUBEDS.CAT'})),
-    ('.*/COUVIS_0.*/SOFTWARE/READERS/OLD.*/READERS_README.TXT', 0,
+    (r'.*/COUVIS_0.*/SOFTWARE/READERS/OLD.*/READERS_README.TXT', 0,
       translator.TranslatorByDict(
         {'CATALOG/CUBEDS.CAT'   : '../../../CATALOG/SCUBEDS.CAT'})),
-    ('.*/COUVIS_8xxx/.*/aareadme\.txt', 0,
+    (r'.*/COUVIS_8xxx/.*/aareadme\.txt', 0,
       translator.TranslatorByDict(
         {'inst.cat'             : 'catalog/uvisinst.cat'})),
-    ('.*/COUVIS_8xxx_v1.*/AAREADME\.TXT', 0,
+    (r'.*/COUVIS_8xxx_v1.*/AAREADME\.TXT', 0,
       translator.TranslatorByDict(
         {'INST.CAT'             : 'CATALOG/UVISINST.CAT'})),
-    ('.*/COUVIS_8xxx_v2.*/voldesc\.cat', 0,
+    (r'.*/COUVIS_8xxx_v2.*/voldesc\.cat', 0,
       translator.TranslatorByDict(
         {'UVISINST.CAT'         : 'catalog/inst.cat',
          'PROJREF.CAT'          : ''})),
-    ('.*/COUVIS_8xxx_v1/.*/CATINFO\.TXT', re.I,
+    (r'.*/COUVIS_8xxx_v1/.*/CATINFO\.TXT', re.I,
       translator.TranslatorByDict(
         {'INST.CAT'             : 'UVISINST.CAT'})),
-    ('.*/COUVIS_8xxx(|_v2\.0)/.*/voldesc\.cat', re.I,
+    (r'.*/COUVIS_8xxx(|_v2\.0)/.*/voldesc\.cat', re.I,
       translator.TranslatorByDict(
         {'PROJREF.CAT'          : ''})),
-    ('.*/metadata/.*/COUVIS_0.*_index\.lbl', 0,
+    (r'.*/metadata/.*/COUVIS_0.*_index\.lbl', 0,
       translator.TranslatorByDict(
         {'CUBEDS.CAT'           : ''})),
 
     # COVIMS
-    ('.*/COVIMS_0001/aareadme\.txt', 0,
+    (r'.*/COVIMS_0001/aareadme\.txt', 0,
       translator.TranslatorByDict(
         {'band_bin_center.fmt'   : '../COVIMS_0002/label/band_bin_center.fmt',
          'core_description.fmt'  : '../COVIMS_0002/label/core_description.fmt',
          'suffix_description.fmt': '../COVIMS_0002/label/suffix_description.fmt',
          'labinfo.txt'           : '../COVIMS_0002/label/labinfo.txt'})),
-    ('.*/COVIMS_0.../aareadme\.txt', 0,
+    (r'.*/COVIMS_0.../aareadme\.txt', 0,
       translator.TranslatorByDict(
         {'caldoc.txt'            : 'software/doc/caldoc.txt',
          'make_dark.sav'         : 'software/bin/make_dark.sav',
@@ -243,7 +243,7 @@ REPAIRS = translator.TranslatorByRegex([
          'isis_geo.pm'           : 'software/src/perl/cal_pipe2/isis_geo.pm',
          'solar_remove.pm'       : 'software/src/perl/cal_pipe2/solar_remove.pm',
          'specific_energy.pm'    : 'software/src/perl/cal_pipe2/specific_energy.pm'})),
-    ('.*/COVIMS_0001/data/.*\.lbl', 0,
+    (r'.*/COVIMS_0001/data/.*\.lbl', 0,
       translator.TranslatorByDict(
         {'band_bin_center.fmt'   : '../../../COVIMS_0002/label/band_bin_center.fmt',
          'core_description.fmt'  : '../../../COVIMS_0002/label/core_description.fmt',
@@ -251,7 +251,7 @@ REPAIRS = translator.TranslatorByRegex([
          'BAND_BIN_CENTER.FMT'   : '../../../COVIMS_0002/label/band_bin_center.fmt',
          'CORE_DESCRIPTION.FMT'  : '../../../COVIMS_0002/label/core_description.fmt',
          'SUFFIX_DESCRIPTION.FMT': '../../../COVIMS_0002/label/suffix_description.fmt'})),
-    ('.*/COVIMS_0001/document/archsis\.txt', 0,
+    (r'.*/COVIMS_0001/document/archsis\.txt', 0,
       translator.TranslatorByDict(
         {'band_bin_center.fmt'   : '../../COVIMS_0002/label/band_bin_center.fmt',
          'core_description.fmt'  : '../../COVIMS_0002/label/core_description.fmt',
@@ -259,68 +259,68 @@ REPAIRS = translator.TranslatorByRegex([
          'BAND_BIN_CENTER.FMT'   : '../../COVIMS_0002/label/band_bin_center.fmt',
          'CORE_DESCRIPTION.FMT'  : '../../COVIMS_0002/label/core_description.fmt',
          'SUFFIX_DESCRIPTION.FMT': '../../COVIMS_0002/label/suffix_description.fmt'})),
-    ('.*/COVIMS_0.*/document/archsis\.txt', 0,
+    (r'.*/COVIMS_0.*/document/archsis\.txt', 0,
       translator.TranslatorByDict(
         {'suffix.cat'            : ''})),
-    ('.*/COVIMS_0.*/errata\.txt', 0,
+    (r'.*/COVIMS_0.*/errata\.txt', 0,
       translator.TranslatorByDict(
         {'center.fmt'            : 'label/band_bin_center.fmt'})),
-    ('.*/COVIMS_0024/data/2008017T190718_2008017T201544/v1579292302_1\.lbl', 0,
+    (r'.*/COVIMS_0024/data/2008017T190718_2008017T201544/v1579292302_1\.lbl', 0,
       translator.TranslatorByDict(
         {"v1579292302.qub"      : "v1579292302_1.qub"})),
-    ('.*/metadata/COVIMS.*/.*supplemental_index.lbl', 0,
+    (r'.*/metadata/COVIMS.*/.*supplemental_index.lbl', 0,
       translator.TranslatorByDict(
         {'dpsis.txt': '../../../volumes/COVIMS_0xxx/COVIMS_0001/document/dpsis.txt'})),
-    ('.*/COVIMS_8xxx_v2.*/voldesc.cat', 0,
+    (r'.*/COVIMS_8xxx_v2.*/voldesc.cat', 0,
       translator.TranslatorByDict(
         {'PROJREF.CAT'          : ''})),
 
     # EBROCC
-    ('.*/EBROCC_0001/INDEX/MCD_INDEX\.LBL', 0,
+    (r'.*/EBROCC_0001/INDEX/MCD_INDEX\.LBL', 0,
       translator.TranslatorByDict(
         {'LIC_INDEX.TAB'        : 'MCD_INDEX.TAB'})),
-    ('.*/EBROCC_0001/INDEX/PAL_INDEX\.LBL', 0,
+    (r'.*/EBROCC_0001/INDEX/PAL_INDEX\.LBL', 0,
       translator.TranslatorByDict(
         {'LIC_INDEX.TAB'        : 'PAL_INDEX.TAB'})),
-    ('.*/EBROCC_0001/SORCDATA/ESO1M/ES1_INGRESS_GEOMETRY\.LBL', 0,
+    (r'.*/EBROCC_0001/SORCDATA/ESO1M/ES1_INGRESS_GEOMETRY\.LBL', 0,
       translator.TranslatorByDict(
         {'ES1_INGRESS_GEOMETRY.LBL': 'ES1_INGRESS_GEOMETRY.DAT'})),
 
     # GO
-    ('.*/GO_0xxx.*/AAREADME\.TXT', 0,
+    (r'.*/GO_0xxx.*/AAREADME\.TXT', 0,
       translator.TranslatorByDict(
         {'ttds.cat'             : '../GO_0020/CATALOG/TTDS.CAT'})),
-    ('.*/GO_0xxx_v1/GO_00(0[789]|1[0-6])/AAREADME\.TXT', 0,
+    (r'.*/GO_0xxx_v1/GO_00(0[789]|1[0-6])/AAREADME\.TXT', 0,
       translator.TranslatorByDict(
         {'CATSTATUS.TXT'        : 'DOCUMENT/CATSTAT.TXT'})),
-    ('.*/GO_0xxx.*/GO_0001/CATALOG/DATASET\.CAT', 0,
+    (r'.*/GO_0xxx.*/GO_0001/CATALOG/DATASET\.CAT', 0,
       translator.TranslatorByRegex(
         [(r'(\w\w\w[1-4][sf]_blm02\.img)', 0, r'../BLEMISH/#UPPER#\1'),
          (r'(\w\w\w[sf]_cal0[1-5]\.dat)',  0, r'../SLOPE/#UPPER#\1'),
          (r'([123][sf]\w+_dc0[1-5]\.dat)', 0, r'../DARK/#UPPER#\1'),
          (r'calibration_so02.img',         0, r'../SHUTTER/CALIBRATION_SO02.IMG')])),
-    ('.*/GO_0xxx.*/GO_000[2-6]/CATALOG/DATASET\.CAT', 0,
+    (r'.*/GO_0xxx.*/GO_000[2-6]/CATALOG/DATASET\.CAT', 0,
       translator.TranslatorByDict(
         {'V_E1DS.CAT'           : ''})),
-    ('.*/GO_0xxx.*/GO_0001/DOCUMENT/PDSLABEL\.TXT', 0,
+    (r'.*/GO_0xxx.*/GO_0001/DOCUMENT/PDSLABEL\.TXT', 0,
       translator.TranslatorByDict(
         {'RLINEPRX.FMT'         : '../../GO_0002/LABEL/RLINEPRX.FMT',
          'RTLMTAB.FMT'          : '../../GO_0002/LABEL/RTLMTAB.FMT'})),
-    ('.*/GO_0xxx_v1/GO_0001/INDEX/CUMINDEX\.LBL', 0,
+    (r'.*/GO_0xxx_v1/GO_0001/INDEX/CUMINDEX\.LBL', 0,
       translator.TranslatorByDict(
         {'IMGINDEX.TAB'         : 'CUMINDEX.TAB'})),
-    ('.*/GO_0xxx_v1/GO_0001/INDEX/P1CUMINDEX\.LBL', 0,
+    (r'.*/GO_0xxx_v1/GO_0001/INDEX/P1CUMINDEX\.LBL', 0,
       translator.TranslatorByDict(
         {'IMGINDEX.TAB'         : 'P1CUMINDEX.TAB'})),
 
     # HST
-    ('.*/HSTJ.*/AAREADME\.TXT', 0,
+    (r'.*/HSTJ.*/AAREADME\.TXT', 0,
       translator.TranslatorByDict(
         {'NST.CAT'              : 'CATALOG/INST.CAT'})),
-    ('.*/HSTJ.*/CATINFO\.TXT', 0,
+    (r'.*/HSTJ.*/CATINFO\.TXT', 0,
       translator.TranslatorByDict(
         {'NST.CAT'              : 'INST.CAT'})),
-    ('.*/HSTJ.*_v.*/HSTJ1_0427/DATA/VISIT_02/.*\.LBL', 0,
+    (r'.*/HSTJ.*_v.*/HSTJ1_0427/DATA/VISIT_02/.*\.LBL', 0,
       translator.TranslatorByDict(
         {'J96O02JLQ_FLT_WFC1.JPG': '',
          'J96O02JMQ_FLT_WFC1.JPG': '',
@@ -329,7 +329,7 @@ REPAIRS = translator.TranslatorByRegex([
          'J96O02JOQ_FLT_WFC2.JPG': 'J96O02JOQ_FLT.JPG',
          'J96O02JQQ_FLT_WFC2.JPG': 'J96O02JQQ_FLT.JPG',
          'J96O02JSQ_FLT_WFC2.JPG': 'J96O02JSQ_FLT.JPG'})),
-    ('.*/HSTJx_xxxx.*_v.*/HSTJ1_2395/DATA/.*\.LBL', 0,
+    (r'.*/HSTJx_xxxx.*_v.*/HSTJ1_2395/DATA/.*\.LBL', 0,
       translator.TranslatorByDict(
         {'JBNY02SOQ_FLT_WFC1.JPG': '',
          'JBNY02SOQ_FLT_WFC2.JPG': 'JBNY02SOQ_FLT.JPG',
@@ -339,37 +339,37 @@ REPAIRS = translator.TranslatorByRegex([
          'JBNYA2SUQ_FLT_WFC2.JPG': 'JBNYA2SUQ_FLT.JPG'})),
 
     # JNOJIR
-    ('.*/JNOJIR.*/AAREADME.TXT', 0,
+    (r'.*/JNOJIR.*/AAREADME.TXT', 0,
       translator.TranslatorByDict(
         {'PERSON.CAT'           : 'JNO_JIRAM_PERSON.CAT',
          'DATAINFO.TXT'         : ''})),
-    ('.*/JNOJIR.*/JIR_IMG_\w+_RESPONSIVITY_V03.LBL', 0,
+    (r'.*/JNOJIR.*/JIR_IMG_\w+_RESPONSIVITY_V03.LBL', 0,
       translator.TranslatorByRegex(
         [(r'(JIR_IMG_\w+_RESPONSIVITY)_V02\.DAT', 0, r'\1_V03.DAT')])),
-    ('.*/JNOJIR_20(2[789]|3\d)/DATA/JIR_\w+.LBL', 0,
+    (r'.*/JNOJIR_20(2[789]|3\d)/DATA/JIR_\w+.LBL', 0,
       translator.TranslatorByRegex(
         [(r'(JIR_IMG_\w+_RESPONSIVITY)_V02\.DAT', 0, r'../CALIB/\1_V03.DAT')])),
     # Embedded list comprehension
     # Each links a SOURCE_PRODUCT_ID on JNOJIR_2nnn to the associated EDR in
     # the parallel directory on JNOJIR_1nnn. Set up through volume _2049.
     ] + [
-        (f'.*/JNOJIR_xxxx/JNOJIR_20{nn:02d}/DATA/JIR_\w+.LBL', 0,
+        (fr'.*/JNOJIR_xxxx/JNOJIR_20{nn:02d}/DATA/JIR_\w+.LBL', 0,
           translator.TranslatorByRegex(
             [(r'(JIR_\w+_EDR_20\w+)\.(DAT|IMG)', 0,
-                f'../../JNOJIR_10{nn:02d}/DATA/' + r'\1.\2')]))
+                fr'../../JNOJIR_10{nn:02d}/DATA/\1.\2')]))
         for nn in range(0,50)] + [
 
     # JNOJNC
-    ('.*/JNOJNC.*/(AAREADME|CATINFO).TXT', 0,
+    (r'.*/JNOJNC.*/(AAREADME|CATINFO).TXT', 0,
       translator.TranslatorByDict(
         {'JUNO_REF.CAT'         : 'JUNO_PROJREF.CAT'})),
 
     # NHSP (and *SP_xxxx)
-    ('.*/NHSP_xxxx_v1.*/AAREADME\.TXT', 0,
+    (r'.*/NHSP_xxxx_v1.*/AAREADME\.TXT', 0,
       translator.TranslatorByDict(
         {'personel.cat'         : 'CATALOG/PERSONNEL.CAT',
          'spiceds.cat'          : 'CATALOG/SPICE_INST.CAT'})),
-    ('.*SP_xxxx.*/aareadme\.txt', 0,
+    (r'.*SP_xxxx.*/aareadme\.txt', 0,
       translator.TranslatorByDict(
         {'dataset.cat'          : 'catalog/spiceds.cat',
          'ckinfo.txt'           : 'data/ck/ckinfo.txt',
@@ -391,94 +391,94 @@ REPAIRS = translator.TranslatorByRegex([
          'issinfo.txt'          : 'extras/ckxtra/ckiss/issinfo.txt'})),
 
     # NHxxMV/NHxxLO
-    ('.*/NHxx.._xxxx_v1/NH(JU|LA).*/aareadme\.txt', 0,
+    (r'.*/NHxx.._xxxx_v1/NH(JU|LA).*/aareadme\.txt', 0,
       translator.TranslatorByDict(
         {'PAYLOAD_SSR.LBL'      : 'document/payload_ssr/payload_ssr.lbl',
          'RALPH_SSR.LBL'        : 'document/ralph_ssr/ralph_ssr.lbl',
          'SOC_INST_ICD.LBL'     : 'document/soc_inst_icd/soc_inst_icd.lbl'})),
-    ('.*/NHxx.._xxxx_v1/NH(JU|LA).*/AAREADME\.TXT', 0,
+    (r'.*/NHxx.._xxxx_v1/NH(JU|LA).*/AAREADME\.TXT', 0,
       translator.TranslatorByDict(
         {'PAYLOAD_SSR.LBL'      : 'DOCUMENT/PAYLOAD_SSR/PAYLOAD_SSR.LBL',
          'RALPH_SSR.LBL'        : 'DOCUMENT/RALPH_SSR/RALPH_SSR.LBL',
          'SOC_INST_ICD.LBL'     : 'DOCUMENT/SOC_INST_ICD/SOC_INST_ICD.LBL'})),
-    ('.*/NHxxLO_xxxx.*/NH..LO_2001/data/\w+/.*\.lbl', 0,
+    (r'.*/NHxxLO_xxxx.*/NH..LO_2001/data/\w+/.*\.lbl', 0,
       translator.TranslatorByRegex(
         [(r'cflat_grnd_SFA_(\w+\.fit)', 0, r'../../calib/cflat_grnd_sfa_\1'),
          (r'(cflat|dead|delta|dsmear|hot|sap)_(\w+\.fit)', 0, r'../../calib/\1_\2')])),
-    ('.*/NHxxMV_xxxx.*/NH..MV_2001/data/\w+/.*\.lbl', 0,
+    (r'.*/NHxxMV_xxxx.*/NH..MV_2001/data/\w+/.*\.lbl', 0,
       translator.TranslatorByRegex(
         [(r'(mc[0-3])_(flat_\w+\.fit)s', 0, r'../../calib/mcl/\1_\2'),
          (r'(mp[12])_(flat_\w+\.fit)s',  0, r'../../calib/mp/\1_\2'),
          (r'(mfr_flat_\w+\.fit)s',       0, r'../../calib/mfr/\1')])),
 
     # RPX
-    ('.*/RPX_0101.*/R_HARRIS\.LBL', 0,
+    (r'.*/RPX_0101.*/R_HARRIS\.LBL', 0,
       translator.TranslatorByDict(
         {'R_HARRIS.DF'          : 'R_HARRIS.PDF'})),
-    ('.*/RPX_0101.*/F161225AB\.LBL', 0,
+    (r'.*/RPX_0101.*/F161225AB\.LBL', 0,
       translator.TranslatorByDict(
         {'F161225RB.GIF'        : 'F161225AB.GIF'})),
-    ('.*/RPX_0201.*/T0808_F1498_CAL\.LBL', 0,
+    (r'.*/RPX_0201.*/T0808_F1498_CAL\.LBL', 0,
       translator.TranslatorByDict(
         {'T0808_F1497_CAL.IMG'  : 'T0808_F1498_CAL.IMG'})),
-    ('.*/RPX_0401/AAREADME\.TXT', 0,
+    (r'.*/RPX_0401/AAREADME\.TXT', 0,
       translator.TranslatorByDict(
         {'INSTHOST.CAT'         : 'CATALOG/HOST.CAT'})),
 
     # Any VG
-    ('.*/VG.*/CATALOG/CATINFO\.TXT', 0,
+    (r'.*/VG.*/CATALOG/CATINFO\.TXT', 0,
       translator.TranslatorByDict(
         {'VGnNINST.CAT'         : 'VG1NINST.CAT',
          'VGnHOST.CAT'          : 'VG1HOST.CAT'})),
 
     # VG_20xx (IRIS)
-    ('.*/VG_2001/.*/VG2_SAT\.LBL', 0,
+    (r'.*/VG_2001/.*/VG2_SAT\.LBL', 0,
       translator.TranslatorByDict(
         {'IRIS_ROWFMT.FMT'      : '../JUPITER/IRISHEDR.FMT'})),
-    ('.*/VG_2001/AAREADME\.TXT', 0,
+    (r'.*/VG_2001/AAREADME\.TXT', 0,
       translator.TranslatorByDict(
         {'IRISHEDR.FMT'         : 'JUPITER/IRISHEDR.FMT',
          'IRISTRGP.FMT'         : 'JUPITER/CALIB/IRISTRGP.FMT'})),
 
     # VG_28xx (ring profiles)
-    ('.*/VG_28[0-9]{2}/.*INFO\.TXT', 0,
+    (r'.*/VG_28[0-9]{2}/.*INFO\.TXT', 0,
       translator.TranslatorByDict(
         {'RS1SINST.CAT'         : 'VG1SINST.CAT',
          'RS2UINST.CAT'         : 'VG2UINST.CAT'})),
-    ('.*/VG_28xx/VG_2801/CALIB/PS2C01\.LBL', 0,
+    (r'.*/VG_28xx/VG_2801/CALIB/PS2C01\.LBL', 0,
       translator.TranslatorByDict(
         {'PS1C01.TAB'           : 'PS2C01.TAB'})),
-    ('.*/VG_28xx/VG_2801/JITTER/PS1J01\.LBL', 0,
+    (r'.*/VG_28xx/VG_2801/JITTER/PS1J01\.LBL', 0,
       translator.TranslatorByDict(
         {'PS1J02.TAB'           : 'PS1J01.TAB'})),
-    ('.*/VG_28xx/VG_2801/JITTER/PU2J02\.LBL', 0,
+    (r'.*/VG_28xx/VG_2801/JITTER/PU2J02\.LBL', 0,
       translator.TranslatorByDict(
         {'PU2J01.TAB'           : 'PU2J02.TAB'})),
-    ('.*/VG_280./.*/L3GUIDE\.TXT', 0,
+    (r'.*/VG_280./.*/L3GUIDE\.TXT', 0,
       translator.TranslatorByDict(
         {'RTLMTAB.FMT'          : ''})),
-    ('.*/VG_2802/EDITDATA/DATAINFO\.TXT', 0,
+    (r'.*/VG_2802/EDITDATA/DATAINFO\.TXT', 0,
       translator.TranslatorByDict(
         {'INST.CAT'             : '../CATALOG/VG1INST.CAT'})),
-    ('.*/VG_2802/EDITDATA/US3D01P\.LBL', 0,
+    (r'.*/VG_2802/EDITDATA/US3D01P\.LBL', 0,
       translator.TranslatorByDict(
         {'US3D01I.DAT'          : 'US3D01P.DAT'})),
-    ('.*/VG_2802/SORCDATA/DATAINFO\.TXT', 0,
+    (r'.*/VG_2802/SORCDATA/DATAINFO\.TXT', 0,
       translator.TranslatorByDict(
         {'BETAPER.VOY'          : 'BETPER.VOY',
          'BETAPER.LBL'          : 'BETPER.LBL'})),
-    ('.*/VG_2803.*/RS.R1BFV\.LBL', 0,
+    (r'.*/VG_2803.*/RS.R1BFV\.LBL', 0,
       translator.TranslatorByDict(
         {'RS_R1BFT.FMT'         : 'RS_R1BFV.FMT'})),
 
     # VGn_9xxx (RSS)
-    ('.*/VG[12]_9.*/CHECKSUMS.TXT', 0,  # any file referenced in CHECKSUMS.TXT
+    (r'.*/VG[12]_9.*/CHECKSUMS.TXT', 0,  # any file referenced in CHECKSUMS.TXT
                                         # already has a full path; don't search
       translator.TranslatorByRegex([(r'(.*)', 0, r'\1')])),
-    ('.*/VG[12]_9.*/ERRATA.TXT', 0,
+    (r'.*/VG[12]_9.*/ERRATA.TXT', 0,
       translator.TranslatorByDict(
         {'_PERSON.CAT'          : 'CATALOG/VG_RSS_PERSON.CAT'})),
-    ('.*/VG1_9050/CATALOG/CATINFO.TXT', 0,
+    (r'.*/VG1_9050/CATALOG/CATINFO.TXT', 0,
       translator.TranslatorByDict(
         {'MISSION.CAT'          : 'VG_MISSION.CAT',
          'INST_HOST.CAT'        : 'VG1_INST_HOST.CAT',
@@ -488,7 +488,7 @@ REPAIRS = translator.TranslatorByRegex([
          'REF.CAT'              : 'VG1_S_RSS_REF.CAT',
          'TARGET.CAT'           : 'VG_SAT_TARGET.CAT',
          'VG1_SAT_TARGET.CAT'   : 'VG_SAT_TARGET.CAT'})),
-    ('.*/VG1_9056/CATALOG/CATINFO.TXT', 0,
+    (r'.*/VG1_9056/CATALOG/CATINFO.TXT', 0,
       translator.TranslatorByDict(
         {'MISSION.CAT'          : 'VG_MISSION.CAT',
          'INSTHOST.CAT'         : 'VG1_INST_HOST.CAT',
@@ -497,7 +497,7 @@ REPAIRS = translator.TranslatorByRegex([
          'PERSON.CAT'           : 'VG_RSS_PERSON.CAT',
          'REF.CAT'              : 'VG1_SSA_RSS_REF.CAT',
          'TARGET.CAT'           : 'VG_TITAN_TARGET.CAT'})),
-    ('.*/VG2_9065/CATALOG/CATINFO.TXT', 0,
+    (r'.*/VG2_9065/CATALOG/CATINFO.TXT', 0,
       translator.TranslatorByDict(
         {'MISSION.CAT'          : 'VG_MISSION.CAT',
          'INSTHOST.CAT'         : 'VG2_INST_HOST.CAT',
@@ -508,7 +508,7 @@ REPAIRS = translator.TranslatorByRegex([
          'TARGET.CAT'           : 'VG_SAT_TARGET.CAT'})),
 
     # VGIRIS
-    ('.*/VGIRIS_0001/AAREADME\.TXT', 0,
+    (r'.*/VGIRIS_0001/AAREADME\.TXT', 0,
       translator.TranslatorByDict(
         {'JUPITER_ASCII.FMT'    : 'DATA/JUPITER_VG1/JUPITER_ASCII.FMT',
          'JUPITER_LSB.FMT'      : 'DATA/JUPITER_VG1/JUPITER_LSB.FMT',
@@ -518,7 +518,7 @@ REPAIRS = translator.TranslatorByRegex([
          'SATURN_MSB.FMT'       : '',
          'VGnINST.CAT'          : 'CATALOG/VG1INST.CAT',
          'VGnHOST.CAT'          : 'CATALOG/VG1HOST.CAT'})),
-    ('.*/VGIRIS_0001/DATA/DATAINFO\.TXT', 0,
+    (r'.*/VGIRIS_0001/DATA/DATAINFO\.TXT', 0,
       translator.TranslatorByDict(
         {'JUPITER_ASCII.FMT'    : 'JUPITER_VG1/JUPITER_ASCII.FMT',
          'JUPITER_LSB.FMT'      : 'JUPITER_VG1/JUPITER_LSB.FMT',
@@ -528,7 +528,7 @@ REPAIRS = translator.TranslatorByRegex([
          'SATURN_MSB.FMT'       : '',
          'VGnINST.CAT'          : '../CATALOG/VG1INST.CAT',
          'VGnHOST.CAT'          : '../CATALOG/VG1HOST.CAT'})),
-    ('.*/VGIRIS_0002/AAREADME\.TXT', 0,
+    (r'.*/VGIRIS_0002/AAREADME\.TXT', 0,
       translator.TranslatorByDict(
         {'JUPITER_ASCII.FMT'    : '',
          'JUPITER_LSB.FMT'      : '',
@@ -538,7 +538,7 @@ REPAIRS = translator.TranslatorByRegex([
          'SATURN_MSB.FMT'       : 'DATA/SATURN_VG1/SATURN_MSB.FMT',
          'VGnINST.CAT'          : 'CATALOG/VG1INST.CAT',
          'VGnHOST.CAT'          : 'CATALOG/VG1HOST.CAT'})),
-    ('.*/VGIRIS_0002/DATA/DATAINFO\.TXT', 0,
+    (r'.*/VGIRIS_0002/DATA/DATAINFO\.TXT', 0,
       translator.TranslatorByDict(
         {'JUPITER_ASCII.FMT'    : '',
          'JUPITER_LSB.FMT'      : '',
@@ -550,13 +550,13 @@ REPAIRS = translator.TranslatorByRegex([
          'VGnHOST.CAT'          : '../CATALOG/VG1HOST.CAT'})),
 
     # VGISS
-    ('.*/VGISS.*/BROWSE/C34801XX/C3480139_.*\.LBL', 0,
+    (r'.*/VGISS.*/BROWSE/C34801XX/C3480139_.*\.LBL', 0,
       translator.TranslatorByDict(
         {'C3480140_CALIB.JPG'   : 'C3480139_CALIB.JPG',
          'C3480140_CLEANED.JPG' : 'C3480139_CLEANED.JPG',
          'C3480140_GEOMED.JPG'  : 'C3480139_GEOMED.JPG',
          'C3480140_RAW.JPG'     : 'C3480139_RAW.JPG'})),
-    ('.*/VGISS.*/BROWSE/C43892XX/C4389208_.*\.LBL', 0,
+    (r'.*/VGISS.*/BROWSE/C43892XX/C4389208_.*\.LBL', 0,
       translator.TranslatorByDict(
         {'C4389209_CALIB.JPG'   : 'C4389208_CALIB.JPG',
          'C4389209_CLEANED.JPG' : 'C4389208_CLEANED.JPG',

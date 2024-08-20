@@ -192,7 +192,7 @@ def reinitialize(pdsf, logger=None):
     if not os.path.exists(shelf_path):
         logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
         logger.warn('Index shelf file does not exist; initializing', shelf_path)
-        initialize(pdsdir, logger=logger)
+        initialize(pdsf, logger=logger)
         return
 
     # Generate info
@@ -234,7 +234,7 @@ def repair(pdsf, logger=None, op='repair'):
         logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
         logger.warn('Index shelf file does not exist; initializing',
                      shelf_path)
-        initialize(pdsdir, logger=logger)
+        initialize(pdsf, logger=logger)
         return
 
     (table_indexdict, latest_mtime) = generate_indexdict(pdsf, logger=logger)
