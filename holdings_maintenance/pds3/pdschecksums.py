@@ -567,7 +567,7 @@ def update(pdsdir, selection=None, logger=None):
 # Executable program
 ################################################################################
 
-if __name__ == '__main__':
+def main():
 
     # Set up parser
     parser = argparse.ArgumentParser(
@@ -854,3 +854,6 @@ if __name__ == '__main__':
         new_list = [a for a in new_list if a not in ('--infoshelf', '-i')]
         status = os.system(' '.join(new_list))
         sys.exit(status)
+
+if __name__ == '__main__':
+    main()

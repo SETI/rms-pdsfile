@@ -321,7 +321,7 @@ def update(pdsdir, logger=None):
 # Executable program
 ################################################################################
 
-if __name__ == '__main__':
+def main():
 
     # Set up parser
     parser = argparse.ArgumentParser(
@@ -506,3 +506,6 @@ if __name__ == '__main__':
             status = 1
 
     sys.exit(status)
+
+if __name__ == '__main__':
+    main()

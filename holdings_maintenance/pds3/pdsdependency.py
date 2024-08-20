@@ -1044,7 +1044,7 @@ def test(pdsdir, logger=None, check_newer=True):
 ################################################################################
 ################################################################################
 
-if __name__ == '__main__':
+def main():
 
     # Set up parser
     parser = argparse.ArgumentParser(
@@ -1197,3 +1197,6 @@ if __name__ == '__main__':
                 print('  ', cmd)
 
     sys.exit(status)
+
+if __name__ == '__main__':
+    main()

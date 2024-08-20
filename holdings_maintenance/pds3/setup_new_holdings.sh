@@ -4,7 +4,7 @@ set -e
 
 if [[ $# -ne 1 ]]; then
     echo "This script creates empty versions of all of the standard directories"
-    echo "that appear under /holdings. It is used to initialize a brand new
+    echo "that appear under /holdings. It is used to initialize a brand new"
     echo "holdings directory from scratch."
     echo
     echo "Usage: setup_new_holdings.sh <holdings_dir>"

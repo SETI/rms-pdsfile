@@ -12,6 +12,7 @@ import argparse
 import datetime
 import glob
 import os
+from pathlib import Path
 import pickle
 import shutil
 import sys
@@ -19,7 +20,11 @@ from PIL import Image
 
 import pdslogger
 import pdsfile
-import pdschecksums
+
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+sys.path.insert(0, str(REPO_ROOT))
+
+from holdings_maintenance.pds3 import pdschecksums
 
 # Holds log file directories temporarily, used by move_old_info()
 LOGDIRS = []
@@ -29,6 +34,7 @@ LOGROOT_ENV = 'PDS_LOG_ROOT'
 
 PREVIEW_EXTS = set(['.jpg', '.png', '.gif', '.tif', '.tiff',
                     '.jpeg', '.jpeg_small'])
+
 
 ################################################################################
 
@@ -603,7 +609,7 @@ def update(pdsdir, selection=None, logger=None):
 ################################################################################
 ################################################################################
 
-if __name__ == '__main__':
+def main():
 
     # Set up parser
     parser = argparse.ArgumentParser(
@@ -881,3 +887,6 @@ if __name__ == '__main__':
             status = 1
 
     sys.exit(status)
+
+if __name__ == '__main__':
+    main()

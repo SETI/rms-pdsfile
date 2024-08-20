@@ -301,7 +301,7 @@ def update(pdsf, selection=None, logger=None):
 ################################################################################
 ################################################################################
 
-if __name__ == '__main__':
+def main():
 
     # Set up parser
     parser = argparse.ArgumentParser(
@@ -492,3 +492,6 @@ if __name__ == '__main__':
         if fatal or errors: status = 1
 
     sys.exit(status)
+
+if __name__ == '__main__':
+    main()
