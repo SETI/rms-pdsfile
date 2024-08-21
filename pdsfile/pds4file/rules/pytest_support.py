@@ -2,11 +2,15 @@
 # pds4file/ruless/pytest_support.py
 ##########################################################################################
 
+import ast
+import os
 from pdsfile.pdsfile import abspath_for_logical_path
 import pdsfile.pds4file as pds4file
+from pathlib import Path
 import translator
 import re
-import os
+
+TEST_RESULTS_DIR = os.path.dirname(pds4file.__file__) + '/test_results/'
 
 def translate_first(trans, path):
     """Return the logical paths of "first" files found using given translator on path.
@@ -106,24 +110,49 @@ def get_pdsfiles(paths, is_abspath=True):
     return pdsfiles_arr
 
 def opus_products_test(
-    input_path, expected, is_abspath=True
+    input_path, expected, update=False, is_abspath=True
 ):
     target_pdsfile = instantiate_target_pdsfile(input_path, is_abspath)
     results = target_pdsfile.opus_products()
+
+    results_file_path = Path(TEST_RESULTS_DIR + expected)
+    # Create the golden copy by using the current opus products output
+    if update or not results_file_path.exists():
+        res = {}
+        for prod_category, prod_list in results.items():
+            pdsf_list = []
+            for pdsf_li in prod_list:
+                for pdsf in pdsf_li:
+                    pdsf_list.append(pdsf.logical_path)
+            res[prod_category] = pdsf_list
+
+        # create the directory to store the golden copy if it doesn't exist.
+        os.makedirs(os.path.dirname(results_file_path), exist_ok=True)
+
+        # write the opus products output to the file.
+        with open(results_file_path, 'w') as f:
+            expected_data = f.write(repr(res))
+        print('\nCreate the opus products golden copy', expected)
+        return
+
+    with open(results_file_path, 'r') as f:
+        expected_data = f.read()
+        expected_data = ast.literal_eval(expected_data)
+
     # Note that messages are more useful if extra values are identified before
     # missing values. That's because extra items are generally more diagnostic
     # of the issue at hand.
     for key in results:
-        assert key in expected, f'Extra key: {key} = {results[key]}'
-    for key in expected:
-        assert key in results, f'Missing key: {key} = {expected[key]}'
+        assert key in expected_data, f'Extra key: {key} = {results[key]}'
+    for key in expected_data:
+        assert key in results, f'Missing key: {key} = {expected_data[key]}'
     for key in results:
         result_paths = []       # flattened list of logical paths
         for pdsfiles in results[key]:
             result_paths += pds4file.Pds4File.logicals_for_pdsfiles(pdsfiles)
         for path in result_paths:
-            assert path in expected[key], f'Extra file under key {key}: {path}'
-        for path in expected[key]:
+            assert path in expected_data[key], f'Extra file under key {key}: {path}'
+        for path in expected_data[key]:
             assert path in result_paths, f'Missing file under key {key}: {path}'
 
 def versions_test(input_path, expected, is_abspath=True):
