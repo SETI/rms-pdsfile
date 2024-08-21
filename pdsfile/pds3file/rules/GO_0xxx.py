@@ -802,53 +802,12 @@ from .pytest_support import *
     'input_path,expected',
     [
         ('volumes/GO_0xxx/GO_0017/J0/OPNAV/C0346405900R.IMG',
-         {('Galileo SSI',
-           10,
-           'gossi_raw',
-           'Raw Image',
-           True): ['volumes/GO_0xxx/GO_0017/J0/OPNAV/C0346405900R.IMG',
-                   'volumes/GO_0xxx/GO_0017/J0/OPNAV/C0346405900R.LBL',
-                   'volumes/GO_0xxx/GO_0017/LABEL/RLINEPRX.FMT',
-                   'volumes/GO_0xxx/GO_0017/LABEL/RTLMTAB.FMT'],
-          ('browse',
-           10,
-           'browse_thumb',
-           'Browse Image (thumbnail)',
-           False): ['previews/GO_0xxx/GO_0017/J0/OPNAV/C0346405900R_thumb.jpg'],
-          ('browse',
-           20,
-           'browse_small',
-           'Browse Image (small)',
-           False): ['previews/GO_0xxx/GO_0017/J0/OPNAV/C0346405900R_small.jpg'],
-          ('browse',
-           30,
-           'browse_medium',
-           'Browse Image (medium)',
-           False): ['previews/GO_0xxx/GO_0017/J0/OPNAV/C0346405900R_med.jpg'],
-          ('browse',
-           40,
-           'browse_full',
-           'Browse Image (full)',
-           True): ['previews/GO_0xxx/GO_0017/J0/OPNAV/C0346405900R_full.jpg'],
-          ('metadata',
-           5,
-           'rms_index',
-           'RMS Node Augmented Index',
-           False): ['metadata/GO_0xxx/GO_0017/GO_0017_index.tab',
-                    'metadata/GO_0xxx/GO_0017/GO_0017_index.lbl'],
-          ('Galileo SSI',
-           20,
-           'gossi_documentation',
-           'Documentation',
-           False): ['documents/GO_0xxx/VICAR-File-Format.pdf',
-                    'documents/GO_0xxx/Data-Product-SIS.pdf',
-                    'documents/GO_0xxx/Archive-SIS.pdf']}
-
-        )
+         'GO_0xxx/opus_products/C0346405900R.py')
     ]
 )
-def test_opus_products(input_path, expected):
-    opus_products_test(input_path, expected)
+def test_opus_products(request, input_path, expected):
+    update = request.config.option.update
+    opus_products_test(input_path, expected, update)
 
 def test_opus_id_to_primary_logical_path():
     TESTS = [

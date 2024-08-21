@@ -114,7 +114,6 @@ def opus_products_test(
     results = target_pdsfile.opus_products()
 
     results_file_path = Path(TEST_RESULTS_DIR + expected)
-
     # Create the golden copy by using the current opus products output
     if update or not results_file_path.exists():
         res = {}
@@ -125,8 +124,13 @@ def opus_products_test(
                     pdsf_list.append(pdsf.logical_path)
             res[prod_category] = pdsf_list
 
+        # create the directory to store the golden copy if it doesn't exist.
+        os.makedirs(os.path.dirname(results_file_path), exist_ok=True)
+
+        # write the opus products output to the file.
         with open(results_file_path, 'w') as f:
             expected_data = f.write(repr(res))
+        print('\nCreate the opus products golden copy', expected)
         return
 
     with open(results_file_path, 'r') as f:

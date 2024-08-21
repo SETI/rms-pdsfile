@@ -311,65 +311,12 @@ from .pytest_support import *
     'input_path,expected',
     [
         ('volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.DAT',
-         {('Cassini UVIS',
-           10,
-           'couvis_raw',
-           'Raw Data',
-           True): ['volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.DAT',
-                   'volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.LBL'],
-          ('Cassini UVIS',
-           20,
-           'couvis_calib_corr',
-           'Calibration Data',
-           True): ['volumes/COUVIS_0xxx/COUVIS_0001/CALIB/VERSION_3/D1999_007/FUV1999_007_16_57_CAL_3.DAT',
-                   'volumes/COUVIS_0xxx/COUVIS_0001/CALIB/VERSION_3/D1999_007/FUV1999_007_16_57_CAL_3.LBL'],
-          ('browse',
-           10,
-           'browse_thumb',
-           'Browse Image (thumbnail)',
-           False): ['previews/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57_thumb.png'],
-          ('browse',
-           20,
-           'browse_small',
-           'Browse Image (small)',
-           False): ['previews/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57_small.png'],
-          ('browse',
-           30,
-           'browse_medium',
-           'Browse Image (medium)',
-           False): ['previews/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57_med.png'],
-          ('browse',
-           40,
-           'browse_full',
-           'Browse Image (full)',
-           True): ['previews/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57_full.png'],
-          ('metadata',
-           5,
-           'rms_index',
-           'RMS Node Augmented Index',
-           False): ['metadata/COUVIS_0xxx/COUVIS_0001/COUVIS_0001_index.tab',
-                    'metadata/COUVIS_0xxx/COUVIS_0001/COUVIS_0001_index.lbl'],
-          ('metadata',
-           8,
-           'supplemental_index',
-           'Supplemental Index',
-           False): ['metadata/COUVIS_0xxx/COUVIS_0001/COUVIS_0001_supplemental_index.tab',
-                    'metadata/COUVIS_0xxx/COUVIS_0001/COUVIS_0001_supplemental_index.lbl'],
-          ('Cassini UVIS',
-           30,
-           'couvis_documentation',
-           'Documentation',
-           False): ['documents/COUVIS_0xxx/UVIS-Users-Guide.pdf',
-                    'documents/COUVIS_0xxx/UVIS-Users-Guide.docx',
-                    'documents/COUVIS_0xxx/UVIS-Preview-Interpretation-Guide.txt',
-                    'documents/COUVIS_0xxx/UVIS-Archive-SIS.txt',
-                    'documents/COUVIS_0xxx/UVIS-Archive-SIS.pdf',
-                    'documents/COUVIS_0xxx/Cassini-UVIS-Final-Report.pdf']}
-                )
+         'COUVIS_0xxx/opus_products/FUV1999_007_16_57.py')
     ]
 )
-def test_opus_products(input_path, expected):
-    opus_products_test(input_path, expected)
+def test_opus_products(request, input_path, expected):
+    update = request.config.option.update
+    opus_products_test(input_path, expected, update)
 
 @pytest.mark.parametrize(
     'input_path,expected',

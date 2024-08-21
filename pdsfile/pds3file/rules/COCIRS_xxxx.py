@@ -863,12 +863,10 @@ def test_associations_to_diagrams():
     'input_path,expected',
     [
         ('volumes/COCIRS_5xxx/COCIRS_5408/DATA/POIDATA/POI0408010000_FP1.LBL',
-         'COCIRS_xxxx/opus_products/POI0408010000_FP1.py'
-        ),
+         'COCIRS_xxxx/opus_products/POI0408010000_FP1.py'),
         # COCIRS_0xxx
         ('volumes/COCIRS_0xxx/COCIRS_0406/DATA/CUBE/POINT_PERSPECTIVE/000IA_PRESOI001____RI____699_F4_038P.LBL',
-         'COCIRS_xxxx/opus_products/000IA_PRESOI001____RI____699_F4_038P.py'
-        )
+         'COCIRS_xxxx/opus_products/000IA_PRESOI001____RI____699_F4_038P.py')
     ]
 )
 def test_opus_products(request, input_path, expected):
