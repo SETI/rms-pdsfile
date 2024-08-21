@@ -18,11 +18,12 @@ from smtplib import SMTP
 
 import pdslogger
 import pdsfile
-import pdschecksums
-import pdsarchives
-import pdsinfoshelf
-import pdslinkshelf
-import pdsdependency
+
+from . import pdschecksums
+from . import pdsarchives
+from . import pdsinfoshelf
+from . import pdslinkshelf
+from . import pdsdependency
 
 LOGNAME = 'pds.validation.re-validate'
 LOGROOT_ENV = 'PDS_LOG_ROOT'
@@ -686,7 +687,7 @@ else:
 
     # Report missing volumes
     for key in missing_keys:
-        # Determine if this volset/volname has ever appeared in any of the 
+        # Determine if this volset/volname has ever appeared in any of the
         # holdings directory trees
         holdings_for_key = set()
         for log_path in logs_for_volset_volname[key]:
@@ -815,4 +816,3 @@ else:
 #     sys.exit(status)
     sys.exit(0)         # In batch mode, don't cancel the launchdaemon.
                         # Does this help??
-

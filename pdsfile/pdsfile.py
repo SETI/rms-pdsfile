@@ -1826,6 +1826,14 @@ class PdsFile(object):
             if abspath and os.path.exists(abspath):
                 self._is_index = True
             else:
+                # Second try: it's in the metadata tree and ends in .tab
+                # This supports the temporary situation where the indexshelf
+                # file is being created.
+                # XXX This is a real hack and should be looked at again later
+                if ('/metadata/' in self.abspath
+                    and self.abspath.lower().endswith('.tab')):
+                    return True  # this value is not cached
+
                 self._is_index = False
 
             self._recache()
