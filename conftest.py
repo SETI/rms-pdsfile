@@ -17,6 +17,7 @@ import pytest
 ##########################################################################################
 def pytest_addoption(parser):
     parser.addoption("--mode", action="store")
+    parser.addoption("--update", action="store_true")
 
 def turn_on_logger(filename):
     LOGGER = pdslogger.PdsLogger(filename)

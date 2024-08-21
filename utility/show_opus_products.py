@@ -53,15 +53,15 @@ res = {}
 
 for prod_category, prod_list in opus_prod.items():
     pdsf_list = []
-    for pdsf in prod_list:
-        pdsf_list.append(pdsf[0].logical_path)
+    for pdsf_li in prod_list:
+        for pdsf in pdsf_li:
+            pdsf_list.append(pdsf.logical_path)
 
     if not display_raw:
         opus_type = prod_category[2]
         res[opus_type] = pdsf_list
     else:
         res[prod_category] = pdsf_list
-        json_format_res = dumps({str(k): v for k, v in res.items()}, indent=2)
 
 print('======= OPUS PRODUCTS OUTPUT =======')
 if not display_raw:
