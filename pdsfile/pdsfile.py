@@ -621,6 +621,72 @@ class PdsFile(object):
         return this
 
     ######################################################################################
+    # Set parameters for both Pds3File and Pds4File
+    ######################################################################################
+    @classmethod
+    def use_shelves_only(cls, pds3_status=True, pds4_status=True):
+        """Set SHELVES_ONLY for both Pds3File and Pds4File
+
+        Keyword arguments:
+            cls         -- the class with its attribute being updated
+            pds3_status -- value for Pds3File attribute (default True)
+            pds4_status -- value for Pds4File attribute (default True)
+        """
+
+        subclasses = cls.__subclasses__()
+        for child_class in subclasses:
+            if 'Pds3File' in child_class.__name__:
+                child_class.SHELVES_ONLY = pds3_status
+            elif 'Pds4File' in child_class.__name__:
+                child_class.SHELVES_ONLY = pds4_status
+
+    @classmethod
+    def require_shelves(cls, pds3_status=True, pds4_status=True):
+        """Set SHELVES_REQUIRED for both Pds3File and Pds4File
+
+        Keyword arguments:
+            cls         -- the class with its attribute being updated
+            pds3_status -- value for Pds3File attribute (default True)
+            pds4_status -- value for Pds4File attribute (default True)
+        """
+
+        subclasses = cls.__subclasses__()
+        for child_class in subclasses:
+            if 'Pds3File' in child_class.__name__:
+                child_class.SHELVES_REQUIRED = pds3_status
+            elif 'Pds4File' in child_class.__name__:
+                child_class.SHELVES_REQUIRED = pds4_status
+
+    @classmethod
+    def set_logger(cls, logger=None):
+        """Set the PdsLogger for both Pds3File and Pds4File.
+
+        Keyword arguments:
+            logger -- the pdslogger (default None)
+            cls    -- the class with its attribute being updated
+        """
+
+        if not logger:
+            logger = pdslogger.NullLogger()
+
+        subclasses = cls.__subclasses__()
+        for child_class in subclasses:
+             child_class.LOGGER = logger
+
+
+    @classmethod
+    def set_easylogger(cls):
+        """Log all messages directly to stdout.
+
+        Keyword arguments:
+            cls -- the class calling the other methods inside the function
+        """
+
+        subclasses = cls.__subclasses__()
+        for child_class in subclasses:
+             child_class.set_logger(pdslogger.EasyLogger())
+
+    ######################################################################################
     # Preload management
     ######################################################################################
     @classmethod
