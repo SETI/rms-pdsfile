@@ -3,13 +3,13 @@
 # Synchronize one volume set from one pdsdata drive to another.
 #
 # Usage:
-#   pdsdata-sync <old> <new> <volset> [--dry-run]
+#   pdsdata-sync-volset <old> <new> <volset> [--dry-run]
 #
 # Syncs the specified volume set <volset> from the drive /Volumes/pdsdata-<old>
 # to the drive /Volumes/pdsdata-<new>. Append "--dry-run" for a test dry run.
 #
 # Example:
-#   pdsdata-sync admin raid45 VGx_9xxx
+#   pdsdata-sync-volset admin raid45 VGx_9xxx
 # copies all files relevant to the volume set "VGx_9xxx" from the drive
 # pdsdata-admin to the drive pdsdata-raid45.
 ################################################################################
