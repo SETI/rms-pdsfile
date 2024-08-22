@@ -8,6 +8,7 @@ from pdsfile.pds3file.tests.helper import PDS3_HOLDINGS_DIR
 from pdsfile.pds4file.tests.helper import PDS4_HOLDINGS_DIR
 import pprint
 import sys
+import tabulate
 
 # Set up parser
 parser = argparse.ArgumentParser(
@@ -65,9 +66,20 @@ for prod_category, prod_list in opus_prod.items():
 
 print('======= OPUS PRODUCTS OUTPUT =======')
 if not display_raw:
-    # pprint dictionary with opus type as the key and its corresponding product list as
-    # the value
-    pprint.pp(res, width=90)
+    # print the table with opus type in the first column and its corresponding products
+    # list in the second column. Each file of the same opus type will be in its own row.
+    header = ['opus_type', 'opus_products']
+    rows = []
+    for opus_type, prod_list in res.items():
+        # Use this flag to show each distinct opus_type onces in the table row
+        opus_type_shown = False
+        for prod in prod_list:
+            if not opus_type_shown:
+                rows.append([opus_type, prod])
+                opus_type_shown = True
+            else:
+                rows.append(['', prod])
+    print(tabulate.tabulate(rows, header,tablefmt="grid"))
 else:
     # print raw opus products ouput with cusomized format
     print('{')

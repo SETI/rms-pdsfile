@@ -5,3 +5,4 @@ pytest
 rms-pdslogger
 rms-pdstable
 rms-translator
+tabulate
