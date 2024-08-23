@@ -239,29 +239,19 @@ def test_opus_products(request, input_path, expected):
 
 
 @pytest.mark.parametrize(
-    'input_path,category,selection,flag,expected',
+    'input_path,category,expected',
     [
-
-        ('metadata/HSTUx_xxxx/HSTU0_5167/HSTU0_5167_index.tab',
-         'metadata', 'u2no0403t', '',
-         [
-         'metadata/HSTUx_xxxx/HSTU0_5167/HSTU0_5167_index.tab/U2NO0403T',
-         'metadata/HSTUx_xxxx/HSTU0_5167/HSTU0_5167_hstfiles.tab/U2NO0403T',
-         ]),
+        ('volumes/HSTUx_xxxx/HSTU0_5167/DATA/VISIT_04/U2NO0404T.LBL',
+         'metadata',
+         'HSTIx_xxxx/associated_abspaths/metadata_U2NO0404T.py'),
+        ('volumes/HSTUx_xxxx/HSTU0_5167/DATA/VISIT_04/U2NO0404T.LBL',
+         'volumes',
+         'HSTIx_xxxx/associated_abspaths/volumes_U2NO0404T.py')
     ]
 )
-def test_associated_abspaths(input_path, category, selection, flag, expected):
-    target_pdsfile = instantiate_target_pdsfile(input_path)
-    index_row = target_pdsfile.child_of_index(selection, flag)
-    res = index_row.associated_abspaths(
-        category=category)
-    result_paths = []
-    result_paths += pds3file.Pds3File.logicals_for_abspaths(res)
-    assert len(result_paths) != 0
-    for path in result_paths:
-        assert path in expected
-    for path in expected:
-        assert path in result_paths
+def test_associated_abspaths(request, input_path, category, expected):
+    update = request.config.option.update
+    associated_abspaths_test(input_path, category, expected, update)
 
 
 def test_opus_id_to_primary_logical_path():

@@ -114,29 +114,41 @@ def opus_products_test(
     target_pdsfile = instantiate_target_pdsfile(input_path, is_abspath)
     results = target_pdsfile.opus_products()
 
-    results_file_path = Path(TEST_RESULTS_DIR + expected)
-    # Create the golden copy by using the current opus products output
-    if update or not results_file_path.exists():
-        res = {}
-        for prod_category, prod_list in results.items():
-            pdsf_list = []
-            for pdsf_li in prod_list:
-                for pdsf in pdsf_li:
-                    pdsf_list.append(pdsf.logical_path)
-            res[prod_category] = pdsf_list
+    res = {}
+    for prod_category, prod_list in results.items():
+        pdsf_list = []
+        for pdsf_li in prod_list:
+            for pdsf in pdsf_li:
+                pdsf_list.append(pdsf.logical_path)
+        res[prod_category] = pdsf_list
 
-        # create the directory to store the golden copy if it doesn't exist.
-        os.makedirs(os.path.dirname(results_file_path), exist_ok=True)
+    # data_file_path = Path(TEST_RESULTS_DIR + expected)
+    # # Create the golden copy by using the current opus products output
+    # if update or not data_file_path.exists():
+    #     res = {}
+    #     for prod_category, prod_list in results.items():
+    #         pdsf_list = []
+    #         for pdsf_li in prod_list:
+    #             for pdsf in pdsf_li:
+    #                 pdsf_list.append(pdsf.logical_path)
+    #         res[prod_category] = pdsf_list
 
-        # write the opus products output to the file.
-        with open(results_file_path, 'w') as f:
-            expected_data = f.write(repr(res))
-        print('\nCreate the opus products golden copy', expected)
+    #     # create the directory to store the golden copy if it doesn't exist.
+    #     os.makedirs(os.path.dirname(data_file_path), exist_ok=True)
+
+    #     # write the opus products output to the file.
+    #     with open(data_file_path, 'w') as f:
+    #         expected_data = f.write(repr(res))
+    #     print('\nCreate the opus products golden copy', expected)
+    #     return
+
+    # with open(data_file_path, 'r') as f:
+    #     expected_data = f.read()
+    #     expected_data = ast.literal_eval(expected_data)
+
+    expected_data = read_or_update_golden_copy(res, expected, update)
+    if not expected_data:
         return
-
-    with open(results_file_path, 'r') as f:
-        expected_data = f.read()
-        expected_data = ast.literal_eval(expected_data)
 
     for key in results:
         assert key in expected_data, f'Extra key: {key}'
@@ -164,3 +176,63 @@ def versions_test(input_path, expected, is_abspath=True):
     keys.sort(reverse=True)
     for key in keys:
         assert key in res, f'"{key}" missing'
+
+def associated_abspaths_test(input_path, category, expected, update=False):
+    target_pdsfile = instantiate_target_pdsfile(input_path)
+    res = target_pdsfile.associated_abspaths(
+          category=category)
+
+    result_paths = []
+    result_paths += pds3file.Pds3File.logicals_for_abspaths(res)
+
+    # data_file_path = Path(TEST_RESULTS_DIR + expected)
+    # # Create the golden copy by using the current associated_abspaths output
+    # if update or not data_file_path.exists():
+    #     # create the directory to store the golden copy if it doesn't exist.
+    #     os.makedirs(os.path.dirname(data_file_path), exist_ok=True)
+
+    #     # write the associated_abspaths output to the file.
+    #     with open(data_file_path, 'w') as f:
+    #         expected_data = f.write(repr(result_paths))
+    #     print('\nCreate the associated abspaths golden copy', expected)
+    #     return
+
+    # with open(data_file_path, 'r') as f:
+    #     expected_data = f.read()
+    #     expected_data = ast.literal_eval(expected_data)
+    expected_data = read_or_update_golden_copy(result_paths, expected, update)
+    if not expected_data:
+        return
+
+    assert len(result_paths) != 0
+    for path in result_paths:
+        assert path in expected_data, f'Extra file: {path}'
+    for path in expected_data:
+        assert path in result_paths, f'Missing file: {path}'
+
+def read_or_update_golden_copy(data, path, update):
+    """Return data if the operation is reading from the golden copy of test results.
+    Return 0 if the operation is updating the golden copy
+
+    Keyword arguments:
+        data   -- the data to be written into the golden copy
+        path   -- the file path of the golden copy under test results directory
+        udpate -- the flag used to determine if the golden copy should be updated
+    """
+
+    data_file_path = Path(TEST_RESULTS_DIR + path)
+    # Create the golden copy by using the current output
+    if update or not data_file_path.exists():
+        # create the directory to store the golden copy if it doesn't exist.
+        os.makedirs(os.path.dirname(data_file_path), exist_ok=True)
+
+        # write the associated_abspaths output to the file.
+        with open(data_file_path, 'w') as f:
+            f.write(repr(data))
+        print('\nCreate the golden copy', path)
+        return 0
+
+    with open(data_file_path, 'r') as f:
+        expected_data = f.read()
+        expected_data = ast.literal_eval(expected_data)
+        return expected_data

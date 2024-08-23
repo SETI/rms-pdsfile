@@ -346,14 +346,6 @@ def test_associated_logical_paths(input_path, expected):
 @pytest.mark.parametrize(
     'input_path,category,expected',
     [
-        ('volumes/HSTUx_xxxx/HSTU0_5167/DATA/VISIT_04/U2NO0404T.LBL',
-         'metadata',
-         # should we have the "/" at the end?
-         ['metadata/HSTUx_xxxx/HSTU0_5167/HSTU0_5167_index.tab/U2NO0404T',
-          'metadata/HSTUx_xxxx/HSTU0_5167/HSTU0_5167_hstfiles.tab/U2NO0404T',
-          'metadata/HSTUx_xxxx/HSTU0_5167/',
-          'metadata/HSTUx_xxxx/HSTU0_5167',
-         ]),
         ('volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.DAT',
          'archives-volumes',
          ['archives-volumes/COUVIS_0xxx/COUVIS_0001.tar.gz']),
