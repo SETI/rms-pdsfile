@@ -73,15 +73,19 @@ do
   fi
 done
 
-echo "\n\n**** holdings/_volinfo/$3.txt ****"
-rsync -av --include="$3.txt" --exclude="*" \
-      /Volumes/pdsdata-$1/holdings/_volinfo/ \
-      /Volumes/pdsdata-$2/holdings/_volinfo/ $5
+if [ -d /Volumes/pdsdata-$1/holdings/_volinfo/$3.txt ]; then
+  echo "\n\n**** holdings/_volinfo/$3.txt ****"
+  rsync -av --include="$3.txt" --exclude="*" \
+        /Volumes/pdsdata-$1/holdings/_volinfo/ \
+        /Volumes/pdsdata-$2/holdings/_volinfo/ $5
+fi
 
-echo "\n\n**** holdings/documents/$3 ****"
-rsync -av --delete --exclude=".DS_Store" \
-      /Volumes/pdsdata-$1/holdings/documents/$3/ \
-      /Volumes/pdsdata-$2/holdings/documents/$3/ $5
+if [ -d /Volumes/pdsdata-$1/holdings/documents/$3.txt ]; then
+  echo "\n\n**** holdings/documents/$3 ****"
+  rsync -av --delete --exclude=".DS_Store" \
+        /Volumes/pdsdata-$1/holdings/documents/$3/ \
+        /Volumes/pdsdata-$2/holdings/documents/$3/ $5
+fi
 
 ################################################################################
 
