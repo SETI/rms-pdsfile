@@ -4640,20 +4640,22 @@ class PdsFile(object):
         for abspath in abspaths:
             pdsf = cls.from_abspath(abspath)
             if pdsf.islabel:
-                # Check if the corresponding link info exists. If not, we skip
-                # this label file. That way, the error handled when calling the
-                # linked_abspaths below will not abort the import process.
+                # Check if the corresponding link info exists. If not, we issue
+                # a warning and skip looking for the .fmt files.
+                # Note this means that opus_products might return a different
+                # list of products once the link file is available.
                 try:
                     pdsf.shelf_lookup('link')
                 except (OSError, KeyError, ValueError):
                     cls.LOGGER.warn('Missing links info',
                                 pdsf.logical_path)
-                    continue
-                links = set(pdsf.linked_abspaths)
-                fmts = [f for f in links if f.lower().endswith('.fmt')]
-                fmts.sort()
-                fmt_pdsfiles = cls.pdsfiles_for_abspaths(fmts,
-                                                         must_exist=True)
+                    fmt_pdsfiles = []
+                else:
+                    links = set(pdsf.linked_abspaths)
+                    fmts = [f for f in links if f.lower().endswith('.fmt')]
+                    fmts.sort()
+                    fmt_pdsfiles = cls.pdsfiles_for_abspaths(fmts,
+                                                             must_exist=True)
                 label_pdsfiles[abspath] = [pdsf] + fmt_pdsfiles
             else:
                 data_pdsfiles.append(pdsf)
@@ -4662,6 +4664,8 @@ class PdsFile(object):
         pdsfile_dict = {}
         for pdsf in data_pdsfiles:
             key = opus_type_for_abspath.get(pdsf.abspath, pdsf.opus_type)
+            if key == '':
+                cls.LOGGER.error('Unknown opus_type for', pdsf.abspath)
             if key not in pdsfile_dict:
                 pdsfile_dict[key] = []
 
