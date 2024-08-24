@@ -94,7 +94,7 @@ TESTS = translator.TranslatorByRegex([
                                         'moons']),
     ('.*/VGISS_8xxx/.*',            0, ['neptune', 'inventory', 'rings',
                                         'moons']),
-    ('.*/VG_28xx/.*',               0, ['metadata']),
+    ('.*/VG_28xx/.*',               0, ['metadata', 'vg_28xx']),
 ])
 
 ################################################################################
@@ -431,7 +431,7 @@ _ = PdsDependency(
      r'_indexshelf-metadata/\1.py'],
     r'pdsindexshelf --[C] [d]metadata/\1.tab',
     suite='metadata', newer=True,
-    exceptions=[r'.*GO_0xxx_v1.*'])
+    exceptions=[r'.*GO_0xxx_v1.*', r'.*_inventory\.tab'])
 
 # More metadata suites
 for (name, suffix) in [('supplemental'  , 'supplemental_index.tab'),
@@ -481,7 +481,7 @@ for nines in ('99', '999', '9_9999'):
         rf'metadata/\1/\g<2>{nines}/\g<2>{nines}\3.\4',
         (rf'cat [d]metadata/\1/\2{questions}/\2{questions}\3.\4 '
          rf'> [d]metadata/\1/\g<2>{nines}/\g<2>{nines}\3.\4'),
-        suite=name, newer=False, exceptions=['.*sl9_index.tab'])
+        suite=name, newer=False, exceptions=[r'.*sl9_index\.tab'])
 
 _ = PdsDependency(
     'Cumulative version of every metadata table',
@@ -528,7 +528,8 @@ for nines in ('99', '999', '9_9999', 'NH'):
         [r'_indexshelf-metadata/\1/\2/\2\3.pickle',
          r'_indexshelf-metadata/\1/\2/\2\3.py'],
         r'pdsindexshelf --[C] [d]metadata/\1/\2/\2\3.tab',
-        suite=name, newer=True, func=cumname, args=(nines,))
+        suite=name, newer=True, func=cumname, args=(nines,),
+        exceptions=[r'.*_inventory\.tab'])
 
     _ = PdsDependency(
         'Newer link shelf files for cumulative metadata',
@@ -921,6 +922,40 @@ _ = PdsDependency(
      r'previews/\1_full.jpg'],
     r'<PREVIEW> [d]volumes/\1_RAW.IMG -> [d]previews/\1_*.jpg',
     suite='vgiss', newer=True)
+
+# For VG_28xxx
+_ = PdsDependency(
+    'Previews of every VG_28xx data file',
+    'volumes/$/VG_280[12]/*DATA/*/[PU][SUN][0-9]*.LBL',
+    r'volumes/([^/]+)/([^/]+)(.*)/([PUR][SUN]\d)(...)(\w+)\.LBL',
+    [r'previews/\1/\2/\4xxx\6_preview_thumb.png',
+     r'previews/\1/\2/\4xxx\6_preview_small.png',
+     r'previews/\1/\2/\4xxx\6_preview_med.png',
+     r'previews/\1/\2/\4xxx\6_preview_full.png'],
+    r'<PREVIEW> [d]volumes/\1/\2\3/\4\5\6.* -> [d]previews/\1/\2/\4xxx\6_preview_*.png',
+    suite='vg_28xx', newer=True, exceptions=[r'.*/[PUR].*[01]\d\.LBL'])
+
+_ = PdsDependency(
+    'Previews of every VG_28xx data file',
+    'volumes/$/VG_2803/*RINGS/*DATA/*/R[SUN][0-9]*.LBL',
+    r'volumes/([^/]+)/([^/]+)(.*)/([PUR][SUN])(\d..)(\w+)\.LBL',
+    [r'previews/\1/\2/\4xxx\6_preview_thumb.png',
+     r'previews/\1/\2/\4xxx\6_preview_small.png',
+     r'previews/\1/\2/\4xxx\6_preview_med.png',
+     r'previews/\1/\2/\4xxx\6_preview_full.png'],
+    r'<PREVIEW> [d]volumes/\1/\2\3/\4\5\6.* -> [d]previews/\1/\2/\4xxx\6_preview_*.png',
+    suite='vg_28xx', newer=True, exceptions=[r'.*/[PUR].*[01]\d\.LBL'])
+
+_ = PdsDependency(
+    'Previews of every VG_28xx data file',
+    'volumes/$/VG_2810/DATA/IS[0-9]_P[0-9][0-9][0-9][0-9]*.LBL',
+    r'volumes/([^/]+)/([^/]+)(.*)/(IS\d_P\d\d\d\d)(.*)\.LBL',
+    [r'previews/\1/\2/\4_preview_thumb.png',
+     r'previews/\1/\2/\4_preview_small.png',
+     r'previews/\1/\2/\4_preview_med.png',
+     r'previews/\1/\2/\4_preview_full.png'],
+    r'<PREVIEW> [d]volumes/\1/\2\3/\4\5.* -> [d]previews/\1/\2/\4xxx\6_preview_*.png',
+    suite='vg_28xx', newer=True, exceptions=[r'.*/[PUR].*[01]\d\.LBL'])
 
 ################################################################################
 ################################################################################
