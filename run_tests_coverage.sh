@@ -3,7 +3,7 @@ echo "Clean up previous coverage record"
 coverage erase
 if [ $? -ne 0 ]; then exit -1; fi
 
-# If --udpate is given, we will update the opus products golden copies
+# If --update is given, we will update the opus products golden copies
 if [  -n "$1"  ] && [ "$1" != "--update" ]
 then
     echo "Exiting the program. Only options: None or '--update'"

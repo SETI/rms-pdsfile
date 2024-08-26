@@ -491,73 +491,29 @@ from .pytest_support import *
     'input_path,expected',
     [
         # rings
-        ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_delta_egress_100m.xml',
+        ('bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_delta_egress_100m.xml',
          'uranus_occs_earthbased/opus_products/u0_kao_91cm_734nm_radius_delta_egress_100m.py'),
         # atmosphere
-        ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_ingress.xml',
+        ('bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_ingress.xml',
          'uranus_occs_earthbased/opus_products/u0_kao_91cm_734nm_counts-v-time_atmos_ingress.py'),
         # global
-        ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_ingress_100m.xml',
+        ('bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_ingress_100m.xml',
          'uranus_occs_earthbased/opus_products/u0_kao_91cm_734nm_radius_equator_ingress_100m.py')
     ]
 )
 def test_opus_products(request, input_path, expected):
     update = request.config.option.update
-    opus_products_test(input_path, expected, update)
+    opus_products_test(pds4file.Pds4File, input_path, TEST_RESULTS_DIR+expected, update)
 
 @pytest.mark.parametrize(
     'input_path,category,expected',
     [
-        ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress.xml',
+        ('bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/ u0_kao_91cm_734nm_counts-v-time_atmos_egress.xml',
          'bundles',
-         [
-            'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress.tab',
-            'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress.xml',
-            'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/browse/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress.pdf',
-            'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/browse/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress.xml'
-         ]),
-        # ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress.xml',
-        #  'previews',
-        #  [
-        #     'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_preview_full.png',
-        #     'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_preview_med.png',
-        #     'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_preview_small.png',
-        #     'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_preview_thumb.png',
-        #  ]),
-        # ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress.xml',
-        #  'previews',
-        #  [
-        #     'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_preview_full.png',
-        #     'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_preview_med.png',
-        #     'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_preview_small.png',
-        #     'previews/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_preview_thumb.png',
-        #  ]),
-        ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress.xml',
+         'uranus_occs_earthbased/associated_abspaths/bundles_u0_kao_91cm_734nm_counts-v-time_atmos_egress.py'),
+        ('bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress.xml',
          'diagrams',
-         [
-            'diagrams/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_diagram_full.png',
-            'diagrams/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_diagram_med.png',
-            'diagrams/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_diagram_small.png',
-            'diagrams/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_diagram_thumb.png',
-         ]),
-        ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress.xml',
-         'diagrams',
-         [
-            'diagrams/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_diagram_full.png',
-            'diagrams/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_diagram_med.png',
-            'diagrams/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_diagram_small.png',
-            'diagrams/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress_diagram_thumb.png',
-         ]),
-        ('uranus_occs_earthbased',
-         'metadata',
-         [
-            'metadata/uranus_occs_earthbased',
-         ]),
-        ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm',
-         'metadata',
-         [
-            'metadata/uranus_occs_earthbased/uranus_occ_u0_kao_91cm',
-         ]),
+         'uranus_occs_earthbased/associated_abspaths/diagrams_u0_kao_91cm_734nm_counts-v-time_atmos_egress.py'),
         # TODO: when we have index shelf files available, we can test the following cases
         # ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_alpha_egress_100m.xml',
         #  'metadata',
@@ -582,14 +538,11 @@ def test_opus_products(request, input_path, expected):
         # TODO: add test case for documents when correct document files are added
     ]
 )
-def test_associated_abspaths(input_path, category, expected):
-    target_pdsfile = instantiate_target_pdsfile(input_path)
-    res = target_pdsfile.associated_abspaths(category=category)
-    result_paths = []
-    result_paths += pds4file.Pds4File.logicals_for_abspaths(res)
-    assert len(result_paths) != 0
-    for path in result_paths:
-        assert path in expected
+
+def test_associated_abspaths(request, input_path, category, expected):
+    update = request.config.option.update
+    associated_abspaths_test(pds4file.Pds4File, input_path, category,
+                             TEST_RESULTS_DIR+expected, update)
 
 def test_opus_id_to_primary_logical_path():
     for logical_path in PRIMARY_FILESPEC_LIST:

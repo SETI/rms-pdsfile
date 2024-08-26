@@ -235,7 +235,7 @@ from .pytest_support import *
 )
 def test_opus_products(request, input_path, expected):
     update = request.config.option.update
-    opus_products_test(input_path, expected, update)
+    opus_products_test(pds3file.Pds3File, input_path, TEST_RESULTS_DIR+expected, update)
 
 
 @pytest.mark.parametrize(
@@ -248,7 +248,8 @@ def test_opus_products(request, input_path, expected):
 )
 def test_associated_abspaths(request, input_path, category, expected):
     update = request.config.option.update
-    associated_abspaths_test(input_path, category, expected, update)
+    associated_abspaths_test(pds3file.Pds3File, input_path, category,
+                             TEST_RESULTS_DIR+expected, update)
 
 
 def test_opus_id_to_primary_logical_path():
