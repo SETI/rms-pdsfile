@@ -646,6 +646,18 @@ def test_opus_products(request, input_path, expected):
     update = request.config.option.update
     opus_products_test(input_path, expected, update)
 
+@pytest.mark.parametrize(
+    'input_path,category,expected',
+    [
+        ('volumes/CORSS_8xxx/CORSS_8001/data/Rev009/Rev009E/Rev009E_RSS_2005_159_K55_E/RSS_2005_159_K55_E_TAU_01KM.TAB',
+         'volumes',
+         'CORSS_8xxx/associated_abspaths/volumes_RSS_2005_159_K55_E_TAU_01KM.py')
+    ]
+)
+def test_associated_abspaths(request, input_path, category, expected):
+    update = request.config.option.update
+    associated_abspaths_test(input_path, category, expected, update)
+
 def test_opus_id_to_primary_logical_path():
     TESTS = [
         'Rev009/Rev009E/Rev009E_RSS_2005_159_K55_E/RSS_2005_159_K55_E_TAU_01KM.TAB',

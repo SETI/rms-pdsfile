@@ -122,30 +122,6 @@ def opus_products_test(
                 pdsf_list.append(pdsf.logical_path)
         res[prod_category] = pdsf_list
 
-    # data_file_path = Path(TEST_RESULTS_DIR + expected)
-    # # Create the golden copy by using the current opus products output
-    # if update or not data_file_path.exists():
-    #     res = {}
-    #     for prod_category, prod_list in results.items():
-    #         pdsf_list = []
-    #         for pdsf_li in prod_list:
-    #             for pdsf in pdsf_li:
-    #                 pdsf_list.append(pdsf.logical_path)
-    #         res[prod_category] = pdsf_list
-
-    #     # create the directory to store the golden copy if it doesn't exist.
-    #     os.makedirs(os.path.dirname(data_file_path), exist_ok=True)
-
-    #     # write the opus products output to the file.
-    #     with open(data_file_path, 'w') as f:
-    #         expected_data = f.write(repr(res))
-    #     print('\nCreate the opus products golden copy', expected)
-    #     return
-
-    # with open(data_file_path, 'r') as f:
-    #     expected_data = f.read()
-    #     expected_data = ast.literal_eval(expected_data)
-
     expected_data = read_or_update_golden_copy(res, expected, update)
     if not expected_data:
         return
@@ -185,21 +161,6 @@ def associated_abspaths_test(input_path, category, expected, update=False):
     result_paths = []
     result_paths += pds3file.Pds3File.logicals_for_abspaths(res)
 
-    # data_file_path = Path(TEST_RESULTS_DIR + expected)
-    # # Create the golden copy by using the current associated_abspaths output
-    # if update or not data_file_path.exists():
-    #     # create the directory to store the golden copy if it doesn't exist.
-    #     os.makedirs(os.path.dirname(data_file_path), exist_ok=True)
-
-    #     # write the associated_abspaths output to the file.
-    #     with open(data_file_path, 'w') as f:
-    #         expected_data = f.write(repr(result_paths))
-    #     print('\nCreate the associated abspaths golden copy', expected)
-    #     return
-
-    # with open(data_file_path, 'r') as f:
-    #     expected_data = f.read()
-    #     expected_data = ast.literal_eval(expected_data)
     expected_data = read_or_update_golden_copy(result_paths, expected, update)
     if not expected_data:
         return

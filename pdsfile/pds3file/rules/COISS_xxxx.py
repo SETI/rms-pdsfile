@@ -431,6 +431,18 @@ def test_opus_products(request, input_path, expected):
     update = request.config.option.update
     opus_products_test(input_path, expected, update)
 
+@pytest.mark.parametrize(
+    'input_path,category,expected',
+    [
+        ('volumes/COISS_1xxx/COISS_1001/data/1294561143_1295221348/W1294561202_1.IMG',
+         'volumes',
+         'COISS_xxxx/associated_abspaths/volumes_W1294561202_1.py')
+    ]
+)
+def test_associated_abspaths(request, input_path, category, expected):
+    update = request.config.option.update
+    associated_abspaths_test(input_path, category, expected, update)
+
 def test_opus_id_to_primary_logical_path():
     TESTS = [
         'volumes/COISS_1xxx/COISS_1001/data/1294561143_1295221348/W1294561143_1.IMG',

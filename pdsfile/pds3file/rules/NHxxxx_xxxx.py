@@ -593,6 +593,18 @@ def test_opus_products(request, input_path, expected):
     update = request.config.option.update
     opus_products_test(input_path, expected, update)
 
+@pytest.mark.parametrize(
+    'input_path,category,expected',
+    [
+        ('volumes/NHxxLO_xxxx/NHLALO_1001/data/20060224_000310/lor_0003103486_0x630_eng.fit',
+         'volumes',
+         'NHxxLO_xxxx/associated_abspaths/volumes_lor_0003103486_0x630_eng.py')
+    ]
+)
+def test_associated_abspaths(request, input_path, category, expected):
+    update = request.config.option.update
+    associated_abspaths_test(input_path, category, expected, update)
+
 def test_opus_id_to_primary_logical_path():
     TESTS = [
         ('volumes/NHxxLO_xxxx/NHLALO_1001/data/20060224_000310/lor_0003103486_0x630_eng.fit', ''),

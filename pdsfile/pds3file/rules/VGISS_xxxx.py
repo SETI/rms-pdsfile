@@ -634,6 +634,18 @@ def test_opus_products(request, input_path, expected):
     update = request.config.option.update
     opus_products_test(input_path, expected, update)
 
+@pytest.mark.parametrize(
+    'input_path,category,expected',
+    [
+        ('volumes/VGISS_5xxx/VGISS_5101/DATA/C13854XX/C1385455_RAW.IMG',
+         'volumes',
+         'VGISS_5xxx/associated_abspaths/volumes_C1385455_RAW.py')
+    ]
+)
+def test_associated_abspaths(request, input_path, category, expected):
+    update = request.config.option.update
+    associated_abspaths_test(input_path, category, expected, update)
+
 def test_opus_id_to_primary_logical_path():
     TESTS = [
         "VGISS_5101/DATA/C13854XX/C1385455_RAW.IMG",

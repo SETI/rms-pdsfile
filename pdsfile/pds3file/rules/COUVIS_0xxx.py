@@ -319,73 +319,25 @@ def test_opus_products(request, input_path, expected):
     opus_products_test(input_path, expected, update)
 
 @pytest.mark.parametrize(
-    'input_path,expected',
-    [
-        ('volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.DAT',
-         [
-            'volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.DAT',
-            'volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.LBL',
-            'volumes/COUVIS_0xxx/COUVIS_0001/CALIB/VERSION_3/D1999_007/FUV1999_007_16_57_CAL_3.DAT',
-            'volumes/COUVIS_0xxx/COUVIS_0001/CALIB/VERSION_3/D1999_007/FUV1999_007_16_57_CAL_3.LBL'
-         ]),
-        # Check if the last "/" is ignored
-        ('volumes/COUVIS_0xxx/COUVIS_0001/DATA/',
-         [
-            'volumes/COUVIS_0xxx/COUVIS_0001/DATA',
-            'volumes/COUVIS_0xxx/COUVIS_0001/CALIB/VERSION_3'
-         ]),
-    ]
-)
-def test_associated_logical_paths(input_path, expected):
-    target_pdsfile = instantiate_target_pdsfile(input_path)
-    target_associated_logical_paths = target_pdsfile.associated_logical_paths(
-        'volumes')
-    for path in expected:
-        assert path in target_associated_logical_paths
-
-@pytest.mark.parametrize(
     'input_path,category,expected',
     [
-        ('volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.DAT',
-         'archives-volumes',
-         ['archives-volumes/COUVIS_0xxx/COUVIS_0001.tar.gz']),
-        ('volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.DAT',
-         'checksums-volumes',
-         ['checksums-volumes/COUVIS_0xxx/COUVIS_0001_md5.txt']),
         ('volumes/COUVIS_0xxx/COUVIS_0058/DATA/D2017_001/EUV2017_001_03_49.LBL',
          'volumes',
-         [
-            'volumes/COUVIS_0xxx/COUVIS_0058/CALIB/VERSION_5/D2017_001/EUV2017_001_03_49_CAL_5.DAT',
-            'volumes/COUVIS_0xxx/COUVIS_0058/DATA/D2017_001/EUV2017_001_03_49.LBL',
-            'volumes/COUVIS_0xxx/COUVIS_0058/DATA/D2017_001/EUV2017_001_03_49.DAT',
-            'volumes/COUVIS_0xxx/COUVIS_0058/CALIB/VERSION_5/D2017_001/EUV2017_001_03_49_CAL_5.LBL',
-            'volumes/COUVIS_0xxx/COUVIS_0058/CALIB/VERSION_4/D2017_001/EUV2017_001_03_49_CAL_4.LBL',
-            'volumes/COUVIS_0xxx/COUVIS_0058/CALIB/VERSION_4/D2017_001/EUV2017_001_03_49_CAL_4.DAT'
-         ]),
+         'COUVIS_0xxx/associated_abspaths/volumes_EUV2017_001_03_49.py'),
         ('volumes/COUVIS_0xxx/COUVIS_0058/DATA',
          'volumes',
-         [
-            'volumes/COUVIS_0xxx/COUVIS_0058/DATA',
-            'volumes/COUVIS_0xxx/COUVIS_0058/CALIB/VERSION_5',
-            'volumes/COUVIS_0xxx/COUVIS_0058/CALIB/VERSION_4',
-         ]),
+         'COUVIS_0xxx/associated_abspaths/volumes_DATA.py'),
         ('volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.DAT',
          'archives-volumes',
-         'archives-volumes/COUVIS_0xxx/COUVIS_0001.tar.gz'),
+         'COUVIS_0xxx/associated_abspaths/archives_volumes_FUV1999_007_16_57.py'),
         ('volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.DAT',
          'checksums-volumes',
-         'checksums-volumes/COUVIS_0xxx/COUVIS_0001_md5.txt'),
+         'COUVIS_0xxx/associated_abspaths/checksums_volumes_FUV1999_007_16_57.py'),
     ]
 )
-def test_associated_abspaths(input_path, category, expected):
-    target_pdsfile = instantiate_target_pdsfile(input_path)
-    res = target_pdsfile.associated_abspaths(
-        category=category)
-    result_paths = []
-    result_paths += pds3file.Pds3File.logicals_for_abspaths(res)
-    assert len(result_paths) != 0
-    for path in result_paths:
-        assert path in expected
+def test_associated_abspaths(request, input_path, category, expected):
+    update = request.config.option.update
+    associated_abspaths_test(input_path, category, expected, update)
 
 def test_opus_id_to_primary_logical_path():
     TESTS = [

@@ -304,6 +304,18 @@ def test_opus_products(request, input_path, expected):
     update = request.config.option.update
     opus_products_test(input_path, expected, update)
 
+@pytest.mark.parametrize(
+    'input_path,category,expected',
+    [
+        ('volumes/COVIMS_8xxx/COVIMS_8001/data/VIMS_2005_144_OMICET_E_TAU_01KM.TAB',
+         'volumes',
+         'COVIMS_8xxx/associated_abspaths/VIMS_2005_144_OMICET_E_TAU_01KM.py')
+    ]
+)
+def test_associated_abspaths(request, input_path, category, expected):
+    update = request.config.option.update
+    associated_abspaths_test(input_path, category, expected, update)
+
 def test_opus_id_to_primary_logical_path():
     TESTS = [
         'volumes/COVIMS_8xxx/COVIMS_8001/data/VIMS_2005_144_OMICET_E_TAU_01KM.TAB',

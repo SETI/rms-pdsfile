@@ -242,9 +242,6 @@ def test_opus_products(request, input_path, expected):
     'input_path,category,expected',
     [
         ('volumes/HSTUx_xxxx/HSTU0_5167/DATA/VISIT_04/U2NO0404T.LBL',
-         'metadata',
-         'HSTIx_xxxx/associated_abspaths/metadata_U2NO0404T.py'),
-        ('volumes/HSTUx_xxxx/HSTU0_5167/DATA/VISIT_04/U2NO0404T.LBL',
          'volumes',
          'HSTIx_xxxx/associated_abspaths/volumes_U2NO0404T.py')
     ]

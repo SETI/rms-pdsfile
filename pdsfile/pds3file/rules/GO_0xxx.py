@@ -809,6 +809,19 @@ def test_opus_products(request, input_path, expected):
     update = request.config.option.update
     opus_products_test(input_path, expected, update)
 
+
+@pytest.mark.parametrize(
+    'input_path,category,expected',
+    [
+        ('volumes/GO_0xxx/GO_0017/J0/OPNAV/C0346405900R.IMG',
+         'volumes',
+         'GO_0xxx/associated_abspaths/C0346405900R.py')
+    ]
+)
+def test_associated_abspaths(request, input_path, category, expected):
+    update = request.config.option.update
+    associated_abspaths_test(input_path, category, expected, update)
+
 def test_opus_id_to_primary_logical_path():
     TESTS = [
         'volumes/GO_0xxx/GO_0002/RAW_CAL/C0003061100R.IMG',

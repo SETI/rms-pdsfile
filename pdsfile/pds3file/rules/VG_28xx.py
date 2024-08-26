@@ -905,3 +905,36 @@ from .pytest_support import *
 def test_opus_products(request, input_path, expected):
     update = request.config.option.update
     opus_products_test(input_path, expected, update)
+
+@pytest.mark.parametrize(
+    'input_path,category,expected',
+    [
+        ('volumes/VG_28xx/VG_2801/EASYDATA/KM000_2/PS1P0107.TAB',
+         'volumes',
+         'VG_28xx/associated_abspaths/volumes_PS1P0107.py'),
+        ('volumes/VG_28xx/VG_2801/EASYDATA/KM000_2/PU1P01DE.TAB',
+         'volumes',
+         'VG_28xx/associated_abspaths/volumes_PU1P01DE.py'),
+        ('volumes/VG_28xx/VG_2802/EASYDATA/FILTER01/US1F01.TAB',
+         'volumes',
+         'VG_28xx/associated_abspaths/volumes_US1F01.py'),
+        ('volumes/VG_28xx/VG_2802/EASYDATA/FILTER01/UU1F01EE.TAB',
+         'volumes',
+         'VG_28xx/associated_abspaths/volumes_UU1F01EE.py'),
+        ('volumes/VG_28xx/VG_2802/EASYDATA/FILTER01/UN1F01.TAB',
+         'volumes',
+         'VG_28xx/associated_abspaths/volumes_UN1F01.py'),
+        ('volumes/VG_28xx/VG_2803/S_RINGS/EASYDATA/KM000_2/RS1P2X07.LBL',
+         'volumes',
+         'VG_28xx/associated_abspaths/volumes_RS1P2X07.py'),
+        ('volumes/VG_28xx/VG_2803/U_RINGS/EASYDATA/KM00_2/RU1P2X4I.TAB',
+         'volumes',
+         'VG_28xx/associated_abspaths/volumes_RU1P2X4I.py'),
+        ('volumes/VG_28xx/VG_2810/DATA/IS2_P0001_V01_KM002.TAB',
+         'volumes',
+         'VG_28xx/associated_abspaths/volumes_IS2_P0001_V01_KM002.py'),
+    ]
+)
+def test_associated_abspaths(request, input_path, category, expected):
+    update = request.config.option.update
+    associated_abspaths_test(input_path, category, expected, update)
