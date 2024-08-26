@@ -939,3 +939,21 @@ def test_associated_abspaths(request, input_path, category, expected):
     update = request.config.option.update
     associated_abspaths_test(pds3file.Pds3File, input_path, category,
                              TEST_RESULTS_DIR+expected, update)
+
+def test_opus_id_to_primary_logical_path():
+    TESTS = [
+        'VG_2803/U_RINGS/EASYDATA/KM00_25/RU4P2XEI.TAB',
+        'VG_2801/EASYDATA/KM000_1/PU1P01LI.TAB',
+        'VG_2802/EASYDATA/FILTER01/UN1F01.TAB',
+        'VG_2802/EASYDATA/FILTER01/US3F01.TAB',
+        'VG_2803/S_RINGS/EASYDATA/KM002_5/RS3P2S.TAB',
+        'VG_2803/U_RINGS/EASYDATA/KM00_25/RU4P2XEI.TAB',
+        'VG_2810/DATA/IS1_P0001_V01_KM002.TAB',
+    ]
+
+    for filepath in TESTS:
+        logical_path = 'volumes/VG_28xx/' + filepath
+        test_pdsf = pds3file.Pds3File.from_logical_path(logical_path)
+        opus_id = test_pdsf.opus_id
+        opus_id_pdsf = pds3file.Pds3File.from_opus_id(opus_id)
+        assert opus_id_pdsf.logical_path == logical_path
