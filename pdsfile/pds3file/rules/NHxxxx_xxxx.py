@@ -586,7 +586,7 @@ def test_opus_products_count():
     'input_path,expected',
     [
         ('volumes/NHxxLO_xxxx/NHLALO_1001/data/20060224_000310/lor_0003103486_0x630_eng.fit',
-         'NHxxLO_xxxx/opus_products/lor_0003103486_0x630_eng.py')
+         'NHxxLO_xxxx/opus_products/lor_0003103486_0x630_eng.txt')
     ]
 )
 def test_opus_products(request, input_path, expected):
@@ -598,7 +598,7 @@ def test_opus_products(request, input_path, expected):
     [
         ('volumes/NHxxLO_xxxx/NHLALO_1001/data/20060224_000310/lor_0003103486_0x630_eng.fit',
          'volumes',
-         'NHxxLO_xxxx/associated_abspaths/volumes_lor_0003103486_0x630_eng.py')
+         'NHxxLO_xxxx/associated_abspaths/volumes_lor_0003103486_0x630_eng.txt')
     ]
 )
 def test_associated_abspaths(request, input_path, category, expected):

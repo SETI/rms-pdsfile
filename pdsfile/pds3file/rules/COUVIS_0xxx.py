@@ -311,7 +311,7 @@ from .pytest_support import *
     'input_path,expected',
     [
         ('volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.DAT',
-         'COUVIS_0xxx/opus_products/FUV1999_007_16_57.py')
+         'COUVIS_0xxx/opus_products/FUV1999_007_16_57.txt')
     ]
 )
 def test_opus_products(request, input_path, expected):
@@ -323,16 +323,16 @@ def test_opus_products(request, input_path, expected):
     [
         ('volumes/COUVIS_0xxx/COUVIS_0058/DATA/D2017_001/EUV2017_001_03_49.LBL',
          'volumes',
-         'COUVIS_0xxx/associated_abspaths/volumes_EUV2017_001_03_49.py'),
+         'COUVIS_0xxx/associated_abspaths/volumes_EUV2017_001_03_49.txt'),
         ('volumes/COUVIS_0xxx/COUVIS_0058/DATA',
          'volumes',
-         'COUVIS_0xxx/associated_abspaths/volumes_DATA.py'),
+         'COUVIS_0xxx/associated_abspaths/volumes_DATA.txt'),
         ('volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.DAT',
          'archives-volumes',
-         'COUVIS_0xxx/associated_abspaths/archives_volumes_FUV1999_007_16_57.py'),
+         'COUVIS_0xxx/associated_abspaths/archives_volumes_FUV1999_007_16_57.txt'),
         ('volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.DAT',
          'checksums-volumes',
-         'COUVIS_0xxx/associated_abspaths/checksums_volumes_FUV1999_007_16_57.py'),
+         'COUVIS_0xxx/associated_abspaths/checksums_volumes_FUV1999_007_16_57.txt'),
     ]
 )
 def test_associated_abspaths(request, input_path, category, expected):

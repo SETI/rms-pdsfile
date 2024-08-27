@@ -266,7 +266,7 @@ def test_opus_products_count():
     'input_path,expected',
     [
         ('volumes/EBROCC_xxxx/EBROCC_0001/DATA/ESO1M/ES1_EPD.TAB',
-         'EBROCC_xxxx/opus_products/ES1_EPD.py')
+         'EBROCC_xxxx/opus_products/ES1_EPD.txt')
     ]
 )
 def test_opus_products(request, input_path, expected):
@@ -278,7 +278,7 @@ def test_opus_products(request, input_path, expected):
     [
         ('volumes/EBROCC_xxxx/EBROCC_0001/DATA/ESO1M/ES1_EPD.TAB',
          'volumes',
-         'EBROCC_xxxx/associated_abspaths/ES1_EPD.py')
+         'EBROCC_xxxx/associated_abspaths/ES1_EPD.txt')
     ]
 )
 def test_associated_abspaths(request, input_path, category, expected):

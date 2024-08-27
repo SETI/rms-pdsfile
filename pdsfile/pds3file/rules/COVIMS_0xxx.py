@@ -395,7 +395,7 @@ def test_opus_products_count():
     'input_path,expected',
     [
         ('volumes/COVIMS_0xxx/COVIMS_0006/data/2005088T102825_2005089T113931/v1490784910_3_001.qub',
-         'COVIMS_0xxx/opus_products/v1490784910_3_001.py')
+         'COVIMS_0xxx/opus_products/v1490784910_3_001.txt')
     ]
 )
 def test_opus_products(request, input_path, expected):
@@ -407,7 +407,7 @@ def test_opus_products(request, input_path, expected):
     [
         ('volumes/COVIMS_0xxx/COVIMS_0006/data/2005088T102825_2005089T113931/v1490784910_3_001.qub',
          'volumes',
-         'COVIMS_0xxx/associated_abspaths/volumes_v1490784910_3_001.py')
+         'COVIMS_0xxx/associated_abspaths/volumes_v1490784910_3_001.txt')
     ]
 )
 def test_associated_abspaths(request, input_path, category, expected):

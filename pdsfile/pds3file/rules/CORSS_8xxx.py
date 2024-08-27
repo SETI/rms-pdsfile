@@ -639,7 +639,7 @@ def test_associations():
     'input_path,expected',
     [
         ('volumes/CORSS_8xxx/CORSS_8001/data/Rev009/Rev009E/Rev009E_RSS_2005_159_K55_E/RSS_2005_159_K55_E_TAU_01KM.TAB',
-         'CORSS_8xxx/opus_products/RSS_2005_159_K55_E_TAU_01KM.py')
+         'CORSS_8xxx/opus_products/RSS_2005_159_K55_E_TAU_01KM.txt')
     ]
 )
 def test_opus_products(request, input_path, expected):
@@ -651,7 +651,7 @@ def test_opus_products(request, input_path, expected):
     [
         ('volumes/CORSS_8xxx/CORSS_8001/data/Rev009/Rev009E/Rev009E_RSS_2005_159_K55_E/RSS_2005_159_K55_E_TAU_01KM.TAB',
          'volumes',
-         'CORSS_8xxx/associated_abspaths/volumes_RSS_2005_159_K55_E_TAU_01KM.py')
+         'CORSS_8xxx/associated_abspaths/volumes_RSS_2005_159_K55_E_TAU_01KM.txt')
     ]
 )
 def test_associated_abspaths(request, input_path, category, expected):

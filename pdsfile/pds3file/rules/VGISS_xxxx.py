@@ -627,7 +627,7 @@ from .pytest_support import *
     'input_path,expected',
     [
         ('volumes/VGISS_5xxx/VGISS_5101/DATA/C13854XX/C1385455_RAW.IMG',
-         'VGISS_5xxx/opus_products/C1385455_RAW.py')
+         'VGISS_5xxx/opus_products/C1385455_RAW.txt')
     ]
 )
 def test_opus_products(request, input_path, expected):
@@ -639,7 +639,7 @@ def test_opus_products(request, input_path, expected):
     [
         ('volumes/VGISS_5xxx/VGISS_5101/DATA/C13854XX/C1385455_RAW.IMG',
          'volumes',
-         'VGISS_5xxx/associated_abspaths/volumes_C1385455_RAW.py')
+         'VGISS_5xxx/associated_abspaths/volumes_C1385455_RAW.txt')
     ]
 )
 def test_associated_abspaths(request, input_path, category, expected):

@@ -297,7 +297,7 @@ from .pytest_support import *
     'input_path,expected',
     [
         ('volumes/COVIMS_8xxx/COVIMS_8001/data/VIMS_2005_144_OMICET_E_TAU_01KM.TAB',
-         'COVIMS_8xxx/opus_products/VIMS_2005_144_OMICET_E_TAU_01KM.py')
+         'COVIMS_8xxx/opus_products/VIMS_2005_144_OMICET_E_TAU_01KM.txt')
     ]
 )
 def test_opus_products(request, input_path, expected):
@@ -309,7 +309,7 @@ def test_opus_products(request, input_path, expected):
     [
         ('volumes/COVIMS_8xxx/COVIMS_8001/data/VIMS_2005_144_OMICET_E_TAU_01KM.TAB',
          'volumes',
-         'COVIMS_8xxx/associated_abspaths/VIMS_2005_144_OMICET_E_TAU_01KM.py')
+         'COVIMS_8xxx/associated_abspaths/VIMS_2005_144_OMICET_E_TAU_01KM.txt')
     ]
 )
 def test_associated_abspaths(request, input_path, category, expected):

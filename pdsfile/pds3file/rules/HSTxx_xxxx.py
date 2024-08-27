@@ -230,7 +230,7 @@ from .pytest_support import *
     'input_path,expected',
     [
         ('volumes/HSTIx_xxxx/HSTI1_1559/DATA/VISIT_11/IB4V11MNQ.ASC',
-         'HSTIx_xxxx/opus_products/IB4V11MNQ.py')
+         'HSTIx_xxxx/opus_products/IB4V11MNQ.txt')
     ]
 )
 def test_opus_products(request, input_path, expected):
@@ -243,7 +243,7 @@ def test_opus_products(request, input_path, expected):
     [
         ('volumes/HSTUx_xxxx/HSTU0_5167/DATA/VISIT_04/U2NO0404T.LBL',
          'volumes',
-         'HSTIx_xxxx/associated_abspaths/volumes_U2NO0404T.py')
+         'HSTIx_xxxx/associated_abspaths/volumes_U2NO0404T.txt')
     ]
 )
 def test_associated_abspaths(request, input_path, category, expected):

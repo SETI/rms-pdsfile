@@ -253,7 +253,7 @@ from .pytest_support import *
     'input_path,expected',
     [
         ('volumes/COUVIS_8xxx/COUVIS_8001/data/UVIS_HSP_2005_139_126TAU_E_TAU01KM.TAB',
-         'COUVIS_8xxx/opus_products/UVIS_HSP_2005_139_126TAU_E_TAU01KM.py')
+         'COUVIS_8xxx/opus_products/UVIS_HSP_2005_139_126TAU_E_TAU01KM.txt')
     ]
 )
 def test_opus_products(request, input_path, expected):
@@ -265,7 +265,7 @@ def test_opus_products(request, input_path, expected):
     [
         ('volumes/COUVIS_8xxx/COUVIS_8001/data/UVIS_HSP_2005_139_126TAU_E_TAU01KM.TAB',
          'volumes',
-         'COUVIS_8xxx/associated_abspaths/volumes_UVIS_HSP_2005_139_126TAU_E_TAU01KM.py')
+         'COUVIS_8xxx/associated_abspaths/volumes_UVIS_HSP_2005_139_126TAU_E_TAU01KM.txt')
     ]
 )
 def test_associated_abspaths(request, input_path, category, expected):

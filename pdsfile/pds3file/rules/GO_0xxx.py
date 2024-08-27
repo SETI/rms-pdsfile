@@ -802,7 +802,7 @@ from .pytest_support import *
     'input_path,expected',
     [
         ('volumes/GO_0xxx/GO_0017/J0/OPNAV/C0346405900R.IMG',
-         'GO_0xxx/opus_products/C0346405900R.py')
+         'GO_0xxx/opus_products/C0346405900R.txt')
     ]
 )
 def test_opus_products(request, input_path, expected):
@@ -815,7 +815,7 @@ def test_opus_products(request, input_path, expected):
     [
         ('volumes/GO_0xxx/GO_0017/J0/OPNAV/C0346405900R.IMG',
          'volumes',
-         'GO_0xxx/associated_abspaths/C0346405900R.py')
+         'GO_0xxx/associated_abspaths/C0346405900R.txt')
     ]
 )
 def test_associated_abspaths(request, input_path, category, expected):

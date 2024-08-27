@@ -424,7 +424,7 @@ from .pytest_support import *
     'input_path,expected',
     [
         ('volumes/COISS_1xxx/COISS_1001/data/1294561143_1295221348/W1294561202_1.IMG',
-         'COISS_xxxx/opus_products/W1294561202_1.py')
+         'COISS_xxxx/opus_products/W1294561202_1.txt')
     ]
 )
 def test_opus_products(request, input_path, expected):
@@ -436,7 +436,7 @@ def test_opus_products(request, input_path, expected):
     [
         ('volumes/COISS_1xxx/COISS_1001/data/1294561143_1295221348/W1294561202_1.IMG',
          'volumes',
-         'COISS_xxxx/associated_abspaths/volumes_W1294561202_1.py')
+         'COISS_xxxx/associated_abspaths/volumes_W1294561202_1.txt')
     ]
 )
 def test_associated_abspaths(request, input_path, category, expected):

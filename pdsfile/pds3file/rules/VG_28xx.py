@@ -882,24 +882,24 @@ from .pytest_support import *
     [
         # VG_2801
         ('volumes/VG_28xx/VG_2801/EASYDATA/KM000_2/PS1P0107.TAB',
-         'VG_28xx/opus_products/PS1P0107.py'),
+         'VG_28xx/opus_products/PS1P0107.txt'),
         ('volumes/VG_28xx/VG_2801/EASYDATA/KM000_1/PU1P01DE.TAB',
-         'VG_28xx/opus_products/PU1P01DE.py'),
+         'VG_28xx/opus_products/PU1P01DE.txt'),
         # VG_2802
         ('volumes/VG_28xx/VG_2802/EASYDATA/FILTER01/US1F01.TAB',
-         'VG_28xx/opus_products/US1F01.py'),
+         'VG_28xx/opus_products/US1F01.txt'),
         ('volumes/VG_28xx/VG_2802/EASYDATA/FILTER01/UU1F01EE.TAB',
-         'VG_28xx/opus_products/UU1F01EE.py'),
+         'VG_28xx/opus_products/UU1F01EE.txt'),
         ('volumes/VG_28xx/VG_2802/EASYDATA/FILTER01/UN1F01.TAB',
-         'VG_28xx/opus_products/UN1F01.py'),
+         'VG_28xx/opus_products/UN1F01.txt'),
         # VG_2803
         ('volumes/VG_28xx/VG_2803/S_RINGS/EASYDATA/KM000_2/RS1P2X07.LBL',
-         'VG_28xx/opus_products/RS1P2X07.py'),
+         'VG_28xx/opus_products/RS1P2X07.txt'),
         ('volumes/VG_28xx/VG_2803/U_RINGS/EASYDATA/KM00_2/RU1P2X4I.TAB',
-         'VG_28xx/opus_products/RU1P2X4I.py'),
+         'VG_28xx/opus_products/RU1P2X4I.txt'),
         # VG_2810
         ('volumes/VG_28xx/VG_2810/DATA/IS2_P0001_V01_KM002.TAB',
-         'VG_28xx/opus_products/IS2_P0001_V01_KM002.py')
+         'VG_28xx/opus_products/IS2_P0001_V01_KM002.txt')
     ]
 )
 def test_opus_products(request, input_path, expected):
@@ -911,28 +911,28 @@ def test_opus_products(request, input_path, expected):
     [
         ('volumes/VG_28xx/VG_2801/EASYDATA/KM000_2/PS1P0107.TAB',
          'volumes',
-         'VG_28xx/associated_abspaths/volumes_PS1P0107.py'),
+         'VG_28xx/associated_abspaths/volumes_PS1P0107.txt'),
         ('volumes/VG_28xx/VG_2801/EASYDATA/KM000_2/PU1P01DE.TAB',
          'volumes',
-         'VG_28xx/associated_abspaths/volumes_PU1P01DE.py'),
+         'VG_28xx/associated_abspaths/volumes_PU1P01DE.txt'),
         ('volumes/VG_28xx/VG_2802/EASYDATA/FILTER01/US1F01.TAB',
          'volumes',
-         'VG_28xx/associated_abspaths/volumes_US1F01.py'),
+         'VG_28xx/associated_abspaths/volumes_US1F01.txt'),
         ('volumes/VG_28xx/VG_2802/EASYDATA/FILTER01/UU1F01EE.TAB',
          'volumes',
-         'VG_28xx/associated_abspaths/volumes_UU1F01EE.py'),
+         'VG_28xx/associated_abspaths/volumes_UU1F01EE.txt'),
         ('volumes/VG_28xx/VG_2802/EASYDATA/FILTER01/UN1F01.TAB',
          'volumes',
-         'VG_28xx/associated_abspaths/volumes_UN1F01.py'),
+         'VG_28xx/associated_abspaths/volumes_UN1F01.txt'),
         ('volumes/VG_28xx/VG_2803/S_RINGS/EASYDATA/KM000_2/RS1P2X07.LBL',
          'volumes',
-         'VG_28xx/associated_abspaths/volumes_RS1P2X07.py'),
+         'VG_28xx/associated_abspaths/volumes_RS1P2X07.txt'),
         ('volumes/VG_28xx/VG_2803/U_RINGS/EASYDATA/KM00_2/RU1P2X4I.TAB',
          'volumes',
-         'VG_28xx/associated_abspaths/volumes_RU1P2X4I.py'),
+         'VG_28xx/associated_abspaths/volumes_RU1P2X4I.txt'),
         ('volumes/VG_28xx/VG_2810/DATA/IS2_P0001_V01_KM002.TAB',
          'volumes',
-         'VG_28xx/associated_abspaths/volumes_IS2_P0001_V01_KM002.py'),
+         'VG_28xx/associated_abspaths/volumes_IS2_P0001_V01_KM002.txt'),
     ]
 )
 def test_associated_abspaths(request, input_path, category, expected):
