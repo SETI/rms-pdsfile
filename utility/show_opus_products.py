@@ -9,41 +9,73 @@ from pdsfile.pds4file.tests.helper import PDS4_HOLDINGS_DIR
 import pprint
 import sys
 import tabulate
+import traceback
 
 # Set up parser
 parser = argparse.ArgumentParser(
     description="""show_opus_products: show the output of opus products for the given
                 absolute path of the file.""")
 
-parser.add_argument('--abspath', type=str, default='', required=True,
+parser.add_argument('--abspath', type=str, default='',
     help='The absolute path of the file')
 
+parser.add_argument('--logical-path', type=str, default='',
+    help='The logical path of the file')
+
+parser.add_argument('--pds3', action='store_true',
+    help='Instantiate a Pds3File instance.')
+
+parser.add_argument('--pds4', action='store_true',
+    help='Instantiate a Pds4File instance.')
+
+parser.add_argument('--table', '-t', action='store_true',
+    help='Display the output of opus products in a table.')
+
+parser.add_argument('--pprint', '-p', action='store_true',
+    help="""Display the output of opus products using pprint. The results can be used
+         to compare with the opus products golden copies in pdsfile.""")
+
 parser.add_argument('--raw', '-r', action='store_true',
-    help='Show the raw output of opus products.')
+    help='Display the raw (dictionary) output of opus products.')
 
 args = parser.parse_args()
 abspath = args.abspath
+logical_path = args.logical_path
+display_table = args.table
+display_pprint = args.pprint
 display_raw = args.raw
+# If no pdsfile class is specified, instantiate a Pds3File instance
+is_pds3 = args.pds3 or not args.pds4
+
+# If no display option is specified, display the output in a table
+if not display_table and not display_pprint and not display_raw:
+    display_table = True
 
 # print help screen if no abspath is given
-if len(sys.argv) == 1 or not abspath or 'holdings' not in abspath:
+if (len(sys.argv) == 1 or (not abspath and not logical_path)):
     parser.print_help()
     parser.exit()
 
-is_pds3 = True
-if '/holdings/' in abspath:
-    Pds3File.use_shelves_only(True)
-    Pds3File.preload(PDS3_HOLDINGS_DIR)
-else:
-    Pds4File.use_shelves_only(False)
-    Pds4File.preload(PDS4_HOLDINGS_DIR)
-    is_pds3 = False
-
-if is_pds3:
-    pdsf_inst = Pds3File.from_abspath(abspath)
-
-else:
-    pdsf_inst = Pds4File.from_abspath(abspath)
+try:
+    if is_pds3:
+        Pds3File.use_shelves_only(True)
+        Pds3File.preload(PDS3_HOLDINGS_DIR)
+        if abspath:
+            pdsf_inst = Pds3File.from_abspath(abspath)
+        else:
+            pdsf_inst = Pds3File.from_logical_path(logical_path)
+    else:
+        Pds4File.use_shelves_only(False)
+        Pds4File.preload(PDS4_HOLDINGS_DIR)
+        if abspath:
+            pdsf_inst = Pds4File.from_abspath(abspath)
+        else:
+            pdsf_inst = Pds4File.from_logical_path(logical_path)
+except:
+    traceback.print_exc()
+    print("Can't instantiate a pds3file & pds4file instance with the given path. " +
+            "Please double check the input path.")
+    parser.exit()
 
 if not pdsf_inst.exists:
     print(f"The istantiated pdsfile doesn't exist! Please double check the path.")
@@ -58,14 +90,14 @@ for prod_category, prod_list in opus_prod.items():
         for pdsf in pdsf_li:
             pdsf_list.append(pdsf.logical_path)
 
-    if not display_raw:
+    if display_table:
         opus_type = prod_category[2]
         res[opus_type] = pdsf_list
     else:
         res[prod_category] = pdsf_list
 
 print('======= OPUS PRODUCTS OUTPUT =======')
-if not display_raw:
+if display_table:
     # print the table with opus type in the first column and its corresponding products
     # list in the second column. Each file of the same opus type will be in its own row.
     header = ['opus_type', 'opus_products']
@@ -80,8 +112,10 @@ if not display_raw:
             else:
                 rows.append(['', prod])
     print(tabulate.tabulate(rows, header,tablefmt="grid"))
-else:
-    # print raw opus products ouput with cusomized format
+elif display_pprint:
+    pprint.pp(res, width=90)
+elif display_raw:
+    # print the raw opus products output
     print('{')
     for prod_category, prod_list in res.items():
         print(f" ('{prod_category[0]}',")
