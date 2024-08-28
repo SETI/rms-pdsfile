@@ -6,6 +6,7 @@
 ##########################################################################################
 
 from .pdsfile import abspath_for_logical_path
+import pprint
 import ast
 import os
 from pathlib import Path
@@ -45,7 +46,7 @@ def read_or_update_golden_copy(data, path, update):
 
         # write the associated_abspaths output to the file.
         with open(path, 'w') as f:
-            f.write(repr(data))
+            pprint.pp(data, stream=f)
         print('\nCreate the golden copy', path)
         return 0
 
