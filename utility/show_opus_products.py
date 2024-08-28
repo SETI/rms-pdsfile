@@ -14,7 +14,9 @@ import traceback
 # Set up parser
 parser = argparse.ArgumentParser(
     description="""show_opus_products: show the output of opus products for the given
-                absolute path of the file.""")
+                absolute path of the file. If only abspath or logical-path is given,
+                and no other options are set, it will instantiate a Pds3File instance and
+                display opus products output in table by default.""")
 
 parser.add_argument('--abspath', type=str, default='',
     help='The absolute path of the file')
@@ -23,13 +25,13 @@ parser.add_argument('--logical-path', type=str, default='',
     help='The logical path of the file')
 
 parser.add_argument('--pds3', action='store_true',
-    help='Instantiate a Pds3File instance.')
+    help='Instantiate a Pds3File instance. (Default)')
 
 parser.add_argument('--pds4', action='store_true',
     help='Instantiate a Pds4File instance.')
 
 parser.add_argument('--table', '-t', action='store_true',
-    help='Display the output of opus products in a table.')
+    help='Display the output of opus products in a table. (Default)')
 
 parser.add_argument('--pprint', '-p', action='store_true',
     help="""Display the output of opus products using pprint. The results can be used
@@ -74,7 +76,7 @@ try:
 except:
     traceback.print_exc()
     print("Can't instantiate a pds3file & pds4file instance with the given path. " +
-            "Please double check the input path.")
+          "Please double check the input path.")
     parser.exit()
 
 if not pdsf_inst.exists:
