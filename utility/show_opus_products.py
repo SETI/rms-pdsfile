@@ -105,14 +105,7 @@ if display_table:
     header = ['opus_type', 'opus_products']
     rows = []
     for opus_type, prod_list in res.items():
-        # Use this flag to show each distinct opus_type onces in the table row
-        opus_type_shown = False
-        for prod in prod_list:
-            if not opus_type_shown:
-                rows.append([opus_type, prod])
-                opus_type_shown = True
-            else:
-                rows.append(['', prod])
+        rows.append([opus_type, '\n'.join(prod_list)])
     print(tabulate.tabulate(rows, header,tablefmt="grid"))
 elif display_pprint:
     pprint.pp(res, width=90)
