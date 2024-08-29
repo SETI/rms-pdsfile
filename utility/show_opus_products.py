@@ -24,6 +24,9 @@ parser.add_argument('--abspath', type=str, default='',
 parser.add_argument('--logical-path', type=str, default='',
     help='The logical path of the file')
 
+parser.add_argument('--opus-types', nargs='+', type=str, default='',
+    help='Display the output of opus products belong to the given opus types')
+
 parser.add_argument('--pds3', action='store_true',
     help='Instantiate a Pds3File instance. (Default)')
 
@@ -43,6 +46,8 @@ parser.add_argument('--raw', '-r', action='store_true',
 args = parser.parse_args()
 abspath = args.abspath
 logical_path = args.logical_path
+given_opus_types = args.opus_types
+
 display_table = args.table
 display_pprint = args.pprint
 display_raw = args.raw
@@ -86,14 +91,30 @@ if not pdsf_inst.exists:
 opus_prod = pdsf_inst.opus_products()
 res = {}
 
+golden_opus_type_li = [prod_category[2] for prod_category, _ in opus_prod.items()]
+valid_opus_types = []
+for type in given_opus_types:
+    if type not in golden_opus_type_li:
+        print(f'WARNING: {type} is not valid')
+    elif type not in valid_opus_types:
+        valid_opus_types.append(type)
+
+# If all the give opus types are wrong, let the user knows and exit the program
+if given_opus_types and not valid_opus_types:
+    print(f"The given opus types don't exist, please use valuse in {golden_opus_type_li}")
+    parser.exit()
+
 for prod_category, prod_list in opus_prod.items():
     pdsf_list = []
     for pdsf_li in prod_list:
         for pdsf in pdsf_li:
             pdsf_list.append(pdsf.logical_path)
 
+    opus_type = prod_category[2]
+    if valid_opus_types and opus_type not in valid_opus_types:
+        continue
+
     if display_table:
-        opus_type = prod_category[2]
         res[opus_type] = pdsf_list
     else:
         res[prod_category] = pdsf_list
