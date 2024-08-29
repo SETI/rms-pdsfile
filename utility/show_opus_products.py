@@ -101,7 +101,7 @@ for type in given_opus_types:
 
 # If all the give opus types are wrong, let the user knows and exit the program
 if given_opus_types and not valid_opus_types:
-    print(f"The given opus types don't exist, please use valuse in {golden_opus_type_li}")
+    print(f"The given opus types don't exist, please use values in {golden_opus_type_li}")
     parser.exit()
 
 for prod_category, prod_list in opus_prod.items():
