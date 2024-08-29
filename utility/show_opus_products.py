@@ -81,7 +81,7 @@ try:
 except:
     traceback.print_exc()
     print("Can't instantiate a pds3file & pds4file instance with the given path. " +
-          "Please double check the input path.")
+          'Please double check the input path.')
     parser.exit()
 
 if not pdsf_inst.exists:
