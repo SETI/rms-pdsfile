@@ -127,7 +127,7 @@ if display_table:
     rows = []
     for opus_type, prod_list in res.items():
         rows.append([opus_type, '\n'.join(prod_list)])
-    print(tabulate.tabulate(rows, header,tablefmt="grid"))
+    print(tabulate.tabulate(rows, header, tablefmt="grid"))
 elif display_pprint:
     pprint.pp(res, width=90)
 elif display_raw:
