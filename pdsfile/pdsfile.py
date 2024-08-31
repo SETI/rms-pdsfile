@@ -268,13 +268,15 @@ class PdsFile(object):
                                         r'_in_prep|_prelim|_peer_review|'+
                                         r'_lien_resolution|)' +
                                         r'((|_calibrated|_diagrams|_metadata|_previews)' +
-                                        r'(|_md5\.txt|\.tar\.gz))$')
+                                        r'(|_md5\.txt|\.tar\.gz|\.targz))$')
+                                        # r'(|_md5\.txt|\.tar\.gz))$')
     BUNDLESET_PLUS_REGEX_I = re.compile(BUNDLESET_PLUS_REGEX.pattern, re.I)
 
     BUNDLENAME_REGEX       = re.compile(r'^([A-Z][A-Z0-9]{1,5}_(?:[0-9]{4}))$')
     BUNDLENAME_REGEX_I     = re.compile(BUNDLENAME_REGEX.pattern, re.I)
     BUNDLENAME_PLUS_REGEX  = re.compile(BUNDLENAME_REGEX.pattern[:-1] +
-                                        r'(|_[a-z]+)(|_md5\.txt|\.tar\.gz)$')
+                                        r'(|_[a-z]+)(|_md5\.txt|\.tar\.gz|\.targz)$')
+                                        # r'(|_[a-z]+)(|_md5\.txt|\.tar\.gz)$')
     BUNDLENAME_PLUS_REGEX_I = re.compile(BUNDLENAME_PLUS_REGEX.pattern, re.I)
     BUNDLENAME_VERSION     = re.compile(BUNDLENAME_REGEX.pattern[:-1] +
                                         r'(_v[0-9]+\.[0-9]+\.[0-9]+|'+
@@ -4098,7 +4100,7 @@ class PdsFile(object):
                 extension = (matchobj.group(3) + matchobj.group(4)).lower()
 
                 # <bundleset>...tar.gz must be an archive file
-                if extension.endswith('.tar.gz'):
+                if extension.endswith('.tar.gz') or extension.endswith('.targz'):
                     this.archives_ = 'archives-'
 
                 # <bundleset>..._md5.txt must be a checksum file
@@ -4131,11 +4133,13 @@ class PdsFile(object):
                 this.bundlename = matchobj.group(1).upper()
 
                 # If there is a matched extension
-                if matchobj.group(2) and matchobj.group(3):
+                # if matchobj.group(2) and matchobj.group(3):
+                if matchobj.group(3):
+                    this.basename = matchobj.group(0).replace('.targz', '.tar.gz')
                     extension = (matchobj.group(2) + matchobj.group(3)).lower()
 
                     # <bundlename>...tar.gz must be an archive file
-                    if extension.endswith('.tar.gz'):
+                    if extension.endswith('.tar.gz') or extension.endswith('.targz'):
                         this.archives_ = 'archives-'
 
                     # <bundlename>..._md5.txt must be a checksum file
@@ -4175,17 +4179,58 @@ class PdsFile(object):
 
         # If a bundle name was found, try to find the absolute path
         if this.bundlename:
-
+            is_bundleset_available = False
             # Fill in the rank
             bundlename = this.bundlename.lower()
             if this.suffix:
                 rank = cls.version_info(this.suffix)[0]
             else:
-                rank = cls.CACHE['$RANKS-' + this.category_][bundlename][-1]
+                # rank = cls.CACHE['$RANKS-' + this.category_][bundlename][-1]
+                # print(cls.CACHE['$RANKS-' + this.category_].keys())
+                # print(this.bundleset_)
+                # print(this.category_)
+                try:
+                    rank = cls.CACHE['$RANKS-' + this.category_][bundlename][-1]
+                except KeyError:
+                    prefix, _, _ = bundlename.partition('_')
+                    idx = bundlename.index('_') + 1
+
+                    # Get the actual bundleset from prefix
+                    for bundleset in cls.CACHE['$RANKS-' + this.category_].keys():
+                        bundleset_prefix, _, _ = bundleset.partition('_')
+                        if len(bundleset_prefix) != len(prefix):
+                            continue
+                        prefix_li = list(prefix)
+                        for i in range(idx-1):
+                            if bundleset[i] == 'x':
+                                prefix_li[i] = 'x'
+                        bundleset_prefix = ''.join(prefix_li) + '_'
+
+                        if bundleset.startswith(bundleset_prefix):
+                            updated_bundleset_prefix = bundleset_prefix
+
+                            for i in range(idx, len(bundleset)):
+                                if bundleset[i] == 'x':
+                                    break
+                                else:
+                                    updated_bundleset_prefix = bundlename[:i+1]
+
+                            print(f"updated_bundleset_prefix: {updated_bundleset_prefix}")
+                            if bundleset.startswith(updated_bundleset_prefix):
+                                print(f'bundleset: {bundleset}')
+                                is_bundleset_available = True
+                                this.bundleset = bundleset
+                                rank = cls.CACHE['$RANKS-' + this.category_]\
+                                                [bundleset][-1]
 
             # Try to get the absolute path
             try:
-                this_abspath = cls.CACHE['$VOLS-' + this.category_][bundlename][rank]
+                # this_abspath = cls.CACHE['$VOLS-' + this.category_][bundlename][rank]
+                if not is_bundleset_available:
+                    this_abspath = cls.CACHE['$VOLS-' + this.category_][bundlename][rank]
+                else:
+                    this_abspath = cls.CACHE['$VOLS-' + this.category_]\
+                                            [this.bundleset][rank]
 
             # On failure, see if an updated suffix will help
             except KeyError:
@@ -4218,6 +4263,8 @@ class PdsFile(object):
                     raise ValueError('Suffix "%s" not found: %s' %
                                      (this.suffix, path))
 
+            if this.basename and not this_abspath.endswith(this.basename):
+                this_abspath += f'/{this.basename}'
             # This is the PdsFile object down to the bundlename
             this = cls.from_abspath(this_abspath, must_exist=must_exist)
 
