@@ -268,15 +268,13 @@ class PdsFile(object):
                                         r'_in_prep|_prelim|_peer_review|'+
                                         r'_lien_resolution|)' +
                                         r'((|_calibrated|_diagrams|_metadata|_previews)' +
-                                        r'(|_md5\.txt|\.tar\.gz|\.targz))$')
-                                        # r'(|_md5\.txt|\.tar\.gz))$')
+                                        r'(|_md5\.txt|\.tar\.gz))$')
     BUNDLESET_PLUS_REGEX_I = re.compile(BUNDLESET_PLUS_REGEX.pattern, re.I)
 
     BUNDLENAME_REGEX       = re.compile(r'^([A-Z][A-Z0-9]{1,5}_(?:[0-9]{4}))$')
     BUNDLENAME_REGEX_I     = re.compile(BUNDLENAME_REGEX.pattern, re.I)
     BUNDLENAME_PLUS_REGEX  = re.compile(BUNDLENAME_REGEX.pattern[:-1] +
-                                        r'(|_[a-z]+)(|_md5\.txt|\.tar\.gz|\.targz)$')
-                                        # r'(|_[a-z]+)(|_md5\.txt|\.tar\.gz)$')
+                                        r'(|_[a-z]+)(|_md5\.txt|\.tar\.gz)$')
     BUNDLENAME_PLUS_REGEX_I = re.compile(BUNDLENAME_PLUS_REGEX.pattern, re.I)
     BUNDLENAME_VERSION     = re.compile(BUNDLENAME_REGEX.pattern[:-1] +
                                         r'(_v[0-9]+\.[0-9]+\.[0-9]+|'+
@@ -3438,13 +3436,29 @@ class PdsFile(object):
 
         # Do not cache nonexistent objects
         if not self.exists: return self
+        # if not self.exists and not self.category_.startswith('checksums-archives-'): return self
 
         # Otherwise, cache if necessary
         if caching == 'default':
             caching = cls.DEFAULT_CACHING
 
-        if caching == 'all' or (caching == 'dir' and
-                                (self.isdir or self.is_index)):
+        # For category 'checksums-archives-.*', the checksum files are under
+        # 'checksums-archives-.*/file', not like regular checksum files under
+        # 'checksums-.*/bundleset/file', so to make sure '$RANKS-checksums-archives-.*'
+        # and '$VOLS-checksums-archives-.*' are properly cached, we need to make sure the
+        # following steps are run for 'checksums-archives-.*/file'.
+        #
+        # This is because for 'checksums-.*/bundleset/', self.bundleset is properly set,
+        # and it will be properly cache in _update_ranks_and_vols(). However, for
+        # 'checksums-archives-.*/, neither self.bundleset nor self.bundlename is set, the
+        # category 'checksums-archives-.*' won't be cached in _update_ranks_and_vols.
+        #
+        # Therefore, if we make sure the existing 'checksums-.*/bundleset/file' can run
+        # the following step, in _update_ranks_and_vols, self.bundleset is properly set
+        # due to the fileanme and 'checksums-archives-.*' category will be cached.
+        if (caching == 'all' or
+            (caching == 'dir' and (self.isdir or self.is_index)) or
+            self.category_.startswith('checksums-archives-')):
 
             # Never overwrite the top-level merged directories
             if '/' in self.logical_path:
@@ -3992,6 +4006,8 @@ class PdsFile(object):
 
         path = str(path)    # make sure it's a string
         path = path.rstrip('/')
+        # if there is .targz, treat it as .tar.gz
+        path = path.replace('.targz', '.tar.gz')
         if path == '': path = 'volumes'     # prevents an error below
 
         # Make a quick return if possible
@@ -4100,7 +4116,7 @@ class PdsFile(object):
                 extension = (matchobj.group(3) + matchobj.group(4)).lower()
 
                 # <bundleset>...tar.gz must be an archive file
-                if extension.endswith('.tar.gz') or extension.endswith('.targz'):
+                if extension.endswith('.tar.gz'):
                     this.archives_ = 'archives-'
 
                 # <bundleset>..._md5.txt must be a checksum file
@@ -4139,7 +4155,7 @@ class PdsFile(object):
                     extension = (matchobj.group(2) + matchobj.group(3)).lower()
 
                     # <bundlename>...tar.gz must be an archive file
-                    if extension.endswith('.tar.gz') or extension.endswith('.targz'):
+                    if extension.endswith('.tar.gz'):
                         this.archives_ = 'archives-'
 
                     # <bundlename>..._md5.txt must be a checksum file
@@ -4185,17 +4201,15 @@ class PdsFile(object):
             if this.suffix:
                 rank = cls.version_info(this.suffix)[0]
             else:
-                # rank = cls.CACHE['$RANKS-' + this.category_][bundlename][-1]
-                # print(cls.CACHE['$RANKS-' + this.category_].keys())
-                # print(this.bundleset_)
-                # print(this.category_)
+                # For the case like 'COISS_2001.targz', if bundlename is not the key to
+                # the cache, we try to find the corresponding bundleset in the cache key.
                 try:
                     rank = cls.CACHE['$RANKS-' + this.category_][bundlename][-1]
                 except KeyError:
+                    # Get the actual bundleset in the cache key from the prefix of the
+                    # bundlename.
                     prefix, _, _ = bundlename.partition('_')
                     idx = bundlename.index('_') + 1
-
-                    # Get the actual bundleset from prefix
                     for bundleset in cls.CACHE['$RANKS-' + this.category_].keys():
                         bundleset_prefix, _, _ = bundleset.partition('_')
                         if len(bundleset_prefix) != len(prefix):
@@ -4215,9 +4229,7 @@ class PdsFile(object):
                                 else:
                                     updated_bundleset_prefix = bundlename[:i+1]
 
-                            print(f"updated_bundleset_prefix: {updated_bundleset_prefix}")
                             if bundleset.startswith(updated_bundleset_prefix):
-                                print(f'bundleset: {bundleset}')
                                 is_bundleset_available = True
                                 this.bundleset = bundleset
                                 rank = cls.CACHE['$RANKS-' + this.category_]\
