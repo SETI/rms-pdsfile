@@ -40,7 +40,7 @@
                                                                        'metadata/NHxxLO_xxxx/NHLALO_1001/NHLALO_1001_jupiter_summary.lbl'],
  ('metadata', 30, 'moon_geometry', 'Moon Geometry Index', False): ['metadata/NHxxLO_xxxx/NHLALO_1001/NHLALO_1001_moon_summary.tab',
                                                                    'metadata/NHxxLO_xxxx/NHLALO_1001/NHLALO_1001_moon_summary.lbl'],
- ('metadata', 40, 'ring_geometry', 'Ring Geometry Index', False): ['metadata/NHxxLO_xxxx/NHLALO_1001/NHLALO_1001_ring_summary.tab',
+ ('metadata', 50, 'ring_geometry', 'Ring Geometry Index', False): ['metadata/NHxxLO_xxxx/NHLALO_1001/NHLALO_1001_ring_summary.tab',
                                                                    'metadata/NHxxLO_xxxx/NHLALO_1001/NHLALO_1001_ring_summary.lbl'],
  ('New Horizons LORRI', 300, 'nh_lorri_documentation', 'Documentation', False): ['documents/NHxxLO_xxxx/Weaver-etal-2008-SSR.pdf',
                                                                                  'documents/NHxxLO_xxxx/NH-Boresight-FOVs.png',

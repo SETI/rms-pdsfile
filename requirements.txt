@@ -1,6 +1,5 @@
 coverage
 pillow
-#pylibmc
 pytest
 rms-pdslogger
 rms-pdstable

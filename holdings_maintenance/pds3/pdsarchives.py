@@ -93,7 +93,7 @@ def read_archive_info(tarpath, limits={'normal':100}, logger=None):
     file."""
 
     tarpath = os.path.abspath(tarpath)
-    pdstar = pdsfile.PdsFile.from_abspath(tarpath)
+    pdstar = pdsfile.Pds3File.from_abspath(tarpath)
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdstar.root_)
@@ -321,7 +321,7 @@ def update(pdsdir, logger=None):
 # Executable program
 ################################################################################
 
-if __name__ == '__main__':
+def main():
 
     # Set up parser
     parser = argparse.ArgumentParser(
@@ -396,7 +396,7 @@ if __name__ == '__main__':
 
     # Initialize the logger
     logger = pdslogger.PdsLogger(LOGNAME)
-    pdsfile.PdsFile.set_log_root(args.log)
+    pdsfile.Pds3File.set_log_root(args.log)
 
     if not args.quiet:
         logger.add_handler(pdslogger.stdout_handler)
@@ -418,7 +418,7 @@ if __name__ == '__main__':
             print('No such file or directory: ' + path)
             sys.exit(1)
 
-        pdsf = pdsfile.PdsFile.from_abspath(path)
+        pdsf = pdsfile.Pds3File.from_abspath(path)
         if pdsf.checksums_:
             print('No archives for checksum files: ' + path)
             sys.exit(1)
@@ -506,3 +506,6 @@ if __name__ == '__main__':
             status = 1
 
     sys.exit(status)
+
+if __name__ == '__main__':
+    main()

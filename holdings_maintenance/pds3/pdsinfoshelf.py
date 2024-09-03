@@ -12,6 +12,7 @@ import argparse
 import datetime
 import glob
 import os
+from pathlib import Path
 import pickle
 import shutil
 import sys
@@ -19,7 +20,11 @@ from PIL import Image
 
 import pdslogger
 import pdsfile
-import pdschecksums
+
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+sys.path.insert(0, str(REPO_ROOT))
+
+from holdings_maintenance.pds3 import pdschecksums
 
 # Holds log file directories temporarily, used by move_old_info()
 LOGDIRS = []
@@ -29,6 +34,7 @@ LOGROOT_ENV = 'PDS_LOG_ROOT'
 
 PREVIEW_EXTS = set(['.jpg', '.png', '.gif', '.tif', '.tiff',
                     '.jpeg', '.jpeg_small'])
+
 
 ################################################################################
 
@@ -50,13 +56,11 @@ def generate_infodict(pdsdir, selection, old_infodict={},
 
     ### Internal function
 
-    def get_info_for_file(abspath, latest_mtime):
+    def get_info_for_file(abspath):
 
         nbytes = os.path.getsize(abspath)
         children = 0
         mtime = os.path.getmtime(abspath)
-        latest_mtime = max(latest_mtime, mtime)
-
         dt = datetime.datetime.fromtimestamp(mtime)
         modtime = dt.strftime('%Y-%m-%d %H:%M:%S.%f')
         try:
@@ -77,7 +81,7 @@ def generate_infodict(pdsdir, selection, old_infodict={},
 
         return (nbytes, children, modtime, checksum, size)
 
-    def get_info(abspath, infodict, old_infodict, checkdict, latest_mtime):
+    def get_info(abspath, infodict, old_infodict, checkdict):
         """Info about the given abspath."""
 
         if os.path.isdir(abspath):
@@ -100,8 +104,7 @@ def generate_infodict(pdsdir, selection, old_infodict={},
                 if '/.' in abspath:             # flag invisible files
                     logger.invisible('Invisible file', absfile)
 
-                info = get_info(absfile, infodict, old_infodict, checkdict,
-                                         latest_mtime)
+                info = get_info(absfile, infodict, old_infodict, checkdict)
                 nbytes += info[0]
                 children += 1
                 modtime = max(modtime, info[2])
@@ -110,17 +113,12 @@ def generate_infodict(pdsdir, selection, old_infodict={},
 
         elif abspath in old_infodict:
             info = old_infodict[abspath]
-            iso = 'T'.join(info[2].split())
-            dt = datetime.datetime.fromisoformat(iso)
-            mtime = datetime.datetime.timestamp(dt)
-            latest_mtime = max(latest_mtime, mtime)
 
         else:
-            info = get_info_for_file(abspath, latest_mtime)
+            info = get_info_for_file(abspath)
             logger.normal('File info generated', abspath)
 
         infodict[abspath] = info
-
         return info
 
     ################################
@@ -138,8 +136,6 @@ def generate_infodict(pdsdir, selection, old_infodict={},
     else:
         logger.open('Generating file info', dirpath, limits)
 
-    latest_mtime = 0.
-    found = False
     try:
         # Load checksum dictionary
         checkdict = pdschecksums.checksum_dict(dirpath, logger=logger)
@@ -154,7 +150,8 @@ def generate_infodict(pdsdir, selection, old_infodict={},
         else:
             root = pdsdir.abspath
 
-        _ = get_info(root, infodict, old_infodict, checkdict, latest_mtime)
+        info = get_info(root, infodict, old_infodict, checkdict)
+        latest_modtime = info[2]
 
         # Merge dictionaries
         merged = old_infodict.copy()
@@ -165,14 +162,26 @@ def generate_infodict(pdsdir, selection, old_infodict={},
         else:
             for (key, value) in infodict.items():
                 if key not in merged:
-                    merged[key] = infodict[key]
+                    info = infodict[key]
+                    merged[key] = info
+                    latest_modtime = max(latest_modtime, info[2])
 
-        if latest_mtime == 0.:
+        if not merged:
             logger.info('No files found')
+            latest_modtime = ''
         else:
-            dt = datetime.datetime.fromtimestamp(latest_mtime)
-            logger.info('Latest holdings file modification date',
-                        dt.strftime('%Y-%m-%dT%H-%M-%S'), force=True)
+            logger.info('Latest holdings file modification date = '
+                        + latest_modtime[:19], force=True)
+
+        # We also have to check the modtime of the checksum file!
+        check_path = pdsdir.checksum_path_and_lskip()[0]
+        timestamp = os.path.getmtime(check_path)
+        check_datetime = datetime.datetime.fromtimestamp(timestamp)
+        check_modtime = check_datetime.strftime('%Y-%m-%d %H:%M:%S.%f')
+        logger.info('Checksum file modification date = ' + check_modtime[:19],
+                    check_path, force=True)
+        if check_modtime > latest_modtime:
+            latest_modtime = check_modtime
 
     except (Exception, KeyboardInterrupt) as e:
         logger.exception(e)
@@ -181,7 +190,7 @@ def generate_infodict(pdsdir, selection, old_infodict={},
     finally:
         _ = logger.close()
 
-    return (merged, latest_mtime)
+    return (merged, latest_modtime)
 
 ################################################################################
 
@@ -514,8 +523,10 @@ def repair(pdsdir, selection=None, logger=None):
     shelf_infodict = load_infodict(pdsdir, logger=logger)
 
     # Generate info
-    (dir_infodict, latest_mtime) = generate_infodict(pdsdir, selection,
-                                                     logger=logger)
+    (dir_infodict, latest_modtime) = generate_infodict(pdsdir, selection,
+                                                       logger=logger)
+    latest_iso = latest_modtime.replace(' ', 'T')
+    latest_datetime = datetime.datetime.fromisoformat(latest_iso)
 
     # For a single selection, use the old information
     if selection:
@@ -530,21 +541,20 @@ def repair(pdsdir, selection=None, logger=None):
         logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
 
         info_pypath = info_path.replace('.pickle', '.py')
-        info_mtime = min(os.path.getmtime(info_path),
-                         os.path.getmtime(info_pypath))
-        if latest_mtime > info_mtime:
+        timestamp = min(os.path.getmtime(info_path),
+                        os.path.getmtime(info_pypath))
+        info_datetime = datetime.datetime.fromtimestamp(timestamp)
+        info_iso = info_datetime.isoformat(timespec='microseconds')
+
+        if latest_iso > info_iso:
             logger.info('!!! Info shelf file content is up to date',
                         info_path, force=True)
-
-            dt = datetime.datetime.fromtimestamp(latest_mtime)
             logger.info('!!! Latest holdings file modification date',
-                        dt.strftime('%Y-%m-%dT%H-%M-%S'), force=True)
-
-            dt = datetime.datetime.fromtimestamp(info_mtime)
+                        latest_iso, force=True)
             logger.info('!!! Info shelf file modification date',
-                        dt.strftime('%Y-%m-%dT%H-%M-%S'), force=True)
+                        info_iso, force=True)
 
-            delta = latest_mtime - info_mtime
+            delta = (latest_datetime - info_datetime).total_seconds()
             if delta >= 86400/10:
                 logger.info('!!! Info shelf file is out of date %.1f days' %
                             (delta / 86400.), force=True)
@@ -556,9 +566,9 @@ def repair(pdsdir, selection=None, logger=None):
             os.utime(info_path)
             os.utime(info_pypath)
             logger.info('!!! Time tag on info shelf files set to',
-                        dt.strftime('%Y-%m-%dT%H-%M-%S'), force=True)
+                        dt.strftime('%Y-%m-%dT%H:%M:%S'), force=True)
         else:
-            logger.info(f'!!! Info shelf file is up to date; repair canceled',
+            logger.info('!!! Info shelf file is up to date; repair canceled',
                         info_path, force=True)
         return
 
@@ -603,7 +613,7 @@ def update(pdsdir, selection=None, logger=None):
 ################################################################################
 ################################################################################
 
-if __name__ == '__main__':
+def main():
 
     # Set up parser
     parser = argparse.ArgumentParser(
@@ -694,7 +704,7 @@ if __name__ == '__main__':
 
     # Initialize the logger
     logger = pdslogger.PdsLogger(LOGNAME)
-    pdsfile.PdsFile.set_log_root(args.log)
+    pdsfile.Pds3File.set_log_root(args.log)
 
     if not args.quiet:
         logger.add_handler(pdslogger.stdout_handler)
@@ -728,13 +738,13 @@ if __name__ == '__main__':
 
         # Convert to a list of absolute paths that exist (volsets or volumes)
         try:
-            pdsf = pdsfile.PdsFile.from_abspath(path, must_exist=True)
+            pdsf = pdsfile.Pds3File.from_abspath(path, must_exist=True)
             abspaths.append(pdsf.abspath)
 
         except (ValueError, IOError):
             # Allow a volume name to stand in for a .tar.gz archive
             (dir, basename) = os.path.split(path)
-            pdsdir = pdsfile.PdsFile.from_abspath(dir)
+            pdsdir = pdsfile.Pds3File.from_abspath(dir)
             if pdsdir.archives_ and '.' not in basename:
                 if pdsdir.voltype_ == 'volumes/':
                     basename += '.tar.gz'
@@ -753,7 +763,7 @@ if __name__ == '__main__':
     # Generate a list of tuples (pdsfile, selection)
     info = []
     for path in abspaths:
-        pdsf = pdsfile.PdsFile.from_abspath(path)
+        pdsf = pdsfile.Pds3File.from_abspath(path)
 
         if pdsf.is_volset_dir:
             # Info about archive directories is stored by volset
@@ -881,3 +891,6 @@ if __name__ == '__main__':
             status = 1
 
     sys.exit(status)
+
+if __name__ == '__main__':
+    main()
