@@ -10,7 +10,12 @@ readme = "README.md"
 requires-python = ">=3.8"
 dependencies = [
     "numpy",
+    "pillow",
     "pyparsing",
+    "pytest",
+    "rms-pdslogger",
+    "rms-pdstable",
+    "rms-translator",
     "rms-textkernel"
 ]
 license = {text = "Apache-2.0"}
@@ -42,8 +47,16 @@ Repository = "https://github.com/SETI/rms-pdsfile"
 Source = "https://github.com/SETI/rms-pdsfile"
 Issues = "https://github.com/SETI/rms-pdsfile/issues"
 
+[project.scripts]
+pdsarchives = "holdings_maintenance.pds3.pdsarchives:main"
+pdschecksums = "holdings_maintenance.pds3.pdschecksums:main"
+pdsdependency = "holdings_maintenance.pds3.pdsdependency:main"
+pdsindexshelf = "holdings_maintenance.pds3.pdsindexshelf:main"
+pdsinfoshelf = "holdings_maintenance.pds3.pdsinfoshelf:main"
+pdslinkshelf = "holdings_maintenance.pds3.pdslinkshelf:main"
+
 [tool.setuptools]
-packages = ["pdsfile"]
+packages = ["pdsfile", "holdings_maintenance"]
 
 [tool.setuptools_scm]
 local_scheme = "no-local-version"
