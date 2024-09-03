@@ -265,7 +265,7 @@ opus_products = translator.TranslatorByRegex([
          r'bundles/\1/uranus_occ_support/document/user_guide/*-user-guide.pdf',
          r'bundles/\1/uranus_occ_support/document/user_guide/*-user-guide.xml',
          r'bundles/\1/uranus_occ_support/document/user_guide/*.pro',
-         r'bundles/\1/uranus_occ_support/document/user_guide/*.txt',
+         r'bundles/\1/uranus_occ_support/document/user_guide/*.py',
          r'bundles/\1/uranus_occ_support/document/user_guide/plot*.pdf',
          r'bundles/\1/uranus_occ_support/spice_kernels/fk/*.tf',
          r'bundles/\1/uranus_occ_support/spice_kernels/fk/*.xml',
@@ -508,7 +508,7 @@ def test_opus_products(request, input_path, expected):
 @pytest.mark.parametrize(
     'input_path,category,expected',
     [
-        ('bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/ u0_kao_91cm_734nm_counts-v-time_atmos_egress.xml',
+        ('bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress.xml',
          'bundles',
          'uranus_occs_earthbased/associated_abspaths/bundles_u0_kao_91cm_734nm_counts-v-time_atmos_egress.txt'),
         ('bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress.xml',
