@@ -4027,6 +4027,14 @@ class PdsFile(object):
         # this = PdsFile()
         this = cls()
 
+        # Fix versions in the path like '/v1' or '/v1.2' to '_v1' or '_v1.2'
+        version_pattern = r'.*\/(v[0-9]+\.[0-9]*|v[0-9]+)($|\/)'
+        is_version_detected = re.match(version_pattern, path)
+        if is_version_detected:
+            version = is_version_detected[1]
+            path = path.replace(f'/{version}', f'_{version}')
+
+
         # Look for checksums, archives, voltypes, and an isolated version suffix
         # among the leading items of the pseudo-path
         parts = path.split('/')
