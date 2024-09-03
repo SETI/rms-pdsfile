@@ -3990,7 +3990,7 @@ class PdsFile(object):
           checksums/archives/whatever -> checksums-archives-volumes/whatever
           COISS_2001.targz -> archives-volumes/COISS_2xxx/COISS_2001.tar.gz
           COISS_2001_previews.targz ->
-                    archives-previews/COISS_2xxx/COISS_2001_previews.tar.gz
+                        archives-previews/COISS_2xxx/COISS_2001_previews.tar.gz'
           COISS_0xxx/v1 -> COISS_0xxx_v1
 
         Keyword arguments:
@@ -4296,6 +4296,8 @@ class PdsFile(object):
             if this.suffix:
                 rank = cls.version_info(this.suffix)[0]
             else:
+                print(this.category_)
+                print(cls.CACHE['$RANKS-' + this.category_].keys())
                 rank = cls.CACHE['$RANKS-' + this.category_][bundleset][-1]
 
             # Try to get the absolute path
