@@ -4296,8 +4296,6 @@ class PdsFile(object):
             if this.suffix:
                 rank = cls.version_info(this.suffix)[0]
             else:
-                print(this.category_)
-                print(cls.CACHE['$RANKS-' + this.category_].keys())
                 rank = cls.CACHE['$RANKS-' + this.category_][bundleset][-1]
 
             # Try to get the absolute path
