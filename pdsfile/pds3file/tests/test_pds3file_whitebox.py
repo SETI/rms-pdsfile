@@ -918,13 +918,16 @@ class TestPdsFileWhiteBox:
     @pytest.mark.parametrize(
         'input_path,expected',
         [
-            (PDS3_HOLDINGS_DIR + '/volumes/COISS_0xxx/COISS_0001',
+            ('volumes/COISS_0xxx/COISS_0001',
              PDS3_HOLDINGS_DIR + '/volumes/COISS_0xxx/COISS_0001'),
+            ('documents/coiss_0xxx',
+             PDS3_HOLDINGS_DIR + '/documents/COISS_0xxx'),
         ]
     )
     def test_from_abspath(self, input_path, expected):
         if input_path in pds3file.Pds3File.CACHE:
             del pds3file.Pds3File.CACHE[input_path]
+        input_path = PDS3_HOLDINGS_DIR + f'/{input_path}'
         res = pds3file.Pds3File.from_abspath(abspath=input_path,
                                            fix_case=True)
         assert isinstance(res, pds3file.Pds3File)
