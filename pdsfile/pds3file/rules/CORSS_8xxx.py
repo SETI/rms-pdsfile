@@ -600,9 +600,27 @@ def test_associations():
         (( 1, 1, 4, 1, 1), 'volumes/CORSS_8xxx_v1/CORSS_8001/EASYDATA/Rev07E_RSS_2005_123_X43_E/RSS_2005_123_X43_E_CAL.TAB'),
         (( 1, 1, 4, 1, 1), 'volumes/CORSS_8xxx_v1/CORSS_8001/EASYDATA/Rev07E_RSS_2005_123_X43_E/RSS_2005_123_X43_E_GEO.TAB'),
         (( 1, 1, 4, 0, 1), 'volumes/CORSS_8xxx_v1/CORSS_8001/EASYDATA/Rev07E_RSS_2005_123_X43_E/Rev07E_RSS_2005_123_X43_E_Summary.pdf'),
+        (( 1, 1, 4, 0, 1), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev054/Rev054CE/test_unmatched.pdf'),
     ]
 
     for (counts, path) in TESTS:
+        # This is to test the translated pattern that does not find a matching path in
+        # the file system.
+        if 'test_unmatched' in path:
+            dummy_unmatched_pattern = translator.TranslatorByRegex([
+                (r'.*/CORSS_8xxx(|_v[0-9\.]+)/(CORSS_8...)/(data|browse)/.*', 0,
+                    [r'volumes/CORSS_8xxx\1/\2/data/x',
+                    r'volumes/CORSS_8xxx\1/\2/browse/x',
+                    ]),
+            ])
+            unmatched = unmatched_patterns(dummy_unmatched_pattern, path)
+            trimmed = [p.rpartition('holdings/')[-1] for p in unmatched]
+            assert len(unmatched) != 0
+            # https://github.com/nedbat/coveragepy/issues/198
+            # continue will be ignore by coverage, and shows not run, so we ignore the
+            # the coverage check here.
+            continue # pragma: no cover
+
         unmatched = unmatched_patterns(associations_to_volumes, path)
         trimmed = [p.rpartition('holdings/')[-1] for p in unmatched]
         assert len(unmatched) == 0, f'Unmatched: {path} {trimmed}'

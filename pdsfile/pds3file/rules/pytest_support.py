@@ -12,30 +12,6 @@ import translator
 
 TEST_RESULTS_DIR = os.path.dirname(pds3file.__file__) + '/test_results/'
 
-def translate_first(trans, path):
-    """Return the logical paths of "first" files found using given translator on path.
-
-    Keyword arguments:
-        trans -- a translator instance
-        path  -- a file path
-    """
-
-    patterns = trans.first(path)
-    if not patterns:
-        return []
-
-    if isinstance(patterns, str):
-        patterns = [patterns]
-
-    patterns = [p for p in patterns if p]       # skip empty translations
-    patterns = pds3file.Pds3File.abspaths_for_logicals(patterns)
-
-    abspaths = []
-    for pattern in patterns:
-        abspaths += pds3file.Pds3File.glob_glob(pattern)
-
-    return abspaths
-
 def translate_all(trans, path):
     """Return logical paths of all files found using given translator on path.
 
@@ -47,9 +23,6 @@ def translate_all(trans, path):
     patterns = trans.all(path)
     if not patterns:
         return []
-
-    if isinstance(patterns, str):
-        patterns = [patterns]
 
     patterns = [p for p in patterns if p]       # skip empty translations
     patterns = pds3file.Pds3File.abspaths_for_logicals(patterns)
