@@ -399,7 +399,9 @@ class TestPdsFileWhiteBox:
              'volumes/VGIRIS_xxxx_peer_review/VGIRIS_0001/DATA/JUPITER_VG1/C1547XXX.LBL'),
             ('checksums/archives', 'checksums-archives-volumes'),
             ('diagrams/checksums', 'checksums-diagrams'),
-            ('COUVIS_0xxx/v1', 'volumes/COUVIS_0xxx/v1'),
+            ('COISS_2001.targz', 'archives-volumes/COISS_2xxx/COISS_2001.tar.gz'),
+            ('COISS_2001_previews.targz', 'archives-previews/COISS_2xxx/COISS_2001_previews.tar.gz'),
+            ('COUVIS_0xxx/v1', 'volumes/COUVIS_0xxx_v1'),
             ('checksums-archives-volumes', 'checksums-archives-volumes'),
             ('checksums-archives-previews', 'checksums-archives-previews'),
             ('archives/', 'archives-volumes'),
@@ -431,16 +433,8 @@ class TestPdsFileWhiteBox:
     @pytest.mark.parametrize(
         'input_path,expected',
         [
-            # Temporarily comment out the following 3 cases.
-            # # Current expected results are based on comments in from_path
-            # ('COISS_2001.targz', 'archives-volumes/COISS_2xxx/COISS_2001.tar.gz'),
-            # # previews/COISS_2xxx/COISS_2001
-            # ('COISS_2001_previews.targz', 'archives-previews/COISS_2xxx/COISS_2001_previews.tar.gz'),
-            # # volumes/COISS_2xxx/COISS_2001
-            # ('COISS_0xxx_tar.gz', 'archives-volumes/COISS_2xxx'),
-            # # 'volumes/COISS_0xxx'
+            ('diagrams/checksums/CORSS_8xxx', 'checksums-diagrams/CORSS_8xxx'),
             ('COISS_2002', 'volumes/COISS_2xxx/COISS_2002'),
-            # volumes/COISS_2xxx/COISS_2002
         ]
     )
     def test_from_path3(self, input_path, expected):
