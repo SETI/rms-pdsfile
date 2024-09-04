@@ -934,7 +934,7 @@ def test_opus_id_to_primary_logical_path():
             opus_id_abspaths.add(pdsf.abspath)
 
         parts = pdsf.abspath.split('_FP')
-        fpx = '_FP' + parts[1][1]
+        fpx = '_FP' + parts[1][0]
         for pdsf in product_pdsfiles:
             # Every version is in the product set
             for version_pdsf in pdsf.all_versions().values():

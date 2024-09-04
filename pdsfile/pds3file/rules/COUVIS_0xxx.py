@@ -278,13 +278,19 @@ class COUVIS_0xxx(pds3file.Pds3File):
         # Confirm the file really exists, so we need to use os.path.exists, not
         # PdsFile.os_path_exists.
         abspath = self.root_ + versions_path
-        if not os.path.exists(abspath):
+
+        # This block will never hit unless we have missing version files. Since all
+        # version files exist in Dropbox, there is no way to test this.
+        if not os.path.exists(abspath): # pragma: no cover
             raise FileNotFoundError('Missing DATA_SET_ID index for %s: %s' %
                                     (self.logical_path, abspath))
 
         versions_table = pds3file.Pds3File.from_abspath(abspath)
         row = versions_table.child_of_index(key, flag='')
-        if not row.exists:
+
+        # This block will never hit unless we modify the version files or have a wrong
+        # version file.
+        if not row.exists: # pragma: no cover
             raise ValueError('DATA_SET_ID for %s not found in index: %s' %
                              (self.logical_path, versions_table))
 

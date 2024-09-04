@@ -12,7 +12,7 @@
  ('browse', 10, 'browse_thumb', 'Browse Image (thumbnail)', False): ['previews/COVIMS_0xxx/COVIMS_0006/data/2005088T102825_2005089T113931/v1490784910_3_001_thumb.png'],
  ('metadata', 30, 'moon_geometry', 'Moon Geometry Index', False): ['metadata/COVIMS_0xxx/COVIMS_0006/COVIMS_0006_moon_summary.tab',
                                                                    'metadata/COVIMS_0xxx/COVIMS_0006/COVIMS_0006_moon_summary.lbl'],
- ('metadata', 40, 'ring_geometry', 'Ring Geometry Index', False): ['metadata/COVIMS_0xxx/COVIMS_0006/COVIMS_0006_ring_summary.tab',
+ ('metadata', 50, 'ring_geometry', 'Ring Geometry Index', False): ['metadata/COVIMS_0xxx/COVIMS_0006/COVIMS_0006_ring_summary.tab',
                                                                    'metadata/COVIMS_0xxx/COVIMS_0006/COVIMS_0006_ring_summary.lbl'],
  ('metadata', 20, 'planet_geometry', 'Planet Geometry Index', False): ['metadata/COVIMS_0xxx/COVIMS_0006/COVIMS_0006_saturn_summary.tab',
                                                                        'metadata/COVIMS_0xxx/COVIMS_0006/COVIMS_0006_saturn_summary.lbl'],

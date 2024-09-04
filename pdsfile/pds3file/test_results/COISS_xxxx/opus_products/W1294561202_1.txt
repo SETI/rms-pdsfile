@@ -16,7 +16,7 @@
  ('browse', 10, 'browse_thumb', 'Browse Image (thumbnail)', False): ['previews/COISS_1xxx/COISS_1001/data/1294561143_1295221348/W1294561202_1_thumb.jpg'],
  ('metadata', 30, 'moon_geometry', 'Moon Geometry Index', False): ['metadata/COISS_1xxx/COISS_1001/COISS_1001_moon_summary.tab',
                                                                    'metadata/COISS_1xxx/COISS_1001/COISS_1001_moon_summary.lbl'],
- ('metadata', 40, 'ring_geometry', 'Ring Geometry Index', False): ['metadata/COISS_1xxx/COISS_1001/COISS_1001_ring_summary.tab',
+ ('metadata', 50, 'ring_geometry', 'Ring Geometry Index', False): ['metadata/COISS_1xxx/COISS_1001/COISS_1001_ring_summary.tab',
                                                                    'metadata/COISS_1xxx/COISS_1001/COISS_1001_ring_summary.lbl'],
  ('metadata', 20, 'planet_geometry', 'Planet Geometry Index', False): ['metadata/COISS_1xxx/COISS_1001/COISS_1001_jupiter_summary.tab',
                                                                        'metadata/COISS_1xxx/COISS_1001/COISS_1001_jupiter_summary.lbl'],

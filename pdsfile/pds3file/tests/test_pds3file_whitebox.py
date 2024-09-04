@@ -293,6 +293,33 @@ class TestPdsFileWhiteBox:
         assert res1 == res2
 
 
+    @pytest.mark.parametrize(
+        'input_path,expected',
+        [
+            ('volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/HDAC1999_007_16_31x.DAT', '')
+        ]
+    )
+    def test_data_set_id_non_existence(self, input_path, expected):
+        """lid: return self._lid_filled"""
+        target_pdsfile = instantiate_target_pdsfile(input_path)
+        res1 = target_pdsfile.data_set_id
+        assert res1 == expected
+
+    @pytest.mark.parametrize(
+        'input_path,expected',
+        [
+            ('volumes/COUVIS_0xxx/COUVIS_0001/DATA/DATAINFO.TXT', 'Undefined DATA_SET_ID')
+        ]
+    )
+    def test_data_set_id_exception(self, input_path, expected):
+        """lid: return self._lid_filled"""
+        target_pdsfile = instantiate_target_pdsfile(input_path)
+        try:
+            res1 = target_pdsfile.data_set_id
+        except ValueError as e:
+            assert expected in str(e)
+
+
     ############################################################################
     # Test for class functions
     ############################################################################
@@ -416,6 +443,18 @@ class TestPdsFileWhiteBox:
             assert res.logical_path == expected
         else:
             assert True
+
+    @pytest.mark.parametrize(
+        'input_id,expected',
+        [
+            ('co-vims-v1490784910_00x', 'Unrecognized OPUS ID'),
+        ]
+    )
+    def test_from_opus_id_with_wrong_id(self, input_id, expected):
+        try:
+            pds3file.Pds3File.from_opus_id(input_id)
+        except ValueError as e:
+            assert expected in str(e)
 
 
     ############################################################################
