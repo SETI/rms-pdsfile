@@ -398,7 +398,7 @@ class COISS_xxxx(pds3file.Pds3File):
     ASSOCIATIONS['documents']  += associations_to_documents
 
     def FILENAME_KEYLEN(self):
-        if self.volset[:10] == 'COISS_3xxx':
+        if self.bundleset[:10] == 'COISS_3xxx':
             return 0
         else:
             return 11   # trim off suffixes

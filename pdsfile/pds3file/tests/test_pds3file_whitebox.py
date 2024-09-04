@@ -195,6 +195,14 @@ class TestPdsFileWhiteBox:
         [
             ('volumes/COVIMS_0xxx/COVIMS_0006/data/2005088T102825_2005089T113931/v1490784910_3_001.qub',
              17),
+            ('volumes/COISS_3xxx/COISS_3001/data/images/SP_1M_90N_0_STEREO.IMG', 0),
+            ('volumes/COISS_0xxx/COISS_0001/data/nacfm/bias/121811.img', 11),
+            ('volumes/COVIMS_0xxx/COVIMS_0001/data/1999010T054026_1999010T060958/v1294638283_1.qub',
+             13),
+            ('volumes/COVIMS_0xxx/COVIMS_0001/data/1999010T054026_1999010T060958', 0),
+            ('volumes/RPX_xxxx/RPX_0001/199410XX/U2IQXXXX/BROWSEU2IQ0101T.LBL', 9),
+            ('volumes/RPX_xxxx/RPX_0301/DATA/19950809_S_RINGS/PROCIMAGE/T0809_F0217_PROC.LBL',
+             0),
         ]
     )
     def test_filename_keylen(self, input_path, expected):
