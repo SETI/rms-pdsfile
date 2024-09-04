@@ -4247,7 +4247,6 @@ class PdsFile(object):
 
             # Try to get the absolute path
             try:
-                # this_abspath = cls.CACHE['$VOLS-' + this.category_][bundlename][rank]
                 if not is_bundleset_available:
                     this_abspath = cls.CACHE['$VOLS-' + this.category_][bundlename][rank]
                 else:
