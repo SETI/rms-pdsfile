@@ -3454,9 +3454,10 @@ class PdsFile(object):
         # 'checksums-archives-.*/, neither self.bundleset nor self.bundlename is set, the
         # category 'checksums-archives-.*' won't be cached in _update_ranks_and_vols.
         #
-        # Therefore, if we make sure the existing 'checksums-.*/bundleset/file' can run
-        # the following step, in _update_ranks_and_vols, self.bundleset is properly set
-        # due to the fileanme and 'checksums-archives-.*' category will be cached.
+        # Therefore, if we make sure the existing 'checksums-archives-.*/file' (file name
+        # has bundleset info) can run the following step, in _update_ranks_and_vols,
+        # self.bundleset will be properly set due to the fileanme, and
+        # 'checksums-archives-.*' category will be cached.
         if (caching == 'all' or
             (caching == 'dir' and (self.isdir or self.is_index)) or
             self.category_.startswith('checksums-archives-')):
