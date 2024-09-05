@@ -230,126 +230,26 @@ from .pytest_support import *
     'input_path,expected',
     [
         ('volumes/HSTIx_xxxx/HSTI1_1559/DATA/VISIT_11/IB4V11MNQ.ASC',
-         {('HST',
-           20,
-           'hst_tiff',
-           'Raw Data Preview (lossless)',
-           True): ['volumes/HSTIx_xxxx/HSTI1_1559/DATA/VISIT_11/IB4V11MNQ_RAW.TIF',
-                   'volumes/HSTIx_xxxx/HSTI1_1559/DATA/VISIT_11/IB4V11MNQ.LBL',
-                   'volumes/HSTIx_xxxx_v1.1/HSTI1_1559/DATA/VISIT_11/IB4V11MNQ_RAW.TIF',
-                   'volumes/HSTIx_xxxx_v1.1/HSTI1_1559/DATA/VISIT_11/IB4V11MNQ.LBL',
-                   'volumes/HSTIx_xxxx_v1.0/HSTI1_1559/DATA/VISIT_11/IB4V11MNQ_RAW.TIF',
-                   'volumes/HSTIx_xxxx_v1.0/HSTI1_1559/DATA/VISIT_11/IB4V11MNQ.LBL'],
-          ('HST',
-           40,
-           'hst_calib',
-           'Calibrated Data Preview',
-           True): ['volumes/HSTIx_xxxx/HSTI1_1559/DATA/VISIT_11/IB4V11MNQ_FLT.JPG',
-                   'volumes/HSTIx_xxxx/HSTI1_1559/DATA/VISIT_11/IB4V11MNQ.LBL',
-                   'volumes/HSTIx_xxxx_v1.1/HSTI1_1559/DATA/VISIT_11/IB4V11MNQ_FLT.JPG',
-                   'volumes/HSTIx_xxxx_v1.1/HSTI1_1559/DATA/VISIT_11/IB4V11MNQ.LBL',
-                   'volumes/HSTIx_xxxx_v1.0/HSTI1_1559/DATA/VISIT_11/IB4V11MNQ_FLT.JPG',
-                   'volumes/HSTIx_xxxx_v1.0/HSTI1_1559/DATA/VISIT_11/IB4V11MNQ.LBL'],
-          ('HST',
-           30,
-           'hst_raw',
-           'Raw Data Preview',
-           True): ['volumes/HSTIx_xxxx/HSTI1_1559/DATA/VISIT_11/IB4V11MNQ_RAW.JPG',
-                   'volumes/HSTIx_xxxx/HSTI1_1559/DATA/VISIT_11/IB4V11MNQ.LBL',
-                   'volumes/HSTIx_xxxx_v1.1/HSTI1_1559/DATA/VISIT_11/IB4V11MNQ_RAW.JPG',
-                   'volumes/HSTIx_xxxx_v1.1/HSTI1_1559/DATA/VISIT_11/IB4V11MNQ.LBL',
-                   'volumes/HSTIx_xxxx_v1.0/HSTI1_1559/DATA/VISIT_11/IB4V11MNQ_RAW.JPG',
-                   'volumes/HSTIx_xxxx_v1.0/HSTI1_1559/DATA/VISIT_11/IB4V11MNQ.LBL'],
-          ('HST',
-           70,
-           'hst_drizzled',
-           'Calibrated Geometrically Corrected Preview',
-           True): ['volumes/HSTIx_xxxx/HSTI1_1559/DATA/VISIT_11/IB4V11MNQ_DRZ.JPG',
-                   'volumes/HSTIx_xxxx/HSTI1_1559/DATA/VISIT_11/IB4V11MNQ.LBL',
-                   'volumes/HSTIx_xxxx_v1.1/HSTI1_1559/DATA/VISIT_11/IB4V11MNQ_DRZ.JPG',
-                   'volumes/HSTIx_xxxx_v1.1/HSTI1_1559/DATA/VISIT_11/IB4V11MNQ.LBL',
-                   'volumes/HSTIx_xxxx_v1.0/HSTI1_1559/DATA/VISIT_11/IB4V11MNQ_DRZ.JPG',
-                   'volumes/HSTIx_xxxx_v1.0/HSTI1_1559/DATA/VISIT_11/IB4V11MNQ.LBL'],
-          ('HST',
-           10,
-           'hst_text',
-           'FITS Header Text',
-           True): ['volumes/HSTIx_xxxx/HSTI1_1559/DATA/VISIT_11/IB4V11MNQ.ASC',
-                   'volumes/HSTIx_xxxx/HSTI1_1559/DATA/VISIT_11/IB4V11MNQ.LBL',
-                   'volumes/HSTIx_xxxx_v1.1/HSTI1_1559/DATA/VISIT_11/IB4V11MNQ.ASC',
-                   'volumes/HSTIx_xxxx_v1.1/HSTI1_1559/DATA/VISIT_11/IB4V11MNQ.LBL',
-                   'volumes/HSTIx_xxxx_v1.0/HSTI1_1559/DATA/VISIT_11/IB4V11MNQ.ASC',
-                   'volumes/HSTIx_xxxx_v1.0/HSTI1_1559/DATA/VISIT_11/IB4V11MNQ.LBL'],
-          ('browse',
-           10,
-           'browse_thumb',
-           'Browse Image (thumbnail)',
-           False): ['previews/HSTIx_xxxx/HSTI1_1559/DATA/VISIT_11/IB4V11MNQ_thumb.jpg'],
-          ('browse',
-           20,
-           'browse_small',
-           'Browse Image (small)',
-           False): ['previews/HSTIx_xxxx/HSTI1_1559/DATA/VISIT_11/IB4V11MNQ_small.jpg'],
-          ('browse',
-           30,
-           'browse_medium',
-           'Browse Image (medium)',
-           False): ['previews/HSTIx_xxxx/HSTI1_1559/DATA/VISIT_11/IB4V11MNQ_med.jpg'],
-          ('browse',
-           40,
-           'browse_full',
-           'Browse Image (full)',
-           True): ['previews/HSTIx_xxxx/HSTI1_1559/DATA/VISIT_11/IB4V11MNQ_full.jpg'],
-          ('metadata',
-           5,
-           'rms_index',
-           'RMS Node Augmented Index',
-           False): ['metadata/HSTIx_xxxx/HSTI1_1559/HSTI1_1559_index.tab',
-                    'metadata/HSTIx_xxxx/HSTI1_1559/HSTI1_1559_index.lbl'],
-          ('metadata',
-           6,
-           'hstfiles_index',
-           'HST Files Associations Index',
-           False): ['metadata/HSTIx_xxxx/HSTI1_1559/HSTI1_1559_hstfiles.tab',
-                    'metadata/HSTIx_xxxx/HSTI1_1559/HSTI1_1559_hstfiles.lbl'],
-          ('HST',
-           120,
-           'hst_documentation',
-           'Documentation',
-           False): ['documents/HSTIx_xxxx/WFC3-Instrument-Handbook-13.0.pdf',
-                    'documents/HSTIx_xxxx/WFC3-Data-Handbook-4.0.pdf',
-                    'documents/HSTIx_xxxx/FITS-Standard-4.0.pdf']}
-        ),
+         'HSTIx_xxxx/opus_products/IB4V11MNQ.txt')
     ]
 )
-def test_opus_products(input_path, expected):
-    opus_products_test(input_path, expected)
+def test_opus_products(request, input_path, expected):
+    update = request.config.option.update
+    opus_products_test(pds3file.Pds3File, input_path, TEST_RESULTS_DIR+expected, update)
 
 
 @pytest.mark.parametrize(
-    'input_path,category,selection,flag,expected',
+    'input_path,category,expected',
     [
-
-        ('metadata/HSTUx_xxxx/HSTU0_5167/HSTU0_5167_index.tab',
-         'metadata', 'u2no0403t', '',
-         [
-         'metadata/HSTUx_xxxx/HSTU0_5167/HSTU0_5167_index.tab/U2NO0403T',
-         'metadata/HSTUx_xxxx/HSTU0_5167/HSTU0_5167_hstfiles.tab/U2NO0403T',
-         ]),
+        ('volumes/HSTUx_xxxx/HSTU0_5167/DATA/VISIT_04/U2NO0404T.LBL',
+         'volumes',
+         'HSTIx_xxxx/associated_abspaths/volumes_U2NO0404T.txt')
     ]
 )
-def test_associated_abspaths(input_path, category, selection, flag, expected):
-    target_pdsfile = instantiate_target_pdsfile(input_path)
-    index_row = target_pdsfile.child_of_index(selection, flag)
-    res = index_row.associated_abspaths(
-        category=category)
-    result_paths = []
-    result_paths += pds3file.Pds3File.logicals_for_abspaths(res)
-    assert len(result_paths) != 0
-    for path in result_paths:
-        assert path in expected
-    for path in expected:
-        assert path in result_paths
+def test_associated_abspaths(request, input_path, category, expected):
+    update = request.config.option.update
+    associated_abspaths_test(pds3file.Pds3File, input_path, category,
+                             TEST_RESULTS_DIR+expected, update)
 
 
 def test_opus_id_to_primary_logical_path():

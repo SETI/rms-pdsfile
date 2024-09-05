@@ -195,6 +195,14 @@ class TestPdsFileWhiteBox:
         [
             ('volumes/COVIMS_0xxx/COVIMS_0006/data/2005088T102825_2005089T113931/v1490784910_3_001.qub',
              17),
+            ('volumes/COISS_3xxx/COISS_3001/data/images/SP_1M_90N_0_STEREO.IMG', 0),
+            ('volumes/COISS_0xxx/COISS_0001/data/nacfm/bias/121811.img', 11),
+            ('volumes/COVIMS_0xxx/COVIMS_0001/data/1999010T054026_1999010T060958/v1294638283_1.qub',
+             13),
+            ('volumes/COVIMS_0xxx/COVIMS_0001/data/1999010T054026_1999010T060958', 0),
+            ('volumes/RPX_xxxx/RPX_0001/199410XX/U2IQXXXX/BROWSEU2IQ0101T.LBL', 9),
+            ('volumes/RPX_xxxx/RPX_0301/DATA/19950809_S_RINGS/PROCIMAGE/T0809_F0217_PROC.LBL',
+             0),
         ]
     )
     def test_filename_keylen(self, input_path, expected):
@@ -293,6 +301,33 @@ class TestPdsFileWhiteBox:
         assert res1 == res2
 
 
+    @pytest.mark.parametrize(
+        'input_path,expected',
+        [
+            ('volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/HDAC1999_007_16_31x.DAT', '')
+        ]
+    )
+    def test_data_set_id_non_existence(self, input_path, expected):
+        """lid: return self._lid_filled"""
+        target_pdsfile = instantiate_target_pdsfile(input_path)
+        res1 = target_pdsfile.data_set_id
+        assert res1 == expected
+
+    @pytest.mark.parametrize(
+        'input_path,expected',
+        [
+            ('volumes/COUVIS_0xxx/COUVIS_0001/DATA/DATAINFO.TXT', 'Undefined DATA_SET_ID')
+        ]
+    )
+    def test_data_set_id_exception(self, input_path, expected):
+        """lid: return self._lid_filled"""
+        target_pdsfile = instantiate_target_pdsfile(input_path)
+        try:
+            res1 = target_pdsfile.data_set_id
+        except ValueError as e:
+            assert expected in str(e)
+
+
     ############################################################################
     # Test for class functions
     ############################################################################
@@ -364,7 +399,9 @@ class TestPdsFileWhiteBox:
              'volumes/VGIRIS_xxxx_peer_review/VGIRIS_0001/DATA/JUPITER_VG1/C1547XXX.LBL'),
             ('checksums/archives', 'checksums-archives-volumes'),
             ('diagrams/checksums', 'checksums-diagrams'),
-            ('COUVIS_0xxx/v1', 'volumes/COUVIS_0xxx/v1'),
+            ('COISS_2001.targz', 'archives-volumes/COISS_2xxx/COISS_2001.tar.gz'),
+            ('COISS_2001_previews.targz', 'archives-previews/COISS_2xxx/COISS_2001_previews.tar.gz'),
+            ('COUVIS_0xxx/v1', 'volumes/COUVIS_0xxx_v1'),
             ('checksums-archives-volumes', 'checksums-archives-volumes'),
             ('checksums-archives-previews', 'checksums-archives-previews'),
             ('archives/', 'archives-volumes'),
@@ -396,16 +433,8 @@ class TestPdsFileWhiteBox:
     @pytest.mark.parametrize(
         'input_path,expected',
         [
-            # Temporarily comment out the following 3 cases.
-            # # Current expected results are based on comments in from_path
-            # ('COISS_2001.targz', 'archives-volumes/COISS_2xxx/COISS_2001.tar.gz'),
-            # # previews/COISS_2xxx/COISS_2001
-            # ('COISS_2001_previews.targz', 'archives-previews/COISS_2xxx/COISS_2001_previews.tar.gz'),
-            # # volumes/COISS_2xxx/COISS_2001
-            # ('COISS_0xxx_tar.gz', 'archives-volumes/COISS_2xxx'),
-            # # 'volumes/COISS_0xxx'
+            ('diagrams/checksums/CORSS_8xxx', 'checksums-diagrams/CORSS_8xxx'),
             ('COISS_2002', 'volumes/COISS_2xxx/COISS_2002'),
-            # volumes/COISS_2xxx/COISS_2002
         ]
     )
     def test_from_path3(self, input_path, expected):
@@ -416,6 +445,18 @@ class TestPdsFileWhiteBox:
             assert res.logical_path == expected
         else:
             assert True
+
+    @pytest.mark.parametrize(
+        'input_id,expected',
+        [
+            ('co-vims-v1490784910_00x', 'Unrecognized OPUS ID'),
+        ]
+    )
+    def test_from_opus_id_with_wrong_id(self, input_id, expected):
+        try:
+            pds3file.Pds3File.from_opus_id(input_id)
+        except ValueError as e:
+            assert expected in str(e)
 
 
     ############################################################################
@@ -871,13 +912,16 @@ class TestPdsFileWhiteBox:
     @pytest.mark.parametrize(
         'input_path,expected',
         [
-            (PDS3_HOLDINGS_DIR + '/volumes/COISS_0xxx/COISS_0001',
+            ('volumes/COISS_0xxx/COISS_0001',
              PDS3_HOLDINGS_DIR + '/volumes/COISS_0xxx/COISS_0001'),
+            ('documents/coiss_0xxx',
+             PDS3_HOLDINGS_DIR + '/documents/COISS_0xxx'),
         ]
     )
     def test_from_abspath(self, input_path, expected):
         if input_path in pds3file.Pds3File.CACHE:
             del pds3file.Pds3File.CACHE[input_path]
+        input_path = PDS3_HOLDINGS_DIR + f'/{input_path}'
         res = pds3file.Pds3File.from_abspath(abspath=input_path,
                                            fix_case=True)
         assert isinstance(res, pds3file.Pds3File)

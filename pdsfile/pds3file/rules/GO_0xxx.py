@@ -823,89 +823,26 @@ from .pytest_support import *
     'input_path,expected',
     [
         ('volumes/GO_0xxx/GO_0017/J0/OPNAV/C0346405900R.IMG',
-         {('Galileo SSI',
-           10,
-           'gossi_raw',
-           'Raw Image',
-           True): ['volumes/GO_0xxx/GO_0017/J0/OPNAV/C0346405900R.IMG',
-                   'volumes/GO_0xxx/GO_0017/J0/OPNAV/C0346405900R.LBL',
-                   'volumes/GO_0xxx/GO_0017/LABEL/RLINEPRX.FMT',
-                   'volumes/GO_0xxx/GO_0017/LABEL/RTLMTAB.FMT'],
-          ('browse',
-           10,
-           'browse_thumb',
-           'Browse Image (thumbnail)',
-           False): ['previews/GO_0xxx/GO_0017/J0/OPNAV/C0346405900R_thumb.jpg'],
-          ('browse',
-           20,
-           'browse_small',
-           'Browse Image (small)',
-           False): ['previews/GO_0xxx/GO_0017/J0/OPNAV/C0346405900R_small.jpg'],
-          ('browse',
-           30,
-           'browse_medium',
-           'Browse Image (medium)',
-           False): ['previews/GO_0xxx/GO_0017/J0/OPNAV/C0346405900R_med.jpg'],
-          ('browse',
-           40,
-           'browse_full',
-           'Browse Image (full)',
-           True): ['previews/GO_0xxx/GO_0017/J0/OPNAV/C0346405900R_full.jpg'],
-          ('metadata',
-           5,
-           'rms_index',
-           'RMS Node Augmented Index',
-           False): ['metadata/GO_0xxx/GO_0017/GO_0017_index.tab',
-                    'metadata/GO_0xxx/GO_0017/GO_0017_index.lbl'],
-          ('metadata',
-           30,
-           'moon_geometry',
-           'Moon Geometry Index',
-           False): ['metadata/GO_0xxx/GO_0017/GO_0017_moon_summary.tab',
-            'metadata/GO_0xxx/GO_0017/GO_0017_moon_summary.lbl'],
-          ('metadata',
-           40,
-           'ring_geometry',
-           'Ring Geometry Index',
-           False): ['metadata/GO_0xxx/GO_0017/GO_0017_ring_summary.tab',
-            'metadata/GO_0xxx/GO_0017/GO_0017_ring_summary.lbl'],
-          ('metadata',
-           20,
-           'planet_geometry',
-           'Planet Geometry Index',
-           False): ['metadata/GO_0xxx/GO_0017/GO_0017_jupiter_summary.tab',
-            'metadata/GO_0xxx/GO_0017/GO_0017_jupiter_summary.lbl'],
-          ('metadata',
-           10,
-           'inventory',
-           'Target Body Inventory',
-           False): ['metadata/GO_0xxx/GO_0017/GO_0017_inventory.csv',
-            'metadata/GO_0xxx/GO_0017/GO_0017_inventory.lbl'],
-          ('metadata',
-           5,
-           'rms_index',
-           'RMS Node Augmented Index',
-           False): ['metadata/GO_0xxx/GO_0017/GO_0017_index.tab',
-            'metadata/GO_0xxx/GO_0017/GO_0017_index.lbl'],
-          ('metadata',
-           8,
-           'supplemental_index',
-           'Supplemental Index',
-           False): ['metadata/GO_0xxx/GO_0017/GO_0017_supplemental_index.tab',
-            'metadata/GO_0xxx/GO_0017/GO_0017_supplemental_index.lbl'],
-          ('Galileo SSI',
-           20,
-           'gossi_documentation',
-           'Documentation',
-           False): ['documents/GO_0xxx/VICAR-File-Format.pdf',
-                    'documents/GO_0xxx/Data-Product-SIS.pdf',
-                    'documents/GO_0xxx/Archive-SIS.pdf']}
-
-        )
+         'GO_0xxx/opus_products/C0346405900R.txt')
     ]
 )
-def test_opus_products(input_path, expected):
-    opus_products_test(input_path, expected)
+def test_opus_products(request, input_path, expected):
+    update = request.config.option.update
+    opus_products_test(pds3file.Pds3File, input_path, TEST_RESULTS_DIR+expected, update)
+
+
+@pytest.mark.parametrize(
+    'input_path,category,expected',
+    [
+        ('volumes/GO_0xxx/GO_0017/J0/OPNAV/C0346405900R.IMG',
+         'volumes',
+         'GO_0xxx/associated_abspaths/C0346405900R.txt')
+    ]
+)
+def test_associated_abspaths(request, input_path, category, expected):
+    update = request.config.option.update
+    associated_abspaths_test(pds3file.Pds3File, input_path, category,
+                             TEST_RESULTS_DIR+expected, update)
 
 def test_opus_id_to_primary_logical_path():
     TESTS = [
