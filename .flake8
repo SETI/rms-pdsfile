@@ -1,0 +1,6 @@
+[flake8]
+max-line-length: 90
+
+per-file-ignores =
+    # continuation line under-indented for visual indent
+    show_opus_products.py: E128
