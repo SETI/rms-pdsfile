@@ -372,25 +372,6 @@ pds3file.Pds3File.SUBCLASSES['COVIMS_0xxx'] = COVIMS_0xxx
 import pytest
 from .pytest_support import *
 
-def test_opus_products_count():
-
-    TESTS = [
-        (2, 'volumes/.*/data/.*'),
-        (3, 'volumes/.*/extras/.*'),
-        (4, 'previews/.*/data/.*'),
-        (4, 'metadata/.*index.*'),
-        (6, 'metadata/.*summary.*'),
-        (2, 'metadata/.*inventory.*'),
-        (2, 'metadata/.*supplemental.*'),
-    ]
-
-    PATH = 'volumes/COVIMS_0xxx/COVIMS_0006/data/2005015T175855_2005016T184233/v1484504505_4.qub'
-    abspaths = translate_all(opus_products, PATH)
-    trimmed = [p.rpartition('holdings/')[-1] for p in abspaths]
-    for (count, pattern) in TESTS:
-        subset = [p for p in trimmed if re.fullmatch(pattern, p)]
-        assert len(subset) == count, f'Miscount: {pattern} {len(subset)} {trimmed}'
-
 @pytest.mark.parametrize(
     'input_path,expected',
     [

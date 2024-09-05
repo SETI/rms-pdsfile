@@ -239,26 +239,6 @@ pds3file.Pds3File.SUBCLASSES['EBROCC_xxxx'] = EBROCC_xxxx
 import pytest
 from .pytest_support import *
 
-def test_opus_products_count():
-
-    TESTS = [
-        (2, 'volumes.*/DATA/.*'),
-        (6, 'volumes.*/BROWSE/.*'),
-        (2, 'volumes.*/GEOMETRY/.*'),
-        (4, 'volumes.*/SORCDATA/.*'),
-        (4, 'previews.*/DATA/.*'),
-        (8, 'previews/.*/BROWSE/.*'),
-        (4, 'metadata.*index.*'),
-        (2, 'metadata.*supplemental.*'),
-    ]
-
-    PATH = 'volumes/EBROCC_xxxx/EBROCC_0001/DATA/ESO1M/ES1_EPD.LBL'
-    abspaths = translate_all(opus_products, PATH)
-    trimmed = [p.rpartition('holdings/')[-1] for p in abspaths]
-    for (count, pattern) in TESTS:
-        subset = [p for p in trimmed if re.fullmatch(pattern, p)]
-        assert len(subset) == count, f'Miscount: {pattern} {len(subset)} {trimmed}'
-
 @pytest.mark.parametrize(
 # Allow duplicated '/volumes/EBROCC_xxxx/EBROCC_0001/BROWSE/ESO1M/ES1_EGB.LBL'
 # and '/volumes/EBROCC_xxxx/EBROCC_0001/BROWSE/ESO1M/ES1_EPB.LBL' here. OPUS

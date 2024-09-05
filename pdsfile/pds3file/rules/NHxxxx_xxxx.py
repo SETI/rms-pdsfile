@@ -562,25 +562,6 @@ pds3file.Pds3File.SUBCLASSES['NHxxxx_xxxx'] = NHxxxx_xxxx
 import pytest
 from .pytest_support import *
 
-def test_opus_products_count():
-
-    TESTS = [
-        (4, 'volumes/NHxx.._xxxx/.*/data/.*'),
-        (4, 'volumes/NHxx.._xxxx_v1/.*/data/.*'),
-        (8, 'previews/NHxx.._xxxx/.*/data/.*'),
-        (4, 'metadata/.*index.*'),
-        (8, 'metadata/.*summary.*'),
-        (2, 'metadata/.*supplemental.*'),
-        (2, 'metadata/.*inventory.*'),
-    ]
-
-    PATH = 'volumes/NHxxLO_xxxx/NHPELO_2001/data/20150125_028445/lor_0284457178_0x630_sci.lbl'
-    abspaths = translate_all(opus_products, PATH)
-    trimmed = [p.rpartition('holdings/')[-1] for p in abspaths]
-    for (count, pattern) in TESTS:
-        subset = [p for p in trimmed if re.fullmatch(pattern, p)]
-        assert len(subset) == count, f'Miscount: {pattern} {len(subset)} {trimmed}'
-
 @pytest.mark.parametrize(
 # 1001 is the raw volume and 2001 is the calibrated volume.
     'input_path,expected',
