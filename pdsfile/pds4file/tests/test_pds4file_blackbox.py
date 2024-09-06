@@ -588,6 +588,9 @@ class TestPds4FileBlackBox:
                  f'/{PDS4_HOLDINGS_NAME}/diagrams/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_ingress_diagram_thumb.png'
              ]
             ),
+            ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global',
+             False
+            ),
         ]
     )
     def test_viewset(self, input_path, expected):

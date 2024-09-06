@@ -562,166 +562,30 @@ pds3file.Pds3File.SUBCLASSES['NHxxxx_xxxx'] = NHxxxx_xxxx
 import pytest
 from .pytest_support import *
 
-def test_opus_products_count():
-
-    TESTS = [
-        (4, 'volumes/NHxx.._xxxx/.*/data/.*'),
-        (4, 'volumes/NHxx.._xxxx_v1/.*/data/.*'),
-        (8, 'previews/NHxx.._xxxx/.*/data/.*'),
-        (4, 'metadata/.*index.*'),
-        (8, 'metadata/.*summary.*'),
-        (2, 'metadata/.*supplemental.*'),
-        (2, 'metadata/.*inventory.*'),
-    ]
-
-    PATH = 'volumes/NHxxLO_xxxx/NHPELO_2001/data/20150125_028445/lor_0284457178_0x630_sci.lbl'
-    abspaths = translate_all(opus_products, PATH)
-    trimmed = [p.rpartition('holdings/')[-1] for p in abspaths]
-    for (count, pattern) in TESTS:
-        subset = [p for p in trimmed if re.fullmatch(pattern, p)]
-        assert len(subset) == count, f'Miscount: {pattern} {len(subset)} {trimmed}'
-
 @pytest.mark.parametrize(
 # 1001 is the raw volume and 2001 is the calibrated volume.
     'input_path,expected',
     [
         ('volumes/NHxxLO_xxxx/NHLALO_1001/data/20060224_000310/lor_0003103486_0x630_eng.fit',
-         {('New Horizons LORRI',
-           0,
-           'nh_lorri_raw',
-           'Raw Image',
-           True): ['volumes/NHxxLO_xxxx/NHLALO_1001/data/20060224_000310/lor_0003103486_0x630_eng.fit',
-                   'volumes/NHxxLO_xxxx/NHLALO_1001/data/20060224_000310/lor_0003103486_0x630_eng.lbl',
-                   'volumes/NHxxLO_xxxx_v3/NHLALO_1001/data/20060224_000310/lor_0003103486_0x630_eng_1.fit',
-                   'volumes/NHxxLO_xxxx_v3/NHLALO_1001/data/20060224_000310/lor_0003103486_0x630_eng_1.lbl',
-                   'volumes/NHxxLO_xxxx_v2/NHLALO_1001/data/20060224_000310/lor_0003103486_0x630_eng_1.fit',
-                   'volumes/NHxxLO_xxxx_v2/NHLALO_1001/data/20060224_000310/lor_0003103486_0x630_eng_1.lbl',
-                   'volumes/NHxxLO_xxxx_v1/NHLALO_1001/data/20060224_000310/lor_0003103486_0x630_eng_1.fit',
-                   'volumes/NHxxLO_xxxx_v1/NHLALO_1001/data/20060224_000310/lor_0003103486_0x630_eng_1.lbl'],
-          ('New Horizons LORRI',
-           100,
-           'nh_lorri_calib',
-           'Calibrated Image',
-           True): ['volumes/NHxxLO_xxxx/NHLALO_2001/data/20060224_000310/lor_0003103486_0x630_sci.fit',
-                   'volumes/NHxxLO_xxxx/NHLALO_2001/data/20060224_000310/lor_0003103486_0x630_sci.lbl',
-                   'volumes/NHxxLO_xxxx_v3/NHLALO_2001/data/20060224_000310/lor_0003103486_0x630_sci_1.fit',
-                   'volumes/NHxxLO_xxxx_v3/NHLALO_2001/data/20060224_000310/lor_0003103486_0x630_sci_1.lbl',
-                   'volumes/NHxxLO_xxxx_v2/NHLALO_2001/data/20060224_000310/lor_0003103486_0x630_sci_1.fit',
-                   'volumes/NHxxLO_xxxx_v2/NHLALO_2001/data/20060224_000310/lor_0003103486_0x630_sci_1.lbl',
-                   'volumes/NHxxLO_xxxx_v1/NHLALO_2001/data/20060224_000310/lor_0003103486_0x630_sci_1.fit',
-                   'volumes/NHxxLO_xxxx_v1/NHLALO_2001/data/20060224_000310/lor_0003103486_0x630_sci_1.lbl'],
-          ('browse',
-           10,
-           'browse_thumb',
-           'Browse Image (thumbnail)',
-           False): ['previews/NHxxLO_xxxx/NHLALO_1001/data/20060224_000310/lor_0003103486_0x631_eng_thumb.jpg',
-                    'previews/NHxxLO_xxxx/NHLALO_1001/data/20060224_000310/lor_0003103486_0x630_eng_thumb.jpg'],
-          ('browse',
-           20,
-           'browse_small',
-           'Browse Image (small)',
-           False): ['previews/NHxxLO_xxxx/NHLALO_1001/data/20060224_000310/lor_0003103486_0x631_eng_small.jpg',
-                    'previews/NHxxLO_xxxx/NHLALO_1001/data/20060224_000310/lor_0003103486_0x630_eng_small.jpg'],
-          ('browse',
-           30,
-           'browse_medium',
-           'Browse Image (medium)',
-           False): ['previews/NHxxLO_xxxx/NHLALO_1001/data/20060224_000310/lor_0003103486_0x631_eng_med.jpg',
-                    'previews/NHxxLO_xxxx/NHLALO_1001/data/20060224_000310/lor_0003103486_0x630_eng_med.jpg'],
-          ('browse',
-           40,
-           'browse_full',
-           'Browse Image (full)',
-           True): ['previews/NHxxLO_xxxx/NHLALO_1001/data/20060224_000310/lor_0003103486_0x631_eng_full.jpg',
-                   'previews/NHxxLO_xxxx/NHLALO_1001/data/20060224_000310/lor_0003103486_0x630_eng_full.jpg'],
-           ('New Horizons LORRI',
-            200,
-            'nh_lorri_calib_browse',
-            'Extra Preview (calibrated)',
-            False): ['previews/NHxxLO_xxxx/NHLALO_2001/data/20060224_000310/lor_0003103486_0x631_sci_thumb.jpg',
-                     'previews/NHxxLO_xxxx/NHLALO_2001/data/20060224_000310/lor_0003103486_0x631_sci_small.jpg',
-                     'previews/NHxxLO_xxxx/NHLALO_2001/data/20060224_000310/lor_0003103486_0x631_sci_med.jpg',
-                     'previews/NHxxLO_xxxx/NHLALO_2001/data/20060224_000310/lor_0003103486_0x631_sci_full.jpg',
-                     'previews/NHxxLO_xxxx/NHLALO_2001/data/20060224_000310/lor_0003103486_0x630_sci_thumb.jpg',
-                     'previews/NHxxLO_xxxx/NHLALO_2001/data/20060224_000310/lor_0003103486_0x630_sci_small.jpg',
-                     'previews/NHxxLO_xxxx/NHLALO_2001/data/20060224_000310/lor_0003103486_0x630_sci_med.jpg',
-                     'previews/NHxxLO_xxxx/NHLALO_2001/data/20060224_000310/lor_0003103486_0x630_sci_full.jpg'],
-          ('metadata',
-           20,
-           'planet_geometry',
-           'Planet Geometry Index',
-           False): ['metadata/NHxxLO_xxxx/NHLALO_1001/NHLALO_1001_jupiter_summary.tab',
-                    'metadata/NHxxLO_xxxx/NHLALO_1001/NHLALO_1001_jupiter_summary.lbl'],
-          ('metadata',
-           30,
-           'moon_geometry',
-           'Moon Geometry Index',
-           False): ['metadata/NHxxLO_xxxx/NHLALO_1001/NHLALO_1001_moon_summary.tab',
-                    'metadata/NHxxLO_xxxx/NHLALO_1001/NHLALO_1001_moon_summary.lbl'],
-          ('metadata',
-           40,
-           'ring_geometry',
-           'Ring Geometry Index',
-           False): ['metadata/NHxxLO_xxxx/NHLALO_1001/NHLALO_1001_ring_summary.tab',
-                    'metadata/NHxxLO_xxxx/NHLALO_1001/NHLALO_1001_ring_summary.lbl'],
-          ('metadata',
-           10,
-           'inventory',
-           'Target Body Inventory',
-           False): ['metadata/NHxxLO_xxxx/NHLALO_1001/NHLALO_1001_inventory.csv',
-                    'metadata/NHxxLO_xxxx/NHLALO_1001/NHLALO_1001_inventory.lbl'],
-          ('metadata',
-           5,
-           'rms_index',
-           'RMS Node Augmented Index',
-           False): ['metadata/NHxxLO_xxxx/NHLALO_1001/NHLALO_1001_index.tab',
-                    'metadata/NHxxLO_xxxx/NHLALO_1001/NHLALO_1001_index.lbl'],
-          ('metadata',
-           8,
-           'supplemental_index',
-           'Supplemental Index',
-           False): ['metadata/NHxxLO_xxxx/NHLALO_1001/NHLALO_1001_supplemental_index.tab',
-                    'metadata/NHxxLO_xxxx/NHLALO_1001/NHLALO_1001_supplemental_index.lbl'],
-          ('New Horizons LORRI',
-           50,
-           'nh_lorri_raw_alternate',
-           'Raw Image Alternate Downlink',
-           True): ['volumes/NHxxLO_xxxx/NHLALO_1001/data/20060224_000310/lor_0003103486_0x631_eng.fit',
-                   'volumes/NHxxLO_xxxx/NHLALO_1001/data/20060224_000310/lor_0003103486_0x631_eng.lbl',
-                   'volumes/NHxxLO_xxxx_v3/NHLALO_1001/data/20060224_000310/lor_0003103486_0x631_eng_1.fit',
-                   'volumes/NHxxLO_xxxx_v3/NHLALO_1001/data/20060224_000310/lor_0003103486_0x631_eng_1.lbl',
-                   'volumes/NHxxLO_xxxx_v2/NHLALO_1001/data/20060224_000310/lor_0003103486_0x631_eng_1.fit',
-                   'volumes/NHxxLO_xxxx_v2/NHLALO_1001/data/20060224_000310/lor_0003103486_0x631_eng_1.lbl',
-                   'volumes/NHxxLO_xxxx_v1/NHLALO_1001/data/20060224_000310/lor_0003103486_0x631_eng_1.fit',
-                   'volumes/NHxxLO_xxxx_v1/NHLALO_1001/data/20060224_000310/lor_0003103486_0x631_eng_1.lbl'],
-          ('New Horizons LORRI',
-           150,
-           'nh_lorri_calib_alternate',
-           'Calibrated Image Alternate Downlink',
-           True): ['volumes/NHxxLO_xxxx/NHLALO_2001/data/20060224_000310/lor_0003103486_0x631_sci.fit',
-                   'volumes/NHxxLO_xxxx/NHLALO_2001/data/20060224_000310/lor_0003103486_0x631_sci.lbl',
-                   'volumes/NHxxLO_xxxx_v3/NHLALO_2001/data/20060224_000310/lor_0003103486_0x631_sci_1.fit',
-                   'volumes/NHxxLO_xxxx_v3/NHLALO_2001/data/20060224_000310/lor_0003103486_0x631_sci_1.lbl',
-                   'volumes/NHxxLO_xxxx_v2/NHLALO_2001/data/20060224_000310/lor_0003103486_0x631_sci_1.fit',
-                   'volumes/NHxxLO_xxxx_v2/NHLALO_2001/data/20060224_000310/lor_0003103486_0x631_sci_1.lbl',
-                   'volumes/NHxxLO_xxxx_v1/NHLALO_2001/data/20060224_000310/lor_0003103486_0x631_sci_1.fit',
-                   'volumes/NHxxLO_xxxx_v1/NHLALO_2001/data/20060224_000310/lor_0003103486_0x631_sci_1.lbl'],
-          ('New Horizons LORRI',
-           300,
-           'nh_lorri_documentation',
-           'Documentation',
-           False): ['documents/NHxxLO_xxxx/Weaver-etal-2008-SSR.pdf',
-                    'documents/NHxxLO_xxxx/NH-Boresight-FOVs.png',
-                    'documents/NHxxLO_xxxx/Morgan-etal-2005-SPIE.pdf',
-                    'documents/NHxxLO_xxxx/LORRI-responsivity-plot.png',
-                    'documents/NHxxLO_xxxx/LORRI-True-Exposure-Times.pdf',
-                    'documents/NHxxLO_xxxx/FITS-Standard-4.0.pdf',
-                    'documents/NHxxLO_xxxx/Cheng-etal-2007-SSR.pdf']}
-        )
+         'NHxxLO_xxxx/opus_products/lor_0003103486_0x630_eng.txt')
     ]
 )
-def test_opus_products(input_path, expected):
-    opus_products_test(input_path, expected)
+def test_opus_products(request, input_path, expected):
+    update = request.config.option.update
+    opus_products_test(pds3file.Pds3File, input_path, TEST_RESULTS_DIR+expected, update)
+
+@pytest.mark.parametrize(
+    'input_path,category,expected',
+    [
+        ('volumes/NHxxLO_xxxx/NHLALO_1001/data/20060224_000310/lor_0003103486_0x630_eng.fit',
+         'volumes',
+         'NHxxLO_xxxx/associated_abspaths/volumes_lor_0003103486_0x630_eng.txt')
+    ]
+)
+def test_associated_abspaths(request, input_path, category, expected):
+    update = request.config.option.update
+    associated_abspaths_test(pds3file.Pds3File, input_path, category,
+                             TEST_RESULTS_DIR+expected, update)
 
 def test_opus_id_to_primary_logical_path():
     TESTS = [
