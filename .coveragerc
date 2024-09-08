@@ -1,7 +1,5 @@
 [run]
 branch = True
-omit =
-    **/tests/*.py
 
 [html]
 Title = Coverage Report for PdsFile
