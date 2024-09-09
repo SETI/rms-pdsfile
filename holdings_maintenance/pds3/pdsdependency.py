@@ -196,7 +196,7 @@ class PdsDependency(object):
         """Perform one test and log the results."""
 
         dirpath = os.path.abspath(dirpath)
-        pdsdir = pdsfile.PdsFile.from_abspath(dirpath)
+        pdsdir = pdsfile.Pds3File.from_abspath(dirpath)
         lskip_ = len(pdsdir.root_)
 
         logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
@@ -213,16 +213,15 @@ class PdsDependency(object):
         confirmed = set()
         try:
             pattern = pdsdir.root_ + self.glob_pattern
-            pattern = pattern.replace('$', pdsdir.volset_[:-1], 1)
+            pattern = pattern.replace('$', pdsdir.bundleset_[:-1], 1)
             if '$' in pattern:
                 if self.func is None:
-                    volname = pdsdir.volname
+                    volname = pdsdir.bundlename
                 else:
-                    volname = self.func(pdsdir.volname, *self.args)
+                    volname = self.func(pdsdir.bundlename, *self.args)
                 pattern = pattern.replace('$', volname, 1)
 
             abspaths = glob.glob(pattern)
-
             if len(abspaths) == 0:
                 logger.info('No files found')
 
@@ -312,7 +311,7 @@ class PdsDependency(object):
     def test_suite(key, dirpath, check_newer=True, limit=200, logger=None):
 
         dirpath = os.path.abspath(dirpath)
-        pdsdir = pdsfile.PdsFile.from_abspath(dirpath)
+        pdsdir = pdsfile.Pds3File.from_abspath(dirpath)
 
         logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
         logger.replace_root(pdsdir.root_)
@@ -335,7 +334,7 @@ class PdsDependency(object):
 # General test suite
 ################################################################################
 
-for thing in pdsfile.VOLTYPES:
+for thing in pdsfile.PdsFile.VOLTYPES:
 
     if thing == 'volumes':
         thing_ = ''
@@ -954,7 +953,7 @@ _ = PdsDependency(
      r'previews/\1/\2/\4_preview_small.png',
      r'previews/\1/\2/\4_preview_med.png',
      r'previews/\1/\2/\4_preview_full.png'],
-    r'<PREVIEW> [d]volumes/\1/\2\3/\4\5.* -> [d]previews/\1/\2/\4xxx\6_preview_*.png',
+    r'<PREVIEW> [d]volumes/\1/\2\3/\4\5.* -> [d]previews/\1/\2/\4_preview_*.png',
     suite='vg_28xx', newer=True, exceptions=[r'.*/[PUR].*[01]\d\.LBL'])
 
 ################################################################################
@@ -1011,7 +1010,7 @@ def main():
     # Validate the paths
     for path in args.volume:
         path = os.path.abspath(path)
-        pdsdir = pdsfile.PdsFile.from_abspath(path)
+        pdsdir = pdsfile.Pds3File.from_abspath(path)
         if not pdsdir.is_volume_dir and not pdsdir.is_volset_dir:
           print('pdsdependency error: '
                 'not a volume or volume set directory: ' + pdsdir.logical_path)
@@ -1024,7 +1023,7 @@ def main():
 
     # Initialize the logger
     logger = pdslogger.PdsLogger(LOGNAME)
-    pdsfile.PdsFile.set_log_root(args.log)
+    pdsfile.Pds3File.set_log_root(args.log)
 
     if not args.quiet:
         logger.add_handler(pdslogger.stdout_handler)
@@ -1046,7 +1045,7 @@ def main():
             sys.exit(1)
 
         path = os.path.abspath(path)
-        pdsf = pdsfile.PdsFile.from_abspath(path)
+        pdsf = pdsfile.Pds3File.from_abspath(path)
 
         if pdsf.checksums_:
             print('No pdsdependency for checksum files: ' + path)
@@ -1067,7 +1066,7 @@ def main():
     try:
         for path in paths:
 
-            pdsdir = pdsfile.PdsFile.from_abspath(path)
+            pdsdir = pdsfile.Pds3File.from_abspath(path)
 
             # Save logs in up to two places
             logfiles = set([pdsdir.log_path_for_volume('_dependency',
