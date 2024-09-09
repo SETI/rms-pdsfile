@@ -6,7 +6,6 @@ on:
   workflow_call:
   push:
     branches: [ main ]
-    paths: [ "pdsfile/**" ]
   schedule:
     - cron: "00 08 * * *"   # 12am PST, 1am PDT
 
