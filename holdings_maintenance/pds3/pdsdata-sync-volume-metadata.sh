@@ -3,19 +3,21 @@
 # Synchronize one volume set from one pdsdata drive to another.
 #
 # Usage:
-#   pdsdata-sync-volume <old> <new> <volset> <volume> [--dry-run]
+#   pdsdata-sync-volume-metadata <old> <new> <volset> <volume> [--dry-run]
 #
-# Syncs the specified volume <volset/volume> from the drive
+# Syncs the specified metadata for the volume <volset/volume> from the drive
 # /Volumes/pdsdata-<old> to the drive /Volumes/pdsdata-<new>. Append
 # "--dry-run" for a test dry run.
+# This only syncs the metadata and associated directories and should be used
+# when syncing versioned metadata.
 #
 # Example:
-#   pdsdata-sync-volume admin raid45 GO_0xxx GO_0023
-# copies all files relevant to the volume "GO_0xxx/GO_0023" from the drive
-# pdsdata-admin to the drive pdsdata-raid45.
+#   pdsdata-sync-volume-metadata admin raid45 GO_0xxx GO_0023
+# copies all files relevant to the metadata for volume "GO_0xxx/GO_0023" from
+# the drive pdsdata-admin to the drive pdsdata-raid45.
 ################################################################################
 
-for voltype in metadata previews calibrated diagrams
+for voltype in metadata
 do
   if [ -d /Volumes/pdsdata-$1/holdings/$voltype/$3/$4 ]; then
     echo "\n\n**** holdings/archives-$voltype/$3/$4*.tar.gz ****"
@@ -72,20 +74,6 @@ do
 
   fi
 done
-
-if [ -f /Volumes/pdsdata-$1/holdings/_volinfo/$3.txt ]; then
-  echo "\n\n**** holdings/_volinfo/$3.txt ****"
-  rsync -av --include="$3.txt" --exclude="*" \
-        /Volumes/pdsdata-$1/holdings/_volinfo/ \
-        /Volumes/pdsdata-$2/holdings/_volinfo/ $5
-fi
-
-if [ -d /Volumes/pdsdata-$1/holdings/documents/$3 ]; then
-  echo "\n\n**** holdings/documents/$3 ****"
-  rsync -av --delete --exclude=".DS_Store" \
-        /Volumes/pdsdata-$1/holdings/documents/$3/ \
-        /Volumes/pdsdata-$2/holdings/documents/$3/ $5
-fi
 
 ################################################################################
 
