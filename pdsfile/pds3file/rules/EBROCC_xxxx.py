@@ -239,26 +239,6 @@ pds3file.Pds3File.SUBCLASSES['EBROCC_xxxx'] = EBROCC_xxxx
 import pytest
 from .pytest_support import *
 
-def test_opus_products_count():
-
-    TESTS = [
-        (2, 'volumes.*/DATA/.*'),
-        (6, 'volumes.*/BROWSE/.*'),
-        (2, 'volumes.*/GEOMETRY/.*'),
-        (4, 'volumes.*/SORCDATA/.*'),
-        (4, 'previews.*/DATA/.*'),
-        (8, 'previews/.*/BROWSE/.*'),
-        (4, 'metadata.*index.*'),
-        (2, 'metadata.*supplemental.*'),
-    ]
-
-    PATH = 'volumes/EBROCC_xxxx/EBROCC_0001/DATA/ESO1M/ES1_EPD.LBL'
-    abspaths = translate_all(opus_products, PATH)
-    trimmed = [p.rpartition('holdings/')[-1] for p in abspaths]
-    for (count, pattern) in TESTS:
-        subset = [p for p in trimmed if re.fullmatch(pattern, p)]
-        assert len(subset) == count, f'Miscount: {pattern} {len(subset)} {trimmed}'
-
 @pytest.mark.parametrize(
 # Allow duplicated '/volumes/EBROCC_xxxx/EBROCC_0001/BROWSE/ESO1M/ES1_EGB.LBL'
 # and '/volumes/EBROCC_xxxx/EBROCC_0001/BROWSE/ESO1M/ES1_EPB.LBL' here. OPUS
@@ -266,87 +246,25 @@ def test_opus_products_count():
     'input_path,expected',
     [
         ('volumes/EBROCC_xxxx/EBROCC_0001/DATA/ESO1M/ES1_EPD.TAB',
-        {('Earth-based Occultations',
-          0,
-          'ebro_occ_profile',
-          'Occultation Profile',
-          True): ['volumes/EBROCC_xxxx/EBROCC_0001/DATA/ESO1M/ES1_EPD.TAB',
-                  'volumes/EBROCC_xxxx/EBROCC_0001/DATA/ESO1M/ES1_EPD.LBL'],
-         ('Earth-based Occultations',
-          30,
-          'ebro_occ_diagram',
-          'Geometry Diagram',
-          False): ['volumes/EBROCC_xxxx/EBROCC_0001/BROWSE/ESO1M/ES1_EGB.PS',
-                   'volumes/EBROCC_xxxx/EBROCC_0001/BROWSE/ESO1M/ES1_EGB.PDF',
-                   'volumes/EBROCC_xxxx/EBROCC_0001/BROWSE/ESO1M/ES1_EGB.LBL',
-                   'volumes/EBROCC_xxxx/EBROCC_0001/BROWSE/ESO1M/ES1_EGB.LBL'],
-         ('Earth-based Occultations',
-          20,
-          'ebro_occ_preview',
-          'Preview Plot',
-          True): ['volumes/EBROCC_xxxx/EBROCC_0001/BROWSE/ESO1M/ES1_EPB.PS',
-                  'volumes/EBROCC_xxxx/EBROCC_0001/BROWSE/ESO1M/ES1_EPB.PDF',
-                  'volumes/EBROCC_xxxx/EBROCC_0001/BROWSE/ESO1M/ES1_EPB.LBL',
-                  'volumes/EBROCC_xxxx/EBROCC_0001/BROWSE/ESO1M/ES1_EPB.LBL'],
-         ('Earth-based Occultations',
-          10,
-          'ebro_occ_geom',
-          'Geometry Table',
-          True): ['volumes/EBROCC_xxxx/EBROCC_0001/GEOMETRY/ESO1M/ES1_EGD.TAB',
-                  'volumes/EBROCC_xxxx/EBROCC_0001/GEOMETRY/ESO1M/ES1_EGD.LBL'],
-         ('Earth-based Occultations',
-          40,
-          'ebro_occ_source',
-          'Source Data',
-          False): ['volumes/EBROCC_xxxx/EBROCC_0001/SORCDATA/ESO1M/ES1_EGRESS_GEOMETRY.DAT',
-                   'volumes/EBROCC_xxxx/EBROCC_0001/SORCDATA/ESO1M/ES1_EGRESS_GEOMETRY.LBL',
-                   'volumes/EBROCC_xxxx/EBROCC_0001/SORCDATA/ESO1M/ES1_EGRESS.OUT',
-                   'volumes/EBROCC_xxxx/EBROCC_0001/SORCDATA/ESO1M/ES1_EGRESS.LBL'],
-         ('browse',
-          40,
-          'browse_full',
-          'Browse Image (full)',
-          True): ['previews/EBROCC_xxxx/EBROCC_0001/DATA/ESO1M/ES1_EPD_full.jpg',
-                  'previews/EBROCC_xxxx/EBROCC_0001/BROWSE/ESO1M/ES1_EPB_full.jpg',
-                  'previews/EBROCC_xxxx/EBROCC_0001/BROWSE/ESO1M/ES1_EGB_full.jpg'],
-         ('browse',
-          30,
-          'browse_medium',
-          'Browse Image (medium)',
-          False): ['previews/EBROCC_xxxx/EBROCC_0001/DATA/ESO1M/ES1_EPD_med.jpg',
-                   'previews/EBROCC_xxxx/EBROCC_0001/BROWSE/ESO1M/ES1_EPB_med.jpg',
-                   'previews/EBROCC_xxxx/EBROCC_0001/BROWSE/ESO1M/ES1_EGB_med.jpg'],
-         ('browse',
-          20,
-          'browse_small',
-          'Browse Image (small)',
-          False): ['previews/EBROCC_xxxx/EBROCC_0001/DATA/ESO1M/ES1_EPD_small.jpg',
-                   'previews/EBROCC_xxxx/EBROCC_0001/BROWSE/ESO1M/ES1_EPB_small.jpg',
-                   'previews/EBROCC_xxxx/EBROCC_0001/BROWSE/ESO1M/ES1_EGB_small.jpg'],
-         ('browse',
-          10,
-          'browse_thumb',
-          'Browse Image (thumbnail)',
-          False): ['previews/EBROCC_xxxx/EBROCC_0001/DATA/ESO1M/ES1_EPD_thumb.jpg',
-                   'previews/EBROCC_xxxx/EBROCC_0001/BROWSE/ESO1M/ES1_EPB_thumb.jpg',
-                   'previews/EBROCC_xxxx/EBROCC_0001/BROWSE/ESO1M/ES1_EGB_thumb.jpg'],
-         ('metadata',
-          5,
-          'rms_index',
-          'RMS Node Augmented Index',
-          False): ['metadata/EBROCC_xxxx/EBROCC_0001/EBROCC_0001_index.tab',
-                   'metadata/EBROCC_xxxx/EBROCC_0001/EBROCC_0001_index.lbl'],
-         ('metadata',
-          8,
-          'supplemental_index',
-          'Supplemental Index',
-          False): ['metadata/EBROCC_xxxx/EBROCC_0001/EBROCC_0001_supplemental_index.tab',
-                   'metadata/EBROCC_xxxx/EBROCC_0001/EBROCC_0001_supplemental_index.lbl']}
-        )
+         'EBROCC_xxxx/opus_products/ES1_EPD.txt')
     ]
 )
-def test_opus_products(input_path, expected):
-    opus_products_test(input_path, expected)
+def test_opus_products(request, input_path, expected):
+    update = request.config.option.update
+    opus_products_test(pds3file.Pds3File, input_path, TEST_RESULTS_DIR+expected, update)
+
+@pytest.mark.parametrize(
+    'input_path,category,expected',
+    [
+        ('volumes/EBROCC_xxxx/EBROCC_0001/DATA/ESO1M/ES1_EPD.TAB',
+         'volumes',
+         'EBROCC_xxxx/associated_abspaths/ES1_EPD.txt')
+    ]
+)
+def test_associated_abspaths(request, input_path, category, expected):
+    update = request.config.option.update
+    associated_abspaths_test(pds3file.Pds3File, input_path, category,
+                             TEST_RESULTS_DIR+expected, update)
 
 def test_opus_id_to_primary_logical_path():
     TESTS = [

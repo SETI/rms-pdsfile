@@ -1280,7 +1280,9 @@ class TestPds3FileBlackBox:
             ('volumes/COUVIS_0xxx_v1/COUVIS_0009/DATA/D2004_274/EUV2004_274_01_39.lbl',
              PDS3_HOLDINGS_DIR + '/checksums-volumes/COUVIS_0xxx_v1/COUVIS_0009_md5.txt'),
             ('metadata/VGISS_5xxx/VGISS_5101/VGISS_5101_supplemental_index.tab',
-             PDS3_HOLDINGS_DIR + '/checksums-metadata/VGISS_5xxx/VGISS_5101_metadata_md5.txt')
+             PDS3_HOLDINGS_DIR + '/checksums-metadata/VGISS_5xxx/VGISS_5101_metadata_md5.txt'),
+            ('archives-volumes/COCIRS_0xxx',
+             PDS3_HOLDINGS_DIR + '/checksums-archives-volumes/COCIRS_0xxx_md5.txt')
         ]
     )
     def test_checksum_path_and_lskip(self, input_path, expected):

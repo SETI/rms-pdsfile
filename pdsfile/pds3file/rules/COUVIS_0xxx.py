@@ -278,13 +278,19 @@ class COUVIS_0xxx(pds3file.Pds3File):
         # Confirm the file really exists, so we need to use os.path.exists, not
         # PdsFile.os_path_exists.
         abspath = self.root_ + versions_path
-        if not os.path.exists(abspath):
+
+        # This block will never hit unless we have missing version files. Since all
+        # version files exist in Dropbox, there is no way to test this.
+        if not os.path.exists(abspath): # pragma: no cover
             raise FileNotFoundError('Missing DATA_SET_ID index for %s: %s' %
                                     (self.logical_path, abspath))
 
         versions_table = pds3file.Pds3File.from_abspath(abspath)
         row = versions_table.child_of_index(key, flag='')
-        if not row.exists:
+
+        # This block will never hit unless we modify the version files or have a wrong
+        # version file.
+        if not row.exists: # pragma: no cover
             raise ValueError('DATA_SET_ID for %s not found in index: %s' %
                              (self.logical_path, versions_table))
 
@@ -311,142 +317,34 @@ from .pytest_support import *
     'input_path,expected',
     [
         ('volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.DAT',
-         {('Cassini UVIS',
-           10,
-           'couvis_raw',
-           'Raw Data',
-           True): ['volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.DAT',
-                   'volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.LBL'],
-          ('Cassini UVIS',
-           20,
-           'couvis_calib_corr',
-           'Calibration Data',
-           True): ['volumes/COUVIS_0xxx/COUVIS_0001/CALIB/VERSION_3/D1999_007/FUV1999_007_16_57_CAL_3.DAT',
-                   'volumes/COUVIS_0xxx/COUVIS_0001/CALIB/VERSION_3/D1999_007/FUV1999_007_16_57_CAL_3.LBL'],
-          ('browse',
-           10,
-           'browse_thumb',
-           'Browse Image (thumbnail)',
-           False): ['previews/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57_thumb.png'],
-          ('browse',
-           20,
-           'browse_small',
-           'Browse Image (small)',
-           False): ['previews/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57_small.png'],
-          ('browse',
-           30,
-           'browse_medium',
-           'Browse Image (medium)',
-           False): ['previews/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57_med.png'],
-          ('browse',
-           40,
-           'browse_full',
-           'Browse Image (full)',
-           True): ['previews/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57_full.png'],
-          ('metadata',
-           5,
-           'rms_index',
-           'RMS Node Augmented Index',
-           False): ['metadata/COUVIS_0xxx/COUVIS_0001/COUVIS_0001_index.tab',
-                    'metadata/COUVIS_0xxx/COUVIS_0001/COUVIS_0001_index.lbl'],
-          ('metadata',
-           8,
-           'supplemental_index',
-           'Supplemental Index',
-           False): ['metadata/COUVIS_0xxx/COUVIS_0001/COUVIS_0001_supplemental_index.tab',
-                    'metadata/COUVIS_0xxx/COUVIS_0001/COUVIS_0001_supplemental_index.lbl'],
-          ('Cassini UVIS',
-           30,
-           'couvis_documentation',
-           'Documentation',
-           False): ['documents/COUVIS_0xxx/UVIS-Users-Guide.pdf',
-                    'documents/COUVIS_0xxx/UVIS-Users-Guide.docx',
-                    'documents/COUVIS_0xxx/UVIS-Preview-Interpretation-Guide.txt',
-                    'documents/COUVIS_0xxx/UVIS-Archive-SIS.txt',
-                    'documents/COUVIS_0xxx/UVIS-Archive-SIS.pdf',
-                    'documents/COUVIS_0xxx/Cassini-UVIS-Final-Report.pdf']}
-                )
+         'COUVIS_0xxx/opus_products/FUV1999_007_16_57.txt')
     ]
 )
-def test_opus_products(input_path, expected):
-    opus_products_test(input_path, expected)
-
-@pytest.mark.parametrize(
-    'input_path,expected',
-    [
-        ('volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.DAT',
-         [
-            'volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.DAT',
-            'volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.LBL',
-            'volumes/COUVIS_0xxx/COUVIS_0001/CALIB/VERSION_3/D1999_007/FUV1999_007_16_57_CAL_3.DAT',
-            'volumes/COUVIS_0xxx/COUVIS_0001/CALIB/VERSION_3/D1999_007/FUV1999_007_16_57_CAL_3.LBL'
-         ]),
-        # Check if the last "/" is ignored
-        ('volumes/COUVIS_0xxx/COUVIS_0001/DATA/',
-         [
-            'volumes/COUVIS_0xxx/COUVIS_0001/DATA',
-            'volumes/COUVIS_0xxx/COUVIS_0001/CALIB/VERSION_3'
-         ]),
-    ]
-)
-def test_associated_logical_paths(input_path, expected):
-    target_pdsfile = instantiate_target_pdsfile(input_path)
-    target_associated_logical_paths = target_pdsfile.associated_logical_paths(
-        'volumes')
-    for path in expected:
-        assert path in target_associated_logical_paths
+def test_opus_products(request, input_path, expected):
+    update = request.config.option.update
+    opus_products_test(pds3file.Pds3File, input_path, TEST_RESULTS_DIR+expected, update)
 
 @pytest.mark.parametrize(
     'input_path,category,expected',
     [
-        ('volumes/HSTUx_xxxx/HSTU0_5167/DATA/VISIT_04/U2NO0404T.LBL',
-         'metadata',
-         # should we have the "/" at the end?
-         ['metadata/HSTUx_xxxx/HSTU0_5167/HSTU0_5167_index.tab/U2NO0404T',
-          'metadata/HSTUx_xxxx/HSTU0_5167/HSTU0_5167_hstfiles.tab/U2NO0404T',
-          'metadata/HSTUx_xxxx/HSTU0_5167/',
-          'metadata/HSTUx_xxxx/HSTU0_5167',
-         ]),
-        ('volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.DAT',
-         'archives-volumes',
-         ['archives-volumes/COUVIS_0xxx/COUVIS_0001.tar.gz']),
-        ('volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.DAT',
-         'checksums-volumes',
-         ['checksums-volumes/COUVIS_0xxx/COUVIS_0001_md5.txt']),
         ('volumes/COUVIS_0xxx/COUVIS_0058/DATA/D2017_001/EUV2017_001_03_49.LBL',
          'volumes',
-         [
-            'volumes/COUVIS_0xxx/COUVIS_0058/CALIB/VERSION_5/D2017_001/EUV2017_001_03_49_CAL_5.DAT',
-            'volumes/COUVIS_0xxx/COUVIS_0058/DATA/D2017_001/EUV2017_001_03_49.LBL',
-            'volumes/COUVIS_0xxx/COUVIS_0058/DATA/D2017_001/EUV2017_001_03_49.DAT',
-            'volumes/COUVIS_0xxx/COUVIS_0058/CALIB/VERSION_5/D2017_001/EUV2017_001_03_49_CAL_5.LBL',
-            'volumes/COUVIS_0xxx/COUVIS_0058/CALIB/VERSION_4/D2017_001/EUV2017_001_03_49_CAL_4.LBL',
-            'volumes/COUVIS_0xxx/COUVIS_0058/CALIB/VERSION_4/D2017_001/EUV2017_001_03_49_CAL_4.DAT'
-         ]),
+         'COUVIS_0xxx/associated_abspaths/volumes_EUV2017_001_03_49.txt'),
         ('volumes/COUVIS_0xxx/COUVIS_0058/DATA',
          'volumes',
-         [
-            'volumes/COUVIS_0xxx/COUVIS_0058/DATA',
-            'volumes/COUVIS_0xxx/COUVIS_0058/CALIB/VERSION_5',
-            'volumes/COUVIS_0xxx/COUVIS_0058/CALIB/VERSION_4',
-         ]),
+         'COUVIS_0xxx/associated_abspaths/volumes_DATA.txt'),
         ('volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.DAT',
          'archives-volumes',
-         'archives-volumes/COUVIS_0xxx/COUVIS_0001.tar.gz'),
+         'COUVIS_0xxx/associated_abspaths/archives_volumes_FUV1999_007_16_57.txt'),
         ('volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.DAT',
          'checksums-volumes',
-         'checksums-volumes/COUVIS_0xxx/COUVIS_0001_md5.txt'),
+         'COUVIS_0xxx/associated_abspaths/checksums_volumes_FUV1999_007_16_57.txt'),
     ]
 )
-def test_associated_abspaths(input_path, category, expected):
-    target_pdsfile = instantiate_target_pdsfile(input_path)
-    res = target_pdsfile.associated_abspaths(
-        category=category)
-    result_paths = []
-    result_paths += pds3file.Pds3File.logicals_for_abspaths(res)
-    assert len(result_paths) != 0
-    for path in result_paths:
-        assert path in expected
+def test_associated_abspaths(request, input_path, category, expected):
+    update = request.config.option.update
+    associated_abspaths_test(pds3file.Pds3File, input_path, category,
+                             TEST_RESULTS_DIR+expected, update)
 
 def test_opus_id_to_primary_logical_path():
     TESTS = [

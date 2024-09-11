@@ -372,122 +372,29 @@ pds3file.Pds3File.SUBCLASSES['COVIMS_0xxx'] = COVIMS_0xxx
 import pytest
 from .pytest_support import *
 
-def test_opus_products_count():
-
-    TESTS = [
-        (2, 'volumes/.*/data/.*'),
-        (3, 'volumes/.*/extras/.*'),
-        (4, 'previews/.*/data/.*'),
-        (4, 'metadata/.*index.*'),
-        (6, 'metadata/.*summary.*'),
-        (2, 'metadata/.*inventory.*'),
-        (2, 'metadata/.*supplemental.*'),
-    ]
-
-    PATH = 'volumes/COVIMS_0xxx/COVIMS_0006/data/2005015T175855_2005016T184233/v1484504505_4.qub'
-    abspaths = translate_all(opus_products, PATH)
-    trimmed = [p.rpartition('holdings/')[-1] for p in abspaths]
-    for (count, pattern) in TESTS:
-        subset = [p for p in trimmed if re.fullmatch(pattern, p)]
-        assert len(subset) == count, f'Miscount: {pattern} {len(subset)} {trimmed}'
-
 @pytest.mark.parametrize(
     'input_path,expected',
     [
         ('volumes/COVIMS_0xxx/COVIMS_0006/data/2005088T102825_2005089T113931/v1490784910_3_001.qub',
-        {('Cassini VIMS',
-          0,
-          'covims_raw',
-          'Raw Cube',
-          True): ['volumes/COVIMS_0xxx/COVIMS_0006/data/2005088T102825_2005089T113931/v1490784910_3_001.qub',
-                  'volumes/COVIMS_0xxx/COVIMS_0006/data/2005088T102825_2005089T113931/v1490784910_3_001.lbl',
-                  'volumes/COVIMS_0xxx/COVIMS_0006/label/band_bin_center.fmt',
-                  'volumes/COVIMS_0xxx/COVIMS_0006/label/core_description.fmt',
-                  'volumes/COVIMS_0xxx/COVIMS_0006/label/suffix_description.fmt'],
-         ('Cassini VIMS',
-          110,
-          'covims_thumb',
-          'Extra Preview (thumbnail)',
-          False): ['volumes/COVIMS_0xxx/COVIMS_0006/extras/thumbnail/2005088T102825_2005089T113931/v1490784910_3_001.qub.jpeg_small'],
-         ('Cassini VIMS',
-          120,
-          'covims_medium',
-          'Extra Preview (medium)',
-          False): ['volumes/COVIMS_0xxx/COVIMS_0006/extras/browse/2005088T102825_2005089T113931/v1490784910_3_001.qub.jpeg'],
-         ('Cassini VIMS',
-          130,
-          'covims_full',
-          'Extra Preview (full)',
-          False): ['volumes/COVIMS_0xxx/COVIMS_0006/extras/tiff/2005088T102825_2005089T113931/v1490784910_3_001.qub.tiff'],
-         ('browse',
-          40,
-          'browse_full',
-          'Browse Image (full)',
-          True): ['previews/COVIMS_0xxx/COVIMS_0006/data/2005088T102825_2005089T113931/v1490784910_3_001_full.png'],
-         ('browse',
-          30,
-          'browse_medium',
-          'Browse Image (medium)',
-          False): ['previews/COVIMS_0xxx/COVIMS_0006/data/2005088T102825_2005089T113931/v1490784910_3_001_med.png'],
-         ('browse',
-          20,
-          'browse_small',
-          'Browse Image (small)',
-          False): ['previews/COVIMS_0xxx/COVIMS_0006/data/2005088T102825_2005089T113931/v1490784910_3_001_small.png'],
-         ('browse',
-          10,
-          'browse_thumb',
-          'Browse Image (thumbnail)',
-          False): ['previews/COVIMS_0xxx/COVIMS_0006/data/2005088T102825_2005089T113931/v1490784910_3_001_thumb.png'],
-         ('metadata',
-          30,
-          'moon_geometry',
-          'Moon Geometry Index',
-          False): ['metadata/COVIMS_0xxx/COVIMS_0006/COVIMS_0006_moon_summary.tab',
-           'metadata/COVIMS_0xxx/COVIMS_0006/COVIMS_0006_moon_summary.lbl'],
-         ('metadata',
-          40,
-          'ring_geometry',
-          'Ring Geometry Index',
-          False): ['metadata/COVIMS_0xxx/COVIMS_0006/COVIMS_0006_ring_summary.tab',
-           'metadata/COVIMS_0xxx/COVIMS_0006/COVIMS_0006_ring_summary.lbl'],
-         ('metadata',
-          20,
-          'planet_geometry',
-          'Planet Geometry Index',
-          False): ['metadata/COVIMS_0xxx/COVIMS_0006/COVIMS_0006_saturn_summary.tab',
-           'metadata/COVIMS_0xxx/COVIMS_0006/COVIMS_0006_saturn_summary.lbl'],
-         ('metadata',
-          10,
-          'inventory',
-          'Target Body Inventory',
-          False): ['metadata/COVIMS_0xxx/COVIMS_0006/COVIMS_0006_inventory.csv',
-           'metadata/COVIMS_0xxx/COVIMS_0006/COVIMS_0006_inventory.lbl'],
-         ('metadata',
-          5,
-          'rms_index',
-          'RMS Node Augmented Index',
-          False): ['metadata/COVIMS_0xxx/COVIMS_0006/COVIMS_0006_index.tab',
-           'metadata/COVIMS_0xxx/COVIMS_0006/COVIMS_0006_index.lbl'],
-         ('metadata',
-          8,
-          'supplemental_index',
-          'Supplemental Index',
-          False): ['metadata/COVIMS_0xxx/COVIMS_0006/COVIMS_0006_supplemental_index.tab',
-           'metadata/COVIMS_0xxx/COVIMS_0006/COVIMS_0006_supplemental_index.lbl'],
-         ('Cassini VIMS',
-          140,
-          'covims_documentation',
-          'Documentation',
-          False): ['documents/COVIMS_0xxx/VIMS-Preview-Interpretation-Guide.pdf',
-                   'documents/COVIMS_0xxx/Data-Product-SIS.txt',
-                   'documents/COVIMS_0xxx/Cassini-VIMS-Final-Report.pdf',
-                   'documents/COVIMS_0xxx/Archive-SIS.txt']}
-        ),
+         'COVIMS_0xxx/opus_products/v1490784910_3_001.txt')
     ]
 )
-def test_opus_products(input_path, expected):
-    opus_products_test(input_path, expected)
+def test_opus_products(request, input_path, expected):
+    update = request.config.option.update
+    opus_products_test(pds3file.Pds3File, input_path, TEST_RESULTS_DIR+expected, update)
+
+@pytest.mark.parametrize(
+    'input_path,category,expected',
+    [
+        ('volumes/COVIMS_0xxx/COVIMS_0006/data/2005088T102825_2005089T113931/v1490784910_3_001.qub',
+         'volumes',
+         'COVIMS_0xxx/associated_abspaths/volumes_v1490784910_3_001.txt')
+    ]
+)
+def test_associated_abspaths(request, input_path, category, expected):
+    update = request.config.option.update
+    associated_abspaths_test(pds3file.Pds3File, input_path, category,
+                             TEST_RESULTS_DIR+expected, update)
 
 def test_opus_id_to_primary_logical_path():
     TESTS = [

@@ -621,6 +621,65 @@ class PdsFile(object):
         return this
 
     ######################################################################################
+    # Set parameters for both Pds3File and Pds4File
+    ######################################################################################
+    @classmethod
+    def use_shelves_only(cls, status=True):
+        """Set SHELVES_ONLY for both Pds3File and Pds4File
+
+        Keyword arguments:
+            cls    -- the class with its attribute being updated
+            status -- value for SHELVES_ONLY (default True)
+        """
+
+        subclasses = cls.__subclasses__()
+        for child_class in subclasses:
+            child_class.SHELVES_ONLY = status
+
+    @classmethod
+    def require_shelves(cls, status=True):
+        """Set SHELVES_REQUIRED for both Pds3File and Pds4File
+
+        Keyword arguments:
+            cls    -- the class with its attribute being updated
+            status -- value for SHELVES_REQUIRED (default True)
+        """
+
+        subclasses = cls.__subclasses__()
+        for child_class in subclasses:
+            child_class.SHELVES_REQUIRED = status
+
+
+    @classmethod
+    def set_logger(cls, logger=None):
+        """Set the PdsLogger for both Pds3File and Pds4File.
+
+        Keyword arguments:
+            logger -- the pdslogger (default None)
+            cls    -- the class with its attribute being updated
+        """
+
+        if not logger:
+            logger = pdslogger.NullLogger()
+
+        subclasses = cls.__subclasses__()
+        for child_class in subclasses:
+             child_class.LOGGER = logger
+
+
+    @classmethod
+    def set_easylogger(cls):
+        """Log all messages directly to stdout.
+
+        Keyword arguments:
+            cls -- the class calling the other methods inside the function
+        """
+
+        subclasses = cls.__subclasses__()
+        for child_class in subclasses:
+             child_class.set_easylogger()
+
+    ######################################################################################
     # Preload management
     ######################################################################################
     @classmethod
@@ -800,7 +859,7 @@ class PdsFile(object):
 
     @classmethod
     def preload(cls, holdings_list, port=0, clear=False, force_reload=False,
-                icon_color='blue'):
+                icon_url=None, icon_color='blue'):
         """Cache the top-level directories, starting from the given holdings directories.
 
         Keyword arguments:
@@ -810,8 +869,10 @@ class PdsFile(object):
             clear         -- True to clear the cache before preloading
             force_reload  -- Re-load the cache regardless of whether the cache appears to
                              contain the needed holdings
-            icon_color    -- color of the icons to load from each holdings directory (
-                             default 'blue')
+            icon_url      -- URL root to use for loading icons; defaults to
+                             "/holdings/_icons" or "/holdings<n>/_icons" as needed
+            icon_color    -- color of the icons to load from each holdings directory
+                             (default 'blue')
         """
 
         # Convert holdings to a list of absolute paths
@@ -1011,8 +1072,11 @@ class PdsFile(object):
                 # Load the icons
                 icon_path = _clean_join(holdings, '_icons')
                 if os.path.exists(icon_path):
-                    icon_url = '/holdings' + (str(h) if h > 0 else '') + '/_icons'
-                    pdsviewable.load_icons(icon_path, icon_url, icon_color, cls.LOGGER)
+                    final_icon_url = icon_url
+                    if final_icon_url is None:
+                        final_icon_url = '/holdings' + (str(h) if h > 0 else '') + '/_icons'
+                    pdsviewable.load_icons(icon_path, final_icon_url, icon_color,
+                                           cls.LOGGER)
 
         finally:
             cls.CACHE.set('$PRELOADED', cls.LOCAL_PRELOADED, lifetime=0)
@@ -3378,13 +3442,30 @@ class PdsFile(object):
 
         # Do not cache nonexistent objects
         if not self.exists: return self
+        # if not self.exists and not self.category_.startswith('checksums-archives-'): return self
 
         # Otherwise, cache if necessary
         if caching == 'default':
             caching = cls.DEFAULT_CACHING
 
-        if caching == 'all' or (caching == 'dir' and
-                                (self.isdir or self.is_index)):
+        # For category 'checksums-archives-.*', the checksum files are under
+        # 'checksums-archives-.*/file', not like regular checksum files under
+        # 'checksums-.*/bundleset/file', so to make sure '$RANKS-checksums-archives-.*'
+        # and '$VOLS-checksums-archives-.*' are properly cached, we need to make sure the
+        # following steps are run for 'checksums-archives-.*/file'.
+        #
+        # This is because for 'checksums-.*/bundleset/', self.bundleset is properly set,
+        # and it will be properly cache in _update_ranks_and_vols(). However, for
+        # 'checksums-archives-.*/, neither self.bundleset nor self.bundlename is set, the
+        # category 'checksums-archives-.*' won't be cached in _update_ranks_and_vols.
+        #
+        # Therefore, if we make sure the existing 'checksums-archives-.*/file' (file name
+        # has bundleset info) can run the following step, in _update_ranks_and_vols,
+        # self.bundleset will be properly set due to the fileanme, and
+        # 'checksums-archives-.*' category will be cached.
+        if (caching == 'all' or
+            (caching == 'dir' and (self.isdir or self.is_index)) or
+            self.category_.startswith('checksums-archives-')):
 
             # Never overwrite the top-level merged directories
             if '/' in self.logical_path:
@@ -3916,7 +3997,7 @@ class PdsFile(object):
           checksums/archives/whatever -> checksums-archives-volumes/whatever
           COISS_2001.targz -> archives-volumes/COISS_2xxx/COISS_2001.tar.gz
           COISS_2001_previews.targz ->
-                    archives-previews/COISS_2xxx/COISS_2001_previews.tar.gz
+                        archives-previews/COISS_2xxx/COISS_2001_previews.tar.gz'
           COISS_0xxx/v1 -> COISS_0xxx_v1
 
         Keyword arguments:
@@ -3932,6 +4013,8 @@ class PdsFile(object):
 
         path = str(path)    # make sure it's a string
         path = path.rstrip('/')
+        # if there is .targz, treat it as .tar.gz
+        path = path.replace('.targz', '.tar.gz')
         if path == '': path = 'volumes'     # prevents an error below
 
         # Make a quick return if possible
@@ -3950,6 +4033,14 @@ class PdsFile(object):
         # Interpret leading parts
         # this = PdsFile()
         this = cls()
+
+        # Fix versions in the path like '/v1' or '/v1.2' to '_v1' or '_v1.2'
+        version_pattern = r'.*\/(v[0-9]+\.[0-9]*|v[0-9]+)($|\/)'
+        is_version_detected = re.match(version_pattern, path)
+        if is_version_detected:
+            version = is_version_detected[1]
+            path = path.replace(f'/{version}', f'_{version}')
+
 
         # Look for checksums, archives, voltypes, and an isolated version suffix
         # among the leading items of the pseudo-path
@@ -4073,7 +4164,9 @@ class PdsFile(object):
                 this.bundlename = matchobj.group(1).upper()
 
                 # If there is a matched extension
-                if matchobj.group(2) and matchobj.group(3):
+                # if matchobj.group(2) and matchobj.group(3):
+                if matchobj.group(3):
+                    this.basename = matchobj.group(0).replace('.targz', '.tar.gz')
                     extension = (matchobj.group(2) + matchobj.group(3)).lower()
 
                     # <bundlename>...tar.gz must be an archive file
@@ -4117,17 +4210,53 @@ class PdsFile(object):
 
         # If a bundle name was found, try to find the absolute path
         if this.bundlename:
-
+            is_bundleset_available = False
             # Fill in the rank
             bundlename = this.bundlename.lower()
             if this.suffix:
                 rank = cls.version_info(this.suffix)[0]
             else:
-                rank = cls.CACHE['$RANKS-' + this.category_][bundlename][-1]
+                # For the case like 'COISS_2001.targz', if bundlename is not the key to
+                # the cache, we try to find the corresponding bundleset in the cache key.
+                try:
+                    rank = cls.CACHE['$RANKS-' + this.category_][bundlename][-1]
+                except KeyError:
+                    # Get the actual bundleset in the cache key from the prefix of the
+                    # bundlename.
+                    prefix, _, _ = bundlename.partition('_')
+                    idx = bundlename.index('_') + 1
+                    for bundleset in cls.CACHE['$RANKS-' + this.category_].keys():
+                        bundleset_prefix, _, _ = bundleset.partition('_')
+                        if len(bundleset_prefix) != len(prefix):
+                            continue
+                        prefix_li = list(prefix)
+                        for i in range(idx-1):
+                            if bundleset[i] == 'x':
+                                prefix_li[i] = 'x'
+                        bundleset_prefix = ''.join(prefix_li) + '_'
+
+                        if bundleset.startswith(bundleset_prefix):
+                            updated_bundleset_prefix = bundleset_prefix
+
+                            for i in range(idx, len(bundleset)):
+                                if bundleset[i] == 'x':
+                                    break
+                                else:
+                                    updated_bundleset_prefix = bundlename[:i+1]
+
+                            if bundleset.startswith(updated_bundleset_prefix):
+                                is_bundleset_available = True
+                                this.bundleset = bundleset
+                                rank = cls.CACHE['$RANKS-' + this.category_]\
+                                                [bundleset][-1]
 
             # Try to get the absolute path
             try:
-                this_abspath = cls.CACHE['$VOLS-' + this.category_][bundlename][rank]
+                if not is_bundleset_available:
+                    this_abspath = cls.CACHE['$VOLS-' + this.category_][bundlename][rank]
+                else:
+                    this_abspath = cls.CACHE['$VOLS-' + this.category_]\
+                                            [this.bundleset][rank]
 
             # On failure, see if an updated suffix will help
             except KeyError:
@@ -4160,6 +4289,8 @@ class PdsFile(object):
                     raise ValueError('Suffix "%s" not found: %s' %
                                      (this.suffix, path))
 
+            if this.basename and not this_abspath.endswith(this.basename):
+                this_abspath += f'/{this.basename}'
             # This is the PdsFile object down to the bundlename
             this = cls.from_abspath(this_abspath, must_exist=must_exist)
 

@@ -73,19 +73,24 @@ do
   fi
 done
 
-if [ -d /Volumes/pdsdata-$1/holdings/_volinfo/$3.txt ]; then
+if [ -f /Volumes/pdsdata-$1/holdings/_volinfo/$3.txt ]; then
   echo "\n\n**** holdings/_volinfo/$3.txt ****"
   rsync -av --include="$3.txt" --exclude="*" \
         /Volumes/pdsdata-$1/holdings/_volinfo/ \
         /Volumes/pdsdata-$2/holdings/_volinfo/ $5
 fi
 
-if [ -d /Volumes/pdsdata-$1/holdings/documents/$3.txt ]; then
+if [ -d /Volumes/pdsdata-$1/holdings/documents/$3 ]; then
   echo "\n\n**** holdings/documents/$3 ****"
   rsync -av --delete --exclude=".DS_Store" \
         /Volumes/pdsdata-$1/holdings/documents/$3/ \
         /Volumes/pdsdata-$2/holdings/documents/$3/ $5
 fi
+
+echo
+echo ">>> NOTE: If you are syncing a versioned volset, you will also need"
+echo ">>> to sync the non-versioned volset in order to copy over any"
+echo ">>> changes to the documents or _volinfo directories."
 
 ################################################################################
 

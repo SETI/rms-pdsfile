@@ -320,7 +320,7 @@ class MemcachedCache(PdsCache):
         else:
             self.mc = pylibmc.Client(['127.0.0.1:%d' % port], binary=True)
 
-        if type(lifetime).__name__ == 'function':
+        if type(lifetime).__name__ in ('function', 'method'):
             self.lifetime_func = lifetime
             self.lifetime = None
         else:
@@ -909,7 +909,7 @@ class MemcachedCache(PdsCache):
         if key in self.toobig_dict:
             del self.toobig_dict[key]
             deleted = True
- 
+
         if key in self.local_lifetime_by_key:
             del self.local_value_by_key[key]
             deleted = True
@@ -1042,5 +1042,3 @@ class MemcachedCache(PdsCache):
                                      'to internal cache', k)
                     self.toobig_dict[k] = v[0]
                     del self.permanent_values[k]
-
-
