@@ -68,5 +68,9 @@ do
   fi
 done
 
-################################################################################
+echo
+echo ">>> NOTE: This sync did not copy over any changes to the documents or"
+echo ">>> _volinfo directories. You must sync the main volset for that to"
+echo ">>> occur."
 
+################################################################################

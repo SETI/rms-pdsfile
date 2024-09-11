@@ -80,5 +80,10 @@ if [ -d /Volumes/pdsdata-$1/holdings/documents/$3 ]; then
         /Volumes/pdsdata-$2/holdings/documents/$3/ $4
 fi
 
+echo
+echo ">>> NOTE: If you are syncing a versioned volset, you will also need"
+echo ">>> to sync the non-versioned volset in order to copy over any"
+echo ">>> changes to the documents or _volinfo directories."
+
 ################################################################################
 
