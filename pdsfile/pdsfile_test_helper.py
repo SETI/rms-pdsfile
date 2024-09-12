@@ -6,10 +6,10 @@
 ##########################################################################################
 
 from .pdsfile import abspath_for_logical_path
-import pprint
 import ast
 import os
 from pathlib import Path
+import pprint
 
 def instantiate_target_pdsfile(cls, path, is_abspath=True):
     """Return the pdsfile instance of the given path
@@ -40,20 +40,47 @@ def read_or_update_golden_copy(data, path, update):
 
     path = Path(path)
     # Create the golden copy by using the current output
-    if update or not path.exists():
+    if not path.exists():
         # create the directory to store the golden copy if it doesn't exist.
         os.makedirs(os.path.dirname(path), exist_ok=True)
-
-        # write the associated_abspaths output to the file.
-        with open(path, 'w') as f:
-            pprint.pp(data, stream=f)
-        print('\nCreate the golden copy', path)
+        # write the output to the file.
+        write_data_to_file(data, path)
         return 0
+
+    # If the update param is given, compare the file first to make sure we don't write
+    # the golden copy if the output didn't change
+    if update:
+        expected_data = read_file(path)
+        if expected_data != data:
+            # write the output to the file.
+            write_data_to_file(data, path)
+        return 0
+
+    return read_file(path)
+
+def read_file(path):
+    """Return data from the read file
+
+    Keyword arguments:
+        path   -- the file path to be read
+    """
 
     with open(path, 'r') as f:
         expected_data = f.read()
         expected_data = ast.literal_eval(expected_data)
         return expected_data
+
+def write_data_to_file(data, path):
+    """Write data to the file of the given path
+
+    Keyword arguments:
+        data   -- the data to be written to the file
+        path   -- the file path to be written
+    """
+
+    with open(path, 'w') as f:
+        pprint.pp(data, stream=f)
+    print('\nWrite the golden copy ', path)
 
 def opus_products_test(cls, input_path, expected, update=False):
     """Run opus products test
@@ -73,6 +100,10 @@ def opus_products_test(cls, input_path, expected, update=False):
         for pdsf_li in prod_list:
             for pdsf in pdsf_li:
                 pdsf_list.append(pdsf.logical_path)
+
+        # sort the list before storing to the dictionary, this will make sure we don't
+        # udpate the golden copy if the list before sorting has a different order.
+        pdsf_list.sort()
         res[prod_category] = pdsf_list
 
     expected_data = read_or_update_golden_copy(res, expected, update)
@@ -109,6 +140,10 @@ def associated_abspaths_test(cls, input_path, category, expected, update=False):
 
     result_paths = []
     result_paths += cls.logicals_for_abspaths(res)
+
+    # sort the list of paths before we compare or write the golden copy, this will sure
+    # we don't update the golden copy if the output before sorting has a different order.
+    result_paths.sort()
 
     expected_data = read_or_update_golden_copy(result_paths, expected, update)
     if not expected_data:
