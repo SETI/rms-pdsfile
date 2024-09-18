@@ -13,17 +13,21 @@ import os
 import glob
 import argparse
 import datetime
+from pathlib import Path
 import socket
 from smtplib import SMTP
 
 import pdslogger
 import pdsfile
 
-from . import pdschecksums
-from . import pdsarchives
-from . import pdsinfoshelf
-from . import pdslinkshelf
-from . import pdsdependency
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+sys.path.insert(0, str(REPO_ROOT))
+
+from holdings_maintenance.pds3 import pdschecksums
+from holdings_maintenance.pds3 import pdsarchives
+from holdings_maintenance.pds3 import pdsinfoshelf
+from holdings_maintenance.pds3 import pdslinkshelf
+from holdings_maintenance.pds3 import pdsdependency
 
 LOGNAME = 'pds.validation.re-validate'
 LOGROOT_ENV = 'PDS_LOG_ROOT'
@@ -45,9 +49,9 @@ def validate_one_volume(pdsdir, voltypes, tests, args, logger):
     tests_performed = 0
 
     # Open logger for this volume
-    logfiles = set([pdsdir.log_path_for_volume('_re-validate',
+    logfiles = set([pdsdir.log_path_for_bundle('_re-validate',
                                                dir='re-validate'),
-                    pdsdir.log_path_for_volume('_re-validate',
+                    pdsdir.log_path_for_bundle('_re-validate',
                                                dir='re-validate',
                                                place='parallel')])
 
@@ -206,7 +210,7 @@ def volume_abspath_from_log(log_path):
 
 
 def key_from_volume_abspath(abspath):
-    """Return 'volset/volname' from this absolute path.
+    """Return 'volset/bundlename' from this absolute path.
     """
 
     parts = abspath.split('/')
@@ -214,13 +218,13 @@ def key_from_volume_abspath(abspath):
 
 
 def key_from_log_path(log_path):
-    """Return 'volset/volname' from this log path.
+    """Return 'volset/bundlename' from this log path.
     """
 
     parts = abspath.split('/')
-    volname = parts[-1].split('_re-validate_')[0]
+    bundlename = parts[-1].split('_re-validate_')[0]
 
-    return parts[-2] + '/' + volname
+    return parts[-2] + '/' + bundlename
 
 
 def get_log_info(log_path):
@@ -275,10 +279,10 @@ def get_all_log_info(logroot):
     the tuple:
       (start, elapsed, modtime, abspath, had_error, had_fatal).
     Also return a dictionary that provides the complete list of existing log
-    files, in chronological order, keyed by volset/volname.
+    files, in chronological order, keyed by volset/bundlename.
     """
 
-    # Create a dictionary keyed by volset/volname that returns the chronological
+    # Create a dictionary keyed by volset/bundlename that returns the chronological
     # list of all associated log paths
     logs_for_volset_volume = {}
     for (root, dirs, files) in os.walk(logroot):
@@ -348,7 +352,7 @@ def find_modified_volumes(holdings_info, log_info):
         log_modtimes.add((modtime, key))
 
     # Create a dictionary of holdings info organized by volset/volume
-    # Also create the set (modtime, volset/volname) for each holdings volume
+    # Also create the set (modtime, volset/bundlename) for each holdings volume
     holdings_dict = {}
     holdings_modtimes = set()
     for (abspath, modtime) in holdings_info:
@@ -620,7 +624,7 @@ if not args.batch and not args.batch_status:
 
         logger.add_root(pdsdir.root_)
 
-        if pdsdir.volname:
+        if pdsdir.bundlename:
             pdsdirs.append(pdsdir)
         else:
             for name in pdsdir.childnames:
@@ -673,7 +677,7 @@ else:
     holdings_abspaths = set(holdings_abspaths)
 
     # Read the existing logs
-    (log_info, logs_for_volset_volname) = get_all_log_info(args.log)
+    (log_info, logs_for_volset_bundlename) = get_all_log_info(args.log)
 
     # Read the current holdings
     holdings_info = []
@@ -687,10 +691,10 @@ else:
 
     # Report missing volumes
     for key in missing_keys:
-        # Determine if this volset/volname has ever appeared in any of the
+        # Determine if this volset/bundlename has ever appeared in any of the
         # holdings directory trees
         holdings_for_key = set()
-        for log_path in logs_for_volset_volname[key]:
+        for log_path in logs_for_volset_bundlename[key]:
             volume_abspath = volume_abspath_from_log(log_path)
             if volume_abspath == '':        # if log file is empty
                 continue
@@ -716,7 +720,7 @@ else:
         for (abspath, date) in modified_holdings:
             pdsdir = pdsfile.PdsFile.from_abspath(abspath)
             line_number += 1
-            print(fmt % (line_number, pdsdir.volset_, pdsdir.volname,
+            print(fmt % (line_number, pdsdir.volset_, pdsdir.bundlename,
                          date[:10]))
 
         fmt ='%4d  %20s%-11s  modified %s, last validated %s, duration %s%s'
@@ -725,7 +729,7 @@ else:
             pdsdir = pdsfile.PdsFile.from_abspath(abspath)
             error_text = ', error logged' if had_error else ''
             line_number += 1
-            print(fmt % (line_number, pdsdir.volset_, pdsdir.volname,
+            print(fmt % (line_number, pdsdir.volset_, pdsdir.bundlename,
                          date[:10], start[:10], elapsed[:-7], error_text))
 
         sys.exit()
@@ -755,7 +759,7 @@ else:
             else:
                 ps = 'last validated %s' % prev_validation[:10]
             batch_message = '%20s%-11s  modified %s, %s' % \
-                            (pdsdir.volset_, pdsdir.volname, mod_date[:10], ps)
+                            (pdsdir.volset_, pdsdir.bundlename, mod_date[:10], ps)
             print(batch_message)
 
             (log_path,
