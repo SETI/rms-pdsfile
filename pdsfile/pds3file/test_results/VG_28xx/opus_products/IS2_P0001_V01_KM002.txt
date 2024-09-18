@@ -2,10 +2,10 @@
                                                                            'volumes/VG_28xx/VG_2810/DATA/IS2_P0001_V01_KM010.LBL'],
  ('Voyager ISS', 11, 'vgiss_prof_04', 'Intensity Profile (4 km)', True): ['volumes/VG_28xx/VG_2810/DATA/IS2_P0001_V01_KM004.TAB',
                                                                           'volumes/VG_28xx/VG_2810/DATA/IS2_P0001_V01_KM004.LBL'],
- ('Voyager ISS', 10, 'vgiss_prof_02', 'Intensity Profile (2 km)', True): ['volumes/VG_28xx/VG_2810/DATA/IS2_P0001_V01_KM002.TAB',
-                                                                          'volumes/VG_28xx/VG_2810/DATA/IS2_P0001_V01_KM002.LBL'],
  ('Voyager ISS', 13, 'vgiss_prof_20', 'Intensity Profile (20 km)', True): ['volumes/VG_28xx/VG_2810/DATA/IS2_P0001_V01_KM020.TAB',
                                                                            'volumes/VG_28xx/VG_2810/DATA/IS2_P0001_V01_KM020.LBL'],
+ ('Voyager ISS', 10, 'vgiss_prof_02', 'Intensity Profile (2 km)', True): ['volumes/VG_28xx/VG_2810/DATA/IS2_P0001_V01_KM002.TAB',
+                                                                          'volumes/VG_28xx/VG_2810/DATA/IS2_P0001_V01_KM002.LBL'],
  ('Voyager ISS', 20, 'vgiss_prof_img_ann', 'Source Images (annotated)', False): ['volumes/VG_28xx/VG_2810/DATA/IS2_P0001_IMAGES/ANNOTATED/C4399506_ANNOTATED.TIF',
                                                                                  'volumes/VG_28xx/VG_2810/DATA/IS2_P0001_IMAGES/ANNOTATED/C4399506_ANNOTATED.LBL',
                                                                                  'volumes/VG_28xx/VG_2810/DATA/IS2_P0001_IMAGES/ANNOTATED/C4399502_ANNOTATED.TIF',
@@ -209,4 +209,8 @@
  ('metadata', 5, 'rms_index', 'RMS Node Augmented Index', False): ['metadata/VG_28xx/VG_2810/VG_2810_index.tab',
                                                                    'metadata/VG_28xx/VG_2810/VG_2810_index.lbl'],
  ('metadata', 8, 'supplemental_index', 'Supplemental Index', False): ['metadata/VG_28xx/VG_2810/VG_2810_supplemental_index.tab',
-                                                                      'metadata/VG_28xx/VG_2810/VG_2810_supplemental_index.lbl']}
+                                                                      'metadata/VG_28xx/VG_2810/VG_2810_supplemental_index.lbl'],
+ ('browse', 40, 'browse_full', 'Browse Image (full)', True): ['previews/VG_28xx/VG_2810/IS2_P0001_preview_full.png'],
+ ('browse', 30, 'browse_medium', 'Browse Image (medium)', False): ['previews/VG_28xx/VG_2810/IS2_P0001_preview_med.png'],
+ ('browse', 20, 'browse_small', 'Browse Image (small)', False): ['previews/VG_28xx/VG_2810/IS2_P0001_preview_small.png'],
+ ('browse', 10, 'browse_thumb', 'Browse Image (thumbnail)', False): ['previews/VG_28xx/VG_2810/IS2_P0001_preview_thumb.png']}

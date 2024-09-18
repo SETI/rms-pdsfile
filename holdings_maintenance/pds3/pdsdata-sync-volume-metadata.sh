@@ -3,16 +3,18 @@
 # Synchronize one volume set from one pdsdata drive to another.
 #
 # Usage:
-#   pdsdata-sync-volume <old> <new> <volset> <volume> [--dry-run]
+#   pdsdata-sync-volume-metadata <old> <new> <volset> <volume> [--dry-run]
 #
-# Syncs the specified volume <volset/volume> from the drive
+# Syncs the specified metadata for the volume <volset/volume> from the drive
 # /Volumes/pdsdata-<old> to the drive /Volumes/pdsdata-<new>. Append
 # "--dry-run" for a test dry run.
+# This only syncs the metadata and associated directories and should be used
+# when syncing versioned metadata.
 #
 # Example:
-#   pdsdata-sync-volume admin raid45 GO_0xxx GO_0023
-# copies all files relevant to the volume "GO_0xxx/GO_0023" from the drive
-# pdsdata-admin to the drive pdsdata-raid45.
+#   pdsdata-sync-volume-metadata admin raid45 GO_0xxx GO_0023
+# copies all files relevant to the metadata for volume "GO_0xxx/GO_0023" from
+# the drive pdsdata-admin to the drive pdsdata-raid45.
 ################################################################################
 
 SRC=$1
@@ -21,7 +23,7 @@ VOLSET=$3
 VOLUME=$4
 ARGS=$5
 
-for TYPE in metadata previews calibrated diagrams volumes
+for TYPE in metadata
 do
   if [ -d /Volumes/pdsdata-${SRC}/holdings/${TYPE}/${VOLSET}/${VOLUME} ]; then
     echo "\n\n**** holdings/archives-${TYPE}/${VOLSET}/${VOLUME}*.tar.gz ****"
@@ -92,11 +94,6 @@ if [ -d /Volumes/pdsdata-${SRC}/holdings/documents/${VOLSET} ]; then
         /Volumes/pdsdata-${SRC}/holdings/documents/${VOLSET}/ \
         /Volumes/pdsdata-${DEST}/holdings/documents/${VOLSET}/ ${ARGS}
 fi
-
-echo
-echo ">>> NOTE: If you are syncing a versioned volset, you will also need"
-echo ">>> to sync the non-versioned volset in order to copy over any"
-echo ">>> changes to the documents or _volinfo directories."
 
 ################################################################################
 

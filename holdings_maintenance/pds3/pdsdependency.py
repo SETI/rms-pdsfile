@@ -953,7 +953,7 @@ _ = PdsDependency(
      r'previews/\1/\2/\4_preview_small.png',
      r'previews/\1/\2/\4_preview_med.png',
      r'previews/\1/\2/\4_preview_full.png'],
-    r'<PREVIEW> [d]volumes/\1/\2\3/\4\5.* -> [d]previews/\1/\2/\4xxx\6_preview_*.png',
+    r'<PREVIEW> [d]volumes/\1/\2\3/\4\5.* -> [d]previews/\1/\2/\4_preview_*.png',
     suite='vg_28xx', newer=True, exceptions=[r'.*/[PUR].*[01]\d\.LBL'])
 
 ################################################################################
