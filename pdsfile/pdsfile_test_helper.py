@@ -94,7 +94,8 @@ def opus_products_test(cls, input_path, expected, update=False):
         pdsf_list = []
         for pdsf_li in prod_list:
             for pdsf in pdsf_li:
-                pdsf_list.append(pdsf.logical_path)
+                if pdsf not in pdsf_list:
+                    pdsf_list.append(pdsf.logical_path)
 
         # sort the list before storing to the dictionary, this will make sure we don't
         # udpate the golden copy if the list before sorting has a different order.
@@ -105,13 +106,13 @@ def opus_products_test(cls, input_path, expected, update=False):
     if not expected_data:
         return
 
-    for key in results:
+    for key in ordered_res:
         assert key in expected_data, f'Extra key: {key}'
     for key in expected_data:
-        assert key in results, f'Missing key: {key}'
-    for key in results:
+        assert key in ordered_res, f'Missing key: {key}'
+    for key in ordered_res:
         result_paths = []       # flattened list of logical paths
-        for pdsfiles in results[key]:
+        for pdsfiles in ordered_res[key]:
             result_paths += cls.logicals_for_pdsfiles(pdsfiles)
         for path in result_paths:
             assert path in expected_data[key], f'Extra file under key {key}: {path}'
