@@ -94,8 +94,7 @@ def opus_products_test(cls, input_path, expected, update=False):
         pdsf_list = []
         for pdsf_li in prod_list:
             for pdsf in pdsf_li:
-                if pdsf not in pdsf_list:
-                    pdsf_list.append(pdsf.logical_path)
+                pdsf_list.append(pdsf.logical_path)
 
         # sort the list before storing to the dictionary, this will make sure we don't
         # udpate the golden copy if the list before sorting has a different order.
