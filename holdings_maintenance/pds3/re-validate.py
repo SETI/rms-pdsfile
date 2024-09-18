@@ -720,7 +720,7 @@ else:
         for (abspath, date) in modified_holdings:
             pdsdir = pdsfile.PdsFile.from_abspath(abspath)
             line_number += 1
-            print(fmt % (line_number, pdsdir.volset_, pdsdir.bundlename,
+            print(fmt % (line_number, pdsdir.bundleset_, pdsdir.bundlename,
                          date[:10]))
 
         fmt ='%4d  %20s%-11s  modified %s, last validated %s, duration %s%s'
@@ -729,7 +729,7 @@ else:
             pdsdir = pdsfile.PdsFile.from_abspath(abspath)
             error_text = ', error logged' if had_error else ''
             line_number += 1
-            print(fmt % (line_number, pdsdir.volset_, pdsdir.bundlename,
+            print(fmt % (line_number, pdsdir.bundleset_, pdsdir.bundlename,
                          date[:10], start[:10], elapsed[:-7], error_text))
 
         sys.exit()
@@ -759,7 +759,7 @@ else:
             else:
                 ps = 'last validated %s' % prev_validation[:10]
             batch_message = '%20s%-11s  modified %s, %s' % \
-                            (pdsdir.volset_, pdsdir.bundlename, mod_date[:10], ps)
+                            (pdsdir.bundleset_, pdsdir.bundlename, mod_date[:10], ps)
             print(batch_message)
 
             (log_path,
