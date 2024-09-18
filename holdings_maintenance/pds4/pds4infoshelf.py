@@ -622,32 +622,32 @@ def main():
 
     parser.add_argument('--initialize', '--init', const='initialize',
                         default='', action='store_const', dest='task',
-                        help='Create an infoshelf file for a volume. Abort '   +
+                        help='Create an infoshelf file for a bundle. Abort '   +
                              'if the file already exists.')
 
     parser.add_argument('--reinitialize', '--reinit', const='reinitialize',
                         default='', action='store_const', dest='task',
-                        help='Create an infoshelf file for a volume. Replace ' +
+                        help='Create an infoshelf file for a bundle. Replace ' +
                              'the file if it already exists. If a single '     +
                              'file is specified, such as one archive file in ' +
-                             'a volume set, then only information about that ' +
+                             'a bundle set, then only information about that ' +
                              'file is re-initialized.')
 
     parser.add_argument('--validate', const='validate',
                         default='', action='store_const', dest='task',
-                        help='Validate every file in a volume against the '    +
+                        help='Validate every file in a bundle against the '    +
                              'contents of its infoshelf file. If a single '    +
                              'file is specified, such as an archive file in '  +
-                             'a volume set, then only information about that ' +
+                             'a bundle set, then only information about that ' +
                              'file is validated')
 
     parser.add_argument('--repair', const='repair',
                         default='', action='store_const', dest='task',
-                        help='Validate every file in a volume against the '    +
+                        help='Validate every file in a bundle against the '    +
                              'contents of its infoshelf file. If any file '    +
                              'has changed, the infoshelf file is replaced. '   +
                              'If a single file is specified, such as an '      +
-                             'archive file in a volume set, then only '        +
+                             'archive file in a bundle set, then only '        +
                              'information about that file is repaired. If any '+
                              'of the files checked are newer than the shelf '  +
                              'file, update the shelf file\'s modification '    +
@@ -662,9 +662,9 @@ def main():
                              'than the shelf file, update the shelf file\'s '  +
                              'modification date.')
 
-    parser.add_argument('--volume', nargs='+', type=str,
-                        help='The path to the root of the volume or volume '   +
-                             'set. For a volume set, all the volume '          +
+    parser.add_argument('--bundle', nargs='+', type=str,
+                        help='The path to the root of the bundle or bundle '   +
+                             'set. For a bundle set, all the bundle '          +
                              'directories inside it are handled in sequence.')
 
     parser.add_argument('--log', '-l', type=str, default='',
@@ -682,8 +682,8 @@ def main():
                         help='Do not also log to the terminal.')
 
     parser.add_argument('--archives', '-a', default=False, action='store_true',
-                        help='Instead of referring to a volume, refer to the ' +
-                             'the archive file for that volume.')
+                        help='Instead of referring to a bundle, refer to the ' +
+                             'the archive file for that bundle.')
 
 
     # Parse and validate the command line
@@ -704,7 +704,7 @@ def main():
 
     # Initialize the logger
     logger = pdslogger.PdsLogger(LOGNAME)
-    pdsfile.Pds3File.set_log_root(args.log)
+    pdsfile.Pds4File.set_log_root(args.log)
 
     if not args.quiet:
         logger.add_handler(pdslogger.stdout_handler)
@@ -719,11 +719,11 @@ def main():
 
     # Prepare the list of paths
     abspaths = []
-    for path in args.volume:
+    for path in args.bundle:
 
         # Make sure path makes sense
         path = os.path.abspath(path)
-        parts = path.partition('/holdings/')
+        parts = path.partition('/pds4-holdings/')
         if not parts[1]:
             print('Not a holdings subdirectory: ' + path)
             sys.exit(1)
@@ -736,17 +736,17 @@ def main():
         if args.archives and not parts[2].startswith('archives-'):
             path = parts[0] + '/holdings/archives-' + parts[2]
 
-        # Convert to a list of absolute paths that exist (volsets or volumes)
+        # Convert to a list of absolute paths that exist (bundlsets or bundles)
         try:
-            pdsf = pdsfile.Pds3File.from_abspath(path, must_exist=True)
+            pdsf = pdsfile.Pds4File.from_abspath(path, must_exist=True)
             abspaths.append(pdsf.abspath)
 
         except (ValueError, IOError):
-            # Allow a volume name to stand in for a .tar.gz archive
+            # Allow a bundle name to stand in for a .tar.gz archive
             (dir, basename) = os.path.split(path)
-            pdsdir = pdsfile.Pds3File.from_abspath(dir)
+            pdsdir = pdsfile.Pds4File.from_abspath(dir)
             if pdsdir.archives_ and '.' not in basename:
-                if pdsdir.voltype_ == 'volumes/':
+                if pdsdir.voltype_ == 'bundles/':
                     basename += '.tar.gz'
                 else:
                     basename += '_%s.tar.gz' % pdsdir.voltype_[:-1]
@@ -763,21 +763,21 @@ def main():
     # Generate a list of tuples (pdsfile, selection)
     info = []
     for path in abspaths:
-        pdsf = pdsfile.Pds3File.from_abspath(path)
+        pdsf = pdsfile.Pds4File.from_abspath(path)
 
-        if pdsf.is_volset_dir:
-            # Info about archive directories is stored by volset
+        if pdsf.is_bundleset_dir:
+            # Info about archive directories is stored by bundleset
             if pdsf.archives_:
                 info.append((pdsf, None))
 
-            # Others are checksumed by volume
+            # Others are checksumed by bundle
             else:
                 children = [pdsf.child(c) for c in pdsf.childnames]
                 info += [(c, None) for c in children if c.isdir]
-                        # "if c.isdir" is False for volset level readme files
+                        # "if c.isdir" is False for bundleset level readme files
 
-        elif pdsf.is_volume_dir:
-            # Shelve one volume
+        elif pdsf.is_bundle_dir:
+            # Shelve one bundle
             info.append((pdsf, None))
 
         elif pdsf.isdir:
@@ -786,11 +786,11 @@ def main():
 
         else:
             pdsdir = pdsf.parent()
-            if pdsf.is_volume_file:
+            if pdsf.is_bundle_file:
                 # Shelve one archive file
                 info.append((pdsdir, pdsf.basename))
-            elif pdsdir.is_volume_dir:
-                # Shelve one top-level file in volume
+            elif pdsdir.is_bundle_dir:
+                # Shelve one top-level file in bundle
                 info.append((pdsdir, pdsf.basename))
             else:
                 print('Invalid file for an infoshelf: ' + pdsf.logical_path)
@@ -809,22 +809,22 @@ def main():
                 pdsf = pdsdir
 
             # Save logs in up to two places
-            if pdsf.volname:
-                logfiles = set([pdsf.log_path_for_volume('_info',
+            if pdsf.bundlename:
+                logfiles = set([pdsf.log_path_for_bundle('_info',
                                                          task=args.task,
                                                          dir='pdsinfoshelf'),
-                                pdsf.log_path_for_volume('_info',
+                                pdsf.log_path_for_bundle('_info',
                                                          task=args.task,
                                                          dir='pdsinfoshelf',
                                                          place='parallel')])
             else:
-                logfiles = set([pdsf.log_path_for_volset('_info',
-                                                         task=args.task,
-                                                         dir='pdsinfoshelf'),
-                                pdsf.log_path_for_volset('_info',
-                                                         task=args.task,
-                                                         dir='pdsinfoshelf',
-                                                         place='parallel')])
+                logfiles = set([pdsf.log_path_for_bundleset('_info',
+                                                            task=args.task,
+                                                            dir='pdsinfoshelf'),
+                                pdsf.log_path_for_bundleset('_info',
+                                                            task=args.task,
+                                                            dir='pdsinfoshelf',
+                                                            place='parallel')])
 
             # Create all the handlers for this level in the logger
             local_handlers = []
