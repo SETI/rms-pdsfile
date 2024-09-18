@@ -155,7 +155,7 @@ def read_checksums(check_path, selection=None, limits={}, logger=None):
     is returned."""
 
     check_path = os.path.abspath(check_path)
-    pdscheck = pdsfile.Pds3File.from_abspath(check_path)
+    pdscheck = pdsfile.Pds4File.from_abspath(check_path)
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdscheck.root_)
@@ -213,7 +213,7 @@ def read_checksums(check_path, selection=None, limits={}, logger=None):
 def checksum_dict(dirpath, logger=None):
 
     dirpath = os.path.abspath(dirpath)
-    pdsdir = pdsfile.Pds3File.from_abspath(dirpath)
+    pdsdir = pdsfile.Pds4File.from_abspath(dirpath)
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsdir.root_)
@@ -237,7 +237,7 @@ def write_checksums(check_path, abspairs,
     """Write a checksum table containing the given pairs (abspath, checksum)."""
 
     check_path = os.path.abspath(check_path)
-    pdscheck = pdsfile.Pds3File.from_abspath(check_path)
+    pdscheck = pdsfile.Pds4File.from_abspath(check_path)
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdscheck.root_)
@@ -614,7 +614,7 @@ def main():
                              'their MD5 checksums to the checksum file. '      +
                              'Checksums of pre-existing files are not checked.')
 
-    parser.add_argument('volume', nargs='+', type=str,
+    parser.add_argument('--bundle', nargs='+', type=str,
                         help='The path to the root directory of a volume or '  +
                              'volume set. For a volume set, all the volume '   +
                              'directories inside it are handled in sequence. ' +
@@ -661,7 +661,7 @@ def main():
 
     # Initialize the logger
     logger = pdslogger.PdsLogger(LOGNAME)
-    pdsfile.Pds3File.set_log_root(args.log)
+    pdsfile.Pds4File.set_log_root(args.log)
 
     if not args.quiet:
         logger.add_handler(pdslogger.stdout_handler)
@@ -676,11 +676,11 @@ def main():
 
     # Prepare the list of paths
     abspaths = []
-    for path in args.volume:
+    for path in args.bundle:
 
         # Make sure path makes sense
         path = os.path.abspath(path)
-        parts = path.partition('/holdings/')
+        parts = path.partition('/pds4-holdings/')
         if not parts[1]:
             print('Not a holdings subdirectory: ' + path)
             sys.exit(1)
@@ -695,13 +695,13 @@ def main():
 
         # Convert to a list of absolute paths that exist (volsets or volumes)
         try:
-            pdsf = pdsfile.Pds3File.from_abspath(path, must_exist=True)
+            pdsf = pdsfile.Pds4File.from_abspath(path, must_exist=True)
             abspaths.append(pdsf.abspath)
 
         except (ValueError, IOError):
             # Allow a volume name to stand in for a .tar.gz archive
             (dir, basename) = os.path.split(path)
-            pdsdir = pdsfile.Pds3File.from_abspath(dir)
+            pdsdir = pdsfile.Pds4File.from_abspath(dir)
             if pdsdir.archives_ and '.' not in basename:
                 if pdsdir.voltype_ == 'volumes/':
                     basename += '.tar.gz'
@@ -720,9 +720,9 @@ def main():
     # Generate a list of tuples (pdsfile, selection)
     info = []
     for path in abspaths:
-        pdsf = pdsfile.Pds3File.from_abspath(path)
+        pdsf = pdsfile.Pds4File.from_abspath(path)
 
-        if pdsf.is_volset_dir:
+        if pdsf.is_bundleset_dir:
             # Archive directories are checksumed by volset
             if pdsf.archives_:
                 info.append((pdsf, None))
@@ -758,6 +758,10 @@ def main():
     try:
         for (pdsdir, selection) in info:
             path = pdsdir.abspath
+            print('xxxxxxxxxxxx')
+            print(path)
+            if '_support' in path:
+                continue
 
             if selection:
                 pdsf = pdsdir.child(os.path.basename(selection))
@@ -767,22 +771,22 @@ def main():
             check_path = pdsdir.checksum_path_and_lskip()[0]
 
             # Save logs in up to two places
-            if pdsf.volname:
-                logfiles = set([pdsf.log_path_for_volume('_md5',
+            if pdsf.bundlename:
+                logfiles = set([pdsf.log_path_for_bundle('_md5',
                                                          task=args.task,
                                                          dir='pdschecksums'),
-                                pdsf.log_path_for_volume('_md5',
+                                pdsf.log_path_for_bundle('_md5',
                                                          task=args.task,
                                                          dir='pdschecksums',
                                                          place='parallel')])
             else:
-                logfiles = set([pdsf.log_path_for_volset('_md5',
-                                                         task=args.task,
-                                                         dir='pdschecksums'),
-                                pdsf.log_path_for_volset('_md5',
-                                                         task=args.task,
-                                                         dir='pdschecksums',
-                                                         place='parallel')])
+                logfiles = set([pdsf.log_path_for_bundleset('_md5',
+                                                            task=args.task,
+                                                            dir='pdschecksums'),
+                                pdsf.log_path_for_bundleset('_md5',
+                                                            task=args.task,
+                                                            dir='pdschecksums',
+                                                            place='parallel')])
 
             # Create all the handlers for this level in the logger
             local_handlers = []

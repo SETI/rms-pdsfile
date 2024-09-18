@@ -614,7 +614,7 @@ def main():
                              'their MD5 checksums to the checksum file. '      +
                              'Checksums of pre-existing files are not checked.')
 
-    parser.add_argument('volume', nargs='+', type=str,
+    parser.add_argument('--volume', nargs='+', type=str,
                         help='The path to the root directory of a volume or '  +
                              'volume set. For a volume set, all the volume '   +
                              'directories inside it are handled in sequence. ' +
@@ -768,21 +768,21 @@ def main():
 
             # Save logs in up to two places
             if pdsf.volname:
-                logfiles = set([pdsf.log_path_for_volume('_md5',
+                logfiles = set([pdsf.log_path_for_bundle('_md5',
                                                          task=args.task,
                                                          dir='pdschecksums'),
-                                pdsf.log_path_for_volume('_md5',
+                                pdsf.log_path_for_bundle('_md5',
                                                          task=args.task,
                                                          dir='pdschecksums',
                                                          place='parallel')])
             else:
-                logfiles = set([pdsf.log_path_for_volset('_md5',
-                                                         task=args.task,
-                                                         dir='pdschecksums'),
-                                pdsf.log_path_for_volset('_md5',
-                                                         task=args.task,
-                                                         dir='pdschecksums',
-                                                         place='parallel')])
+                logfiles = set([pdsf.log_path_for_bundleset('_md5',
+                                                            task=args.task,
+                                                            dir='pdschecksums'),
+                                pdsf.log_path_for_bundleset('_md5',
+                                                            task=args.task,
+                                                            dir='pdschecksums',
+                                                            place='parallel')])
 
             # Create all the handlers for this level in the logger
             local_handlers = []
