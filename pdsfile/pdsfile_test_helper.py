@@ -7,6 +7,7 @@
 
 from .pdsfile import abspath_for_logical_path
 import ast
+from collections import OrderedDict
 import os
 from pathlib import Path
 import pprint
@@ -39,21 +40,13 @@ def read_or_update_golden_copy(data, path, update):
     """
 
     path = Path(path)
-    # Create the golden copy by using the current output
-    if not path.exists():
+    # Create the golden copy by using the current output if or the update param is given
+    # or the golden copy doesn't exist.
+    if update or not path.exists():
         # create the directory to store the golden copy if it doesn't exist.
         os.makedirs(os.path.dirname(path), exist_ok=True)
         # write the output to the file.
         write_data_to_file(data, path)
-        return 0
-
-    # If the update param is given, compare the file first to make sure we don't write
-    # the golden copy if the output didn't change
-    if update:
-        expected_data = read_file(path)
-        if expected_data != data:
-            # write the output to the file.
-            write_data_to_file(data, path)
         return 0
 
     return read_file(path)
@@ -95,7 +88,9 @@ def opus_products_test(cls, input_path, expected, update=False):
     results = target_pdsfile.opus_products()
 
     res = {}
-    for prod_category, prod_list in results.items():
+    # This will make sure keys in results is sorted by 'group' and then 'priority'
+    ordered_res = OrderedDict(sorted(results.items()))
+    for prod_category, prod_list in ordered_res.items():
         pdsf_list = []
         for pdsf_li in prod_list:
             for pdsf in pdsf_li:

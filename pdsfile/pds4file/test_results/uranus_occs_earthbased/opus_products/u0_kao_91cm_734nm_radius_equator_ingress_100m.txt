@@ -6,7 +6,6 @@
                                                                                                                   'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_ingress_1000m.xml'],
  ('Uranus Earth-based Occultations', 100, 'ebur_occ_global_time', 'Occultation Ring-Plane Time Series', False): ['bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_counts-v-time_occult.tab',
                                                                                                                  'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_counts-v-time_occult.xml'],
- ('metadata', 5, 'rms_index', 'RMS Node Augmented Index', False): ['metadata/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/uranus_occ_u0_kao_91cm_global_index.csv'],
  ('Uranus Earth-based Occultations', 110, 'ebur_occ_global_ring_fit', 'Global Ring Orbital Fit', False): ['bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_20201201.tab',
                                                                                                           'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_20201201.txt',
                                                                                                           'bundles/uranus_occs_earthbased/uranus_occ_support/data/uranus_occultation_ring_fit_rfrench_20201201.xml',
@@ -39,7 +38,8 @@
                                                                                         'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/fk/uranus_ringframes_rfrench20201201_v1.xml',
                                                                                         'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/spk/urkao_v1.bsp',
                                                                                         'bundles/uranus_occs_earthbased/uranus_occ_support/spice_kernels/spk/urkao_v1.xml'],
- ('diagram', 40, 'diagram_full', 'Browse Diagram (full)', True): ['diagrams/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_ingress_diagram_full.png'],
- ('diagram', 30, 'diagram_medium', 'Browse Diagram (medium)', False): ['diagrams/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_ingress_diagram_med.png'],
+ ('diagram', 10, 'diagram_thumb', 'Browse Diagram (thumbnail)', False): ['diagrams/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_ingress_diagram_thumb.png'],
  ('diagram', 20, 'diagram_small', 'Browse Diagram (small)', False): ['diagrams/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_ingress_diagram_small.png'],
- ('diagram', 10, 'diagram_thumb', 'Browse Diagram (thumbnail)', False): ['diagrams/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_ingress_diagram_thumb.png']}
+ ('diagram', 30, 'diagram_medium', 'Browse Diagram (medium)', False): ['diagrams/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_ingress_diagram_med.png'],
+ ('diagram', 40, 'diagram_full', 'Browse Diagram (full)', True): ['diagrams/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/global/u0_kao_91cm_734nm_radius_equator_ingress_diagram_full.png'],
+ ('metadata', 5, 'rms_index', 'RMS Node Augmented Index', False): ['metadata/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/uranus_occ_u0_kao_91cm_global_index.csv']}
