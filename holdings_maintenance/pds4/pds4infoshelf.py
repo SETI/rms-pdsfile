@@ -24,7 +24,7 @@ import pdsfile
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
-from holdings_maintenance.pds3 import pdschecksums
+from holdings_maintenance.pds4 import pds4checksums
 
 # Holds log file directories temporarily, used by move_old_info()
 LOGDIRS = []
@@ -138,7 +138,7 @@ def generate_infodict(pdsdir, selection, old_infodict={},
 
     try:
         # Load checksum dictionary
-        checkdict = pdschecksums.checksum_dict(dirpath, logger=logger)
+        checkdict = pds4checksums.checksum_dict(dirpath, logger=logger)
 #         Removed... because we can't ignore empty directories
 #         if not checkdict:
 #             return ({}, 0.)
@@ -800,6 +800,10 @@ def main():
     logger.open(' '.join(sys.argv))
     try:
         for (pdsdir, selection) in info:
+
+            # skip _support dirctory
+            if '_support' in pdsdir.abspath:
+                continue
 
             info_path = pdsdir.shelf_path_and_lskip('info')[0]
 

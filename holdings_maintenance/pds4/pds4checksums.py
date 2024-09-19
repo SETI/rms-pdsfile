@@ -758,8 +758,8 @@ def main():
     try:
         for (pdsdir, selection) in info:
             path = pdsdir.abspath
-            print('xxxxxxxxxxxx')
-            print(path)
+
+            # skip _support dirctory
             if '_support' in path:
                 continue
 
