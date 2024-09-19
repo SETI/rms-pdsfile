@@ -4834,10 +4834,6 @@ class PdsFile(object):
             raise ValueError('No checksums of checksum files: ' +
                              self.logical_path)
 
-        print('=================')
-        print(self.voltype_)
-        print(self.archives_)
-        print(self.bundlename)
         if self.voltype_ == 'volumes/' or self.voltype_ == 'bundles/':
             suffix = ''
         else:
