@@ -52,11 +52,6 @@ class Pds3File(PdsFile):
 
     def __init__(self):
         super().__init__()
-        # alias for attributes
-        self.volset_  = self.bundleset_
-        self.volset   = self.bundleset
-        self.volname_ = self.bundlename_
-        self.volname  = self.bundlename
 
     @classmethod
     def use_shelves_only(cls, status=True):

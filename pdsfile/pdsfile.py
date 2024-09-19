@@ -3287,13 +3287,13 @@ class PdsFile(object):
     def is_bundle_dir(self):
         """Return True if this is the root level directory of a bundle."""
         return bool(self.bundlename_ and not self.interior) # Note that a bundle set will return an empty string '' rather than False
-        #return (self.volname_ and not self.interior or False) # MJTM: 'or False' account for bundle sets
+        #return (self.bundlename_ and not self.interior or False) # MJTM: 'or False' account for bundle sets
 
     @property
     def is_bundle_file(self):
         """Return True if this is a bundle-level checksum or archive file."""
         return bool(self.bundlename and not self.bundlename_) # Note that a bundle set will return an empty string '' rather than False
-        #return (self.volname and not self.volname_ or False) # MJTM: 'or False' account for bundle sets
+        #return (self.bundlename and not self.bundlename_ or False) # MJTM: 'or False' account for bundle sets
 
     @property
     def is_bundle(self):
