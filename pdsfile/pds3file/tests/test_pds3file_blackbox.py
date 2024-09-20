@@ -1864,7 +1864,7 @@ class TestPds3FileBlackBox:
     def test_associated_parallel(self, input_path, expected):
         target_pdsfile = instantiate_target_pdsfile(input_path)
         print(target_pdsfile.category_.rstrip('/'))
-        print(target_pdsfile.volset)
+        print(target_pdsfile.bundleset)
         target_associated_parallel = target_pdsfile.associated_parallel()
         print(target_associated_parallel.logical_path)
         assert target_associated_parallel.logical_path == expected

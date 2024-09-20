@@ -1193,16 +1193,16 @@ def write_linkdict(dirpath, link_dict, limits={}, logger=None):
                     else:      # link outside this volume
                         link = pdsfile.Pds3File.from_abspath(link_abspath)
                         if (link.category_ == pdsdir.category_ and
-                            link.volset == pdsdir.volset and
+                            link.bundleset == pdsdir.bundleset and
                             link.suffix == pdsdir.suffix):
-                            link_relpath = '../' + link.volname_ + link.interior
+                            link_relpath = '../' + link.bundlename_ + link.interior
                         elif link.category_ == pdsdir.category_:
-                            link_relpath = ('../../' + link.volset_ +
-                                            link.volname_ + link.interior)
+                            link_relpath = ('../../' + link.bundleset_ +
+                                            link.bundlename_ + link.interior)
                         else:
                             link_relpath = ('../../../' + link.category_ +
-                                            link.volset_ +
-                                            link.volname_ + link.interior)
+                                            link.bundleset_ +
+                                            link.bundlename_ + link.interior)
                         new_list.append((basename, recno, link_relpath))
 
                 interior_dict[key[lskip:]] = new_list
