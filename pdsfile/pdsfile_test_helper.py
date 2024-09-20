@@ -7,18 +7,20 @@
 
 from .pdsfile import abspath_for_logical_path
 import ast
-from collections import OrderedDict
 import os
 from pathlib import Path
 import pprint
 
 def instantiate_target_pdsfile(cls, path, is_abspath=True):
-    """Return the pdsfile instance of the given path
+    """Return the pdsfile instance of the given path.
 
-    Keyword arguments:
-        cls        -- the class that is used to instantiate the pdsfile instance
-        path       -- the file path of targeted pdsfile
-        is_abspath -- the flag used to determine if the given path is an abspath
+    Args:
+        cls: The class that is used to instantiate the pdsfile instance.
+        path: The file path of targeted pdsfile.
+        is_abspath: The flag used to determine if the given path is an abspath.
+
+    Returns:
+        A pdsfile instance.
     """
 
     if is_abspath:
@@ -31,16 +33,20 @@ def instantiate_target_pdsfile(cls, path, is_abspath=True):
 
 def read_or_update_golden_copy(data, path, update):
     """Return data if the operation is reading from the golden copy of test results.
-    Return 0 if the operation is updating the golden copy
+    Return 0 if the operation is updating the golden copy.
 
-    Keyword arguments:
-        data   -- the data to be written into the golden copy
-        path   -- the file path of the golden copy under test results directory
-        update -- the flag used to determine if the golden copy should be updated
+    Args:
+        data: The data to be written into the golden copy.
+        path: The file path of the golden copy under test results directory.
+        update: The flag used to determine if the golden copy should be updated.
+
+    Returns:
+        The data from the golden copy. Return 0 if we only write and didn't read the
+        golden copy.
     """
 
     path = Path(path)
-    # Create the golden copy by using the current output if or the update param is given
+    # Create the golden copy by using the current output if the update param is given
     # or the golden copy doesn't exist.
     if update or not path.exists():
         # create the directory to store the golden copy if it doesn't exist.
@@ -52,10 +58,13 @@ def read_or_update_golden_copy(data, path, update):
     return read_file(path)
 
 def read_file(path):
-    """Return data from the read file
+    """Return data from the read file.
 
-    Keyword arguments:
-        path   -- the file path to be read
+    Args:
+        path: The file path to be read.
+
+    Returns:
+        The data of the file.
     """
 
     with open(path, 'r') as f:
@@ -64,11 +73,11 @@ def read_file(path):
         return expected_data
 
 def write_data_to_file(data, path):
-    """Write data to the file of the given path
+    """Write data to the file of the given path.
 
-    Keyword arguments:
-        data   -- the data to be written to the file
-        path   -- the file path to be written
+    Args:
+        data: The data to be written to the file.
+        path: The file path to be written.
     """
 
     with open(path, 'w') as f:
@@ -76,20 +85,20 @@ def write_data_to_file(data, path):
     print('\nWrite the golden copy ', path)
 
 def opus_products_test(cls, input_path, expected, update=False):
-    """Run opus products test
+    """Run opus products test.
 
-    Keyword arguments:
-        cls          -- the class that runs the test, either Pds3File or Pds4File
-        input_path   -- the file path of targeted pdsfile
-        expected     -- the file path of the golden copy under test results directory
-        update       -- the flag used to determine if the golden copy should be updated
+    Args:
+        cls: The class that runs the test, either Pds3File or Pds4File.
+        input_path: The file path of targeted pdsfile.
+        expected: The file path of the golden copy under test results directory.
+        update: The flag used to determine if the golden copy should be updated.
     """
     target_pdsfile = instantiate_target_pdsfile(cls, input_path)
     results = target_pdsfile.opus_products()
 
     res = {}
     # This will make sure keys in results is sorted by 'group' and then 'priority'
-    ordered_res = OrderedDict(sorted(results.items()))
+    ordered_res = {k: results[k] for k in sorted(results)}
     for prod_category, prod_list in ordered_res.items():
         pdsf_list = []
         for pdsf_li in prod_list:
@@ -119,14 +128,14 @@ def opus_products_test(cls, input_path, expected, update=False):
             assert path in result_paths, f'Missing file under key {key}: {path}'
 
 def associated_abspaths_test(cls, input_path, category, expected, update=False):
-    """Run associated abspaths test
+    """Run associated abspaths test.
 
-    Keyword arguments:
-        cls          -- the class that runs the test, either Pds3File or Pds4File
-        input_path   -- the file path of targeted pdsfile
-        category     -- the category of the associated asbpath
-        expected     -- the file path of the golden copy under test results directory
-        update       -- the flag used to determine if the golden copy should be updated
+    Args:
+        cls: The class that runs the test, either Pds3File or Pds4File.
+        input_path: The file path of targeted pdsfile.
+        category: The category of the associated asbpath.
+        expected: The file path of the golden copy under test results directory.
+        update: The flag used to determine if the golden copy should be updated.
     """
 
     target_pdsfile = instantiate_target_pdsfile(cls, input_path)
