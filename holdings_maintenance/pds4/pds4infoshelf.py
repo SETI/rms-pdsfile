@@ -734,7 +734,7 @@ def main():
 
         # Convert to an archives path if necessary
         if args.archives and not parts[2].startswith('archives-'):
-            path = parts[0] + '/holdings/archives-' + parts[2]
+            path = parts[0] + '/pds4-holdings/archives-' + parts[2]
 
         # Convert to a list of absolute paths that exist (bundlsets or bundles)
         try:
