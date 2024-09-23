@@ -9,6 +9,7 @@ from pdsfile import pdscache
 from pdsfile.pdsfile import PdsFile
 from . import rules
 from pdsfile.preload_and_cache import cache_lifetime_for_class
+import re
 
 class Pds3File(PdsFile):
 
@@ -52,6 +53,19 @@ class Pds3File(PdsFile):
 
     IDX_EXT = '.tab'
     LBL_EXT = '.lbl'
+
+    BUNDLENAME_REGEX       = re.compile(r'^([A-Z][A-Z0-9]{1,5}_(?:[0-9]{4}))$')
+
+    BUNDLENAME_REGEX_I     = re.compile(BUNDLENAME_REGEX.pattern, re.I)
+    BUNDLENAME_PLUS_REGEX  = re.compile(BUNDLENAME_REGEX.pattern[:-1] +
+                                        r'(|_[a-z]+)(|_md5\.txt|\.tar\.gz)$')
+    BUNDLENAME_PLUS_REGEX_I = re.compile(BUNDLENAME_PLUS_REGEX.pattern, re.I)
+    BUNDLENAME_VERSION     = re.compile(BUNDLENAME_REGEX.pattern[:-1] +
+                                        r'(_v[0-9]+\.[0-9]+\.[0-9]+|'+
+                                        r'_v[0-9]+\.[0-9]+|_v[0-9]+|'+
+                                        r'_in_prep|_prelim|_peer_review|'+
+                                        r'_lien_resolution)$')
+    BUNDLENAME_VERSION_I   = re.compile(BUNDLENAME_VERSION.pattern, re.I)
 
     def __init__(self):
         super().__init__()

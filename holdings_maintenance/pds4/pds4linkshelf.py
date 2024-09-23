@@ -628,7 +628,7 @@ TARGET_REGEX2 = re.compile(r'^ *,? *' + PATTERN, re.I)
 LINK_REGEX = re.compile(r'(?:|.*?[^/@\w\.])/?(?:\.\./)*(([A-Z0-9][-\w]+/)*' +
                         r'(makefile\.?|[A-Z0-9][\w-]*(\.[\w-]+)+))', re.I)
 
-EXTS_WO_LABELS = set(['.LBL', '.CAT', '.TXT', '.FMT', '.SFD'])
+EXTS_WO_LABELS = set(['.XML', '.CAT', '.TXT', '.FMT', '.SFD'])
 
 ################################################################################
 
@@ -697,6 +697,10 @@ def generate_links(dirpath, old_links={},
 
       # Walk the directory tree, one subdirectory "root" at a time...
       for (root, dirs, files) in os.walk(dirpath):
+
+        # skip ring_models dirctory
+        if 'ring_models' in root:
+            continue
 
         local_basenames = []            # Tracks the basenames in this directory
         local_basenames_uc = []         # Same as above, but upper case
@@ -860,7 +864,7 @@ def generate_links(dirpath, old_links={},
                 new_linkinfo_list.append(info)
 
                 # Could this be the label?
-                if ext != '.LBL':       # nope
+                if ext != '.XML':       # nope
                     continue
 
                 # If names match up to '.LBL', then yes
@@ -890,7 +894,7 @@ def generate_links(dirpath, old_links={},
 
             basename_uc = basename.upper()
             ext = basename_uc[-4:] if len(basename) >= 4 else ''
-            if ext in (".LBL", ".FMT"):     # these can't have labels
+            if ext in (".XML", ".FMT"):     # these can't have labels
                 continue
 
             abspath = os.path.join(root, basename)
@@ -914,7 +918,7 @@ def generate_links(dirpath, old_links={},
             candidates = candidate_labels.get(basename, [])
 
             # Determine if the obvious label file exists
-            label_guess_uc = basename_uc.partition('.')[0] + '.LBL'
+            label_guess_uc = basename_uc.partition('.')[0] + '.XML'
             if label_guess_uc in local_basenames_uc:
                 k = local_basenames_uc.index(label_guess_uc)
                 obvious_label_basename = local_basenames[k]
@@ -1569,8 +1573,8 @@ def main():
                              'their links to the link shelf file. Links of '   +
                              'pre-existing files are not checked.')
 
-    parser.add_argument('volume', nargs='+', type=str,
-                        help='The path to the root directory of a volume.')
+    parser.add_argument('--bundle', nargs='+', type=str,
+                        help='The path to the root directory of a bundle.')
 
     parser.add_argument('--log', '-l', type=str, default='',
                         help='Optional root directory for a duplicate of the ' +
@@ -1619,7 +1623,7 @@ def main():
 
     # Generate a list of file paths before logging
     paths = []
-    for path in args.volume:
+    for path in args.bundle:
 
         if not os.path.exists(path):
             print('No such file or directory: ' + path)
@@ -1636,7 +1640,7 @@ def main():
             print('No link shelf files for archive files: ' + path)
             sys.exit(1)
 
-        if pdsf.is_volset_dir:
+        if pdsf.is_bundleset_dir:
             paths += [os.path.join(path, c) for c in pdsf.childnames]
 
         else:
@@ -1648,14 +1652,15 @@ def main():
         for path in paths:
 
             pdsdir = pdsfile.Pds4File.from_abspath(path)
-            if not pdsdir.isdir:    # skip volset-level readme files
+            # skip volset-level readme files and *_support dirctiory
+            if not pdsdir.isdir or '_support' in pdsdir.abspath:
                 continue
 
             # Save logs in up to two places
-            logfiles = set([pdsdir.log_path_for_volume('_links',
+            logfiles = set([pdsdir.log_path_for_bundle('_links',
                                                        task=args.task,
                                                        dir='pdslinkshelf'),
-                            pdsdir.log_path_for_volume('_links',
+                            pdsdir.log_path_for_bundle('_links',
                                                        task=args.task,
                                                        dir='pdslinkshelf',
                                                        place='parallel')])
