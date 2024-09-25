@@ -801,10 +801,6 @@ def main():
     try:
         for (pdsdir, selection) in info:
 
-            # skip _support dirctory
-            if '_support' in pdsdir.abspath:
-                continue
-
             info_path = pdsdir.shelf_path_and_lskip('info')[0]
 
             if selection:

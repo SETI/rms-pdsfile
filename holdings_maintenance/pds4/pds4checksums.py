@@ -759,10 +759,6 @@ def main():
         for (pdsdir, selection) in info:
             path = pdsdir.abspath
 
-            # skip _support dirctory
-            if '_support' in path:
-                continue
-
             if selection:
                 pdsf = pdsdir.child(os.path.basename(selection))
             else:

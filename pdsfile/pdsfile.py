@@ -2624,13 +2624,9 @@ class PdsFile(object):
         rootname = self.basename[:-len(self.extension)]
         test_basenames = [rootname + ext for ext in ext_guesses]
 
-        print('xxxxxxxx')
-        print(test_basenames)
         # If one of the guessed files exist, it's the label
         for test_basename in test_basenames:
             test_abspath = self.abspath.rpartition('/')[0] + '/' + test_basename
-            print('1111111111')
-            print(test_abspath)
             if cls.os_path_exists(test_abspath, force_case_sensitive=True):
                 self._label_basename_filled = test_basename
                 self._recache()
