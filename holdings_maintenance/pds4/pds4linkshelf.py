@@ -146,6 +146,13 @@ def generate_links(dirpath, old_links={},
                 local_basenames.append(basename)
                 local_basenames_uc.append(basename.upper())
 
+            local_labels = [f for f in local_basenames if '.xml' in f]
+            local_labels_abspath = [os.path.join(root, f) for f in local_labels]
+
+            # If the current directory doesn't have any label, we skip this directory
+            if len(local_labels) == 0:
+                continue
+
             # Update linkinfo_dict, searching each relevant file for possible links.
             # If the linking file is a label and the target file has a matching
             # name, update the label_dict entry for the target.
@@ -158,7 +165,7 @@ def generate_links(dirpath, old_links={},
 
                 basename_uc = basename.upper()
 
-                # Only check XML, CAT, TXT, etc.
+                # Only check XML, CAT etc.
                 ext = basename_uc[-4:] if len(basename) >= 4 else ''
                 if ext not in EXTS_WO_LABELS:
                     continue
@@ -329,6 +336,11 @@ def generate_links(dirpath, old_links={},
                 # that file basename in label_dict. This will make sure the file is pointing
                 # to it's correct corresponding label.
                 for label_abspath, link_info_list in linkinfo_dict.items():
+
+                    # if the label is at the same directory, skip it.
+                    if label_abspath not in local_labels_abspath:
+                        continue
+
                     for info in link_info_list:
                         if info.linktext == basename and abspath not in label_dict:
                             label_dict[abspath] = label_abspath
