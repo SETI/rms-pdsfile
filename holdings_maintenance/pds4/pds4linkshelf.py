@@ -49,7 +49,7 @@ TARGET_REGEX2 = re.compile(r'^ *,? *' + PATTERN, re.I)
 LINK_REGEX = re.compile(r'(?:|.*?[^/@\w\.])/?(?:\.\./)*(([A-Z0-9][-\w]+/)*' +
                         r'(makefile\.?|[A-Z0-9][\w-]*(\.[\w-]+)+))', re.I)
 
-EXTS_WO_LABELS = set(['.XML', '.CAT', '.TXT', '.FMT', '.SFD'])
+EXTS_WO_LABELS = set(['.XML', '.CAT', '.FMT', '.SFD'])
 
 ################################################################################
 
@@ -85,7 +85,7 @@ def generate_links(dirpath, old_links={},
     """Generate a dictionary keyed by the absolute file path for files in the
     given directory tree, which must correspond to a volume.
 
-    Keys ending in .LBL, .CAT and .TXT return a list of tuples
+    Keys ending in .XML, .CAT and .TXT return a list of tuples
         (recno, link, target)
     for each link found. Here,
         recno = record number in file;
@@ -95,7 +95,7 @@ def generate_links(dirpath, old_links={},
     Other keys return a single string, which indicates the absolute path to the
     label file describing this file.
 
-    Unlabeled files not ending in .LBL, .CAT or .TXT return an empty string.
+    Unlabeled files not ending in .XML, .CAT or .TXT return an empty string.
 
     Also return the latest modification date among all the files checked.
     """
@@ -158,7 +158,7 @@ def generate_links(dirpath, old_links={},
 
             basename_uc = basename.upper()
 
-            # Only check LBL, CAT, TXT, etc.
+            # Only check XML, CAT, TXT, etc.
             ext = basename_uc[-4:] if len(basename) >= 4 else ''
             if ext not in EXTS_WO_LABELS:
                 continue
@@ -288,7 +288,7 @@ def generate_links(dirpath, old_links={},
                 if ext != '.XML':       # nope
                     continue
 
-                # If names match up to '.LBL', then yes
+                # If names match up to '.XML', then yes
                 if (len(linkname_uc) > ltest and
                     linkname_uc[:ltest] == baseroot_uc and
                     linkname_uc[ltest] == '.'):
@@ -319,6 +319,22 @@ def generate_links(dirpath, old_links={},
                 continue
 
             abspath = os.path.join(root, basename)
+
+            # linkinfo_dict: a dictionary with the abspath of a label file as the key and
+            # a list of its corresponding files (LinkInfo objects) under file_name tags as
+            # the value.
+            # label_dict: a dictionary with the abspath of a file as the key and the
+            # abspath of its corresponding label as the value.
+            # At the current directory, if a file basename is in the list of a label's
+            # (in same directory) file_name tags in linkinfo_dict, create an entry of
+            # that file basename in label_dict. This will make sure the file is pointing
+            # to it's correct corresponding label.
+            for label_abspath, link_info_list in linkinfo_dict.items():
+                for info in link_info_list:
+                    if info.linktext == basename and abspath not in label_dict:
+                        label_dict[abspath] = label_abspath
+                        break
+
             if abspath in label_dict:
                 continue                    # label already found
 
@@ -385,6 +401,7 @@ def generate_links(dirpath, old_links={},
       # This occurs when a .TXT or .CAT file has a label, even though it didn't
       # need one. In the returned dictionary, link lists take priority.
       link_dict = {}
+
       for key in abspaths:
         if key in linkinfo_dict:
             # If this is a new entry, it's a list of LinkInfo objects
@@ -457,6 +474,12 @@ def read_links(abspath, logger=None):
             # No more matches in this record
             if not matchobj:
                 break
+
+            # if 'u0_kao_91cm_734nm_ring_beta_ingress_sqw' in abspath:
+            #     print('readdddd')
+            #     print(rec)
+            #     print(matchobj.group(1))
+
 
             linktext = matchobj.group(1)
             links.append(LinkInfo(recno, linktext, is_target))
@@ -994,7 +1017,7 @@ def main():
                              'their links to the link shelf file. Links of '   +
                              'pre-existing files are not checked.')
 
-    parser.add_argument('--bundle', nargs='+', type=str,
+    parser.add_argument('bundle', nargs='+', type=str,
                         help='The path to the root directory of a bundle.')
 
     parser.add_argument('--log', '-l', type=str, default='',
