@@ -109,324 +109,323 @@ def generate_links(dirpath, old_links={},
 
     try:
 
-      linkinfo_dict = old_links.copy()      # abspath: list of LinkInfo objects
-      label_dict = {k:v for k,v in old_links.items() if isinstance(v,str)}
-                                            # abspath: label for this file
-      abspaths = []                         # list of all abspaths
+        linkinfo_dict = old_links.copy()      # abspath: list of LinkInfo objects
+        label_dict = {k:v for k,v in old_links.items() if isinstance(v,str)}
+                                                # abspath: label for this file
+        abspaths = []                         # list of all abspaths
 
-      latest_mtime = 0.
+        latest_mtime = 0.
 
-      # Walk the directory tree, one subdirectory "root" at a time...
-      for (root, dirs, files) in os.walk(dirpath):
+        # Walk the directory tree, one subdirectory "root" at a time...
+        for (root, dirs, files) in os.walk(dirpath):
 
-        # skip ring_models dirctory
-        # if 'ring_models' in root:
-        #     continue
+            # skip ring_models dirctory
+            # if 'ring_models' in root:
+            #     continue
 
-        local_basenames = []            # Tracks the basenames in this directory
-        local_basenames_uc = []         # Same as above, but upper case
-        for basename in files:
-            abspath = os.path.join(root, basename)
-            latest_mtime = max(latest_mtime, os.path.getmtime(abspath))
+            local_basenames = []            # Tracks the basenames in this directory
+            local_basenames_uc = []         # Same as above, but upper case
+            for basename in files:
+                abspath = os.path.join(root, basename)
+                latest_mtime = max(latest_mtime, os.path.getmtime(abspath))
 
-            if basename == '.DS_Store':    # skip .DS_Store files
-                logger.ds_store('.DS_Store file skipped', abspath)
-                continue
+                if basename == '.DS_Store':    # skip .DS_Store files
+                    logger.ds_store('.DS_Store file skipped', abspath)
+                    continue
 
-            if basename.startswith('._'):   # skip dot_underscore files
-                logger.dot_underscore('dot_underscore file skipped',
-                                      abspath)
-                continue
+                if basename.startswith('._'):   # skip dot_underscore files
+                    logger.dot_underscore('dot_underscore file skipped',
+                                        abspath)
+                    continue
 
-            if basename.startswith('.'):    # skip invisible files
-                logger.invisible('Invisible file skipped', abspath)
-                continue
+                if basename.startswith('.'):    # skip invisible files
+                    logger.invisible('Invisible file skipped', abspath)
+                    continue
 
-            abspaths.append(abspath)
-            local_basenames.append(basename)
-            local_basenames_uc.append(basename.upper())
+                abspaths.append(abspath)
+                local_basenames.append(basename)
+                local_basenames_uc.append(basename.upper())
 
-        # Update linkinfo_dict, searching each relevant file for possible links.
-        # If the linking file is a label and the target file has a matching
-        # name, update the label_dict entry for the target.
-        candidate_labels = {}       # {target: list of possible label basenames}
-        for basename in local_basenames:
+            # Update linkinfo_dict, searching each relevant file for possible links.
+            # If the linking file is a label and the target file has a matching
+            # name, update the label_dict entry for the target.
+            candidate_labels = {}       # {target: list of possible label basenames}
+            for basename in local_basenames:
 
-            abspath = os.path.join(root, basename)
-            if abspath in linkinfo_dict:    # for update op, skip existing links
-                continue
+                abspath = os.path.join(root, basename)
+                if abspath in linkinfo_dict:    # for update op, skip existing links
+                    continue
 
-            basename_uc = basename.upper()
+                basename_uc = basename.upper()
 
-            # Only check XML, CAT, TXT, etc.
-            ext = basename_uc[-4:] if len(basename) >= 4 else ''
-            if ext not in EXTS_WO_LABELS:
-                continue
+                # Only check XML, CAT, TXT, etc.
+                ext = basename_uc[-4:] if len(basename) >= 4 else ''
+                if ext not in EXTS_WO_LABELS:
+                    continue
 
-            # Get list of link info for all possible linked filenames
-            logger.debug('*** REVIEWING', abspath)
-            linkinfo_list = read_links(abspath, logger=logger)
+                # Get list of link info for all possible linked filenames
+                logger.debug('*** REVIEWING', abspath)
+                linkinfo_list = read_links(abspath, logger=logger)
 
-            # Apply repairs
-            repairs = REPAIRS.all(abspath)
-            for info in linkinfo_list:
-                for repair in repairs:
-                    linkname = repair.first(info.linktext)
-                    if linkname is None:
-
-                        # Attempt repair with leading directory path removed
-                        if '/' in info.linktext:
-                            info.remove_path()
-                            linkname = repair.first(info.linktext)
-
+                # Apply repairs
+                repairs = REPAIRS.all(abspath)
+                for info in linkinfo_list:
+                    for repair in repairs:
+                        linkname = repair.first(info.linktext)
                         if linkname is None:
-                            continue            # no repair found
 
-                    info.linkname = linkname
-                    if linkname == '':
-                        logger.info('Ignoring link "%s"' %
-                                    info.linktext, abspath, force=True)
-                    else:
-                        logger.info('Repairing link "%s"->"%s"' %
-                                    (info.linktext, linkname),
-                                    abspath, force=True)
+                            # Attempt repair with leading directory path removed
+                            if '/' in info.linktext:
+                                info.remove_path()
+                                linkname = repair.first(info.linktext)
 
-                    # Validate non-local targets of repairs
-                    if '/' in linkname:
-                      target = os.path.join(root, linkname)
-                      if os.path.exists(target):
-                        info.target = os.path.abspath(target)
-                      else:
-                        logger.error('Target of repaired link is missing',
-                                     target)
+                            if linkname is None:
+                                continue            # no repair found
 
-                    break       # apply only one repair per found link
+                        info.linkname = linkname
+                        if linkname == '':
+                            logger.info('Ignoring link "%s"' %
+                                        info.linktext, abspath, force=True)
+                        else:
+                            logger.info('Repairing link "%s"->"%s"' %
+                                        (info.linktext, linkname),
+                                        abspath, force=True)
 
-            # Validate or remove other targets
-            new_linkinfo_list = []
-            baseroot_uc = basename_uc.partition('.')[0]
-            ltest = len(baseroot_uc)
-            for info in linkinfo_list:
-                if info.target:         # Non-local, repaired links have targets
-                    new_linkinfo_list.append(info)
-                    continue
+                        # Validate non-local targets of repairs
+                        if '/' in linkname:
+                            target = os.path.join(root, linkname)
+                            if os.path.exists(target):
+                                info.target = os.path.abspath(target)
+                            else:
+                                logger.error('Target of repaired link is missing', target)
 
-                # A blank linkname is from a repair; indicates to ignore
-                if info.linkname == '':
-                    continue
+                        break       # apply only one repair per found link
 
-                # Ignore self-references
-                linkname_uc = info.linkname.upper()
-                if linkname_uc == basename_uc:
-                    continue
-
-                # Check for target inside this directory
-                try:
-                    match_index = local_basenames_uc.index(linkname_uc)
-                except ValueError:
-                    match_index = None
-
-                # If not found, maybe it is a non-local reference (.FMT perhaps)
-                if match_index is None:
-
-                    # It's easy to pick up floats as link candidates; ignore
-                    try:
-                        _ = float(info.linkname)
-                        continue            # Yup, it's just a float
-                    except ValueError:
-                        pass
-
-                    if info.linkname[-1] in ('e', 'E'):
-                      try:
-                        _ = float(info.linkname[:-1])
-                        continue            # Float with exponent
-                      except ValueError:
-                        pass
-
-                    # Also ignore format specifications (e.g., "F10.3")
-                    if info.linkname[0] in ('F', 'E', 'G'):
-                      try:
-                        _ = float(info.linkname[1:])
-                        continue            # Format
-                      except ValueError:
-                        pass
-
-                    # Search non-locally
-                    if '/' in info.linkname:
-                        nonlocal_target = locate_link_with_path(abspath,
-                                                                info.linkname)
-                    else:
-                        nonlocal_target = locate_nonlocal_link(abspath,
-                                                               info.linkname)
-
-                    # Report the outcome
-                    if nonlocal_target:
-                        logger.debug('Located "%s"' % info.linkname,
-                                     nonlocal_target)
-                        info.target = nonlocal_target
+                # Validate or remove other targets
+                new_linkinfo_list = []
+                baseroot_uc = basename_uc.partition('.')[0]
+                ltest = len(baseroot_uc)
+                for info in linkinfo_list:
+                    if info.target:         # Non-local, repaired links have targets
                         new_linkinfo_list.append(info)
                         continue
 
-                    if linkname_uc.endswith('.FMT'):
-                        logger.error('Unable to locate .FMT file "%s"' %
-                                     info.linkname, abspath)
-                    elif linkname_uc.endswith('.CAT'):
-                        logger.error('Unable to locate .CAT file "%s"' %
-                                     info.linkname, abspath)
-                    else:
-                        logger.debug('Substring "%s" is not a link, ignored' %
-                                     info.linkname, abspath)
-
-                    continue
-
-                # Save the match
-                info.linkname = local_basenames[match_index]    # update case
-                info.target = os.path.join(root, info.linkname)
-                new_linkinfo_list.append(info)
-
-                # Could this be the label?
-                if ext != '.XML':       # nope
-                    continue
-
-                # If names match up to '.XML', then yes
-                if (len(linkname_uc) > ltest and
-                    linkname_uc[:ltest] == baseroot_uc and
-                    linkname_uc[ltest] == '.'):
-                        label_dict[info.target] = abspath
-                        logger.debug('Label identified for %s' % info.linkname,
-                                     abspath)
+                    # A blank linkname is from a repair; indicates to ignore
+                    if info.linkname == '':
                         continue
 
-                # Otherwise, then maybe
-                if info.is_target:
-                    if info.linkname in candidate_labels:
-                      if basename not in candidate_labels[info.linkname]:
-                        candidate_labels[info.linkname].append(basename)
-                    else:
-                        candidate_labels[info.linkname] = [basename]
+                    # Ignore self-references
+                    linkname_uc = info.linkname.upper()
+                    if linkname_uc == basename_uc:
+                        continue
 
-                    logger.debug('Candidate label found for ' +
-                                 info.linkname, abspath)
+                    # Check for target inside this directory
+                    try:
+                        match_index = local_basenames_uc.index(linkname_uc)
+                    except ValueError:
+                        match_index = None
 
-            linkinfo_dict[abspath] = new_linkinfo_list
+                    # If not found, maybe it is a non-local reference (.FMT perhaps)
+                    if match_index is None:
 
-        # Identify labels for files
-        for basename in local_basenames:
+                        # It's easy to pick up floats as link candidates; ignore
+                        try:
+                            _ = float(info.linkname)
+                            continue            # Yup, it's just a float
+                        except ValueError:
+                            pass
 
-            basename_uc = basename.upper()
-            ext = basename_uc[-4:] if len(basename) >= 4 else ''
-            if ext in (".XML", ".FMT"):     # these can't have labels
-                continue
+                        if info.linkname[-1] in ('e', 'E'):
+                            try:
+                                _ = float(info.linkname[:-1])
+                                continue            # Float with exponent
+                            except ValueError:
+                                pass
 
-            abspath = os.path.join(root, basename)
+                        # Also ignore format specifications (e.g., "F10.3")
+                        if info.linkname[0] in ('F', 'E', 'G'):
+                            try:
+                                _ = float(info.linkname[1:])
+                                continue            # Format
+                            except ValueError:
+                                pass
 
-            # linkinfo_dict: a dictionary with the abspath of a label file as the key and
-            # a list of its corresponding files (LinkInfo objects) under file_name tags as
-            # the value.
-            # label_dict: a dictionary with the abspath of a file as the key and the
-            # abspath of its corresponding label as the value.
-            # At the current directory, if a file basename is in the list of a label's
-            # (in same directory) file_name tags in linkinfo_dict, create an entry of
-            # that file basename in label_dict. This will make sure the file is pointing
-            # to it's correct corresponding label.
-            for label_abspath, link_info_list in linkinfo_dict.items():
-                for info in link_info_list:
-                    if info.linktext == basename and abspath not in label_dict:
-                        label_dict[abspath] = label_abspath
-                        break
+                        # Search non-locally
+                        if '/' in info.linkname:
+                            nonlocal_target = locate_link_with_path(abspath,
+                                                                    info.linkname)
+                        else:
+                            nonlocal_target = locate_nonlocal_link(abspath,
+                                                                info.linkname)
 
-            if abspath in label_dict:
-                continue                    # label already found
+                        # Report the outcome
+                        if nonlocal_target:
+                            logger.debug('Located "%s"' % info.linkname,
+                                        nonlocal_target)
+                            info.target = nonlocal_target
+                            new_linkinfo_list.append(info)
+                            continue
 
-            # Maybe we already know the label is missing
-            test = KNOWN_MISSING_LABELS.first(abspath)
-            if test == 'unneeded':
-                logger.debug('Label is not neeeded', abspath)
-                continue
+                        if linkname_uc.endswith('.FMT'):
+                            logger.error('Unable to locate .FMT file "%s"' %
+                                        info.linkname, abspath)
+                        elif linkname_uc.endswith('.CAT'):
+                            logger.error('Unable to locate .CAT file "%s"' %
+                                        info.linkname, abspath)
+                        else:
+                            logger.debug('Substring "%s" is not a link, ignored' %
+                                        info.linkname, abspath)
 
-            if test == 'missing':
-                logger.debug('Label is known to be missing', abspath)
-                continue
+                        continue
 
-            # Determine if a label is required
-            label_is_required = (ext not in EXTS_WO_LABELS)
+                    # Save the match
+                    info.linkname = local_basenames[match_index]    # update case
+                    info.target = os.path.join(root, info.linkname)
+                    new_linkinfo_list.append(info)
 
-            # Get the list of candidate labels in this directory
-            candidates = candidate_labels.get(basename, [])
+                    # Could this be the label?
+                    if ext != '.XML':       # nope
+                        continue
 
-            # Determine if the obvious label file exists
-            label_guess_uc = basename_uc.partition('.')[0] + '.XML'
-            if label_guess_uc in local_basenames_uc:
-                k = local_basenames_uc.index(label_guess_uc)
-                obvious_label_basename = local_basenames[k]
-            else:
-                obvious_label_basename = ''
+                    # If names match up to '.XML', then yes
+                    if (len(linkname_uc) > ltest and
+                        linkname_uc[:ltest] == baseroot_uc and
+                        linkname_uc[ltest] == '.'):
+                            label_dict[info.target] = abspath
+                            logger.debug('Label identified for %s' % info.linkname,
+                                        abspath)
+                            continue
 
-            # Simplest case...
-            if obvious_label_basename in candidates:
+                    # Otherwise, then maybe
+                    if info.is_target:
+                        if info.linkname in candidate_labels:
+                            if basename not in candidate_labels[info.linkname]:
+                                candidate_labels[info.linkname].append(basename)
+                        else:
+                            candidate_labels[info.linkname] = [basename]
+
+                        logger.debug('Candidate label found for ' +
+                                    info.linkname, abspath)
+
+                linkinfo_dict[abspath] = new_linkinfo_list
+
+            # Identify labels for files
+            for basename in local_basenames:
+
+                basename_uc = basename.upper()
+                ext = basename_uc[-4:] if len(basename) >= 4 else ''
+                if ext in (".XML", ".FMT"):     # these can't have labels
+                    continue
+
+                abspath = os.path.join(root, basename)
+
+                # linkinfo_dict: a dictionary with the abspath of a label file as the key and
+                # a list of its corresponding files (LinkInfo objects) under file_name tags as
+                # the value.
+                # label_dict: a dictionary with the abspath of a file as the key and the
+                # abspath of its corresponding label as the value.
+                # At the current directory, if a file basename is in the list of a label's
+                # (in same directory) file_name tags in linkinfo_dict, create an entry of
+                # that file basename in label_dict. This will make sure the file is pointing
+                # to it's correct corresponding label.
+                for label_abspath, link_info_list in linkinfo_dict.items():
+                    for info in link_info_list:
+                        if info.linktext == basename and abspath not in label_dict:
+                            label_dict[abspath] = label_abspath
+                            break
+
+                if abspath in label_dict:
+                    continue                    # label already found
+
+                # Maybe we already know the label is missing
+                test = KNOWN_MISSING_LABELS.first(abspath)
+                if test == 'unneeded':
+                    logger.debug('Label is not neeeded', abspath)
+                    continue
+
+                if test == 'missing':
+                    logger.debug('Label is known to be missing', abspath)
+                    continue
+
+                # Determine if a label is required
+                label_is_required = (ext not in EXTS_WO_LABELS)
+
+                # Get the list of candidate labels in this directory
+                candidates = candidate_labels.get(basename, [])
+
+                # Determine if the obvious label file exists
+                label_guess_uc = basename_uc.partition('.')[0] + '.XML'
+                if label_guess_uc in local_basenames_uc:
+                    k = local_basenames_uc.index(label_guess_uc)
+                    obvious_label_basename = local_basenames[k]
+                else:
+                    obvious_label_basename = ''
+
+                # Simplest case...
+                if obvious_label_basename in candidates:
+                    if not label_is_required:
+                        logger.debug('Unnecessary label found', abspath, force=True)
+
+                    label_dict[abspath] = os.path.join(root, obvious_label_basename)
+                    continue
+
+                # More cases...
                 if not label_is_required:
-                    logger.debug('Unnecessary label found', abspath, force=True)
+                    continue                # leave abspath out of label_dict
 
-                label_dict[abspath] = os.path.join(root, obvious_label_basename)
-                continue
+                # Report a phantom label
+                if obvious_label_basename:
+                    logger.error('Label %s does not point to file' %
+                                local_basenames[k], abspath)
 
-            # More cases...
-            if not label_is_required:
-                continue                # leave abspath out of label_dict
+                if len(candidates) == 1:
+                    logger.debug('Label found as ' + candidates[0], abspath,
+                                force=True)
+                    label_dict[abspath] = os.path.join(root, candidates[0])
+                    continue
 
-            # Report a phantom label
-            if obvious_label_basename:
-                logger.error('Label %s does not point to file' %
-                             local_basenames[k], abspath)
+                # or errors...
+                label_dict[abspath] = ""
+                if len(candidates) == 0:
+                    logger.error('Label is missing', abspath)
+                else:
+                    logger.error('Ambiguous label found as %s' % candidates[0],
+                                abspath, force=True)
+                    for candidate in candidates[1:]:
+                        logger.debug('Alternative label found as %s' % candidate,
+                                    abspath, force=True)
 
-            if len(candidates) == 1:
-                logger.debug('Label found as ' + candidates[0], abspath,
-                             force=True)
-                label_dict[abspath] = os.path.join(root, candidates[0])
-                continue
+        # Merge the dictionaries
+        # There are cases where a file can have both a list of links and a label.
+        # This occurs when a .TXT or .CAT file has a label, even though it didn't
+        # need one. In the returned dictionary, link lists take priority.
+        link_dict = {}
 
-            # or errors...
-            label_dict[abspath] = ""
-            if len(candidates) == 0:
-                logger.error('Label is missing', abspath)
+        for key in abspaths:
+            if key in linkinfo_dict:
+                # If this is a new entry, it's a list of LinkInfo objects
+                # If this was copied from old_links, it's already a list of tuples
+                values = linkinfo_dict[key]
+                if isinstance(values, list):
+                    new_list = []
+                    for item in values:
+                        if isinstance(item, LinkInfo):
+                            new_list.append((item.recno, item.linktext, item.target))
+                        else:
+                            new_list.append(item)
+                    link_dict[key] = new_list
+                else:
+                    link_dict[key] = values
+            elif key in label_dict:
+                link_dict[key] = label_dict[key]
             else:
-                logger.error('Ambiguous label found as %s' % candidates[0],
-                             abspath, force=True)
-                for candidate in candidates[1:]:
-                    logger.debug('Alternative label found as %s' % candidate,
-                                 abspath, force=True)
+                link_dict[key] = ''
 
-      # Merge the dictionaries
-      # There are cases where a file can have both a list of links and a label.
-      # This occurs when a .TXT or .CAT file has a label, even though it didn't
-      # need one. In the returned dictionary, link lists take priority.
-      link_dict = {}
+        dt = datetime.datetime.fromtimestamp(latest_mtime)
+        logger.info('Lastest holdings file modification date',
+                    dt.strftime('%Y-%m-%dT%H-%M-%S'), force=True)
 
-      for key in abspaths:
-        if key in linkinfo_dict:
-            # If this is a new entry, it's a list of LinkInfo objects
-            # If this was copied from old_links, it's already a list of tuples
-            values = linkinfo_dict[key]
-            if isinstance(values, list):
-                new_list = []
-                for item in values:
-                  if isinstance(item, LinkInfo):
-                    new_list.append((item.recno, item.linktext, item.target))
-                  else:
-                    new_list.append(item)
-                link_dict[key] = new_list
-            else:
-                link_dict[key] = values
-        elif key in label_dict:
-            link_dict[key] = label_dict[key]
-        else:
-            link_dict[key] = ''
-
-      dt = datetime.datetime.fromtimestamp(latest_mtime)
-      logger.info('Lastest holdings file modification date',
-                  dt.strftime('%Y-%m-%dT%H-%M-%S'), force=True)
-
-      return (link_dict, latest_mtime)
+        return (link_dict, latest_mtime)
 
     except (Exception, KeyboardInterrupt) as e:
         logger.exception(e)
