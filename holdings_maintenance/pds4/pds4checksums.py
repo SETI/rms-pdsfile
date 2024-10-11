@@ -614,7 +614,7 @@ def main():
                              'their MD5 checksums to the checksum file. '      +
                              'Checksums of pre-existing files are not checked.')
 
-    parser.add_argument('--bundle', nargs='+', type=str,
+    parser.add_argument('bundle', nargs='+', type=str,
                         help='The path to the root directory of a volume or '  +
                              'volume set. For a volume set, all the volume '   +
                              'directories inside it are handled in sequence. ' +

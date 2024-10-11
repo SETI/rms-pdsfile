@@ -8,7 +8,10 @@
 # Enter the --help option to see more information.
 ################################################################################
 
+from collections import defaultdict
+
 import argparse
+import csv
 import datetime
 import glob
 import os
@@ -115,13 +118,9 @@ def generate_links(dirpath, old_links={},
         abspaths = []                         # list of all abspaths
 
         latest_mtime = 0.
-
+        collection_basename_dict = defaultdict(list)
         # Walk the directory tree, one subdirectory "root" at a time...
         for (root, dirs, files) in os.walk(dirpath):
-
-            # skip ring_models dirctory
-            # if 'ring_models' in root:
-            #     continue
 
             local_basenames = []            # Tracks the basenames in this directory
             local_basenames_uc = []         # Same as above, but upper case
@@ -142,16 +141,30 @@ def generate_links(dirpath, old_links={},
                     logger.invisible('Invisible file skipped', abspath)
                     continue
 
+                # collection_basename_dict: a dictonary with the abspath of a collection
+                # csv file as the key and the list of basenames of its corresponding
+                # entries as the value.
+                # Create collection_basename_dict and use it to check whether a file
+                # is listed in the csv later.
+                if basename.startswith('collection') and basename.endswith('.csv'):
+                    with open(abspath, 'r')as file:
+                        csv_lines = csv.reader(file)
+                        for line in csv_lines:
+                            if '::' in line[-1]:
+                                lid = line[-1].rpartition('::')[0]
+                            else:
+                                lid = line[-1]
+                            csv_basename = lid.rpartition(':')[-1]
+
+                            if csv_basename not in collection_basename_dict[abspath]:
+                                collection_basename_dict[abspath].append(csv_basename)
+
                 abspaths.append(abspath)
                 local_basenames.append(basename)
                 local_basenames_uc.append(basename.upper())
 
             local_labels = [f for f in local_basenames if '.xml' in f]
             local_labels_abspath = [os.path.join(root, f) for f in local_labels]
-
-            # If the current directory doesn't have any label, we skip this directory
-            if len(local_labels) == 0:
-                continue
 
             # Update linkinfo_dict, searching each relevant file for possible links.
             # If the linking file is a label and the target file has a matching
@@ -316,6 +329,10 @@ def generate_links(dirpath, old_links={},
 
                 linkinfo_dict[abspath] = new_linkinfo_list
 
+            parent_root = root.rpartition('/')[0]
+            local_collection_csv_prefix = f'{root}/collection'
+            parent_collection_csv_prefix = f'{parent_root}/collection'
+
             # Identify labels for files
             for basename in local_basenames:
 
@@ -326,18 +343,18 @@ def generate_links(dirpath, old_links={},
 
                 abspath = os.path.join(root, basename)
 
-                # linkinfo_dict: a dictionary with the abspath of a label file as the key and
-                # a list of its corresponding files (LinkInfo objects) under file_name tags as
-                # the value.
+                # linkinfo_dict: a dictionary with the abspath of a label file as the key
+                # and a list of its corresponding files (LinkInfo objects) under file_name
+                # tags as the value.
                 # label_dict: a dictionary with the abspath of a file as the key and the
                 # abspath of its corresponding label as the value.
                 # At the current directory, if a file basename is in the list of a label's
                 # (in same directory) file_name tags in linkinfo_dict, create an entry of
-                # that file basename in label_dict. This will make sure the file is pointing
-                # to it's correct corresponding label.
+                # that file basename in label_dict. This will make sure the file is
+                # pointing to it's correct corresponding label.
                 for label_abspath, link_info_list in linkinfo_dict.items():
 
-                    # if the label is at the same directory, skip it.
+                    # if the label is not at the same directory, skip it.
                     if label_abspath not in local_labels_abspath:
                         continue
 
@@ -348,6 +365,20 @@ def generate_links(dirpath, old_links={},
 
                 if abspath in label_dict:
                     continue                    # label already found
+
+                # For files like errata.txt, or checksum files that don't exist in the
+                # label nor exist in the csv, they are not part of the archive, so they
+                # don't have labels
+                is_basename_in_csv = False
+                for col_abspath, csv_basenames in collection_basename_dict.items():
+                    if (col_abspath.startswith(parent_collection_csv_prefix) or
+                        col_abspath.startswith(local_collection_csv_prefix)):
+                        if basename.rpartition('.')[0] in csv_basenames:
+                            is_basename_in_csv = True
+                            break
+
+                if not is_basename_in_csv:
+                    continue
 
                 # Maybe we already know the label is missing
                 test = KNOWN_MISSING_LABELS.first(abspath)
