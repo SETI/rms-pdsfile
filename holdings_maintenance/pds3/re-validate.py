@@ -49,9 +49,9 @@ def validate_one_volume(pdsdir, voltypes, tests, args, logger):
     tests_performed = 0
 
     # Open logger for this volume
-    logfiles = set([pdsdir.log_path_for_bundle('_re-validate',
+    logfiles = set([pdsdir.log_path_for_volume('_re-validate',
                                                dir='re-validate'),
-                    pdsdir.log_path_for_bundle('_re-validate',
+                    pdsdir.log_path_for_volume('_re-validate',
                                                dir='re-validate',
                                                place='parallel')])
 
@@ -83,7 +83,7 @@ def validate_one_volume(pdsdir, voltypes, tests, args, logger):
             if not os.path.exists(abspath):
                 continue
 
-            temp_pdsdir = pdsfile.PdsFile.from_abspath(abspath)
+            temp_pdsdir = pdsfile.Pds3File.from_abspath(abspath)
             if args.checksums:
                 logger.open('Checksum re-validatation for', abspath)
                 try:
@@ -113,7 +113,7 @@ def validate_one_volume(pdsdir, voltypes, tests, args, logger):
                 abspath = abspath[0]    # there should only be one
 
                 (prefix, basename) = os.path.split(abspath)
-                temp_pdsdir = pdsfile.PdsFile.from_abspath(prefix)
+                temp_pdsdir = pdsfile.Pds3File.from_abspath(prefix)
                 logger.open('Checksum re-validatation for', abspath)
                 try:
                     pdschecksums.validate(temp_pdsdir, basename, logger)
@@ -128,7 +128,7 @@ def validate_one_volume(pdsdir, voltypes, tests, args, logger):
             if not os.path.exists(abspath):
                 continue
 
-            temp_pdsdir = pdsfile.PdsFile.from_abspath(abspath)
+            temp_pdsdir = pdsfile.Pds3File.from_abspath(abspath)
             if args.infoshelves:
                 logger.open('Infoshelf re-validatation for', abspath)
                 try:
@@ -159,7 +159,7 @@ def validate_one_volume(pdsdir, voltypes, tests, args, logger):
                 abspath = abspath[0]    # there should only be one
 
                 (prefix, basename) = os.path.split(abspath)
-                temp_pdsdir = pdsfile.PdsFile.from_abspath(prefix)
+                temp_pdsdir = pdsfile.Pds3File.from_abspath(prefix)
                 logger.open('Infoshelf re-validatation for', abspath)
                 try:
                     pdsinfoshelf.validate(temp_pdsdir, basename, logger)
@@ -331,7 +331,7 @@ def get_volume_info(holdings):
 
     info_list = []
     for abspath in abspaths:
-        pdsdir = pdsfile.PdsFile.from_abspath(abspath)
+        pdsdir = pdsfile.Pds3File.from_abspath(abspath)
         info_list.append((abspath, pdsdir.date))
 
     return info_list
@@ -586,7 +586,7 @@ new_limits = {'info':10, 'normal':10, 'override':False}
 logger = pdslogger.PdsLogger(LOGNAME, limits=new_limits)
 
 # Place to search for existing logs in batch mode
-pdsfile.PdsFile.set_log_root(args.log)
+pdsfile.Pds3File.set_log_root(args.log)
 
 if not args.quiet:
     logger.add_handler(pdslogger.stdout_handler)
@@ -617,14 +617,14 @@ if not args.batch and not args.batch_status:
     roots = set()
     for volume in args.volume:
         abspath = os.path.abspath(volume)
-        pdsdir = pdsfile.PdsFile.from_abspath(abspath)
+        pdsdir = pdsfile.Pds3File.from_abspath(abspath)
         if pdsdir.category_ != 'volumes/' or pdsdir.interior:
             print('Not a volume path: ', pdsdir.abspath)
             sys.exit(1)
 
         logger.add_root(pdsdir.root_)
 
-        if pdsdir.bundlename:
+        if pdsdir.volname:
             pdsdirs.append(pdsdir)
         else:
             for name in pdsdir.childnames:
@@ -677,7 +677,7 @@ else:
     holdings_abspaths = set(holdings_abspaths)
 
     # Read the existing logs
-    (log_info, logs_for_volset_bundlename) = get_all_log_info(args.log)
+    (log_info, logs_for_volset_volname) = get_all_log_info(args.log)
 
     # Read the current holdings
     holdings_info = []
@@ -691,10 +691,10 @@ else:
 
     # Report missing volumes
     for key in missing_keys:
-        # Determine if this volset/bundlename has ever appeared in any of the
+        # Determine if this volset has ever appeared in any of the
         # holdings directory trees
         holdings_for_key = set()
-        for log_path in logs_for_volset_bundlename[key]:
+        for log_path in logs_for_volset_volname[key]:
             volume_abspath = volume_abspath_from_log(log_path)
             if volume_abspath == '':        # if log file is empty
                 continue
@@ -718,18 +718,18 @@ else:
         fmt = '%4d %20s%-11s  modified %s, not previously validated'
         line_number = 0
         for (abspath, date) in modified_holdings:
-            pdsdir = pdsfile.PdsFile.from_abspath(abspath)
+            pdsdir = pdsfile.Pds3File.from_abspath(abspath)
             line_number += 1
-            print(fmt % (line_number, pdsdir.bundleset_, pdsdir.bundlename,
+            print(fmt % (line_number, pdsdir.volset_, pdsdir.volname,
                          date[:10]))
 
         fmt ='%4d  %20s%-11s  modified %s, last validated %s, duration %s%s'
         for info in current_logs:
             (start, elapsed, date, abspath, had_error, had_fatal) = info
-            pdsdir = pdsfile.PdsFile.from_abspath(abspath)
+            pdsdir = pdsfile.Pds3File.from_abspath(abspath)
             error_text = ', error logged' if had_error else ''
             line_number += 1
-            print(fmt % (line_number, pdsdir.bundleset_, pdsdir.bundlename,
+            print(fmt % (line_number, pdsdir.volset_, pdsdir.volname,
                          date[:10], start[:10], elapsed[:-7], error_text))
 
         sys.exit()
@@ -753,13 +753,13 @@ else:
 
         # For each volume...
         for (abspath, mod_date, prev_validation, had_errors) in info:
-            pdsdir = pdsfile.PdsFile.from_abspath(abspath)
+            pdsdir = pdsfile.Pds3File.from_abspath(abspath)
             if prev_validation is None:
                 ps = 'not previously validated'
             else:
                 ps = 'last validated %s' % prev_validation[:10]
             batch_message = '%20s%-11s  modified %s, %s' % \
-                            (pdsdir.bundleset_, pdsdir.bundlename, mod_date[:10], ps)
+                            (pdsdir.volset_, pdsdir.volname, mod_date[:10], ps)
             print(batch_message)
 
             (log_path,
