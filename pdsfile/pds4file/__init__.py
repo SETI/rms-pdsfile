@@ -13,22 +13,6 @@ from pdsfile.preload_and_cache import cache_lifetime_for_class
 
 class Pds4File(PdsFile):
 
-    BUNDLESET_REGEX = re.compile(r'^(uranus_occs_earthbased|^cassini_iss|^cassini_vims)$')
-    BUNDLESET_PLUS_REGEX   = re.compile(BUNDLESET_REGEX.pattern[:-1] +
-                                        r'(_v[0-9]+\.[0-9]+\.[0-9]+|' +
-                                        r'_v[0-9]+\.[0-9]+|_v[0-9]+|' +
-                                        r'_in_prep|_prelim|_peer_review|' +
-                                        r'_lien_resolution|)' +
-                                        r'((|_calibrated|_diagrams|_metadata|_previews)' +
-                                        r'(|_md5\.txt|\.tar\.gz))$')
-    BUNDLESET_PLUS_REGEX_I = re.compile(BUNDLESET_PLUS_REGEX.pattern, re.I)
-
-    BUNDLENAME_REGEX = re.compile(r'((^uranus_occ_u\d{0,4}._[a-z]*_(fos|\d{2,3}cm))'+
-                                  r'|(^cassini\_[a-z]{3,4}\_cruise))$')
-    BUNDLENAME_PLUS_REGEX  = re.compile(BUNDLENAME_REGEX.pattern[:-1] +
-                                        r'(|_[a-z]+)(|_md5\.txt|\.tar\.gz)$')
-    BUNDLENAME_PLUS_REGEX_I = re.compile(BUNDLENAME_PLUS_REGEX.pattern, re.I)
-
     PDS_HOLDINGS = 'pds4-holdings'
     BUNDLE_DIR_NAME = 'bundles'
 
@@ -72,6 +56,16 @@ class Pds4File(PdsFile):
     LBL_EXT = '.xml'
 
     # TODO: Generalize PDS4 bundlenames in the future once we have more bundles
+    BUNDLESET_REGEX = re.compile(r'^(uranus_occs_earthbased|^cassini_iss|^cassini_vims)$')
+    BUNDLESET_REGEX_I      = re.compile(BUNDLESET_REGEX.pattern, re.I)
+    BUNDLESET_PLUS_REGEX   = re.compile(BUNDLESET_REGEX.pattern[:-1] +
+                                        r'(_v[0-9]+\.[0-9]+\.[0-9]+|' +
+                                        r'_v[0-9]+\.[0-9]+|_v[0-9]+|' +
+                                        r'_in_prep|_prelim|_peer_review|' +
+                                        r'_lien_resolution|)' +
+                                        r'((|_calibrated|_diagrams|_metadata|_previews)' +
+                                        r'(|_md5\.txt|\.tar\.gz))$')
+    BUNDLESET_PLUS_REGEX_I = re.compile(BUNDLESET_PLUS_REGEX.pattern, re.I)
     BUNDLENAME_REGEX = re.compile(r'^([a-zA-z\_].+)$')
 
     BUNDLENAME_REGEX_I     = re.compile(BUNDLENAME_REGEX.pattern, re.I)
