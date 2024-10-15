@@ -16,6 +16,31 @@ class Pds4File(PdsFile):
     PDS_HOLDINGS = 'pds4-holdings'
     BUNDLE_DIR_NAME = 'bundles'
 
+    # TODO: Generalize PDS4 bundlenames in the future once we have more bundles
+    # REGEX
+    BUNDLESET_REGEX = re.compile(r'^(uranus_occs_earthbased|^cassini_iss|^cassini_vims)$')
+    BUNDLESET_REGEX_I      = re.compile(BUNDLESET_REGEX.pattern, re.I)
+    BUNDLESET_PLUS_REGEX   = re.compile(BUNDLESET_REGEX.pattern[:-1] +
+                                        r'(_v[0-9]+\.[0-9]+\.[0-9]+|' +
+                                        r'_v[0-9]+\.[0-9]+|_v[0-9]+|' +
+                                        r'_in_prep|_prelim|_peer_review|' +
+                                        r'_lien_resolution|)' +
+                                        r'((|_calibrated|_diagrams|_metadata|_previews)' +
+                                        r'(|_md5\.txt|\.tar\.gz))$')
+    BUNDLESET_PLUS_REGEX_I = re.compile(BUNDLESET_PLUS_REGEX.pattern, re.I)
+    BUNDLENAME_REGEX = re.compile(r'^([a-zA-z\_].+)$')
+
+    BUNDLENAME_REGEX_I     = re.compile(BUNDLENAME_REGEX.pattern, re.I)
+    BUNDLENAME_PLUS_REGEX  = re.compile(BUNDLENAME_REGEX.pattern[:-1] +
+                                        r'(|_[a-z]+)(|_md5\.txt|\.tar\.gz)$')
+    BUNDLENAME_PLUS_REGEX_I = re.compile(BUNDLENAME_PLUS_REGEX.pattern, re.I)
+    BUNDLENAME_VERSION     = re.compile(BUNDLENAME_REGEX.pattern[:-1] +
+                                        r'(_v[0-9]+\.[0-9]+\.[0-9]+|'+
+                                        r'_v[0-9]+\.[0-9]+|_v[0-9]+|'+
+                                        r'_in_prep|_prelim|_peer_review|'+
+                                        r'_lien_resolution)$')
+    BUNDLENAME_VERSION_I   = re.compile(BUNDLENAME_VERSION.pattern, re.I)
+
     # Logger
     LOGGER = pdslogger.NullLogger()
 
@@ -54,30 +79,6 @@ class Pds4File(PdsFile):
 
     IDX_EXT = '.csv'
     LBL_EXT = '.xml'
-
-    # TODO: Generalize PDS4 bundlenames in the future once we have more bundles
-    BUNDLESET_REGEX = re.compile(r'^(uranus_occs_earthbased|^cassini_iss|^cassini_vims)$')
-    BUNDLESET_REGEX_I      = re.compile(BUNDLESET_REGEX.pattern, re.I)
-    BUNDLESET_PLUS_REGEX   = re.compile(BUNDLESET_REGEX.pattern[:-1] +
-                                        r'(_v[0-9]+\.[0-9]+\.[0-9]+|' +
-                                        r'_v[0-9]+\.[0-9]+|_v[0-9]+|' +
-                                        r'_in_prep|_prelim|_peer_review|' +
-                                        r'_lien_resolution|)' +
-                                        r'((|_calibrated|_diagrams|_metadata|_previews)' +
-                                        r'(|_md5\.txt|\.tar\.gz))$')
-    BUNDLESET_PLUS_REGEX_I = re.compile(BUNDLESET_PLUS_REGEX.pattern, re.I)
-    BUNDLENAME_REGEX = re.compile(r'^([a-zA-z\_].+)$')
-
-    BUNDLENAME_REGEX_I     = re.compile(BUNDLENAME_REGEX.pattern, re.I)
-    BUNDLENAME_PLUS_REGEX  = re.compile(BUNDLENAME_REGEX.pattern[:-1] +
-                                        r'(|_[a-z]+)(|_md5\.txt|\.tar\.gz)$')
-    BUNDLENAME_PLUS_REGEX_I = re.compile(BUNDLENAME_PLUS_REGEX.pattern, re.I)
-    BUNDLENAME_VERSION     = re.compile(BUNDLENAME_REGEX.pattern[:-1] +
-                                        r'(_v[0-9]+\.[0-9]+\.[0-9]+|'+
-                                        r'_v[0-9]+\.[0-9]+|_v[0-9]+|'+
-                                        r'_in_prep|_prelim|_peer_review|'+
-                                        r'_lien_resolution)$')
-    BUNDLENAME_VERSION_I   = re.compile(BUNDLENAME_VERSION.pattern, re.I)
 
     def __init__(self):
         super().__init__()
