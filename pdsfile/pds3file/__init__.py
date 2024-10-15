@@ -3,6 +3,8 @@
 # pds3file subpackage & Pds3File subclass with PdsFile as the parent class
 ##########################################################################################
 
+import re
+
 import pdslogger
 
 from pdsfile import pdscache
@@ -14,6 +16,41 @@ class Pds3File(PdsFile):
 
     PDS_HOLDINGS = 'holdings'
     BUNDLE_DIR_NAME = 'volumes'
+
+    # REGEX
+    BUNDLESET_REGEX        = re.compile(r'^([A-Z][A-Z0-9x]{1,5}_[0-9x]{3}x)$')
+    BUNDLESET_REGEX_I      = re.compile(BUNDLESET_REGEX.pattern, re.I)
+    BUNDLESET_PLUS_REGEX   = re.compile(BUNDLESET_REGEX.pattern[:-1] +
+                                        r'(_v[0-9]+\.[0-9]+\.[0-9]+|'+
+                                        r'_v[0-9]+\.[0-9]+|_v[0-9]+|'+
+                                        r'_in_prep|_prelim|_peer_review|'+
+                                        r'_lien_resolution|)' +
+                                        r'((|_calibrated|_diagrams|_metadata|_previews)' +
+                                        r'(|_md5\.txt|\.tar\.gz))$')
+    BUNDLESET_PLUS_REGEX_I = re.compile(BUNDLESET_PLUS_REGEX.pattern, re.I)
+
+    BUNDLENAME_REGEX       = re.compile(r'^([A-Z][A-Z0-9]{1,5}_(?:[0-9]{4}))$')
+    BUNDLENAME_REGEX_I     = re.compile(BUNDLENAME_REGEX.pattern, re.I)
+    BUNDLENAME_PLUS_REGEX  = re.compile(BUNDLENAME_REGEX.pattern[:-1] +
+                                        r'(|_[a-z]+)(|_md5\.txt|\.tar\.gz)$')
+    BUNDLENAME_PLUS_REGEX_I = re.compile(BUNDLENAME_PLUS_REGEX.pattern, re.I)
+    BUNDLENAME_VERSION     = re.compile(BUNDLENAME_REGEX.pattern[:-1] +
+                                        r'(_v[0-9]+\.[0-9]+\.[0-9]+|'+
+                                        r'_v[0-9]+\.[0-9]+|_v[0-9]+|'+
+                                        r'_in_prep|_prelim|_peer_review|'+
+                                        r'_lien_resolution)$')
+    BUNDLENAME_VERSION_I   = re.compile(BUNDLENAME_VERSION.pattern, re.I)
+
+    VOLSET_REGEX         = BUNDLESET_REGEX
+    VOLSET_REGEX_I       = BUNDLESET_REGEX_I
+    VOLSET_PLUS_REGEX    = BUNDLESET_PLUS_REGEX
+    VOLSET_PLUS_REGEX_I  = BUNDLESET_PLUS_REGEX_I
+    VOLNAME_REGEX        = BUNDLENAME_REGEX
+    VOLNAME_REGEX_I      = BUNDLENAME_REGEX_I
+    VOLNAME_PLUS_REGEX   = BUNDLENAME_PLUS_REGEX
+    VOLNAME_PLUS_REGEX_I = BUNDLENAME_PLUS_REGEX_I
+    VOLNAME_VERSION      = BUNDLENAME_VERSION
+    VOLNAME_VERSION_I    = BUNDLENAME_VERSION_I
 
     # Logger
     LOGGER = pdslogger.NullLogger()
@@ -119,6 +156,73 @@ class Pds3File(PdsFile):
         else:
             return ('Pds3File.' + type(self).__name__ + '("' +
                     self.abspath + '")')
+
+    @property
+    def volset(self):
+        return self.bundleset
+
+    @property
+    def volset_(self):
+        return self.bundleset_
+
+    @property
+    def is_volset(self):
+        return self.is_bundleset
+
+    @property
+    def is_volset_dir(self):
+        return self.is_bundleset_dir
+
+    @property
+    def is_volset_file(self):
+        return self.is_bundleset_file
+
+    @property
+    def volname(self):
+        return self.bundlename
+
+    @property
+    def volname_(self):
+        return self.bundlename_
+
+    @property
+    def is_volume(self):
+        return self.is_bundle
+
+    @property
+    def is_volume_dir(self):
+        return self.is_bundle_dir
+
+    @property
+    def is_volume_file(self):
+        return self.is_bundle_file
+
+    def log_path_for_volume(self, suffix='', task='', dir='', place='default'):
+        return self.log_path_for_bundle(suffix=suffix, task=task, dir=dir, place=place)
+
+#     def volset_abspath(self):
+#         return self.bundleset_abspath()
+#
+#     def volset_pdsfile(self):
+#         return self.bundleset_pdsfile()
+#
+#     def volume_abspath(self):
+#         return self.bundle_abspath()
+#
+#     def volume_pdsfile(self):
+#         return self.bundle_pdsfile()
+#
+#     @property
+#     def voltype_(self):
+#         return self.bundletype_
+#
+#     @property
+#     def volume_publication_date(self):
+#         return self.bundle_publication_date
+#
+#     @property
+#     def volume_version_id(self):
+#         return self.bundle_version_id
 
     ######################################################################################
     # PdsLogger support
