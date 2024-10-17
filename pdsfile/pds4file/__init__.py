@@ -18,7 +18,10 @@ class Pds4File(PdsFile):
 
     # TODO: Generalize PDS4 bundlenames in the future once we have more bundles
     # REGEX
-    BUNDLESET_REGEX = re.compile(r'^(uranus_occs_earthbased|^cassini_iss|^cassini_vims)$')
+    BUNDLESET_REGEX = re.compile(r'^(uranus_occs_earthbased|' +
+                                 r'^cassini_iss.*|' +
+                                 r'^cassini_vims.*|' +
+                                 r'^cassini_uvis.*)$')
     BUNDLESET_REGEX_I      = re.compile(BUNDLESET_REGEX.pattern, re.I)
     BUNDLESET_PLUS_REGEX   = re.compile(BUNDLESET_REGEX.pattern[:-1] +
                                         r'(_v[0-9]+\.[0-9]+\.[0-9]+|' +

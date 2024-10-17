@@ -733,7 +733,7 @@ def main():
                 info += [(c, None) for c in children if c.isdir]
                         # "if c.isdir" is False for volset level readme files
 
-        elif pdsf.is_volume_dir:
+        elif pdsf.is_bundle_dir:
             # Checksum one volume
             info.append((pdsf, None))
 
@@ -746,7 +746,7 @@ def main():
             if pdsf.is_volume_file:
                 # Checksum one archive file
                 info.append((pdsdir, pdsf.basename))
-            elif pdsdir.is_volume_dir:
+            elif pdsdir.is_bundle_dir:
                 # Checksum one top-level file in volume
                 info.append((pdsdir, pdsf.basename))
             else:
