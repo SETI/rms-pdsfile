@@ -37,8 +37,9 @@ KNOWN_MISSING_LABELS = translator.TranslatorByRegex([])
 # Match pattern for any file name, but possibly things that are not file names
 PATTERN = r'\'?\"?([A-Z0-9][-\w]*\.[A-Z0-9][-\w\.]*)\'?\"?'
 
-# Match pattern for the file name in anything of the form "keyword = filename"
-TARGET_REGEX1 = re.compile(r'^ *\^?\w+ *= *\(?\{? *' + PATTERN, re.I)
+# Match pattern for the file name in anything of the form
+# "<file_name>file name</file_name>" in the PDS4 label
+TARGET_REGEX1 = re.compile(r'^ *\<file_name\>' + PATTERN + r'\<\/file_name\>', re.I)
 
 # Match pattern for a file name on a line by itself
 TARGET_REGEX2 = re.compile(r'^ *,? *' + PATTERN, re.I)
@@ -147,7 +148,8 @@ def generate_links(dirpath, old_links={},
                 # Create collection_basename_dict and use it to check whether a file
                 # is listed in the csv later.
                 if basename.startswith('collection') and basename.endswith('.csv'):
-                    with open(abspath, 'r')as file:
+                    logger.debug('Construct collection basename dictionary from', abspath)
+                    with open(abspath, 'r') as file:
                         csv_lines = csv.reader(file)
                         for line in csv_lines:
                             if '::' in line[-1]:
@@ -184,7 +186,8 @@ def generate_links(dirpath, old_links={},
                     continue
 
                 # Get list of link info for all possible linked filenames
-                logger.debug('*** REVIEWING', abspath)
+                # logger.debug('*** REVIEWING', abspath)
+                logger.info('*** Get link info and review', abspath)
                 linkinfo_list = read_links(abspath, logger=logger)
 
                 # Apply repairs
@@ -281,20 +284,20 @@ def generate_links(dirpath, old_links={},
                         # Report the outcome
                         if nonlocal_target:
                             logger.debug('Located "%s"' % info.linkname,
-                                        nonlocal_target)
+                                         nonlocal_target)
                             info.target = nonlocal_target
                             new_linkinfo_list.append(info)
                             continue
 
                         if linkname_uc.endswith('.FMT'):
                             logger.error('Unable to locate .FMT file "%s"' %
-                                        info.linkname, abspath)
+                                         info.linkname, abspath)
                         elif linkname_uc.endswith('.CAT'):
                             logger.error('Unable to locate .CAT file "%s"' %
-                                        info.linkname, abspath)
+                                         info.linkname, abspath)
                         else:
                             logger.debug('Substring "%s" is not a link, ignored' %
-                                        info.linkname, abspath)
+                                         info.linkname, abspath)
 
                         continue
 
@@ -312,8 +315,10 @@ def generate_links(dirpath, old_links={},
                         linkname_uc[:ltest] == baseroot_uc and
                         linkname_uc[ltest] == '.'):
                             label_dict[info.target] = abspath
-                            logger.debug('Label identified for %s' % info.linkname,
-                                        abspath)
+                            # logger.debug('Label identified for %s' % info.linkname,
+                            #              abspath)
+                            logger.info('Label identified (by name) for %s' %
+                                         info.linkname, abspath)
                             continue
 
                     # Otherwise, then maybe
@@ -325,7 +330,7 @@ def generate_links(dirpath, old_links={},
                             candidate_labels[info.linkname] = [basename]
 
                         logger.debug('Candidate label found for ' +
-                                    info.linkname, abspath)
+                                     info.linkname, abspath)
 
                 linkinfo_dict[abspath] = new_linkinfo_list
 
@@ -352,6 +357,7 @@ def generate_links(dirpath, old_links={},
                 # (in same directory) file_name tags in linkinfo_dict, create an entry of
                 # that file basename in label_dict. This will make sure the file is
                 # pointing to it's correct corresponding label.
+                is_label_found = False
                 for label_abspath, link_info_list in linkinfo_dict.items():
 
                     # if the label is not at the same directory, skip it.
@@ -361,7 +367,12 @@ def generate_links(dirpath, old_links={},
                     for info in link_info_list:
                         if info.linktext == basename and abspath not in label_dict:
                             label_dict[abspath] = label_abspath
+                            logger.info('Label identified (by file_name tag) for %s' %
+                                        info.linktext, label_abspath)
+                            is_label_found = True
                             break
+                    if is_label_found:
+                        break
 
                 if abspath in label_dict:
                     continue                    # label already found
@@ -419,11 +430,11 @@ def generate_links(dirpath, old_links={},
                 # Report a phantom label
                 if obvious_label_basename:
                     logger.error('Label %s does not point to file' %
-                                local_basenames[k], abspath)
+                                 local_basenames[k], abspath)
 
                 if len(candidates) == 1:
                     logger.debug('Label found as ' + candidates[0], abspath,
-                                force=True)
+                                 force=True)
                     label_dict[abspath] = os.path.join(root, candidates[0])
                     continue
 
@@ -433,10 +444,10 @@ def generate_links(dirpath, old_links={},
                     logger.error('Label is missing', abspath)
                 else:
                     logger.error('Ambiguous label found as %s' % candidates[0],
-                                abspath, force=True)
+                                 abspath, force=True)
                     for candidate in candidates[1:]:
                         logger.debug('Alternative label found as %s' % candidate,
-                                    abspath, force=True)
+                                     abspath, force=True)
 
         # Merge the dictionaries
         # There are cases where a file can have both a list of links and a label.
@@ -494,6 +505,18 @@ def read_links(abspath, logger=None):
             # Search for the target of a link
             is_target = True
             matchobj = TARGET_REGEX1.match(rec)
+
+            # if matchobj:
+            #     print('----------------')
+            #     print(rec)
+            #     print(recno)
+            #     print(matchobj.group(1))
+            #     obj2 = TARGET_REGEX2.match(rec)
+            #     if obj2:
+            #         print('obj2')
+            #         print(obj2.group(1))
+
+
             if matchobj:
                 subrec = rec[:matchobj.end()]
                 if '(' in subrec or '{' in subrec:
@@ -504,22 +527,29 @@ def read_links(abspath, logger=None):
                 matchobj = TARGET_REGEX2.match(rec)
 
             # If not found, search for any other referenced file name or path
-            if not matchobj:
-                if ')' in rec or '}' in rec:
-                    multiple_targets = False
+            # if not matchobj:
+            #     if ')' in rec or '}' in rec:
+            #         multiple_targets = False
 
-                is_target = False
-                matchobj = LINK_REGEX.match(rec)
-                if matchobj:
-                    multiple_targets = False
+            #     is_target = False
+            #     matchobj = LINK_REGEX.match(rec)
+            #     if matchobj:
+            #         multiple_targets = False
 
             # No more matches in this record
             if not matchobj:
                 break
 
-            # if 'u0_kao_91cm_734nm_ring_beta_ingress_sqw' in abspath:
+            # if 'data_raw/129xxxxxxx/12945xxxxx/1294561143w.xml' in abspath and matchobj:
             #     print('readdddd')
             #     print(rec)
+            #     print(recno)
+            #     print('match TARGET_REGEX1')
+            #     print(TARGET_REGEX1.match(rec))
+            #     print('match TARGET_REGEX2')
+            #     print(TARGET_REGEX2.match(rec))
+            #     print('match LINK_REGEX')
+            #     print(LINK_REGEX.match(rec))
             #     print(matchobj.group(1))
 
 
@@ -527,6 +557,10 @@ def read_links(abspath, logger=None):
             links.append(LinkInfo(recno, linktext, is_target))
 
             rec = rec[matchobj.end():]
+
+    # if 'data_raw/129xxxxxxx/12945xxxxx/1294561143w.xml' in abspath:
+    #     for link in links:
+    #         print(link.linktext)
 
     return links
 
