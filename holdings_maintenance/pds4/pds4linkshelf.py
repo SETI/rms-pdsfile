@@ -506,17 +506,6 @@ def read_links(abspath, logger=None):
             is_target = True
             matchobj = TARGET_REGEX1.match(rec)
 
-            # if matchobj:
-            #     print('----------------')
-            #     print(rec)
-            #     print(recno)
-            #     print(matchobj.group(1))
-            #     obj2 = TARGET_REGEX2.match(rec)
-            #     if obj2:
-            #         print('obj2')
-            #         print(obj2.group(1))
-
-
             if matchobj:
                 subrec = rec[:matchobj.end()]
                 if '(' in subrec or '{' in subrec:
@@ -526,41 +515,14 @@ def read_links(abspath, logger=None):
             elif multiple_targets:
                 matchobj = TARGET_REGEX2.match(rec)
 
-            # If not found, search for any other referenced file name or path
-            # if not matchobj:
-            #     if ')' in rec or '}' in rec:
-            #         multiple_targets = False
-
-            #     is_target = False
-            #     matchobj = LINK_REGEX.match(rec)
-            #     if matchobj:
-            #         multiple_targets = False
-
             # No more matches in this record
             if not matchobj:
                 break
-
-            # if 'data_raw/129xxxxxxx/12945xxxxx/1294561143w.xml' in abspath and matchobj:
-            #     print('readdddd')
-            #     print(rec)
-            #     print(recno)
-            #     print('match TARGET_REGEX1')
-            #     print(TARGET_REGEX1.match(rec))
-            #     print('match TARGET_REGEX2')
-            #     print(TARGET_REGEX2.match(rec))
-            #     print('match LINK_REGEX')
-            #     print(LINK_REGEX.match(rec))
-            #     print(matchobj.group(1))
-
 
             linktext = matchobj.group(1)
             links.append(LinkInfo(recno, linktext, is_target))
 
             rec = rec[matchobj.end():]
-
-    # if 'data_raw/129xxxxxxx/12945xxxxx/1294561143w.xml' in abspath:
-    #     for link in links:
-    #         print(link.linktext)
 
     return links
 
