@@ -8,8 +8,6 @@
 # Enter the --help option to see more information.
 ################################################################################
 
-from collections import defaultdict
-
 import argparse
 import csv
 import datetime
@@ -119,7 +117,7 @@ def generate_links(dirpath, old_links={},
         abspaths = []                         # list of all abspaths
 
         latest_mtime = 0.
-        collection_basename_dict = defaultdict(list)
+        collection_basename_dict = {}
         # Walk the directory tree, one subdirectory "root" at a time...
         for (root, dirs, files) in os.walk(dirpath):
 
@@ -143,12 +141,15 @@ def generate_links(dirpath, old_links={},
                     continue
 
                 # collection_basename_dict: a dictonary with the abspath of a collection
-                # csv file as the key and the list of basenames of its corresponding
+                # csv file as the key and the set of basenames of its corresponding
                 # entries as the value.
                 # Create collection_basename_dict and use it to check whether a file
                 # is listed in the csv later.
-                if basename.startswith('collection') and basename.endswith('.csv'):
+                if (basename.startswith('collection') and
+                    basename.endswith('.csv') and
+                    not abspath in collection_basename_dict):
                     logger.debug('Construct collection basename dictionary from', abspath)
+                    csv_basenames = set()
                     with open(abspath, 'r') as file:
                         csv_lines = csv.reader(file)
                         for line in csv_lines:
@@ -157,9 +158,9 @@ def generate_links(dirpath, old_links={},
                             else:
                                 lid = line[-1]
                             csv_basename = lid.rpartition(':')[-1]
+                            csv_basenames.add(csv_basename)
 
-                            if csv_basename not in collection_basename_dict[abspath]:
-                                collection_basename_dict[abspath].append(csv_basename)
+                    collection_basename_dict[abspath] = csv_basenames
 
                 abspaths.append(abspath)
                 local_basenames.append(basename)
@@ -279,7 +280,7 @@ def generate_links(dirpath, old_links={},
                                                                     info.linkname)
                         else:
                             nonlocal_target = locate_nonlocal_link(abspath,
-                                                                info.linkname)
+                                                                   info.linkname)
 
                         # Report the outcome
                         if nonlocal_target:
@@ -348,6 +349,10 @@ def generate_links(dirpath, old_links={},
 
                 abspath = os.path.join(root, basename)
 
+                if abspath in label_dict:
+                    logger.info('Label already found for %s' % abspath)
+                    continue                    # label already found
+
                 # linkinfo_dict: a dictionary with the abspath of a label file as the key
                 # and a list of its corresponding files (LinkInfo objects) under file_name
                 # tags as the value.
@@ -356,7 +361,7 @@ def generate_links(dirpath, old_links={},
                 # At the current directory, if a file basename is in the list of a label's
                 # (in same directory) file_name tags in linkinfo_dict, create an entry of
                 # that file basename in label_dict. This will make sure the file is
-                # pointing to it's correct corresponding label.
+                # pointing to its correct corresponding label.
                 is_label_found = False
                 for label_abspath, link_info_list in linkinfo_dict.items():
 
@@ -374,21 +379,8 @@ def generate_links(dirpath, old_links={},
                     if is_label_found:
                         break
 
-                if abspath in label_dict:
-                    continue                    # label already found
-
-                # For files like errata.txt, or checksum files that don't exist in the
-                # label nor exist in the csv, they are not part of the archive, so they
-                # don't have labels
-                is_basename_in_csv = False
-                for col_abspath, csv_basenames in collection_basename_dict.items():
-                    if (col_abspath.startswith(parent_collection_csv_prefix) or
-                        col_abspath.startswith(local_collection_csv_prefix)):
-                        if basename.rpartition('.')[0] in csv_basenames:
-                            is_basename_in_csv = True
-                            break
-
-                if not is_basename_in_csv:
+                # label found by searching linkinfo_dict
+                if is_label_found:
                     continue
 
                 # Maybe we already know the label is missing
@@ -420,7 +412,9 @@ def generate_links(dirpath, old_links={},
                     if not label_is_required:
                         logger.debug('Unnecessary label found', abspath, force=True)
 
-                    label_dict[abspath] = os.path.join(root, obvious_label_basename)
+                    label_abspath = os.path.join(root, obvious_label_basename)
+                    label_dict[abspath] = label_abspath
+                    logger.info('Label found for %s' % abspath, label_abspath)
                     continue
 
                 # More cases...
@@ -436,6 +430,22 @@ def generate_links(dirpath, old_links={},
                     logger.debug('Label found as ' + candidates[0], abspath,
                                  force=True)
                     label_dict[abspath] = os.path.join(root, candidates[0])
+                    continue
+
+                # Before raising an error, check this:
+                # For files like errata.txt, or checksum files that don't exist in the
+                # label nor exist in the csv, they are not part of the archive, so they
+                # don't have labels
+                is_basename_in_csv = False
+                logger.info('Check if %s is in the collection csv' % basename)
+                for col_abspath, csv_basenames in collection_basename_dict.items():
+                    if (col_abspath.startswith(parent_collection_csv_prefix) or
+                        col_abspath.startswith(local_collection_csv_prefix)):
+                        if basename.rpartition('.')[0] in csv_basenames:
+                            is_basename_in_csv = True
+                            break
+
+                if not is_basename_in_csv:
                     continue
 
                 # or errors...
