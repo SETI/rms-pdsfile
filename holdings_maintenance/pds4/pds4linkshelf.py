@@ -153,6 +153,9 @@ def generate_links(dirpath, old_links={},
                     with open(abspath, 'r') as file:
                         csv_lines = csv.reader(file)
                         for line in csv_lines:
+                            # skip the empty line
+                            if not line:
+                                continue
                             if '::' in line[-1]:
                                 lid = line[-1].rpartition('::')[0]
                             else:
