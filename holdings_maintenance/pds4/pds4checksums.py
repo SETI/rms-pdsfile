@@ -572,7 +572,7 @@ def main():
     # Set up parser
     parser = argparse.ArgumentParser(
         description='pdschecksums: Create, maintain and validate MD5 '         +
-                    'checksum files for PDS volumes and volume sets.')
+                    'checksum files for PDS bundles and bundle sets.')
 
     parser.add_argument('--initialize', '--init', const='initialize',
                         default='', action='store_const', dest='task',
@@ -693,7 +693,7 @@ def main():
         if args.archives and not parts[2].startswith('archives-'):
             path = parts[0] + '/pds4-holdings/archives-' + parts[2]
 
-        # Convert to a list of absolute paths that exist (volsets or volumes)
+        # Convert to a list of absolute paths that exist (bundlesets or bundles)
         try:
             pdsf = pdsfile.Pds4File.from_abspath(path, must_exist=True)
             abspaths.append(pdsf.abspath)
@@ -703,7 +703,7 @@ def main():
             (dir, basename) = os.path.split(path)
             pdsdir = pdsfile.Pds4File.from_abspath(dir)
             if pdsdir.archives_ and '.' not in basename:
-                if pdsdir.voltype_ == 'volumes/':
+                if pdsdir.voltype_ == 'bundles/':
                     basename += '.tar.gz'
                 else:
                     basename += '_%s.tar.gz' % pdsdir.voltype_[:-1]
@@ -723,7 +723,7 @@ def main():
         pdsf = pdsfile.Pds4File.from_abspath(path)
 
         if pdsf.is_bundleset_dir:
-            # Archive directories are checksumed by volset
+            # Archive directories are checksumed by bundleset
             if pdsf.archives_:
                 info.append((pdsf, None))
 
@@ -731,10 +731,10 @@ def main():
             else:
                 children = [pdsf.child(c) for c in pdsf.childnames]
                 info += [(c, None) for c in children if c.isdir]
-                        # "if c.isdir" is False for volset level readme files
+                        # "if c.isdir" is False for bundleset level readme files
 
         elif pdsf.is_bundle_dir:
-            # Checksum one volume
+            # Checksum one bundle
             info.append((pdsf, None))
 
         elif pdsf.isdir:
