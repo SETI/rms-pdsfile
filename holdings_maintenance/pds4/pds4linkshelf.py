@@ -187,7 +187,6 @@ def generate_links(dirpath, old_links={},
                     continue
 
                 # Get list of link info for all possible linked filenames
-                # logger.debug('*** REVIEWING', abspath)
                 logger.info('*** Get link info and review', abspath)
                 linkinfo_list = read_links(abspath, logger=logger)
 
@@ -316,8 +315,6 @@ def generate_links(dirpath, old_links={},
                         linkname_uc[:ltest] == baseroot_uc and
                         linkname_uc[ltest] == '.'):
                             label_dict[info.target] = abspath
-                            # logger.debug('Label identified for %s' % info.linkname,
-                            #              abspath)
                             logger.info('Label identified (by name) for %s' %
                                          info.linkname, abspath)
                             continue
