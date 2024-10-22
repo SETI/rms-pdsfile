@@ -82,7 +82,7 @@ TESTS = translator.TranslatorByRegex([
     ('.*(?<!_v[12])/NHJULO_100.*',  0, ['nhbrowse']),       # not NHJULO_1001 _v1-2
     ('.*(?<!_v[123])/NHJULO_200.*', 0, ['nhbrowse']),       # not NHJULO_2001 _v1-3
     ('.*/NH[PK].MV_[12]00.*',       0, ['nhbrowse']),
-    ('.*(?<!_v1)/NHLAMV_[12]00.*',  0, ['nhbrowse_vx']),    # not LA _v1
+    ('.*(?<!_v1)/NHLAMV_[12]00.*',  0, ['nhbrowse_vx']),    # not NHLAMV _v1
     ('.*/NHJUMV_100.*',             0, ['nhbrowse_vx']),
     ('.*(?<!_v1)/NHJUMV_200.*',     0, ['nhbrowse_vx']),    # not NHJUMV_2001 _v1
     ('.*/RPX_xxxx/.*',              0, ['metadata']),
@@ -226,80 +226,76 @@ class PdsDependency(object):
                 pattern = pattern.replace('$', volname, 1)
 
             abspaths = glob.glob(pattern)
-            if len(abspaths) == 0:
-                logger.info('No files found')
+            for sub in self.sublist:
+                try:
+                    for abspath in abspaths:
 
-            else:
-                for sub in self.sublist:
-                    try:
-                        for abspath in abspaths:
+                        # Check exception list
+                        exception_identified = False
+                        for regex in self.exceptions:
+                            if regex.fullmatch(abspath):
+                                logger.info('Test skipped', abspath)
+                                exception_identified = True
+                                break
 
-                            # Check exception list
-                            exception_identified = False
-                            for regex in self.exceptions:
-                                if regex.fullmatch(abspath):
-                                    logger.info('Test skipped', abspath)
-                                    exception_identified = True
-                                    break
+                        if exception_identified:
+                            continue
 
-                            if exception_identified:
+                        path = abspath[lskip_:]
+
+                        (requirement, count) = self.regex.subn(sub, path)
+                        absreq = (pdsdir.root_ + requirement)
+                        if count == 0:
+                            logger.error('Invalid test', absreq)
+                            continue
+
+                        if not os.path.exists(absreq):
+                            if absreq in missing:
                                 continue
 
-                            path = abspath[lskip_:]
+                            logger.error('Missing file', absreq)
+                            for message in self.messages:
+                                cmd = self.regex.sub(message, path)
+                                cmd = cmd.replace('[c]', 'initialize')
+                                cmd = cmd.replace('[C]', 'initialize')
+                                cmd = cmd.replace('[d]', pdsdir.root_)
+                                if cmd not in PdsDependency.COMMANDS_TO_TYPE:
+                                    PdsDependency.COMMANDS_TO_TYPE.append(cmd)
 
-                            (requirement, count) = self.regex.subn(sub, path)
-                            absreq = (pdsdir.root_ + requirement)
-                            if count == 0:
-                                logger.error('Invalid test', absreq)
-                                continue
+                            missing.add(absreq)
+                            continue
 
-                            if not os.path.exists(absreq):
-                                if absreq in missing:
+                        if self.newer and check_newer:
+                            source_modtime = PdsDependency.get_modtime(abspath,
+                                                                       logger)
+                            requirement_modtime = PdsDependency.get_modtime(absreq,
+                                                                            logger)
+
+                            if requirement_modtime < source_modtime:
+                                if absreq in out_of_date:
                                     continue
 
-                                logger.error('Missing file', absreq)
+                                logger.error('File out of date', absreq)
                                 for message in self.messages:
                                     cmd = self.regex.sub(message, path)
-                                    cmd = cmd.replace('[c]', 'initialize')
-                                    cmd = cmd.replace('[C]', 'initialize')
+                                    cmd = cmd.replace('[c]', 'repair')
+                                    cmd = cmd.replace('[C]', 'reinitialize')
                                     cmd = cmd.replace('[d]', pdsdir.root_)
                                     if cmd not in PdsDependency.COMMANDS_TO_TYPE:
                                         PdsDependency.COMMANDS_TO_TYPE.append(cmd)
 
-                                missing.add(absreq)
+                                out_of_date.add(absreq)
                                 continue
 
-                            if self.newer and check_newer:
-                                source_modtime = PdsDependency.get_modtime(abspath,
-                                                                           logger)
-                                requirement_modtime = PdsDependency.get_modtime(absreq,
-                                                                                logger)
+                        if absreq in confirmed:
+                            continue
 
-                                if requirement_modtime < source_modtime:
-                                    if absreq in out_of_date:
-                                        continue
+                        logger.normal('Confirmed', absreq)
+                        confirmed.add(absreq)
 
-                                    logger.error('File out of date', absreq)
-                                    for message in self.messages:
-                                        cmd = self.regex.sub(message, path)
-                                        cmd = cmd.replace('[c]', 'repair')
-                                        cmd = cmd.replace('[C]', 'reinitialize')
-                                        cmd = cmd.replace('[d]', pdsdir.root_)
-                                        if cmd not in PdsDependency.COMMANDS_TO_TYPE:
-                                            PdsDependency.COMMANDS_TO_TYPE.append(cmd)
-
-                                    out_of_date.add(absreq)
-                                    continue
-
-                            if absreq in confirmed:
-                                continue
-
-                            logger.normal('Confirmed', absreq)
-                            confirmed.add(absreq)
-
-                    except (Exception, KeyboardInterrupt) as e:
-                        logger.exception(e)
-                        raise
+                except (Exception, KeyboardInterrupt) as e:
+                    logger.exception(e)
+                    raise
 
         except (Exception, KeyboardInterrupt) as e:
             logger.exception(e)
