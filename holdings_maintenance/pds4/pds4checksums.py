@@ -576,34 +576,34 @@ def main():
 
     parser.add_argument('--initialize', '--init', const='initialize',
                         default='', action='store_const', dest='task',
-                        help='Create an MD5 checksum file for a volume or '    +
-                             'volume set. Abort if the checksum file '         +
+                        help='Create an MD5 checksum file for a bundle or '    +
+                             'bundle set. Abort if the checksum file '         +
                              'already exists.')
 
     parser.add_argument('--reinitialize', '--reinit', const='reinitialize',
                         default='', action='store_const', dest='task',
-                        help='Create an MD5 checksum file for a volume or '    +
-                             'volume set. Replace the checksum file if it '    +
+                        help='Create an MD5 checksum file for a bundle or '    +
+                             'bundle set. Replace the checksum file if it '    +
                              'already exists. If a single file is specified, ' +
-                             'such as one archive file in a volume set, only ' +
+                             'such as one archive file in a bundle set, only ' +
                              'single checksum is re-initialized.')
 
     parser.add_argument('--validate', const='validate',
                         default='', action='store_const', dest='task',
-                        help='Validate every file in a volume directory tree ' +
+                        help='Validate every file in a bundle directory tree ' +
                              'against its MD5 checksum. If a single file '     +
                              'is specified, such as one archive file in a '    +
-                             'volume set, only that single checksum is '       +
+                             'bundle set, only that single checksum is '       +
                              'validated.')
 
     parser.add_argument('--repair', const='repair',
                         default='', action='store_const', dest='task',
-                        help='Validate every file in a volume directory tree ' +
+                        help='Validate every file in a bundle directory tree ' +
                              'against its MD5 checksum. If any disagreement '  +
                              'is found, the checksum file is replaced; '       +
                              'otherwise it is unchanged. If a single file is ' +
                              'specified, such as one archive file of a '       +
-                             'volume set, then only that single checksum is '  +
+                             'bundle set, then only that single checksum is '  +
                              'repaired. If any of the files checked are newer' +
                              'than the checksum file, update shelf file\'s '   +
                              'modification date')
@@ -615,12 +615,12 @@ def main():
                              'Checksums of pre-existing files are not checked.')
 
     parser.add_argument('bundle', nargs='+', type=str,
-                        help='The path to the root directory of a volume or '  +
-                             'volume set. For a volume set, all the volume '   +
+                        help='The path to the root directory of a bundle or '  +
+                             'bundle set. For a bundle set, all the bundle '   +
                              'directories inside it are handled in sequence. ' +
                              'Note that, for archive directories, checksums '  +
                              'are grouped into one file for the entire '       +
-                             'volume set.')
+                             'bundle set.')
 
     parser.add_argument('--log', '-l', type=str, default='',
                         help='Optional root directory for a duplicate of the ' +
@@ -636,8 +636,8 @@ def main():
                         help='Do not also log to the terminal.')
 
     parser.add_argument('--archives', '-a', default=False, action='store_true',
-                        help='Instead of referring to a volume, refer to the ' +
-                             'the archive file for that volume.')
+                        help='Instead of referring to a bundle, refer to the ' +
+                             'the archive file for that bundle.')
 
     parser.add_argument('--infoshelf', '-i', dest='infoshelf',
                         default=False, action='store_true',
@@ -699,14 +699,14 @@ def main():
             abspaths.append(pdsf.abspath)
 
         except (ValueError, IOError):
-            # Allow a volume name to stand in for a .tar.gz archive
+            # Allow a bundle name to stand in for a .tar.gz archive
             (dir, basename) = os.path.split(path)
             pdsdir = pdsfile.Pds4File.from_abspath(dir)
             if pdsdir.archives_ and '.' not in basename:
-                if pdsdir.voltype_ == 'bundles/':
+                if pdsdir.bundletype_ == 'bundles/':
                     basename += '.tar.gz'
                 else:
-                    basename += '_%s.tar.gz' % pdsdir.voltype_[:-1]
+                    basename += '_%s.tar.gz' % pdsdir.bundletype_[:-1]
 
                 newpaths = glob.glob(os.path.join(dir, basename))
                 if len(newpaths) == 0:
@@ -727,7 +727,7 @@ def main():
             if pdsf.archives_:
                 info.append((pdsf, None))
 
-            # Others are checksumed by volume
+            # Others are checksumed by bundle
             else:
                 children = [pdsf.child(c) for c in pdsf.childnames]
                 info += [(c, None) for c in children if c.isdir]
@@ -743,11 +743,11 @@ def main():
 
         else:
             pdsdir = pdsf.parent()
-            if pdsf.is_volume_file:
+            if pdsf.is_bundle_file:
                 # Checksum one archive file
                 info.append((pdsdir, pdsf.basename))
             elif pdsdir.is_bundle_dir:
-                # Checksum one top-level file in volume
+                # Checksum one top-level file in bundle
                 info.append((pdsdir, pdsf.basename))
             else:
                 print('Invalid file for checksumming: ' + pdsf.logical_path)

@@ -204,29 +204,29 @@ class Pds3File(PdsFile):
     def log_path_for_volume(self, suffix='', task='', dir='', place='default'):
         return self.log_path_for_bundle(suffix=suffix, task=task, dir=dir, place=place)
 
-#     def volset_abspath(self):
-#         return self.bundleset_abspath()
-#
-#     def volset_pdsfile(self):
-#         return self.bundleset_pdsfile()
-#
-#     def volume_abspath(self):
-#         return self.bundle_abspath()
-#
-#     def volume_pdsfile(self):
-#         return self.bundle_pdsfile()
-#
-#     @property
-#     def voltype_(self):
-#         return self.bundletype_
-#
-#     @property
-#     def volume_publication_date(self):
-#         return self.bundle_publication_date
-#
-#     @property
-#     def volume_version_id(self):
-#         return self.bundle_version_id
+    def volset_abspath(self):
+        return self.bundleset_abspath()
+
+    def volset_pdsfile(self):
+        return self.bundleset_pdsfile()
+
+    def volume_abspath(self):
+        return self.bundle_abspath()
+
+    def volume_pdsfile(self):
+        return self.bundle_pdsfile()
+
+    @property
+    def voltype_(self):
+        return self.bundletype_
+
+    @property
+    def volume_publication_date(self):
+        return self.bundle_publication_date
+
+    @property
+    def volume_version_id(self):
+        return self.bundle_version_id
 
     ######################################################################################
     # PdsLogger support

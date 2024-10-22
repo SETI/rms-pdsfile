@@ -746,10 +746,10 @@ def main():
             (dir, basename) = os.path.split(path)
             pdsdir = pdsfile.Pds4File.from_abspath(dir)
             if pdsdir.archives_ and '.' not in basename:
-                if pdsdir.voltype_ == 'bundles/':
+                if pdsdir.bundletype_ == 'bundles/':
                     basename += '.tar.gz'
                 else:
-                    basename += '_%s.tar.gz' % pdsdir.voltype_[:-1]
+                    basename += '_%s.tar.gz' % pdsdir.bundletype_[:-1]
 
                 newpaths = glob.glob(os.path.join(dir, basename))
                 if len(newpaths) == 0:

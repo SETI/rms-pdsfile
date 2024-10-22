@@ -85,7 +85,7 @@ class LinkInfo(object):
 def generate_links(dirpath, old_links={},
                    limits={'info':-1, 'debug':500, 'ds_store':10}, logger=None):
     """Generate a dictionary keyed by the absolute file path for files in the
-    given directory tree, which must correspond to a volume.
+    given directory tree, which must correspond to a bundle.
 
     Keys ending in .XML, .CAT and .TXT return a list of tuples
         (recno, link, target)
@@ -545,8 +545,8 @@ def locate_nonlocal_link(abspath, filename):
 
     parts = abspath.split('/')[:-1]
 
-    # parts are [..., 'holdings', 'volumes', volset, volname, ...]
-    # Therefore, if 'holdings' is in parts[:-3], then there's a volname in this
+    # parts are [..., 'holdings', 'bundles', bundleset, bundlename, ...]
+    # Therefore, if 'holdings' is in parts[:-3], then there's a bundlename in this
     # path.
     while 'pds4-holdings' in parts[:-3]:
         testpath = '/'.join(parts)
@@ -618,7 +618,7 @@ def load_links(dirpath, limits={}, logger=None):
 
     try:
         (link_path, lskip) = pdsdir.shelf_path_and_lskip('link')
-        prefix_ = pdsdir.volume_abspath() + '/'
+        prefix_ = pdsdir.bundle_abspath() + '/'
 
         logger.info('Link shelf file', link_path)
 
@@ -686,7 +686,7 @@ def write_linkdict(dirpath, link_dict, limits={}, logger=None):
                 for (basename, recno, link_abspath) in values:
                     if link_abspath[:lskip] == prefix:
                         new_list.append((basename, recno, link_abspath[lskip:]))
-                    else:      # link outside this volume
+                    else:      # link outside this bundle
                         link = pdsfile.Pds4File.from_abspath(link_abspath)
                         if (link.category_ == pdsdir.category_ and
                             link.bundleset == pdsdir.bundleset and
@@ -1037,22 +1037,22 @@ def main():
 
     parser.add_argument('--initialize', '--init', const='initialize',
                         default='', action='store_const', dest='task',
-                        help='Create a link shelf file for a volume. Abort '   +
+                        help='Create a link shelf file for a bundle. Abort '   +
                              'if the checksum file already exists.')
 
     parser.add_argument('--reinitialize', '--reinit', const='reinitialize',
                         default='', action='store_const', dest='task',
-                        help='Create a link shelf file for a volume. Replace ' +
+                        help='Create a link shelf file for a bundle. Replace ' +
                              'the file if it already exists.')
 
     parser.add_argument('--validate', const='validate',
                         default='', action='store_const', dest='task',
-                        help='Validate every link in a volume directory tree ' +
+                        help='Validate every link in a bundle directory tree ' +
                              'against its link shelf file.')
 
     parser.add_argument('--repair', const='repair',
                         default='', action='store_const', dest='task',
-                        help='Validate every link in a volume directory tree ' +
+                        help='Validate every link in a bundle directory tree ' +
                              'against its link shelf file. If any '            +
                              'disagreement  is found, replace the shelf '      +
                              'file; otherwise leave it unchanged. If any of '  +
@@ -1144,7 +1144,7 @@ def main():
         for path in paths:
 
             pdsdir = pdsfile.Pds4File.from_abspath(path)
-            # skip volset-level readme files and *_support dirctiory
+            # skip bundleset-level readme files and *_support dirctiory
             # if not pdsdir.isdir or '_support' in pdsdir.abspath:
             if not pdsdir.isdir:
                 continue
