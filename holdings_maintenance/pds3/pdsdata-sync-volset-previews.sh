@@ -5,14 +5,14 @@
 # Usage:
 #   pdsdata-sync-volset-previews <old> <new> <volset> [--dry-run]
 #
-# Syncs the metadata for the specified volume set <volset> from the drive
+# Syncs the previews for the specified volume set <volset> from the drive
 # /Volumes/pdsdata-<old> to the drive /Volumes/pdsdata-<new>. Append
 # "--dry-run" for a test dry run. This only syncs the previews and associated
 # directories.
 #
 # Example:
 #   pdsdata-sync-volset-previews admin raid45 NHxxMV_xxxx
-# copies all files relevant to the metadata for volume set "NHxxMV_xxxx" from the
+# copies all files relevant to the previews for volume set "NHxxMV_xxxx" from the
 # drive pdsdata-admin to the drive pdsdata-raid45.
 ################################################################################
 
