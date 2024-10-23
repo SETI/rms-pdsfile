@@ -93,7 +93,7 @@ def read_archive_info(tarpath, limits={'normal':100}, logger=None):
     file."""
 
     tarpath = os.path.abspath(tarpath)
-    pdstar = pdsfile.Pds3File.from_abspath(tarpath)
+    pdstar = pdsfile.Pds4File.from_abspath(tarpath)
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdstar.root_)
@@ -326,21 +326,21 @@ def main():
     # Set up parser
     parser = argparse.ArgumentParser(
         description='pdsarchives: Create, maintain and validate .tar.gz '      +
-                    'archives of PDS volume directory trees.')
+                    'archives of PDS bundle directory trees.')
 
     parser.add_argument('--initialize', '--init', const='initialize',
                         default='', action='store_const', dest='task',
-                        help='Create a .tar.gz archive for a volume. Abort '   +
+                        help='Create a .tar.gz archive for a bundle. Abort '   +
                              'if the archive already exists.')
 
     parser.add_argument('--reinitialize', '--reinit', const='reinitialize',
                         default='', action='store_const', dest='task',
-                        help='Create a .tar.gz archive for a volume. Replace ' +
+                        help='Create a .tar.gz archive for a bundle. Replace ' +
                              'the archive if it already exists.')
 
     parser.add_argument('--validate', const='validate',
                         default='', action='store_const', dest='task',
-                        help='Validate every file in a volume against the '    +
+                        help='Validate every file in a bundle against the '    +
                              'contents of its .tar.gz archive. Files match '   +
                              'if they have identical byte counts and '         +
                              'modification dates; file contents are not '      +
@@ -348,20 +348,20 @@ def main():
 
     parser.add_argument('--repair', const='repair',
                         default='', action='store_const', dest='task',
-                        help='Validate every file in a volume against the '    +
+                        help='Validate every file in a bundle against the '    +
                              'contents of its .tar.gz archive. If any file '   +
                              'has changed, write a new archive.')
 
     parser.add_argument('--update', const='update',
                         default='', action='store_const', dest='task',
-                        help='Search a volume set directory for any new '      +
-                             'volumes and create a new archive file for each ' +
+                        help='Search a bundle set directory for any new '      +
+                             'bundles and create a new archive file for each ' +
                              'of them; do not update any pre-existing archive '+
                              'files.')
 
-    parser.add_argument('volume', nargs='+', type=str,
-                        help='The path to the root of the volume or volume '   +
-                             'set. For a volume set, all the volume '          +
+    parser.add_argument('bundle', nargs='+', type=str,
+                        help='The path to the root of the bundle or bundle '   +
+                             'set. For a bundle set, all the bundle '          +
                              'directories inside it are handled in sequence.')
 
     parser.add_argument('--log', '-l', type=str, default='',
@@ -396,7 +396,7 @@ def main():
 
     # Initialize the logger
     logger = pdslogger.PdsLogger(LOGNAME)
-    pdsfile.Pds3File.set_log_root(args.log)
+    pdsfile.Pds4File.set_log_root(args.log)
 
     if not args.quiet:
         logger.add_handler(pdslogger.stdout_handler)
@@ -409,16 +409,16 @@ def main():
         error_handler = pdslogger.error_handler(path)
         logger.add_handler(error_handler)
 
-    # Generate a list of pdsfiles for volume directories
+    # Generate a list of pdsfiles for bundle directories
     pdsdirs = []
-    for path in args.volume:
+    for path in args.bundle:
 
         path = os.path.abspath(path)
         if not os.path.exists(path):
             print('No such file or directory: ' + path)
             sys.exit(1)
 
-        pdsf = pdsfile.Pds3File.from_abspath(path)
+        pdsf = pdsfile.Pds4File.from_abspath(path)
         if pdsf.checksums_:
             print('No archives for checksum files: ' + path)
             sys.exit(1)
@@ -427,14 +427,14 @@ def main():
             print('No archives for archive files: ' + path)
             sys.exit(1)
 
-        pdsdir = pdsf.volume_pdsfile()
+        pdsdir = pdsf.bundle_pdsfile()
         if pdsdir and pdsdir.isdir:
             pdsdirs.append(pdsdir)
         else:
-            pdsdir = pdsf.volset_pdsfile()
+            pdsdir = pdsf.bundleset_pdsfile()
             children = [pdsdir.child(c) for c in pdsdir.childnames]
             pdsdirs += [c for c in children if c.isdir]
-                    # "if c.isdir" is False for volset level readme files
+                    # "if c.isdir" is False for bundleset level readme files
 
     # Begin logging and loop through pdsdirs...
     logger.open(' '.join(sys.argv))
@@ -442,10 +442,10 @@ def main():
         for pdsdir in pdsdirs:
 
             # Save logs in up to two places
-            logfiles = set([pdsdir.log_path_for_volume('_links',
+            logfiles = set([pdsdir.log_path_for_bundle('_links',
                                                        task=args.task,
                                                        dir='pdsarchives'),
-                            pdsdir.log_path_for_volume('_links',
+                            pdsdir.log_path_for_bundle('_links',
                                                        task=args.task,
                                                        dir='pdsarchives',
                                                        place='parallel')])
