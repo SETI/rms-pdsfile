@@ -153,39 +153,6 @@ class Pds4File(PdsFile):
     ############################################################################
     # Archive path associations
     ############################################################################
-    # def archive_path_and_lskip(self):
-    #     """Return the absolute path to the archive file associated with this PdsFile.
-    #     Also return the number of characters to skip over in that absolute path to obtain
-    #     the basename of the archive file.
-    #     """
-
-    #     if self.checksums_:
-    #         raise ValueError('No archives for checksum files: ' +
-    #                          self.logical_path)
-
-    #     if self.archives_:
-    #         raise ValueError('No archives for archive files: ' +
-    #                          self.logical_path)
-
-    #     if self.bundletype_ == 'volumes/' or self.bundletype_ == 'bundles/':
-    #         suffix = ''
-    #     else:
-    #         suffix = '_' + self.bundletype_[:-1]
-
-    #     # if not self.bundlename:
-    #     #     raise ValueError('Archives require bundle names: ' +
-    #     #                       self.logical_path)
-
-    #     if not self.bundlename:
-    #         abspath = ''.join([self.root_, 'archives-', self.category_,
-    #                         self.bundleset_, self.bundleset, suffix, '.tar.gz'])
-    #     else:
-    #         abspath = ''.join([self.root_, 'archives-', self.category_,
-    #                         self.bundleset_, self.bundlename, suffix, '.tar.gz'])
-    #     lskip = len(self.root_) + len(self.category_) + len(self.bundleset_)
-
-    #     return (abspath, lskip)
-
     def archive_paths(self):
         """Return the absolute path to the archive file associated with this bundleset.
         """
@@ -206,14 +173,15 @@ class Pds4File(PdsFile):
 
         archive_dirs = {}
         for p in archive_paths:
-            dir_paths = [bundleset_pdsf.root_ + dir_path
-                         for dir_path in self.ARCHIVE_DIRS.all(p)]
-            archive_dirs[p] = dir_paths
+            dir_abs_patterns = [bundleset_pdsf.root_ + dir_pattern
+                                for dir_pattern in self.ARCHIVE_DIRS.all(p)]
 
-        # archive_dirs_patterns = archive_dirs.all(pdsdir.logical_path)
-        # archive_dirs_abspatterns = [pdsdir.root_ + p for p in archive_dirs_patterns]
-        # list_of_dirs = [pdsfile.Pds4File.glob_glob(p)
-        #                 for p in archive_dirs_abspatterns]
+            dir_abspaths = []
+            for pattern in dir_abs_patterns:
+                these_abspaths = self.glob_glob(pattern, force_case_sensitive=True)
+                dir_abspaths += these_abspaths
+
+            archive_dirs[p] = dir_abspaths
 
         return archive_dirs
 
