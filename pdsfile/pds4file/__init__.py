@@ -83,6 +83,9 @@ class Pds4File(PdsFile):
     IDX_EXT = '.csv'
     LBL_EXT = '.xml'
 
+    ARCHIVE_PATHS = rules.ARCHIVE_PATHS
+    ARCHIVE_DIRS = rules.ARCHIVE_DIRS
+
     def __init__(self):
         super().__init__()
 
@@ -146,6 +149,74 @@ class Pds4File(PdsFile):
             cls -- the class calling the other methods inside the function
         """
         cls.set_logger(pdslogger.EasyLogger())
+
+    ############################################################################
+    # Archive path associations
+    ############################################################################
+    # def archive_path_and_lskip(self):
+    #     """Return the absolute path to the archive file associated with this PdsFile.
+    #     Also return the number of characters to skip over in that absolute path to obtain
+    #     the basename of the archive file.
+    #     """
+
+    #     if self.checksums_:
+    #         raise ValueError('No archives for checksum files: ' +
+    #                          self.logical_path)
+
+    #     if self.archives_:
+    #         raise ValueError('No archives for archive files: ' +
+    #                          self.logical_path)
+
+    #     if self.bundletype_ == 'volumes/' or self.bundletype_ == 'bundles/':
+    #         suffix = ''
+    #     else:
+    #         suffix = '_' + self.bundletype_[:-1]
+
+    #     # if not self.bundlename:
+    #     #     raise ValueError('Archives require bundle names: ' +
+    #     #                       self.logical_path)
+
+    #     if not self.bundlename:
+    #         abspath = ''.join([self.root_, 'archives-', self.category_,
+    #                         self.bundleset_, self.bundleset, suffix, '.tar.gz'])
+    #     else:
+    #         abspath = ''.join([self.root_, 'archives-', self.category_,
+    #                         self.bundleset_, self.bundlename, suffix, '.tar.gz'])
+    #     lskip = len(self.root_) + len(self.category_) + len(self.bundleset_)
+
+    #     return (abspath, lskip)
+
+    def archive_paths(self):
+        """Return the absolute path to the archive file associated with this bundleset.
+        """
+
+        bundleset_pdsf = self.bundleset_pdsfile()
+        archive_paths = [bundleset_pdsf.root_ + p
+                         for p in self.ARCHIVE_PATHS.all(bundleset_pdsf.logical_path)]
+
+        return archive_paths
+
+    def archive_dirs(self):
+        """Return a dictionary that is keyed by a archive path and the list of
+        directories included in that archive path as the value.
+        """
+
+        bundleset_pdsf = self.bundleset_pdsfile()
+        archive_paths = bundleset_pdsf.archive_paths()
+
+        archive_dirs = {}
+        for p in archive_paths:
+            dir_paths = [bundleset_pdsf.root_ + dir_path
+                         for dir_path in self.ARCHIVE_DIRS.all(p)]
+            archive_dirs[p] = dir_paths
+
+        # archive_dirs_patterns = archive_dirs.all(pdsdir.logical_path)
+        # archive_dirs_abspatterns = [pdsdir.root_ + p for p in archive_dirs_patterns]
+        # list_of_dirs = [pdsfile.Pds4File.glob_glob(p)
+        #                 for p in archive_dirs_abspatterns]
+
+        return archive_dirs
+
 
 ##########################################################################################
 # Initialize the global registry of subclasses

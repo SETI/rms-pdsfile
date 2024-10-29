@@ -4891,7 +4891,7 @@ class PdsFile(object):
             raise ValueError('No archives for archive files: ' +
                              self.logical_path)
 
-        if self.bundletype_ == 'volumes/':
+        if self.bundletype_ == 'volumes/' or self.bundletype_ == 'bundles/':
             suffix = ''
         else:
             suffix = '_' + self.bundletype_[:-1]

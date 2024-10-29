@@ -178,23 +178,29 @@ def write_archive(pdsdir, clobber=True, archive_invisibles=True,
     logger.open('Writing .tar.gz file for', dirpath, limits=limits)
 
     try:
-        (tarpath, lskip) = pdsdir.archive_path_and_lskip()
+        archive_paths = pdsdir.archive_paths()
+        archive_dirs = pdsdir.archive_dirs()
 
         # Create parent directory if necessary
+        tarpath = archive_paths[0]
         parent = os.path.split(tarpath)[0]
         if not os.path.exists(parent):
             logger.normal('Creating directory', parent)
             os.makedirs(parent)
 
-        if not clobber and os.path.exists(tarpath):
-            logger.error('Archive file already exists', tarpath)
-            return
+        for tarpath in archive_paths:
+            if not clobber and os.path.exists(tarpath):
+                logger.error('Archive file already exists', tarpath)
+                return
 
-        f = tarfile.open(tarpath, mode='w:gz')
-        f.add(dirpath, arcname=dirpath[lskip:], recursive=True,
-                      filter=archive_filter)
-        logger.normal('Written', tarpath)
-        f.close()
+            current_archive_dirs = archive_dirs[tarpath]
+
+            with tarfile.open(tarpath, mode='w:gz') as tar:
+                for dir_path in current_archive_dirs:
+                    _, _, fname = dir_path.rpartition('/')
+                    tar.add(dir_path, arcname=fname, recursive=True,
+                            filter=archive_filter)
+
 
     except (Exception, KeyboardInterrupt) as e:
         logger.exception(e)
@@ -427,14 +433,13 @@ def main():
             print('No archives for archive files: ' + path)
             sys.exit(1)
 
+        # pdsdirs: a list, each element is the path of a bundle set or bundle
         pdsdir = pdsf.bundle_pdsfile()
         if pdsdir and pdsdir.isdir:
             pdsdirs.append(pdsdir)
         else:
             pdsdir = pdsf.bundleset_pdsfile()
-            children = [pdsdir.child(c) for c in pdsdir.childnames]
-            pdsdirs += [c for c in children if c.isdir]
-                    # "if c.isdir" is False for bundleset level readme files
+            pdsdirs.append(pdsdir)
 
     # Begin logging and loop through pdsdirs...
     logger.open(' '.join(sys.argv))

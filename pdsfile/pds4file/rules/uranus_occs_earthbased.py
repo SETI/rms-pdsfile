@@ -428,6 +428,25 @@ for bundle_prefix, opus_id_prefix_e, opus_id_prefix_i, opus_id_prefix_a in prefi
 opus_id_to_primary_logical_path = translator.TranslatorByRegex(opus_id_to_primary_filespec_list)
 
 ##########################################################################################
+# Archives
+##########################################################################################
+# Map a bundle set or a bundle to a list of logical paths of the archive file names.
+archive_paths = translator.TranslatorByRegex([
+    # (r'.*bundles/(uranus_occs_earthbased).*', 0, r'archives-bundles/\1/\1.tar.gz'),
+    (r'.*bundles/(uranus_occs_earthbased).*', 0,
+        [r'archives-bundles/\1/\1.tar.gz']),
+])
+
+# Map a logical path of an archive file name to a list of logical paths of the included
+# directories
+archive_dirs = translator.TranslatorByRegex([
+    # (r'(.*bundles/uranus_occs_earthbased).*', 0, r'\1/uranus_occ_*'),
+    (r'.*archives-(.*/uranus_occs_earthbased)/(.*).tar.gz', 0,
+        [r'\1']),
+    # (r'(.*).tar.gz', 0, r'\1/uranus_occ_*'),
+])
+
+##########################################################################################
 # Subclass definition
 ##########################################################################################
 
@@ -458,6 +477,9 @@ class uranus_occs_earthbased(pds4file.Pds4File):
     ASSOCIATIONS['diagrams'] += associations_to_diagrams
     ASSOCIATIONS['metadata']   += associations_to_metadata
     ASSOCIATIONS['documents']  += associations_to_documents
+
+    ARCHIVE_PATHS = archive_paths + pds4file.Pds4File.ARCHIVE_PATHS
+    ARCHIVE_DIRS = archive_dirs + pds4file.Pds4File.ARCHIVE_DIRS
 
     pds4file.Pds4File.FILESPEC_TO_BUNDLESET = filespec_to_bundleset + \
                                               pds4file.Pds4File.FILESPEC_TO_BUNDLESET
