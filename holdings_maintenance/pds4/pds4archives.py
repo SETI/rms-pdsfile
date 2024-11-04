@@ -175,7 +175,7 @@ def write_archive(pdsdir, clobber=True, archive_invisibles=True,
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsdir.root_)
-    logger.open('Writing .tar.gz file for', dirpath, limits=limits)
+    logger.open('Writing .tar.gz files for', dirpath, limits=limits)
 
     try:
         archive_paths = pdsdir.archive_paths()
@@ -195,6 +195,7 @@ def write_archive(pdsdir, clobber=True, archive_invisibles=True,
 
             current_archive_dirs = archive_dirs[tarpath]
 
+            logger.normal('Open for gzip compressed writing', tarpath)
             with tarfile.open(tarpath, mode='w:gz') as tar:
                 for dir_path in current_archive_dirs:
                     _, _, fname = dir_path.rpartition('/')

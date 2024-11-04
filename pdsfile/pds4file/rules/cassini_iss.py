@@ -287,6 +287,95 @@ opus_id_to_primary_logical_path = translator.TranslatorByRegex([
 ])
 
 ##########################################################################################
+# Archives
+##########################################################################################
+# Map a bundle set or a bundle to a list of logical paths of the archive file names.
+# TODO: split regex matched pattern group 1 (bundles|metadata|previews|doagrams) into
+# separate entries if we use different archive file names for different categories
+archive_paths = translator.TranslatorByRegex([
+    # cassini_iss_cruise
+    (r'.*(bundles|metadata|previews|diagrams)/(cassini_iss/cassini_iss_cruise)', 0, [
+        # bundle xml and other non browse_raw & data_row collections
+        r'archives-\1/\2/bundle_xml_non_data_browse_collections.tar.gz',
+        # browse_raw
+        r'archives-\1/\2/browse_raw.tar.gz',
+        # data_row
+        *[rf'archives-\1/\2/data_raw_1{num}xxxxxxx.tar.gz' for num in range(29,46)],
+        r'archives-\1/\2/data_raw_col_xml_csv_metadata.tar.gz',
+    ]),
+
+    # cassini_iss_saturn
+    (r'.*(bundles|metadata|previews|diagrams)/(cassini_iss/cassini_iss_saturn)', 0, [
+        # bundle xml, context, document, and xml_schema
+        r'archives-\1/\2/bundle_xml_non_data_browse_collections.tar.gz',
+        # browse_raw
+        *[rf'archives-\1/\2/browse_raw_{num}xxxxxxxx.tar.gz' for num in range(14, 19)],
+        r'archives-\1/\2/browse_raw_col_xml_csv.tar.gz',
+        # data_row
+        *[rf'archives-\1/\2/data_raw_1{num}xxxxxxx.tar.gz' for num in range(45, 89)],
+        r'archives-\1/\2/data_raw_col_xml_csv_metadata.tar.gz',
+    ]),
+])
+
+# Map a logical path of an archive file name to a list of logical paths of the included
+# directories
+archive_dirs = translator.TranslatorByRegex([
+    # cassini_iss_cruise
+    # bundle xml, non browse_raw or data_row collections
+    (r'.*archives-(.*/cassini_iss)/(cassini_iss_cruise)/bundle_xml_non_data_browse_collections.tar.gz', 0,
+        [r'\1/\2/bundle.xml',
+         r'\1/\2/document',
+         r'\1/\2/xml_schema',
+         r'\1/\2/context']
+    ),
+    # browse_raw
+    (r'.*archives-(.*/cassini_iss)/(cassini_iss_cruise)/(browse_raw).tar.gz', 0,
+        [r'\1/\2/\3']
+    ),
+    # data_row
+    *[
+        (rf'.*archives-(.*/cassini_iss)/(cassini_iss_cruise)/(data_raw)_1{num}xxxxxxx.tar.gz',
+         0, [rf'\1/\2/\3/1{num}xxxxxxx'])
+        for num in range(29,46)
+    ],
+    (r'.*archives-(.*/cassini_iss)/(cassini_iss_cruise)/(data_raw)_col_xml_csv_metadata.tar.gz', 0,
+        [r'\1/\2/\3/collection_data_raw.csv',
+         r'\1/\2/\3/collection_data_raw.xml',
+         r'\1/\2/\3/metadata']
+    ),
+
+    # cassini_iss_saturn
+    # bundle xml, context, document, and xml_schema collections
+    (r'.*archives-(.*/cassini_iss)/(cassini_iss_saturn)/bundle_xml_non_data_browse_collections.tar.gz', 0,
+        [r'\1/\2/bundle.xml',
+         r'\1/\2/document',
+         r'\1/\2/xml_schema',
+         r'\1/\2/context']
+    ),
+    # browse_raw
+    *[
+        (rf'.*archives-(.*/cassini_iss)/(cassini_iss_saturn)/(browse_raw)_{num1}xxxxxxxx.tar.gz',
+         0, [rf'\1/\2/\3/{num1}{num2}xxxxxxx' for num2 in range(0, 10)])
+        for num1 in range(14,19)
+    ],
+    (r'.*archives-(.*/cassini_iss)/(cassini_iss_saturn)/(browse_raw)_col_xml_csv.tar.gz', 0,
+        [r'\1/\2/\3/collection_browse_raw.csv',
+         r'\1/\2/\3/collection_browse_raw.xml']
+    ),
+    # data_row
+    *[
+        (rf'.*archives-(.*/cassini_iss)/(cassini_iss_saturn)/(data_raw)_1{num}xxxxxxx.tar.gz',
+         0, [rf'\1/\2/\3/1{num}xxxxxxx'])
+        for num in range(45, 89)
+    ],
+    (r'.*archives-(.*/cassini_iss)/(cassini_iss_saturn)/(data_raw)_col_xml_csv_metadata.tar.gz', 0,
+        [r'\1/\2/\3/collection_data_raw.csv',
+         r'\1/\2/\3/collection_data_raw.xml',
+         r'\1/\2/\3/metadata']
+    ),
+])
+
+##########################################################################################
 # Subclass definition
 ##########################################################################################
 
@@ -314,6 +403,9 @@ class cassini_iss(pds4file.Pds4File): # Cassini_ISS
     ASSOCIATIONS['previews']   += associations_to_previews
     ASSOCIATIONS['metadata']   += associations_to_metadata
     ASSOCIATIONS['documents']  += associations_to_documents
+
+    ARCHIVE_PATHS = archive_paths + pds4file.Pds4File.ARCHIVE_PATHS
+    ARCHIVE_DIRS = archive_dirs + pds4file.Pds4File.ARCHIVE_DIRS
 
     pds4file.Pds4File.FILESPEC_TO_BUNDLESET = filespec_to_bundleset + pds4file.Pds4File.FILESPEC_TO_BUNDLESET
 
