@@ -154,15 +154,15 @@ class Pds4File(PdsFile):
     # Archive path associations
     ############################################################################
     def archive_paths(self):
-        """Return the absolute path to the archive file associated with this bundleset
-        or bundle.
+        """Return the absolute path to the archive files associated with this given
+        pdsfile (it could be a bundle set, a bundle or a bundle collection)
         """
 
-        pdsf = self.bundle_pdsfile()
-        if not pdsf:
-            pdsf = self.bundleset_pdsfile()
+        # pdsf = self.bundle_pdsfile()
+        # if not pdsf:
+        #     pdsf = self.bundleset_pdsfile()
         archive_paths = [self.root_ + p
-                         for p in self.ARCHIVE_PATHS.all(pdsf.logical_path)]
+                         for p in self.ARCHIVE_PATHS.all(self.logical_path)]
 
         return archive_paths
 

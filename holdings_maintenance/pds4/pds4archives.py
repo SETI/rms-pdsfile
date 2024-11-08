@@ -434,13 +434,9 @@ def main():
             print('No archives for archive files: ' + path)
             sys.exit(1)
 
-        # pdsdirs: a list, each element is the path of a bundle set or bundle
-        pdsdir = pdsf.bundle_pdsfile()
-        if pdsdir and pdsdir.isdir:
-            pdsdirs.append(pdsdir)
-        else:
-            pdsdir = pdsf.bundleset_pdsfile()
-            pdsdirs.append(pdsdir)
+        # pdsdirs: a list, each element is the path of a bundle set, bundle, or bundle
+        # collection
+        pdsdirs.append(pdsf)
 
     # Begin logging and loop through pdsdirs...
     logger.open(' '.join(sys.argv))
