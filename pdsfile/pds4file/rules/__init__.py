@@ -10,9 +10,10 @@ import re
 import translator
 
 __all__ = [
-    "uranus_occs_earthbased", # will resume work on this, currently working on COISS and COVIMS
-    "cassini_iss",
-    "cassini_vims",
+    'uranus_occs_earthbased', # will resume work on this, currently working on COISS and COVIMS
+    'cassini_iss',
+    'cassini_vims',
+    'cassini_uvis_solarocc_beckerjarmak2023'
 ]
 
 GENERIC_VOLUME_DESC = 'Data volume'

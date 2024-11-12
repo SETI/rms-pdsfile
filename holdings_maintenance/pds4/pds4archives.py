@@ -434,7 +434,7 @@ def main():
             print('No archives for archive files: ' + path)
             sys.exit(1)
 
-        # pdsdirs: a list, each element is the path of a bundle set, bundle, or bundle
+        # pdsdirs: a list, each element is the path of a bundle set, bundle, or a bundle
         # collection
         pdsdirs.append(pdsf)
 

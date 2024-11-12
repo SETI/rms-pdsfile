@@ -432,7 +432,9 @@ opus_id_to_primary_logical_path = translator.TranslatorByRegex(opus_id_to_primar
 ##########################################################################################
 # Map a bundle set or a bundle to a list of logical paths of the archive file names.
 archive_paths = translator.TranslatorByRegex([
-    (r'.*bundles/(uranus_occs_earthbased).*', 0, [r'archives-bundles/\1/\1.tar.gz']),
+    (r'.*(bundles|metadata|previews|diagrams)/(uranus_occs_earthbased).*', 0, [
+        r'archives-\1/\2/\2.tar.gz'
+    ]),
 ])
 
 # Map a logical path of an archive file name to a list of logical paths of the included
