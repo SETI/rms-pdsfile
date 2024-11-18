@@ -298,11 +298,12 @@ ARCHIVE_PATHS_DICT = {
             r'archives-\1/\2/bundle_xml_non_data_browse_collections.tar.gz'
         ],
         'browse_raw': [
-            r'archives-\1/\2/browse_raw.tar.gz'
+            *[rf'archives-\1/\2/browse_raw_1{num}xxxxxxx.tar.gz' for num in range(29,46)],
+            # r'archives-\1/\2/browse_raw_col_xml_csv.tar.gz',
         ],
         'data_raw': [
             *[rf'archives-\1/\2/data_raw_1{num}xxxxxxx.tar.gz' for num in range(29,46)],
-            r'archives-\1/\2/data_raw_col_xml_csv_metadata.tar.gz',
+            # r'archives-\1/\2/data_raw_col_xml_csv.tar.gz',
         ],
     },
     'cassini_iss_saturn': {
@@ -311,11 +312,11 @@ ARCHIVE_PATHS_DICT = {
         ],
         'browse_raw': [
             *[rf'archives-\1/\2/browse_raw_1{num}xxxxxxx.tar.gz' for num in range(45, 89)],
-            r'archives-\1/\2/browse_raw_col_xml_csv.tar.gz',
+            # r'archives-\1/\2/browse_raw_col_xml_csv.tar.gz',
         ],
         'data_raw': [
             *[rf'archives-\1/\2/data_raw_1{num}xxxxxxx.tar.gz' for num in range(45, 89)],
-            r'archives-\1/\2/data_raw_col_xml_csv_metadata.tar.gz',
+            # r'archives-\1/\2/data_raw_col_xml_csv.tar.gz',
         ],
     }
 }
@@ -329,6 +330,19 @@ archive_paths = translator.TranslatorByRegex([
         # data_row
         *ARCHIVE_PATHS_DICT['cassini_iss_cruise']['data_raw'],
     ]),
+    # input path is a bundle collection path
+    # bundle xml, context, document, and xml_schema
+    (r'.*(bundles|metadata|previews|diagrams)/(cassini_iss/cassini_iss_cruise)/(context|document|xml_schema|bundle.xml)', 0,
+        ARCHIVE_PATHS_DICT['cassini_iss_cruise']['other_col']
+    ),
+    # browse_raw
+    (r'.*(bundles|metadata|previews|diagrams)/(cassini_iss/cassini_iss_cruise)/browse_(\w*)', 0,
+        ARCHIVE_PATHS_DICT['cassini_iss_cruise']['browse_raw']
+    ),
+    # data_row
+    (r'.*(bundles|metadata|previews|diagrams)/(cassini_iss/cassini_iss_cruise)/data_(\w*)', 0,
+        ARCHIVE_PATHS_DICT['cassini_iss_cruise']['data_raw']
+    ),
 
     ### cassini_iss_saturn ###
     # input path is a bundle path
@@ -368,20 +382,29 @@ archive_dirs = translator.TranslatorByRegex([
          r'\1/\2/context']
     ),
     # browse_raw
-    (r'.*archives-(.*/cassini_iss)/(cassini_iss_cruise)/(browse_raw).tar.gz', 0,
-        [r'\1/\2/\3']
-    ),
+    *[
+        (rf'.*archives-(.*/cassini_iss)/(cassini_iss_cruise)/(browse_raw)_1{num}xxxxxxx.tar.gz',
+         0, [rf'\1/\2/\3/1{num}xxxxxxx',
+             r'\1/\2/\3/collection_\3.csv',
+             r'\1/\2/\3/collection_\3.xml'])
+        for num in range(29,46)
+    ],
+    # (r'.*archives-(.*/cassini_iss)/(cassini_iss_cruise)/(browse_raw)_col_xml_csv.tar.gz', 0,
+    #     [r'\1/\2/\3/collection_\3.csv',
+    #      r'\1/\2/\3/collection_\3.xml']
+    # ),
     # data_row
     *[
         (rf'.*archives-(.*/cassini_iss)/(cassini_iss_cruise)/(data_raw)_1{num}xxxxxxx.tar.gz',
-         0, [rf'\1/\2/\3/1{num}xxxxxxx'])
+         0, [rf'\1/\2/\3/1{num}xxxxxxx',
+             r'\1/\2/\3/collection_\3.csv',
+             r'\1/\2/\3/collection_\3.xml'])
         for num in range(29,46)
     ],
-    (r'.*archives-(.*/cassini_iss)/(cassini_iss_cruise)/(data_raw)_col_xml_csv_metadata.tar.gz', 0,
-        [r'\1/\2/\3/collection_\3.csv',
-         r'\1/\2/\3/collection_\3.xml',
-         r'\1/\2/\3/metadata']
-    ),
+    # (r'.*archives-(.*/cassini_iss)/(cassini_iss_cruise)/(data_raw)_col_xml_csv.tar.gz', 0,
+    #     [r'\1/\2/\3/collection_\3.csv',
+    #      r'\1/\2/\3/collection_\3.xml']
+    # ),
 
     ### cassini_iss_saturn ###
     # bundle xml, context, document, and xml_schema collections
@@ -394,24 +417,27 @@ archive_dirs = translator.TranslatorByRegex([
     # browse_raw
     *[
         (rf'.*archives-(.*/cassini_iss)/(cassini_iss_saturn)/(browse_raw)_1{num}xxxxxxx.tar.gz',
-         0, [rf'\1/\2/\3/1{num}xxxxxxx'])
+         0, [rf'\1/\2/\3/1{num}xxxxxxx',
+             r'\1/\2/\3/collection_\3.csv',
+             r'\1/\2/\3/collection_\3.xml'])
         for num in range(45, 89)
     ],
-    (r'.*archives-(.*/cassini_iss)/(cassini_iss_saturn)/(browse_raw)_col_xml_csv.tar.gz', 0,
-        [r'\1/\2/\3/collection_\3.csv',
-         r'\1/\2/\3/collection_\3.xml']
-    ),
+    # (r'.*archives-(.*/cassini_iss)/(cassini_iss_saturn)/(browse_raw)_col_xml_csv.tar.gz', 0,
+    #     [r'\1/\2/\3/collection_\3.csv',
+    #      r'\1/\2/\3/collection_\3.xml']
+    # ),
     # data_row
     *[
         (rf'.*archives-(.*/cassini_iss)/(cassini_iss_saturn)/(data_raw)_1{num}xxxxxxx.tar.gz',
-         0, [rf'\1/\2/\3/1{num}xxxxxxx'])
+         0, [rf'\1/\2/\3/1{num}xxxxxxx',
+             r'\1/\2/\3/collection_\3.csv',
+             r'\1/\2/\3/collection_\3.xml'])
         for num in range(45, 89)
     ],
-    (r'.*archives-(.*/cassini_iss)/(cassini_iss_saturn)/(data_raw)_col_xml_csv_metadata.tar.gz', 0,
-        [r'\1/\2/\3/collection_\3.csv',
-         r'\1/\2/\3/collection_\3.xml',
-         r'\1/\2/\3/metadata']
-    ),
+    # (r'.*archives-(.*/cassini_iss)/(cassini_iss_saturn)/(data_raw)_col_xml_csv.tar.gz', 0,
+    #     [r'\1/\2/\3/collection_\3.csv',
+    #      r'\1/\2/\3/collection_\3.xml']
+    # ),
 ])
 
 ##########################################################################################
