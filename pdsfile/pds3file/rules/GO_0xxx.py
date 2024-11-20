@@ -786,11 +786,13 @@ class GO_0xxx(pds3file.Pds3File):
                 prioritizer = []    # (priority from path, sublist)
 
                 for sublist in rank_dict[rank]:
-                    abspath = sublist[0].abspath
                     prio = 1
-                    if 'TIRETRACK' in abspath: prio = 0
-                    if 'REPAIRED' in abspath: prio = 0
-                    if 'REDO' in abspath: prio = 0
+
+                    for li in sublist:
+                        abspath = li.abspath
+                        if 'TIRETRACK' in abspath: prio = 0
+                        if 'REPAIRED' in abspath: prio = 0
+                        if 'REDO' in abspath: prio = 0
 
                     prioritizer.append((prio, sublist))
 
@@ -1135,8 +1137,6 @@ def test_duplicated_products():
         ('GO_0015/REDO/C0165242700R.IMG'           , 'GO_0012/EARTH/C0165242700R.IMG'         ),
         ('GO_0018/REDO/C3/JUPITER/C0368976900R.IMG', 'GO_0017/C3/JUPITER/C0368976900R.IMG'    ),
         ('GO_0019/REDO/C3/JUPITER/C0368441600R.IMG', 'GO_0017/C3/JUPITER/C0368441600R.IMG'    ),
-        ('GO_0019/REDO/C3/JUPITER/C0368441600R.IMG', 'GO_0017/C3/JUPITER/C0368441600R.IMG'    ),
-        ('GO_0019/REDO/E6/IO/C0383655111R.IMG'     , 'GO_0018/E6/IO/C0383655111R.IMG'         ),
         ('GO_0019/REDO/E6/IO/C0383655111R.IMG'     , 'GO_0018/E6/IO/C0383655111R.IMG'         ),
         ('GO_0020/E12/TIRETRACK/C0426272849S.IMG'  , 'GO_0020/E12/EUROPA/C0426272849R.IMG'    ),
         ('GO_0022/I24/IO/REPAIRED/C0520792949S.IMG', 'GO_0022/I24/IO/GARBLED/C0520792949R.IMG'),
