@@ -4786,15 +4786,15 @@ class PdsFile(object):
 
             pdsfile_dict[key].append(sublist)
 
-        # Sort by version and filepath
+        # Sort the return
         for (header, sublists) in pdsfile_dict.items():
 
-            # Sort the paths of each sublist
+            # Sort the sublist by filepath (alphabetical order)
             for li in sublists:
-                li.sort(key=lambda x: (x.version_rank, x.abspath))
-                li.reverse()
+                li.sort()
 
-            # Sort the list of sublists
+            # Sort the list of sublists by version and filepath (in the order of
+            # decreasing version, or reversed alphabetical order if version is the same)
             sublists.sort(key=lambda x: (x[0].version_rank, x[0].abspath))
             sublists.reverse()
 
