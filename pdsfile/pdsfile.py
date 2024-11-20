@@ -4791,7 +4791,7 @@ class PdsFile(object):
 
             # Sort the sublist by filepath (alphabetical order)
             for li in sublists:
-                li.sort()
+                li.sort(key=lambda x: x.abspath)
 
             # Sort the list of sublists by version and filepath (in the order of
             # decreasing version, or reversed alphabetical order if version is the same)
