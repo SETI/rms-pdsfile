@@ -786,13 +786,11 @@ class GO_0xxx(pds3file.Pds3File):
                 prioritizer = []    # (priority from path, sublist)
 
                 for sublist in rank_dict[rank]:
+                    abspath = sublist[0].abspath
                     prio = 1
-
-                    for li in sublist:
-                        abspath = li.abspath
-                        if 'TIRETRACK' in abspath: prio = 0
-                        if 'REPAIRED' in abspath: prio = 0
-                        if 'REDO' in abspath: prio = 0
+                    if 'TIRETRACK' in abspath: prio = 0
+                    if 'REPAIRED' in abspath: prio = 0
+                    if 'REDO' in abspath: prio = 0
 
                     prioritizer.append((prio, sublist))
 
