@@ -76,11 +76,15 @@ TESTS = translator.TranslatorByRegex([
     ('.*/JNCJNC_0xxx/.*',           0, ['metadata', 'cumindex999']),
     ('.*/HST.x_xxxx/.*',            0, ['hst', 'metadata', 'cumindex9_9999']),
     ('.*/NH..(LO|MV)_xxxx/.*',      0, ['metadata', 'supplemental', 'cumindexNH']),
-    ('.*/NH(JU|LA).._..../.*',      0, ['nhbrowse_vx', 'jupiter', 'rings', 'moons',
-                                        'inventory']),
-    ('.*/NH(PC|PE).._..../.*',      0, ['nhbrowse', 'pluto', 'rings', 'moons',
-                                        'inventory']),
-    ('.*/NH(KC|KE|K2).._..../.*',   0, ['nhbrowse']),
+    ('.*/NH(JU|LA)LO_[12]00.*',     0, ['jupiter', 'rings', 'moons', 'inventory']),
+    ('.*/NHP.LO_[12]00.*',          0, ['pluto', 'rings', 'moons', 'inventory']),
+    ('.*/NH[LPK].LO_[12]00.*',      0, ['nhbrowse']),
+    ('.*(?<!_v[12])/NHJULO_100.*',  0, ['nhbrowse']),       # not NHJULO_1001 _v1-2
+    ('.*(?<!_v[123])/NHJULO_200.*', 0, ['nhbrowse']),       # not NHJULO_2001 _v1-3
+    ('.*/NH[PK].MV_[12]00.*',       0, ['nhbrowse']),
+    ('.*(?<!_v1)/NHLAMV_[12]00.*',  0, ['nhbrowse_vx']),    # not NHLAMV _v1
+    ('.*/NHJUMV_100.*',             0, ['nhbrowse_vx']),
+    ('.*(?<!_v1)/NHJUMV_200.*',     0, ['nhbrowse_vx']),    # not NHJUMV_2001 _v1
     ('.*/RPX_xxxx/.*',              0, ['metadata']),
     ('.*/RPX_xxxx/RPX_000.*',       0, ['obsindex', 'cumindex99']),
     ('.*/VGISS_[5678]xxx/.*',       0, ['vgiss', 'metadata', 'raw_image',
@@ -213,90 +217,85 @@ class PdsDependency(object):
         confirmed = set()
         try:
             pattern = pdsdir.root_ + self.glob_pattern
-            pattern = pattern.replace('$', pdsdir.bundleset_[:-1], 1)
+            pattern = pattern.replace('$', pdsdir.volset_[:-1], 1)
             if '$' in pattern:
                 if self.func is None:
-                    volname = pdsdir.bundlename
+                    volname = pdsdir.volname
                 else:
-                    volname = self.func(pdsdir.bundlename, *self.args)
+                    volname = self.func(pdsdir.volname, *self.args)
                 pattern = pattern.replace('$', volname, 1)
 
             abspaths = glob.glob(pattern)
-            if len(abspaths) == 0:
-                logger.info('No files found')
+            for sub in self.sublist:
+                try:
+                    for abspath in abspaths:
 
-            else:
-                for sub in self.sublist:
-                    try:
-                        for abspath in abspaths:
+                        # Check exception list
+                        exception_identified = False
+                        for regex in self.exceptions:
+                            if regex.fullmatch(abspath):
+                                logger.info('Test skipped', abspath)
+                                exception_identified = True
+                                break
 
-                            # Check exception list
-                            exception_identified = False
-                            for regex in self.exceptions:
-                                if regex.fullmatch(abspath):
-                                    logger.info('Test skipped', abspath)
-                                    exception_identified = True
-                                    break
+                        if exception_identified:
+                            continue
 
-                            if exception_identified:
+                        path = abspath[lskip_:]
+
+                        (requirement, count) = self.regex.subn(sub, path)
+                        absreq = (pdsdir.root_ + requirement)
+                        if count == 0:
+                            logger.error('Invalid test', absreq)
+                            continue
+
+                        if not os.path.exists(absreq):
+                            if absreq in missing:
                                 continue
 
-                            path = abspath[lskip_:]
+                            logger.error('Missing file', absreq)
+                            for message in self.messages:
+                                cmd = self.regex.sub(message, path)
+                                cmd = cmd.replace('[c]', 'initialize')
+                                cmd = cmd.replace('[C]', 'initialize')
+                                cmd = cmd.replace('[d]', pdsdir.root_)
+                                if cmd not in PdsDependency.COMMANDS_TO_TYPE:
+                                    PdsDependency.COMMANDS_TO_TYPE.append(cmd)
 
-                            (requirement, count) = self.regex.subn(sub, path)
-                            absreq = (pdsdir.root_ + requirement)
+                            missing.add(absreq)
+                            continue
 
-                            if count == 0:
-                                logger.error('Invalid test', absreq)
-                                continue
+                        if self.newer and check_newer:
+                            source_modtime = PdsDependency.get_modtime(abspath,
+                                                                       logger)
+                            requirement_modtime = PdsDependency.get_modtime(absreq,
+                                                                            logger)
 
-                            if not os.path.exists(absreq):
-                                if absreq in missing:
+                            if requirement_modtime < source_modtime:
+                                if absreq in out_of_date:
                                     continue
 
-                                logger.error('Missing file', absreq)
+                                logger.error('File out of date', absreq)
                                 for message in self.messages:
                                     cmd = self.regex.sub(message, path)
-                                    cmd = cmd.replace('[c]', 'initialize')
-                                    cmd = cmd.replace('[C]', 'initialize')
+                                    cmd = cmd.replace('[c]', 'repair')
+                                    cmd = cmd.replace('[C]', 'reinitialize')
                                     cmd = cmd.replace('[d]', pdsdir.root_)
                                     if cmd not in PdsDependency.COMMANDS_TO_TYPE:
                                         PdsDependency.COMMANDS_TO_TYPE.append(cmd)
 
-                                missing.add(absreq)
+                                out_of_date.add(absreq)
                                 continue
 
-                            if self.newer and check_newer:
-                                source_modtime = PdsDependency.get_modtime(abspath,
-                                                                           logger)
-                                requirement_modtime = PdsDependency.get_modtime(absreq,
-                                                                                logger)
+                        if absreq in confirmed:
+                            continue
 
-                                if requirement_modtime < source_modtime:
-                                    if absreq in out_of_date:
-                                        continue
+                        logger.normal('Confirmed', absreq)
+                        confirmed.add(absreq)
 
-                                    logger.error('File out of date', absreq)
-                                    for message in self.messages:
-                                        cmd = self.regex.sub(message, path)
-                                        cmd = cmd.replace('[c]', 'repair')
-                                        cmd = cmd.replace('[C]', 'reinitialize')
-                                        cmd = cmd.replace('[d]', pdsdir.root_)
-                                        if cmd not in PdsDependency.COMMANDS_TO_TYPE:
-                                            PdsDependency.COMMANDS_TO_TYPE.append(cmd)
-
-                                    out_of_date.add(absreq)
-                                    continue
-
-                            if absreq in confirmed:
-                                continue
-
-                            logger.normal('Confirmed', absreq)
-                            confirmed.add(absreq)
-
-                    except (Exception, KeyboardInterrupt) as e:
-                        logger.exception(e)
-                        raise
+                except (Exception, KeyboardInterrupt) as e:
+                    logger.exception(e)
+                    raise
 
         except (Exception, KeyboardInterrupt) as e:
             logger.exception(e)
@@ -886,28 +885,28 @@ _ = PdsDependency(
     r'<PREVIEW> [d]volumes/\1/\3.LBL -> [d]previews/\1/\3_*.jpg',
     suite='hst', newer=False)
 
-# For NHxxLO_xxxx and NHxxMV_xxxx browse, stripping version number
+# For NHxxLO_xxxx and NHxxMV_xxxx browse, stripping version number if present
 _ = PdsDependency(
     'Previews of every NH image file',
     'volumes/$/$/data/*/*.fit',
-    r'volumes/(NHxx.._....)(|_v[\.\d]+)/(NH.*?)(|_[0-9]+).fit',
+    r'volumes/(NHxx.._....)(|_v[\.\d]+)/(NH\w+/data/\w+/\w{24})(|_[0-9]+)\.fit',
     [r'previews/\1/\3_thumb.jpg',
      r'previews/\1/\3_small.jpg',
      r'previews/\1/\3_med.jpg',
      r'previews/\1/\3_full.jpg'],
-    r'<PREVIEW> [d]volumes/\1/\3\4.fit -> [d]previews/\1/\3_*.jpg',
+    r'<PREVIEW> [d]volumes/\1\2/\3\4.fit -> [d]previews/\1/\3_*.jpg',
     suite='nhbrowse', newer=False)
 
-# For NHxxLO_xxxx and NHxxMV_xxxx browse, without stripping version number
+# For NHxxLO_xxxx and NHxxMV_xxxx browse, retaining version number
 _ = PdsDependency(
     'Previews of every NH image file',
     'volumes/$/$/data/*/*.fit',
-    r'volumes/(NHxx.._....)(|_v[\.\d]+)/(NH.*?).fit',
+    r'volumes/(NHxx.._....)(|_v[\.\d]+)/(NH.*?)\.fit',
     [r'previews/\1/\3_thumb.jpg',
      r'previews/\1/\3_small.jpg',
      r'previews/\1/\3_med.jpg',
      r'previews/\1/\3_full.jpg'],
-    r'<PREVIEW> [d]volumes/\1/\3.fit -> [d]previews/\1/\3_*.jpg',
+    r'<PREVIEW> [d]volumes/\1\2/\3.fit -> [d]previews/\1/\3_*.jpg',
     suite='nhbrowse_vx', newer=False)
 
 # For VGISS_[5678]xxx
@@ -1060,6 +1059,13 @@ def main():
 
         else:
             paths.append(os.path.abspath(path))
+
+    # Check for valid volume IDs
+    for path in paths:
+        basename = os.path.basename(path)
+        if not pdsfile.Pds3File.VOLNAME_REGEX_I.match(basename):
+            print('Invalid volume ID: ' + path)
+            sys.exit(1)
 
     # Loop through paths...
     logger.open(' '.join(sys.argv))
