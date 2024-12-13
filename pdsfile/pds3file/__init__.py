@@ -87,6 +87,9 @@ class Pds3File(PdsFile):
     OPUS_ID_TO_SUBCLASS = rules.OPUS_ID_TO_SUBCLASS
     FILESPEC_TO_BUNDLESET = rules.FILESPEC_TO_BUNDLESET
 
+    IDX_EXT = '.tab'
+    LBL_EXT = '.lbl'
+
     def __init__(self):
         super().__init__()
 
