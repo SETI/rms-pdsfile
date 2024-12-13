@@ -4807,14 +4807,33 @@ class PdsFile(object):
 
             pdsfile_dict[key].append(sublist)
 
-        # Sort by version and filepath
-        for (header, sublists) in pdsfile_dict.items():
-            sublists.sort(key=lambda x: (x[0].version_rank, x[0].abspath))
-            sublists.reverse()
-
         # Call a special product prioritizer if available
         if hasattr(self, 'opus_prioritizer'):
             self.opus_prioritizer(pdsfile_dict)
+
+        # Sort the return
+        for (header, sublists) in pdsfile_dict.items():
+            # For the same opus type (header), combine different lists of the same
+            # version to one sublist
+            new_sublist_dict = {}
+            for li in sublists:
+                version = li[0].version_rank
+                if li[0].version_rank not in new_sublist_dict:
+                    new_sublist_dict[version] = li
+                else:
+                    new_sublist_dict[version] += li
+
+            new_sublists = list(new_sublist_dict.values())
+
+            # Sort the sublist by filepath (alphabetical order)
+            for li in new_sublists:
+                li.sort(key=lambda x: x.abspath)
+
+            # Sort the list of sublists by version (in the order of decreasing version)
+            new_sublists.sort(key=lambda x: x[0].version_rank, reverse=True)
+
+            # update pdsfile_dict with sorted sublists
+            pdsfile_dict[header] = new_sublists
 
         return pdsfile_dict
 
