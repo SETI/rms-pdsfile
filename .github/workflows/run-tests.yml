@@ -36,12 +36,18 @@ jobs:
             python-version: "3.11"
           - os: self-hosted-linux
             python-version: "3.12"
+          - os: self-hosted-linux
+            python-version: "3.13"
           - os: self-hosted-macos
             python-version: "3.11"
           - os: self-hosted-macos
             python-version: "3.12"
+          - os: self-hosted-macos
+            python-version: "3.13"
           - os: self-hosted-windows
             python-version: "3.12"
+          - os: self-hosted-windows
+            python-version: "3.13"
       fail-fast: true
     steps:
       - name: Checkout rms-pdsfile
@@ -79,8 +85,8 @@ jobs:
           scripts/automated_tests/pdsfile_main_test.sh
 
       - name: Upload coverage report to codecov
-        uses: codecov/codecov-action@v4
-        if: matrix.os == 'self-hosted-linux' && matrix.python-version == '3.12'
+        uses: codecov/codecov-action@v5
+        if: matrix.os == 'self-hosted-linux' && matrix.python-version == '3.13'
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage.xml
