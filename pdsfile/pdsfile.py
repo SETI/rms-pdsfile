@@ -1320,11 +1320,11 @@ class PdsFile(object):
             return os.path.exists(abspath)
 
         # Handle index rows
-        if '.tab/' in abspath:
-            parts = abspath.partition('.tab/')
-            if not cls.os_path_exists(parts[0] + '.tab'):
+        if f'{cls.IDX_EXT}/' in abspath:
+            parts = abspath.partition(f'{cls.IDX_EXT}/')
+            if not cls.os_path_exists(parts[0] + cls.IDX_EXT):
                 return False
-            pdsf = cls.from_abspath(parts[0] + '.tab')
+            pdsf = cls.from_abspath(parts[0] + cls.IDX_EXT)
             return (pdsf.exists and
                     pdsf.child_of_index(parts[2], flag='').exists)
 
@@ -1865,14 +1865,14 @@ class PdsFile(object):
 
         cls = type(self)
         if self._indexshelf_abspath is None:
-            if self.extension not in ('.tab', '.TAB'):
+            if self.extension not in (cls.IDX_EXT, cls.IDX_EXT.upper()):
                 self._indexshelf_abspath = ''
             else:
                 abspath = self.abspath
                 abspath = abspath.replace(f'/{cls.PDS_HOLDINGS}/',
                                           f'/{cls.PDS_HOLDINGS}/_indexshelf-')
-                abspath = abspath.replace('.tab', '.pickle')
-                abspath = abspath.replace('.TAB', '.pickle')
+                abspath = abspath.replace(cls.IDX_EXT, '.pickle')
+                abspath = abspath.replace(cls.IDX_EXT.upper(), '.pickle')
                 self._indexshelf_abspath = abspath
 
             self._recache()
@@ -1885,6 +1885,7 @@ class PdsFile(object):
         presence of the corresponding indexshelf file.
         """
 
+        cls = type(self)
         if self._is_index is None:
             abspath = self.indexshelf_abspath
             if abspath and os.path.exists(abspath):
@@ -1895,7 +1896,7 @@ class PdsFile(object):
                 # file is being created.
                 # XXX This is a real hack and should be looked at again later
                 if ('/metadata/' in self.abspath
-                    and self.abspath.lower().endswith('.tab')):
+                    and self.abspath.lower().endswith(cls.IDX_EXT)):
                     return True  # this value is not cached
 
                 self._is_index = False
@@ -1911,9 +1912,11 @@ class PdsFile(object):
         if not self.is_index:
             return None
 
+        cls = type(self)
         if self._index_pdslabel is None:
-            label_abspath = self.abspath.replace ('.tab', '.lbl')
-            label_abspath = label_abspath.replace('.TAB', '.LBL')
+            label_abspath = self.abspath.replace (cls.IDX_EXT, cls.LBL_EXT)
+            label_abspath = label_abspath.replace(cls.IDX_EXT.upper(),
+                                                  cls.LBL_EXT.upper())
             try:
               self._index_pdslabel = pdsparser.PdsLabel.from_file(label_abspath)
             except:
@@ -2626,9 +2629,9 @@ class PdsFile(object):
 
         # Take a first guess at the label filename; PDS3 only!
         if self.extension.isupper():
-            ext_guesses = ('.LBL', '.lbl')
+            ext_guesses = (cls.LBL_EXT.upper(), cls.LBL_EXT)
         else:
-            ext_guesses = ('.lbl', '.LBL')
+            ext_guesses = (cls.LBL_EXT, cls.LBL_EXT.upper())
 
         rootname = self.basename[:-len(self.extension)]
         test_basenames = [rootname + ext for ext in ext_guesses]
@@ -4807,14 +4810,33 @@ class PdsFile(object):
 
             pdsfile_dict[key].append(sublist)
 
-        # Sort by version and filepath
-        for (header, sublists) in pdsfile_dict.items():
-            sublists.sort(key=lambda x: (x[0].version_rank, x[0].abspath))
-            sublists.reverse()
-
         # Call a special product prioritizer if available
         if hasattr(self, 'opus_prioritizer'):
             self.opus_prioritizer(pdsfile_dict)
+
+        # Sort the return
+        for (header, sublists) in pdsfile_dict.items():
+            # For the same opus type (header), combine different lists of the same
+            # version to one sublist
+            new_sublist_dict = {}
+            for li in sublists:
+                version = li[0].version_rank
+                if li[0].version_rank not in new_sublist_dict:
+                    new_sublist_dict[version] = li
+                else:
+                    new_sublist_dict[version] += li
+
+            new_sublists = list(new_sublist_dict.values())
+
+            # Sort the sublist by filepath (alphabetical order)
+            for li in new_sublists:
+                li.sort(key=lambda x: x.abspath)
+
+            # Sort the list of sublists by version (in the order of decreasing version)
+            new_sublists.sort(key=lambda x: x[0].version_rank, reverse=True)
+
+            # update pdsfile_dict with sorted sublists
+            pdsfile_dict[header] = new_sublists
 
         return pdsfile_dict
 
@@ -5473,7 +5495,8 @@ class PdsFile(object):
             basename -- basename of a file
         """
 
-        return (len(basename) > 4) and (basename[-4:].lower() == '.lbl')
+        cls = type(self)
+        return (len(basename) > 4) and (basename[-4:].lower() == cls.LBL_EXT)
 
     def basename_is_viewable(self, basename=None):
         """Return True if this basename is viewable. Override if viewable files can
@@ -5966,8 +5989,8 @@ class PdsFile(object):
         for pattern in patterns:
 
             # Handle an index row by separating the filepath from the suffix
-            if '.tab/' in pattern:
-                parts = pattern.rpartition('.tab')
+            if f'{cls.IDX_EXT}/' in pattern:
+                parts = pattern.rpartition(cls.IDX_EXT)
                 pattern = parts[0] + parts[1]
                 suffix = parts[2][1:]
             else:
