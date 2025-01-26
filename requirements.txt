@@ -1,7 +1,7 @@
 coverage
 pillow
 pytest
-rms-pdslogger
+rms-pdslogger>=3.0.0
 rms-pdstable
 rms-translator
 tabulate
