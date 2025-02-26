@@ -133,7 +133,7 @@ def write_indexdict(pdsf, index_dict, *, logger=None, limits={}):
 
 ################################################################################
 
-def load_indexdict(pdsf, *, logger=None, limits=limits):
+def load_indexdict(pdsf, *, logger=None, limits={}):
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsf.root_)
