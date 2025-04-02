@@ -27,6 +27,12 @@ LOGROOT_ENV = 'PDS_LOG_ROOT'
 # Holds log file directories temporarily, used by move_old_links()
 LOGDIRS = []
 
+# Default limits
+GENERATE_LINKS_LIMITS = {'debug':200, 'ds_store':10}
+LOAD_LINKS_LIMITS = {}
+WRITE_LINKDICT_LIMITS = {}
+VALIDATE_LINKS_LIMITS = {}
+
 REPAIRS = translator.TranslatorByRegex([
 
     # COCIRS
@@ -659,8 +665,7 @@ class LinkInfo(object):
         return ('%d %s %s %s' % (self.recno, self.linktext, str(self.is_target),
                                  self.target or '[' + self.linkname + ']'))
 
-def generate_links(dirpath, old_links={},
-                   limits={'info':-1, 'debug':500, 'ds_store':10}, logger=None):
+def generate_links(dirpath, old_links={}, *, logger=None, limits={}):
     """Generate a dictionary keyed by the absolute file path for files in the
     given directory tree, which must correspond to a volume.
 
@@ -684,7 +689,10 @@ def generate_links(dirpath, old_links={},
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsdir.root_)
-    logger.open('Finding link shelf files', dirpath, limits)
+
+    merged_limits = GENERATE_LINKS_LIMITS.copy()
+    merged_limits.update(limits)
+    logger.open('Finding link shelf files', dirpath, limits=merged_limits)
 
     try:
 
@@ -1107,7 +1115,7 @@ def locate_link_with_path(abspath, filename):
 
 ################################################################################
 
-def load_links(dirpath, limits={}, logger=None):
+def load_links(dirpath, *, logger=None, limits={}):
     """Load link dictionary from a shelf file, converting interior paths to
     absolute paths."""
 
@@ -1118,7 +1126,10 @@ def load_links(dirpath, limits={}, logger=None):
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsdir.root_)
-    logger.open('Reading link shelf file for', dirpath, limits)
+
+    merged_limits = LOAD_LINKS_LIMITS.copy()
+    merged_limits.update(limits)
+    logger.open('Reading link shelf file for', dirpath, limits=merged_limits)
 
     try:
         (link_path, lskip) = pdsdir.shelf_path_and_lskip('link')
@@ -1166,7 +1177,7 @@ def load_links(dirpath, limits={}, logger=None):
 
 ################################################################################
 
-def write_linkdict(dirpath, link_dict, limits={}, logger=None):
+def write_linkdict(dirpath, link_dict, *, logger=None, limits={}):
     """Write a new link shelf file for a directory tree."""
 
     # Initialize
@@ -1175,7 +1186,10 @@ def write_linkdict(dirpath, link_dict, limits={}, logger=None):
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsdir.root_)
-    logger.open('Writing link shelf file for', dirpath, limits)
+
+    merged_limits = WRITE_LINKDICT_LIMITS.copy()
+    merged_limits.update(limits)
+    logger.open('Writing link shelf file for', dirpath, limits=merged_limits)
 
     try:
         (link_path, lskip) = pdsdir.shelf_path_and_lskip('link')
@@ -1212,7 +1226,7 @@ def write_linkdict(dirpath, link_dict, limits={}, logger=None):
         # Create parent directory if necessary
         parent = os.path.split(link_path)[0]
         if not os.path.exists(parent):
-            logger.normal('Creating directory', parent)
+            logger.info('Creating directory', parent)
             os.makedirs(parent)
 
         # Write the shelf
@@ -1290,14 +1304,17 @@ def write_linkdict(dirpath, link_dict, limits={}, logger=None):
 
 ################################################################################
 
-def validate_links(dirpath, dirdict, shelfdict, limits={}, logger=None):
+def validate_links(dirpath, dirdict, shelfdict, *, logger=None, limits={}):
 
     dirpath = os.path.abspath(dirpath)
     pdsdir = pdsfile.Pds3File.from_abspath(dirpath)
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsdir.root_)
-    logger.open('Validating link shelf file for', dirpath, limits=limits)
+
+    merged_limits = VALIDATE_LINKS_LIMITS.copy()
+    merged_limits.update(limits)
+    logger.open('Validating link shelf file for', dirpath, limits=merged_limits)
 
     try:
         keys = list(dirdict.keys())
@@ -1381,7 +1398,7 @@ def move_old_links(shelf_file, logger=None):
 # Simplified functions to perform tasks
 ################################################################################
 
-def initialize(pdsdir, logger=None):
+def initialize(pdsdir, *, logger=None, limits={}):
 
     link_path = pdsdir.shelf_path_and_lskip('link')[0]
 
@@ -1392,37 +1409,40 @@ def initialize(pdsdir, logger=None):
         return
 
     # Generate link info
-    (link_dict, _) = generate_links(pdsdir.abspath, logger=logger)
+    (link_dict, _) = generate_links(pdsdir.abspath, logger=logger,
+                                    limits=limits)
 
     # Move old file if necessary
     if os.path.exists(link_path):
         move_old_links(link_path, logger=logger)
 
     # Save link files
-    write_linkdict(pdsdir.abspath, link_dict, logger=logger)
+    write_linkdict(pdsdir.abspath, link_dict, logger=logger, limits=limits)
 
-def reinitialize(pdsdir, logger=None):
+def reinitialize(pdsdir, *, logger=None, limits={}):
 
     link_path = pdsdir.shelf_path_and_lskip('link')[0]
 
     # Warn if shelf file does not exist
     if not os.path.exists(link_path):
         logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
-        logger.warn('Link shelf file does not exist; initializing', link_path)
-        initialize(pdsdir, logger=logger)
+        logger.warning('Link shelf file does not exist; initializing',
+                       link_path)
+        initialize(pdsdir, logger=logger, limits=limits)
         return
 
     # Generate link info
-    (link_dict, _) = generate_links(pdsdir.abspath, logger=logger)
+    (link_dict, _) = generate_links(pdsdir.abspath, logger=logger,
+                                    limits=limits)
 
     # Move old file if necessary
     if os.path.exists(link_path):
         move_old_links(link_path, logger=logger)
 
     # Save link files
-    write_linkdict(pdsdir.abspath, link_dict, logger=logger)
+    write_linkdict(pdsdir.abspath, link_dict, logger=logger, limits=limits)
 
-def validate(pdsdir, logger=None):
+def validate(pdsdir, *, logger=None, limits={}):
 
     link_path = pdsdir.shelf_path_and_lskip('link')[0]
 
@@ -1433,29 +1453,33 @@ def validate(pdsdir, logger=None):
         return
 
     # Read link shelf file
-    shelf_linkdict = load_links(pdsdir.abspath, logger=logger)
+    shelf_linkdict = load_links(pdsdir.abspath, logger=logger, limits=limits)
 
     # Generate link dict
-    (dir_linkdict, _) = generate_links(pdsdir.abspath, logger=logger)
+    (dir_linkdict, _) = generate_links(pdsdir.abspath, logger=logger,
+                                       limits=limits)
 
     # Validate
-    validate_links(pdsdir.abspath, dir_linkdict, shelf_linkdict, logger=logger)
+    validate_links(pdsdir.abspath, dir_linkdict, shelf_linkdict, logger=logger,
+                   limits=limits)
 
-def repair(pdsdir, logger=None):
+def repair(pdsdir, *, logger=None, limits={}):
 
     link_path = pdsdir.shelf_path_and_lskip('link')[0]
 
     # Make sure file exists
     if not os.path.exists(link_path):
         logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
-        logger.warn('Link shelf file does not exist; initializing', link_path)
+        logger.warning('Link shelf file does not exist; initializing',
+                       link_path)
         return
 
     # Read link shelf file
-    shelf_linkdict = load_links(pdsdir.abspath, logger=logger)
+    shelf_linkdict = load_links(pdsdir.abspath, logger=logger, limits=limits)
 
     # Generate link dict
-    (dir_linkdict, latest_mtime) = generate_links(pdsdir.abspath, logger=logger)
+    (dir_linkdict, latest_mtime) = generate_links(pdsdir.abspath, logger=logger,
+                                                  limits=limits)
 
     # Compare
     canceled = (dir_linkdict == shelf_linkdict)
@@ -1497,26 +1521,27 @@ def repair(pdsdir, logger=None):
 
     # Move files and write new links
     move_old_links(link_path, logger=logger)
-    write_linkdict(pdsdir.abspath, dir_linkdict, logger=logger)
+    write_linkdict(pdsdir.abspath, dir_linkdict, logger=logger, limits=limits)
 
-def update(pdsdir,  logger=None):
+def update(pdsdir, *, logger=None, limits={}):
 
     link_path = pdsdir.shelf_path_and_lskip('link')[0]
 
     # Make sure link shelf file exists
     if not os.path.exists(link_path):
         logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
-        logger.warn('Link shelf file does not exist; initializing', link_path)
+        logger.warning('Link shelf file does not exist; initializing',
+                       link_path)
         initialize(pdsdir, logger=logger)
         return
 
     # Read link shelf file
-    shelf_linkdict = load_links(pdsdir.abspath, logger=logger)
+    shelf_linkdict = load_links(pdsdir.abspath, logger=logger, limits=limits)
 
     # Generate link dict
     (dir_linkdict,
      latest_mtime) = generate_links(pdsdir.abspath, shelf_linkdict,
-                                                    logger=logger)
+                                    logger=logger, limits=limits)
 
     # Compare
     canceled = (dir_linkdict == shelf_linkdict)
@@ -1528,7 +1553,7 @@ def update(pdsdir,  logger=None):
 
     # Move files and write new links
     move_old_links(link_path, logger=logger)
-    write_linkdict(pdsdir.abspath, dir_linkdict, logger=logger)
+    write_linkdict(pdsdir.abspath, dir_linkdict, logger=logger, limits=limits)
 
 ################################################################################
 

@@ -196,7 +196,7 @@ class PdsDependency(object):
         PdsDependency.MODTIME_DICT[abspath] = modtime
         return modtime
 
-    def test1(self, dirpath, check_newer=True, limit=200, logger=None):
+    def test1(self, dirpath, check_newer=True, logger=None, limits={}):
         """Perform one test and log the results."""
 
         dirpath = os.path.abspath(dirpath)
@@ -208,9 +208,10 @@ class PdsDependency(object):
 
         # Remove "Newer" at beginning of title if check_newer is False
         if not check_newer and self.title.startswith('Newer '):
-            logger.open(self.title[6:].capitalize(), dirpath)
+            title = self.title[6:].capitalize()
         else:
-            logger.open(self.title, dirpath)
+            title = self.title
+        logger.open(title, dirpath, limits=limits, force=True)
 
         missing = set()         # prevent duplicated messages
         out_of_date = set()
@@ -290,7 +291,7 @@ class PdsDependency(object):
                         if absreq in confirmed:
                             continue
 
-                        logger.normal('Confirmed', absreq)
+                        logger.info('Confirmed', absreq)
                         confirmed.add(absreq)
 
                 except (Exception, KeyboardInterrupt) as e:
@@ -307,18 +308,19 @@ class PdsDependency(object):
         return (fatal, errors, warnings, tests)
 
     @staticmethod
-    def test_suite(key, dirpath, check_newer=True, limit=200, logger=None):
+    def test_suite(key, dirpath, check_newer=True, logger=None, limits={}):
 
         dirpath = os.path.abspath(dirpath)
         pdsdir = pdsfile.Pds3File.from_abspath(dirpath)
 
         logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
         logger.replace_root(pdsdir.root_)
-        logger.open('Dependency test suite "%s"' % key, dirpath)
+        logger.open('Dependency test suite "%s"' % key, dirpath, limits=limits,
+                    force=True)
 
         try:
             for dep in PdsDependency.DEPENDENCY_SUITES[key]:
-                dep.test1(dirpath, check_newer, limit=limit, logger=logger)
+                dep.test1(dirpath, check_newer, limits=limits, logger=logger)
 
         except (Exception, KeyboardInterrupt) as e:
             logger.exception(e)
@@ -958,12 +960,12 @@ _ = PdsDependency(
 ################################################################################
 ################################################################################
 
-def test(pdsdir, logger=None, check_newer=True):
+def test(pdsdir, logger=None, limits={}, check_newer=True):
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     path = pdsdir.abspath
     for suite in TESTS.all(path):
         _ = PdsDependency.test_suite(suite, path, check_newer=check_newer,
-                                                  logger=logger)
+                                     limits=limits, logger=logger)
 
 ################################################################################
 ################################################################################
