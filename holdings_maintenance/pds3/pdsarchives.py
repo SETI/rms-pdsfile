@@ -108,6 +108,10 @@ def read_archive_info(tarpath, *, logger=None, limits={}):
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdstar.root_)
 
+    if not os.path.exists(tarpath):
+        logger.critical('File does not exist', tarpath)
+        return []
+
     merged_limits = READ_ARCHIVE_INFO_LIMITS.copy()
     merged_limits.update(limits)
     logger.open('Reading archive file', tarpath, limits=merged_limits)
@@ -425,9 +429,6 @@ def main():
 
     if args.log:
         path = os.path.join(args.log, 'pdsarchives')
-        warning_handler = pdslogger.warning_handler(path)
-        logger.add_handler(warning_handler)
-
         error_handler = pdslogger.error_handler(path)
         logger.add_handler(error_handler)
 
@@ -479,9 +480,8 @@ def main():
                 logdir = os.path.split(logfile)[0]
 
                 # These handlers are only used if they don't already exist
-                warning_handler = pdslogger.warning_handler(logdir)
                 error_handler = pdslogger.error_handler(logdir)
-                local_handlers += [warning_handler, error_handler]
+                local_handlers += [error_handler]
 
             # Open the next level of the log
             if len(pdsdirs) > 1:

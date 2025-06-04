@@ -731,9 +731,6 @@ def main():
 
     if args.log:
         path = os.path.join(args.log, 'pdsinfoshelf')
-        warning_handler = pdslogger.warning_handler(path)
-        logger.add_handler(warning_handler)
-
         error_handler = pdslogger.error_handler(path)
         logger.add_handler(error_handler)
 
@@ -853,9 +850,8 @@ def main():
                 LOGDIRS.append(os.path.split(logfile)[0])
 
                 # These handlers are only used if they don't already exist
-                warning_handler = pdslogger.warning_handler(logdir)
                 error_handler = pdslogger.error_handler(logdir)
-                local_handlers += [warning_handler, error_handler]
+                local_handlers += [error_handler]
 
             # Open the next level of the log
             if len(info) > 1:

@@ -176,7 +176,16 @@ def validate_infodict(pdsf, tabdict, shelfdict, *, logger=None):
     if tabdict == shelfdict:
         logger.info('Validation complete')
     else:
-        logger.error('Validation failed for', pdsf.abspath)
+        for key, value in tabdict.items():
+            if key not in shelfdict:
+                logger.error(f'not in shelf: {key}')
+            elif (shelfval := shelfdict[key]) != value:
+                logger.error(f'key mismatch: {key}\n'
+                             f'    table: {value}\n'
+                             f'    shelf: {shelfval}')
+        for key in shelfdict:
+            if key not in tabdict:
+                logger.error(f'not in table: {key}')
 
 ################################################################################
 # Simplified functions to perform tasks
@@ -399,9 +408,6 @@ def main():
 
     if args.log:
         path = os.path.join(args.log, 'pdsindexshelf')
-        warning_handler = pdslogger.warning_handler(path)
-        logger.add_handler(warning_handler)
-
         error_handler = pdslogger.error_handler(path)
         logger.add_handler(error_handler)
 
@@ -463,16 +469,12 @@ def main():
                           '/pdsindexshelf')
 
                 # These handlers are only used if they don't already exist
-                warning_handler = pdslogger.warning_handler(logdir)
                 error_handler = pdslogger.error_handler(logdir)
-                local_handlers += [warning_handler, error_handler]
+                local_handlers += [error_handler]
 
             # Open the next level of the log
-            if len(pdsfiles) > 1:
-                logger.blankline()
-
             logger.open('Task "' + args.task + '" for', pdsf.abspath,
-                        handler=local_handlers)
+                        handler=local_handlers, blankline=True)
 
             try:
                 for logfile in logfiles:

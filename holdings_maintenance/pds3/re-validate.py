@@ -71,9 +71,8 @@ def validate_one_volume(pdsdir, voltypes, tests, args, logger):
         logdir = os.path.split(logdir)[0]
 
         # These handlers are only used if they don't already exist
-        warning_handler = pdslogger.warning_handler(logdir)
         error_handler = pdslogger.error_handler(logdir)
-        local_handlers += [warning_handler, error_handler]
+        local_handlers.append(error_handler)
 
     logger.blankline()
     logger.open('Re-validate ' + pdsdir.abspath, handler=local_handlers)
@@ -607,7 +606,6 @@ if not args.quiet:
 
 if args.log:
     path = os.path.join(args.log, 're-validate')
-    logger.add_handler(pdslogger.warning_handler(path))
     logger.add_handler(pdslogger.error_handler(path))
 
 ########################################
