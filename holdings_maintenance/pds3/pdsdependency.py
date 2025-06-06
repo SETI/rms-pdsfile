@@ -72,8 +72,8 @@ TESTS = translator.TranslatorByRegex([
                                         'go_previews4', 'go_previews5']),
     ('.*/GO_0xxx_v1/GO_00[12].*',   0, ['go_previews2', 'go_previews3',
                                         'go_previews4', 'go_previews5']),
-    ('.*/JNCJIR_xxxx/.*',           0, ['metadata', 'cumindex999']),
-    ('.*/JNCJNC_0xxx/.*',           0, ['metadata', 'cumindex999']),
+    ('.*/JNOJIR_xxxx/.*',           0, ['metadata', 'cumindex999']),
+    ('.*/JNOJNC_0xxx/.*',           0, ['metadata', 'cumindex999']),
     ('.*/HST.x_xxxx/.*',            0, ['hst', 'metadata', 'cumindex9_9999']),
     ('.*/NH..(LO|MV)_xxxx/.*',      0, ['metadata', 'supplemental', 'cumindexNH']),
     ('.*/NH(JU|LA)LO_[12]00.*',     0, ['jupiter', 'rings', 'moons', 'inventory']),
@@ -341,7 +341,7 @@ class PdsDependency(object):
 # General test suite
 ################################################################################
 
-for thing in pdsfile.PdsFile.VOLTYPES:
+for thing in ['volumes', 'calibrated', 'diagrams', 'metadata', 'previews']:
 
     if thing == 'volumes':
         thing_ = ''
@@ -419,7 +419,7 @@ _ = PdsDependency(
     r'metadata/\1/\2/\2_index.tab',
     [r'cp [d]volumes/\1/\2/index/index.tab [d]metadata/\1/\2/\2_index.tab',
      r'<EDIT> [d]metadata/\1/\2/\2_index.tab'],
-    suite='metadata', newer=True)
+    suite='metadata', newer=False)
 
 _ = PdsDependency(
     'Label for every metadata table',
@@ -427,7 +427,7 @@ _ = PdsDependency(
     r'metadata/(.*)\.(...)',
     r'metadata/\1.lbl',
     r'<LABEL> [d]metadata/\1.\2',
-    suite='metadata', newer=True)
+    suite='metadata', newer=False)
 
 _ = PdsDependency(
     'Newer index shelf for every metadata table',
@@ -508,7 +508,7 @@ for nines in ('99', '999', '9_9999', 'NH'):
         r'metadata/(.*?)/(.*?)/\2(_.*?)\.(tab|csv)',
         r'metadata/\1/\2/\2\3.lbl',
         r'<LABEL> [d]metadata/\1/\2/\2\3.\4',
-        suite=name, newer=True, func=cumname, args=(nines,))
+        suite=name, newer=False, func=cumname, args=(nines,))
 
     _ = PdsDependency(
         'Newer checksums for cumulative metadata',
@@ -553,8 +553,8 @@ for nines in ('99', '999', '9_9999', 'NH'):
         r'metadata/(.*?)/(.*?)/\2(_.*?)\.(tab|csv)',
         r'archives-metadata/\1/\2_metadata.tar.gz',
         [r'pdsarchives --[c] [d]metadata/\1/\2',
-         r'pdschecksums --[c] [d]archives-metadata/\1/\2/\2_metadata.tar.gz',
-         r'pdsinfoshelf --[C] [d]archives-metadata/\1/\2/\2_metadata.tar.gz'],
+         r'pdschecksums --[c] [d]archives-metadata/\1/\2_metadata.tar.gz',
+         r'pdsinfoshelf --[C] [d]archives-metadata/\1/\2_metadata.tar.gz'],
         suite=name, newer=True, func=cumname, args=(nines,))
 
     _ = PdsDependency(
