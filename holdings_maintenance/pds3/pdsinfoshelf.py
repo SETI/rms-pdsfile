@@ -14,6 +14,7 @@ import glob
 import os
 from pathlib import Path
 import pickle
+import re
 import shutil
 import sys
 from PIL import Image
@@ -39,6 +40,9 @@ PREVIEW_EXTS = set(['.jpg', '.png', '.gif', '.tif', '.tiff',
 GENERATE_INFODICT_LIMITS = {}
 LOAD_INFODICT_LIMITS = {}
 WRITE_INFODICT_LIMITS = {}
+
+BACKUP_FILENAME = re.compile(r'.*[-_](20\d\d-\d\d-\d\dT\d\d-\d\d-\d\d'
+                             r'|backup|original)\.[\w.]+$')
 
 ################################################################################
 
@@ -103,6 +107,10 @@ def generate_infodict(pdsdir, selection, old_infodict={}, *, logger=None,
 
                 if file.startswith('._'):       # skip dot-underscore files
                     logger.dot_underscore('._* file skipped', absfile)
+                    continue
+
+                if BACKUP_FILENAME.match(file) or ' copy' in file:
+                    logger.error('Backup file skipped', abspath)
                     continue
 
                 if '/.' in abspath:             # flag invisible files

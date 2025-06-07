@@ -21,6 +21,9 @@ import translator
 LOGNAME = 'pds.validation.dependencies'
 LOGROOT_ENV = 'PDS_LOG_ROOT'
 
+BACKUP_FILENAME = re.compile(r'.*[-_](20\d\d-\d\d-\d\dT\d\d-\d\d-\d\d'
+                             r'|backup|original)\.[\w.]+$')
+
 ################################################################################
 # Translator for tests to apply
 #
@@ -190,6 +193,10 @@ class PdsDependency(object):
             if '/._' in absfile:        # log dot-underscore files; ignore dates
                 logger.dot_underscore('._* file ignored', absfile)
                 continue
+
+                if BACKUP_FILENAME.match(file) or ' copy' in file:
+                    logger.error('Backup file skipped', abspath)
+                    continue
 
             modtime = max(modtime, PdsDependency.get_modtime(absfile, logger))
 

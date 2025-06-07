@@ -13,6 +13,7 @@ import datetime
 import glob
 import hashlib
 import os
+import re
 import shutil
 import sys
 
@@ -30,6 +31,9 @@ GENERATE_CHECKSUMS_LIMITS = {'info': -1}
 READ_CHECKSUMS_LIMITS = {'debug': 0}
 WRITE_CHECKSUMS_LIMITS = {'dot_': -1, 'ds_store': -1, 'invisible': 100}
 VALIDATE_PAIRS_LIMITS = {}
+
+BACKUP_FILENAME = re.compile(r'.*[-_](20\d\d-\d\d-\d\dT\d\d-\d\d-\d\d'
+                             r'|backup|original)\.[\w.]+$')
 
 ################################################################################
 
@@ -96,6 +100,10 @@ def generate_checksums(pdsdir, selection=None, oldpairs=[], *, regardless=True,
 
                 if file.startswith('._'):       # skip dot-underscore files
                     logger.dot_underscore('._* file skipped', abspath)
+                    continue
+
+                if BACKUP_FILENAME.match(file) or ' copy' in file:
+                    logger.error('Backup file skipped', abspath)
                     continue
 
                 if '/.' in abspath:             # flag invisible files

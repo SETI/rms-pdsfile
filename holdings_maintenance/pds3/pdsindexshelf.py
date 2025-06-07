@@ -13,6 +13,7 @@ import datetime
 import glob
 import os
 import pickle
+import re
 import sys
 
 import pdslogger
@@ -26,6 +27,9 @@ LOGROOT_ENV = 'PDS_LOG_ROOT'
 GENERATE_INDEXDICT_LIMITS = {}
 WRITE_INDEXDICT_LIMITS = {}
 LOAD_INDEXDICT_LIMITS = {}
+
+BACKUP_FILENAME = re.compile(r'.*[-_](20\d\d-\d\d-\d\dT\d\d-\d\d-\d\d'
+                             r'|backup|original)\.[\w.]+$')
 
 ################################################################################
 
@@ -451,6 +455,10 @@ def main():
     logger.open(' '.join(sys.argv))
     try:
         for pdsf in pdsfiles:
+
+            if BACKUP_FILENAME.match(pdsf.abspath) or ' copy' in pdsf.abspath:
+                logger.error('Backup file skipped', pdsf.abspath)
+                continue
 
             # Save logs in up to two places
             logfiles = [pdsf.log_path_for_index(task=args.task,

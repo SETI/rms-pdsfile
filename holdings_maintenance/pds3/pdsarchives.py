@@ -10,6 +10,7 @@
 
 import sys
 import os
+import re
 import tarfile
 import zlib
 import argparse
@@ -25,6 +26,9 @@ LOAD_DIRECTORY_INFO_LIMITS = {'info': 100}
 READ_ARCHIVE_INFO_LIMITS = {'info': 100}
 WRITE_ARCHIVE_LIMITS = {'info': -1, 'dot_': 100}
 VALIDATE_TUPLES_LIMITS = {'info': 100}
+
+BACKUP_FILENAME = re.compile(r'.*[-_](20\d\d-\d\d-\d\dT\d\d-\d\d-\d\d'
+                             r'|backup|original)\.[\w.]+$')
 
 ################################################################################
 # General tarfile functions
@@ -60,6 +64,10 @@ def load_directory_info(pdsdir, *, logger=None, limits={}):
 
                 if file.startswith('._'):       # skip dot-underscore files
                     logger.dot_underscore('._* file skipped', abspath)
+                    continue
+
+                if BACKUP_FILENAME.match(file) or ' copy' in file:
+                    logger.error('Backup file skipped', abspath)
                     continue
 
                 if '/.' in abspath:             # flag invisible files
