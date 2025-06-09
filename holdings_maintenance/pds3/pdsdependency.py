@@ -22,7 +22,7 @@ LOGNAME = 'pds.validation.dependencies'
 LOGROOT_ENV = 'PDS_LOG_ROOT'
 
 BACKUP_FILENAME = re.compile(r'.*[-_](20\d\d-\d\d-\d\dT\d\d-\d\d-\d\d'
-                             r'|backup|original)\.[\w.]+$')
+                             r'|backup|original|old)\.[\w.]+$')
 
 ################################################################################
 # Translator for tests to apply
@@ -485,7 +485,10 @@ def cumname(volname, nines):
 for nines in ('99', '999', '9_9999'):
 
     digits = nines.replace('9', r'\d')
-    questions = nines.replace('9', '?')
+    if nines == '9_9999':
+        questions = '[01]_????'
+    else:
+        questions = nines.replace('9', '?')
     name = 'cumindex' + nines
 
     _ = PdsDependency(
@@ -493,9 +496,10 @@ for nines in ('99', '999', '9_9999'):
         'metadata/$/$/*.[tc][as][bv]',
         rf'metadata/(.*?)/(.*){digits}/\2{digits}(_.*?)\.(tab|csv)',
         rf'metadata/\1/\g<2>{nines}/\g<2>{nines}\3.\4',
-        (rf'cat [d]metadata/\1/\2{questions}/\2{questions}\3.\4 '
-         rf'> [d]metadata/\1/\g<2>{nines}/\g<2>{nines}\3.\4'),
-        suite=name, newer=True, exceptions=[r'.*sl9_index\.tab'])
+        [(rf'cat [d]metadata/\1/\2{questions}/\2{questions}\3.\4 '
+          rf'> [d]metadata/\1/\g<2>{nines}/\g<2>{nines}\3.\4'),
+          rf'<LABEL> [d]metadata/\1/\g<2>{nines}/\g<2>{nines}\3.\4'],
+        suite=name, newer=True, exceptions=[r'.*_sl9_.*\.tab'])
 
 _ = PdsDependency(
     'Cumulative version of every metadata table',

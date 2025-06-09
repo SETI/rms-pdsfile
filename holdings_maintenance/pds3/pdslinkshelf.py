@@ -34,7 +34,7 @@ WRITE_LINKDICT_LIMITS = {}
 VALIDATE_LINKS_LIMITS = {}
 
 BACKUP_FILENAME = re.compile(r'.*[-_](20\d\d-\d\d-\d\dT\d\d-\d\d-\d\d'
-                             r'|backup|original)\.[\w.]+$')
+                             r'|backup|original|old)\.[\w.]+$')
 
 REPAIRS = translator.TranslatorByRegex([
 

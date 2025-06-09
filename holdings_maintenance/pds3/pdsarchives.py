@@ -28,7 +28,7 @@ WRITE_ARCHIVE_LIMITS = {'info': -1, 'dot_': 100}
 VALIDATE_TUPLES_LIMITS = {'info': 100}
 
 BACKUP_FILENAME = re.compile(r'.*[-_](20\d\d-\d\d-\d\dT\d\d-\d\d-\d\d'
-                             r'|backup|original)\.[\w.]+$')
+                             r'|backup|original|old)\.[\w.]+$')
 
 ################################################################################
 # General tarfile functions

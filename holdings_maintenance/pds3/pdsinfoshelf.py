@@ -42,7 +42,7 @@ LOAD_INFODICT_LIMITS = {}
 WRITE_INFODICT_LIMITS = {}
 
 BACKUP_FILENAME = re.compile(r'.*[-_](20\d\d-\d\d-\d\dT\d\d-\d\d-\d\d'
-                             r'|backup|original)\.[\w.]+$')
+                             r'|backup|original|old)\.[\w.]+$')
 
 ################################################################################
 
@@ -110,7 +110,7 @@ def generate_infodict(pdsdir, selection, old_infodict={}, *, logger=None,
                     continue
 
                 if BACKUP_FILENAME.match(file) or ' copy' in file:
-                    logger.error('Backup file skipped', abspath)
+                    logger.error('Backup file skipped', absfile)
                     continue
 
                 if '/.' in abspath:             # flag invisible files
