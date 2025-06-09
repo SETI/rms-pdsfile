@@ -369,7 +369,7 @@ for thing in ['volumes', 'calibrated', 'diagrams', 'metadata', 'previews']:
     _ = PdsDependency(
         'Newer info shelf files for %s'      % thing,
         'checksums-%s/$/$%s_md5.txt'         % (thing, thing_),
-        r'checksums-%s/(.*?)/(.*)%s_md5.txt' % (thing, thing_),
+        r'checksums-%s/(.*?)/(.*)%s_md5\.txt' % (thing, thing_),
         [r'_infoshelf-%s/\1/\2_info.pickle'  % thing,
          r'_infoshelf-%s/\1/\2_info.py'      % thing],
         r'pdsinfoshelf --[C] [d]%s/\1/\2'    % thing,
@@ -386,21 +386,21 @@ for thing in ['volumes', 'calibrated', 'diagrams', 'metadata', 'previews']:
         suite='general', newer=True)
 
     _ = PdsDependency(
-        'Newer checksum files for archives-%s'                  % thing,
-        'archives-%s/$*/$'                                      % thing,
-        r'archives-%s/([^_]+_[^_])(|_v\d.]+)/(.*)%s.tar.gz'     % (thing, thing_),
-        r'checksums-archives-%s/\1\2_%s_md5.txt'                % (thing, thing_),
-        [r'pdschecksums --[c] [d]archives-%s/\1\2/\3%s.tar.gz'  % (thing, thing_),
-         r'pdsinfoshelf --[C] [d]archives-%s/\1\2/\3%s.tar.gz'  % (thing, thing_)],
+        'Newer checksums for archives-%s'                       % thing,
+        'archives-%s/$*/$%s.tar.gz'                             % (thing, thing_),
+        r'archives-%s/(.*)/(.*)%s\.tar\.gz'                     % (thing, thing_),
+        r'checksums-archives-%s/\1%s_md5.txt'                   % (thing, thing_),
+        [r'pdschecksums --[c] [d]archives-%s/\1/\2%s.tar.gz'    % (thing, thing_),
+         r'pdsinfoshelf --[C] [d]archives-%s/\1/\2%s.tar.gz'    % (thing, thing_)],
         suite='general', newer=True)
 
     _ = PdsDependency(
         'Newer info shelf files for archives-%s'                % thing,
-        'archives-%s/$*/$'                                      % thing,
-        r'archives-%s/([^_]+_[^_])(|_v[\d.]+)/(.*)%s.tar.gz'    % (thing, thing_),
-        [r'_infoshelf-archives-%s/\1\2_info.pickle'             % thing,
-         r'_infoshelf-archives-%s/\1\2_info.py'                 % thing],
-        r'pdsinfoshelf --[C] [d]archives-%s/\1\2/\3%s.tar.gz'   % (thing, thing_),
+        'checksums-archives-%s/$*%s_md5.txt'                    % (thing, thing_),
+        r'checksums-archives-%s/(.*)%s_md5\.txt'                % (thing, thing_),
+        [r'_infoshelf-archives-%s/\1_info.pickle'               % thing,
+         r'_infoshelf-archives-%s/\1_info.py'                   % thing],
+        r'pdsinfoshelf --[c] [d]archives-%s/\1'                 % thing,
         suite='general', newer=True)
 
 for thing in ['volumes', 'metadata', 'calibrated']:
