@@ -21,6 +21,9 @@ import translator
 LOGNAME = 'pds.validation.dependencies'
 LOGROOT_ENV = 'PDS_LOG_ROOT'
 
+BACKUP_FILENAME = re.compile(r'.*[-_](20\d\d-\d\d-\d\dT\d\d-\d\d-\d\d'
+                             r'|backup|original|old)\.[\w.]+$')
+
 ################################################################################
 # Translator for tests to apply
 #
@@ -72,8 +75,9 @@ TESTS = translator.TranslatorByRegex([
                                         'go_previews4', 'go_previews5']),
     ('.*/GO_0xxx_v1/GO_00[12].*',   0, ['go_previews2', 'go_previews3',
                                         'go_previews4', 'go_previews5']),
-    ('.*/JNCJIR_[12]xxx/.*',        0, ['metadata', 'cumindex999']),
-    ('.*/JNCJNC_0xxx/.*',           0, ['metadata', 'cumindex999']),
+    (r'.*/JNOJIR_xxxx(|_v[\d.]+)/JNOJIR_(?!(1059|2059|2060)).*',
+                                    0, ['metadata', 'cumindex999']),
+    ('.*/JNOJNC_0xxx/.*',           0, ['metadata', 'cumindex999']),
     ('.*/HST.x_xxxx/.*',            0, ['hst', 'metadata', 'cumindex9_9999']),
     ('.*/NH..(LO|MV)_xxxx/.*',      0, ['metadata', 'supplemental', 'cumindexNH']),
     ('.*/NH(JU|LA)LO_[12]00.*',     0, ['jupiter', 'rings', 'moons', 'inventory']),
@@ -191,6 +195,10 @@ class PdsDependency(object):
                 logger.dot_underscore('._* file ignored', absfile)
                 continue
 
+                if BACKUP_FILENAME.match(file) or ' copy' in file:
+                    logger.error('Backup file skipped', abspath)
+                    continue
+
             modtime = max(modtime, PdsDependency.get_modtime(absfile, logger))
 
         PdsDependency.MODTIME_DICT[abspath] = modtime
@@ -206,27 +214,32 @@ class PdsDependency(object):
         logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
         logger.replace_root([pdsdir.root_, pdsdir.disk_])
 
+        # Don't log if the source directory doesn't exist
+        pattern = pdsdir.root_ + self.glob_pattern
+        pattern = pattern.replace('$', pdsdir.volset_[:-1], 1)
+        if '$' in pattern:
+            if self.func is None:
+                volname = pdsdir.volname
+            else:
+                volname = self.func(pdsdir.volname, *self.args)
+            pattern = pattern.replace('$', volname, 1)
+
+        abspaths = glob.glob(pattern)
+        if not abspaths:
+            return (0, 0, 0, 0)
+
         # Remove "Newer" at beginning of title if check_newer is False
         if not check_newer and self.title.startswith('Newer '):
             title = self.title[6:].capitalize()
         else:
             title = self.title
-        logger.open(title, dirpath, limits=limits, force=True)
 
         missing = set()         # prevent duplicated messages
         out_of_date = set()
         confirmed = set()
-        try:
-            pattern = pdsdir.root_ + self.glob_pattern
-            pattern = pattern.replace('$', pdsdir.volset_[:-1], 1)
-            if '$' in pattern:
-                if self.func is None:
-                    volname = pdsdir.volname
-                else:
-                    volname = self.func(pdsdir.volname, *self.args)
-                pattern = pattern.replace('$', volname, 1)
 
-            abspaths = glob.glob(pattern)
+        logger.open(title, dirpath, limits=limits, force=True)
+        try:
             for sub in self.sublist:
                 try:
                     for abspath in abspaths:
@@ -308,7 +321,8 @@ class PdsDependency(object):
         return (fatal, errors, warnings, tests)
 
     @staticmethod
-    def test_suite(key, dirpath, check_newer=True, logger=None, limits={}):
+    def test_suite(key, dirpath, check_newer=True, logger=None, limits={},
+                   handlers=[]):
 
         dirpath = os.path.abspath(dirpath)
         pdsdir = pdsfile.Pds3File.from_abspath(dirpath)
@@ -316,7 +330,7 @@ class PdsDependency(object):
         logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
         logger.replace_root(pdsdir.root_)
         logger.open('Dependency test suite "%s"' % key, dirpath, limits=limits,
-                    force=True)
+                    force=True, handler=handlers)
 
         try:
             for dep in PdsDependency.DEPENDENCY_SUITES[key]:
@@ -335,7 +349,7 @@ class PdsDependency(object):
 # General test suite
 ################################################################################
 
-for thing in pdsfile.PdsFile.VOLTYPES:
+for thing in ['volumes', 'calibrated', 'diagrams', 'metadata', 'previews']:
 
     if thing == 'volumes':
         thing_ = ''
@@ -356,7 +370,7 @@ for thing in pdsfile.PdsFile.VOLTYPES:
     _ = PdsDependency(
         'Newer info shelf files for %s'      % thing,
         'checksums-%s/$/$%s_md5.txt'         % (thing, thing_),
-        r'checksums-%s/(.*?)/(.*)%s_md5.txt' % (thing, thing_),
+        r'checksums-%s/(.*?)/(.*)%s_md5\.txt' % (thing, thing_),
         [r'_infoshelf-%s/\1/\2_info.pickle'  % thing,
          r'_infoshelf-%s/\1/\2_info.py'      % thing],
         r'pdsinfoshelf --[C] [d]%s/\1/\2'    % thing,
@@ -373,21 +387,21 @@ for thing in pdsfile.PdsFile.VOLTYPES:
         suite='general', newer=True)
 
     _ = PdsDependency(
-        'Newer checksum files for archives-%s'                  % thing,
-        'archives-%s/$*/$'                                      % thing,
-        r'archives-%s/([^_]+_[^_])(|_v\d.]+)/(.*)%s.tar.gz'     % (thing, thing_),
-        r'checksums-archives-%s/\1\2_%s_md5.txt'                % (thing, thing_),
-        [r'pdschecksums --[c] [d]archives-%s/\1\2/\3%s.tar.gz'  % (thing, thing_),
-         r'pdsinfoshelf --[C] [d]archives-%s/\1\2/\3%s.tar.gz'  % (thing, thing_)],
+        'Newer checksums for archives-%s'                       % thing,
+        'archives-%s/$*/$%s.tar.gz'                             % (thing, thing_),
+        r'archives-%s/(.*)/(.*)%s\.tar\.gz'                     % (thing, thing_),
+        r'checksums-archives-%s/\1%s_md5.txt'                   % (thing, thing_),
+        [r'pdschecksums --[c] [d]archives-%s/\1/\2%s.tar.gz'    % (thing, thing_),
+         r'pdsinfoshelf --[C] [d]archives-%s/\1/\2%s.tar.gz'    % (thing, thing_)],
         suite='general', newer=True)
 
     _ = PdsDependency(
         'Newer info shelf files for archives-%s'                % thing,
-        'archives-%s/$*/$'                                      % thing,
-        r'archives-%s/([^_]+_[^_])(|_v[\d.]+)/(.*)%s.tar.gz'    % (thing, thing_),
-        [r'_infoshelf-archives-%s/\1\2_info.pickle'             % thing,
-         r'_infoshelf-archives-%s/\1\2_info.py'                 % thing],
-        r'pdsinfoshelf --[C] [d]archives-%s/\1\2/\3%s.tar.gz'   % (thing, thing_),
+        'checksums-archives-%s/$*%s_md5.txt'                    % (thing, thing_),
+        r'checksums-archives-%s/(.*)%s_md5\.txt'                % (thing, thing_),
+        [r'_infoshelf-archives-%s/\1_info.pickle'               % thing,
+         r'_infoshelf-archives-%s/\1_info.py'                   % thing],
+        r'pdsinfoshelf --[c] [d]archives-%s/\1'                 % thing,
         suite='general', newer=True)
 
 for thing in ['volumes', 'metadata', 'calibrated']:
@@ -434,22 +448,23 @@ _ = PdsDependency(
     exceptions=[r'.*GO_0xxx_v1.*', r'.*_inventory\.tab'])
 
 # More metadata suites
-for (name, suffix) in [('supplemental'  , 'supplemental_index.tab'),
-                       ('inventory'     , 'inventory.csv'),
-                       ('jupiter'       , 'jupiter_summary.tab'),
-                       ('saturn'        , 'saturn_summary.tab'),
-                       ('uranus'        , 'uranus_summary.tab'),
-                       ('neptune'       , 'neptune_summary.tab'),
-                       ('pluto'         , 'pluto_summary.tab'),
-                       ('pluto'         , 'charon_summary.tab'),
-                       ('rings'         , 'ring_summary.tab'),
-                       ('moons'         , 'moon_summary.tab'),
-                       ('sky'           , 'sky_summary.tab'),
-                       ('body'          , 'body_summary.tab'),
-                       ('raw_image'     , 'raw_image_index.tab'),
-                       ('profile'       , 'profile_index.tab'),
-                       ('obsindex'      , 'obsindex.tab'),
-                       ('sl9'           , 'sl9_index.tab')]:
+for (name, suffix, newer) in [
+            ('supplemental'  , 'supplemental_index.tab' , True),
+            ('inventory'     , 'inventory.csv'          , False),
+            ('jupiter'       , 'jupiter_summary.tab'    , False),
+            ('saturn'        , 'saturn_summary.tab'     , False),
+            ('uranus'        , 'uranus_summary.tab'     , False),
+            ('neptune'       , 'neptune_summary.tab'    , False),
+            ('pluto'         , 'pluto_summary.tab'      , False),
+            ('pluto'         , 'charon_summary.tab'     , False),
+            ('rings'         , 'ring_summary.tab'       , False),
+            ('moons'         , 'moon_summary.tab'       , False),
+            ('sky'           , 'sky_summary.tab'        , False),
+            ('body'          , 'body_summary.tab'       , False),
+            ('raw_image'     , 'raw_image_index.tab'    , False),
+            ('profile'       , 'profile_index.tab'      , False),
+            ('obsindex'      , 'obsindex.tab'           , False),
+            ('sl9'           , 'sl9_index.tab'          , False)]:
 
     _ = PdsDependency(
         name.capitalize() + ' metadata required',
@@ -457,7 +472,7 @@ for (name, suffix) in [('supplemental'  , 'supplemental_index.tab'),
         r'volumes/([^/]+?)(?:|_v[\d.]+)/(.*?)',
         r'metadata/\1/\2/\2_' + suffix,
         r'<METADATA> [d]volumes/\1/\2 -> [d]metadata/\1/\2/\2_' + suffix,
-        suite=name, newer=False)
+        suite=name, newer=newer)
 
 ################################################################################
 # Cumulative index tests where the suffix is "99", "999", or "9_9999"
@@ -471,7 +486,10 @@ def cumname(volname, nines):
 for nines in ('99', '999', '9_9999'):
 
     digits = nines.replace('9', r'\d')
-    questions = nines.replace('9', '?')
+    if nines == '9_9999':
+        questions = '[01]_????'
+    else:
+        questions = nines.replace('9', '?')
     name = 'cumindex' + nines
 
     _ = PdsDependency(
@@ -479,9 +497,10 @@ for nines in ('99', '999', '9_9999'):
         'metadata/$/$/*.[tc][as][bv]',
         rf'metadata/(.*?)/(.*){digits}/\2{digits}(_.*?)\.(tab|csv)',
         rf'metadata/\1/\g<2>{nines}/\g<2>{nines}\3.\4',
-        (rf'cat [d]metadata/\1/\2{questions}/\2{questions}\3.\4 '
-         rf'> [d]metadata/\1/\g<2>{nines}/\g<2>{nines}\3.\4'),
-        suite=name, newer=False, exceptions=[r'.*sl9_index\.tab'])
+        [(rf'cat [d]metadata/\1/\2{questions}/\2{questions}\3.\4 '
+          rf'> [d]metadata/\1/\g<2>{nines}/\g<2>{nines}\3.\4'),
+          rf'<LABEL> [d]metadata/\1/\g<2>{nines}/\g<2>{nines}\3.\4'],
+        suite=name, newer=True, exceptions=[r'.*_sl9_.*\.tab'])
 
 _ = PdsDependency(
     'Cumulative version of every metadata table',
@@ -490,7 +509,7 @@ _ = PdsDependency(
     r'metadata/\1/NHxx\3_\g<4>999/NHxx\3_\g<4>999\6.\7',
     (r'cat [d]metadata/\1/NH??\3_\4???/NH??\3_\4???\6.\7 '
      r'> [d]metadata/\1/NHxx\3_\g<4>999/NHxx\3_\g<4>999\6.\7'),
-    suite='cumindexNH', newer=False)
+    suite='cumindexNH', newer=True)
 
 for nines in ('99', '999', '9_9999', 'NH'):
     name = 'cumindex' + nines
@@ -546,8 +565,8 @@ for nines in ('99', '999', '9_9999', 'NH'):
         r'metadata/(.*?)/(.*?)/\2(_.*?)\.(tab|csv)',
         r'archives-metadata/\1/\2_metadata.tar.gz',
         [r'pdsarchives --[c] [d]metadata/\1/\2',
-         r'pdschecksums --[c] [d]archives-metadata/\1/\2/\2_metadata.tar.gz',
-         r'pdsinfoshelf --[C] [d]archives-metadata/\1/\2/\2_metadata.tar.gz'],
+         r'pdschecksums --[c] [d]archives-metadata/\1/\2_metadata.tar.gz',
+         r'pdsinfoshelf --[C] [d]archives-metadata/\1/\2_metadata.tar.gz'],
         suite=name, newer=True, func=cumname, args=(nines,))
 
     _ = PdsDependency(
@@ -960,12 +979,13 @@ _ = PdsDependency(
 ################################################################################
 ################################################################################
 
-def test(pdsdir, logger=None, limits={}, check_newer=True):
+def test(pdsdir, logger=None, limits={}, check_newer=True, handlers=[]):
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     path = pdsdir.abspath
     for suite in TESTS.all(path):
         _ = PdsDependency.test_suite(suite, path, check_newer=check_newer,
-                                     limits=limits, logger=logger)
+                                     limits=limits, logger=logger,
+                                     handlers=handlers)
 
 ################################################################################
 ################################################################################
@@ -1031,9 +1051,6 @@ def main():
 
     if args.log:
         path = os.path.join(args.log, 'pdsdependency')
-        warning_handler = pdslogger.warning_handler(path)
-        logger.add_handler(warning_handler)
-
         error_handler = pdslogger.error_handler(path)
         logger.add_handler(error_handler)
 
@@ -1069,11 +1086,21 @@ def main():
             print('Invalid volume ID: ' + path)
             sys.exit(1)
 
+    # Only show paths starting with "holdings/"
+    roots = set()
+    for path in paths:
+        parts = path.partition('/holdings/')
+        if parts[1]:
+            roots.add(parts[0] + parts[1])
+
+    logger.add_root(*roots)
+
     # Loop through paths...
-    logger.open(' '.join(sys.argv))
+    args = list(sys.argv)
+    args[0] = args[0].rpartition('/')[-1]
+    logger.open(' '.join(args))
     try:
         for path in paths:
-
             pdsdir = pdsfile.Pds3File.from_abspath(path)
 
             # Save logs in up to two places
@@ -1091,15 +1118,14 @@ def main():
                 logdir = os.path.split(logfile)[0]
 
                 # These handlers are only used if they don't already exist
-                warning_handler = pdslogger.warning_handler(logdir)
                 error_handler = pdslogger.error_handler(logdir)
-                local_handlers += [warning_handler, error_handler]
+                local_handlers += [error_handler]
 
             try:
                 for logfile in logfiles:
                     logger.info('Log file', logfile)
 
-                test(pdsdir, logger=logger)
+                test(pdsdir, logger=logger, handlers=local_handlers)
 
             except (Exception, KeyboardInterrupt) as e:
                 logger.exception(e)

@@ -14,6 +14,7 @@ import glob
 import os
 from pathlib import Path
 import pickle
+import re
 import shutil
 import sys
 from PIL import Image
@@ -39,6 +40,9 @@ PREVIEW_EXTS = set(['.jpg', '.png', '.gif', '.tif', '.tiff',
 GENERATE_INFODICT_LIMITS = {}
 LOAD_INFODICT_LIMITS = {}
 WRITE_INFODICT_LIMITS = {}
+
+BACKUP_FILENAME = re.compile(r'.*[-_](20\d\d-\d\d-\d\dT\d\d-\d\d-\d\d'
+                             r'|backup|original|old)\.[\w.]+$')
 
 ################################################################################
 
@@ -103,6 +107,10 @@ def generate_infodict(pdsdir, selection, old_infodict={}, *, logger=None,
 
                 if file.startswith('._'):       # skip dot-underscore files
                     logger.dot_underscore('._* file skipped', absfile)
+                    continue
+
+                if BACKUP_FILENAME.match(file) or ' copy' in file:
+                    logger.error('Backup file skipped', absfile)
                     continue
 
                 if '/.' in abspath:             # flag invisible files
@@ -731,9 +739,6 @@ def main():
 
     if args.log:
         path = os.path.join(args.log, 'pdsinfoshelf')
-        warning_handler = pdslogger.warning_handler(path)
-        logger.add_handler(warning_handler)
-
         error_handler = pdslogger.error_handler(path)
         logger.add_handler(error_handler)
 
@@ -853,9 +858,8 @@ def main():
                 LOGDIRS.append(os.path.split(logfile)[0])
 
                 # These handlers are only used if they don't already exist
-                warning_handler = pdslogger.warning_handler(logdir)
                 error_handler = pdslogger.error_handler(logdir)
-                local_handlers += [warning_handler, error_handler]
+                local_handlers += [error_handler]
 
             # Open the next level of the log
             if len(info) > 1:

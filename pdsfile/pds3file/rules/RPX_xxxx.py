@@ -220,10 +220,10 @@ class RPX_xxxx(pds3file.Pds3File):
     VERSIONS = versions + pds3file.Pds3File.VERSIONS
 
     def FILENAME_KEYLEN(self):
-        """9 for files in the HST series RPX_0001-5; 0 otherwise."""
+        """9 for files in the RPX series RPX_0001-5; 0 otherwise."""
 
         # Use the length of the HST group ID for the new version of RPX_0001-5
-        if 'RPX_xxxx/RPX_000' in self.abspath:
+        if '/RPX_000' in self.abspath:
             return 9
 
         return 0
