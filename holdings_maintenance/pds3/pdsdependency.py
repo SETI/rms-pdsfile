@@ -22,7 +22,7 @@ LOGNAME = 'pds.validation.dependencies'
 LOGROOT_ENV = 'PDS_LOG_ROOT'
 
 BACKUP_FILENAME = re.compile(r'.*[-_](20\d\d-\d\d-\d\dT\d\d-\d\d-\d\d'
-                             r'|backup|original|old)\.[\w.]+$')
+                             r'|backup|original)\.[\w.]+$')
 
 ################################################################################
 # Translator for tests to apply
