@@ -33,6 +33,9 @@ LOAD_LINKS_LIMITS = {}
 WRITE_LINKDICT_LIMITS = {}
 VALIDATE_LINKS_LIMITS = {}
 
+BACKUP_FILENAME = re.compile(r'.*[-_](20\d\d-\d\d-\d\dT\d\d-\d\d-\d\d'
+                             r'|backup|original)\.[\w.]+$')
+
 REPAIRS = translator.TranslatorByRegex([
 
     # COCIRS
@@ -712,13 +715,17 @@ def generate_links(dirpath, old_links={}, *, logger=None, limits={}):
             abspath = os.path.join(root, basename)
             latest_mtime = max(latest_mtime, os.path.getmtime(abspath))
 
-            if basename == '.DS_Store':    # skip .DS_Store files
+            if basename == '.DS_Store':         # skip .DS_Store files
                 logger.ds_store('.DS_Store file skipped', abspath)
                 continue
 
-            if basename.startswith('._'):   # skip dot_underscore files
+            if basename.startswith('._'):       # skip dot_underscore files
                 logger.dot_underscore('dot_underscore file skipped',
                                       abspath)
+                continue
+
+            if BACKUP_FILENAME.match(basename) or ' copy' in basename:
+                logger.error('Backup file skipped', abspath)
                 continue
 
             if basename.startswith('.'):    # skip invisible files
@@ -1636,9 +1643,6 @@ def main():
 
     if args.log:
         path = os.path.join(args.log, 'pdslinkshelf')
-        warning_handler = pdslogger.warning_handler(path)
-        logger.add_handler(warning_handler)
-
         error_handler = pdslogger.error_handler(path)
         logger.add_handler(error_handler)
 
@@ -1694,9 +1698,8 @@ def main():
                 LOGDIRS.append(os.path.split(logfile)[0])
 
                 # These handlers are only used if they don't already exist
-                warning_handler = pdslogger.warning_handler(logdir)
                 error_handler = pdslogger.error_handler(logdir)
-                local_handlers += [warning_handler, error_handler]
+                local_handlers += [error_handler]
 
             # Open the next level of the log
             if len(paths) > 1:

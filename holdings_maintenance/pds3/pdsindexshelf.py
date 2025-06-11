@@ -13,6 +13,7 @@ import datetime
 import glob
 import os
 import pickle
+import re
 import sys
 
 import pdslogger
@@ -26,6 +27,9 @@ LOGROOT_ENV = 'PDS_LOG_ROOT'
 GENERATE_INDEXDICT_LIMITS = {}
 WRITE_INDEXDICT_LIMITS = {}
 LOAD_INDEXDICT_LIMITS = {}
+
+BACKUP_FILENAME = re.compile(r'.*[-_](20\d\d-\d\d-\d\dT\d\d-\d\d-\d\d'
+                             r'|backup|original)\.[\w.]+$')
 
 ################################################################################
 
@@ -176,7 +180,16 @@ def validate_infodict(pdsf, tabdict, shelfdict, *, logger=None):
     if tabdict == shelfdict:
         logger.info('Validation complete')
     else:
-        logger.error('Validation failed for', pdsf.abspath)
+        for key, value in tabdict.items():
+            if key not in shelfdict:
+                logger.error(f'not in shelf: {key}')
+            elif (shelfval := shelfdict[key]) != value:
+                logger.error(f'key mismatch: {key}\n'
+                             f'    table: {value}\n'
+                             f'    shelf: {shelfval}')
+        for key in shelfdict:
+            if key not in tabdict:
+                logger.error(f'not in table: {key}')
 
 ################################################################################
 # Simplified functions to perform tasks
@@ -399,9 +412,6 @@ def main():
 
     if args.log:
         path = os.path.join(args.log, 'pdsindexshelf')
-        warning_handler = pdslogger.warning_handler(path)
-        logger.add_handler(warning_handler)
-
         error_handler = pdslogger.error_handler(path)
         logger.add_handler(error_handler)
 
@@ -446,6 +456,10 @@ def main():
     try:
         for pdsf in pdsfiles:
 
+            if BACKUP_FILENAME.match(pdsf.abspath) or ' copy' in pdsf.abspath:
+                logger.error('Backup file skipped', pdsf.abspath)
+                continue
+
             # Save logs in up to two places
             logfiles = [pdsf.log_path_for_index(task=args.task,
                                                 dir='pdsindexshelf'),
@@ -463,16 +477,12 @@ def main():
                           '/pdsindexshelf')
 
                 # These handlers are only used if they don't already exist
-                warning_handler = pdslogger.warning_handler(logdir)
                 error_handler = pdslogger.error_handler(logdir)
-                local_handlers += [warning_handler, error_handler]
+                local_handlers += [error_handler]
 
             # Open the next level of the log
-            if len(pdsfiles) > 1:
-                logger.blankline()
-
             logger.open('Task "' + args.task + '" for', pdsf.abspath,
-                        handler=local_handlers)
+                        handler=local_handlers, blankline=True)
 
             try:
                 for logfile in logfiles:
