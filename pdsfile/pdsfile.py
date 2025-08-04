@@ -4526,7 +4526,8 @@ class PdsFile(object):
                 rows = (rows,)
 
             row_range = (min(rows), max(rows)+1)
-            table = pdstable.PdsTable(self.label_abspath, self.index_pdslabel,
+            table = pdstable.PdsTable(label_file=self.label_abspath,
+                                      label_contents=self.index_pdslabel,
                                       row_range=row_range)
             table_dicts = table.dicts_by_row()
 
@@ -4564,9 +4565,9 @@ class PdsFile(object):
         # path_name (optional), and volume
         def get_keys(row_dict):
             filespec_key = ''
-            for guess in pdstable.FILE_SPECIFICATION_COLUMN_NAMES:
-                if guess in row_dict:
-                    filespec_key = guess
+            for guess in pdstable.FILE_SPECIFICATION_COLUMN_NAMES_lc:
+                if guess.upper() in row_dict:
+                    filespec_key = guess.upper()
                     break
 
             if not filespec_key:
