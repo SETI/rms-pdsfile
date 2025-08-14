@@ -20,6 +20,7 @@
                                                                        'documents/COISS_0xxx/Data-Product-SIS.txt',
                                                                        'documents/COISS_0xxx/ISS-Users-Guide.docx',
                                                                        'documents/COISS_0xxx/ISS-Users-Guide.pdf',
+                                                                       'documents/COISS_0xxx/Owen-2003-ISS-Distortion-Model.pdf',
                                                                        'documents/COISS_0xxx/VICAR-File-Format.pdf'],
  ('browse', 10, 'browse_thumb', 'Browse Image (thumbnail)', False): ['previews/COISS_1xxx/COISS_1001/data/1294561143_1295221348/W1294561202_1_thumb.jpg'],
  ('browse', 20, 'browse_small', 'Browse Image (small)', False): ['previews/COISS_1xxx/COISS_1001/data/1294561143_1295221348/W1294561202_1_small.jpg'],

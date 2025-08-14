@@ -13,6 +13,7 @@ import datetime
 import glob
 import os
 import pickle
+import re
 import sys
 
 import pdslogger
@@ -22,16 +23,27 @@ import pdstable
 LOGNAME = 'pds.validation.indexshelf'
 LOGROOT_ENV = 'PDS_LOG_ROOT'
 
+# Default limits
+GENERATE_INDEXDICT_LIMITS = {}
+WRITE_INDEXDICT_LIMITS = {}
+LOAD_INDEXDICT_LIMITS = {}
+
+BACKUP_FILENAME = re.compile(r'.*[-_](20\d\d-\d\d-\d\dT\d\d-\d\d-\d\d'
+                             r'|backup|original)\.[\w.]+$')
+
 ################################################################################
 
-def generate_indexdict(pdsf, logger=None):
+def generate_indexdict(pdsf, *, logger=None, limits={}):
     """Generate a dictionary keyed by row key for each row in the given table.
     The value returned is a list containing all the associated row indices.
     """
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsf.root_)
-    logger.open('Tabulating index rows for', pdsf.abspath)
+
+    merged_limits = GENERATE_INDEXDICT_LIMITS.copy()
+    merged_limits.update(limits)
+    logger.open('Tabulating index rows for', pdsf.abspath, limits=merged_limits)
 
     try:
         table = pdstable.PdsTable(pdsf.label_abspath,
@@ -61,12 +73,16 @@ def generate_indexdict(pdsf, logger=None):
 
 ################################################################################
 
-def write_indexdict(pdsf, index_dict, logger=None):
+def write_indexdict(pdsf, index_dict, *, logger=None, limits={}):
     """Write a new shelf file for the rows of this index."""
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsf.root_)
-    logger.open('Writing index shelf file info for', pdsf.abspath)
+
+    merged_limits = WRITE_INDEXDICT_LIMITS.copy()
+    merged_limits.update(limits)
+    logger.open('Writing index shelf file info for', pdsf.abspath,
+                limits=merged_limits)
 
     try:
         pdsfile.Pds3File.close_all_shelves() # prevents using a cached shelf file
@@ -121,11 +137,15 @@ def write_indexdict(pdsf, index_dict, logger=None):
 
 ################################################################################
 
-def load_indexdict(pdsf, logger=None):
+def load_indexdict(pdsf, *, logger=None, limits={}):
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsf.root_)
-    logger.open('Reading index shelf file for', pdsf.abspath)
+
+    merged_limits = LOAD_INDEXDICT_LIMITS.copy()
+    merged_limits.update(limits)
+    logger.open('Reading index shelf file for', pdsf.abspath,
+                limits=merged_limits)
 
     try:
         shelf_path = pdsf.indexshelf_abspath
@@ -151,7 +171,7 @@ def load_indexdict(pdsf, logger=None):
 
 ################################################################################
 
-def validate_infodict(pdsf, tabdict, shelfdict, logger=None):
+def validate_infodict(pdsf, tabdict, shelfdict, *, logger=None):
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsf.root_)
@@ -160,13 +180,22 @@ def validate_infodict(pdsf, tabdict, shelfdict, logger=None):
     if tabdict == shelfdict:
         logger.info('Validation complete')
     else:
-        logger.error('Validation failed for', pdsf.abspath)
+        for key, value in tabdict.items():
+            if key not in shelfdict:
+                logger.error(f'not in shelf: {key}')
+            elif (shelfval := shelfdict[key]) != value:
+                logger.error(f'key mismatch: {key}\n'
+                             f'    table: {value}\n'
+                             f'    shelf: {shelfval}')
+        for key in shelfdict:
+            if key not in tabdict:
+                logger.error(f'not in table: {key}')
 
 ################################################################################
 # Simplified functions to perform tasks
 ################################################################################
 
-def initialize(pdsf, logger=None):
+def initialize(pdsf, logger=None, limits={}):
 
     shelf_path = pdsf.indexshelf_abspath
 
@@ -177,33 +206,34 @@ def initialize(pdsf, logger=None):
         return
 
     # Generate info
-    (index_dict, _) = generate_indexdict(pdsf, logger=logger)
+    (index_dict, _) = generate_indexdict(pdsf, logger=logger, limits=limits)
     if index_dict is None:
         return
 
     # Save info file
-    write_indexdict(pdsf, index_dict, logger=logger)
+    write_indexdict(pdsf, index_dict, logger=logger, limits=limits)
 
-def reinitialize(pdsf, logger=None):
+def reinitialize(pdsf, logger=None, limits={}):
 
     shelf_path = pdsf.indexshelf_abspath
 
-    # Warn if shelf file does not exist
+    # ing if shelf file does not exist
     if not os.path.exists(shelf_path):
         logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
-        logger.warn('Index shelf file does not exist; initializing', shelf_path)
+        logger.warning('Index shelf file does not exist; initializing',
+                       shelf_path)
         initialize(pdsf, logger=logger)
         return
 
     # Generate info
-    (index_dict, _) = generate_indexdict(pdsf, logger=logger)
+    (index_dict, _) = generate_indexdict(pdsf, logger=logger, limits=limits)
     if not index_dict:
         return
 
     # Save info file
-    write_indexdict(pdsf, index_dict, logger=logger)
+    write_indexdict(pdsf, index_dict, logger=logger, limits=limits)
 
-def validate(pdsf, logger=None):
+def validate(pdsf, logger=None, limits={}):
 
     shelf_path = pdsf.indexshelf_abspath
 
@@ -213,11 +243,12 @@ def validate(pdsf, logger=None):
         logger.error('Index shelf file does not exist', shelf_path)
         return
 
-    (table_indexdict, _) = generate_indexdict(pdsf, logger=logger)
+    (table_indexdict, _) = generate_indexdict(pdsf, logger=logger,
+                                              limits=limits)
     if table_indexdict is None:
         return
 
-    shelf_indexdict = load_indexdict(pdsf, logger=logger)
+    shelf_indexdict = load_indexdict(pdsf, logger=logger, limits=limits)
     if not shelf_indexdict:
         return
 
@@ -225,23 +256,24 @@ def validate(pdsf, logger=None):
     validate_infodict(pdsf, table_indexdict, shelf_indexdict,
                       logger=logger)
 
-def repair(pdsf, logger=None, op='repair'):
+def repair(pdsf, logger=None, op='repair', limits={}):
 
     shelf_path = pdsf.indexshelf_abspath
 
     # Make sure file exists
     if not os.path.exists(shelf_path):
         logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
-        logger.warn('Index shelf file does not exist; initializing',
-                     shelf_path)
+        logger.warning('Index shelf file does not exist; initializing',
+                       shelf_path)
         initialize(pdsf, logger=logger)
         return
 
-    (table_indexdict, latest_mtime) = generate_indexdict(pdsf, logger=logger)
+    (table_indexdict, latest_mtime) = generate_indexdict(pdsf, logger=logger,
+                                                         limits=limits)
     if not table_indexdict:
         return
 
-    shelf_indexdict = load_indexdict(pdsf, logger=logger)
+    shelf_indexdict = load_indexdict(pdsf, logger=logger, limits=limits)
     if not shelf_indexdict:
         return
 
@@ -286,9 +318,9 @@ def repair(pdsf, logger=None, op='repair'):
         return
 
     # Write new info
-    write_indexdict(pdsf, table_indexdict, logger=logger)
+    write_indexdict(pdsf, table_indexdict, logger=logger, limits=limits)
 
-def update(pdsf, selection=None, logger=None):
+def update(pdsf, selection=None, logger=None, limits={}):
 
     shelf_path = pdsf.indexshelf_abspath
     if os.path.exists(shelf_path):
@@ -296,7 +328,7 @@ def update(pdsf, selection=None, logger=None):
         logger.info('!!! Index shelf file exists; not updated', pdsf.abspath)
 
     else:
-        initialize(pdsf, logger)
+        initialize(pdsf, logger, limits=limits)
 
 ################################################################################
 ################################################################################
@@ -380,9 +412,6 @@ def main():
 
     if args.log:
         path = os.path.join(args.log, 'pdsindexshelf')
-        warning_handler = pdslogger.warning_handler(path)
-        logger.add_handler(warning_handler)
-
         error_handler = pdslogger.error_handler(path)
         logger.add_handler(error_handler)
 
@@ -427,6 +456,10 @@ def main():
     try:
         for pdsf in pdsfiles:
 
+            if BACKUP_FILENAME.match(pdsf.abspath) or ' copy' in pdsf.abspath:
+                logger.error('Backup file skipped', pdsf.abspath)
+                continue
+
             # Save logs in up to two places
             logfiles = [pdsf.log_path_for_index(task=args.task,
                                                 dir='pdsindexshelf'),
@@ -444,16 +477,12 @@ def main():
                           '/pdsindexshelf')
 
                 # These handlers are only used if they don't already exist
-                warning_handler = pdslogger.warning_handler(logdir)
                 error_handler = pdslogger.error_handler(logdir)
-                local_handlers += [warning_handler, error_handler]
+                local_handlers += [error_handler]
 
             # Open the next level of the log
-            if len(pdsfiles) > 1:
-                logger.blankline()
-
             logger.open('Task "' + args.task + '" for', pdsf.abspath,
-                        handler=local_handlers)
+                        handler=local_handlers, blankline=True)
 
             try:
                 for logfile in logfiles:

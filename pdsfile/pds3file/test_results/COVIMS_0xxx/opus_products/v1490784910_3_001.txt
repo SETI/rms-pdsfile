@@ -9,6 +9,7 @@
  ('Cassini VIMS', 140, 'covims_documentation', 'Documentation', False): ['documents/COVIMS_0xxx/Archive-SIS.txt',
                                                                          'documents/COVIMS_0xxx/Cassini-VIMS-Final-Report.pdf',
                                                                          'documents/COVIMS_0xxx/Data-Product-SIS.txt',
+                                                                         'documents/COVIMS_0xxx/VIMS-IR-Pixel-Timing.pdf',
                                                                          'documents/COVIMS_0xxx/VIMS-Preview-Interpretation-Guide.pdf'],
  ('browse', 10, 'browse_thumb', 'Browse Image (thumbnail)', False): ['previews/COVIMS_0xxx/COVIMS_0006/data/2005088T102825_2005089T113931/v1490784910_3_001_thumb.png'],
  ('browse', 20, 'browse_small', 'Browse Image (small)', False): ['previews/COVIMS_0xxx/COVIMS_0006/data/2005088T102825_2005089T113931/v1490784910_3_001_small.png'],

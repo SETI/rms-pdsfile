@@ -24,6 +24,6 @@
 # rms-pdsfile
 
 
-Supported versions: Python >= 3.8
+Supported versions: Python >= 3.10
 
 # PDS Ring-Moon Systems Node, SETI Institute

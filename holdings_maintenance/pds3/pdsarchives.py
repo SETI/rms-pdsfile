@@ -10,6 +10,7 @@
 
 import sys
 import os
+import re
 import tarfile
 import zlib
 import argparse
@@ -20,20 +21,32 @@ import pdsfile
 LOGNAME = 'pds.validation.archives'
 LOGROOT_ENV = 'PDS_LOG_ROOT'
 
+# Default limits
+LOAD_DIRECTORY_INFO_LIMITS = {'info': 100}
+READ_ARCHIVE_INFO_LIMITS = {'info': 100}
+WRITE_ARCHIVE_LIMITS = {'info': -1, 'dot_': 100}
+VALIDATE_TUPLES_LIMITS = {'info': 100}
+
+BACKUP_FILENAME = re.compile(r'.*[-_](20\d\d-\d\d-\d\dT\d\d-\d\d-\d\d'
+                             r'|backup|original)\.[\w.]+$')
+
 ################################################################################
 # General tarfile functions
 ################################################################################
 
-def load_directory_info(pdsdir, limits={'normal':100}, logger=None):
-    """Generate a list of tuples (abspath, dirpath, nbytes, mod time) recursively
-    for the given directory tree.
+def load_directory_info(pdsdir, *, logger=None, limits={}):
+    """Generate a list of tuples (abspath, dirpath, nbytes, mod time)
+    recursively for the given directory tree.
     """
 
     dirpath = pdsdir.abspath
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsdir.root_)
-    logger.open('Generating file info', dirpath, limits)
+
+    merged_limits = LOAD_DIRECTORY_INFO_LIMITS.copy()
+    merged_limits.update(limits)
+    logger.open('Generating file info', dirpath, limits=merged_limits)
 
     try:
         (tarpath, lskip) = pdsdir.archive_path_and_lskip()
@@ -53,12 +66,16 @@ def load_directory_info(pdsdir, limits={'normal':100}, logger=None):
                     logger.dot_underscore('._* file skipped', abspath)
                     continue
 
+                if BACKUP_FILENAME.match(file) or ' copy' in file:
+                    logger.error('Backup file skipped', abspath)
+                    continue
+
                 if '/.' in abspath:             # flag invisible files
                     logger.invisible('Invisible file', abspath)
 
                 nbytes = os.path.getsize(abspath)
                 modtime = os.path.getmtime(abspath)
-                logger.normal('File info generated', abspath)
+                logger.info('File info generated', abspath)
 
                 tuples.append((abspath, abspath[lskip:], nbytes, modtime))
 
@@ -73,7 +90,7 @@ def load_directory_info(pdsdir, limits={'normal':100}, logger=None):
                 if '/.' in abspath:             # flag invisible files
                     logger.invisible('Invisible directory', abspath)
 
-                logger.normal('Directory info generated', abspath)
+                logger.info('Directory info generated', abspath)
 
                 tuples.append((abspath, abspath[lskip:], 0, 0))
 
@@ -88,16 +105,24 @@ def load_directory_info(pdsdir, limits={'normal':100}, logger=None):
 
 ################################################################################
 
-def read_archive_info(tarpath, limits={'normal':100}, logger=None):
-    """Return a list of tuples (abspath, dirpath, nbytes, modtime) from a .tar.gz
-    file."""
+def read_archive_info(tarpath, *, logger=None, limits={}):
+    """Return a list of tuples (abspath, dirpath, nbytes, modtime) from a
+    .tar.gz file.
+    """
 
     tarpath = os.path.abspath(tarpath)
     pdstar = pdsfile.Pds3File.from_abspath(tarpath)
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdstar.root_)
-    logger.open('Reading archive file', tarpath, limits=limits)
+
+    if not os.path.exists(tarpath):
+        logger.critical('File does not exist', tarpath)
+        return []
+
+    merged_limits = READ_ARCHIVE_INFO_LIMITS.copy()
+    merged_limits.update(limits)
+    logger.open('Reading archive file', tarpath, limits=merged_limits)
 
     try:
         (dirpath, prefix) = pdstar.dirpath_and_prefix_for_archive()
@@ -124,7 +149,7 @@ def read_archive_info(tarpath, limits={'normal':100}, logger=None):
                     tuples.append((abspath, member.name, member.size,
                                             member.mtime))
 
-                logger.normal('Info read', abspath)
+                logger.info('Info read', abspath)
 
     except (zlib.error, Exception, KeyboardInterrupt) as e:
         logger.exception(e)
@@ -137,8 +162,8 @@ def read_archive_info(tarpath, limits={'normal':100}, logger=None):
 
 ################################################################################
 
-def write_archive(pdsdir, clobber=True, archive_invisibles=True,
-                           limits={'normal':-1, 'dot_':100}, logger=None):
+def write_archive(pdsdir, *, clobber=True, archive_invisibles=True,
+                  logger=None, limits={}):
     """Write an archive file containing all the files in the directory."""
 
     def archive_filter(member):
@@ -166,7 +191,7 @@ def write_archive(pdsdir, clobber=True, archive_invisibles=True,
                 logger.invisible('Invisible file skipped', member.name)
                 return None
 
-        logger.normal('File archived', member.name)
+        logger.info('File archived', member.name)
         return member
 
     #### Begin active code
@@ -175,7 +200,10 @@ def write_archive(pdsdir, clobber=True, archive_invisibles=True,
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsdir.root_)
-    logger.open('Writing .tar.gz file for', dirpath, limits=limits)
+
+    merged_limits = WRITE_ARCHIVE_LIMITS.copy()
+    merged_limits.update(limits)
+    logger.open('Writing .tar.gz file for', dirpath, limits=merged_limits)
 
     try:
         (tarpath, lskip) = pdsdir.archive_path_and_lskip()
@@ -183,7 +211,7 @@ def write_archive(pdsdir, clobber=True, archive_invisibles=True,
         # Create parent directory if necessary
         parent = os.path.split(tarpath)[0]
         if not os.path.exists(parent):
-            logger.normal('Creating directory', parent)
+            logger.info('Creating directory', parent)
             os.makedirs(parent)
 
         if not clobber and os.path.exists(tarpath):
@@ -193,7 +221,7 @@ def write_archive(pdsdir, clobber=True, archive_invisibles=True,
         f = tarfile.open(tarpath, mode='w:gz')
         f.add(dirpath, arcname=dirpath[lskip:], recursive=True,
                       filter=archive_filter)
-        logger.normal('Written', tarpath)
+        logger.info('Written', tarpath)
         f.close()
 
     except (Exception, KeyboardInterrupt) as e:
@@ -205,12 +233,16 @@ def write_archive(pdsdir, clobber=True, archive_invisibles=True,
 
 ################################################################################
 
-def validate_tuples(dir_tuples, tar_tuples, limits={'normal':100}, logger=None):
+def validate_tuples(dir_tuples, tar_tuples, *, logger=None,
+                    limits={}):
     """Validate the directory list of tuples against the list from the tarfile.
     """
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
-    logger.open('Validating file information', limits=limits)
+
+    merged_limits = VALIDATE_TUPLES_LIMITS.copy()
+    merged_limits.update(limits)
+    logger.open('Validating file information', limits=merged_limits)
 
     valid = True
     try:
@@ -240,7 +272,7 @@ def validate_tuples(dir_tuples, tar_tuples, limits={'normal':100}, logger=None):
                 del tardict[abspath]
 
             else:
-                logger.normal('Validated', dirpath)
+                logger.info('Validated', dirpath)
                 del tardict[abspath]
 
         keys = list(tardict.keys())
@@ -256,38 +288,40 @@ def validate_tuples(dir_tuples, tar_tuples, limits={'normal':100}, logger=None):
     finally:
         logger.close()
 
+    return valid
+
 ################################################################################
 # Simplified functions to perform tasks
 ################################################################################
 
-def initialize(pdsdir, logger=None):
-    write_archive(pdsdir, clobber=False, logger=logger)
+def initialize(pdsdir, *, logger=None, limits={}):
+    write_archive(pdsdir, clobber=False, logger=logger, limits=limits)
     return True
 
-def reinitialize(pdsdir, logger=None):
-    write_archive(pdsdir, clobber=True, logger=logger)
+def reinitialize(pdsdir, *, logger=None, limits={}):
+    write_archive(pdsdir, clobber=True, logger=logger, limits=limits)
     return True
 
-def validate(pdsdir, logger=None):
-
-    dir_tuples = load_directory_info(pdsdir, logger=logger)
+def validate(pdsdir, *, logger=None, limits={}):
+    dir_tuples = load_directory_info(pdsdir, logger=logger, limits=limits)
 
     tarpath = pdsdir.archive_path_and_lskip()[0]
-    tar_tuples = read_archive_info(tarpath, logger=logger)
+    tar_tuples = read_archive_info(tarpath, logger=logger, limits=limits)
 
-    return validate_tuples(dir_tuples, tar_tuples, logger=logger)
+    return validate_tuples(dir_tuples, tar_tuples, logger=logger,
+                           limits=limits)
 
-def repair(pdsdir, logger=None):
+def repair(pdsdir, *, logger=None, limits={}):
 
     tarpath = pdsdir.archive_path_and_lskip()[0]
     if not os.path.exists(tarpath):
         logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
-        logger.warn('Archive file does not exist; initializing', tarpath)
-        initialize(pdsdir, logger=logger)
+        logger.warning('Archive file does not exist; initializing', tarpath)
+        initialize(pdsdir, logger=logger, limits=limits)
         return True
 
-    tar_tuples = read_archive_info(tarpath, logger=logger)
-    dir_tuples = load_directory_info(pdsdir, logger=logger)
+    tar_tuples = read_archive_info(tarpath, logger=logger, limits=limits)
+    dir_tuples = load_directory_info(pdsdir, logger=logger, limits=limits)
 
     # Compare
     dir_tuples.sort()
@@ -295,26 +329,26 @@ def repair(pdsdir, logger=None):
     canceled = (dir_tuples == tar_tuples)
     if canceled:
         logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
-        logger.info('!!! Files match; repair canceled', tarpath)
+        logger.info('!!! Files match; repair canceled', tarpath, force=True)
         return False
 
     # Overwrite tar file if necessary
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
-    logger.info('Discrepancies found; writing new file', tarpath)
-    write_archive(pdsdir, clobber=True, logger=logger)
+    logger.info('Discrepancies found; writing new file', tarpath, force=True)
+
+    write_archive(pdsdir, clobber=True, logger=logger, limits=limits)
     return True
 
-def update(pdsdir, logger=None):
+def update(pdsdir, *, logger=None, limits={}):
 
     tarpath = pdsdir.archive_path_and_lskip()[0]
-
     if os.path.exists(tarpath):
         logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
-        logger.info('Archive file exists; skipping', tarpath)
+        logger.info('Archive file exists; skipping', tarpath, force=True)
         return False
 
     # Write tar file if necessary
-    write_archive(pdsdir, clobber=True, logger=logger)
+    write_archive(pdsdir, clobber=True, logger=logger, limits=limits)
     return True
 
 ################################################################################
@@ -403,9 +437,6 @@ def main():
 
     if args.log:
         path = os.path.join(args.log, 'pdsarchives')
-        warning_handler = pdslogger.warning_handler(path)
-        logger.add_handler(warning_handler)
-
         error_handler = pdslogger.error_handler(path)
         logger.add_handler(error_handler)
 
@@ -457,9 +488,8 @@ def main():
                 logdir = os.path.split(logfile)[0]
 
                 # These handlers are only used if they don't already exist
-                warning_handler = pdslogger.warning_handler(logdir)
                 error_handler = pdslogger.error_handler(logdir)
-                local_handlers += [warning_handler, error_handler]
+                local_handlers += [error_handler]
 
             # Open the next level of the log
             if len(pdsdirs) > 1:

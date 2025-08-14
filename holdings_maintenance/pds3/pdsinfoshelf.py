@@ -14,6 +14,7 @@ import glob
 import os
 from pathlib import Path
 import pickle
+import re
 import shutil
 import sys
 from PIL import Image
@@ -35,11 +36,18 @@ LOGROOT_ENV = 'PDS_LOG_ROOT'
 PREVIEW_EXTS = set(['.jpg', '.png', '.gif', '.tif', '.tiff',
                     '.jpeg', '.jpeg_small'])
 
+# Default limits
+GENERATE_INFODICT_LIMITS = {}
+LOAD_INFODICT_LIMITS = {}
+WRITE_INFODICT_LIMITS = {}
+
+BACKUP_FILENAME = re.compile(r'.*[-_](20\d\d-\d\d-\d\dT\d\d-\d\d-\d\d'
+                             r'|backup|original)\.[\w.]+$')
 
 ################################################################################
 
-def generate_infodict(pdsdir, selection, old_infodict={},
-                              limits={'normal':-1}, logger=None):
+def generate_infodict(pdsdir, selection, old_infodict={}, *, logger=None,
+                     limits={}):
     """Generate a dictionary keyed by absolute file path for each file in the
     directory tree. Value returned is a tuple (nbytes, child_count, modtime,
     checksum, preview size).
@@ -101,6 +109,10 @@ def generate_infodict(pdsdir, selection, old_infodict={},
                     logger.dot_underscore('._* file skipped', absfile)
                     continue
 
+                if BACKUP_FILENAME.match(file) or ' copy' in file:
+                    logger.error('Backup file skipped', absfile)
+                    continue
+
                 if '/.' in abspath:             # flag invisible files
                     logger.invisible('Invisible file', absfile)
 
@@ -116,7 +128,7 @@ def generate_infodict(pdsdir, selection, old_infodict={},
 
         else:
             info = get_info_for_file(abspath)
-            logger.normal('File info generated', abspath)
+            logger.info('File info generated', abspath)
 
         infodict[abspath] = info
         return info
@@ -130,11 +142,13 @@ def generate_infodict(pdsdir, selection, old_infodict={},
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsdir.root_)
 
+    merged_limits = GENERATE_INFODICT_LIMITS.copy()
+    merged_limits.update(limits)
     if selection:
         logger.open('Generating file info for selection "%s"' % selection,
-                    dirpath, limits)
+                    dirpath, limits=merged_limits)
     else:
-        logger.open('Generating file info', dirpath, limits)
+        logger.open('Generating file info', dirpath, limits=merged_limits)
 
     try:
         # Load checksum dictionary
@@ -194,14 +208,18 @@ def generate_infodict(pdsdir, selection, old_infodict={},
 
 ################################################################################
 
-def load_infodict(pdsdir, logger=None):
+def load_infodict(pdsdir, *, logger=None, limits={}):
 
     dirpath = pdsdir.abspath
     dirpath_ = dirpath.rstrip('/') + '/'
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsdir.root_)
-    logger.open('Reading info shelf file for', dirpath_[:-1])
+
+    merged_limits = LOAD_INFODICT_LIMITS.copy()
+    merged_limits.update(limits)
+    logger.open('Reading info shelf file for', dirpath_[:-1],
+                limits=merged_limits)
 
     try:
         (info_path, lskip) = pdsdir.shelf_path_and_lskip('info')
@@ -238,7 +256,7 @@ def load_infodict(pdsdir, logger=None):
 
 ################################################################################
 
-def write_infodict(pdsdir, infodict, limits={}, logger=None):
+def write_infodict(pdsdir, infodict, *, logger=None, limits={}):
     """Write a new info shelf file for a directory tree."""
 
     # Initialize
@@ -246,7 +264,10 @@ def write_infodict(pdsdir, infodict, limits={}, logger=None):
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsdir.root_)
-    logger.open('Writing info file info for', dirpath, limits=limits)
+
+    merged_limits = WRITE_INFODICT_LIMITS.copy()
+    merged_limits.update(limits)
+    logger.open('Writing info file info for', dirpath, limits=merged_limits)
 
     try:
         (info_path, lskip) = pdsdir.shelf_path_and_lskip('info')
@@ -313,8 +334,8 @@ def write_infodict(pdsdir, infodict, limits={}, logger=None):
 
 ################################################################################
 
-def validate_infodict(pdsdir, dirdict, shelfdict, selection,
-                      limits={'normal': 0}, logger=None):
+def validate_infodict(pdsdir, dirdict, shelfdict, selection, *, logger=None,
+                      limits={}):
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsdir.root_)
@@ -372,7 +393,7 @@ def validate_infodict(pdsdir, dirdict, shelfdict, selection,
                     agreement = False
 
                 if agreement:
-                    logger.normal('File info matches', key)
+                    logger.info('File info matches', key)
 
                 del shelfdict[key]
                 del dirdict[key]
@@ -435,7 +456,7 @@ def move_old_info(shelf_file, logger=None):
 # Simplified functions to perform tasks
 ################################################################################
 
-def initialize(pdsdir, selection=None, logger=None):
+def initialize(pdsdir, selection=None, logger=None, limits={}):
 
     info_path = pdsdir.shelf_path_and_lskip('info')[0]
 
@@ -452,12 +473,13 @@ def initialize(pdsdir, selection=None, logger=None):
         return
 
     # Generate info
-    (infodict, _) = generate_infodict(pdsdir, selection, logger=logger)
+    (infodict, _) = generate_infodict(pdsdir, selection, logger=logger,
+                                      limits=limits)
 
     # Save info file
-    write_infodict(pdsdir, infodict, logger=logger)
+    write_infodict(pdsdir, infodict, logger=logger, limits=limits)
 
-def reinitialize(pdsdir, selection=None, logger=None):
+def reinitialize(pdsdir, selection=None, logger=None, limits={}):
 
     info_path = pdsdir.shelf_path_and_lskip('info')[0]
 
@@ -467,13 +489,15 @@ def reinitialize(pdsdir, selection=None, logger=None):
         if selection:
             logger.error('Info shelf file does not exist', info_path)
         else:
-            logger.warn('Info shelf file does not exist; initializing',
-                        info_path)
-            initialize(pdsdir, selection=selection, logger=logger)
+            logger.warning('Info shelf file does not exist; initializing',
+                           info_path)
+            initialize(pdsdir, selection=selection, logger=logger,
+                       limits=limits)
         return
 
     # Generate info
-    (infodict, _) = generate_infodict(pdsdir, selection, logger=logger)
+    (infodict, _) = generate_infodict(pdsdir, selection, logger=logger,
+                                      limits=limits)
     if not infodict:
         return
 
@@ -482,9 +506,9 @@ def reinitialize(pdsdir, selection=None, logger=None):
         move_old_info(info_path, logger=logger)
 
     # Save info file
-    write_infodict(pdsdir, infodict, logger=logger)
+    write_infodict(pdsdir, infodict, logger=logger, limits=limits)
 
-def validate(pdsdir, selection=None, logger=None):
+def validate(pdsdir, selection=None, logger=None, limits={}):
 
     info_path = pdsdir.shelf_path_and_lskip('info')[0]
 
@@ -495,16 +519,17 @@ def validate(pdsdir, selection=None, logger=None):
         return
 
     # Read info shelf file
-    shelf_infodict = load_infodict(pdsdir, logger=logger)
+    shelf_infodict = load_infodict(pdsdir, logger=logger, limits=limits)
 
     # Generate info
-    (dir_infodict, _) = generate_infodict(pdsdir, selection, logger=logger)
+    (dir_infodict, _) = generate_infodict(pdsdir, selection, logger=logger,
+                                          limits=limits)
 
     # Validate
     validate_infodict(pdsdir, dir_infodict, shelf_infodict, selection=selection,
-                      logger=logger)
+                      logger=logger, limits=limits)
 
-def repair(pdsdir, selection=None, logger=None):
+def repair(pdsdir, selection=None, logger=None, limits={}):
 
     info_path = pdsdir.shelf_path_and_lskip('info')[0]
 
@@ -514,17 +539,19 @@ def repair(pdsdir, selection=None, logger=None):
         if selection:
             logger.error('Info shelf file does not exist', info_path)
         else:
-            logger.warn('Info shelf file does not exist; initializing',
-                        info_path)
-            initialize(pdsdir, selection=selection, logger=logger)
+            logger.warning('Info shelf file does not exist; initializing',
+                           info_path)
+            initialize(pdsdir, selection=selection, logger=logger,
+                       limits=limits)
         return
 
     # Read info shelf file
-    shelf_infodict = load_infodict(pdsdir, logger=logger)
+    shelf_infodict = load_infodict(pdsdir, logger=logger, limits=limits)
 
     # Generate info
     (dir_infodict, latest_modtime) = generate_infodict(pdsdir, selection,
-                                                       logger=logger)
+                                                       logger=logger,
+                                                       limits=limits)
     latest_iso = latest_modtime.replace(' ', 'T')
     latest_datetime = datetime.datetime.fromisoformat(latest_iso)
 
@@ -574,9 +601,9 @@ def repair(pdsdir, selection=None, logger=None):
 
     # Move files and write new info
     move_old_info(info_path, logger=logger)
-    write_infodict(pdsdir, dir_infodict, logger=logger)
+    write_infodict(pdsdir, dir_infodict, logger=logger, limits=limits)
 
-def update(pdsdir, selection=None, logger=None):
+def update(pdsdir, selection=None, logger=None, limits={}):
 
     info_path = pdsdir.shelf_path_and_lskip('info')[0]
 
@@ -586,17 +613,18 @@ def update(pdsdir, selection=None, logger=None):
         if selection:
             logger.error('Info shelf file does not exist', info_path)
         else:
-            logger.warn('Info shelf file does not exist; initializing',
-                        info_path)
-            initialize(pdsdir, selection=selection, logger=logger)
+            logger.warning('Info shelf file does not exist; initializing',
+                           info_path)
+            initialize(pdsdir, selection=selection, logger=logger,
+                       limits=limits)
         return
 
     # Read info shelf file
-    shelf_infodict = load_infodict(pdsdir, logger=logger)
+    shelf_infodict = load_infodict(pdsdir, logger=logger, limits=limits)
 
     # Generate info
     (dir_infodict, _) = generate_infodict(pdsdir, selection, shelf_infodict,
-                                          logger=logger)
+                                          logger=logger, limits=limits)
 
     # Compare
     canceled = (dir_infodict == shelf_infodict)
@@ -608,7 +636,7 @@ def update(pdsdir, selection=None, logger=None):
 
     # Write checksum file
     move_old_info(info_path, logger=logger)
-    write_infodict(pdsdir, dir_infodict, logger=logger)
+    write_infodict(pdsdir, dir_infodict, logger=logger, limits=limits)
 
 ################################################################################
 ################################################################################
@@ -711,9 +739,6 @@ def main():
 
     if args.log:
         path = os.path.join(args.log, 'pdsinfoshelf')
-        warning_handler = pdslogger.warning_handler(path)
-        logger.add_handler(warning_handler)
-
         error_handler = pdslogger.error_handler(path)
         logger.add_handler(error_handler)
 
@@ -801,8 +826,6 @@ def main():
     try:
         for (pdsdir, selection) in info:
 
-            info_path = pdsdir.shelf_path_and_lskip('info')[0]
-
             if selection:
                 pdsf = pdsdir.child(os.path.basename(selection))
             else:
@@ -835,9 +858,8 @@ def main():
                 LOGDIRS.append(os.path.split(logfile)[0])
 
                 # These handlers are only used if they don't already exist
-                warning_handler = pdslogger.warning_handler(logdir)
                 error_handler = pdslogger.error_handler(logdir)
-                local_handlers += [warning_handler, error_handler]
+                local_handlers += [error_handler]
 
             # Open the next level of the log
             if len(info) > 1:

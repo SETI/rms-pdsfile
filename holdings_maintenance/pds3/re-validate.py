@@ -29,8 +29,9 @@ from holdings_maintenance.pds3 import pdsinfoshelf
 from holdings_maintenance.pds3 import pdslinkshelf
 from holdings_maintenance.pds3 import pdsdependency
 
-LOGNAME = 'pds.validation.re-validate'
+LOGNAME = 'pds.validation'
 LOGROOT_ENV = 'PDS_LOG_ROOT'
+MAX_INFO = 50
 
 SERVER = 'list.seti.org'
 FROM_ADDR = "PDS Administrator <pds-admin@seti.org>"
@@ -38,6 +39,13 @@ REPORT_SUBJ = "Re-validate report from " + socket.gethostname()
 REPORT_SUBJ_W_ERRORS = "Re-validate report with ERRORs from " + \
                                               socket.gethostname()
 ERROR_REPORT_SUBJ = "Re-validate ERROR report from " + socket.gethostname()
+
+# Default limits
+CHECKSUMS_LIMITS  = {'info': 20, 'debug': 10}
+ARCHIVES_LIMITS   = {'info': 20, 'debug': 10}
+INFOSHELF_LIMITS  = {'info': 20, 'debug': 10}
+LINKSHELF_LIMITS  = {'info': 20, 'debug': 10}
+DEPENDENCY_LIMITS = {'info': 20, 'debug': 10}
 
 ################################################################################
 # Function to validate one volume
@@ -63,9 +71,8 @@ def validate_one_volume(pdsdir, voltypes, tests, args, logger):
         logdir = os.path.split(logdir)[0]
 
         # These handlers are only used if they don't already exist
-        warning_handler = pdslogger.warning_handler(logdir)
         error_handler = pdslogger.error_handler(logdir)
-        local_handlers += [warning_handler, error_handler]
+        local_handlers.append(error_handler)
 
     logger.blankline()
     logger.open('Re-validate ' + pdsdir.abspath, handler=local_handlers)
@@ -87,7 +94,8 @@ def validate_one_volume(pdsdir, voltypes, tests, args, logger):
             if args.checksums:
                 logger.open('Checksum re-validatation for', abspath)
                 try:
-                    pdschecksums.validate(temp_pdsdir, logger=logger)
+                    pdschecksums.validate(temp_pdsdir,
+                                          limits=CHECKSUMS_LIMITS)
                 finally:
                     tests_performed += 1
                     logger.close()
@@ -95,7 +103,8 @@ def validate_one_volume(pdsdir, voltypes, tests, args, logger):
             if args.archives:
                 logger.open('Archive re-validatation for', abspath)
                 try:
-                    pdsarchives.validate(temp_pdsdir, logger=logger)
+                    pdsarchives.validate(temp_pdsdir,
+                                         limits=ARCHIVES_LIMITS)
                 finally:
                     tests_performed += 1
                     logger.close()
@@ -116,7 +125,8 @@ def validate_one_volume(pdsdir, voltypes, tests, args, logger):
                 temp_pdsdir = pdsfile.Pds3File.from_abspath(prefix)
                 logger.open('Checksum re-validatation for', abspath)
                 try:
-                    pdschecksums.validate(temp_pdsdir, basename, logger)
+                    pdschecksums.validate(temp_pdsdir, basename,
+                                          limits=CHECKSUMS_LIMITS)
                 finally:
                     tests_performed += 1
                     logger.close()
@@ -132,7 +142,8 @@ def validate_one_volume(pdsdir, voltypes, tests, args, logger):
             if args.infoshelves:
                 logger.open('Infoshelf re-validatation for', abspath)
                 try:
-                    pdsinfoshelf.validate(temp_pdsdir, logger=logger)
+                    pdsinfoshelf.validate(temp_pdsdir,
+                                          limits=INFOSHELF_LIMITS)
                 finally:
                     tests_performed += 1
                     logger.close()
@@ -141,7 +152,8 @@ def validate_one_volume(pdsdir, voltypes, tests, args, logger):
                 voltype in ('volumes', 'calibrated', 'metadata')):
                     logger.open('Linkshelf re-validatation for', abspath)
                     try:
-                        pdslinkshelf.validate(temp_pdsdir, logger=logger)
+                        pdslinkshelf.validate(temp_pdsdir,
+                                              limits=LINKSHELF_LIMITS)
                     finally:
                         tests_performed += 1
                         logger.close()
@@ -162,7 +174,8 @@ def validate_one_volume(pdsdir, voltypes, tests, args, logger):
                 temp_pdsdir = pdsfile.Pds3File.from_abspath(prefix)
                 logger.open('Infoshelf re-validatation for', abspath)
                 try:
-                    pdsinfoshelf.validate(temp_pdsdir, basename, logger)
+                    pdsinfoshelf.validate(temp_pdsdir, basename,
+                                          limits=INFOSHELF_LIMITS)
                 finally:
                     tests_performed += 1
                     logger.close()
@@ -174,7 +187,7 @@ def validate_one_volume(pdsdir, voltypes, tests, args, logger):
             else:
                 logger.open('Dependency re-validation for', abspath)
             try:
-                pdsdependency.test(pdsdir, logger=logger,
+                pdsdependency.test(pdsdir, limits=DEPENDENCY_LIMITS,
                                    check_newer=(not args.timeless))
             finally:
                 tests_performed += 1
@@ -185,10 +198,11 @@ def validate_one_volume(pdsdir, voltypes, tests, args, logger):
 
     finally:
         if tests_performed == 1:
-            logger.info('1 re-validation test performed', pdsdir.abspath)
+            logger.info('1 re-validation test performed', pdsdir.abspath,
+                        force=True)
         else:
             logger.info('%d re-validation tests performed' % tests_performed,
-                        pdsdir.abspath)
+                        pdsdir.abspath, force=True)
         (fatal, errors, warnings, tests) = logger.close()
 
     return (logfile, fatal, errors)
@@ -582,8 +596,7 @@ if args.log == '':
         args.log = None
 
 # Initialize the logger
-new_limits = {'info':10, 'normal':10, 'override':False}
-logger = pdslogger.PdsLogger(LOGNAME, limits=new_limits)
+logger = pdslogger.PdsLogger(LOGNAME, limits={'info':100, 'debug':10})
 
 # Place to search for existing logs in batch mode
 pdsfile.Pds3File.set_log_root(args.log)
@@ -593,7 +606,6 @@ if not args.quiet:
 
 if args.log:
     path = os.path.join(args.log, 're-validate')
-    logger.add_handler(pdslogger.warning_handler(path))
     logger.add_handler(pdslogger.error_handler(path))
 
 ########################################

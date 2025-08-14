@@ -35,7 +35,7 @@ def setup(request):
         Pds4File.use_shelves_only(False)
     else: # pragma: no cover
         Pds3File.use_shelves_only(True)
-        Pds4File.use_shelves_only(True)
+        Pds4File.use_shelves_only(False)
 
     # turn_on_logger("test_log.txt")
     Pds3File.preload(PDS3_HOLDINGS_DIR)
