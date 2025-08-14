@@ -1479,6 +1479,7 @@ def repair(pdsdir, *, logger=None, limits={}):
         logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
         logger.warning('Link shelf file does not exist; initializing',
                        link_path)
+        initialize(pdsdir, logger=logger, limits=limits)
         return
 
     # Read link shelf file
