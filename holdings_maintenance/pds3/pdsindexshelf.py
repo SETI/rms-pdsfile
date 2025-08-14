@@ -46,7 +46,7 @@ def generate_indexdict(pdsf, *, logger=None, limits={}):
     logger.open('Tabulating index rows for', pdsf.abspath, limits=merged_limits)
 
     try:
-        table = pdstable.PdsTable(pdsf.label_abspath,
+        table = pdstable.PdsTable(label_file=pdsf.label_abspath,
                                   filename_keylen=pdsf.filename_keylen)
 
         table.index_rows_by_filename_key()      # fills in table.filename_keys
