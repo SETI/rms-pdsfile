@@ -21,7 +21,8 @@ class Pds4File(PdsFile):
     BUNDLESET_REGEX = re.compile(r'^(uranus_occs_earthbased|' +
                                  r'^cassini_iss.*|' +
                                  r'^cassini_vims.*|' +
-                                 r'^cassini_uvis.*)$')
+                                 r'^cassini_uvis.*|' +
+                                 r'^voyager.*)$')
     BUNDLESET_REGEX_I      = re.compile(BUNDLESET_REGEX.pattern, re.I)
     BUNDLESET_PLUS_REGEX   = re.compile(BUNDLESET_REGEX.pattern[:-1] +
                                         r'(_v[0-9]+\.[0-9]+\.[0-9]+|' +
