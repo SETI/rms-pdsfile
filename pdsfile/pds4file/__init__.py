@@ -13,7 +13,10 @@ from pdsfile.preload_and_cache import cache_lifetime_for_class
 
 class Pds4File(PdsFile):
 
-    BUNDLESET_REGEX = re.compile(r'^(uranus_occs_earthbased|^cassini_iss|^cassini_vims)$')
+    BUNDLESET_REGEX = re.compile(r'^(uranus_occs_earthbased|' +
+                                 r'^cassini_uvis_solarocc_beckerjarmak2023|' +
+                                 r'^cassini_iss|' +
+                                 r'^cassini_vims)$')
     BUNDLESET_PLUS_REGEX   = re.compile(BUNDLESET_REGEX.pattern[:-1] +
                                         r'(_v[0-9]+\.[0-9]+\.[0-9]+|' +
                                         r'_v[0-9]+\.[0-9]+|_v[0-9]+|' +
@@ -149,6 +152,7 @@ try:
     # Data set-specific rules are implemented as subclasses of Pds4File
     # from pdsfile_reorg.Pds4File.rules import *
     from .rules import (cassini_iss,
+                        cassini_uvis_solarocc_beckerjarmak2023,
                         cassini_vims,
                         uranus_occs_earthbased)
 except AttributeError:
