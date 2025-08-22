@@ -49,11 +49,14 @@ class TestPds4FileBlackBox:
             #  'co-vims-v1308947009_002'),
             # ('cassini_vims/cassini_vims_cruise/browse_raw/130xxxxxxx/13089xxxxx/1308947715-full.png',
             #  'co-vims-v1308947715'),
+            # cassini_uvis_solarocc_beckerjarmak2023
             ('cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023/data/uvis_euv_2005_159_solar_time_series_ingress.tab',
-             'co-uvis-occ-2005-159-sun-i'),            ('cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023/data/uvis_euv_2008_083_solar_time_series_egress.xml',
+             'co-uvis-occ-2005-159-sun-i'),
+            ('cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023/data/uvis_euv_2008_083_solar_time_series_egress.xml',
              'co-uvis-occ-2008-083-sun-e'),
-             ('cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023/data/uvis_euv_2008_083_solar_time_series_egress_supplement.tab',
+            ('cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023/data/uvis_euv_2008_083_solar_time_series_egress_supplement.tab',
              'co-uvis-occ-2008-083-sun-e'),
+            #  uranus_occs_earthbased
             ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress.xml',
              'kao0m91-vis-occ-1977-069-u0-uranus-e'),
             ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_ingress.tab',
@@ -568,7 +571,35 @@ class TestPds4FileBlackBox:
             #      f'/{PDS4_HOLDINGS_NAME}/previews/cassini_vims/cassini_vims_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947079_xxx/1308947079_003_thumb.png',
             #  ]
             # ),
+            # cassini_uvis_solarocc_beckerjarmak2023
+            ('cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023/data/uvis_euv_2005_159_solar_time_series_ingress.xml',
+             [
+                 f'/{PDS4_HOLDINGS_NAME}/previews/cassini_uvis_solarocc_beckerjarmak2023/data/uvis_euv_2005_159_solar_time_series_ingress_preview_full.png',
+                 f'/{PDS4_HOLDINGS_NAME}/previews/cassini_uvis_solarocc_beckerjarmak2023/data/uvis_euv_2005_159_solar_time_series_ingress_preview_med.png',
+                 f'/{PDS4_HOLDINGS_NAME}/previews/cassini_uvis_solarocc_beckerjarmak2023/data/uvis_euv_2005_159_solar_time_series_ingress_preview_small.png',
+                 f'/{PDS4_HOLDINGS_NAME}/previews/cassini_uvis_solarocc_beckerjarmak2023/data/uvis_euv_2005_159_solar_time_series_ingress_preview_thumb.png'
+             ]
+            ),
+            ('cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023/data/uvis_euv_2008_083_solar_time_series_egress.xml',
+              [
+                 f'/{PDS4_HOLDINGS_NAME}/previews/cassini_uvis_solarocc_beckerjarmak2023/data/uvis_euv_2008_083_solar_time_series_egress_preview_full.png',
+                 f'/{PDS4_HOLDINGS_NAME}/previews/cassini_uvis_solarocc_beckerjarmak2023/data/uvis_euv_2008_083_solar_time_series_egress_preview_med.png',
+                 f'/{PDS4_HOLDINGS_NAME}/previews/cassini_uvis_solarocc_beckerjarmak2023/data/uvis_euv_2008_083_solar_time_series_egress_preview_small.png',
+                 f'/{PDS4_HOLDINGS_NAME}/previews/cassini_uvis_solarocc_beckerjarmak2023/data/uvis_euv_2008_083_solar_time_series_egress_preview_thumb.png',
+
+             ]
+            ),
+            ('cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023/data/supplemental/uvis_euv_2008_083_solar_time_series_egress_supplement.xml',
+              [
+                 f'/{PDS4_HOLDINGS_NAME}/previews/cassini_uvis_solarocc_beckerjarmak2023/data/supplemental/uvis_euv_2008_083_solar_time_series_egress_supplement_preview_full.png',
+                 f'/{PDS4_HOLDINGS_NAME}/previews/cassini_uvis_solarocc_beckerjarmak2023/data/supplemental/uvis_euv_2008_083_solar_time_series_egress_supplement_preview_med.png',
+                 f'/{PDS4_HOLDINGS_NAME}/previews/cassini_uvis_solarocc_beckerjarmak2023/data/supplemental/uvis_euv_2008_083_solar_time_series_egress_supplement_preview_small.png',
+                 f'/{PDS4_HOLDINGS_NAME}/previews/cassini_uvis_solarocc_beckerjarmak2023/data/supplemental/uvis_euv_2008_083_solar_time_series_egress_supplement_preview_thumb.png',
+
+             ]
+            ),
             # TODO: change these test cases to previews when available
+            # uranus_occs_earthbased
             ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_delta_egress_100m.xml',
              [
                  f'/{PDS4_HOLDINGS_NAME}/diagrams/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_delta_egress_diagram_full.png',

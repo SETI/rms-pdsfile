@@ -19,17 +19,11 @@ description_and_icon_by_regex = translator.TranslatorByRegex([
 ##########################################################################################
 
 default_viewables = translator.TranslatorByRegex([
-    (r'.*/(cassini_uvis_solarocc_beckerjarmak2023)/cassini_uvis_solarocc_beckerjarmak2023.*/data/(uvis.*)\.[a-z]{3}', 0,
-        [r'previews/\1/data/\2_preview_full.png',
-         r'previews/\1/data/\2_preview_med.png',
-         r'previews/\1/data/\2_preview_small.png',
-         r'previews/\1/data/\2_preview_thumb.png',
-    ]),
-    (r'.*/(cassini_uvis_solarocc_beckerjarmak2023)/cassini_uvis_solarocc_beckerjarmak2023/data/(uvis_euv_2008_083_.*)\.[a-z]{3}', 0,
-        [r'previews/\1/data/\2_preview_full.png',
-         r'previews/\1/data/\2_preview_med.png',
-         r'previews/\1/data/\2_preview_small.png',
-         r'previews/\1/data/\2_preview_thumb.png',
+    (r'.*/(cassini_uvis_solarocc_beckerjarmak2023)/cassini_uvis_solarocc_beckerjarmak2023.*/data(|/supplemental)/(uvis_euv.*)\.[a-z]{3}', 0,
+        [r'previews/\1/data\2/\3_preview_full.png',
+         r'previews/\1/data\2/\3_preview_med.png',
+         r'previews/\1/data\2/\3_preview_small.png',
+         r'previews/\1/data\2/\3_preview_thumb.png',
     ]),
 ])
 
