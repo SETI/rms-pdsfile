@@ -644,6 +644,17 @@ class TestPds4FileBlackBox:
     @pytest.mark.parametrize(
     'input_path,expected',
     [
+        # cassini_uvis_solarocc_beckerjarmak2023
+        ('bundles/cassini_uvis_solarocc_beckerjarmak2023/data/uvis_euv_2005_159_solar_time_series_ingress.xml',
+        'couvis_solar_occ_ring'),
+        ('bundles/cassini_uvis_solarocc_beckerjarmak2023/data/supplemental/uvis_euv_2008_083_solar_time_series_egress_supplement.xml',
+        'couvis_solar_occ_ring_supp'),
+        ('bundles/cassini_uvis_solarocc_beckerjarmak2023/browse/uvis_euv_2007_114_solar_time_series_ingress.jpg',
+        'couvis_solar_occ_browse'),
+        ('bundles/cassini_uvis_solarocc_beckerjarmak2023/document/2-RingSolarOccAtlasVol2V1.0.pdf',
+        'couvis_solar_occ_documentation'),
+
+        # uranus_occs_earthbased
         # Rings/ring models
         ('bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_alpha_egress_100m.xml',
         'ebur_occ_ring_0100'),

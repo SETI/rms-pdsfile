@@ -78,6 +78,12 @@ class Pds4File(PdsFile):
     # bundles stored at the same level with other bundle sets in the PDS4 directory structure
     IS_BUNDLE_DIR = {
         'cassini_uvis_solarocc_beckerjarmak2023',
+        # 'cassini_iss_cruise',
+        # 'cassini_iss_saturn',
+        # 'cassini_vims_cruise',
+        # 'cassini_vims_saturn',
+        # 'voyager1_rss_jupiter_raw',
+        # 'voyager2_rss_jupiter_raw',
     }
 
     def __init__(self):
