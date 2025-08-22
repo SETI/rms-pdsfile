@@ -75,6 +75,11 @@ class Pds4File(PdsFile):
     IDX_EXT = '.csv'
     LBL_EXT = '.xml'
 
+    # bundles stored at the same level with other bundle sets in the PDS4 directory structure
+    IS_BUNDLE_DIR = {
+        'cassini_uvis_solarocc_beckerjarmak2023',
+    }
+
     def __init__(self):
         super().__init__()
 

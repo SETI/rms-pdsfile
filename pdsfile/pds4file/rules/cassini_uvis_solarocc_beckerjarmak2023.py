@@ -19,7 +19,7 @@ description_and_icon_by_regex = translator.TranslatorByRegex([
 ##########################################################################################
 
 default_viewables = translator.TranslatorByRegex([
-    (r'.*/(cassini_uvis_solarocc_beckerjarmak2023)/cassini_uvis_solarocc_beckerjarmak2023.*/data(|/supplemental)/(uvis_euv.*)\.[a-z]{3}', 0,
+    (r'.*/(cassini_uvis_solarocc_beckerjarmak2023*)/data(|/supplemental)/(uvis_euv.*)\.[a-z]{3}', 0,
         [r'previews/\1/data\2/\3_preview_full.png',
          r'previews/\1/data\2/\3_preview_med.png',
          r'previews/\1/data\2/\3_preview_small.png',
@@ -182,7 +182,7 @@ opus_products = translator.TranslatorByRegex([
 ##########################################################################################
 
 opus_id = translator.TranslatorByRegex([
-     (r'.*/cassini_uvis_.*beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023.*/(data|supplemental)/uvis_euv_(\d{4})_(\d{3})_.*_([ei])(gress|ngress).*\.[a-z]{3}', 0, r'co-uvis-occ-\2-\3-sun-\4')
+     (r'.*/cassini_uvis_.*beckerjarmak2023*/(data|supplemental)/uvis_euv_(\d{4})_(\d{3})_.*_([ei])(gress|ngress).*\.[a-z]{3}', 0, r'co-uvis-occ-\2-\3-sun-\4')
 ])
 
 ##########################################################################################
@@ -198,7 +198,7 @@ filespec_to_bundleset = translator.TranslatorByRegex([
 ##########################################################################################
 
 opus_id_to_primary_logical_path = translator.TranslatorByRegex([
-    (r'co-uvis-occ-(\d{4})-(\d{3})-sun-([ei])',     0,  r'bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023/data/uvis_euv_\1_\2_solar_time_series_\3*gress.xml'),
+    (r'co-uvis-occ-(\d{4})-(\d{3})-sun-([ei])',     0,  r'bundles/cassini_uvis_solarocc_beckerjarmak2023*/data/uvis_euv_\1_\2_solar_time_series_\3*gress.xml'),
 ])
 
 ##########################################################################################
