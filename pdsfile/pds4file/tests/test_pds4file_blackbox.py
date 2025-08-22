@@ -572,7 +572,7 @@ class TestPds4FileBlackBox:
             #  ]
             # ),
             # cassini_uvis_solarocc_beckerjarmak2023
-            ('cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023/data/uvis_euv_2005_159_solar_time_series_ingress.xml',
+            ('cassini_uvis_solarocc_beckerjarmak2023/data/uvis_euv_2005_159_solar_time_series_ingress.xml',
              [
                  f'/{PDS4_HOLDINGS_NAME}/previews/cassini_uvis_solarocc_beckerjarmak2023/data/uvis_euv_2005_159_solar_time_series_ingress_preview_full.png',
                  f'/{PDS4_HOLDINGS_NAME}/previews/cassini_uvis_solarocc_beckerjarmak2023/data/uvis_euv_2005_159_solar_time_series_ingress_preview_med.png',
@@ -580,7 +580,7 @@ class TestPds4FileBlackBox:
                  f'/{PDS4_HOLDINGS_NAME}/previews/cassini_uvis_solarocc_beckerjarmak2023/data/uvis_euv_2005_159_solar_time_series_ingress_preview_thumb.png'
              ]
             ),
-            ('cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023/data/uvis_euv_2008_083_solar_time_series_egress.xml',
+            ('cassini_uvis_solarocc_beckerjarmak2023/data/uvis_euv_2008_083_solar_time_series_egress.xml',
               [
                  f'/{PDS4_HOLDINGS_NAME}/previews/cassini_uvis_solarocc_beckerjarmak2023/data/uvis_euv_2008_083_solar_time_series_egress_preview_full.png',
                  f'/{PDS4_HOLDINGS_NAME}/previews/cassini_uvis_solarocc_beckerjarmak2023/data/uvis_euv_2008_083_solar_time_series_egress_preview_med.png',
@@ -589,7 +589,7 @@ class TestPds4FileBlackBox:
 
              ]
             ),
-            ('cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023/data/supplemental/uvis_euv_2008_083_solar_time_series_egress_supplement.xml',
+            ('cassini_uvis_solarocc_beckerjarmak2023/data/supplemental/uvis_euv_2008_083_solar_time_series_egress_supplement.xml',
               [
                  f'/{PDS4_HOLDINGS_NAME}/previews/cassini_uvis_solarocc_beckerjarmak2023/data/supplemental/uvis_euv_2008_083_solar_time_series_egress_supplement_preview_full.png',
                  f'/{PDS4_HOLDINGS_NAME}/previews/cassini_uvis_solarocc_beckerjarmak2023/data/supplemental/uvis_euv_2008_083_solar_time_series_egress_supplement_preview_med.png',
