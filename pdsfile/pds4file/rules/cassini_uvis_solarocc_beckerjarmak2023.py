@@ -34,50 +34,42 @@ default_viewables = translator.TranslatorByRegex([
 ##########################################################################################
 
 associations_to_bundles = translator.TranslatorByRegex([
-    (r'.*/(cassini_iss/cassini_iss\w*)/(data|browse)(.*|_[a-z]*]/.*)\.[a-z]{3}', 0,
-        [r'bundles/\1/data\3.img',
-         r'bundles/\1/data\3.xml',
-         r'bundles/\1/browse\3-full.png',
-         r'bundles/\1/browse\3-full.xml',
+    (r'.*/(cassini_uvis_solarocc_beckerjarmak2023*)/data(|/supplemental)/(uvis_euv_.*_(egress|ingress))(|_supplement)\.[a-z]{3}', 0,
+        [
+            r'bundles/\1/data/\3.tab',
+            r'bundles/\1/data/\3.xml',
+            r'bundles/\1/data/supplemental/\3_supplement.tab',
+            r'bundles/\1/data/supplemental/\3_supplement.xml',
+            r'bundles/\1/browse/\3.jpg',
+            r'bundles/\1/browse/\3.xml',
         ]),
-    (r'documents/cassini_iss.*', 0,
-        [r'bundles/cassini_iss',
-         r'bundles/cassini_iss',
-         r'bundles/cassini_iss',
-        ]),
-])
-
-associations_to_calibrated = translator.TranslatorByRegex([
-    (r'.*/((cassini_iss/cassini_iss\w*)/(data|browse)(.*|_[a-z]*]/.*))\.[a-z]{3}', 0,
-        [r'calibrated/\1_CALIB.IMG',
-         r'calibrated/\1_CALIB.LBL',
-        ]),
+    (r'documents/cassini_uvis_solarocc_beckerjarmak2023*', 0,
+        r'bundles/cassini_uvis_solarocc_beckerjarmak2023'),
 ])
 
 associations_to_previews = translator.TranslatorByRegex([
-    (r'.*/(cassini_iss/cassini_iss\w*/(data|browse)(.*|_[a-z]*])/.*)\.[a-z]{3}', 0,
-        [r'previews/\1_full.png',
-         r'previews/\1_med.png',
-         r'previews/\1_small.png',
-         r'previews/\1_thumb.png',
+    (r'.*/(cassini_uvis_solarocc_beckerjarmak2023*)/data(|/supplemental)/(uvis_euv_.*_(egress|ingress))(|_supplement)\.[a-z]{3}', 0,
+        [
+            r'previews/\1/data/\3_preview_full.png',
+            r'previews/\1/data/\3_preview_med.png',
+            r'previews/\1/data/\3_preview_small.png',
+            r'previews/\1/data/\3_preview_thumb.png',
+            r'previews/\1/data/supplemental/\3_supplement_preview_full.png',
+            r'previews/\1/data/supplemental/\3_supplement_preview_med.png',
+            r'previews/\1/data/supplemental/\3_supplement_preview_small.png',
+            r'previews/\1/data/supplemental/\3_supplement_preview_thumb.png',
         ]),
 ])
 
 associations_to_metadata = translator.TranslatorByRegex([
     (r'.*/(cassini_iss)/(cassini_iss\w*)/(data|browse)(.*|_[a-z]*])/(.*)\.[a-z]{3}', 0,
-        [r'metadata/\1/\2/\2_index.tab/\5',
-         r'metadata/\1/\2/\2_ring_summary.tab/\5',
-         r'metadata/\1/\2/\2_moon_summary.tab/\5',
-         r'metadata/\1/\2/\2_saturn_summary.tab/\5',
-         r'metadata/\1/\2/\2_jupiter_summary.tab/\5',
+        [
         ]),
 ])
 
 associations_to_documents = translator.TranslatorByRegex([
-    (r'(bundles|calibrated)/cassini_iss/.*', 0,
-         r'documents/cassini_iss/*'),
-    (r'(bundles|calibrated)/cassini_iss', 0,
-         r'documents/cassini_iss'),
+    (r'bundles/cassini_uvis_solarocc_beckerjarmak2023*', 0,
+         r'documents/cassini_uvis_solarocc_beckerjarmak2023*'),
 ])
 
 ##########################################################################################
@@ -226,7 +218,6 @@ class cassini_uvis_solarocc_beckerjarmak2023(pds4file.Pds4File): # Cassini_ISS
 
     ASSOCIATIONS = pds4file.Pds4File.ASSOCIATIONS.copy()
     ASSOCIATIONS['bundles']    += associations_to_bundles
-    ASSOCIATIONS['calibrated'] += associations_to_calibrated
     ASSOCIATIONS['previews']   += associations_to_previews
     ASSOCIATIONS['metadata']   += associations_to_metadata
     ASSOCIATIONS['documents']  += associations_to_documents
@@ -267,6 +258,28 @@ def test_opus_products(request, input_path, expected):
     update = request.config.option.update
     opus_products_test(pds4file.Pds4File, input_path, TEST_RESULTS_DIR+expected, update)
 
+@pytest.mark.parametrize(
+    'input_path,category,expected',
+    [
+        ('bundles/cassini_uvis_solarocc_beckerjarmak2023/data/uvis_euv_2006_257_solar_time_series_ingress.xml',
+         'bundles',
+         'cassini_uvis_solarocc_beckerjarmak2023/associated_abspaths/bundles_uvis_euv_2006_257_solar_time_series_ingress.txt'),
+        ('bundles/cassini_uvis_solarocc_beckerjarmak2023/data/uvis_euv_2008_083_solar_time_series_egress.xml',
+         'bundles',
+         'cassini_uvis_solarocc_beckerjarmak2023/associated_abspaths/bundles_uvis_euv_2008_083_solar_time_series_egress.txt'),
+        ('bundles/cassini_uvis_solarocc_beckerjarmak2023/data/uvis_euv_2006_257_solar_time_series_ingress.xml',
+         'previews',
+         'cassini_uvis_solarocc_beckerjarmak2023/associated_abspaths/previews_uvis_euv_2006_257_solar_time_series_ingress.txt'),
+        ('bundles/cassini_uvis_solarocc_beckerjarmak2023/data/uvis_euv_2008_083_solar_time_series_egress.xml',
+         'previews',
+         'cassini_uvis_solarocc_beckerjarmak2023/associated_abspaths/previews_uvis_euv_2008_083_solar_time_series_egress.txt'),
+    ]
+)
+
+def test_associated_abspaths(request, input_path, category, expected):
+    update = request.config.option.update
+    associated_abspaths_test(pds4file.Pds4File, input_path, category,
+                             TEST_RESULTS_DIR+expected, update)
 
 def test_opus_id_to_primary_logical_path():
     for logical_path in PRIMARY_FILESPEC_LIST:
@@ -275,65 +288,6 @@ def test_opus_id_to_primary_logical_path():
         opus_id_pdsf = pds4file.Pds4File.from_opus_id(opus_id)
         assert opus_id_pdsf.logical_path == logical_path
 
-# @pytest.mark.parametrize(
-#     'input_path,category,expected',
-#     [
-#         ('cassini_iss/cassini_iss_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947228n.xml',
-#          'bundles',
-#          [
-#             'bundles/cassini_iss/cassini_iss_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947228n.img',
-#             'bundles/cassini_iss/cassini_iss_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947228n.xml',
-#             'bundles/cassini_iss/cassini_iss_cruise/browse_raw/130xxxxxxx/13089xxxxx/1308947228n-full.png',
-#             'bundles/cassini_iss/cassini_iss_cruise/browse_raw/130xxxxxxx/13089xxxxx/1308947228n-full.xml'
-#          ]),
-#         ('cassini_iss/cassini_iss_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947228n.xml',
-#          'previews',
-#          [
-#             'previews/cassini_iss/cassini_iss_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947228n_full.png',
-#             'previews/cassini_iss/cassini_iss_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947228n_med.png',
-#             'previews/cassini_iss/cassini_iss_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947228n_small.png',
-#             'previews/cassini_iss/cassini_iss_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947228n_thumb.png'
-#          ]),
-#         ('cassini_iss/cassini_iss_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947228n.xml',
-#          'calibrated',
-#          [
-#             'calibrated/cassini_iss/cassini_iss_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947228n_CALIB.IMG',
-#             'calibrated/cassini_iss/cassini_iss_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947228n_CALIB.LBL'
-#          ]),
-#         ('cassini_iss/cassini_iss_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947228n.xml',
-#          'documents',
-#          [
-#             'documents/cassini_iss/Calibration-Plan.pdf',
-#             'documents/cassini_iss/Data-Product-SIS.txt',
-#             'documents/cassini_iss/ISS-Users-Guide.docx',
-#             'documents/cassini_iss/Data-Product-SIS.pdf',
-#             'documents/cassini_iss/Calibration-Theoretical-Basis.pdf',
-#             'documents/cassini_iss/VICAR-File-Format.pdf',
-#             'documents/cassini_iss/Calibration-Report.link',
-#             'documents/cassini_iss/Press-Releases-at-RMS.link',
-#             'documents/cassini_iss/VICAR-Home-Page-at-JPL.link',
-#             'documents/cassini_iss/Press-Releases-at-JPL-Photojournal.link',
-#             'documents/cassini_iss/Porco-etal-2004-SSR.link',
-#             'documents/cassini_iss/ISS-Users-Guide.pdf',
-#             'documents/cassini_iss/Archive-SIS.pdf',
-#             'documents/cassini_iss/PDS-ISS-Home-Page.link',
-#             'documents/cassini_iss/CISSCAL-Users-Guide.pdf',
-#             'documents/cassini_iss/PDS-ISS-Home-Page-at-RMS.link',
-#             'documents/cassini_iss/Archive-SIS.txt',
-#             'documents/cassini_iss/Cassini-ISS-Final-Report.pdf',
-#             'documents/cassini_iss/Calibration-Report.zip'
-#          ]),
-#         # TODO: add test case for metadata when correct index files & _indexshelf-metadata
-#         # are added
-#     ]
-# )
-# def test_associated_abspaths(input_path, category, expected):
-#     target_pdsfile = instantiate_target_pdsfile(input_path)
-#     res = target_pdsfile.associated_abspaths(category=category)
-#     result_paths = []
-#     result_paths += pds4file.Pds4File.logicals_for_abspaths(res)
-#     assert len(result_paths) != 0
-#     for path in result_paths:
-#         assert path in expected
+
 
 ##########################################################################################
