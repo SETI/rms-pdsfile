@@ -13,7 +13,10 @@ from pdsfile.preload_and_cache import cache_lifetime_for_class
 
 class Pds4File(PdsFile):
 
-    BUNDLESET_REGEX = re.compile(r'^(uranus_occs_earthbased|^cassini_iss|^cassini_vims)$')
+    BUNDLESET_REGEX = re.compile(r'^(uranus_occs_earthbased|' +
+                                 r'^cassini_uvis_solarocc_beckerjarmak2023|' +
+                                 r'^cassini_iss|' +
+                                 r'^cassini_vims)$')
     BUNDLESET_PLUS_REGEX   = re.compile(BUNDLESET_REGEX.pattern[:-1] +
                                         r'(_v[0-9]+\.[0-9]+\.[0-9]+|' +
                                         r'_v[0-9]+\.[0-9]+|_v[0-9]+|' +
@@ -24,7 +27,8 @@ class Pds4File(PdsFile):
     BUNDLESET_PLUS_REGEX_I = re.compile(BUNDLESET_PLUS_REGEX.pattern, re.I)
 
     BUNDLENAME_REGEX = re.compile(r'((^uranus_occ_u\d{0,4}._[a-z]*_(fos|\d{2,3}cm))'+
-                                  r'|(^cassini\_[a-z]{3,4}\_cruise))$')
+                                  r'|(^cassini\_[a-z]{3,4}\_(cruise|saturn))'+
+                                  r'|(^cassini\_uvis.*_beckerjarmak2023))$')
     BUNDLENAME_PLUS_REGEX  = re.compile(BUNDLENAME_REGEX.pattern[:-1] +
                                         r'(|_[a-z]+)(|_md5\.txt|\.tar\.gz)$')
     BUNDLENAME_PLUS_REGEX_I = re.compile(BUNDLENAME_PLUS_REGEX.pattern, re.I)
@@ -70,6 +74,17 @@ class Pds4File(PdsFile):
 
     IDX_EXT = '.csv'
     LBL_EXT = '.xml'
+
+    # bundles stored at the same level with other bundle sets in the PDS4 directory structure
+    IS_BUNDLE_DIR = {
+        'cassini_uvis_solarocc_beckerjarmak2023',
+        # 'cassini_iss_cruise',
+        # 'cassini_iss_saturn',
+        # 'cassini_vims_cruise',
+        # 'cassini_vims_saturn',
+        # 'voyager1_rss_jupiter_raw',
+        # 'voyager2_rss_jupiter_raw',
+    }
 
     def __init__(self):
         super().__init__()
@@ -149,6 +164,7 @@ try:
     # Data set-specific rules are implemented as subclasses of Pds4File
     # from pdsfile_reorg.Pds4File.rules import *
     from .rules import (cassini_iss,
+                        cassini_uvis_solarocc_beckerjarmak2023,
                         cassini_vims,
                         uranus_occs_earthbased)
 except AttributeError:
