@@ -54,7 +54,7 @@ class TestPds4FileBlackBox:
              'co-uvis-occ-2005-159-sun-i'),
             ('cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023/data/uvis_euv_2008_083_solar_time_series_egress.xml',
              'co-uvis-occ-2008-083-sun-e'),
-            ('cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023/data/uvis_euv_2008_083_solar_time_series_egress_supplement.tab',
+            ('cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023/data/supplemental/uvis_euv_2008_083_solar_time_series_egress_supplement.tab',
              'co-uvis-occ-2008-083-sun-e'),
             #  uranus_occs_earthbased
             ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress.xml',
