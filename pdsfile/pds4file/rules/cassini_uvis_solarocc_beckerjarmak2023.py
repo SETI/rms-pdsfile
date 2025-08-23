@@ -77,8 +77,7 @@ associations_to_documents = translator.TranslatorByRegex([
 ##########################################################################################
 
 view_options = translator.TranslatorByRegex([
-    (r'.*/COISS_[12].../(data|extras/w+)(|/\w+)',     0, (True, True,  True )),
-    (r'.*/COISS_3.../(data|extras/w+)/(images|maps)', 0, (True, False, False)),
+
 ])
 
 ##########################################################################################
@@ -86,14 +85,7 @@ view_options = translator.TranslatorByRegex([
 ##########################################################################################
 
 neighbors = translator.TranslatorByRegex([
-    (r'(.*)/COISS_[12]xxx(.*)/COISS_..../(data|extras/\w+)/\w+', 0, r'\1/COISS_[12]xxx\2/*/\3/*'),
-    (r'(.*)/COISS_[12]xxx(.*)/COISS_..../(data|extras/\w+)',     0, r'\1/COISS_[12]xxx\2/*/\3'),
-    (r'(.*)/COISS_[12]xxx(.*)/COISS_....',                       0, r'\1/COISS_[12]xxx\2/*'),
 
-    (r'volumes/COISS_0xxx(|_v[0-9\.]+)/COISS_..../data',               0, r'volumes/COISS_0xxx\1/*/data'),
-    (r'volumes/COISS_0xxx(|_v[0-9\.]+)/COISS_..../data/(\w+)',         0, r'volumes/COISS_0xxx\1/*/data/\2'),
-    (r'volumes/COISS_0xxx(|_v[0-9\.]+)/COISS_..../data/(\w+/\w+)',     0, r'volumes/COISS_0xxx\1/*/data/\2'),
-    (r'volumes/COISS_0xxx(|_v[0-9\.]+)/COISS_..../data/(\w+/\w+)/\w+', 0, r'volumes/COISS_0xxx\1/*/data/\2/*'),
 ])
 
 ##########################################################################################
@@ -102,15 +94,6 @@ neighbors = translator.TranslatorByRegex([
 
 sort_key = translator.TranslatorByRegex([
 
-    # Skips over N or W, placing files into chronological order
-    (r'([NW])([0-9]{10})(.*)_full.png',  0, r'\2\1\3_1full.jpg'),
-    (r'([NW])([0-9]{10})(.*)_med.jpg',   0, r'\2\1\3_2med.jpg'),
-    (r'([NW])([0-9]{10})(.*)_small.jpg', 0, r'\2\1\3_3small.jpg'),
-    (r'([NW])([0-9]{10})(.*)_thumb.jpg', 0, r'\2\1\3_4thumb.jpg'),
-    (r'([NW])([0-9]{10})(.*)', 0, r'\2\1\3'),
-
-    # Used inside COISS_0011/document/report
-    ('index.html', 0, '000index.html'),
 ])
 
 ##########################################################################################
