@@ -3643,10 +3643,6 @@ class PdsFile(object):
                         this.bundlename_ = ''
                         this.interior = basename
 
-                if cls.__name__ == 'Pds4File' and this.bundleset in cls.IS_BUNDLE_DIR:
-                    this.bundlename_ = this.bundleset_
-                    this.bundlename = this.bundleset
-
                 if self.checksums_ or self.archives_:
                     this.bundlename_ = ''
                     this.interior = basename
@@ -3691,10 +3687,6 @@ class PdsFile(object):
                             merged_parent._childnames_filled.sort()
                             cls.CACHE.set(self.logical_path.lower(), merged_parent,
                                                                  lifetime=0)
-
-                if cls.__name__ == 'Pds4File' and this.bundleset in cls.IS_BUNDLE_DIR:
-                    this.bundlename_ = this.bundleset_
-                    this.bundlename = this.bundleset
 
                 return this._complete(must_exist, caching, lifetime)
 
@@ -4210,10 +4202,6 @@ class PdsFile(object):
 
                 # Pop the first entry from the pseudo-path and try again
                 parts = parts[1:]
-
-        if cls.__name__ == 'Pds4File' and this.bundleset in cls.IS_BUNDLE_DIR:
-            this.bundlename_ = this.bundleset_
-            this.bundlename = this.bundleset
 
         # If the voltype is missing, it must be "volumes" (for PDS3). For PDS4, it's
         # "bundles"
