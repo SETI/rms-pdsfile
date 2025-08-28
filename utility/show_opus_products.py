@@ -95,7 +95,7 @@ for pdsf_inst in pdsf_inst_list:
         if opus_type not in golden_opus_types:
             print(f'WARNING: {opus_type} is not valid for {pdsf_inst.logical_path}')
         elif opus_type not in valid_opus_types:
-            valid_opus_types.append(type)
+            valid_opus_types.append(opus_type)
 
     # If all the give opus types are wrong, let the user know and don't display output
     # for this pdsfile instance
