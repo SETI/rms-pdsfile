@@ -44,7 +44,7 @@ associations_to_bundles = translator.TranslatorByRegex([
             r'bundles/\1/browse/\3.jpg',
             r'bundles/\1/browse/\3.xml',
         ]),
-    (r'documents/cassini_uvis_solarocc_beckerjarmak2023*', 0,
+    (r'documents/cassini_uvis_solarocc_beckerjarmak2023.*', 0,
         r'bundles/cassini_uvis_solarocc_beckerjarmak2023'),
 ])
 
@@ -69,8 +69,8 @@ associations_to_metadata = translator.TranslatorByRegex([
 ])
 
 associations_to_documents = translator.TranslatorByRegex([
-    (r'bundles/cassini_uvis_solarocc_beckerjarmak2023*', 0,
-         r'documents/cassini_uvis_solarocc_beckerjarmak2023*'),
+    (r'bundles/cassini_uvis_solarocc_beckerjarmak2023.*', 0,
+         r'documents/cassini_uvis_solarocc_beckerjarmak2023.*'),
 ])
 
 ##########################################################################################
@@ -102,10 +102,10 @@ sort_key = translator.TranslatorByRegex([
 ##########################################################################################
 
 opus_type = translator.TranslatorByRegex([
-    (r'bundles/cassini_uvis_.*beckerjarmak2023/cassini_uvis_.*beckerjarmak2023*/data/uvis_euv_.*\.(tab|xml)',              0, ('Cassini UVIS Solar Occultations', 10, 'couvis_solar_occ_ring', 'Occultation Ring Time Series', True)),
-    (r'bundles/cassini_uvis_.*beckerjarmak2023/cassini_uvis_.*beckerjarmak2023*/data/supplemental/uvis_euv_.*\.(tab|xml)', 0, ('Cassini UVIS Solar Occultations', 20, 'couvis_solar_occ_ring_supp', 'Occultation Ring Time Series Supplemental', True)),
-    (r'bundles/cassini_uvis_.*beckerjarmak2023/cassini_uvis_.*beckerjarmak2023*/browse/uvis_euv_.*\.(jpg|xml)',            0, ('Cassini UVIS Solar Occultations', 40, 'couvis_solar_occ_browse', 'Detailed Browse', True)),
-    (r'bundles/cassini_uvis_.*beckerjarmak2023/cassini_uvis_.*beckerjarmak2023*/document/[12].*\.(pdf|xml)',               0, ('Cassini UVIS Solar Occultations', 30, 'couvis_solar_occ_documentation', 'Documentation', False)),
+    (r'bundles/cassini_uvis_.*beckerjarmak2023/cassini_uvis_.*beckerjarmak2023.*/data/uvis_euv_.*\.(tab|xml)',              0, ('Cassini UVIS Solar Occultations', 10, 'couvis_solar_occ_ring', 'Occultation Ring Time Series', True)),
+    (r'bundles/cassini_uvis_.*beckerjarmak2023/cassini_uvis_.*beckerjarmak2023.*/data/supplemental/uvis_euv_.*\.(tab|xml)', 0, ('Cassini UVIS Solar Occultations', 20, 'couvis_solar_occ_ring_supp', 'Occultation Ring Time Series Supplemental', True)),
+    (r'bundles/cassini_uvis_.*beckerjarmak2023/cassini_uvis_.*beckerjarmak2023.*/browse/uvis_euv_.*\.(jpg|xml)',            0, ('Cassini UVIS Solar Occultations', 40, 'couvis_solar_occ_browse', 'Detailed Browse', True)),
+    (r'bundles/cassini_uvis_.*beckerjarmak2023/cassini_uvis_.*beckerjarmak2023.*/document/[12].*\.(pdf|xml)',               0, ('Cassini UVIS Solar Occultations', 30, 'couvis_solar_occ_documentation', 'Documentation', False)),
 
 ])
 
@@ -157,7 +157,7 @@ opus_products = translator.TranslatorByRegex([
 ##########################################################################################
 
 opus_id = translator.TranslatorByRegex([
-     (r'.*/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023*/data(|/supplemental)/uvis_euv_(\d{4})_(\d{3})_.*_([ei])(gress|ngress)(|_supplement)\.[a-z]{3}', 0, r'co-uvis-occ-\2-\3-sun-\4')
+     (r'.*/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023.*/data(|/supplemental)/uvis_euv_(\d{4})_(\d{3})_.*_([ei])(gress|ngress)(|_supplement)\.[a-z]{3}', 0, r'co-uvis-occ-\2-\3-sun-\4')
 ])
 
 ##########################################################################################
@@ -173,7 +173,7 @@ filespec_to_bundleset = translator.TranslatorByRegex([
 ##########################################################################################
 
 opus_id_to_primary_logical_path = translator.TranslatorByRegex([
-    (r'co-uvis-occ-(\d{4})-(\d{3})-sun-([ei])',     0,  r'bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023*/data/uvis_euv_\1_\2_solar_time_series_\3*gress.xml'),
+    (r'co-uvis-occ-(\d{4})-(\d{3})-sun-([ei])',     0,  r'bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023/data/uvis_euv_\1_\2_solar_time_series_\3*gress.xml'),
 ])
 
 ##########################################################################################

@@ -28,7 +28,7 @@ class Pds4File(PdsFile):
 
     BUNDLENAME_REGEX = re.compile(r'((^uranus_occ_u\d{0,4}._[a-z]*_(fos|\d{2,3}cm))'+
                                   r'|(^cassini\_[a-z]{3,4}\_(cruise|saturn))'+
-                                  r'|(^cassini\_uvis.*_beckerjarmak2023))$')
+                                  r'|(^cassini\_uvis.*_beckerjarmak2023(|_.*)))$')
     BUNDLENAME_PLUS_REGEX  = re.compile(BUNDLENAME_REGEX.pattern[:-1] +
                                         r'(|_[a-z]+)(|_md5\.txt|\.tar\.gz)$')
     BUNDLENAME_PLUS_REGEX_I = re.compile(BUNDLENAME_PLUS_REGEX.pattern, re.I)
