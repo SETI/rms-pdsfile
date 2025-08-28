@@ -21,11 +21,12 @@ description_and_icon_by_regex = translator.TranslatorByRegex([
 ##########################################################################################
 
 default_viewables = translator.TranslatorByRegex([
-    (r'.*/(cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023*)/data(|/supplemental)/(uvis_euv.*)\.[a-z]{3}', 0,
-        [r'previews/\1/data\2/\3_preview_full.png',
-         r'previews/\1/data\2/\3_preview_med.png',
-         r'previews/\1/data\2/\3_preview_small.png',
-         r'previews/\1/data\2/\3_preview_thumb.png',
+    (r'.*/(cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023.*)/data(|/supplemental)/(uvis_euv.*)\.[a-z]{3}', 0,
+    [
+        r'previews/\1/data\2/\3_preview_full.png',
+        r'previews/\1/data\2/\3_preview_med.png',
+        r'previews/\1/data\2/\3_preview_small.png',
+        r'previews/\1/data\2/\3_preview_thumb.png',
     ]),
 ])
 
@@ -34,7 +35,7 @@ default_viewables = translator.TranslatorByRegex([
 ##########################################################################################
 
 associations_to_bundles = translator.TranslatorByRegex([
-    (r'.*/(cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023*)/data(|/supplemental)/(uvis_euv_.*_(egress|ingress))(|_supplement)\.[a-z]{3}', 0,
+    (r'.*/(cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023.*)/data(|/supplemental)/(uvis_euv_.*_(egress|ingress))(|_supplement)\.[a-z]{3}', 0,
         [
             r'bundles/\1/data/\3.tab',
             r'bundles/\1/data/\3.xml',
@@ -48,7 +49,7 @@ associations_to_bundles = translator.TranslatorByRegex([
 ])
 
 associations_to_previews = translator.TranslatorByRegex([
-    (r'.*/(cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023*)/data(|/supplemental)/(uvis_euv_.*_(egress|ingress))(|_supplement)\.[a-z]{3}', 0,
+    (r'.*/(cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023.*)/data(|/supplemental)/(uvis_euv_.*_(egress|ingress))(|_supplement)\.[a-z]{3}', 0,
         [
             r'previews/\1/data/\3_preview_full.png',
             r'previews/\1/data/\3_preview_med.png',
@@ -62,7 +63,7 @@ associations_to_previews = translator.TranslatorByRegex([
 ])
 
 associations_to_metadata = translator.TranslatorByRegex([
-    (r'.*/(cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023*)/data(|/supplemental)/(uvis_euv_.*_(egress|ingress))(|_supplement)\.[a-z]{3}', 0,
+    (r'.*/(cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023.*)/data(|/supplemental)/(uvis_euv_.*_(egress|ingress))(|_supplement)\.[a-z]{3}', 0,
         [
         ]),
 ])
@@ -122,15 +123,15 @@ opus_format = translator.TranslatorByRegex([
 ##########################################################################################
 
 opus_products = translator.TranslatorByRegex([
-    (r'bundles/(cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023*)/data(|/supplemental)/(uvis_euv_.*_(egress|ingress))(|_supplement)\.[a-z]{3}', 0,
+    (r'bundles/(cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023.*)/data(|/supplemental)/(uvis_euv_.*_(egress|ingress))(|_supplement)\.[a-z]{3}', 0,
             [
-                # bundles
+                # bundles data/
                 r'bundles/\1/data/\3.tab',
                 r'bundles/\1/data/\3.xml',
                 # bundles data/supplemental
                 r'bundles/\1/data/supplemental/\3_supplement.tab',
                 r'bundles/\1/data/supplemental/\3_supplement.xml',
-                # browse
+                # bundles browse/
                 r'bundles/\1/browse/\3.jpg',
                 r'bundles/\1/browse/\3.xml',
                 # document
