@@ -178,7 +178,7 @@ opus_id_to_primary_logical_path = translator.TranslatorByRegex([
 # Subclass definition
 ##########################################################################################
 
-class cassini_uvis_solarocc_beckerjarmak2023(pds4file.Pds4File): # Cassini_ISS
+class cassini_uvis_solarocc_beckerjarmak2023(pds4file.Pds4File):
 
     pds4file.Pds4File.VOLSET_TRANSLATOR = translator.TranslatorByRegex(
         [('cassini_uvis_solarocc_beckerjarmak2023', re.I,
@@ -222,7 +222,7 @@ pds4file.Pds4File.SUBCLASSES['cassini_uvis_solarocc_beckerjarmak2023'] = cassini
 ##########################################################################################
 
 import pytest
-from .pytest_support import * # noqa: F403
+from .pytest_support import *
 
 @pytest.mark.parametrize(
     ('input_path', 'expected'),
