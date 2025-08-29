@@ -21,13 +21,13 @@ description_and_icon_by_regex = translator.TranslatorByRegex([
 ##########################################################################################
 
 default_viewables = translator.TranslatorByRegex([
-    (r'.*/(cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023.*)/data(|/supplemental)/(uvis_euv.*)\.[a-z]{3}', 0,
-    [
-        r'previews/\1/data\2/\3_preview_full.png',
-        r'previews/\1/data\2/\3_preview_med.png',
-        r'previews/\1/data\2/\3_preview_small.png',
-        r'previews/\1/data\2/\3_preview_thumb.png',
-    ]),
+    (r'.*/(cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023[^/]*)/data(|/supplemental)/(uvis_euv.*)\.[a-z]{3}', 0,
+     [
+         r'previews/\1/data\2/\3_preview_full.png',
+         r'previews/\1/data\2/\3_preview_med.png',
+         r'previews/\1/data\2/\3_preview_small.png',
+         r'previews/\1/data\2/\3_preview_thumb.png',
+     ]),
 ])
 
 ##########################################################################################
@@ -35,7 +35,7 @@ default_viewables = translator.TranslatorByRegex([
 ##########################################################################################
 
 associations_to_bundles = translator.TranslatorByRegex([
-    (r'.*/(cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023.*)/data(|/supplemental)/(uvis_euv_.*_(egress|ingress))(|_supplement)\.[a-z]{3}', 0,
+    (r'.*/(cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023[^/]*)/data(|/supplemental)/(uvis_euv_.*_(egress|ingress))(|_supplement)\.[a-z]{3}', 0,
         [
             r'bundles/\1/data/\3.tab',
             r'bundles/\1/data/\3.xml',
@@ -44,12 +44,12 @@ associations_to_bundles = translator.TranslatorByRegex([
             r'bundles/\1/browse/\3.jpg',
             r'bundles/\1/browse/\3.xml',
         ]),
-    (r'documents/cassini_uvis_solarocc_beckerjarmak2023.*', 0,
+    (r'documents/cassini_uvis_solarocc_beckerjarmak2023[^/]*', 0,
         r'bundles/cassini_uvis_solarocc_beckerjarmak2023'),
 ])
 
 associations_to_previews = translator.TranslatorByRegex([
-    (r'.*/(cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023.*)/data(|/supplemental)/(uvis_euv_.*_(egress|ingress))(|_supplement)\.[a-z]{3}', 0,
+    (r'.*/(cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023[^/]*)/data(|/supplemental)/(uvis_euv_.*_(egress|ingress))(|_supplement)\.[a-z]{3}', 0,
         [
             r'previews/\1/data/\3_preview_full.png',
             r'previews/\1/data/\3_preview_med.png',
@@ -63,14 +63,14 @@ associations_to_previews = translator.TranslatorByRegex([
 ])
 
 associations_to_metadata = translator.TranslatorByRegex([
-    (r'.*/(cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023.*)/data(|/supplemental)/(uvis_euv_.*_(egress|ingress))(|_supplement)\.[a-z]{3}', 0,
+    (r'.*/(cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023[^/]*)/data(|/supplemental)/(uvis_euv_.*_(egress|ingress))(|_supplement)\.[a-z]{3}', 0,
         [
         ]),
 ])
 
 associations_to_documents = translator.TranslatorByRegex([
-    (r'bundles/cassini_uvis_solarocc_beckerjarmak2023.*', 0,
-         r'documents/cassini_uvis_solarocc_beckerjarmak2023.*'),
+    (r'bundles/cassini_uvis_solarocc_beckerjarmak2023[^/]*', 0,
+     r'documents/cassini_uvis_solarocc_beckerjarmak2023[^/]*'),
 ])
 
 ##########################################################################################
@@ -102,10 +102,10 @@ sort_key = translator.TranslatorByRegex([
 ##########################################################################################
 
 opus_type = translator.TranslatorByRegex([
-    (r'bundles/cassini_uvis_.*beckerjarmak2023/cassini_uvis_.*beckerjarmak2023.*/data/uvis_euv_.*\.(tab|xml)',              0, ('Cassini UVIS Solar Occultations', 10, 'couvis_solar_occ_ring', 'Occultation Ring Time Series', True)),
-    (r'bundles/cassini_uvis_.*beckerjarmak2023/cassini_uvis_.*beckerjarmak2023.*/data/supplemental/uvis_euv_.*\.(tab|xml)', 0, ('Cassini UVIS Solar Occultations', 20, 'couvis_solar_occ_ring_supp', 'Occultation Ring Time Series Supplemental', True)),
-    (r'bundles/cassini_uvis_.*beckerjarmak2023/cassini_uvis_.*beckerjarmak2023.*/browse/uvis_euv_.*\.(jpg|xml)',            0, ('Cassini UVIS Solar Occultations', 40, 'couvis_solar_occ_browse', 'Detailed Browse', True)),
-    (r'bundles/cassini_uvis_.*beckerjarmak2023/cassini_uvis_.*beckerjarmak2023.*/document/[12].*\.(pdf|xml)',               0, ('Cassini UVIS Solar Occultations', 30, 'couvis_solar_occ_documentation', 'Documentation', False)),
+    (r'bundles/cassini_uvis_.*beckerjarmak2023/cassini_uvis_.*beckerjarmak2023[^/]*/data/uvis_euv_.*\.(tab|xml)',              0, ('Cassini UVIS Solar Occultations', 10, 'couvis_solar_occ_ring', 'Occultation Ring Time Series', True)),
+    (r'bundles/cassini_uvis_.*beckerjarmak2023/cassini_uvis_.*beckerjarmak2023[^/]*/data/supplemental/uvis_euv_.*\.(tab|xml)', 0, ('Cassini UVIS Solar Occultations', 20, 'couvis_solar_occ_ring_supp', 'Occultation Ring Time Series Supplemental', True)),
+    (r'bundles/cassini_uvis_.*beckerjarmak2023/cassini_uvis_.*beckerjarmak2023[^/]*/browse/uvis_euv_.*\.(jpg|xml)',            0, ('Cassini UVIS Solar Occultations', 40, 'couvis_solar_occ_browse', 'Detailed Browse', True)),
+    (r'bundles/cassini_uvis_.*beckerjarmak2023/cassini_uvis_.*beckerjarmak2023[^/]*/document/[12].*\.(pdf|xml)',               0, ('Cassini UVIS Solar Occultations', 30, 'couvis_solar_occ_documentation', 'Documentation', False)),
 
 ])
 
@@ -114,8 +114,6 @@ opus_type = translator.TranslatorByRegex([
 ##########################################################################################
 
 opus_format = translator.TranslatorByRegex([
-    (r'.*\.IMG',        0, ('Binary', 'VICAR')),
-    (r'.*\.jpeg_small', 0, ('Binary', 'JPEG')),
 ])
 
 ##########################################################################################
@@ -123,33 +121,33 @@ opus_format = translator.TranslatorByRegex([
 ##########################################################################################
 
 opus_products = translator.TranslatorByRegex([
-    (r'bundles/(cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023.*)/data(|/supplemental)/(uvis_euv_.*_(egress|ingress))(|_supplement)\.[a-z]{3}', 0,
-            [
-                # bundles data/
-                r'bundles/\1/data/\3.tab',
-                r'bundles/\1/data/\3.xml',
-                # bundles data/supplemental
-                r'bundles/\1/data/supplemental/\3_supplement.tab',
-                r'bundles/\1/data/supplemental/\3_supplement.xml',
-                # bundles browse/
-                r'bundles/\1/browse/\3.jpg',
-                r'bundles/\1/browse/\3.xml',
-                # document
-                r'bundles/\1/document/1-RingSolarOccAtlasVol1V1.0.pdf',
-                r'bundles/\1/document/1-RingSolarOccAtlasVol1V1.0.xml',
-                r'bundles/\1/document/2-RingSolarOccAtlasVol2V1.0.pdf',
-                r'bundles/\1/document/2-RingSolarOccAtlasVol2V1.0.xml',
-                # previews
-                r'previews/\1/data/\3_preview_full.png',
-                r'previews/\1/data/\3_preview_med.png',
-                r'previews/\1/data/\3_preview_small.png',
-                r'previews/\1/data/\3_preview_thumb.png',
-                # previews data/supplemental
-                r'previews/\1/data/supplemental/\3_supplement_preview_full.png',
-                r'previews/\1/data/supplemental/\3_supplement_preview_med.png',
-                r'previews/\1/data/supplemental/\3_supplement_preview_small.png',
-                r'previews/\1/data/supplemental/\3_supplement_preview_thumb.png',
-            ]),
+    (r'bundles/(cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023[^/]*)/data(|/supplemental)/(uvis_euv_.*_(egress|ingress))(|_supplement)\.[a-z]{3}', 0,
+     [
+         # bundles data/
+         r'bundles/\1/data/\3.tab',
+         r'bundles/\1/data/\3.xml',
+         # bundles data/supplemental
+         r'bundles/\1/data/supplemental/\3_supplement.tab',
+         r'bundles/\1/data/supplemental/\3_supplement.xml',
+         # bundles browse/
+         r'bundles/\1/browse/\3.jpg',
+         r'bundles/\1/browse/\3.xml',
+         # document
+         r'bundles/\1/document/1-RingSolarOccAtlasVol1V1.0.pdf',
+         r'bundles/\1/document/1-RingSolarOccAtlasVol1V1.0.xml',
+         r'bundles/\1/document/2-RingSolarOccAtlasVol2V1.0.pdf',
+         r'bundles/\1/document/2-RingSolarOccAtlasVol2V1.0.xml',
+         # previews
+         r'previews/\1/data/\3_preview_full.png',
+         r'previews/\1/data/\3_preview_med.png',
+         r'previews/\1/data/\3_preview_small.png',
+         r'previews/\1/data/\3_preview_thumb.png',
+         # previews data/supplemental
+         r'previews/\1/data/supplemental/\3_supplement_preview_full.png',
+         r'previews/\1/data/supplemental/\3_supplement_preview_med.png',
+         r'previews/\1/data/supplemental/\3_supplement_preview_small.png',
+         r'previews/\1/data/supplemental/\3_supplement_preview_thumb.png',
+     ]),
 ])
 
 ##########################################################################################
@@ -157,7 +155,7 @@ opus_products = translator.TranslatorByRegex([
 ##########################################################################################
 
 opus_id = translator.TranslatorByRegex([
-     (r'.*/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023.*/data(|/supplemental)/uvis_euv_(\d{4})_(\d{3})_.*_([ei])(gress|ngress)(|_supplement)\.[a-z]{3}', 0, r'co-uvis-occ-\2-\3-sun-\4')
+    (r'.*/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023[^/]*/data(|/supplemental)/uvis_euv_(\d{4})_(\d{3})_.*_([ei])(gress|ngress)(|_supplement)\.[a-z]{3}', 0, r'co-uvis-occ-\2-\3-sun-\4')
 ])
 
 ##########################################################################################
@@ -224,13 +222,10 @@ pds4file.Pds4File.SUBCLASSES['cassini_uvis_solarocc_beckerjarmak2023'] = cassini
 ##########################################################################################
 
 import pytest
-from .pytest_support import *
-
-import pytest
-from .pytest_support import *
+from .pytest_support import * # noqa: F403
 
 @pytest.mark.parametrize(
-    'input_path,expected',
+    ('input_path', 'expected'),
     [
         ('bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023/data/uvis_euv_2005_159_solar_time_series_ingress.xml',
          'cassini_uvis_solarocc_beckerjarmak2023/opus_products/uvis_euv_2005_159_solar_time_series_ingress.txt'),
@@ -243,7 +238,7 @@ def test_opus_products(request, input_path, expected):
     opus_products_test(pds4file.Pds4File, input_path, TEST_RESULTS_DIR+expected, update)
 
 @pytest.mark.parametrize(
-    'input_path,category,expected',
+    ('input_path', 'category', 'expected'),
     [
         ('bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023/data/uvis_euv_2006_257_solar_time_series_ingress.xml',
          'bundles',

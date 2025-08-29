@@ -26,9 +26,9 @@ class Pds4File(PdsFile):
                                         r'(|_md5\.txt|\.tar\.gz))$')
     BUNDLESET_PLUS_REGEX_I = re.compile(BUNDLESET_PLUS_REGEX.pattern, re.I)
 
-    BUNDLENAME_REGEX = re.compile(r'((^uranus_occ_u\d{0,4}._[a-z]*_(fos|\d{2,3}cm))'+
-                                  r'|(^cassini\_[a-z]{3,4}\_(cruise|saturn))'+
-                                  r'|(^cassini\_uvis.*_beckerjarmak2023(|_.*)))$')
+    BUNDLENAME_REGEX = re.compile(r'((^uranus_occ_u\d{0,4}._[a-z]*_(fos|\d{2,3}cm))'
+                                  r'|(^cassini_[a-z]{3,4}_(cruise|saturn))'
+                                  r'|(^cassini_uvis_solarocc_beckerjarmak2023(|_.*)))$')
     BUNDLENAME_PLUS_REGEX  = re.compile(BUNDLENAME_REGEX.pattern[:-1] +
                                         r'(|_[a-z]+)(|_md5\.txt|\.tar\.gz)$')
     BUNDLENAME_PLUS_REGEX_I = re.compile(BUNDLENAME_PLUS_REGEX.pattern, re.I)
@@ -153,7 +153,7 @@ try:
     # Data set-specific rules are implemented as subclasses of Pds4File
     # from pdsfile_reorg.Pds4File.rules import *
     from .rules import (cassini_iss,
-                        cassini_uvis_solarocc_beckerjarmak2023,
+                        cassini_uvis_solarocc_beckerjarmak2023,  # noqa: F401
                         cassini_vims,
                         uranus_occs_earthbased)
 except AttributeError:
