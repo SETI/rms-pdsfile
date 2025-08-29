@@ -152,10 +152,10 @@ Pds4File.SUBCLASSES['default'] = Pds4File
 try:
     # Data set-specific rules are implemented as subclasses of Pds4File
     # from pdsfile_reorg.Pds4File.rules import *
-    from .rules import (cassini_iss,
+    from .rules import (cassini_iss,                             # noqa: F401
                         cassini_uvis_solarocc_beckerjarmak2023,  # noqa: F401
-                        cassini_vims,
-                        uranus_occs_earthbased)
+                        cassini_vims,                            # noqa: F401
+                        uranus_occs_earthbased)                  # noqa: F401
 except AttributeError:
     pass                    # This occurs when running pytests on individual
                             # rule subclasses, where pdsfile can be imported
