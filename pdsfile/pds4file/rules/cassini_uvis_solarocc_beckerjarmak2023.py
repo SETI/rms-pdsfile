@@ -70,7 +70,10 @@ associations_to_metadata = translator.TranslatorByRegex([
 
 associations_to_documents = translator.TranslatorByRegex([
     (r'bundles/cassini_uvis_solarocc_beckerjarmak2023[^/]*', 0,
-     r'documents/cassini_uvis_solarocc_beckerjarmak2023[^/]*'),
+        [
+            r'documents/cassini_uvis_solarocc_beckerjarmak2023[^/]*',
+            r'documents/cassini_uvis_solarocc_beckerjarmak2023[^/]*/.*',
+        ]),
 ])
 
 ##########################################################################################
@@ -104,8 +107,9 @@ sort_key = translator.TranslatorByRegex([
 opus_type = translator.TranslatorByRegex([
     (r'bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023[^/]*/data/uvis_euv_.*\.(tab|xml)',              0, ('Cassini UVIS Solar Occultations', 10, 'couvis_solar_occ_ring', 'Occultation Ring Time Series', True)),
     (r'bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023[^/]*/data/supplemental/uvis_euv_.*\.(tab|xml)', 0, ('Cassini UVIS Solar Occultations', 20, 'couvis_solar_occ_ring_supp', 'Occultation Ring Time Series Supplemental', True)),
-    (r'bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023[^/]*/browse/uvis_euv_.*\.(jpg|xml)',            0, ('Cassini UVIS Solar Occultations', 40, 'couvis_solar_occ_browse', 'Detailed Browse', True)),
     (r'bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023[^/]*/document/[12].*\.(pdf|xml)',               0, ('Cassini UVIS Solar Occultations', 30, 'couvis_solar_occ_documentation', 'Documentation', False)),
+    (r'bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023[^/]*/browse/uvis_euv_.*\.(jpg|xml)',            0, ('Cassini UVIS Solar Occultations', 40, 'couvis_solar_occ_browse', 'Detailed Browse', True)),
+    (r'bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023[^/]*/readme.txt',                               0, ('Cassini UVIS Solar Occultations', 50, 'couvis_solar_occ_readme', 'Bundle Overview', True)),
 
 ])
 
@@ -132,6 +136,8 @@ opus_products = translator.TranslatorByRegex([
          # bundles browse/
          r'bundles/\1/browse/\3.jpg',
          r'bundles/\1/browse/\3.xml',
+         # bundles readme.txt
+         r'bundles/\1/readme.txt',
          # document
          r'bundles/\1/document/1-RingSolarOccAtlasVol1V1.0.pdf',
          r'bundles/\1/document/1-RingSolarOccAtlasVol1V1.0.xml',
