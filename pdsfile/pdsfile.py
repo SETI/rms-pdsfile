@@ -21,6 +21,7 @@ import pdstable
 import pdsparser
 import translator
 
+from collections import defaultdict
 from pdsfile import (pdscache,
                      pdsviewable)
 
@@ -4797,7 +4798,7 @@ class PdsFile(object):
 
         # Construct the dictionary to return
         pdsfile_dict = {}
-        visited_label = []
+        label_visited = defaultdict(list)
         for pdsf in data_pdsfiles:
             key = opus_type_for_abspath.get(pdsf.abspath, pdsf.opus_type)
             if key == '':
@@ -4805,8 +4806,9 @@ class PdsFile(object):
             if key not in pdsfile_dict:
                 pdsfile_dict[key] = []
 
-            if pdsf.label_abspath and pdsf.label_abspath not in visited_label:
-                visited_label.append(pdsf.label_abspath)
+            # avoid duplicated label files in one opus type category
+            if pdsf.label_abspath and pdsf.label_abspath not in label_visited[key]:
+                label_visited[key].append(pdsf.label_abspath)
                 sublist = [pdsf] + label_pdsfiles[pdsf.label_abspath]
             else:
                 sublist = [pdsf]
