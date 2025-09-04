@@ -13,7 +13,6 @@ import datetime
 import glob
 import hashlib
 import os
-import re
 import shutil
 import sys
 
@@ -25,15 +24,6 @@ LOGDIRS = []
 
 LOGNAME = 'pds.validation.checksums'
 LOGROOT_ENV = 'PDS_LOG_ROOT'
-
-# Default limits
-GENERATE_CHECKSUMS_LIMITS = {'info': -1}
-READ_CHECKSUMS_LIMITS = {'debug': 0}
-WRITE_CHECKSUMS_LIMITS = {'dot_': -1, 'ds_store': -1, 'invisible': 100}
-VALIDATE_PAIRS_LIMITS = {}
-
-BACKUP_FILENAME = re.compile(r'.*[-_](20\d\d-\d\d-\d\dT\d\d-\d\d-\d\d'
-                             r'|backup|original)\.[\w.]+$')
 
 ################################################################################
 
@@ -51,8 +41,8 @@ def hashfile(fname, blocksize=65536):
 
 ################################################################################
 
-def generate_checksums(pdsdir, selection=None, oldpairs=[], *, regardless=True,
-                       logger=None, limits={}):
+def generate_checksums(pdsdir, selection=None, oldpairs=[], regardless=True,
+                       limits={'normal':-1}, logger=None):
     """Generate a list of tuples (abspath, checksum) recursively from the given
     directory tree.
 
@@ -74,10 +64,7 @@ def generate_checksums(pdsdir, selection=None, oldpairs=[], *, regardless=True,
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsdir.root_)
-
-    merged_limits = GENERATE_CHECKSUMS_LIMITS.copy()
-    merged_limits.update(limits)
-    logger.open('Generating MD5 checksums', dirpath, limits=merged_limits)
+    logger.open('Generating MD5 checksums', dirpath, limits=limits)
 
     latest_mtime = 0.
     try:
@@ -102,17 +89,13 @@ def generate_checksums(pdsdir, selection=None, oldpairs=[], *, regardless=True,
                     logger.dot_underscore('._* file skipped', abspath)
                     continue
 
-                if BACKUP_FILENAME.match(file) or ' copy' in file:
-                    logger.error('Backup file skipped', abspath)
-                    continue
-
                 if '/.' in abspath:             # flag invisible files
                     logger.invisible('Invisible file', abspath)
 
                 if regardless and selection:
                     md5 = hashfile(abspath)
                     newtuples.append((abspath, md5, file))
-                    logger.info('Selected MD5=%s' % md5, abspath)
+                    logger.normal('Selected MD5=%s' % md5, abspath)
 
                 elif abspath in md5_dict:
                     newtuples.append((abspath, md5_dict[abspath], file))
@@ -121,7 +104,7 @@ def generate_checksums(pdsdir, selection=None, oldpairs=[], *, regardless=True,
                 else:
                     md5 = hashfile(abspath)
                     newtuples.append((abspath, md5, file))
-                    logger.info('MD5=%s' % md5, abspath)
+                    logger.normal('MD5=%s' % md5, abspath)
 
         if selection:
             if len(newtuples) == 0:
@@ -164,21 +147,19 @@ def generate_checksums(pdsdir, selection=None, oldpairs=[], *, regardless=True,
 
 ################################################################################
 
-def read_checksums(check_path, selection=None, *, logger=None, limits={}):
+def read_checksums(check_path, selection=None, limits={}, logger=None):
+
     """Return a list of tuples (abspath, checksum) from a checksum file.
 
     If a selection is specified, then only the checksum with this file name
     is returned."""
 
     check_path = os.path.abspath(check_path)
-    pdscheck = pdsfile.Pds3File.from_abspath(check_path)
+    pdscheck = pdsfile.Pds4File.from_abspath(check_path)
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdscheck.root_)
-
-    merged_limits = READ_CHECKSUMS_LIMITS.copy()
-    merged_limits.update(limits)
-    logger.open('Reading MD5 checksums', check_path, limits=merged_limits)
+    logger.open('Reading MD5 checksums', check_path, limits=limits)
 
     try:
         logger.info('MD5 checksum file', check_path)
@@ -229,17 +210,17 @@ def read_checksums(check_path, selection=None, *, logger=None, limits={}):
 
 ################################################################################
 
-def checksum_dict(dirpath, *, logger=None, limits={}):
+def checksum_dict(dirpath, logger=None):
 
     dirpath = os.path.abspath(dirpath)
-    pdsdir = pdsfile.Pds3File.from_abspath(dirpath)
+    pdsdir = pdsfile.Pds4File.from_abspath(dirpath)
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsdir.root_)
     logger.info('Loading checksums for', dirpath, force=True)
 
     check_path = pdsdir.checksum_path_and_lskip()[0]
-    abspairs = read_checksums(check_path, logger=logger, limits=limits)
+    abspairs = read_checksums(check_path, logger=logger)
 
     pair_dict = {}
     for (abspath, checksum) in abspairs:
@@ -250,24 +231,23 @@ def checksum_dict(dirpath, *, logger=None, limits={}):
 
 ################################################################################
 
-def write_checksums(check_path, abspairs, *, logger=None, limits={}):
+def write_checksums(check_path, abspairs,
+                    limits={'dot_':-1, 'ds_store':-1, 'invisible':100},
+                    logger=None):
     """Write a checksum table containing the given pairs (abspath, checksum)."""
 
     check_path = os.path.abspath(check_path)
-    pdscheck = pdsfile.Pds3File.from_abspath(check_path)
+    pdscheck = pdsfile.Pds4File.from_abspath(check_path)
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdscheck.root_)
-
-    merged_limits = WRITE_CHECKSUMS_LIMITS.copy()
-    merged_limits.update(limits)
-    logger.open('Writing MD5 checksums', check_path, limits=merged_limits)
+    logger.open('Writing MD5 checksums', check_path, limits=limits)
 
     try:
         # Create parent directory if necessary
         parent = os.path.split(check_path)[0]
         if not os.path.exists(parent):
-            logger.info('Creating directory', parent)
+            logger.normal('Creating directory', parent)
             os.makedirs(parent)
 
         prefix_ = pdscheck.dirpath_and_prefix_for_checksum()[1]
@@ -303,16 +283,12 @@ def write_checksums(check_path, abspairs, *, logger=None, limits={}):
 
 ################################################################################
 
-def validate_pairs(pairs1, pairs2, selection=None, *, logger=None,
-                   limits={}):
+def validate_pairs(pairs1, pairs2, selection=None, limits={}, logger=None):
     """Validate the first checksum list against the second.
 
     If a selection is specified, only a file with that basename is checked."""
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
-
-    merged_limits = VALIDATE_PAIRS_LIMITS.copy()
-    merged_limits.update(limits)
     logger.open('Validating checksums', limits=limits)
 
     success = True
@@ -336,7 +312,7 @@ def validate_pairs(pairs1, pairs2, selection=None, *, logger=None,
 
             else:
                 del md5_dict[abspath]
-                logger.info('Validated', abspath)
+                logger.normal('Validated', abspath)
 
         if not selection:
             abspaths = list(md5_dict.keys())
@@ -355,12 +331,11 @@ def validate_pairs(pairs1, pairs2, selection=None, *, logger=None,
 
 ################################################################################
 
-def move_old_checksums(check_path, *, logger=None):
+def move_old_checksums(check_path, logger=None):
     """Appends a version number to an existing checksum file and moves it to
     the associated log directory."""
 
-    if not os.path.exists(check_path):
-        return
+    if not os.path.exists(check_path): return
 
     check_basename = os.path.basename(check_path)
     (check_prefix, check_ext) = os.path.splitext(check_basename)
@@ -383,23 +358,23 @@ def move_old_checksums(check_path, *, logger=None):
         shutil.copy(check_path, dest)
 
         if not from_logged:
-            logger.info('Checksum file moved from: ' + check_path, force=True)
+            logger.info('Checksum file moved from: ' + check_path)
             from_logged = True
 
-        logger.info('Checksum file moved to', dest, force=True)
+        logger.info('Checksum file moved to', dest)
 
 ################################################################################
 # Simplified functions to perform tasks
 ################################################################################
 
-def initialize(pdsdir, selection=None, *, logger=None, limits={}):
+def initialize(pdsdir, selection=None, logger=None):
 
     check_path = pdsdir.checksum_path_and_lskip()[0]
 
     # Make sure checksum file does not exist
     if os.path.exists(check_path):
         logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
-        logger.error('Checksum file already exists', check_path, force=True)
+        logger.error('Checksum file already exists', check_path)
         return False
 
     # Check selection
@@ -408,15 +383,15 @@ def initialize(pdsdir, selection=None, *, logger=None, limits={}):
                          '"initialize": ' + selection)
 
     # Generate checksums
-    (pairs, _) = generate_checksums(pdsdir, logger=logger, limits=limits)
+    (pairs, _) = generate_checksums(pdsdir, logger=logger)
     if not pairs:
         return False
 
     # Write new checksum file
-    write_checksums(check_path, pairs, logger=logger, limits=limits)
+    write_checksums(check_path, pairs, logger=logger)
     return True
 
-def reinitialize(pdsdir, selection=None, *, logger=None, limits={}):
+def reinitialize(pdsdir, selection=None, logger=None):
 
     check_path = pdsdir.checksum_path_and_lskip()[0]
 
@@ -424,17 +399,15 @@ def reinitialize(pdsdir, selection=None, *, logger=None, limits={}):
     if not os.path.exists(check_path):
         logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
         if selection:
-            logger.error('Checksum file does not exist', check_path, force=True)
+            logger.error('Checksum file does not exist', check_path)
             return False
         else:
-            logger.warning('Checksum file does not exist; initializing',
-                          check_path)
-            return initialize(pdsdir, selection=selection, logger=logger,
-                              limits=limits)
+            logger.warn('Checksum file does not exist; initializing', check_path)
+            return initialize(pdsdir, selection=selection, logger=logger)
 
     # Re-initialize just the selection; preserve others
     if selection:
-        oldpairs = read_checksums(check_path, logger=logger, limits=limits)
+        oldpairs = read_checksums(check_path, logger=logger)
         if not oldpairs:
             return False
     else:
@@ -442,20 +415,16 @@ def reinitialize(pdsdir, selection=None, *, logger=None, limits={}):
 
     # Generate new checksums
     (pairs, _) = generate_checksums(pdsdir, selection, oldpairs,
-                                    regardless=True, logger=logger,
-                                    limits=limits)
+                                    regardless=True, logger=logger)
     if not pairs:
         return False
 
     # Write new checksum file
     move_old_checksums(check_path, logger=logger)
-
-    new_limits = WRITE_CHECKSUMS_LIMITS.copy()
-    new_limits.update(limits)
-    write_checksums(check_path, pairs, logger=logger, limits=new_limits)
+    write_checksums(check_path, pairs, logger=logger)
     return True
 
-def validate(pdsdir, selection=None, *, logger=None, limits={}):
+def validate(pdsdir, selection=None, logger=None):
 
     check_path = pdsdir.checksum_path_and_lskip()[0]
 
@@ -466,22 +435,19 @@ def validate(pdsdir, selection=None, *, logger=None, limits={}):
         return False
 
     # Read checksum file
-    md5pairs = read_checksums(check_path, selection, logger=logger,
-                              limits=limits)
+    md5pairs = read_checksums(check_path, selection, logger=logger)
     if not md5pairs:
         return False
 
     # Generate checksums
-    (dirpairs, _) = generate_checksums(pdsdir, selection, logger=logger,
-                                       limits=limits)
+    (dirpairs, _) = generate_checksums(pdsdir, selection, logger=logger)
     if not dirpairs:
         return False
 
     # Validate
-    return validate_pairs(dirpairs, md5pairs, selection, logger=logger,
-                          limits=limits)
+    return validate_pairs(dirpairs, md5pairs, selection, logger=logger)
 
-def repair(pdsdir, selection=None, *, logger=None, limits={}):
+def repair(pdsdir, selection=None, logger=None):
 
     check_path = pdsdir.checksum_path_and_lskip()[0]
 
@@ -489,16 +455,14 @@ def repair(pdsdir, selection=None, *, logger=None, limits={}):
     if not os.path.exists(check_path):
         logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
         if selection:
-            logger.error('Checksum file does not exist', check_path, force=True)
+            logger.error('Checksum file does not exist', check_path)
             return False
         else:
-            logger.warning('Checksum file does not exist; initializing',
-                           check_path)
-            return initialize(pdsdir, selection=selection, logger=logger,
-                              limits=limits)
+            logger.warn('Checksum file does not exist; initializing', check_path)
+            return initialize(pdsdir, selection=selection, logger=logger)
 
     # Read checksums file
-    md5pairs = read_checksums(check_path, logger=logger, limits=limits)
+    md5pairs = read_checksums(check_path, logger=logger)
     if not md5pairs:
         return False
 
@@ -506,12 +470,10 @@ def repair(pdsdir, selection=None, *, logger=None, limits={}):
     if selection:
         (dirpairs,
          latest_mtime) = generate_checksums(pdsdir, selection, md5pairs,
-                                            regardless=True, logger=logger,
-                                            limits=limits)
+                                            regardless=True, logger=logger)
     else:
         (dirpairs,
-         latest_mtime) = generate_checksums(pdsdir, logger=logger,
-                                            limits=limits)
+         latest_mtime) = generate_checksums(pdsdir, logger=logger)
 
     if not dirpairs:
         return False
@@ -560,7 +522,7 @@ def repair(pdsdir, selection=None, *, logger=None, limits={}):
     write_checksums(check_path, dirpairs, logger=logger)
     return True
 
-def update(pdsdir, selection=None, *, logger=None, limits={}):
+def update(pdsdir, selection=None, logger=None):
 
     check_path = pdsdir.checksum_path_and_lskip()[0]
 
@@ -571,8 +533,7 @@ def update(pdsdir, selection=None, *, logger=None, limits={}):
             logger.error('Checksum file does not exist', check_path)
             return False
         else:
-            logger.warning('Checksum file does not exist; initializing',
-                           check_path)
+            logger.warn('Checksum file does not exist; initializing', check_path)
             return initialize(pdsdir, selection=selection, logger=logger)
 
     # Read checksums file
@@ -611,38 +572,38 @@ def main():
     # Set up parser
     parser = argparse.ArgumentParser(
         description='pdschecksums: Create, maintain and validate MD5 '         +
-                    'checksum files for PDS volumes and volume sets.')
+                    'checksum files for PDS bundles and bundle sets.')
 
     parser.add_argument('--initialize', '--init', const='initialize',
                         default='', action='store_const', dest='task',
-                        help='Create an MD5 checksum file for a volume or '    +
-                             'volume set. Abort if the checksum file '         +
+                        help='Create an MD5 checksum file for a bundle or '    +
+                             'bundle set. Abort if the checksum file '         +
                              'already exists.')
 
     parser.add_argument('--reinitialize', '--reinit', const='reinitialize',
                         default='', action='store_const', dest='task',
-                        help='Create an MD5 checksum file for a volume or '    +
-                             'volume set. Replace the checksum file if it '    +
+                        help='Create an MD5 checksum file for a bundle or '    +
+                             'bundle set. Replace the checksum file if it '    +
                              'already exists. If a single file is specified, ' +
-                             'such as one archive file in a volume set, only ' +
+                             'such as one archive file in a bundle set, only ' +
                              'single checksum is re-initialized.')
 
     parser.add_argument('--validate', const='validate',
                         default='', action='store_const', dest='task',
-                        help='Validate every file in a volume directory tree ' +
+                        help='Validate every file in a bundle directory tree ' +
                              'against its MD5 checksum. If a single file '     +
                              'is specified, such as one archive file in a '    +
-                             'volume set, only that single checksum is '       +
+                             'bundle set, only that single checksum is '       +
                              'validated.')
 
     parser.add_argument('--repair', const='repair',
                         default='', action='store_const', dest='task',
-                        help='Validate every file in a volume directory tree ' +
+                        help='Validate every file in a bundle directory tree ' +
                              'against its MD5 checksum. If any disagreement '  +
                              'is found, the checksum file is replaced; '       +
                              'otherwise it is unchanged. If a single file is ' +
                              'specified, such as one archive file of a '       +
-                             'volume set, then only that single checksum is '  +
+                             'bundle set, then only that single checksum is '  +
                              'repaired. If any of the files checked are newer' +
                              'than the checksum file, update shelf file\'s '   +
                              'modification date')
@@ -653,13 +614,13 @@ def main():
                              'their MD5 checksums to the checksum file. '      +
                              'Checksums of pre-existing files are not checked.')
 
-    parser.add_argument('--volume', nargs='+', type=str,
-                        help='The path to the root directory of a volume or '  +
-                             'volume set. For a volume set, all the volume '   +
+    parser.add_argument('bundle', nargs='+', type=str,
+                        help='The path to the root directory of a bundle or '  +
+                             'bundle set. For a bundle set, all the bundle '   +
                              'directories inside it are handled in sequence. ' +
                              'Note that, for archive directories, checksums '  +
                              'are grouped into one file for the entire '       +
-                             'volume set.')
+                             'bundle set.')
 
     parser.add_argument('--log', '-l', type=str, default='',
                         help='Optional root directory for a duplicate of the ' +
@@ -675,8 +636,8 @@ def main():
                         help='Do not also log to the terminal.')
 
     parser.add_argument('--archives', '-a', default=False, action='store_true',
-                        help='Instead of referring to a volume, refer to the ' +
-                             'the archive file for that volume.')
+                        help='Instead of referring to a bundle, refer to the ' +
+                             'the archive file for that bundle.')
 
     parser.add_argument('--infoshelf', '-i', dest='infoshelf',
                         default=False, action='store_true',
@@ -700,23 +661,26 @@ def main():
 
     # Initialize the logger
     logger = pdslogger.PdsLogger(LOGNAME)
-    pdsfile.Pds3File.set_log_root(args.log)
+    pdsfile.Pds4File.set_log_root(args.log)
 
     if not args.quiet:
         logger.add_handler(pdslogger.stdout_handler)
 
     if args.log:
         path = os.path.join(args.log, 'pdschecksums')
+        warning_handler = pdslogger.warning_handler(path)
+        logger.add_handler(warning_handler)
+
         error_handler = pdslogger.error_handler(path)
         logger.add_handler(error_handler)
 
     # Prepare the list of paths
     abspaths = []
-    for path in args.volume:
+    for path in args.bundle:
 
         # Make sure path makes sense
         path = os.path.abspath(path)
-        parts = path.partition('/holdings/')
+        parts = path.partition('/pds4-holdings/')
         if not parts[1]:
             print('Not a holdings subdirectory: ' + path)
             sys.exit(1)
@@ -727,22 +691,22 @@ def main():
 
         # Convert to an archives path if necessary
         if args.archives and not parts[2].startswith('archives-'):
-            path = parts[0] + '/holdings/archives-' + parts[2]
+            path = parts[0] + '/pds4-holdings/archives-' + parts[2]
 
-        # Convert to a list of absolute paths that exist (volsets or volumes)
+        # Convert to a list of absolute paths that exist (bundlesets or bundles)
         try:
-            pdsf = pdsfile.Pds3File.from_abspath(path, must_exist=True)
+            pdsf = pdsfile.Pds4File.from_abspath(path, must_exist=True)
             abspaths.append(pdsf.abspath)
 
         except (ValueError, IOError):
-            # Allow a volume name to stand in for a .tar.gz archive
+            # Allow a bundle name to stand in for a .tar.gz archive
             (dir, basename) = os.path.split(path)
-            pdsdir = pdsfile.Pds3File.from_abspath(dir)
+            pdsdir = pdsfile.Pds4File.from_abspath(dir)
             if pdsdir.archives_ and '.' not in basename:
-                if pdsdir.voltype_ == 'volumes/':
+                if pdsdir.bundletype_ == 'bundles/':
                     basename += '.tar.gz'
                 else:
-                    basename += '_%s.tar.gz' % pdsdir.voltype_[:-1]
+                    basename += '_%s.tar.gz' % pdsdir.bundletype_[:-1]
 
                 newpaths = glob.glob(os.path.join(dir, basename))
                 if len(newpaths) == 0:
@@ -756,21 +720,21 @@ def main():
     # Generate a list of tuples (pdsfile, selection)
     info = []
     for path in abspaths:
-        pdsf = pdsfile.Pds3File.from_abspath(path)
+        pdsf = pdsfile.Pds4File.from_abspath(path)
 
-        if pdsf.is_volset_dir:
-            # Archive directories are checksumed by volset
+        if pdsf.is_bundleset_dir:
+            # Archive directories are checksumed by bundleset
             if pdsf.archives_:
                 info.append((pdsf, None))
 
-            # Others are checksumed by volume
+            # Others are checksumed by bundle
             else:
                 children = [pdsf.child(c) for c in pdsf.childnames]
                 info += [(c, None) for c in children if c.isdir]
-                        # "if c.isdir" is False for volset level readme files
+                        # "if c.isdir" is False for bundleset level readme files
 
-        elif pdsf.is_volume_dir:
-            # Checksum one volume
+        elif pdsf.is_bundle_dir:
+            # Checksum one bundle
             info.append((pdsf, None))
 
         elif pdsf.isdir:
@@ -779,11 +743,11 @@ def main():
 
         else:
             pdsdir = pdsf.parent()
-            if pdsf.is_volume_file:
+            if pdsf.is_bundle_file:
                 # Checksum one archive file
                 info.append((pdsdir, pdsf.basename))
-            elif pdsdir.is_volume_dir:
-                # Checksum one top-level file in volume
+            elif pdsdir.is_bundle_dir:
+                # Checksum one top-level file in bundle
                 info.append((pdsdir, pdsf.basename))
             else:
                 print('Invalid file for checksumming: ' + pdsf.logical_path)
@@ -800,8 +764,10 @@ def main():
             else:
                 pdsf = pdsdir
 
+            check_path = pdsdir.checksum_path_and_lskip()[0]
+
             # Save logs in up to two places
-            if pdsf.volname:
+            if pdsf.bundlename:
                 logfiles = set([pdsf.log_path_for_bundle('_md5',
                                                          task=args.task,
                                                          dir='pdschecksums'),
@@ -827,8 +793,9 @@ def main():
                 LOGDIRS.append(os.path.split(logfile)[0])
 
                 # These handlers are only used if they don't already exist
+                warning_handler = pdslogger.warning_handler(logdir)
                 error_handler = pdslogger.error_handler(logdir)
-                local_handlers += [error_handler]
+                local_handlers += [warning_handler, error_handler]
 
             # Open the next level of the log
             if len(info) > 1:
