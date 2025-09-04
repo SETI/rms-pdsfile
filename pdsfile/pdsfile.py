@@ -4797,6 +4797,7 @@ class PdsFile(object):
 
         # Construct the dictionary to return
         pdsfile_dict = {}
+        visited_label = []
         for pdsf in data_pdsfiles:
             key = opus_type_for_abspath.get(pdsf.abspath, pdsf.opus_type)
             if key == '':
@@ -4804,13 +4805,13 @@ class PdsFile(object):
             if key not in pdsfile_dict:
                 pdsfile_dict[key] = []
 
-            if pdsf.label_abspath:
+            if pdsf.label_abspath and pdsf.label_abspath not in visited_label:
+                visited_label.append(pdsf.label_abspath)
                 sublist = [pdsf] + label_pdsfiles[pdsf.label_abspath]
             else:
                 sublist = [pdsf]
 
             pdsfile_dict[key].append(sublist)
-
         # Call a special product prioritizer if available
         if hasattr(self, 'opus_prioritizer'):
             self.opus_prioritizer(pdsfile_dict)
