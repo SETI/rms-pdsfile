@@ -4814,6 +4814,7 @@ class PdsFile(object):
                 sublist = [pdsf]
 
             pdsfile_dict[key].append(sublist)
+
         # Call a special product prioritizer if available
         if hasattr(self, 'opus_prioritizer'):
             self.opus_prioritizer(pdsfile_dict)
