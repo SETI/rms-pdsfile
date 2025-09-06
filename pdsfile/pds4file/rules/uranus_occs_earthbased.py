@@ -52,7 +52,7 @@ default_viewables = translator.TranslatorByRegex([
         [r'diagrams/\1/\3_diagram_full.png',
          r'diagrams/\1/\3_diagram_med.png',
          r'diagrams/\1/\3_diagram_small.png',
-         r'diagra,s/\1/\3_diagram_thumb.png',
+         r'diagrams/\1/\3_diagram_thumb.png',
     ]),
 ])
 
