@@ -12,6 +12,7 @@ import translator
 __all__ = [
     "uranus_occs_earthbased", # will resume work on this, currently working on COISS and COVIMS
     "cassini_iss",
+    "cassini_uvis_solarocc_beckerjarmak2023",
     "cassini_vims",
 ]
 
