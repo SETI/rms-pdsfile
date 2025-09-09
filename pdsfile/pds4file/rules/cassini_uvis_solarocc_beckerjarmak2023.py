@@ -107,7 +107,7 @@ sort_key = translator.TranslatorByRegex([
 opus_type = translator.TranslatorByRegex([
     (r'bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023[^/]*/data/uvis_euv_.*\.(tab|xml)',              0, ('Cassini UVIS Solar Occultations', 10, 'couvis_solar_occ_ring', 'Occultation Ring Time Series', True)),
     (r'bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023[^/]*/data/supplemental/uvis_euv_.*\.(tab|xml)', 0, ('Cassini UVIS Solar Occultations', 20, 'couvis_solar_occ_ring_supp', 'Occultation Ring Time Series Supplemental', True)),
-    (r'bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023[^/]*/document/[^(?!.*collection)].*\.(pdf|xml)',               0, ('Cassini UVIS Solar Occultations', 30, 'couvis_solar_occ_documentation', 'Documentation', False)),
+    (r'bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023[^/]*/document/[^(?!.*collection_)].*\.(pdf|xml)',               0, ('Cassini UVIS Solar Occultations', 30, 'couvis_solar_occ_documentation', 'Documentation', False)),
     (r'bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023[^/]*/browse/uvis_euv_.*\.(jpg|xml)',            0, ('Cassini UVIS Solar Occultations', 40, 'couvis_solar_occ_browse', 'Detailed Browse', True)),
     (r'bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023[^/]*/readme.txt',                               0, ('Cassini UVIS Solar Occultations', 50, 'couvis_solar_occ_readme', 'Bundle Overview', True)),
 
@@ -144,6 +144,7 @@ opus_products = translator.TranslatorByRegex([
          r'bundles/\1/document/2-RingSolarOccAtlasVol2V1.0.pdf',
          r'bundles/\1/document/2-RingSolarOccAtlasVol2V1.0.xml',
          r'bundles/\1/document/Cassini_UVIS_Users_Guide_20180706.pdf',
+         r'bundles/\1/document/Cassini_UVIS_Users_Guide_20180706.xml',
          # previews
          r'previews/\1/data/\3_preview_full.png',
          r'previews/\1/data/\3_preview_med.png',
