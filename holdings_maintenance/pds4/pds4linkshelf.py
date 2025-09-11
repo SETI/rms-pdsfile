@@ -107,7 +107,7 @@ def generate_links(dirpath, old_links={},
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsdir.root_)
-    logger.open('Finding link shelf files', dirpath, limits)
+    logger.open('Finding link shelf files', dirpath, limits=limits)
 
     try:
 
@@ -614,7 +614,7 @@ def load_links(dirpath, limits={}, logger=None):
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsdir.root_)
-    logger.open('Reading link shelf file for', dirpath, limits)
+    logger.open('Reading link shelf file for', dirpath, limits=limits)
 
     try:
         (link_path, lskip) = pdsdir.shelf_path_and_lskip('link')
@@ -671,7 +671,7 @@ def write_linkdict(dirpath, link_dict, limits={}, logger=None):
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsdir.root_)
-    logger.open('Writing link shelf file for', dirpath, limits)
+    logger.open('Writing link shelf file for', dirpath, limits=limits)
 
     try:
         (link_path, lskip) = pdsdir.shelf_path_and_lskip('link')

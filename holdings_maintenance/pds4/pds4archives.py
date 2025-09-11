@@ -33,7 +33,7 @@ def load_directory_info(pdsdir, limits={'normal':100}, logger=None):
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsdir.root_)
-    logger.open('Generating file info', dirpath, limits)
+    logger.open('Generating file info', dirpath, limits=limits)
 
     try:
         (tarpath, lskip) = pdsdir.archive_path_and_lskip()

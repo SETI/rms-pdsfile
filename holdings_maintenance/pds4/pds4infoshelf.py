@@ -132,9 +132,9 @@ def generate_infodict(pdsdir, selection, old_infodict={},
 
     if selection:
         logger.open('Generating file info for selection "%s"' % selection,
-                    dirpath, limits)
+                    dirpath, limits=limits)
     else:
-        logger.open('Generating file info', dirpath, limits)
+        logger.open('Generating file info', dirpath, limits=limits)
 
     try:
         # Load checksum dictionary
