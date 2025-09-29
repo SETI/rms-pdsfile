@@ -14,9 +14,9 @@ from pdsfile.preload_and_cache import cache_lifetime_for_class
 class Pds4File(PdsFile):
 
     BUNDLESET_REGEX = re.compile(r'^(uranus_occs_earthbased|' +
-                                 r'^cassini_uvis_solarocc_beckerjarmak2023|' +
-                                 r'^cassini_iss|' +
-                                 r'^cassini_vims)$')
+                                 r'cassini_uvis_solarocc_beckerjarmak2023|' +
+                                 r'cassini_iss|' +
+                                 r'cassini_vims)$')
     BUNDLESET_PLUS_REGEX   = re.compile(BUNDLESET_REGEX.pattern[:-1] +
                                         r'(_v[0-9]+\.[0-9]+\.[0-9]+|' +
                                         r'_v[0-9]+\.[0-9]+|_v[0-9]+|' +
@@ -26,9 +26,9 @@ class Pds4File(PdsFile):
                                         r'(|_md5\.txt|\.tar\.gz))$')
     BUNDLESET_PLUS_REGEX_I = re.compile(BUNDLESET_PLUS_REGEX.pattern, re.I)
 
-    BUNDLENAME_REGEX = re.compile(r'((^uranus_occ_u\d{0,4}._[a-z]*_(fos|\d{2,3}cm))'
-                                  r'|(^cassini_[a-z]{3,4}_(cruise|saturn))'
-                                  r'|(^cassini_uvis_solarocc_beckerjarmak2023(|_.*)))$')
+    BUNDLENAME_REGEX = re.compile(r'^(uranus_occ_u\d{0,4}._[a-z]*_(fos|\d{2,3}cm)|' +
+                                  r'cassini_[a-z]{3,4}_(cruise|saturn)|' +
+                                  r'cassini_uvis_solarocc_beckerjarmak2023(|_.*))$')
     BUNDLENAME_PLUS_REGEX  = re.compile(BUNDLENAME_REGEX.pattern[:-1] +
                                         r'(|_[a-z]+)(|_md5\.txt|\.tar\.gz)$')
     BUNDLENAME_PLUS_REGEX_I = re.compile(BUNDLENAME_PLUS_REGEX.pattern, re.I)
