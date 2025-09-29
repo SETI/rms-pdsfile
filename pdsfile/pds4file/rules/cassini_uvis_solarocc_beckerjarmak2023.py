@@ -112,13 +112,6 @@ opus_type = translator.TranslatorByRegex([
 ])
 
 ##########################################################################################
-# OPUS_FORMAT
-##########################################################################################
-
-opus_format = translator.TranslatorByRegex([
-])
-
-##########################################################################################
 # OPUS_PRODUCTS
 ##########################################################################################
 
@@ -197,7 +190,6 @@ class cassini_uvis_solarocc_beckerjarmak2023(pds4file.Pds4File):
     SORT_KEY = sort_key + pds4file.Pds4File.SORT_KEY
 
     OPUS_TYPE = opus_type + pds4file.Pds4File.OPUS_TYPE
-    OPUS_FORMAT = opus_format + pds4file.Pds4File.OPUS_FORMAT
     OPUS_PRODUCTS = opus_products + pds4file.Pds4File.OPUS_PRODUCTS
     OPUS_ID = opus_id
     OPUS_ID_TO_PRIMARY_LOGICAL_PATH = opus_id_to_primary_logical_path
