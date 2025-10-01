@@ -22,16 +22,23 @@ import pdstable
 LOGNAME = 'pds.validation.indexshelf'
 LOGROOT_ENV = 'PDS_LOG_ROOT'
 
+# Default limits
+GENERATE_INDEXDICT_LIMITS = {}
+WRITE_INDEXDICT_LIMITS = {}
+LOAD_INDEXDICT_LIMITS = {}
+
 ################################################################################
 
-def generate_indexdict(pdsf, logger=None):
+def generate_indexdict(pdsf, logger=None, limits={}):
     """Generate a dictionary keyed by row key for each row in the given table.
     The value returned is a list containing all the associated row indices.
     """
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsf.root_)
-    logger.open('Tabulating index rows for', pdsf.abspath)
+    merged_limits = GENERATE_INDEXDICT_LIMITS.copy()
+    merged_limits.update(limits)
+    logger.open('Tabulating index rows for', pdsf.abspath, limits=merged_limits)
 
     try:
         table = pdstable.PdsTable(label_file=pdsf.label_abspath,
@@ -61,12 +68,15 @@ def generate_indexdict(pdsf, logger=None):
 
 ################################################################################
 
-def write_indexdict(pdsf, index_dict, logger=None):
+def write_indexdict(pdsf, index_dict, logger=None,  limits={}):
     """Write a new shelf file for the rows of this index."""
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsf.root_)
-    logger.open('Writing index shelf file info for', pdsf.abspath)
+    merged_limits = WRITE_INDEXDICT_LIMITS.copy()
+    merged_limits.update(limits)
+    logger.open('Writing index shelf file info for', pdsf.abspath,
+                limits=merged_limits)
 
     try:
         pdsfile.Pds4File.close_all_shelves() # prevents using a cached shelf file
@@ -121,11 +131,14 @@ def write_indexdict(pdsf, index_dict, logger=None):
 
 ################################################################################
 
-def load_indexdict(pdsf, logger=None):
+def load_indexdict(pdsf, logger=None, limits={}):
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsf.root_)
-    logger.open('Reading index shelf file for', pdsf.abspath)
+    merged_limits = LOAD_INDEXDICT_LIMITS.copy()
+    merged_limits.update(limits)
+    logger.open('Reading index shelf file for', pdsf.abspath,
+                limits=merged_limits)
 
     try:
         shelf_path = pdsf.indexshelf_abspath
@@ -191,7 +204,7 @@ def reinitialize(pdsf, logger=None):
     # Warn if shelf file does not exist
     if not os.path.exists(shelf_path):
         logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
-        logger.warn('Index shelf file does not exist; initializing', shelf_path)
+        logger.warning('Index shelf file does not exist; initializing', shelf_path)
         initialize(pdsf, logger=logger)
         return
 
@@ -232,7 +245,7 @@ def repair(pdsf, logger=None, op='repair'):
     # Make sure file exists
     if not os.path.exists(shelf_path):
         logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
-        logger.warn('Index shelf file does not exist; initializing',
+        logger.warning('Index shelf file does not exist; initializing',
                      shelf_path)
         initialize(pdsf, logger=logger)
         return
@@ -400,7 +413,7 @@ def main():
         pdsf = pdsfile.Pds4File.from_abspath(path)
 
         if pdsf.isdir:
-            if not '/metadata/' in path:
+            if '/metadata/' not in path:
                 print('Not a metadata directory: ' + path)
                 sys.exit(1)
 
@@ -415,7 +428,7 @@ def main():
             pdsfiles += pdsfile.Pds4File.pdsfiles_for_abspaths(tables)
 
         else:
-            if not '/metadata/' in path:
+            if '/metadata/' not in path:
                 print('Not a metadata file: ' + path)
                 sys.exit(1)
             if not path.endswith('.csv'):
@@ -491,7 +504,8 @@ def main():
 
     finally:
         (fatal, errors, warnings, tests) = logger.close()
-        if fatal or errors: status = 1
+        if fatal or errors:
+            status = 1
 
     sys.exit(status)
 

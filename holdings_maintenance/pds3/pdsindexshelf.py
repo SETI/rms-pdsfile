@@ -427,7 +427,7 @@ def main():
         pdsf = pdsfile.Pds3File.from_abspath(path)
 
         if pdsf.isdir:
-            if not '/metadata/' in path:
+            if '/metadata/' not in path:
                 print('Not a metadata directory: ' + path)
                 sys.exit(1)
 
@@ -442,7 +442,7 @@ def main():
             pdsfiles += pdsfile.Pds3File.pdsfiles_for_abspaths(tables)
 
         else:
-            if not '/metadata/' in path:
+            if '/metadata/' not in path:
                 print('Not a metadata file: ' + path)
                 sys.exit(1)
             if not path.endswith('.tab'):
@@ -518,7 +518,8 @@ def main():
 
     finally:
         (fatal, errors, warnings, tests) = logger.close()
-        if fatal or errors: status = 1
+        if fatal or errors:
+            status = 1
 
     sys.exit(status)
 
