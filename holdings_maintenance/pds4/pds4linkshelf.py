@@ -28,6 +28,15 @@ LOGROOT_ENV = 'PDS_LOG_ROOT'
 # Holds log file directories temporarily, used by move_old_links()
 LOGDIRS = []
 
+# Default limits
+GENERATE_LINKS_LIMITS = {'debug':200, 'ds_store':10}
+LOAD_LINKS_LIMITS = {}
+WRITE_LINKDICT_LIMITS = {}
+VALIDATE_LINKS_LIMITS = {}
+
+BACKUP_FILENAME = re.compile(r'.*[-_](20\d\d-\d\d-\d\dT\d\d-\d\d-\d\d'
+                             r'|backup|original)\.[\w.]+$')
+
 REPAIRS = translator.TranslatorByRegex([])
 
 KNOWN_MISSING_LABELS = translator.TranslatorByRegex([])
@@ -82,8 +91,7 @@ class LinkInfo(object):
         return ('%d %s %s %s' % (self.recno, self.linktext, str(self.is_target),
                                  self.target or '[' + self.linkname + ']'))
 
-def generate_links(dirpath, old_links={},
-                   limits={'info':-1, 'debug':500, 'ds_store':10}, logger=None):
+def generate_links(dirpath, old_links={}, *, logger=None, limits={}):
     """Generate a dictionary keyed by the absolute file path for files in the
     given directory tree, which must correspond to a bundle.
 
@@ -107,7 +115,10 @@ def generate_links(dirpath, old_links={},
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsdir.root_)
-    logger.open('Finding link shelf files', dirpath, limits=limits)
+
+    merged_limits = GENERATE_LINKS_LIMITS.copy()
+    merged_limits.update(limits)
+    logger.open('Finding link shelf files', dirpath, limits=merged_limits)
 
     try:
 
@@ -134,6 +145,10 @@ def generate_links(dirpath, old_links={},
                 if basename.startswith('._'):   # skip dot_underscore files
                     logger.dot_underscore('dot_underscore file skipped',
                                         abspath)
+                    continue
+
+                if BACKUP_FILENAME.match(basename) or ' copy' in basename:
+                    logger.error('Backup file skipped', abspath)
                     continue
 
                 if basename.startswith('.'):    # skip invisible files
@@ -603,7 +618,7 @@ def locate_link_with_path(abspath, filename):
 
 ################################################################################
 
-def load_links(dirpath, limits={}, logger=None):
+def load_links(dirpath, *, logger=None, limits={}):
     """Load link dictionary from a shelf file, converting interior paths to
     absolute paths."""
 
@@ -614,7 +629,10 @@ def load_links(dirpath, limits={}, logger=None):
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsdir.root_)
-    logger.open('Reading link shelf file for', dirpath, limits=limits)
+
+    merged_limits = LOAD_LINKS_LIMITS.copy()
+    merged_limits.update(limits)
+    logger.open('Reading link shelf file for', dirpath, limits=merged_limits)
 
     try:
         (link_path, lskip) = pdsdir.shelf_path_and_lskip('link')
@@ -662,7 +680,7 @@ def load_links(dirpath, limits={}, logger=None):
 
 ################################################################################
 
-def write_linkdict(dirpath, link_dict, limits={}, logger=None):
+def write_linkdict(dirpath, link_dict, *, logger=None, limits={}):
     """Write a new link shelf file for a directory tree."""
 
     # Initialize
@@ -671,7 +689,11 @@ def write_linkdict(dirpath, link_dict, limits={}, logger=None):
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsdir.root_)
-    logger.open('Writing link shelf file for', dirpath, limits=limits)
+
+    merged_limits = WRITE_LINKDICT_LIMITS.copy()
+    merged_limits.update(limits)
+    logger.open('Writing link shelf file for', dirpath, limits=merged_limits)
+
 
     try:
         (link_path, lskip) = pdsdir.shelf_path_and_lskip('link')
@@ -786,14 +808,17 @@ def write_linkdict(dirpath, link_dict, limits={}, logger=None):
 
 ################################################################################
 
-def validate_links(dirpath, dirdict, shelfdict, limits={}, logger=None):
+def validate_links(dirpath, dirdict, shelfdict, *, logger=None, limits={}):
 
     dirpath = os.path.abspath(dirpath)
     pdsdir = pdsfile.Pds4File.from_abspath(dirpath)
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsdir.root_)
-    logger.open('Validating link shelf file for', dirpath, limits=limits)
+
+    merged_limits = VALIDATE_LINKS_LIMITS.copy()
+    merged_limits.update(limits)
+    logger.open('Validating link shelf file for', dirpath, limits=merged_limits)
 
     try:
         keys = list(dirdict.keys())
