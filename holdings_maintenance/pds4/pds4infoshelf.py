@@ -662,7 +662,7 @@ def main():
                              'than the shelf file, update the shelf file\'s '  +
                              'modification date.')
 
-    parser.add_argument('bundle', nargs='+', type=str,
+    parser.add_argument('bundle', nargs='+', type=str, required=True,
                         help='The path to the root of the bundle or bundle '   +
                              'set. For a bundle set, all the bundle '          +
                              'directories inside it are handled in sequence.')
