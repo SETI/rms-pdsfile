@@ -10,6 +10,7 @@
 
 import sys
 import os
+import re
 import tarfile
 import zlib
 import argparse
@@ -20,11 +21,20 @@ import pdsfile
 LOGNAME = 'pds.validation.archives'
 LOGROOT_ENV = 'PDS_LOG_ROOT'
 
+# Default limits
+LOAD_DIRECTORY_INFO_LIMITS = {'info': 100}
+READ_ARCHIVE_INFO_LIMITS = {'info': 100}
+WRITE_ARCHIVE_LIMITS = {'info': -1, 'dot_': 100}
+VALIDATE_TUPLES_LIMITS = {'info': 100}
+
+BACKUP_FILENAME = re.compile(r'.*[-_](20\d\d-\d\d-\d\dT\d\d-\d\d-\d\d'
+                             r'|backup|original)\.[\w.]+$')
+
 ################################################################################
 # General tarfile functions
 ################################################################################
 
-def load_directory_info(pdsdir, limits={'normal':100}, logger=None):
+def load_directory_info(pdsdir, *, logger=None, limits={}):
     """Generate a list of tuples (abspath, dirpath, nbytes, mod time) recursively
     for the given directory tree.
     """
@@ -33,7 +43,10 @@ def load_directory_info(pdsdir, limits={'normal':100}, logger=None):
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsdir.root_)
-    logger.open('Generating file info', dirpath, limits=limits)
+
+    merged_limits = LOAD_DIRECTORY_INFO_LIMITS.copy()
+    merged_limits.update(limits)
+    logger.open('Generating file info', dirpath, limits=merged_limits)
 
     try:
         (tarpath, lskip) = pdsdir.archive_path_and_lskip()
@@ -51,6 +64,10 @@ def load_directory_info(pdsdir, limits={'normal':100}, logger=None):
 
                 if file.startswith('._'):       # skip dot-underscore files
                     logger.dot_underscore('._* file skipped', abspath)
+                    continue
+
+                if BACKUP_FILENAME.match(file) or ' copy' in file:
+                    logger.error('Backup file skipped', abspath)
                     continue
 
                 if '/.' in abspath:             # flag invisible files
@@ -88,7 +105,7 @@ def load_directory_info(pdsdir, limits={'normal':100}, logger=None):
 
 ################################################################################
 
-def read_archive_info(tarpath, limits={'normal':100}, logger=None):
+def read_archive_info(tarpath, *, logger=None, limits={}):
     """Return a list of tuples (abspath, dirpath, nbytes, modtime) from a .tar.gz
     file."""
 
@@ -97,7 +114,10 @@ def read_archive_info(tarpath, limits={'normal':100}, logger=None):
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdstar.root_)
-    logger.open('Reading archive file', tarpath, limits=limits)
+
+    merged_limits = READ_ARCHIVE_INFO_LIMITS.copy()
+    merged_limits.update(limits)
+    logger.open('Reading archive file', tarpath, limits=merged_limits)
 
     try:
         (dirpath, prefix) = pdstar.dirpath_and_prefix_for_archive()
@@ -137,8 +157,8 @@ def read_archive_info(tarpath, limits={'normal':100}, logger=None):
 
 ################################################################################
 
-def write_archive(pdsdir, clobber=True, archive_invisibles=True,
-                           limits={'normal':-1, 'dot_':100}, logger=None):
+def write_archive(pdsdir, *, clobber=True, archive_invisibles=True,
+                  logger=None, limits={}):
     """Write an archive file containing all the files in the directory."""
 
     def archive_filter(member):
@@ -175,7 +195,10 @@ def write_archive(pdsdir, clobber=True, archive_invisibles=True,
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsdir.root_)
-    logger.open('Writing .tar.gz files for', dirpath, limits=limits)
+
+    merged_limits = WRITE_ARCHIVE_LIMITS.copy()
+    merged_limits.update(limits)
+    logger.open('Writing .tar.gz file for', dirpath, limits=merged_limits)
 
     try:
         archive_paths = pdsdir.archive_paths()
@@ -212,12 +235,16 @@ def write_archive(pdsdir, clobber=True, archive_invisibles=True,
 
 ################################################################################
 
-def validate_tuples(dir_tuples, tar_tuples, limits={'normal':100}, logger=None):
+def validate_tuples(dir_tuples, tar_tuples, *, logger=None,
+                    limits={}):
     """Validate the directory list of tuples against the list from the tarfile.
     """
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
-    logger.open('Validating file information', limits=limits)
+
+    merged_limits = VALIDATE_TUPLES_LIMITS.copy()
+    merged_limits.update(limits)
+    logger.open('Validating file information', limits=merged_limits)
 
     valid = True
     try:
