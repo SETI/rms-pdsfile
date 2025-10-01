@@ -3,7 +3,7 @@
 # pdsindexshelf.py library and main program
 #
 # Syntax:
-#   pdsindexshelf.py --task index_path.csv [index_path.csv ...]
+#   pds4indexshelf.py --task index_path.csv [index_path.csv ...]
 #
 # Enter the --help option to see more information.
 ################################################################################

@@ -3,7 +3,7 @@
 # pdsinfoshelf.py library and main program
 #
 # Syntax:
-#   pdsinfoshelf.py --task path [path ...]
+#   pds4infoshelf.py --task path [path ...]
 #
 # Enter the --help option to see more information.
 ################################################################################

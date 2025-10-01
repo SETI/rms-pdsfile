@@ -3,7 +3,7 @@
 # pdschecksums.py library and main program
 #
 # Syntax:
-#   pdschecksums.py --task path [path ...]
+#   pds4checksums.py --task path [path ...]
 #
 # Enter the --help option to see more information.
 ################################################################################

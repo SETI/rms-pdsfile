@@ -3,7 +3,7 @@
 # pdsarchives.py library and main program
 #
 # Syntax:
-#   pdsarchives.py --task path [path ...]
+#   pds4archives.py --task path [path ...]
 #
 # Enter the --help option to see more information.
 ################################################################################

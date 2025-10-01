@@ -3,7 +3,7 @@
 # # pdslinkshelf.py library and main program
 #
 # Syntax:
-#   pdslinkshelf.py --task path [path ...]
+#   pds4linkshelf.py --task path [path ...]
 #
 # Enter the --help option to see more information.
 ################################################################################
