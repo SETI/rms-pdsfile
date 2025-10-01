@@ -12,6 +12,7 @@ import argparse
 import datetime
 import glob
 import os
+import re
 from pathlib import Path
 import pickle
 import shutil
@@ -35,11 +36,19 @@ LOGROOT_ENV = 'PDS_LOG_ROOT'
 PREVIEW_EXTS = set(['.jpg', '.png', '.gif', '.tif', '.tiff',
                     '.jpeg', '.jpeg_small'])
 
+# Default limits
+GENERATE_INFODICT_LIMITS = {}
+LOAD_INFODICT_LIMITS = {}
+WRITE_INFODICT_LIMITS = {}
+
+BACKUP_FILENAME = re.compile(r'.*[-_](20\d\d-\d\d-\d\dT\d\d-\d\d-\d\d'
+                             r'|backup|original)\.[\w.]+$')
+
 
 ################################################################################
 
-def generate_infodict(pdsdir, selection, old_infodict={},
-                              limits={'normal':-1}, logger=None):
+def generate_infodict(pdsdir, selection, old_infodict={}, *, logger=None,
+                     limits={}):
     """Generate a dictionary keyed by absolute file path for each file in the
     directory tree. Value returned is a tuple (nbytes, child_count, modtime,
     checksum, preview size).
@@ -101,6 +110,10 @@ def generate_infodict(pdsdir, selection, old_infodict={},
                     logger.dot_underscore('._* file skipped', absfile)
                     continue
 
+                if BACKUP_FILENAME.match(file) or ' copy' in file:
+                    logger.error('Backup file skipped', absfile)
+                    continue
+
                 if '/.' in abspath:             # flag invisible files
                     logger.invisible('Invisible file', absfile)
 
@@ -130,11 +143,14 @@ def generate_infodict(pdsdir, selection, old_infodict={},
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsdir.root_)
 
+    merged_limits = GENERATE_INFODICT_LIMITS.copy()
+    merged_limits.update(limits)
+
     if selection:
         logger.open('Generating file info for selection "%s"' % selection,
-                    dirpath, limits=limits)
+                    dirpath, limits=merged_limits)
     else:
-        logger.open('Generating file info', dirpath, limits=limits)
+        logger.open('Generating file info', dirpath, limits=merged_limits)
 
     try:
         # Load checksum dictionary
@@ -194,14 +210,18 @@ def generate_infodict(pdsdir, selection, old_infodict={},
 
 ################################################################################
 
-def load_infodict(pdsdir, logger=None):
+def load_infodict(pdsdir, *, logger=None, limits={}):
 
     dirpath = pdsdir.abspath
     dirpath_ = dirpath.rstrip('/') + '/'
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsdir.root_)
-    logger.open('Reading info shelf file for', dirpath_[:-1])
+
+    merged_limits = LOAD_INFODICT_LIMITS.copy()
+    merged_limits.update(limits)
+    logger.open('Reading info shelf file for', dirpath_[:-1],
+                limits=merged_limits)
 
     try:
         (info_path, lskip) = pdsdir.shelf_path_and_lskip('info')
@@ -238,7 +258,7 @@ def load_infodict(pdsdir, logger=None):
 
 ################################################################################
 
-def write_infodict(pdsdir, infodict, limits={}, logger=None):
+def write_infodict(pdsdir, infodict, *, logger=None, limits={}):
     """Write a new info shelf file for a directory tree."""
 
     # Initialize
@@ -246,7 +266,10 @@ def write_infodict(pdsdir, infodict, limits={}, logger=None):
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsdir.root_)
-    logger.open('Writing info file info for', dirpath, limits=limits)
+
+    merged_limits = WRITE_INFODICT_LIMITS.copy()
+    merged_limits.update(limits)
+    logger.open('Writing info file info for', dirpath, limits=merged_limits)
 
     try:
         (info_path, lskip) = pdsdir.shelf_path_and_lskip('info')
