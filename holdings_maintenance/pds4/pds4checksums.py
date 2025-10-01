@@ -13,6 +13,7 @@ import datetime
 import glob
 import hashlib
 import os
+import re
 import shutil
 import sys
 
@@ -24,6 +25,15 @@ LOGDIRS = []
 
 LOGNAME = 'pds.validation.checksums'
 LOGROOT_ENV = 'PDS_LOG_ROOT'
+
+# Default limits
+GENERATE_CHECKSUMS_LIMITS = {'info': -1}
+READ_CHECKSUMS_LIMITS = {'debug': 0}
+WRITE_CHECKSUMS_LIMITS = {'dot_': -1, 'ds_store': -1, 'invisible': 100}
+VALIDATE_PAIRS_LIMITS = {}
+
+BACKUP_FILENAME = re.compile(r'.*[-_](20\d\d-\d\d-\d\dT\d\d-\d\d-\d\d'
+                             r'|backup|original)\.[\w.]+$')
 
 ################################################################################
 
@@ -41,8 +51,8 @@ def hashfile(fname, blocksize=65536):
 
 ################################################################################
 
-def generate_checksums(pdsdir, selection=None, oldpairs=[], regardless=True,
-                       limits={'normal':-1}, logger=None):
+def generate_checksums(pdsdir, selection=None, oldpairs=[], *, regardless=True,
+                       logger=None, limits={}):
     """Generate a list of tuples (abspath, checksum) recursively from the given
     directory tree.
 
@@ -64,7 +74,10 @@ def generate_checksums(pdsdir, selection=None, oldpairs=[], regardless=True,
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsdir.root_)
-    logger.open('Generating MD5 checksums', dirpath, limits=limits)
+
+    merged_limits = GENERATE_CHECKSUMS_LIMITS.copy()
+    merged_limits.update(limits)
+    logger.open('Generating MD5 checksums', dirpath, limits=merged_limits)
 
     latest_mtime = 0.
     try:
@@ -87,6 +100,10 @@ def generate_checksums(pdsdir, selection=None, oldpairs=[], regardless=True,
 
                 if file.startswith('._'):       # skip dot-underscore files
                     logger.dot_underscore('._* file skipped', abspath)
+                    continue
+
+                if BACKUP_FILENAME.match(file) or ' copy' in file:
+                    logger.error('Backup file skipped', abspath)
                     continue
 
                 if '/.' in abspath:             # flag invisible files
@@ -147,7 +164,7 @@ def generate_checksums(pdsdir, selection=None, oldpairs=[], regardless=True,
 
 ################################################################################
 
-def read_checksums(check_path, selection=None, limits={}, logger=None):
+def read_checksums(check_path, selection=None, *, logger=None, limits={}):
 
     """Return a list of tuples (abspath, checksum) from a checksum file.
 
@@ -159,7 +176,10 @@ def read_checksums(check_path, selection=None, limits={}, logger=None):
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdscheck.root_)
-    logger.open('Reading MD5 checksums', check_path, limits=limits)
+
+    merged_limits = READ_CHECKSUMS_LIMITS.copy()
+    merged_limits.update(limits)
+    logger.open('Reading MD5 checksums', check_path, limits=merged_limits)
 
     try:
         logger.info('MD5 checksum file', check_path)
@@ -231,9 +251,7 @@ def checksum_dict(dirpath, logger=None):
 
 ################################################################################
 
-def write_checksums(check_path, abspairs,
-                    limits={'dot_':-1, 'ds_store':-1, 'invisible':100},
-                    logger=None):
+def write_checksums(check_path, abspairs, *, logger=None, limits={}):
     """Write a checksum table containing the given pairs (abspath, checksum)."""
 
     check_path = os.path.abspath(check_path)
@@ -241,7 +259,10 @@ def write_checksums(check_path, abspairs,
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdscheck.root_)
-    logger.open('Writing MD5 checksums', check_path, limits=limits)
+
+    merged_limits = WRITE_CHECKSUMS_LIMITS.copy()
+    merged_limits.update(limits)
+    logger.open('Writing MD5 checksums', check_path, limits=merged_limits)
 
     try:
         # Create parent directory if necessary
@@ -283,12 +304,16 @@ def write_checksums(check_path, abspairs,
 
 ################################################################################
 
-def validate_pairs(pairs1, pairs2, selection=None, limits={}, logger=None):
+def validate_pairs(pairs1, pairs2, selection=None, *, logger=None,
+                   limits={}):
     """Validate the first checksum list against the second.
 
     If a selection is specified, only a file with that basename is checked."""
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
+
+    merged_limits = VALIDATE_PAIRS_LIMITS.copy()
+    merged_limits.update(limits)
     logger.open('Validating checksums', limits=limits)
 
     success = True
