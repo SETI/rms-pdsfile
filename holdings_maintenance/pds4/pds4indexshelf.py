@@ -12,6 +12,7 @@ import argparse
 import datetime
 import glob
 import os
+import re
 import pickle
 import sys
 
@@ -27,15 +28,19 @@ GENERATE_INDEXDICT_LIMITS = {}
 WRITE_INDEXDICT_LIMITS = {}
 LOAD_INDEXDICT_LIMITS = {}
 
+BACKUP_FILENAME = re.compile(r'.*[-_](20\d\d-\d\d-\d\dT\d\d-\d\d-\d\d'
+                             r'|backup|original)\.[\w.]+$')
+
 ################################################################################
 
-def generate_indexdict(pdsf, logger=None, limits={}):
+def generate_indexdict(pdsf, *, logger=None, limits={}):
     """Generate a dictionary keyed by row key for each row in the given table.
     The value returned is a list containing all the associated row indices.
     """
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsf.root_)
+
     merged_limits = GENERATE_INDEXDICT_LIMITS.copy()
     merged_limits.update(limits)
     logger.open('Tabulating index rows for', pdsf.abspath, limits=merged_limits)
@@ -68,11 +73,12 @@ def generate_indexdict(pdsf, logger=None, limits={}):
 
 ################################################################################
 
-def write_indexdict(pdsf, index_dict, logger=None,  limits={}):
+def write_indexdict(pdsf, index_dict, *, logger=None, limits={}):
     """Write a new shelf file for the rows of this index."""
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsf.root_)
+
     merged_limits = WRITE_INDEXDICT_LIMITS.copy()
     merged_limits.update(limits)
     logger.open('Writing index shelf file info for', pdsf.abspath,
@@ -131,10 +137,11 @@ def write_indexdict(pdsf, index_dict, logger=None,  limits={}):
 
 ################################################################################
 
-def load_indexdict(pdsf, logger=None, limits={}):
+def load_indexdict(pdsf, *, logger=None, limits={}):
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsf.root_)
+
     merged_limits = LOAD_INDEXDICT_LIMITS.copy()
     merged_limits.update(limits)
     logger.open('Reading index shelf file for', pdsf.abspath,
@@ -441,6 +448,10 @@ def main():
     logger.open(' '.join(sys.argv))
     try:
         for pdsf in pdsfiles:
+
+            if BACKUP_FILENAME.match(pdsf.abspath) or ' copy' in pdsf.abspath:
+                logger.error('Backup file skipped', pdsf.abspath)
+                continue
 
             # Save logs in up to two places
             logfiles = [pdsf.log_path_for_index(task=args.task,
