@@ -473,10 +473,10 @@ def main():
         for pdsdir in pdsdirs:
 
             # Save logs in up to two places
-            logfiles = set([pdsdir.log_path_for_bundle('_links',
+            logfiles = set([pdsdir.log_path_for_bundle('_archives',
                                                        task=args.task,
                                                        dir='pdsarchives'),
-                            pdsdir.log_path_for_bundle('_links',
+                            pdsdir.log_path_for_bundle('_archives',
                                                        task=args.task,
                                                        dir='pdsarchives',
                                                        place='parallel')])
