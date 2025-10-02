@@ -789,8 +789,6 @@ def main():
             else:
                 pdsf = pdsdir
 
-            check_path = pdsdir.checksum_path_and_lskip()[0]
-
             # Save logs in up to two places
             if pdsf.bundlename:
                 logfiles = set([pdsf.log_path_for_bundle('_md5',
