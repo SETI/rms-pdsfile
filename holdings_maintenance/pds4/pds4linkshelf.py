@@ -95,7 +95,7 @@ def generate_links(dirpath, old_links={}, *, logger=None, limits={}):
     """Generate a dictionary keyed by the absolute file path for files in the
     given directory tree, which must correspond to a bundle.
 
-    Keys ending in .XML, .CAT and .TXT return a list of tuples
+    Keys ending in .XML, .CAT, .FMT, .SFD return a list of tuples
         (recno, link, target)
     for each link found. Here,
         recno = record number in file;
@@ -486,6 +486,7 @@ def generate_links(dirpath, old_links={}, *, logger=None, limits={}):
                 # If this was copied from old_links, it's already a list of tuples
                 values = linkinfo_dict[key]
                 if isinstance(values, list):
+                    # Normalize to (recno, basename, abspath)
                     new_list = []
                     for item in values:
                         if isinstance(item, LinkInfo):
@@ -715,9 +716,9 @@ def write_linkdict(dirpath, link_dict, *, logger=None, limits={}):
         for (key, values) in link_dict.items():
             if isinstance(values, list):
                 new_list = []
-                for (basename, recno, link_abspath) in values:
+                for (recno, basename, link_abspath) in values:
                     if link_abspath[:lskip] == prefix:
-                        new_list.append((basename, recno, link_abspath[lskip:]))
+                        new_list.append((recno, basename, link_abspath[lskip:]))
                     else:      # link outside this bundle
                         link = pdsfile.Pds4File.from_abspath(link_abspath)
                         if (link.category_ == pdsdir.category_ and
@@ -731,7 +732,7 @@ def write_linkdict(dirpath, link_dict, *, logger=None, limits={}):
                             link_relpath = ('../../../' + link.category_ +
                                             link.bundleset_ +
                                             link.bundlename_ + link.interior)
-                        new_list.append((basename, recno, link_relpath))
+                        new_list.append((recno, basename, link_relpath))
 
                 interior_dict[key[lskip:]] = new_list
             else:
