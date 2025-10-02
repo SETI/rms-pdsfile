@@ -13,6 +13,9 @@ from pdsfile.preload_and_cache import cache_lifetime_for_class
 
 class Pds4File(PdsFile):
 
+    PDS_HOLDINGS = 'pds4-holdings'
+    BUNDLE_DIR_NAME = 'bundles'
+
     BUNDLESET_REGEX = re.compile(r'^(uranus_occs_earthbased|' +
                                  r'cassini_uvis_solarocc_beckerjarmak2023|' +
                                  r'cassini_iss|' +
