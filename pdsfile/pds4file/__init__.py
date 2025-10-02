@@ -32,7 +32,7 @@ class Pds4File(PdsFile):
                                         r'((|_calibrated|_diagrams|_metadata|_previews)' +
                                         r'(|_md5\.txt|\.tar\.gz))$')
     BUNDLESET_PLUS_REGEX_I = re.compile(BUNDLESET_PLUS_REGEX.pattern, re.I)
-    BUNDLENAME_REGEX = re.compile(r'^([a-zA-z\_].+)$')
+    BUNDLENAME_REGEX = re.compile(r'^([a-zA-z_].+)$')
 
     BUNDLENAME_REGEX_I     = re.compile(BUNDLENAME_REGEX.pattern, re.I)
     BUNDLENAME_PLUS_REGEX  = re.compile(BUNDLENAME_REGEX.pattern[:-1] +
