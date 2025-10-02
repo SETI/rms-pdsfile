@@ -1,17 +1,15 @@
 ##########################################################################################
 # pdsfile/pds3file/__init__.py
 # pds3file subpackage & Pds3File subclass with PdsFile as the parent class
-##########################################################################################
+#########################################################################################
 
 import re
-
 import pdslogger
 
 from pdsfile import pdscache
 from pdsfile.pdsfile import PdsFile
 from . import rules
 from pdsfile.preload_and_cache import cache_lifetime_for_class
-import re
 
 class Pds3File(PdsFile):
 
