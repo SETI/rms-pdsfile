@@ -647,7 +647,6 @@ def load_links(dirpath, *, logger=None, limits={}):
 
     try:
         (link_path, lskip) = pdsdir.shelf_path_and_lskip('link')
-        prefix_ = pdsdir.bundle_abspath() + '/'
 
         logger.info('Link shelf file', link_path)
 
