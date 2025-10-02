@@ -1,27 +1,18 @@
 ##########################################################################################
-# pds4file/rules/COUVIS_0xxx.py
+# pds4file/rules/cassini_uvis_solarocc_beckerjarmak2023.py
 ##########################################################################################
 
 import pdsfile.pds4file as pds4file
 import translator
 import re
-import os
+
+from .cassini_uvis_solarocc_beckerjarmak2023_primary_filespec import PRIMARY_FILESPEC_LIST
 
 ##########################################################################################
 # DESCRIPTION_AND_ICON
 ##########################################################################################
 
 description_and_icon_by_regex = translator.TranslatorByRegex([
-    (r'volumes/.*/DATA',                re.I, ('Data files grouped by date', 'CUBEDIR')),
-    (r'volumes/.*/DATA/\w+',            re.I, ('Data files grouped by date', 'CUBEDIR')),
-    (r'volumes/.*/HSP\w+\.DAT',         re.I, ('Time series data',           'DATA')),
-    (r'volumes/.*/HDAC\w+\.DAT',        re.I, ('Binary data cube',           'DATA')),
-    (r'volumes/.*/\w+\.DAT',            re.I, ('Spectral data cube',         'CUBE')),
-    (r'volumes/.*\.txt_[0-9].*',        re.I, ('Text file',                  'INFO')),
-    (r'volumes/.*OLD.DIR',              re.I, ('Directory',                  'FOLDER')),
-    (r'metadata/.*versions\.tab',       0,    ('Table to associate data files with DATA_SET_IDs and versions',
-                                                                             'INDEX')),
-    (r'volumes/.*/DOCUMENT/UVIS.TXT',   re.I, ('PDS3 Archive Description',   'INFO' )),
 ])
 
 ##########################################################################################
@@ -29,79 +20,59 @@ description_and_icon_by_regex = translator.TranslatorByRegex([
 ##########################################################################################
 
 default_viewables = translator.TranslatorByRegex([
-    (r'volumes/COUVIS_0xxx(|_v[0-9\.]+)/(COUVIS_0.../DATA/\w+/\w+)\.(DAT|LBL)', 0,
-            [r'previews/COUVIS_0xxx/\2_full.png',
-             r'previews/COUVIS_0xxx/\2_med.png',
-             r'previews/COUVIS_0xxx/\2_small.png',
-             r'previews/COUVIS_0xxx/\2_thumb.png',
-            ]),
+    (r'.*/(cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023[^/]*)/data(|/supplemental)/(uvis_euv.*)\.[a-z]{3}', 0,
+     [
+         r'previews/\1/data\2/\3_preview_full.png',
+         r'previews/\1/data\2/\3_preview_med.png',
+         r'previews/\1/data\2/\3_preview_small.png',
+         r'previews/\1/data\2/\3_preview_thumb.png',
+     ]),
 ])
 
 ##########################################################################################
 # ASSOCIATIONS
 ##########################################################################################
 
-associations_to_volumes = translator.TranslatorByRegex([
-    (r'volumes/COUVIS_0xxx(.*/COUVIS_0...)/(DATA|CALIB/VERSION_.)/(\w+)/(.*_\d\d)(|_CAL_.)\..*', 0,
-            [r'volumes/COUVIS_0xxx\1/DATA/\3/\4.DAT',
-             r'volumes/COUVIS_0xxx\1/DATA/\3/\4.LBL',
-             r'volumes/COUVIS_0xxx\1/CALIB/VERSION_3/\3/\4_CAL_3.DAT',
-             r'volumes/COUVIS_0xxx\1/CALIB/VERSION_3/\3/\4_CAL_3.LBL',
-             r'volumes/COUVIS_0xxx\1/CALIB/VERSION_4/\3/\4_CAL_4.DAT',
-             r'volumes/COUVIS_0xxx\1/CALIB/VERSION_4/\3/\4_CAL_4.LBL',
-             r'volumes/COUVIS_0xxx\1/CALIB/VERSION_5/\3/\4_CAL_5.DAT',
-             r'volumes/COUVIS_0xxx\1/CALIB/VERSION_5/\3/\4_CAL_5.LBL',
-            ]),
-    (r'volumes/COUVIS_0xxx(.*/COUVIS_0...)/(DATA|CALIB/VERSION_.)(|/\w+)', 0,
-            [r'volumes/COUVIS_0xxx\1/DATA\3',
-             r'volumes/COUVIS_0xxx\1/CALIB/VERSION_3\3',
-             r'volumes/COUVIS_0xxx\1/CALIB/VERSION_4\3',
-             r'volumes/COUVIS_0xxx\1/CALIB/VERSION_5\3',
-            ]),
-    (r'previews/COUVIS_0xxx(|_v[0-9\.]+)/(COUVIS_0...)/DATA(|/\w+)', 0,
-            r'volumes/COUVIS_0xxx/\2/DATA\3'),
-    (r'previews/COUVIS_0xxx(|_v[0-9\.]+)/(COUVIS_0.../DATA/\w+/\w+)_[a-z]+\.png', 0,
-            [r'volumes/COUVIS_0xxx/\2.DAT',
-             r'volumes/COUVIS_0xxx/\2.LBL',
-            ]),
-    (r'.*/COUVIS_0999.*', 0,
-            r'volumes/COUVIS_0xxx'),
-    (r'documents/COUVIS_0xxx.*', 0,
-             r'volumes/COUVIS_0xxx'),
+associations_to_bundles = translator.TranslatorByRegex([
+    (r'.*/(cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023[^/]*)/data(|/supplemental)/(uvis_euv_.*_(egress|ingress))(|_supplement)\.[a-z]{3}', 0,
+        [
+            r'bundles/\1/data/\3.tab',
+            r'bundles/\1/data/\3.xml',
+            r'bundles/\1/data/supplemental/\3_supplement.tab',
+            r'bundles/\1/data/supplemental/\3_supplement.xml',
+            r'bundles/\1/browse/\3.jpg',
+            r'bundles/\1/browse/\3.xml',
+        ]),
+    (r'documents/cassini_uvis_solarocc_beckerjarmak2023[^/]*', 0,
+        r'bundles/cassini_uvis_solarocc_beckerjarmak2023'),
 ])
 
 associations_to_previews = translator.TranslatorByRegex([
-    (r'volumes/COUVIS_0xxx(|_v[0-9\.]+)/(COUVIS_0.../DATA/\w+/\w+)\..*', 0,
-            [r'previews/COUVIS_0xxx/\2_full.png',
-             r'previews/COUVIS_0xxx/\2_med.png',
-             r'previews/COUVIS_0xxx/\2_small.png',
-             r'previews/COUVIS_0xxx/\2_thumb.png',
-            ]),
-    (r'volumes/COUVIS_0xxx(|_v[0-9\.]+)/(COUVIS_0.../DATA/\w+)', 0,
-            r'previews/COUVIS_0xxx/\2'),
-    (r'.*/COUVIS_0999.*', 0, r'previews/COUVIS_0xxx'),
+    (r'.*/(cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023[^/]*)/data(|/supplemental)/(uvis_euv_.*_(egress|ingress))(|_supplement)\.[a-z]{3}', 0,
+        [
+            r'previews/\1/data/\3_preview_full.png',
+            r'previews/\1/data/\3_preview_med.png',
+            r'previews/\1/data/\3_preview_small.png',
+            r'previews/\1/data/\3_preview_thumb.png',
+            r'previews/\1/data/supplemental/\3_supplement_preview_full.png',
+            r'previews/\1/data/supplemental/\3_supplement_preview_med.png',
+            r'previews/\1/data/supplemental/\3_supplement_preview_small.png',
+            r'previews/\1/data/supplemental/\3_supplement_preview_thumb.png',
+        ]),
 ])
 
 associations_to_metadata = translator.TranslatorByRegex([
-    (r'volumes/COUVIS_0xxx(|_v[0-9\.]+)/(COUVIS_0...)/DATA/\w+/(\w+)\..*', 0,
-            [r'metadata/COUVIS_0xxx/\2/\2_index.tab/\3',
-             r'metadata/COUVIS_0xxx/\2/\2_supplemental_index.tab/\3',
-             r'metadata/COUVIS_0xxx/\2/\2_ring_summary.tab/\3',
-             r'metadata/COUVIS_0xxx/\2/\2_moon_summary.tab/\3',
-             r'metadata/COUVIS_0xxx/\2/\2_saturn_summary.tab/\3',
-            ]),
-    (r'metadata/COUVIS_0xxx(|_v[0-9\.]+)/COUVIS_0[^9]..', 0,
-            r'metadata/COUVIS_0xxx\1/COUVIS_0999'),
-    (r'metadata/COUVIS_0xxx(|_v[0-9\.]+)/COUVIS_0[^9].._(\w+)\..*', 0,
-            [r'metadata/COUVIS_0xxx\1/COUVIS_0999/COUVIS_0999_\2.tab',
-             r'metadata/COUVIS_0xxx\1/COUVIS_0999/COUVIS_0999_\2.csv',
-             r'metadata/COUVIS_0xxx\1/COUVIS_0999/COUVIS_0999_\2.lbl',
-            ]),
+    (r'.*/(cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023[^/]*)/data(|/supplemental)/(uvis_euv_.*_(egress|ingress))(|_supplement)\.[a-z]{3}', 0,
+        [
+        ]),
 ])
 
 associations_to_documents = translator.TranslatorByRegex([
-    (r'volumes/COUVIS_0xxx(|_[^/]+)/COUVIS_0\d\d\d',    0, r'documents/COUVIS_0xxx/*'),
-    (r'volumes/COUVIS_0xxx(|_[^/]+)/COUVIS_0\d\d\d/.+', 0, r'documents/COUVIS_0xxx'),
+    (r'bundles/cassini_uvis_solarocc_beckerjarmak2023[^/]*', 0,
+        [
+            r'documents/cassini_uvis_solarocc_beckerjarmak2023[^/]*',
+            r'documents/cassini_uvis_solarocc_beckerjarmak2023[^/]*/.*',
+        ]),
 ])
 
 ##########################################################################################
@@ -109,7 +80,6 @@ associations_to_documents = translator.TranslatorByRegex([
 ##########################################################################################
 
 view_options = translator.TranslatorByRegex([
-    (r'(volumes|previews)/COUVIS_0xxx(|_v[0-9\.]+)/COUVIS_0.../DATA(|/\w+)', 0, (True, True, True)),
 ])
 
 ##########################################################################################
@@ -117,10 +87,6 @@ view_options = translator.TranslatorByRegex([
 ##########################################################################################
 
 neighbors = translator.TranslatorByRegex([
-    (r'(volumes|previews)/COUVIS_0xxx(|_v[0-9\.]+)/COUVIS_..../DATA',     0, r'\1/COUVIS_0xxx\2/*/DATA'),
-    (r'(volumes|previews)/COUVIS_0xxx(|_v[0-9\.]+)/COUVIS_..../DATA/\w+', 0, r'\1/COUVIS_0xxx\2/*/DATA/*'),
-    (r'volumes/COUVIS_0xxx(|_v[0-9\.]+)/COUVIS_.../CALIB/VERSION_.',      0, r'volumes/COUVIS_0xxx\1/CALIB/VERSION*'),
-    (r'volumes/COUVIS_0xxx(|_v[0-9\.]+)/COUVIS_.../CALIB/VERSION_./\w+',  0, r'volumes/COUVIS_0xxx\1/CALIB/VERSION*/*'),
 ])
 
 ##########################################################################################
@@ -128,11 +94,6 @@ neighbors = translator.TranslatorByRegex([
 ##########################################################################################
 
 sort_key = translator.TranslatorByRegex([
-    (r'(EUV|FUV|HSP|HDAC)([0-9]{4}_[0-9]{3}_[0-9]{2}_[0-9]{2}.*)_full(\..*)',   0, r'\2\1_1full\3'),
-    (r'(EUV|FUV|HSP|HDAC)([0-9]{4}_[0-9]{3}_[0-9]{2}_[0-9]{2}.*)_med(\..*)',    0, r'\2\1_2med\3'),
-    (r'(EUV|FUV|HSP|HDAC)([0-9]{4}_[0-9]{3}_[0-9]{2}_[0-9]{2}.*)_small(\..*)',  0, r'\2\1_3small\3'),
-    (r'(EUV|FUV|HSP|HDAC)([0-9]{4}_[0-9]{3}_[0-9]{2}_[0-9]{2}.*)_thumb(\..*)',  0, r'\2\1_4thumb\3'),
-    (r'(EUV|FUV|HSP|HDAC)([0-9]{4}_[0-9]{3}_[0-9]{2}_[0-9]{2}.*)',              0, r'\2\1'),
 ])
 
 ##########################################################################################
@@ -140,18 +101,10 @@ sort_key = translator.TranslatorByRegex([
 ##########################################################################################
 
 opus_type = translator.TranslatorByRegex([
-    (r'volumes/.*/DATA/.*\.DAT',  0, ('Cassini UVIS', 10, 'couvis_raw',        'Raw Data',         True)),
-    (r'volumes/.*/CALIB/.*\.DAT', 0, ('Cassini UVIS', 20, 'couvis_calib_corr', 'Calibration Data', True)),
-    # Documentation
-    (r'documents/COUVIS_0xxx/.*', 0, ('Cassini UVIS', 30, 'couvis_documentation', 'Documentation', False)),
-])
-
-##########################################################################################
-# OPUS_FORMAT
-##########################################################################################
-
-opus_format = translator.TranslatorByRegex([
-    (r'.*\.DAT', 0, ('Binary', 'Unformatted')),
+    (r'bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023[^/]*/data/uvis_euv_.*\.(tab|xml)',              0, ('Cassini UVIS Solar Occultations', 10, 'couvis_solar_occ_ring', 'Occultation Ring Time Series', True)),
+    (r'bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023[^/]*/data/supplemental/uvis_euv_.*\.(tab|xml)', 0, ('Cassini UVIS Solar Occultations', 20, 'couvis_solar_occ_ring_supp', 'Occultation Ring Time Series Supplemental', True)),
+    (r'bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023[^/]*/(readme.txt|document/.*\.(pdf|xml))',               0, ('Cassini UVIS Solar Occultations', 30, 'couvis_solar_occ_documentation', 'Documentation', False)),
+    (r'bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023[^/]*/browse/uvis_euv_.*\.(jpg|xml)',            0, ('Cassini UVIS Solar Occultations', 40, 'couvis_solar_occ_browse', 'Detailed Browse', True)),
 ])
 
 ##########################################################################################
@@ -159,30 +112,37 @@ opus_format = translator.TranslatorByRegex([
 ##########################################################################################
 
 opus_products = translator.TranslatorByRegex([
-    (r'.*/COUVIS_0xxx(|_v[0-9\.]+)/(COUVIS_0...)/DATA/(\w+/\w+[0-9])(|_CAL.*|_[a-z]+)\..*', 0,
-            [r'volumes/COUVIS_0xxx*/\2/DATA/\3.DAT',
-             r'volumes/COUVIS_0xxx*/\2/DATA/\3.LBL',
-             r'volumes/COUVIS_0xxx*/\2/CALIB/VERSION_3/\3_CAL_3.DAT',
-             r'volumes/COUVIS_0xxx*/\2/CALIB/VERSION_3/\3_CAL_3.LBL',
-             r'volumes/COUVIS_0xxx*/\2/CALIB/VERSION_4/\3_CAL_4.DAT',
-             r'volumes/COUVIS_0xxx*/\2/CALIB/VERSION_4/\3_CAL_4.LBL',
-             r'volumes/COUVIS_0xxx*/\2/CALIB/VERSION_5/\3_CAL_5.DAT',
-             r'volumes/COUVIS_0xxx*/\2/CALIB/VERSION_5/\3_CAL_5.LBL',
-             r'previews/COUVIS_0xxx/\2/DATA/\3_full.png',
-             r'previews/COUVIS_0xxx/\2/DATA/\3_med.png',
-             r'previews/COUVIS_0xxx/\2/DATA/\3_small.png',
-             r'previews/COUVIS_0xxx/\2/DATA/\3_thumb.png',
-             r'metadata/COUVIS_0xxx/\2/\2_moon_summary.tab',
-             r'metadata/COUVIS_0xxx/\2/\2_moon_summary.lbl',
-             r'metadata/COUVIS_0xxx/\2/\2_ring_summary.tab',
-             r'metadata/COUVIS_0xxx/\2/\2_ring_summary.lbl',
-             r'metadata/COUVIS_0xxx/\2/\2_saturn_summary.tab',
-             r'metadata/COUVIS_0xxx/\2/\2_saturn_summary.lbl',
-             r'metadata/COUVIS_0xxx/\2/\2_index.tab',
-             r'metadata/COUVIS_0xxx/\2/\2_index.lbl',
-             r'metadata/COUVIS_0xxx/\2/\2_supplemental_index.tab',
-             r'metadata/COUVIS_0xxx/\2/\2_supplemental_index.lbl',
-            ]),
+    (r'bundles/(cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023[^/]*)/data(|/supplemental)/(uvis_euv_.*_(egress|ingress))(|_supplement)\.[a-z]{3}', 0,
+     [
+         # bundles data/
+         r'bundles/\1/data/\3.tab',
+         r'bundles/\1/data/\3.xml',
+         # bundles data/supplemental
+         r'bundles/\1/data/supplemental/\3_supplement.tab',
+         r'bundles/\1/data/supplemental/\3_supplement.xml',
+         # bundles browse/
+         r'bundles/\1/browse/\3.jpg',
+         r'bundles/\1/browse/\3.xml',
+         # bundles readme.txt
+         r'bundles/\1/readme.txt',
+         # document
+         r'bundles/\1/document/1-RingSolarOccAtlasVol1V1.0.pdf',
+         r'bundles/\1/document/1-RingSolarOccAtlasVol1V1.0.xml',
+         r'bundles/\1/document/2-RingSolarOccAtlasVol2V1.0.pdf',
+         r'bundles/\1/document/2-RingSolarOccAtlasVol2V1.0.xml',
+         r'bundles/\1/document/Cassini_UVIS_Users_Guide_20180706.pdf',
+         r'bundles/\1/document/Cassini_UVIS_Users_Guide_20180706.xml',
+         # previews
+         r'previews/\1/data/\3_preview_full.png',
+         r'previews/\1/data/\3_preview_med.png',
+         r'previews/\1/data/\3_preview_small.png',
+         r'previews/\1/data/\3_preview_thumb.png',
+         # previews data/supplemental
+         r'previews/\1/data/supplemental/\3_supplement_preview_full.png',
+         r'previews/\1/data/supplemental/\3_supplement_preview_med.png',
+         r'previews/\1/data/supplemental/\3_supplement_preview_small.png',
+         r'previews/\1/data/supplemental/\3_supplement_preview_thumb.png',
+     ]),
 ])
 
 ##########################################################################################
@@ -190,7 +150,15 @@ opus_products = translator.TranslatorByRegex([
 ##########################################################################################
 
 opus_id = translator.TranslatorByRegex([
-    (r'.*/COUVIS_0.*/(EUV|FUV|HDAC|HSP)(\d{4}_\d{3}_\d\d_\d\d)(|_\d\d)(|_CAL_\d|_[a-z]+)\..*',  0, r'co-uvis-#LOWER#\1\2\3'),
+    (r'.*/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023[^/]*/data(|/supplemental)/uvis_euv_(\d{4})_(\d{3})_.*_([ei])(gress|ngress)(|_supplement)\.[a-z]{3}', 0, r'co-uvis-occ-\2-\3-sun-\4')
+])
+
+##########################################################################################
+# FILESPEC_TO_BUNDLESET
+##########################################################################################
+
+filespec_to_bundleset = translator.TranslatorByRegex([
+    (r'(cassini_uvis_solarocc_beckerjarmak2023).*', 0, r'\1'),
 ])
 
 ##########################################################################################
@@ -198,47 +166,7 @@ opus_id = translator.TranslatorByRegex([
 ##########################################################################################
 
 opus_id_to_primary_logical_path = translator.TranslatorByRegex([
-    (r'co-uvis-(euv|fuv|hdac|hsp)(19.._...)_(.*)', 0,  r'volumes/COUVIS_0xxx/COUVIS_0001/DATA/D\2/#UPPER#\1\2_\3.DAT'),
-    (r'co-uvis-(euv|fuv|hdac|hsp)(2000_...)_(.*)', 0,  r'volumes/COUVIS_0xxx/COUVIS_0001/DATA/D\2/#UPPER#\1\2_\3.DAT'),
-    (r'co-uvis-(euv|fuv|hdac|hsp)(2001_...)_(.*)', 0,  r'volumes/COUVIS_0xxx/COUVIS_000[23]/DATA/D\2/#UPPER#\1\2_\3.DAT'),
-    (r'co-uvis-(euv|fuv|hdac|hsp)(2002_...)_(.*)', 0,  r'volumes/COUVIS_0xxx/COUVIS_0004/DATA/D\2/#UPPER#\1\2_\3.DAT'),
-    (r'co-uvis-(euv|fuv|hdac|hsp)(2003_...)_(.*)', 0,  r'volumes/COUVIS_0xxx/COUVIS_000[56]/DATA/D\2/#UPPER#\1\2_\3.DAT'),
-    (r'co-uvis-(euv|fuv|hdac|hsp)(2004_...)_(.*)', 0, [r'volumes/COUVIS_0xxx/COUVIS_000[6-9]/DATA/D\2/#UPPER#\1\2_\3.DAT',
-                                                       r'volumes/COUVIS_0xxx/COUVIS_0010/DATA/D\2/#UPPER#\1\2_\3.DAT']),
-    (r'co-uvis-(euv|fuv|hdac|hsp)(2005_...)_(.*)', 0,  r'volumes/COUVIS_0xxx/COUVIS_001[0-3]/DATA/D\2/#UPPER#\1\2_\3.DAT'),
-    (r'co-uvis-(euv|fuv|hdac|hsp)(2006_...)_(.*)', 0,  r'volumes/COUVIS_0xxx/COUVIS_001[4-7]/DATA/D\2/#UPPER#\1\2_\3.DAT'),
-    (r'co-uvis-(euv|fuv|hdac|hsp)(2007_...)_(.*)', 0, [r'volumes/COUVIS_0xxx/COUVIS_001[8-9]/DATA/D\2/#UPPER#\1\2_\3.DAT',
-                                                       r'volumes/COUVIS_0xxx/COUVIS_002[0-1]/DATA/D\2/#UPPER#\1\2_\3.DAT']),
-    (r'co-uvis-(euv|fuv|hdac|hsp)(2008_...)_(.*)', 0,  r'volumes/COUVIS_0xxx/COUVIS_002[2-5]/DATA/D\2/#UPPER#\1\2_\3.DAT'),
-    (r'co-uvis-(euv|fuv|hdac|hsp)(2009_...)_(.*)', 0,  r'volumes/COUVIS_0xxx/COUVIS_002[6-9]/DATA/D\2/#UPPER#\1\2_\3.DAT'),
-    (r'co-uvis-(euv|fuv|hdac|hsp)(2010_...)_(.*)', 0,  r'volumes/COUVIS_0xxx/COUVIS_003[0-3]/DATA/D\2/#UPPER#\1\2_\3.DAT'),
-    (r'co-uvis-(euv|fuv|hdac|hsp)(2011_...)_(.*)', 0,  r'volumes/COUVIS_0xxx/COUVIS_003[4-7]/DATA/D\2/#UPPER#\1\2_\3.DAT'),
-    (r'co-uvis-(euv|fuv|hdac|hsp)(2012_...)_(.*)', 0, [r'volumes/COUVIS_0xxx/COUVIS_003[8-9]/DATA/D\2/#UPPER#\1\2_\3.DAT',
-                                                       r'volumes/COUVIS_0xxx/COUVIS_004[0-1]/DATA/D\2/#UPPER#\1\2_\3.DAT']),
-    (r'co-uvis-(euv|fuv|hdac|hsp)(2013_...)_(.*)', 0,  r'volumes/COUVIS_0xxx/COUVIS_004[2-5]/DATA/D\2/#UPPER#\1\2_\3.DAT'),
-    (r'co-uvis-(euv|fuv|hdac|hsp)(2014_...)_(.*)', 0,  r'volumes/COUVIS_0xxx/COUVIS_004[6-9]/DATA/D\2/#UPPER#\1\2_\3.DAT'),
-    (r'co-uvis-(euv|fuv|hdac|hsp)(2015_...)_(.*)', 0,  r'volumes/COUVIS_0xxx/COUVIS_005[0-3]/DATA/D\2/#UPPER#\1\2_\3.DAT'),
-    (r'co-uvis-(euv|fuv|hdac|hsp)(2016_...)_(.*)', 0,  r'volumes/COUVIS_0xxx/COUVIS_005[4-7]/DATA/D\2/#UPPER#\1\2_\3.DAT'),
-    (r'co-uvis-(euv|fuv|hdac|hsp)(2017_...)_(.*)', 0, [r'volumes/COUVIS_0xxx/COUVIS_005[8-9]/DATA/D\2/#UPPER#\1\2_\3.DAT',
-                                                       r'volumes/COUVIS_0xxx/COUVIS_0060/DATA/D\2/#UPPER#\1\2_\3.DAT']),
-])
-
-##########################################################################################
-# Archives
-##########################################################################################
-# Map a bundle set or a bundle to a list of logical paths of the archive file names.
-# TODO: split regex matched pattern group 1 (bundles|metadata|previews|doagrams) into
-# separate entries if we use different archive file names for different categories
-archive_paths = translator.TranslatorByRegex([
-    (r'.*(bundles|metadata|previews|diagrams)/(cassini_uvis_solarocc_beckerjarmak2023).*', 0, [
-        r'archives-\1/\2/\2.tar.gz'
-    ]),
-])
-
-# Map a logical path of an archive file name to a list of logical paths of the included
-# directories
-archive_dirs = translator.TranslatorByRegex([
-    (r'.*archives-(.*)/(cassini_uvis_solarocc_beckerjarmak2023)/.*.tar.gz', 0, [r'\1/\2/\2']),
+    (r'co-uvis-occ-(\d{4})-(\d{3})-sun-([ei])',     0,  r'bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023/data/uvis_euv_\1_\2_solar_time_series_\3*gress.xml'),
 ])
 
 ##########################################################################################
@@ -247,11 +175,10 @@ archive_dirs = translator.TranslatorByRegex([
 
 class cassini_uvis_solarocc_beckerjarmak2023(pds4file.Pds4File):
 
-    pds4file.Pds4File.VOLSET_TRANSLATOR = (
-        translator.TranslatorByRegex([('cassini_uvis_solarocc_beckerjarmak2023', re.I,
-                                       'cassini_uvis_solarocc_beckerjarmak2023')]) +
-        pds4file.Pds4File.VOLSET_TRANSLATOR
-    )
+    pds4file.Pds4File.VOLSET_TRANSLATOR = translator.TranslatorByRegex(
+        [('cassini_uvis_solarocc_beckerjarmak2023', re.I,
+          'cassini_uvis_solarocc_beckerjarmak2023')]
+    ) + pds4file.Pds4File.VOLSET_TRANSLATOR
 
     DESCRIPTION_AND_ICON = description_and_icon_by_regex + pds4file.Pds4File.DESCRIPTION_AND_ICON
     VIEW_OPTIONS = view_options + pds4file.Pds4File.VIEW_OPTIONS
@@ -259,7 +186,6 @@ class cassini_uvis_solarocc_beckerjarmak2023(pds4file.Pds4File):
     SORT_KEY = sort_key + pds4file.Pds4File.SORT_KEY
 
     OPUS_TYPE = opus_type + pds4file.Pds4File.OPUS_TYPE
-    OPUS_FORMAT = opus_format + pds4file.Pds4File.OPUS_FORMAT
     OPUS_PRODUCTS = opus_products + pds4file.Pds4File.OPUS_PRODUCTS
     OPUS_ID = opus_id
     OPUS_ID_TO_PRIMARY_LOGICAL_PATH = opus_id_to_primary_logical_path
@@ -267,64 +193,17 @@ class cassini_uvis_solarocc_beckerjarmak2023(pds4file.Pds4File):
     VIEWABLES = {'default': default_viewables}
 
     ASSOCIATIONS = pds4file.Pds4File.ASSOCIATIONS.copy()
-    ASSOCIATIONS['bundles']  += associations_to_volumes
-    ASSOCIATIONS['previews'] += associations_to_previews
-    ASSOCIATIONS['metadata'] += associations_to_metadata
+    ASSOCIATIONS['bundles']    += associations_to_bundles
+    ASSOCIATIONS['previews']   += associations_to_previews
+    ASSOCIATIONS['metadata']   += associations_to_metadata
     ASSOCIATIONS['documents']  += associations_to_documents
 
-    ARCHIVE_PATHS = archive_paths + pds4file.Pds4File.ARCHIVE_PATHS
-    ARCHIVE_DIRS = archive_dirs + pds4file.Pds4File.ARCHIVE_DIRS
-
-    ############################################################################
-    # DATA_SET_ID is defined as a function rather than a translator
-    ############################################################################
-
-    # Version tables reside in shelves/more_metadata/cassini_uvis_solarocc_beckerjarmak2023 and _0xxx_v1
-    VERSIONS_PATH_AND_KEY = translator.TranslatorByRegex([
-        (r'volumes/COUVIS_0xxx(|_v\d)/(COUVIS_0...)/(.*)/(\w+)\.(DAT|LBL)', 0,
-                    (r'metadata/COUVIS_0xxx/\2/\2\1_versions.tab', r'\4.LBL'))
-    ])
-
-    def DATA_SET_ID(self):
-        """Look up the ID of this product using one of the "versions" indices in
-        the metadata tree."""
-
-        if not self.exists or self.isdir:
-            return ''
-
-        result = cassini_uvis_solarocc_beckerjarmak2023.VERSIONS_PATH_AND_KEY.first(self.logical_path)
-        if not result:
-            raise ValueError('Undefined DATA_SET_ID index for %s' %
-                             self.logical_path)
-
-        (versions_path, key) = result
-
-        # Confirm the file really exists, so we need to use os.path.exists, not
-        # PdsFile.os_path_exists.
-        abspath = self.root_ + versions_path
-
-        # This block will never hit unless we have missing version files. Since all
-        # version files exist in Dropbox, there is no way to test this.
-        if not os.path.exists(abspath): # pragma: no cover
-            raise FileNotFoundError('Missing DATA_SET_ID index for %s: %s' %
-                                    (self.logical_path, abspath))
-
-        versions_table = pds4file.Pds4File.from_abspath(abspath)
-        row = versions_table.child_of_index(key, flag='')
-
-        # This block will never hit unless we modify the version files or have a wrong
-        # version file.
-        if not row.exists: # pragma: no cover
-            raise ValueError('DATA_SET_ID for %s not found in index: %s' %
-                             (self.logical_path, versions_table))
-
-        return row.row_dicts[0]['DATA_SET_ID']
+    pds4file.Pds4File.FILESPEC_TO_BUNDLESET = filespec_to_bundleset + pds4file.Pds4File.FILESPEC_TO_BUNDLESET
 
 # Global attribute shared by all subclasses
-pds4file.Pds4File.OPUS_ID_TO_SUBCLASS = (
-    translator.TranslatorByRegex([(r'co-uvis-[efh].*', 0, cassini_uvis_solarocc_beckerjarmak2023)]) +
-    pds4file.Pds4File.OPUS_ID_TO_SUBCLASS
-)
+pds4file.Pds4File.OPUS_ID_TO_SUBCLASS = translator.TranslatorByRegex(
+    [(r'co-uvis-occ.*', 0, cassini_uvis_solarocc_beckerjarmak2023)]
+) + pds4file.Pds4File.OPUS_ID_TO_SUBCLASS
 
 ##########################################################################################
 # Update the global dictionary of subclasses
@@ -339,87 +218,49 @@ pds4file.Pds4File.SUBCLASSES['cassini_uvis_solarocc_beckerjarmak2023'] = cassini
 import pytest
 from .pytest_support import *
 
-# @pytest.mark.parametrize(
-#     'input_path,expected',
-#     [
-#         ('volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.DAT',
-#          'COUVIS_0xxx/opus_products/FUV1999_007_16_57.txt')
-#     ]
-# )
-# def test_opus_products(request, input_path, expected):
-#     update = request.config.option.update
-#     opus_products_test(pds4file.Pds4File, input_path, TEST_RESULTS_DIR+expected, update)
+@pytest.mark.parametrize(
+    ('input_path', 'expected'),
+    [
+        ('bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023/data/uvis_euv_2005_159_solar_time_series_ingress.xml',
+         'cassini_uvis_solarocc_beckerjarmak2023/opus_products/uvis_euv_2005_159_solar_time_series_ingress.txt'),
+        ('bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023/data/uvis_euv_2008_083_solar_time_series_egress.xml',
+         'cassini_uvis_solarocc_beckerjarmak2023/opus_products/uvis_euv_2008_083_solar_time_series_egress.txt'),
+    ]
+)
+def test_opus_products(request, input_path, expected):
+    update = request.config.option.update
+    opus_products_test(pds4file.Pds4File, input_path, TEST_RESULTS_DIR+expected, update)
 
-# @pytest.mark.parametrize(
-#     'input_path,category,expected',
-#     [
-#         ('volumes/COUVIS_0xxx/COUVIS_0058/DATA/D2017_001/EUV2017_001_03_49.LBL',
-#          'volumes',
-#          'COUVIS_0xxx/associated_abspaths/volumes_EUV2017_001_03_49.txt'),
-#         ('volumes/COUVIS_0xxx/COUVIS_0058/DATA',
-#          'volumes',
-#          'COUVIS_0xxx/associated_abspaths/volumes_DATA.txt'),
-#         ('volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.DAT',
-#          'archives-volumes',
-#          'COUVIS_0xxx/associated_abspaths/archives_volumes_FUV1999_007_16_57.txt'),
-#         ('volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.DAT',
-#          'checksums-volumes',
-#          'COUVIS_0xxx/associated_abspaths/checksums_volumes_FUV1999_007_16_57.txt'),
-#     ]
-# )
-# def test_associated_abspaths(request, input_path, category, expected):
-#     update = request.config.option.update
-#     associated_abspaths_test(pds4file.Pds4File, input_path, category,
-#                              TEST_RESULTS_DIR+expected, update)
+@pytest.mark.parametrize(
+    ('input_path', 'category', 'expected'),
+    [
+        ('bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023/data/uvis_euv_2006_257_solar_time_series_ingress.xml',
+         'bundles',
+         'cassini_uvis_solarocc_beckerjarmak2023/associated_abspaths/bundles_uvis_euv_2006_257_solar_time_series_ingress.txt'),
+        ('bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023/data/uvis_euv_2008_083_solar_time_series_egress.xml',
+         'bundles',
+         'cassini_uvis_solarocc_beckerjarmak2023/associated_abspaths/bundles_uvis_euv_2008_083_solar_time_series_egress.txt'),
+        ('bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023/data/uvis_euv_2006_257_solar_time_series_ingress.xml',
+         'previews',
+         'cassini_uvis_solarocc_beckerjarmak2023/associated_abspaths/previews_uvis_euv_2006_257_solar_time_series_ingress.txt'),
+        ('bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023/data/uvis_euv_2008_083_solar_time_series_egress.xml',
+         'previews',
+         'cassini_uvis_solarocc_beckerjarmak2023/associated_abspaths/previews_uvis_euv_2008_083_solar_time_series_egress.txt'),
+    ]
+)
 
-# def test_opus_id_to_primary_logical_path():
-#     TESTS = [
-#         'volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.DAT',
-#         'volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/HDAC1999_007_16_33.DAT',
-#         'volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/HDAC1999_007_16_31.DAT',
-#         'volumes/COUVIS_0xxx/COUVIS_0058/DATA/D2017_001/EUV2017_001_03_49.DAT',
-#     ]
+def test_associated_abspaths(request, input_path, category, expected):
+    update = request.config.option.update
+    associated_abspaths_test(pds4file.Pds4File, input_path, category,
+                             TEST_RESULTS_DIR+expected, update)
 
-#     for logical_path in TESTS:
-#         test_pdsf = pds4file.Pds4File.from_logical_path(logical_path)
-#         opus_id = test_pdsf.opus_id
-#         opus_id_pdsf = pds4file.Pds4File.from_opus_id(opus_id)
-#         assert opus_id_pdsf.logical_path == logical_path
+def test_opus_id_to_primary_logical_path():
+    for logical_path in PRIMARY_FILESPEC_LIST:
+        test_pdsf = pds4file.Pds4File.from_logical_path(logical_path)
+        opus_id = test_pdsf.opus_id
+        opus_id_pdsf = pds4file.Pds4File.from_opus_id(opus_id)
+        assert opus_id_pdsf.logical_path == logical_path
 
-#         # Gather all the associated OPUS products
-#         product_dict = test_pdsf.opus_products()
-#         product_pdsfiles = []
-#         for pdsf_lists in product_dict.values():
-#             for pdsf_list in pdsf_lists:
-#                 product_pdsfiles += pdsf_list
 
-#         # Filter out the metadata/documents products and format files
-#         product_pdsfiles = [pdsf for pdsf in product_pdsfiles
-#                                  if pdsf.voltype_ != 'metadata/'
-#                                  and pdsf.voltype_ != 'documents/']
-#         product_pdsfiles = [pdsf for pdsf in product_pdsfiles
-#                                  if pdsf.extension.lower() != '.fmt']
-
-#         # Gather the set of absolute paths
-#         opus_id_abspaths = set()
-#         for pdsf in product_pdsfiles:
-#             opus_id_abspaths.add(pdsf.abspath)
-
-#         for pdsf in product_pdsfiles:
-#             # Every version is in the product set
-#             for version_pdsf in pdsf.all_versions().values():
-#                 if 'previews/COUVIS_0xxx_v' in version_pdsf.abspath: continue   # no versions of previews
-#                 assert version_pdsf.abspath in opus_id_abspaths
-
-#             # Every viewset is in the product set
-#             for viewset in pdsf.all_viewsets.values():
-#                 for viewable in viewset.viewables:
-#                     assert viewable.abspath in opus_id_abspaths
-
-#             # Every associated product is in the product set except metadata
-#             for category in ('volumes', 'previews'):
-#                 for abspath in pdsf.associated_abspaths(category):
-#                     if '.' not in os.path.basename(abspath): continue   # skip dirs
-#                     assert abspath in opus_id_abspaths
 
 ##########################################################################################

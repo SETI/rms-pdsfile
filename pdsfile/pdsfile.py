@@ -4542,7 +4542,14 @@ class PdsFile(object):
         # path_name (optional), and volume
         def get_keys(row_dict):
             filespec_key = ''
-            for guess in pdstable.FILE_SPECIFICATION_COLUMN_NAMES_lc:
+
+            file_spec_colnames = pdstable.PDS3_FILE_SPECIFICATION_COLUMN_NAMES_lc
+            volume_colnames = [x.upper() for x in pdstable.PDS3_VOLUME_COLNAMES_lc]
+            if cls.__bases__[0].__name__ == 'Pds4File':
+                file_spec_colnames = pdstable.PDS4_FILE_SPECIFICATION_COLUMN_NAMES_lc
+                volume_colnames = [x.upper() for x in pdstable.PDS4_BUNDLE_COLNAMES_lc]
+
+            for guess in file_spec_colnames:
                 if guess.upper() in row_dict:
                     filespec_key = guess.upper()
                     break
@@ -4551,7 +4558,7 @@ class PdsFile(object):
                 return ('', '', '')
 
             volume_key = ''
-            for guess in pdstable.VOLUME_ID_COLUMN_NAMES:
+            for guess in volume_colnames:
                 if guess in row_dict:
                     volume_key = guess
 
