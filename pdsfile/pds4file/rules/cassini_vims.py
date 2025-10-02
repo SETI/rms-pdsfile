@@ -344,7 +344,7 @@ archive_paths = translator.TranslatorByRegex([
 # directories
 archive_dirs = translator.TranslatorByRegex([
     ### cassini_vims_cruise ###
-    (r'.*archives-(.*/cassini_vims)/(cassini_vims_cruise)/.*.tar.gz', 0, [r'\1/\2']),
+    (r'.*archives-(.*/cassini_vims)/(cassini_vims_cruise)/.*\.tar\.gz', 0, [r'\1/\2']),
 
     ### cassini_vims_saturn ###
     # bundle xml, calibration, context, document, and xml_schema collections

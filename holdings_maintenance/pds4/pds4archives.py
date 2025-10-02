@@ -290,6 +290,8 @@ def validate_tuples(dir_tuples, tar_tuples, *, logger=None,
     finally:
         logger.close()
 
+    return valid
+
 ################################################################################
 # Simplified functions to perform tasks
 ################################################################################

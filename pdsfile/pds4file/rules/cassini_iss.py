@@ -383,7 +383,7 @@ archive_dirs = translator.TranslatorByRegex([
     ),
     # browse_raw
     *[
-        (rf'.*archives-(.*/cassini_iss)/(cassini_iss_cruise)/(browse_raw)_1{num}xxxxxxx.tar.gz',
+        (rf'.*archives-(.*/cassini_iss)/(cassini_iss_cruise)/(browse_raw)_1{num}xxxxxxx\.tar\.gz',
          0, [rf'\1/\2/\3/1{num}xxxxxxx',
              r'\1/\2/\3/collection_\3.csv',
              r'\1/\2/\3/collection_\3.xml'])
@@ -416,7 +416,7 @@ archive_dirs = translator.TranslatorByRegex([
     ),
     # browse_raw
     *[
-        (rf'.*archives-(.*/cassini_iss)/(cassini_iss_saturn)/(browse_raw)_1{num}xxxxxxx.tar.gz',
+        (rf'.*archives-(.*/cassini_iss)/(cassini_iss_saturn)/(browse_raw)_1{num}xxxxxxx\.tar\.gz',
          0, [rf'\1/\2/\3/1{num}xxxxxxx',
              r'\1/\2/\3/collection_\3.csv',
              r'\1/\2/\3/collection_\3.xml'])
