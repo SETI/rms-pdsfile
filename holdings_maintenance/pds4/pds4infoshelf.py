@@ -114,7 +114,7 @@ def generate_infodict(pdsdir, selection, old_infodict={}, *, logger=None,
                     logger.error('Backup file skipped', absfile)
                     continue
 
-                if '/.' in abspath:             # flag invisible files
+                if '/.' in absfile:             # flag invisible files
                     logger.invisible('Invisible file', absfile)
 
                 info = get_info(absfile, infodict, old_infodict, checkdict)
