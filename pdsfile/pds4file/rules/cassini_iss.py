@@ -290,7 +290,7 @@ opus_id_to_primary_logical_path = translator.TranslatorByRegex([
 # Archives
 ##########################################################################################
 # Map a bundle set or a bundle to a list of logical paths of the archive file names.
-# TODO: split regex matched pattern group 1 (bundles|metadata|previews|doagrams) into
+# TODO: split regex matched pattern group 1 (bundles|metadata|previews|diagrams) into
 # separate entries if we use different archive file names for different categories
 ARCHIVE_PATHS_DICT = {
     'cassini_iss_cruise': {
