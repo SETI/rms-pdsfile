@@ -851,7 +851,7 @@ def main():
                     proceed = repair(pdsdir, selection)
 
                 else:   # update
-                   proceed = update(pdsdir, selection)
+                    proceed = update(pdsdir, selection)
 
             except (Exception, KeyboardInterrupt) as e:
                 logger.exception(e)
