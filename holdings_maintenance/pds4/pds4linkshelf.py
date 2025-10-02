@@ -540,6 +540,16 @@ def read_links(abspath, logger=None):
             elif multiple_targets:
                 matchobj = TARGET_REGEX2.match(rec)
 
+            # If not found, search for any other referenced file name or path
+            if not matchobj:
+                if ')' in rec or '}' in rec:
+                    multiple_targets = False
+
+                is_target = False
+                matchobj = LINK_REGEX.match(rec)
+                if matchobj:
+                    multiple_targets = False
+
             # No more matches in this record
             if not matchobj:
                 break
