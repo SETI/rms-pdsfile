@@ -3,7 +3,7 @@
 # pdsinfoshelf.py library and main program
 #
 # Syntax:
-#   pdsinfoshelf.py --task path [path ...]
+#   pds4infoshelf.py --task path [path ...]
 #
 # Enter the --help option to see more information.
 ################################################################################
@@ -12,9 +12,9 @@ import argparse
 import datetime
 import glob
 import os
+import re
 from pathlib import Path
 import pickle
-import re
 import shutil
 import sys
 from PIL import Image
@@ -25,7 +25,7 @@ import pdsfile
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
-from holdings_maintenance.pds3 import pdschecksums
+from holdings_maintenance.pds4 import pds4checksums
 
 # Holds log file directories temporarily, used by move_old_info()
 LOGDIRS = []
@@ -43,6 +43,7 @@ WRITE_INFODICT_LIMITS = {}
 
 BACKUP_FILENAME = re.compile(r'.*[-_](20\d\d-\d\d-\d\dT\d\d-\d\d-\d\d'
                              r'|backup|original)\.[\w.]+$')
+
 
 ################################################################################
 
@@ -128,7 +129,7 @@ def generate_infodict(pdsdir, selection, old_infodict={}, *, logger=None,
 
         else:
             info = get_info_for_file(abspath)
-            logger.info('File info generated', abspath)
+            logger.normal('File info generated', abspath)
 
         infodict[abspath] = info
         return info
@@ -144,6 +145,7 @@ def generate_infodict(pdsdir, selection, old_infodict={}, *, logger=None,
 
     merged_limits = GENERATE_INFODICT_LIMITS.copy()
     merged_limits.update(limits)
+
     if selection:
         logger.open('Generating file info for selection "%s"' % selection,
                     dirpath, limits=merged_limits)
@@ -152,7 +154,7 @@ def generate_infodict(pdsdir, selection, old_infodict={}, *, logger=None,
 
     try:
         # Load checksum dictionary
-        checkdict = pdschecksums.checksum_dict(dirpath, logger=logger)
+        checkdict = pds4checksums.checksum_dict(dirpath, logger=logger)
 #         Removed... because we can't ignore empty directories
 #         if not checkdict:
 #             return ({}, 0.)
@@ -334,8 +336,8 @@ def write_infodict(pdsdir, infodict, *, logger=None, limits={}):
 
 ################################################################################
 
-def validate_infodict(pdsdir, dirdict, shelfdict, selection, *, logger=None,
-                      limits={}):
+def validate_infodict(pdsdir, dirdict, shelfdict, selection,
+                      limits={'normal': 0}, logger=None):
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsdir.root_)
@@ -393,7 +395,7 @@ def validate_infodict(pdsdir, dirdict, shelfdict, selection, *, logger=None,
                     agreement = False
 
                 if agreement:
-                    logger.info('File info matches', key)
+                    logger.normal('File info matches', key)
 
                 del shelfdict[key]
                 del dirdict[key]
@@ -456,7 +458,7 @@ def move_old_info(shelf_file, logger=None):
 # Simplified functions to perform tasks
 ################################################################################
 
-def initialize(pdsdir, selection=None, logger=None, limits={}):
+def initialize(pdsdir, selection=None, logger=None):
 
     info_path = pdsdir.shelf_path_and_lskip('info')[0]
 
@@ -473,13 +475,12 @@ def initialize(pdsdir, selection=None, logger=None, limits={}):
         return
 
     # Generate info
-    (infodict, _) = generate_infodict(pdsdir, selection, logger=logger,
-                                      limits=limits)
+    (infodict, _) = generate_infodict(pdsdir, selection, logger=logger)
 
     # Save info file
-    write_infodict(pdsdir, infodict, logger=logger, limits=limits)
+    write_infodict(pdsdir, infodict, logger=logger)
 
-def reinitialize(pdsdir, selection=None, logger=None, limits={}):
+def reinitialize(pdsdir, selection=None, logger=None):
 
     info_path = pdsdir.shelf_path_and_lskip('info')[0]
 
@@ -489,15 +490,13 @@ def reinitialize(pdsdir, selection=None, logger=None, limits={}):
         if selection:
             logger.error('Info shelf file does not exist', info_path)
         else:
-            logger.warning('Info shelf file does not exist; initializing',
-                           info_path)
-            initialize(pdsdir, selection=selection, logger=logger,
-                       limits=limits)
+            logger.warn('Info shelf file does not exist; initializing',
+                        info_path)
+            initialize(pdsdir, selection=selection, logger=logger)
         return
 
     # Generate info
-    (infodict, _) = generate_infodict(pdsdir, selection, logger=logger,
-                                      limits=limits)
+    (infodict, _) = generate_infodict(pdsdir, selection, logger=logger)
     if not infodict:
         return
 
@@ -506,9 +505,9 @@ def reinitialize(pdsdir, selection=None, logger=None, limits={}):
         move_old_info(info_path, logger=logger)
 
     # Save info file
-    write_infodict(pdsdir, infodict, logger=logger, limits=limits)
+    write_infodict(pdsdir, infodict, logger=logger)
 
-def validate(pdsdir, selection=None, logger=None, limits={}):
+def validate(pdsdir, selection=None, logger=None):
 
     info_path = pdsdir.shelf_path_and_lskip('info')[0]
 
@@ -519,17 +518,16 @@ def validate(pdsdir, selection=None, logger=None, limits={}):
         return
 
     # Read info shelf file
-    shelf_infodict = load_infodict(pdsdir, logger=logger, limits=limits)
+    shelf_infodict = load_infodict(pdsdir, logger=logger)
 
     # Generate info
-    (dir_infodict, _) = generate_infodict(pdsdir, selection, logger=logger,
-                                          limits=limits)
+    (dir_infodict, _) = generate_infodict(pdsdir, selection, logger=logger)
 
     # Validate
     validate_infodict(pdsdir, dir_infodict, shelf_infodict, selection=selection,
-                      logger=logger, limits=limits)
+                      logger=logger)
 
-def repair(pdsdir, selection=None, logger=None, limits={}):
+def repair(pdsdir, selection=None, logger=None):
 
     info_path = pdsdir.shelf_path_and_lskip('info')[0]
 
@@ -539,19 +537,17 @@ def repair(pdsdir, selection=None, logger=None, limits={}):
         if selection:
             logger.error('Info shelf file does not exist', info_path)
         else:
-            logger.warning('Info shelf file does not exist; initializing',
-                           info_path)
-            initialize(pdsdir, selection=selection, logger=logger,
-                       limits=limits)
+            logger.warn('Info shelf file does not exist; initializing',
+                        info_path)
+            initialize(pdsdir, selection=selection, logger=logger)
         return
 
     # Read info shelf file
-    shelf_infodict = load_infodict(pdsdir, logger=logger, limits=limits)
+    shelf_infodict = load_infodict(pdsdir, logger=logger)
 
     # Generate info
     (dir_infodict, latest_modtime) = generate_infodict(pdsdir, selection,
-                                                       logger=logger,
-                                                       limits=limits)
+                                                       logger=logger)
     latest_iso = latest_modtime.replace(' ', 'T')
     latest_datetime = datetime.datetime.fromisoformat(latest_iso)
 
@@ -601,9 +597,9 @@ def repair(pdsdir, selection=None, logger=None, limits={}):
 
     # Move files and write new info
     move_old_info(info_path, logger=logger)
-    write_infodict(pdsdir, dir_infodict, logger=logger, limits=limits)
+    write_infodict(pdsdir, dir_infodict, logger=logger)
 
-def update(pdsdir, selection=None, logger=None, limits={}):
+def update(pdsdir, selection=None, logger=None):
 
     info_path = pdsdir.shelf_path_and_lskip('info')[0]
 
@@ -613,18 +609,17 @@ def update(pdsdir, selection=None, logger=None, limits={}):
         if selection:
             logger.error('Info shelf file does not exist', info_path)
         else:
-            logger.warning('Info shelf file does not exist; initializing',
-                           info_path)
-            initialize(pdsdir, selection=selection, logger=logger,
-                       limits=limits)
+            logger.warn('Info shelf file does not exist; initializing',
+                        info_path)
+            initialize(pdsdir, selection=selection, logger=logger)
         return
 
     # Read info shelf file
-    shelf_infodict = load_infodict(pdsdir, logger=logger, limits=limits)
+    shelf_infodict = load_infodict(pdsdir, logger=logger)
 
     # Generate info
     (dir_infodict, _) = generate_infodict(pdsdir, selection, shelf_infodict,
-                                          logger=logger, limits=limits)
+                                          logger=logger)
 
     # Compare
     canceled = (dir_infodict == shelf_infodict)
@@ -636,7 +631,7 @@ def update(pdsdir, selection=None, logger=None, limits={}):
 
     # Write checksum file
     move_old_info(info_path, logger=logger)
-    write_infodict(pdsdir, dir_infodict, logger=logger, limits=limits)
+    write_infodict(pdsdir, dir_infodict, logger=logger)
 
 ################################################################################
 ################################################################################
@@ -650,32 +645,32 @@ def main():
 
     parser.add_argument('--initialize', '--init', const='initialize',
                         default='', action='store_const', dest='task',
-                        help='Create an infoshelf file for a volume. Abort '   +
+                        help='Create an infoshelf file for a bundle. Abort '   +
                              'if the file already exists.')
 
     parser.add_argument('--reinitialize', '--reinit', const='reinitialize',
                         default='', action='store_const', dest='task',
-                        help='Create an infoshelf file for a volume. Replace ' +
+                        help='Create an infoshelf file for a bundle. Replace ' +
                              'the file if it already exists. If a single '     +
                              'file is specified, such as one archive file in ' +
-                             'a volume set, then only information about that ' +
+                             'a bundle set, then only information about that ' +
                              'file is re-initialized.')
 
     parser.add_argument('--validate', const='validate',
                         default='', action='store_const', dest='task',
-                        help='Validate every file in a volume against the '    +
+                        help='Validate every file in a bundle against the '    +
                              'contents of its infoshelf file. If a single '    +
                              'file is specified, such as an archive file in '  +
-                             'a volume set, then only information about that ' +
+                             'a bundle set, then only information about that ' +
                              'file is validated')
 
     parser.add_argument('--repair', const='repair',
                         default='', action='store_const', dest='task',
-                        help='Validate every file in a volume against the '    +
+                        help='Validate every file in a bundle against the '    +
                              'contents of its infoshelf file. If any file '    +
                              'has changed, the infoshelf file is replaced. '   +
                              'If a single file is specified, such as an '      +
-                             'archive file in a volume set, then only '        +
+                             'archive file in a bundle set, then only '        +
                              'information about that file is repaired. If any '+
                              'of the files checked are newer than the shelf '  +
                              'file, update the shelf file\'s modification '    +
@@ -690,9 +685,9 @@ def main():
                              'than the shelf file, update the shelf file\'s '  +
                              'modification date.')
 
-    parser.add_argument('--volume', nargs='+', type=str, required=True,
-                        help='The path to the root of the volume or volume '   +
-                             'set. For a volume set, all the volume '          +
+    parser.add_argument('bundle', nargs='+', type=str, required=True,
+                        help='The path to the root of the bundle or bundle '   +
+                             'set. For a bundle set, all the bundle '          +
                              'directories inside it are handled in sequence.')
 
     parser.add_argument('--log', '-l', type=str, default='',
@@ -710,8 +705,8 @@ def main():
                         help='Do not also log to the terminal.')
 
     parser.add_argument('--archives', '-a', default=False, action='store_true',
-                        help='Instead of referring to a volume, refer to the ' +
-                             'the archive file for that volume.')
+                        help='Instead of referring to a bundle, refer to the ' +
+                             'the archive file for that bundle.')
 
 
     # Parse and validate the command line
@@ -732,23 +727,26 @@ def main():
 
     # Initialize the logger
     logger = pdslogger.PdsLogger(LOGNAME)
-    pdsfile.Pds3File.set_log_root(args.log)
+    pdsfile.Pds4File.set_log_root(args.log)
 
     if not args.quiet:
         logger.add_handler(pdslogger.stdout_handler)
 
     if args.log:
         path = os.path.join(args.log, 'pdsinfoshelf')
+        warning_handler = pdslogger.warning_handler(path)
+        logger.add_handler(warning_handler)
+
         error_handler = pdslogger.error_handler(path)
         logger.add_handler(error_handler)
 
     # Prepare the list of paths
     abspaths = []
-    for path in args.volume:
+    for path in args.bundle:
 
         # Make sure path makes sense
         path = os.path.abspath(path)
-        parts = path.partition('/holdings/')
+        parts = path.partition('/pds4-holdings/')
         if not parts[1]:
             print('Not a holdings subdirectory: ' + path)
             sys.exit(1)
@@ -759,22 +757,22 @@ def main():
 
         # Convert to an archives path if necessary
         if args.archives and not parts[2].startswith('archives-'):
-            path = parts[0] + '/holdings/archives-' + parts[2]
+            path = parts[0] + '/pds4-holdings/archives-' + parts[2]
 
-        # Convert to a list of absolute paths that exist (volsets or volumes)
+        # Convert to a list of absolute paths that exist (bundlsets or bundles)
         try:
-            pdsf = pdsfile.Pds3File.from_abspath(path, must_exist=True)
+            pdsf = pdsfile.Pds4File.from_abspath(path, must_exist=True)
             abspaths.append(pdsf.abspath)
 
         except (ValueError, IOError):
-            # Allow a volume name to stand in for a .tar.gz archive
+            # Allow a bundle name to stand in for a .tar.gz archive
             (dir, basename) = os.path.split(path)
-            pdsdir = pdsfile.Pds3File.from_abspath(dir)
+            pdsdir = pdsfile.Pds4File.from_abspath(dir)
             if pdsdir.archives_ and '.' not in basename:
-                if pdsdir.voltype_ == 'volumes/':
+                if pdsdir.bundletype_ == 'bundles/':
                     basename += '.tar.gz'
                 else:
-                    basename += '_%s.tar.gz' % pdsdir.voltype_[:-1]
+                    basename += '_%s.tar.gz' % pdsdir.bundletype_[:-1]
 
                 newpaths = glob.glob(os.path.join(dir, basename))
                 if len(newpaths) == 0:
@@ -788,21 +786,21 @@ def main():
     # Generate a list of tuples (pdsfile, selection)
     info = []
     for path in abspaths:
-        pdsf = pdsfile.Pds3File.from_abspath(path)
+        pdsf = pdsfile.Pds4File.from_abspath(path)
 
-        if pdsf.is_volset_dir:
-            # Info about archive directories is stored by volset
+        if pdsf.is_bundleset_dir:
+            # Info about archive directories is stored by bundleset
             if pdsf.archives_:
                 info.append((pdsf, None))
 
-            # Others are checksumed by volume
+            # Others are checksumed by bundle
             else:
                 children = [pdsf.child(c) for c in pdsf.childnames]
                 info += [(c, None) for c in children if c.isdir]
-                        # "if c.isdir" is False for volset level readme files
+                        # "if c.isdir" is False for bundleset level readme files
 
-        elif pdsf.is_volume_dir:
-            # Shelve one volume
+        elif pdsf.is_bundle_dir:
+            # Shelve one bundle
             info.append((pdsf, None))
 
         elif pdsf.isdir:
@@ -811,11 +809,11 @@ def main():
 
         else:
             pdsdir = pdsf.parent()
-            if pdsf.is_volume_file:
+            if pdsf.is_bundle_file:
                 # Shelve one archive file
                 info.append((pdsdir, pdsf.basename))
-            elif pdsdir.is_volume_dir:
-                # Shelve one top-level file in volume
+            elif pdsdir.is_bundle_dir:
+                # Shelve one top-level file in bundle
                 info.append((pdsdir, pdsf.basename))
             else:
                 print('Invalid file for an infoshelf: ' + pdsf.logical_path)
@@ -826,28 +824,30 @@ def main():
     try:
         for (pdsdir, selection) in info:
 
+            info_path = pdsdir.shelf_path_and_lskip('info')[0]
+
             if selection:
                 pdsf = pdsdir.child(os.path.basename(selection))
             else:
                 pdsf = pdsdir
 
             # Save logs in up to two places
-            if pdsf.volname:
-                logfiles = set([pdsf.log_path_for_volume('_info',
+            if pdsf.bundlename:
+                logfiles = set([pdsf.log_path_for_bundle('_info',
                                                          task=args.task,
                                                          dir='pdsinfoshelf'),
-                                pdsf.log_path_for_volume('_info',
+                                pdsf.log_path_for_bundle('_info',
                                                          task=args.task,
                                                          dir='pdsinfoshelf',
                                                          place='parallel')])
             else:
-                logfiles = set([pdsf.log_path_for_volset('_info',
-                                                         task=args.task,
-                                                         dir='pdsinfoshelf'),
-                                pdsf.log_path_for_volset('_info',
-                                                         task=args.task,
-                                                         dir='pdsinfoshelf',
-                                                         place='parallel')])
+                logfiles = set([pdsf.log_path_for_bundleset('_info',
+                                                            task=args.task,
+                                                            dir='pdsinfoshelf'),
+                                pdsf.log_path_for_bundleset('_info',
+                                                            task=args.task,
+                                                            dir='pdsinfoshelf',
+                                                            place='parallel')])
 
             # Create all the handlers for this level in the logger
             local_handlers = []
@@ -858,8 +858,9 @@ def main():
                 LOGDIRS.append(os.path.split(logfile)[0])
 
                 # These handlers are only used if they don't already exist
+                warning_handler = pdslogger.warning_handler(logdir)
                 error_handler = pdslogger.error_handler(logdir)
-                local_handlers += [error_handler]
+                local_handlers += [warning_handler, error_handler]
 
             # Open the next level of the log
             if len(info) > 1:
