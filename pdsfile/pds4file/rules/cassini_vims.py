@@ -348,7 +348,7 @@ archive_dirs = translator.TranslatorByRegex([
 
     ### cassini_vims_saturn ###
     # bundle xml, calibration, context, document, and xml_schema collections
-    (r'.*archives-(.*/cassini_vims)/(cassini_vims_saturn)/bundle_xml_non_data_browse_collections.tar.gz', 0,
+    (r'.*archives-(.*/cassini_vims)/(cassini_vims_saturn)/bundle_xml_non_data_browse_collections\.tar\.gz', 0,
         [r'\1/\2/bundle.xml',
          r'\1/\2/document',
          r'\1/\2/xml_schema',
@@ -357,7 +357,7 @@ archive_dirs = translator.TranslatorByRegex([
     ),
     # browse_raw
     *[
-        (rf'.*archives-(.*/cassini_vims)/(cassini_vims_saturn)/(browse_raw)_1{num}xxxxxxx.tar.gz',
+        (rf'.*archives-(.*/cassini_vims)/(cassini_vims_saturn)/(browse_raw)_1{num}xxxxxxx\.tar\.gz',
          0, [rf'\1/\2/\3/1{num}xxxxxxx',
              r'\1/\2/\3/collection_\3.csv',
              r'\1/\2/\3/collection_\3.xml'])
@@ -369,7 +369,7 @@ archive_dirs = translator.TranslatorByRegex([
     # ),
     # data_row
     *[
-        (rf'.*archives-(.*/cassini_vims)/(cassini_vims_saturn)/(data_raw)_1{num}xxxxxxx.tar.gz',
+        (rf'.*archives-(.*/cassini_vims)/(cassini_vims_saturn)/(data_raw)_1{num}xxxxxxx\.tar\.gz',
          0, [rf'\1/\2/\3/1{num}xxxxxxx',
              r'\1/\2/\3/collection_\3.csv',
              r'\1/\2/\3/collection_\3.xml'])
