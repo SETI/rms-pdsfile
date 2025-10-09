@@ -4789,11 +4789,18 @@ class PdsFile(object):
             if key not in pdsfile_dict:
                 pdsfile_dict[key] = []
 
-            # avoid duplicated label files in one opus type category
-            if pdsf.label_abspath and pdsf.label_abspath not in label_visited[key]:
-                label_visited[key].append(pdsf.label_abspath)
-                sublist = [pdsf] + label_pdsfiles[pdsf.label_abspath]
-            else:
+            # The try and except here is to bypass the error raised by missing link shelf
+            # in internal_link_info when SHELVES_REQUIRED is set to True. In current opus
+            # import for pds4, we don't have link shelf files, so the opus_prodcuts call
+            # there will raise an error if we don't bypass it.
+            try:
+                # avoid duplicated label files in one opus type category
+                if pdsf.label_abspath and pdsf.label_abspath not in label_visited[key]:
+                    label_visited[key].append(pdsf.label_abspath)
+                    sublist = [pdsf] + label_pdsfiles[pdsf.label_abspath]
+                else:
+                    sublist = [pdsf]
+            except:
                 sublist = [pdsf]
 
             pdsfile_dict[key].append(sublist)
