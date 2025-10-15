@@ -47,8 +47,8 @@ BACKUP_FILENAME = re.compile(r'.*[-_](20\d\d-\d\d-\d\dT\d\d-\d\d-\d\d'
 
 ################################################################################
 
-def generate_infodict(pdsdir, selection, old_infodict={}, *, logger=None,
-                     limits={}):
+def generate_infodict(pdsdir, selection, old_infodict=None, *, logger=None,
+                     limits=None):
     """Generate a dictionary keyed by absolute file path for each file in the
     directory tree. Value returned is a tuple (nbytes, child_count, modtime,
     checksum, preview size).
@@ -62,6 +62,11 @@ def generate_infodict(pdsdir, selection, old_infodict={}, *, logger=None,
 
     Also return the latest modification date among all the files checked.
     """
+
+    if old_infodict is None:
+        old_infodict = {}
+    if limits is None:
+        limits = {}
 
     ### Internal function
 
@@ -210,7 +215,10 @@ def generate_infodict(pdsdir, selection, old_infodict={}, *, logger=None,
 
 ################################################################################
 
-def load_infodict(pdsdir, *, logger=None, limits={}):
+def load_infodict(pdsdir, *, logger=None, limits=None):
+
+    if limits is None:
+        limits = {}
 
     dirpath = pdsdir.abspath
     dirpath_ = dirpath.rstrip('/') + '/'
@@ -258,8 +266,11 @@ def load_infodict(pdsdir, *, logger=None, limits={}):
 
 ################################################################################
 
-def write_infodict(pdsdir, infodict, *, logger=None, limits={}):
+def write_infodict(pdsdir, infodict, *, logger=None, limits=None):
     """Write a new info shelf file for a directory tree."""
+
+    if limits is None:
+        limits = {}
 
     # Initialize
     dirpath = pdsdir.abspath

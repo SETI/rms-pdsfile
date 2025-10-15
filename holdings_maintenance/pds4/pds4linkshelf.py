@@ -91,7 +91,7 @@ class LinkInfo(object):
         return ('%d %s %s %s' % (self.recno, self.linktext, str(self.is_target),
                                  self.target or '[' + self.linkname + ']'))
 
-def generate_links(dirpath, old_links={}, *, logger=None, limits={}):
+def generate_links(dirpath, old_links=None, *, logger=None, limits=None):
     """Generate a dictionary keyed by the absolute file path for files in the
     given directory tree, which must correspond to a bundle.
 
@@ -109,6 +109,11 @@ def generate_links(dirpath, old_links={}, *, logger=None, limits={}):
 
     Also return the latest modification date among all the files checked.
     """
+
+    if old_links is None:
+        old_links = {}
+    if limits is None:
+        limits = {}
 
     dirpath = os.path.abspath(dirpath)
     pdsdir = pdsfile.Pds4File.from_abspath(dirpath)
@@ -629,9 +634,12 @@ def locate_link_with_path(abspath, filename):
 
 ################################################################################
 
-def load_links(dirpath, *, logger=None, limits={}):
+def load_links(dirpath, *, logger=None, limits=None):
     """Load link dictionary from a shelf file, converting interior paths to
     absolute paths."""
+
+    if limits is None:
+        limits = {}
 
     dirpath = os.path.abspath(dirpath)
     pdsdir = pdsfile.Pds4File.from_abspath(dirpath)
@@ -690,8 +698,11 @@ def load_links(dirpath, *, logger=None, limits={}):
 
 ################################################################################
 
-def write_linkdict(dirpath, link_dict, *, logger=None, limits={}):
+def write_linkdict(dirpath, link_dict, *, logger=None, limits=None):
     """Write a new link shelf file for a directory tree."""
+
+    if limits is None:
+        limits = {}
 
     # Initialize
     dirpath = os.path.abspath(dirpath)
@@ -818,7 +829,10 @@ def write_linkdict(dirpath, link_dict, *, logger=None, limits={}):
 
 ################################################################################
 
-def validate_links(dirpath, dirdict, shelfdict, *, logger=None, limits={}):
+def validate_links(dirpath, dirdict, shelfdict, *, logger=None, limits=None):
+
+    if limits is None:
+        limits = {}
 
     dirpath = os.path.abspath(dirpath)
     pdsdir = pdsfile.Pds4File.from_abspath(dirpath)

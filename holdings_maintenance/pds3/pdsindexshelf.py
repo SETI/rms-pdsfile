@@ -33,10 +33,13 @@ BACKUP_FILENAME = re.compile(r'.*[-_](20\d\d-\d\d-\d\dT\d\d-\d\d-\d\d'
 
 ################################################################################
 
-def generate_indexdict(pdsf, *, logger=None, limits={}):
+def generate_indexdict(pdsf, *, logger=None, limits=None):
     """Generate a dictionary keyed by row key for each row in the given table.
     The value returned is a list containing all the associated row indices.
     """
+
+    if limits is None:
+        limits = {}
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsf.root_)
@@ -73,8 +76,11 @@ def generate_indexdict(pdsf, *, logger=None, limits={}):
 
 ################################################################################
 
-def write_indexdict(pdsf, index_dict, *, logger=None, limits={}):
+def write_indexdict(pdsf, index_dict, *, logger=None, limits=None):
     """Write a new shelf file for the rows of this index."""
+
+    if limits is None:
+        limits = {}
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsf.root_)
@@ -137,7 +143,10 @@ def write_indexdict(pdsf, index_dict, *, logger=None, limits={}):
 
 ################################################################################
 
-def load_indexdict(pdsf, *, logger=None, limits={}):
+def load_indexdict(pdsf, *, logger=None, limits=None):
+
+    if limits is None:
+        limits = {}
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsf.root_)
@@ -195,7 +204,10 @@ def validate_infodict(pdsf, tabdict, shelfdict, *, logger=None):
 # Simplified functions to perform tasks
 ################################################################################
 
-def initialize(pdsf, logger=None, limits={}):
+def initialize(pdsf, logger=None, limits=None):
+
+    if limits is None:
+        limits = {}
 
     shelf_path = pdsf.indexshelf_abspath
 
@@ -213,7 +225,10 @@ def initialize(pdsf, logger=None, limits={}):
     # Save info file
     write_indexdict(pdsf, index_dict, logger=logger, limits=limits)
 
-def reinitialize(pdsf, logger=None, limits={}):
+def reinitialize(pdsf, logger=None, limits=None):
+
+    if limits is None:
+        limits = {}
 
     shelf_path = pdsf.indexshelf_abspath
 
@@ -233,7 +248,10 @@ def reinitialize(pdsf, logger=None, limits={}):
     # Save info file
     write_indexdict(pdsf, index_dict, logger=logger, limits=limits)
 
-def validate(pdsf, logger=None, limits={}):
+def validate(pdsf, logger=None, limits=None):
+
+    if limits is None:
+        limits = {}
 
     shelf_path = pdsf.indexshelf_abspath
 
@@ -256,7 +274,10 @@ def validate(pdsf, logger=None, limits={}):
     validate_infodict(pdsf, table_indexdict, shelf_indexdict,
                       logger=logger)
 
-def repair(pdsf, logger=None, op='repair', limits={}):
+def repair(pdsf, logger=None, op='repair', limits=None):
+
+    if limits is None:
+        limits = {}
 
     shelf_path = pdsf.indexshelf_abspath
 
@@ -320,7 +341,10 @@ def repair(pdsf, logger=None, op='repair', limits={}):
     # Write new info
     write_indexdict(pdsf, table_indexdict, logger=logger, limits=limits)
 
-def update(pdsf, selection=None, logger=None, limits={}):
+def update(pdsf, selection=None, logger=None, limits=None):
+
+    if limits is None:
+        limits = {}
 
     shelf_path = pdsf.indexshelf_abspath
     if os.path.exists(shelf_path):

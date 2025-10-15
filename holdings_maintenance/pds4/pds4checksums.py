@@ -52,7 +52,7 @@ def hashfile(fname, blocksize=65536):
 ################################################################################
 
 def generate_checksums(pdsdir, selection=None, oldpairs=[], *, regardless=True,
-                       logger=None, limits={}):
+                       logger=None, limits=None):
     """Generate a list of tuples (abspath, checksum) recursively from the given
     directory tree.
 
@@ -69,6 +69,9 @@ def generate_checksums(pdsdir, selection=None, oldpairs=[], *, regardless=True,
 
     Also return the latest modification date among all the files checked.
     """
+
+    if limits is None:
+        limits = {}
 
     dirpath = pdsdir.abspath
 
@@ -164,12 +167,15 @@ def generate_checksums(pdsdir, selection=None, oldpairs=[], *, regardless=True,
 
 ################################################################################
 
-def read_checksums(check_path, selection=None, *, logger=None, limits={}):
+def read_checksums(check_path, selection=None, *, logger=None, limits=None):
 
     """Return a list of tuples (abspath, checksum) from a checksum file.
 
     If a selection is specified, then only the checksum with this file name
     is returned."""
+
+    if limits is None:
+        limits = {}
 
     check_path = os.path.abspath(check_path)
     pdscheck = pdsfile.Pds4File.from_abspath(check_path)
@@ -251,8 +257,11 @@ def checksum_dict(dirpath, logger=None):
 
 ################################################################################
 
-def write_checksums(check_path, abspairs, *, logger=None, limits={}):
+def write_checksums(check_path, abspairs, *, logger=None, limits=None):
     """Write a checksum table containing the given pairs (abspath, checksum)."""
+
+    if limits is None:
+        limits = {}
 
     check_path = os.path.abspath(check_path)
     pdscheck = pdsfile.Pds4File.from_abspath(check_path)
@@ -305,10 +314,13 @@ def write_checksums(check_path, abspairs, *, logger=None, limits={}):
 ################################################################################
 
 def validate_pairs(pairs1, pairs2, selection=None, *, logger=None,
-                   limits={}):
+                   limits=None):
     """Validate the first checksum list against the second.
 
     If a selection is specified, only a file with that basename is checked."""
+
+    if limits is None:
+        limits = {}
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
 

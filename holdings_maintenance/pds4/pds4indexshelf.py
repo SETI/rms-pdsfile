@@ -33,10 +33,13 @@ BACKUP_FILENAME = re.compile(r'.*[-_](20\d\d-\d\d-\d\dT\d\d-\d\d-\d\d'
 
 ################################################################################
 
-def generate_indexdict(pdsf, *, logger=None, limits={}):
+def generate_indexdict(pdsf, *, logger=None, limits=None):
     """Generate a dictionary keyed by row key for each row in the given table.
     The value returned is a list containing all the associated row indices.
     """
+
+    if limits is None:
+        limits = {}
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsf.root_)
@@ -73,8 +76,11 @@ def generate_indexdict(pdsf, *, logger=None, limits={}):
 
 ################################################################################
 
-def write_indexdict(pdsf, index_dict, *, logger=None, limits={}):
+def write_indexdict(pdsf, index_dict, *, logger=None, limits=None):
     """Write a new shelf file for the rows of this index."""
+
+    if limits is None:
+        limits = {}
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsf.root_)
@@ -137,7 +143,10 @@ def write_indexdict(pdsf, index_dict, *, logger=None, limits={}):
 
 ################################################################################
 
-def load_indexdict(pdsf, *, logger=None, limits={}):
+def load_indexdict(pdsf, *, logger=None, limits=None):
+
+    if limits is None:
+        limits = {}
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsf.root_)

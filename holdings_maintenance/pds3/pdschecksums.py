@@ -52,7 +52,7 @@ def hashfile(fname, blocksize=65536):
 ################################################################################
 
 def generate_checksums(pdsdir, selection=None, oldpairs=[], *, regardless=True,
-                       logger=None, limits={}):
+                       logger=None, limits=None):
     """Generate a list of tuples (abspath, checksum) recursively from the given
     directory tree.
 
@@ -69,6 +69,9 @@ def generate_checksums(pdsdir, selection=None, oldpairs=[], *, regardless=True,
 
     Also return the latest modification date among all the files checked.
     """
+
+    if limits is None:
+        limits = {}
 
     dirpath = pdsdir.abspath
 
@@ -164,11 +167,14 @@ def generate_checksums(pdsdir, selection=None, oldpairs=[], *, regardless=True,
 
 ################################################################################
 
-def read_checksums(check_path, selection=None, *, logger=None, limits={}):
+def read_checksums(check_path, selection=None, *, logger=None, limits=None):
     """Return a list of tuples (abspath, checksum) from a checksum file.
 
     If a selection is specified, then only the checksum with this file name
     is returned."""
+
+    if limits is None:
+        limits = {}
 
     check_path = os.path.abspath(check_path)
     pdscheck = pdsfile.Pds3File.from_abspath(check_path)
@@ -229,7 +235,10 @@ def read_checksums(check_path, selection=None, *, logger=None, limits={}):
 
 ################################################################################
 
-def checksum_dict(dirpath, *, logger=None, limits={}):
+def checksum_dict(dirpath, *, logger=None, limits=None):
+
+    if limits is None:
+        limits = {}
 
     dirpath = os.path.abspath(dirpath)
     pdsdir = pdsfile.Pds3File.from_abspath(dirpath)
@@ -250,8 +259,11 @@ def checksum_dict(dirpath, *, logger=None, limits={}):
 
 ################################################################################
 
-def write_checksums(check_path, abspairs, *, logger=None, limits={}):
+def write_checksums(check_path, abspairs, *, logger=None, limits=None):
     """Write a checksum table containing the given pairs (abspath, checksum)."""
+
+    if limits is None:
+        limits = {}
 
     check_path = os.path.abspath(check_path)
     pdscheck = pdsfile.Pds3File.from_abspath(check_path)
@@ -304,10 +316,13 @@ def write_checksums(check_path, abspairs, *, logger=None, limits={}):
 ################################################################################
 
 def validate_pairs(pairs1, pairs2, selection=None, *, logger=None,
-                   limits={}):
+                   limits=None):
     """Validate the first checksum list against the second.
 
     If a selection is specified, only a file with that basename is checked."""
+
+    if limits is None:
+        limits = {}
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
 
@@ -392,7 +407,10 @@ def move_old_checksums(check_path, *, logger=None):
 # Simplified functions to perform tasks
 ################################################################################
 
-def initialize(pdsdir, selection=None, *, logger=None, limits={}):
+def initialize(pdsdir, selection=None, *, logger=None, limits=None):
+
+    if limits is None:
+        limits = {}
 
     check_path = pdsdir.checksum_path_and_lskip()[0]
 
@@ -416,7 +434,10 @@ def initialize(pdsdir, selection=None, *, logger=None, limits={}):
     write_checksums(check_path, pairs, logger=logger, limits=limits)
     return True
 
-def reinitialize(pdsdir, selection=None, *, logger=None, limits={}):
+def reinitialize(pdsdir, selection=None, *, logger=None, limits=None):
+
+    if limits is None:
+        limits = {}
 
     check_path = pdsdir.checksum_path_and_lskip()[0]
 
@@ -455,7 +476,10 @@ def reinitialize(pdsdir, selection=None, *, logger=None, limits={}):
     write_checksums(check_path, pairs, logger=logger, limits=new_limits)
     return True
 
-def validate(pdsdir, selection=None, *, logger=None, limits={}):
+def validate(pdsdir, selection=None, *, logger=None, limits=None):
+
+    if limits is None:
+        limits = {}
 
     check_path = pdsdir.checksum_path_and_lskip()[0]
 
@@ -481,7 +505,10 @@ def validate(pdsdir, selection=None, *, logger=None, limits={}):
     return validate_pairs(dirpairs, md5pairs, selection, logger=logger,
                           limits=limits)
 
-def repair(pdsdir, selection=None, *, logger=None, limits={}):
+def repair(pdsdir, selection=None, *, logger=None, limits=None):
+
+    if limits is None:
+        limits = {}
 
     check_path = pdsdir.checksum_path_and_lskip()[0]
 
@@ -560,7 +587,10 @@ def repair(pdsdir, selection=None, *, logger=None, limits={}):
     write_checksums(check_path, dirpairs, logger=logger)
     return True
 
-def update(pdsdir, selection=None, *, logger=None, limits={}):
+def update(pdsdir, selection=None, *, logger=None, limits=None):
+
+    if limits is None:
+        limits = {}
 
     check_path = pdsdir.checksum_path_and_lskip()[0]
 

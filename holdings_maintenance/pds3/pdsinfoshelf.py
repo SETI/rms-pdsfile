@@ -47,7 +47,7 @@ BACKUP_FILENAME = re.compile(r'.*[-_](20\d\d-\d\d-\d\dT\d\d-\d\d-\d\d'
 ################################################################################
 
 def generate_infodict(pdsdir, selection, old_infodict={}, *, logger=None,
-                     limits={}):
+                     limits=None):
     """Generate a dictionary keyed by absolute file path for each file in the
     directory tree. Value returned is a tuple (nbytes, child_count, modtime,
     checksum, preview size).
@@ -61,6 +61,9 @@ def generate_infodict(pdsdir, selection, old_infodict={}, *, logger=None,
 
     Also return the latest modification date among all the files checked.
     """
+
+    if limits is None:
+        limits = {}
 
     ### Internal function
 
@@ -208,7 +211,10 @@ def generate_infodict(pdsdir, selection, old_infodict={}, *, logger=None,
 
 ################################################################################
 
-def load_infodict(pdsdir, *, logger=None, limits={}):
+def load_infodict(pdsdir, *, logger=None, limits=None):
+
+    if limits is None:
+        limits = {}
 
     dirpath = pdsdir.abspath
     dirpath_ = dirpath.rstrip('/') + '/'
@@ -256,8 +262,11 @@ def load_infodict(pdsdir, *, logger=None, limits={}):
 
 ################################################################################
 
-def write_infodict(pdsdir, infodict, *, logger=None, limits={}):
+def write_infodict(pdsdir, infodict, *, logger=None, limits=None):
     """Write a new info shelf file for a directory tree."""
+
+    if limits is None:
+        limits = {}
 
     # Initialize
     dirpath = pdsdir.abspath
@@ -335,7 +344,10 @@ def write_infodict(pdsdir, infodict, *, logger=None, limits={}):
 ################################################################################
 
 def validate_infodict(pdsdir, dirdict, shelfdict, selection, *, logger=None,
-                      limits={}):
+                      limits=None):
+
+    if limits is None:
+        limits = {}
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsdir.root_)
@@ -456,7 +468,10 @@ def move_old_info(shelf_file, logger=None):
 # Simplified functions to perform tasks
 ################################################################################
 
-def initialize(pdsdir, selection=None, logger=None, limits={}):
+def initialize(pdsdir, selection=None, logger=None, limits=None):
+
+    if limits is None:
+        limits = {}
 
     info_path = pdsdir.shelf_path_and_lskip('info')[0]
 
@@ -479,7 +494,10 @@ def initialize(pdsdir, selection=None, logger=None, limits={}):
     # Save info file
     write_infodict(pdsdir, infodict, logger=logger, limits=limits)
 
-def reinitialize(pdsdir, selection=None, logger=None, limits={}):
+def reinitialize(pdsdir, selection=None, logger=None, limits=None):
+
+    if limits is None:
+        limits = {}
 
     info_path = pdsdir.shelf_path_and_lskip('info')[0]
 
@@ -508,7 +526,10 @@ def reinitialize(pdsdir, selection=None, logger=None, limits={}):
     # Save info file
     write_infodict(pdsdir, infodict, logger=logger, limits=limits)
 
-def validate(pdsdir, selection=None, logger=None, limits={}):
+def validate(pdsdir, selection=None, logger=None, limits=None):
+
+    if limits is None:
+        limits = {}
 
     info_path = pdsdir.shelf_path_and_lskip('info')[0]
 
@@ -529,7 +550,10 @@ def validate(pdsdir, selection=None, logger=None, limits={}):
     validate_infodict(pdsdir, dir_infodict, shelf_infodict, selection=selection,
                       logger=logger, limits=limits)
 
-def repair(pdsdir, selection=None, logger=None, limits={}):
+def repair(pdsdir, selection=None, logger=None, limits=None):
+
+    if limits is None:
+        limits = {}
 
     info_path = pdsdir.shelf_path_and_lskip('info')[0]
 
@@ -603,7 +627,10 @@ def repair(pdsdir, selection=None, logger=None, limits={}):
     move_old_info(info_path, logger=logger)
     write_infodict(pdsdir, dir_infodict, logger=logger, limits=limits)
 
-def update(pdsdir, selection=None, logger=None, limits={}):
+def update(pdsdir, selection=None, logger=None, limits=None):
+
+    if limits is None:
+        limits = {}
 
     info_path = pdsdir.shelf_path_and_lskip('info')[0]
 
