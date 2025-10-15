@@ -348,7 +348,10 @@ def write_infodict(pdsdir, infodict, *, logger=None, limits=None):
 ################################################################################
 
 def validate_infodict(pdsdir, dirdict, shelfdict, selection,
-                      limits={'normal': 0}, logger=None):
+                      limits=None, logger=None):
+
+    if limits is None:
+        limits = {'normal': 0}
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsdir.root_)
