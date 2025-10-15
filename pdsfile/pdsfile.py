@@ -3234,7 +3234,7 @@ class PdsFile(object):
         return pdsf
 
     def bundleset_pdsfile(self, category=None, rank=None):
-        """Return PdsFile object for the root volume set for this or another category
+        """Return PdsFile object for the root bundle set for this or another category
         and this or another version. It returns None if the file does not exist.
 
         Keyword arguments:
