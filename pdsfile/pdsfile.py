@@ -3208,7 +3208,7 @@ class PdsFile(object):
     ############################################################################
 
     def bundle_pdsfile(self, category=None, rank=None):
-        """Return PdsFile object for the root volume file or directory associated with
+        """Return PdsFile object for the root bundle file or directory associated with
         this or another category and this or another version. It returns None if the file
         does not exist.
 
