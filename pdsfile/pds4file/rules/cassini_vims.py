@@ -321,7 +321,7 @@ archive_paths = translator.TranslatorByRegex([
         *ARCHIVE_PATHS_DICT['cassini_vims_saturn']['other_col'],
         # browse_raw
         *ARCHIVE_PATHS_DICT['cassini_vims_saturn']['browse_raw'],
-        # data_row
+        # data_raw
         *ARCHIVE_PATHS_DICT['cassini_vims_saturn']['data_raw'],
     ]),
     # input path is a bundle collection path
@@ -333,7 +333,7 @@ archive_paths = translator.TranslatorByRegex([
     (r'.*(bundles|metadata|previews|diagrams)/(cassini_vims/cassini_vims_saturn)/browse_(\w*)', 0,
         ARCHIVE_PATHS_DICT['cassini_vims_saturn']['browse_raw']
     ),
-    # data_row
+    # data_raw
     (r'.*(bundles|metadata|previews|diagrams)/(cassini_vims/cassini_vims_saturn)/data_(\w*)', 0,
         ARCHIVE_PATHS_DICT['cassini_vims_saturn']['data_raw']
     ),
@@ -367,7 +367,7 @@ archive_dirs = translator.TranslatorByRegex([
     #     [r'\1/\2/\3/collection_\3.csv',
     #      r'\1/\2/\3/collection_\3.xml']
     # ),
-    # data_row
+    # data_raw
     *[
         (rf'.*archives-(.*/cassini_vims)/(cassini_vims_saturn)/(data_raw)_1{num}xxxxxxx\.tar\.gz',
          0, [rf'\1/\2/\3/1{num}xxxxxxx',

@@ -323,11 +323,11 @@ ARCHIVE_PATHS_DICT = {
 archive_paths = translator.TranslatorByRegex([
     ### cassini_iss_cruise ###
     (r'.*(bundles|metadata|previews|diagrams)/(cassini_iss/cassini_iss_cruise)', 0, [
-        # bundle xml and other non browse_raw & data_row collections
+        # bundle xml and other non browse_raw & data_raw collections
         *ARCHIVE_PATHS_DICT['cassini_iss_cruise']['other_col'],
         # browse_raw
         *ARCHIVE_PATHS_DICT['cassini_iss_cruise']['browse_raw'],
-        # data_row
+        # data_raw
         *ARCHIVE_PATHS_DICT['cassini_iss_cruise']['data_raw'],
     ]),
     # input path is a bundle collection path
@@ -339,7 +339,7 @@ archive_paths = translator.TranslatorByRegex([
     (r'.*(bundles|metadata|previews|diagrams)/(cassini_iss/cassini_iss_cruise)/browse_(\w*)', 0,
         ARCHIVE_PATHS_DICT['cassini_iss_cruise']['browse_raw']
     ),
-    # data_row
+    # data_raw
     (r'.*(bundles|metadata|previews|diagrams)/(cassini_iss/cassini_iss_cruise)/data_(\w*)', 0,
         ARCHIVE_PATHS_DICT['cassini_iss_cruise']['data_raw']
     ),
@@ -351,7 +351,7 @@ archive_paths = translator.TranslatorByRegex([
         *ARCHIVE_PATHS_DICT['cassini_iss_saturn']['other_col'],
         # browse_raw
         *ARCHIVE_PATHS_DICT['cassini_iss_saturn']['browse_raw'],
-        # data_row
+        # data_raw
         *ARCHIVE_PATHS_DICT['cassini_iss_saturn']['data_raw'],
     ]),
     # input path is a bundle collection path
@@ -363,7 +363,7 @@ archive_paths = translator.TranslatorByRegex([
     (r'.*(bundles|metadata|previews|diagrams)/(cassini_iss/cassini_iss_saturn)/browse_(\w*)', 0,
         ARCHIVE_PATHS_DICT['cassini_iss_saturn']['browse_raw']
     ),
-    # data_row
+    # data_raw
     (r'.*(bundles|metadata|previews|diagrams)/(cassini_iss/cassini_iss_saturn)/data_(\w*)', 0,
         ARCHIVE_PATHS_DICT['cassini_iss_saturn']['data_raw']
     ),
@@ -374,7 +374,7 @@ archive_paths = translator.TranslatorByRegex([
 # directories
 archive_dirs = translator.TranslatorByRegex([
     ### cassini_iss_cruise ###
-    # bundle xml, non browse_raw or data_row collections
+    # bundle xml, non browse_raw or data_raw collections
     (r'.*archives-(.*/cassini_iss)/(cassini_iss_cruise)/bundle_xml_non_data_browse_collections\.tar\.gz', 0,
         [r'\1/\2/bundle.xml',
          r'\1/\2/document',
@@ -393,7 +393,7 @@ archive_dirs = translator.TranslatorByRegex([
     #     [r'\1/\2/\3/collection_\3.csv',
     #      r'\1/\2/\3/collection_\3.xml']
     # ),
-    # data_row
+    # data_raw
     *[
         (rf'.*archives-(.*/cassini_iss)/(cassini_iss_cruise)/(data_raw)_1{num}xxxxxxx\.tar\.gz',
          0, [rf'\1/\2/\3/1{num}xxxxxxx',
@@ -426,7 +426,7 @@ archive_dirs = translator.TranslatorByRegex([
     #     [r'\1/\2/\3/collection_\3.csv',
     #      r'\1/\2/\3/collection_\3.xml']
     # ),
-    # data_row
+    # data_raw
     *[
         (rf'.*archives-(.*/cassini_iss)/(cassini_iss_saturn)/(data_raw)_1{num}xxxxxxx\.tar\.gz',
          0, [rf'\1/\2/\3/1{num}xxxxxxx',

@@ -835,8 +835,6 @@ def main():
     try:
         for (pdsdir, selection) in info:
 
-            info_path = pdsdir.shelf_path_and_lskip('info')[0]
-
             if selection:
                 pdsf = pdsdir.child(os.path.basename(selection))
             else:
