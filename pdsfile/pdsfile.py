@@ -2818,7 +2818,7 @@ class PdsFile(object):
 
     @property
     def bundle_version_id(self):
-        """Return version ID of this volume."""
+        """Return version ID of this bundle."""
 
         if self._bundle_version_id_filled is None:
             if self._volume_info[2] is None:
