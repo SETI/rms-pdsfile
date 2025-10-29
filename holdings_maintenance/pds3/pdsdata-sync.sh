@@ -18,12 +18,12 @@ for voltype in metadata previews calibrated diagrams volumes
 do
   if [ -d /Volumes/pdsdata-$1/holdings/$voltype/$3 ]; then
     echo "\n\n**** holdings/archives-$voltype/$3 ****"
-    rsync -av --exclude=".DS_Store" \
+    rsync -av --exclude=".DS_Store" --exclude="._*" \
               /Volumes/pdsdata-$1/holdings/archives-$voltype/$3/ \
               /Volumes/pdsdata-$2/holdings/archives-$voltype/$3/ $4
 
     echo "\n\n**** holdings/checksums-$voltype/$3 ****"
-    rsync -av --exclude=".DS_Store" \
+    rsync -av --exclude=".DS_Store" --exclude="._*" \
               /Volumes/pdsdata-$1/holdings/checksums-$voltype/$3/ \
               /Volumes/pdsdata-$2/holdings/checksums-$voltype/$3/ $4
 
@@ -34,7 +34,7 @@ do
               /Volumes/pdsdata-$2/holdings/checksums-archives-$voltype/ $4
 
     echo "\n\n**** holdings/_infoshelf-$voltype/$3 ****"
-    rsync -av --exclude=".DS_Store" \
+    rsync -av --exclude=".DS_Store" --exclude="._*" \
               /Volumes/pdsdata-$1/holdings/_infoshelf-$voltype/$3/ \
               /Volumes/pdsdata-$2/holdings/_infoshelf-$voltype/$3/ $4
 
@@ -46,20 +46,20 @@ do
 
     if [ -d /Volumes/pdsdata-$1/holdings/_linkshelf-$voltype/$3 ]; then
       echo "\n\n**** holdings/_linkshelf-$voltype/$3 ****"
-      rsync -av --exclude=".DS_Store" \
+      rsync -av --exclude=".DS_Store" --exclude="._*" \
                 /Volumes/pdsdata-$1/holdings/_linkshelf-$voltype/$3/ \
                 /Volumes/pdsdata-$2/holdings/_linkshelf-$voltype/$3/ $4
     fi
 
     if [ -d /Volumes/pdsdata-$1/holdings/_indexshelf-$voltype/$3 ]; then
       echo "\n\n**** holdings/_indexshelf-$voltype/$3 ****"
-      rsync -av --exclude=".DS_Store" \
+      rsync -av --exclude=".DS_Store" --exclude="._*" \
                 /Volumes/pdsdata-$1/holdings/_indexshelf-$voltype/$3/ \
                 /Volumes/pdsdata-$2/holdings/_indexshelf-$voltype/$3/ $4
     fi
 
     echo "\n\n**** holdings/$voltype/$3 ****"
-    rsync -av --exclude=".DS_Store" \
+    rsync -av --exclude=".DS_Store" --exclude="._*" \
               /Volumes/pdsdata-$1/holdings/$voltype/$3/ \
               /Volumes/pdsdata-$2/holdings/$voltype/$3/ $4
 
@@ -72,7 +72,7 @@ rsync -av --include="$3.txt" --exclude="*" \
       /Volumes/pdsdata-$2/holdings/_volinfo/ $4
 
 echo "\n\n**** holdings/documents/$3 ****"
-rsync -av --delete --exclude=".DS_Store" \
+rsync -av --delete --exclude=".DS_Store" --exclude="._*" \
       /Volumes/pdsdata-$1/holdings/documents/$3/ \
       /Volumes/pdsdata-$2/holdings/documents/$3/ $4
 
