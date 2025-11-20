@@ -1071,7 +1071,7 @@ class TestPds3FileBlackBox:
             ('co-vims-v1490784910_001',
              'volumes/COVIMS_0xxx/COVIMS_0006/data/2005088T102825_2005089T113931/v1490784910_3_001.qub'),
             ('go-ssi-c0346405900',
-             'volumes/GO_0xxx/GO_0017/J0/OPNAV/C0346405900R.IMG'),
+             'volumes/GO_0xxx/GO_0017/J0/OPNAV/C0346405900R.LBL'),
             ('vg-iss-1-j-c1385455',
              'volumes/VGISS_5xxx/VGISS_5101/DATA/C13854XX/C1385455_RAW.IMG'),
             ('hst-09296-acs-j8m3b1021',
