@@ -25,12 +25,12 @@ for TYPE in previews
 do
   if [ -d /Volumes/pdsdata-${SRC}/holdings/${TYPE}/${VOLSET} ]; then
     echo "\n\n**** holdings/archives-${TYPE}/${VOLSET} ****"
-    rsync -av --exclude=".DS_Store" \
+    rsync -av --exclude=".DS_Store" --exclude="._* " \
               /Volumes/pdsdata-${SRC}/holdings/archives-${TYPE}/${VOLSET}/ \
               /Volumes/pdsdata-${DEST}/holdings/archives-${TYPE}/${VOLSET}/ ${ARGS}
 
     echo "\n\n**** holdings/checksums-${TYPE}/${VOLSET} ****"
-    rsync -av --exclude=".DS_Store" \
+    rsync -av --exclude=".DS_Store" --exclude="._* " \
               /Volumes/pdsdata-${SRC}/holdings/checksums-${TYPE}/${VOLSET}/ \
               /Volumes/pdsdata-${DEST}/holdings/checksums-${TYPE}/${VOLSET}/ ${ARGS}
 
@@ -41,7 +41,7 @@ do
               /Volumes/pdsdata-${DEST}/holdings/checksums-archives-${TYPE}/ ${ARGS}
 
     echo "\n\n**** holdings/_infoshelf-${TYPE}/${VOLSET} ****"
-    rsync -av --exclude=".DS_Store" \
+    rsync -av --exclude=".DS_Store" --exclude="._* " \
               /Volumes/pdsdata-${SRC}/holdings/_infoshelf-${TYPE}/${VOLSET}/ \
               /Volumes/pdsdata-${DEST}/holdings/_infoshelf-${TYPE}/${VOLSET}/ ${ARGS}
 
@@ -53,20 +53,20 @@ do
 
     if [ -d /Volumes/pdsdata-${SRC}/holdings/_linkshelf-${TYPE}/${VOLSET} ]; then
       echo "\n\n**** holdings/_linkshelf-${TYPE}/${VOLSET} ****"
-      rsync -av --exclude=".DS_Store" \
+      rsync -av --exclude=".DS_Store" --exclude="._* " \
                 /Volumes/pdsdata-${SRC}/holdings/_linkshelf-${TYPE}/${VOLSET}/ \
                 /Volumes/pdsdata-${DEST}/holdings/_linkshelf-${TYPE}/${VOLSET}/ ${ARGS}
     fi
 
     if [ -d /Volumes/pdsdata-${SRC}/holdings/_indexshelf-${TYPE}/${VOLSET} ]; then
       echo "\n\n**** holdings/_indexshelf-${TYPE}/${VOLSET} ****"
-      rsync -av --exclude=".DS_Store" \
+      rsync -av --exclude=".DS_Store" --exclude="._* " \
                 /Volumes/pdsdata-${SRC}/holdings/_indexshelf-${TYPE}/${VOLSET}/ \
                 /Volumes/pdsdata-${DEST}/holdings/_indexshelf-${TYPE}/${VOLSET}/ ${ARGS}
     fi
 
     echo "\n\n**** holdings/${TYPE}/${VOLSET} ****"
-    rsync -av --exclude=".DS_Store" \
+    rsync -av --exclude=".DS_Store" --exclude="._* " \
               /Volumes/pdsdata-${SRC}/holdings/${TYPE}/${VOLSET}/ \
               /Volumes/pdsdata-${DEST}/holdings/${TYPE}/${VOLSET}/ ${ARGS}
 
@@ -82,7 +82,7 @@ fi
 
 if [ -d /Volumes/pdsdata-${SRC}/holdings/documents/${VOLSET} ]; then
   echo "\n\n**** holdings/documents/${VOLSET} ****"
-  rsync -av --delete --exclude=".DS_Store" \
+  rsync -av --delete --exclude=".DS_Store" --exclude="._* " \
         /Volumes/pdsdata-${SRC}/holdings/documents/${VOLSET}/ \
         /Volumes/pdsdata-${DEST}/holdings/documents/${VOLSET}/ ${ARGS}
 fi

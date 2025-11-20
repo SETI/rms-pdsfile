@@ -64,14 +64,14 @@ do
 
     if [ -d /Volumes/pdsdata-${SRC}/holdings/_indexshelf-${TYPE}/${VOLSET} ]; then
       echo "\n\n**** holdings/_indexshelf-${TYPE}/${VOLSET}/${VOLUME} ****"
-      rsync -av --delete --exclude=".DS_Store" \
+      rsync -av --delete --exclude=".DS_Store" --exclude="._* " \
                 /Volumes/pdsdata-${SRC}/holdings/_indexshelf-${TYPE}/${VOLSET}/${VOLUME}/ \
                 /Volumes/pdsdata-${DEST}/holdings/_indexshelf-${TYPE}/${VOLSET}/${VOLUME}/ ${ARGS}
     fi
 
     if [ -d /Volumes/pdsdata-${SRC}/holdings/${TYPE}/${VOLSET} ]; then
       echo "\n\n**** holdings/${TYPE}/${VOLSET}/${VOLUME} ****"
-      rsync -av --delete --exclude=".DS_Store" \
+      rsync -av --delete --exclude=".DS_Store" --exclude="._* " \
                 /Volumes/pdsdata-${SRC}/holdings/${TYPE}/${VOLSET}/${VOLUME}/ \
                 /Volumes/pdsdata-${DEST}/holdings/${TYPE}/${VOLSET}/${VOLUME}/ ${ARGS}
     fi
@@ -88,7 +88,7 @@ fi
 
 if [ -d /Volumes/pdsdata-${SRC}/holdings/documents/${VOLSET} ]; then
   echo "\n\n**** holdings/documents/${VOLSET} ****"
-  rsync -av --delete --exclude=".DS_Store" \
+  rsync -av --delete --exclude=".DS_Store" --exclude="._* " \
         /Volumes/pdsdata-${SRC}/holdings/documents/${VOLSET}/ \
         /Volumes/pdsdata-${DEST}/holdings/documents/${VOLSET}/ ${ARGS}
 fi
