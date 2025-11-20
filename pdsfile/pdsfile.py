@@ -4865,6 +4865,15 @@ class PdsFile(object):
             lskip = (len(self.root_) + len('checksums_') + len(self.category_) +
                      len(self.bundleset_))
 
+        # for non bundle directories under a bundleset
+        elif (self.basename.startswith('checksums_') or
+              self.basename.startswith('superseded') or
+              self.basename.endswith('_support')):
+
+            abspath = ''.join([self.root_, 'checksums-', self.category_,
+                               self.bundleset_, self.basename, suffix, '_md5.txt'])
+            lskip = (len(self.root_) + len('checksums_') + len(self.category_) +
+                     len(self.bundleset_))
         else:
             raise ValueError('Missing volume name for checksum file: ' +
                              self.logical_path)
@@ -5035,14 +5044,20 @@ class PdsFile(object):
                      len(self.bundleset_))
 
         else:
-            if not self.bundlename_ and not bundlename:
-                raise ValueError('Non-archive shelves require bundle names: ' +
-                                 self.logical_path)
-
             if bundlename:
                 this_bundlename = bundlename.rstrip('/')
             else:
                 this_bundlename = self.bundlename
+
+            if not self.bundlename_ and not bundlename:
+                # for non bundle directories under a bundleset
+                if (self.basename.startswith('checksums_') or
+                    self.basename.startswith('superseded') or
+                    self.basename.endswith('_support')):
+                    this_bundlename = self.basename
+                else:
+                    raise ValueError('Non-archive shelves require bundle names: ' +
+                                    self.logical_path)
 
             abspath = ''.join([self.root_, dir_prefix,
                                self.category_, self.bundleset_, this_bundlename,
