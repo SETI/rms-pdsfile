@@ -85,7 +85,7 @@ def generate_checksums(pdsdir, selection=None, oldpairs=[], *, regardless=True,
     latest_mtime = 0.
     try:
         md5_dict = {}
-        for (abspath, hex) in oldpairs:
+        for (abspath, hex) in (oldpairs or []):
             md5_dict[abspath] = hex
 
         newtuples = []
