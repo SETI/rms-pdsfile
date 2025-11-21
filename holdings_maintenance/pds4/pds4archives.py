@@ -520,19 +520,19 @@ def main():
                     logger.info('Log file', logfile)
 
                 if args.task == 'initialize':
-                    proceed = initialize(pdsdir)
+                    initialize(pdsdir)
 
                 elif args.task == 'reinitialize':
-                    proceed = reinitialize(pdsdir)
+                    reinitialize(pdsdir)
 
                 elif args.task == 'validate':
-                    proceed = validate(pdsdir)
+                    validate(pdsdir)
 
                 elif args.task == 'repair':
-                    proceed = repair(pdsdir)
+                    repair(pdsdir)
 
                 else:       # update
-                    proceed = update(pdsdir)
+                    update(pdsdir)
 
             except (Exception, KeyboardInterrupt) as e:
                 logger.exception(e)
@@ -544,11 +544,10 @@ def main():
     except (Exception, KeyboardInterrupt) as e:
         logger.exception(e)
         status = 1
-        proceed = False
         raise
 
     finally:
-        (fatal, errors, warnings, tests) = logger.close()
+        (fatal, errors, _, _) = logger.close()
         if fatal or errors:
             status = 1
 
