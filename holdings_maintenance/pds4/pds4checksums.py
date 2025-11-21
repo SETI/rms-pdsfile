@@ -41,12 +41,12 @@ BACKUP_FILENAME = re.compile(r'.*[-_](20\d\d-\d\d-\d\dT\d\d-\d\d-\d\d'
 #       generating-an-md5-checksum-of-a-file
 
 def hashfile(fname, blocksize=65536):
-    f = open(fname, 'rb')
     hasher = hashlib.md5()
-    buf = f.read(blocksize)
-    while len(buf) > 0:
-        hasher.update(buf)
-        buf = f.read(blocksize)
+
+    with open(fname, 'rb') as f:
+        for chunk in iter(lambda: f.read(blocksize), b''):
+            hasher.update(chunk)
+
     return hasher.hexdigest()
 
 ################################################################################
