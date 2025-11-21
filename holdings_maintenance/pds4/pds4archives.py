@@ -223,7 +223,8 @@ def write_archive(pdsdir, *, clobber=True, archive_invisibles=True,
         for tarpath in archive_paths:
             if not clobber and os.path.exists(tarpath):
                 logger.error('Archive file already exists', tarpath)
-                return
+                # keep checking and creating archive files that are missing
+                continue
 
             current_archive_dirs = archive_dirs[tarpath]
 
