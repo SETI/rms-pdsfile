@@ -355,16 +355,19 @@ def repair(pdsdir, logger=None):
 
 def update(pdsdir, logger=None):
 
-    tarpath = pdsdir.archive_path_and_lskip()[0]
+    logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
+    archive_paths = pdsdir.archive_paths()
+    wrote_any = False
 
-    if os.path.exists(tarpath):
-        logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
-        logger.info('Archive file exists; skipping', tarpath)
-        return False
+    for tarpath in archive_paths:
+        if os.path.exists(tarpath):
+            logger.info('Archive file exists; skipping', tarpath)
+            continue
+        # write only missing ones
+        write_archive(pdsdir, clobber=False, logger=logger)
+        wrote_any = True
 
-    # Write tar file if necessary
-    write_archive(pdsdir, clobber=True, logger=logger)
-    return True
+    return wrote_any
 
 ################################################################################
 # Executable program
