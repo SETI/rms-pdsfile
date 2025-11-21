@@ -202,17 +202,17 @@ class Pds3File(PdsFile):
     def log_path_for_volume(self, suffix='', task='', dir='', place='default'):
         return self.log_path_for_bundle(suffix=suffix, task=task, dir=dir, place=place)
 
-    def volset_abspath(self):
-        return self.bundleset_abspath()
+    def volset_abspath(self, category=None):
+        return self.bundleset_abspath(category)
 
-    def volset_pdsfile(self):
-        return self.bundleset_pdsfile()
+    def volset_pdsfile(self, category=None, rank=None):
+        return self.bundleset_pdsfile(category, rank)
 
-    def volume_abspath(self):
-        return self.bundle_abspath()
+    def volume_abspath(self, category=None):
+        return self.bundle_abspath(category)
 
-    def volume_pdsfile(self):
-        return self.bundle_pdsfile()
+    def volume_pdsfile(self, category=None, rank=None):
+        return self.bundle_pdsfile(category, rank)
 
     @property
     def voltype_(self):
