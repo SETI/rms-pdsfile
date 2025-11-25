@@ -311,8 +311,7 @@ ARCHIVE_PATHS_DICT = {
 archive_paths = translator.TranslatorByRegex([
     ### cassini_vims_cruise ###
     (r'.*(bundles|metadata|previews|diagrams)/(cassini_vims)/(cassini_vims_cruise)', 0,
-        ARCHIVE_PATHS_DICT['cassini_vims_cruise']['all'],
-    ),
+        ARCHIVE_PATHS_DICT['cassini_vims_cruise']['all']),
 
     ### cassini_vims_saturn ###
     # input path is a bundle path
@@ -327,16 +326,13 @@ archive_paths = translator.TranslatorByRegex([
     # input path is a bundle collection path
     # bundle xml, calibration, context, document, and xml_schema
     (r'.*(bundles|metadata|previews|diagrams)/(cassini_vims/cassini_vims_saturn)/(calibration|context|document|xml_schema|bundle.xml)', 0,
-        ARCHIVE_PATHS_DICT['cassini_vims_saturn']['other_col']
-    ),
+        ARCHIVE_PATHS_DICT['cassini_vims_saturn']['other_col']),
     # browse_raw
     (r'.*(bundles|metadata|previews|diagrams)/(cassini_vims/cassini_vims_saturn)/browse_(\w*)', 0,
-        ARCHIVE_PATHS_DICT['cassini_vims_saturn']['browse_raw']
-    ),
+        ARCHIVE_PATHS_DICT['cassini_vims_saturn']['browse_raw']),
     # data_raw
     (r'.*(bundles|metadata|previews|diagrams)/(cassini_vims/cassini_vims_saturn)/data_(\w*)', 0,
-        ARCHIVE_PATHS_DICT['cassini_vims_saturn']['data_raw']
-    ),
+        ARCHIVE_PATHS_DICT['cassini_vims_saturn']['data_raw']),
 
 ])
 
@@ -353,8 +349,7 @@ archive_dirs = translator.TranslatorByRegex([
          r'\1/\2/document',
          r'\1/\2/xml_schema',
          r'\1/\2/calibration',
-         r'\1/\2/context']
-    ),
+         r'\1/\2/context']),
     # browse_raw
     *[
         (rf'.*archives-(.*/cassini_vims)/(cassini_vims_saturn)/(browse_raw)_1{num}xxxxxxx\.tar\.gz',
