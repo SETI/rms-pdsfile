@@ -129,12 +129,12 @@ def generate_checksums(pdsdir, selection=None, oldpairs=None, *, regardless=True
         if selection:
             if len(newtuples) == 0:
                 logger.error('File selection not found', selection)
-                return ({}, latest_mtime)
+                return ([], latest_mtime)
 
             if len(newtuples) > 1:
                 logger.error('Multiple copies of file selection found',
                              selection)
-                return ({}, latest_mtime)
+                return ([], latest_mtime)
 
         # Add new values to dictionary
         for (abspath, md5, _) in newtuples:
