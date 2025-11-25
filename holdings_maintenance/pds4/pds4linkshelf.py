@@ -994,6 +994,7 @@ def repair(pdsdir, logger=None):
     if not os.path.exists(link_path):
         logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
         logger.warn('Link shelf file does not exist; initializing', link_path)
+        initialize(pdsdir, logger=logger)
         return
 
     # Read link shelf file
