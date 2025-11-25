@@ -710,8 +710,7 @@ def main():
                              'written into the "logs" directory parallel to '  +
                              '"holdings". Logs are created inside the '        +
                              '"pdsinfoshelf" subdirectory of each log root '   +
-                             'directory.'
-                             )
+                             'directory.')
 
     parser.add_argument('--quiet', '-q', action='store_true',
                         help='Do not also log to the terminal.')
