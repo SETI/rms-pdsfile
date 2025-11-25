@@ -51,7 +51,7 @@ def hashfile(fname, blocksize=65536):
 
 ################################################################################
 
-def generate_checksums(pdsdir, selection=None, oldpairs=[], *, regardless=True,
+def generate_checksums(pdsdir, selection=None, oldpairs=None, *, regardless=True,
                        logger=None, limits=None):
     """Generate a list of tuples (abspath, checksum) recursively from the given
     directory tree.
@@ -821,7 +821,8 @@ def main():
 
             # Create all the handlers for this level in the logger
             local_handlers = []
-            LOGDIRS = []            # used by move_old_checksums()
+            global LOGDIRS
+            LOGDIRS = []    # used by move_old_checksums()
             for logfile in logfiles:
                 local_handlers.append(pdslogger.file_handler(logfile))
                 logdir = os.path.split(logfile)[0]

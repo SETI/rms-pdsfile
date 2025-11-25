@@ -389,15 +389,15 @@ def validate_infodict(pdsdir, dirdict, shelfdict, selection,
 
                 if count1 != count2:
                     logger.error('Child count mismatch %d %d' %
-                                    (count1, count1), key)
+                                    (count1, count2), key)
                     agreement = False
 
-                if abs(modtime1 != modtime2) > 1:
+                if modtime1 != modtime2:
                     logger.error('Modification time mismatch "%s" "%s"' %
                         (modtime1, modtime2), key)
                     agreement = False
 
-                if checksum1 != checksum1:
+                if checksum1 != checksum2:
                     logger.error('Checksum mismatch', key)
                     agreement = False
 
