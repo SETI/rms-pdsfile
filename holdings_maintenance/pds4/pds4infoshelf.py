@@ -860,6 +860,7 @@ def main():
 
             # Create all the handlers for this level in the logger
             local_handlers = []
+            global LOGDIRS
             LOGDIRS = []            # used by move_old_info()
             for logfile in logfiles:
                 local_handlers.append(pdslogger.file_handler(logfile))
