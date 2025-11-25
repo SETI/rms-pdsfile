@@ -433,7 +433,8 @@ def validate_infodict(pdsdir, dirdict, shelfdict, selection,
 def move_old_info(shelf_file, logger=None):
     """Move a file to the /logs/ directory tree and append a time tag."""
 
-    if not os.path.exists(shelf_file): return
+    if not os.path.exists(shelf_file):
+        return
 
     shelf_basename = os.path.basename(shelf_file)
     (shelf_prefix, shelf_ext) = os.path.splitext(shelf_basename)
