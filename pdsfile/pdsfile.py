@@ -3686,7 +3686,7 @@ class PdsFile(object):
                     this.bundletype_   = matchobj.group(3) + '/'
 
                 if this.bundletype_[:-1] not in cls.VOLTYPES:
-                    raise ValueError('Unrecognized volume type "%s": %s' %
+                    raise ValueError('Unrecognized volume/bundle type "%s": %s' %
                                      (this.bundletype_[:-1], this.logical_path))
 
                 return this._complete(must_exist, caching, lifetime)
