@@ -321,37 +321,52 @@ def validate(pdsdir, logger=None):
 
     dir_tuples = load_directory_info(pdsdir, logger=logger)
 
-    tarpath = pdsdir.archive_path_and_lskip()[0]
-    tar_tuples = read_archive_info(tarpath, logger=logger)
+    archive_paths = pdsdir.archive_paths()
+    archive_dirs = pdsdir.archive_dirs()
 
-    return validate_tuples(dir_tuples, tar_tuples, logger=logger)
+    for tarpath in archive_paths:
+        tar_tuples = read_archive_info(tarpath, logger=logger)
+        actual_dir_tuples = [x for x in dir_tuples if x[0] in archive_dirs[tarpath]]
+        valid = validate_tuples(actual_dir_tuples, tar_tuples, logger=logger)
+
+        if not valid:
+            return False
+
+    return True
 
 def repair(pdsdir, logger=None):
 
-    tarpath = pdsdir.archive_path_and_lskip()[0]
-    if not os.path.exists(tarpath):
+    archive_paths = pdsdir.archive_paths()
+    archive_dirs = pdsdir.archive_dirs()
+
+    for tarpath in archive_paths:
+        if not os.path.exists(tarpath):
+            logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
+            logger.warn('Archive file does not exist; initializing', tarpath)
+            initialize(pdsdir, logger=logger)
+            return True
+
+        tar_tuples = read_archive_info(tarpath, logger=logger)
+        dir_tuples = load_directory_info(pdsdir, logger=logger)
+        actual_dir_tuples = [x for x in dir_tuples if x[0] in archive_dirs[tarpath]]
+
+        # Compare
+        actual_dir_tuples.sort()
+        tar_tuples.sort()
+        canceled = (actual_dir_tuples == tar_tuples)
+        if canceled:
+            logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
+            logger.info('!!! Files match; repair canceled', tarpath)
+            continue
+
+        # Overwrite tar file if necessary
         logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
-        logger.warn('Archive file does not exist; initializing', tarpath)
-        initialize(pdsdir, logger=logger)
+        logger.info('Discrepancies found; writing new file', tarpath)
+        write_archive(pdsdir, clobber=True, logger=logger)
         return True
 
-    tar_tuples = read_archive_info(tarpath, logger=logger)
-    dir_tuples = load_directory_info(pdsdir, logger=logger)
-
-    # Compare
-    dir_tuples.sort()
-    tar_tuples.sort()
-    canceled = (dir_tuples == tar_tuples)
-    if canceled:
-        logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
-        logger.info('!!! Files match; repair canceled', tarpath)
-        return False
-
-    # Overwrite tar file if necessary
-    logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
-    logger.info('Discrepancies found; writing new file', tarpath)
-    write_archive(pdsdir, clobber=True, logger=logger)
-    return True
+    # no repair is performed
+    return False
 
 def update(pdsdir, logger=None):
 
@@ -363,9 +378,11 @@ def update(pdsdir, logger=None):
         if os.path.exists(tarpath):
             logger.info('Archive file exists; skipping', tarpath)
             continue
-        # write only missing ones
+        # write only missing ones in write_archive
         write_archive(pdsdir, clobber=False, logger=logger)
         wrote_any = True
+        # All missing archive files are created in write_archive
+        break
 
     return wrote_any
 
