@@ -4800,7 +4800,7 @@ class PdsFile(object):
                     sublist = [pdsf] + label_pdsfiles[pdsf.label_abspath]
                 else:
                     sublist = [pdsf]
-            except:
+            except (IOError, KeyError, ValueError):
                 sublist = [pdsf]
 
             pdsfile_dict[key].append(sublist)
