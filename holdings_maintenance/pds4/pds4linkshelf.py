@@ -953,7 +953,7 @@ def reinitialize(pdsdir, logger=None):
     # Warn if shelf file does not exist
     if not os.path.exists(link_path):
         logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
-        logger.warn('Link shelf file does not exist; initializing', link_path)
+        logger.warning('Link shelf file does not exist; initializing', link_path)
         initialize(pdsdir, logger=logger)
         return
 
@@ -993,7 +993,7 @@ def repair(pdsdir, logger=None):
     # Make sure file exists
     if not os.path.exists(link_path):
         logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
-        logger.warn('Link shelf file does not exist; initializing', link_path)
+        logger.warning('Link shelf file does not exist; initializing', link_path)
         initialize(pdsdir, logger=logger)
         return
 
@@ -1052,7 +1052,7 @@ def update(pdsdir,  logger=None):
     # Make sure link shelf file exists
     if not os.path.exists(link_path):
         logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
-        logger.warn('Link shelf file does not exist; initializing', link_path)
+        logger.warning('Link shelf file does not exist; initializing', link_path)
         initialize(pdsdir, logger=logger)
         return
 
