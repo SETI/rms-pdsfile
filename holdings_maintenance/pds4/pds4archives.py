@@ -342,7 +342,7 @@ def repair(pdsdir, logger=None):
     for tarpath in archive_paths:
         if not os.path.exists(tarpath):
             logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
-            logger.warn('Archive file does not exist; initializing', tarpath)
+            logger.warning('Archive file does not exist; initializing', tarpath)
             initialize(pdsdir, logger=logger)
             return True
 

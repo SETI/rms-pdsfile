@@ -502,8 +502,7 @@ def reinitialize(pdsdir, selection=None, logger=None):
         if selection:
             logger.error('Info shelf file does not exist', info_path)
         else:
-            logger.warn('Info shelf file does not exist; initializing',
-                        info_path)
+            logger.warning('Info shelf file does not exist; initializing', info_path)
             initialize(pdsdir, selection=selection, logger=logger)
         return
 
@@ -549,8 +548,7 @@ def repair(pdsdir, selection=None, logger=None):
         if selection:
             logger.error('Info shelf file does not exist', info_path)
         else:
-            logger.warn('Info shelf file does not exist; initializing',
-                        info_path)
+            logger.warning('Info shelf file does not exist; initializing', info_path)
             initialize(pdsdir, selection=selection, logger=logger)
         return
 
@@ -621,8 +619,7 @@ def update(pdsdir, selection=None, logger=None):
         if selection:
             logger.error('Info shelf file does not exist', info_path)
         else:
-            logger.warn('Info shelf file does not exist; initializing',
-                        info_path)
+            logger.warning('Info shelf file does not exist; initializing', info_path)
             initialize(pdsdir, selection=selection, logger=logger)
         return
 

@@ -261,8 +261,7 @@ def repair(pdsf, logger=None, op='repair'):
     # Make sure file exists
     if not os.path.exists(shelf_path):
         logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
-        logger.warning('Index shelf file does not exist; initializing',
-                     shelf_path)
+        logger.warning('Index shelf file does not exist; initializing', shelf_path)
         initialize(pdsf, logger=logger)
         return
 

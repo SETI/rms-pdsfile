@@ -439,7 +439,7 @@ def reinitialize(pdsdir, selection=None, logger=None):
             logger.error('Checksum file does not exist', check_path)
             return False
         else:
-            logger.warn('Checksum file does not exist; initializing', check_path)
+            logger.warning('Checksum file does not exist; initializing', check_path)
             return initialize(pdsdir, selection=selection, logger=logger)
 
     # Re-initialize just the selection; preserve others
@@ -495,7 +495,7 @@ def repair(pdsdir, selection=None, logger=None):
             logger.error('Checksum file does not exist', check_path)
             return False
         else:
-            logger.warn('Checksum file does not exist; initializing', check_path)
+            logger.warning('Checksum file does not exist; initializing', check_path)
             return initialize(pdsdir, selection=selection, logger=logger)
 
     # Read checksums file
@@ -570,7 +570,7 @@ def update(pdsdir, selection=None, logger=None):
             logger.error('Checksum file does not exist', check_path)
             return False
         else:
-            logger.warn('Checksum file does not exist; initializing', check_path)
+            logger.warning('Checksum file does not exist; initializing', check_path)
             return initialize(pdsdir, selection=selection, logger=logger)
 
     # Read checksums file
