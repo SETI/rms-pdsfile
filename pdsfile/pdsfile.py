@@ -5048,14 +5048,14 @@ class PdsFile(object):
                 this_bundlename = self.bundlename
 
             if not self.bundlename_ and not bundlename:
-                # for non bundle directories under a bundleset
+                # for non-bundle directories under a bundleset
                 if (self.basename.startswith('checksums_') or
                     self.basename.startswith('superseded') or
                     self.basename.endswith('_support')):
                     this_bundlename = self.basename
                 else:
                     raise ValueError('Non-archive shelves require bundle names: ' +
-                                    self.logical_path)
+                                     self.logical_path)
 
             abspath = ''.join([self.root_, dir_prefix,
                                self.category_, self.bundleset_, this_bundlename,
