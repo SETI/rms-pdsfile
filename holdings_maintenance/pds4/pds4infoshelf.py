@@ -84,9 +84,8 @@ def generate_infodict(pdsdir, selection, old_infodict=None, *, logger=None,
         ext = os.path.splitext(abspath)[1]
         if ext.lower() in PREVIEW_EXTS:
             try:
-                im = Image.open(abspath)
-                size = im.size
-                im.close()
+                with Image.open(abspath) as im:
+                    size = im.size
             except Exception:
                 logger.error('Preview size not found', abspath)
 
