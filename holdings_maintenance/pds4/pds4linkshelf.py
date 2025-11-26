@@ -654,7 +654,7 @@ def load_links(dirpath, *, logger=None, limits=None):
     logger.open('Reading link shelf file for', dirpath, limits=merged_limits)
 
     try:
-        (link_path, lskip) = pdsdir.shelf_path_and_lskip('link')
+        (link_path, _) = pdsdir.shelf_path_and_lskip('link')
 
         logger.info('Link shelf file', link_path)
 
