@@ -310,12 +310,12 @@ ARCHIVE_PATHS_DICT = {
 }
 archive_paths = translator.TranslatorByRegex([
     ### cassini_vims_cruise ###
-    (r'.*(bundles|metadata|previews|diagrams)/(cassini_vims)/(cassini_vims_cruise)', 0,
+    (r'.*(bundles|metadata|previews|diagrams)/(cassini_vims)/(cassini_vims_cruise)(|/)$', 0,
         ARCHIVE_PATHS_DICT['cassini_vims_cruise']['all']),
 
     ### cassini_vims_saturn ###
     # input path is a bundle path
-    (r'.*(bundles|metadata|previews|diagrams)/(cassini_vims/cassini_vims_saturn)', 0, [
+    (r'.*(bundles|metadata|previews|diagrams)/(cassini_vims/cassini_vims_saturn)(|/)$', 0, [
         # bundle xml, context, document, and xml_schema
         *ARCHIVE_PATHS_DICT['cassini_vims_saturn']['other_col'],
         # browse_raw
