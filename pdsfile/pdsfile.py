@@ -3686,8 +3686,9 @@ class PdsFile(object):
                     this.bundletype_   = matchobj.group(3) + '/'
 
                 if this.bundletype_[:-1] not in cls.VOLTYPES:
-                    raise ValueError('Unrecognized volume/bundle type "%s": %s' %
-                                     (this.bundletype_[:-1], this.logical_path))
+                    raise ValueError('Unrecognized volume/bundle' +
+                                     f'type "{this.bundletype_[:-1]}": ' +
+                                     f'{this.logical_path}')
 
                 return this._complete(must_exist, caching, lifetime)
 
@@ -4909,14 +4910,13 @@ class PdsFile(object):
         """
 
         if self.archives_:
-            dirpath = ''.join([self.root_, self.archives_, self.bundletype_,
-                               self.bundleset, self.suffix])
-            prefix_ = ''.join([self.root_, self.archives_, self.bundletype_,
-                               self.bundleset, self.suffix, '/'])
+            dirpath = (f'{self.root_}{self.archives_}{self.bundletype_}' +
+                       f'{self.bundleset}{self.suffix}')
+            prefix_ = f'{dirpath}/'
         else:
-            dirpath = ''.join([self.root_, self.archives_, self.bundletype_,
-                               self.bundleset_, self.bundlename])
-            prefix_ = ''.join([self.root_, self.bundletype_, self.bundleset_])
+            dirpath = (f'{self.root_}{self.archives_}{self.bundletype_}' +
+                       f'{self.bundleset_}{self.bundlename}')
+            prefix_ = f'{self.root_}{self.bundletype_}{self.bundleset_}'
 
         return (dirpath, prefix_)
 
