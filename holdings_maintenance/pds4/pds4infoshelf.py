@@ -30,8 +30,8 @@ LOGDIRS = []
 LOGNAME = 'pds.validation.fileinfo'
 LOGROOT_ENV = 'PDS_LOG_ROOT'
 
-PREVIEW_EXTS = set(['.jpg', '.png', '.gif', '.tif', '.tiff',
-                    '.jpeg', '.jpeg_small'])
+PREVIEW_EXTS = {'.jpg', '.png', '.gif', '.tif', '.tiff',
+                '.jpeg', '.jpeg_small'}
 
 # Default limits
 GENERATE_INFODICT_LIMITS = {}
