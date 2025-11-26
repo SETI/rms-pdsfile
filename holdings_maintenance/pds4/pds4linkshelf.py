@@ -941,10 +941,6 @@ def initialize(pdsdir, logger=None):
     # Generate link info
     (link_dict, _) = generate_links(pdsdir.abspath, logger=logger)
 
-    # Move old file if necessary
-    if os.path.exists(link_path):
-        move_old_links(link_path, logger=logger)
-
     # Save link files
     write_linkdict(pdsdir.abspath, link_dict, logger=logger)
 
