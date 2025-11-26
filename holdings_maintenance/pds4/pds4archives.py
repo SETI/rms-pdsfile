@@ -52,7 +52,7 @@ def load_directory_info(pdsdir, *, logger=None, limits=None):
     logger.open('Generating file info', dirpath, limits=merged_limits)
 
     try:
-        (tarpath, lskip) = pdsdir.archive_path_and_lskip()
+        (_, lskip) = pdsdir.archive_path_and_lskip()
 
         tuples = [(dirpath, dirpath[lskip:], 0, 0)]
         for (path, dirs, files) in os.walk(dirpath):
@@ -126,7 +126,7 @@ def read_archive_info(tarpath, *, logger=None, limits=None):
     logger.open('Reading archive file', tarpath, limits=merged_limits)
 
     try:
-        (dirpath, prefix) = pdstar.dirpath_and_prefix_for_archive()
+        (_, prefix) = pdstar.dirpath_and_prefix_for_archive()
 
         tuples = []
         with tarfile.open(tarpath, 'r:gz') as f:
