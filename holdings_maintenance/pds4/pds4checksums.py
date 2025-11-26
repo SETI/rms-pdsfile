@@ -362,7 +362,8 @@ def validate_pairs(pairs1, pairs2, selection=None, *, logger=None,
 
     finally:
         logger.close()
-        return success
+
+    return success
 
 ################################################################################
 
