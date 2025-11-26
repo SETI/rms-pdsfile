@@ -332,7 +332,7 @@ archive_paths = translator.TranslatorByRegex([
     ]),
     # input path is a bundle collection path
     # bundle xml, context, document, and xml_schema
-    (r'.*(bundles|metadata|previews|diagrams)/(cassini_iss/cassini_iss_cruise)/(context|document|xml_schema|bundle.xml)', 0,
+    (r'.*(bundles|metadata|previews|diagrams)/(cassini_iss/cassini_iss_cruise)/(context|document|xml_schema|bundle\.xml)', 0,
         ARCHIVE_PATHS_DICT['cassini_iss_cruise']['other_col']),
     # browse_raw
     (r'.*(bundles|metadata|previews|diagrams)/(cassini_iss/cassini_iss_cruise)/browse_(\w*)', 0,
@@ -353,7 +353,7 @@ archive_paths = translator.TranslatorByRegex([
     ]),
     # input path is a bundle collection path
     # bundle xml, context, document, and xml_schema
-    (r'.*(bundles|metadata|previews|diagrams)/(cassini_iss/cassini_iss_saturn)/(context|document|xml_schema|bundle.xml)', 0,
+    (r'.*(bundles|metadata|previews|diagrams)/(cassini_iss/cassini_iss_saturn)/(context|document|xml_schema|bundle\.xml)', 0,
         ARCHIVE_PATHS_DICT['cassini_iss_saturn']['other_col']),
     # browse_raw
     (r'.*(bundles|metadata|previews|diagrams)/(cassini_iss/cassini_iss_saturn)/browse_(\w*)', 0,
