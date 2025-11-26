@@ -188,8 +188,17 @@ def validate_infodict(pdsf, tabdict, shelfdict, logger=None):
 
     if tabdict == shelfdict:
         logger.info('Validation complete')
-    else:
-        logger.error('Validation failed for', pdsf.abspath)
+        return
+
+    logger.error('Validation failed for', pdsf.abspath)
+    for key, value in tabdict.items():
+        if key not in shelfdict:
+            logger.error(f'not in shelf: {key}')
+        elif (shelfval := shelfdict[key]) != value:
+            logger.error(f'key mismatch: {key}\n table: {value}\n shelf: {shelfval}')
+    for key in shelfdict:
+        if key not in tabdict:
+            logger.error(f'not in table: {key}')
 
 ################################################################################
 # Simplified functions to perform tasks
