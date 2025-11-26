@@ -284,25 +284,23 @@ def write_checksums(check_path, abspairs, *, logger=None, limits=None):
         lskip = len(prefix_)
 
         # Write file
-        f = open(check_path, 'w')
-        for pair in abspairs:
-            (abspath, hex) = pair
+        with open(check_path, 'w') as f:
+            for pair in abspairs:
+                (abspath, hex) = pair
 
-            if abspath.endswith('/.DS_Store'):      # skip .DS_Store files
-                logger.ds_store('.DS_Store skipped', abspath)
-                continue
+                if abspath.endswith('/.DS_Store'):      # skip .DS_Store files
+                    logger.ds_store('.DS_Store skipped', abspath)
+                    continue
 
-            if '/._' in abspath:                    # skip dot-underscore files
-                logger.dot_underscore('._* file skipped', abspath)
-                continue
+                if '/._' in abspath:                    # skip dot-underscore files
+                    logger.dot_underscore('._* file skipped', abspath)
+                    continue
 
-            if '/.' in abspath:                     # flag invisible files
-                logger.invisible('Invisible file', abspath)
+                if '/.' in abspath:                     # flag invisible files
+                    logger.invisible('Invisible file', abspath)
 
-            f.write('%s  %s\n' % (hex, abspath[lskip:]))
-            logger.debug('Written', abspath)
-
-        f.close()
+                f.write('%s  %s\n' % (hex, abspath[lskip:]))
+                logger.debug('Written', abspath)
 
     except (Exception, KeyboardInterrupt) as e:
         logger.exception(e)
