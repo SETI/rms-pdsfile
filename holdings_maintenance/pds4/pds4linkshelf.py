@@ -1257,7 +1257,7 @@ def main():
         raise
 
     finally:
-        (fatal, errors, warnings, tests) = logger.close()
+        (fatal, errors, _, _) = logger.close()
         if fatal or errors: status = 1
 
     sys.exit(status)
