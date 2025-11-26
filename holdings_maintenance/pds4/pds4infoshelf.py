@@ -425,7 +425,8 @@ def validate_infodict(pdsdir, dirdict, shelfdict, selection,
         raise
 
     finally:
-        return logger.close()
+        results = logger.close()
+    return results
 
 ################################################################################
 
