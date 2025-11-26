@@ -15,6 +15,7 @@ import hashlib
 import os
 import re
 import shutil
+import subprocess
 import sys
 
 import pdslogger
@@ -887,8 +888,8 @@ def main():
     if proceed and args.infoshelf:
         new_list = [a.replace('pdschecksums', 'pdsinfoshelf') for a in sys.argv]
         new_list = [a for a in new_list if a not in ('--infoshelf', '-i')]
-        status = os.system(' '.join(new_list))
-        sys.exit(status)
+        result = subprocess.run(new_list)
+        sys.exit(result.returncode)
 
 if __name__ == '__main__':
     main()
