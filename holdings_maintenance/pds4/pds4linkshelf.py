@@ -167,7 +167,7 @@ def generate_links(dirpath, old_links=None, *, logger=None, limits=None):
                 # is listed in the csv later.
                 if (basename.startswith('collection') and
                     basename.endswith('.csv') and
-                    not abspath in collection_basename_dict):
+                    abspath not in collection_basename_dict):
                     logger.debug('Construct collection basename dictionary from', abspath)
                     csv_basenames = set()
                     with open(abspath, 'r') as file:
