@@ -60,7 +60,7 @@ TARGET_REGEX2 = re.compile(r'^ *,? *' + PATTERN, re.I)
 LINK_REGEX = re.compile(r'(?:|.*?[^/@\w\.])/?(?:\.\./)*(([A-Z0-9][-\w]+/)*' +
                         r'(makefile\.?|[A-Z0-9][\w-]*(\.[\w-]+)+))', re.I)
 
-EXTS_WO_LABELS = set(['.XML', '.CAT', '.FMT', '.SFD'])
+EXTS_WO_LABELS = {'.XML', '.CAT', '.FMT', '.SFD'}
 
 ################################################################################
 
