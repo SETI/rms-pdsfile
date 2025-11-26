@@ -4979,10 +4979,8 @@ class PdsFile(object):
     def dirpath_and_prefix_for_archive(self):
         """Return the absolute path to the directory associated with this archive path."""
 
-        dirpath = ''.join([self.root_, self.bundletype_,
-                           self.bundleset_, self.bundlename])
-
-        parent = ''.join([self.root_, self.bundletype_, self.bundleset_])
+        dirpath = f'{self.root_}{self.bundletype_}{self.bundleset_}{self.bundlename}'
+        parent  = f'{self.root_}{self.bundletype_}{self.bundleset_}'
 
         return (dirpath, parent)
 
