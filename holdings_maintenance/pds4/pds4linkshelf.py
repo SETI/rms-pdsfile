@@ -851,10 +851,10 @@ def validate_links(dirpath, dirdict, shelfdict, *, logger=None, limits=None):
                 dirinfo = dirdict[key]
                 shelfinfo = shelfdict[key]
 
-                if type(dirinfo) == list:
+                if isinstance(dirinfo, list):
                     dirinfo.sort()
 
-                if type(shelfinfo) == list:
+                if isinstance(shelfinfo, list):
                     shelfinfo.sort()
 
                 if dirinfo != shelfinfo:
