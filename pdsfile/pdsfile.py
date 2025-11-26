@@ -2784,7 +2784,7 @@ class PdsFile(object):
 
     @property
     def bundle_publication_date(self):
-        """Return the publication date for this volume as a formatted string."""
+        """Return the publication date for this bundle as a formatted string."""
 
         if self._bundle_publication_date_filled is not None:
             return self._bundle_publication_date_filled
