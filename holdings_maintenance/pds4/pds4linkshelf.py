@@ -1035,7 +1035,7 @@ def repair(pdsdir, logger=None):
             logger.info('!!! Time tag on link shelf files set to',
                         dt.strftime('%Y-%m-%dT%H-%M-%S'), force=True)
         else:
-            logger.info(f'!!! Link shelf file is up to date; repair canceled',
+            logger.info('!!! Link shelf file is up to date; repair canceled',
                         link_path, force=True)
         return
 
