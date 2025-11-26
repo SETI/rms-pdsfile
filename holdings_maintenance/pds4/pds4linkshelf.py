@@ -1058,9 +1058,7 @@ def update(pdsdir,  logger=None):
     shelf_linkdict = load_links(pdsdir.abspath, logger=logger)
 
     # Generate link dict
-    (dir_linkdict,
-     latest_mtime) = generate_links(pdsdir.abspath, shelf_linkdict,
-                                                    logger=logger)
+    (dir_linkdict, _) = generate_links(pdsdir.abspath, shelf_linkdict, logger=logger)
 
     # Compare
     canceled = (dir_linkdict == shelf_linkdict)
