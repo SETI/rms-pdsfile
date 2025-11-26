@@ -325,7 +325,7 @@ archive_paths = translator.TranslatorByRegex([
     ]),
     # input path is a bundle collection path
     # bundle xml, calibration, context, document, and xml_schema
-    (r'.*(bundles|metadata|previews|diagrams)/(cassini_vims/cassini_vims_saturn)/(calibration|context|document|xml_schema|bundle.xml)', 0,
+    (r'.*(bundles|metadata|previews|diagrams)/(cassini_vims/cassini_vims_saturn)/(calibration|context|document|xml_schema|bundle\.xml)', 0,
         ARCHIVE_PATHS_DICT['cassini_vims_saturn']['other_col']),
     # browse_raw
     (r'.*(bundles|metadata|previews|diagrams)/(cassini_vims/cassini_vims_saturn)/browse_(\w*)', 0,
