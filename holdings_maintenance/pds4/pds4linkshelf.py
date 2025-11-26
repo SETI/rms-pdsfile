@@ -878,7 +878,9 @@ def validate_links(dirpath, dirdict, shelfdict, *, logger=None, limits=None):
         raise
 
     finally:
-        return logger.close()
+        result = logger.close()
+
+    return result
 
 ################################################################################
 
