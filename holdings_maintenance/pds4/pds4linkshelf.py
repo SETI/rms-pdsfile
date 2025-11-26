@@ -1198,13 +1198,13 @@ def main():
                 continue
 
             # Save logs in up to two places
-            logfiles = set([pdsdir.log_path_for_bundle('_links',
-                                                       task=args.task,
-                                                       dir='pdslinkshelf'),
-                            pdsdir.log_path_for_bundle('_links',
-                                                       task=args.task,
-                                                       dir='pdslinkshelf',
-                                                       place='parallel')])
+            logfiles = {pdsdir.log_path_for_bundle('_links',
+                                                    task=args.task,
+                                                    dir='pdslinkshelf'),
+                        pdsdir.log_path_for_bundle('_links',
+                                                    task=args.task,
+                                                    dir='pdslinkshelf',
+                                                    place='parallel')}
 
             # Create all the handlers for this level in the logger
             local_handlers = []
