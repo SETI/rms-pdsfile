@@ -473,10 +473,10 @@ def move_old_info(shelf_file, logger=None):
 def initialize(pdsdir, selection=None, logger=None):
 
     info_path = pdsdir.shelf_path_and_lskip('info')[0]
+    logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
 
     # Make sure file does not exist
     if os.path.exists(info_path):
-        logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
         logger.error('Info shelf file already exists', info_path)
         return
 
