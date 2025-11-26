@@ -343,7 +343,7 @@ def write_infodict(pdsdir, infodict, *, logger=None, limits=None):
 ################################################################################
 
 def validate_infodict(pdsdir, dirdict, shelfdict, selection,
-                      limits=None, logger=None):
+                      *, limits=None, logger=None):
 
     if limits is None:
         limits = {'normal': 0}

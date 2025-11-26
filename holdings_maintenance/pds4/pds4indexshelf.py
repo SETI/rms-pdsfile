@@ -180,7 +180,7 @@ def load_indexdict(pdsf, *, logger=None, limits=None):
 
 ################################################################################
 
-def validate_infodict(pdsf, tabdict, shelfdict, logger=None):
+def validate_infodict(pdsf, tabdict, shelfdict, *,  logger=None):
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsf.root_)
