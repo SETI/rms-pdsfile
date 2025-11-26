@@ -141,7 +141,7 @@ def generate_checksums(pdsdir, selection=None, oldpairs=None, *, regardless=True
             md5_dict[abspath] = md5
 
         # Restore original order, old keys then new
-        old_keys = [p[0] for p in oldpairs]
+        old_keys = [p[0] for p in (oldpairs or [])]
 
         newpairs = []
         for key in old_keys:
