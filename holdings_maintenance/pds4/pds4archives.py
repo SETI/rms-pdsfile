@@ -326,7 +326,13 @@ def validate(pdsdir, logger=None):
 
     for tarpath in archive_paths:
         tar_tuples = read_archive_info(tarpath, logger=logger)
-        actual_dir_tuples = [x for x in dir_tuples if x[0] in archive_dirs[tarpath]]
+
+        roots = archive_dirs[tarpath]
+        actual_dir_tuples = [
+            t for t in dir_tuples
+            if any(t[0] == root or t[0].startswith(root + '/') for root in roots)
+        ]
+
         valid = validate_tuples(actual_dir_tuples, tar_tuples, logger=logger)
 
         if not valid:
@@ -348,7 +354,11 @@ def repair(pdsdir, logger=None):
 
         tar_tuples = read_archive_info(tarpath, logger=logger)
         dir_tuples = load_directory_info(pdsdir, logger=logger)
-        actual_dir_tuples = [x for x in dir_tuples if x[0] in archive_dirs[tarpath]]
+        roots = archive_dirs[tarpath]
+        actual_dir_tuples = [
+            t for t in dir_tuples
+            if any(t[0] == root or t[0].startswith(root + '/') for root in roots)
+        ]
 
         # Compare
         actual_dir_tuples.sort()
