@@ -58,18 +58,12 @@ TESTS = translator.TranslatorByRegex([
     ('.*/COVIMS_8xxx/.*',           0, ['covims_8xxx']),
     ('.*/EBROCC_xxx/.*',            0, ['ebrocc_xxxx', 'metadata',
                                         'supplemental', 'profile']),
-    ('.*/GO_0xxx/GO_000[2-9].*',    0, ['metadata', 'cumindex999',
+    ('.*/GO_0xxx/GO_00(?!01).*',    0, ['metadata', 'cumindex999',
                                         'go_previews2', 'go_previews3',
                                         'go_previews4', 'go_previews5', 'supplemental',
                                         'inventory', 'sky']),
-    ('.*/GO_0xxx/GO_00[12].*',      0, ['metadata', 'cumindex999',
-                                        'go_previews2', 'go_previews3',
-                                        'go_previews4', 'go_previews5', 'supplemental',
-                                        'inventory', 'sky']),
-    ('.*/GO_0xxx/GO_000[2-9].*',    0, ['body']),
-    ('.*/GO_0xxx/GO_001[0-5].*',    0, ['body']),
-    ('.*/GO_0xxx/GO_001[6-9].*',    0, ['jupiter', 'rings', 'moons']),
-    ('.*/GO_0xxx/GO_002.*',         0, ['jupiter', 'rings', 'moons']),
+    ('.*/GO_0xxx/GO_00[2-689].*',   0, ['body']),
+    ('.*/GO_0xxx/GO_00[12][0-9].*', 0, ['body']),
     ('.*/GO_0xxx/GO_0016.*',        0, ['sl9']),
     ('.*/GO_0xxx_v1/GO_000[2-9].*', 0, ['go_previews2', 'go_previews3',
                                         'go_previews4', 'go_previews5']),
@@ -78,6 +72,7 @@ TESTS = translator.TranslatorByRegex([
     (r'.*/JNOJIR_xxxx(|_v[\d.]+)/JNOJIR_(?!(1059|2059|2060)).*',
                                     0, ['metadata', 'cumindex999']),
     ('.*/JNOJNC_0xxx/.*',           0, ['metadata', 'cumindex999']),
+    ('.*/JNOSRU_xxxx/.*',           0, ['metadata', 'cumindex999', 'jnosru']),
     ('.*/HST.x_xxxx/.*',            0, ['hst', 'metadata', 'cumindex9_9999']),
     ('.*/NH..(LO|MV)_xxxx/.*',      0, ['metadata', 'supplemental', 'cumindexNH']),
     ('.*/NH(JU|LA)LO_[12]00.*',     0, ['jupiter', 'rings', 'moons', 'inventory']),
@@ -129,7 +124,9 @@ class PdsDependency(object):
                             problem, with "[c]" replacing the command
                             "initialize" or "repair", [C] replacing
                             "initialize" or "reinitialize", and "[d]"
-                            replacing the leading directory path.
+                            replacing the leading directory path. "[x]" marks
+                            where to truncate the message if the command is
+                            "initialize" or "reinitialize".
             suite           optional name of a test suite to which this
                             dependency belongs.
             newer           True if the file file must be newer; False to
@@ -270,6 +267,7 @@ class PdsDependency(object):
                             logger.error('Missing file', absreq)
                             for message in self.messages:
                                 cmd = self.regex.sub(message, path)
+                                cmd = cmd.partition('[x]')[0]
                                 cmd = cmd.replace('[c]', 'initialize')
                                 cmd = cmd.replace('[C]', 'initialize')
                                 cmd = cmd.replace('[d]', pdsdir.root_)
@@ -292,6 +290,10 @@ class PdsDependency(object):
                                 logger.error('File out of date', absreq)
                                 for message in self.messages:
                                     cmd = self.regex.sub(message, path)
+                                    if '[C]' in cmd:
+                                        cmd = cmd.replace('[x]', '')
+                                    else:
+                                        cmd = cmd.partition('[x]')[0]
                                     cmd = cmd.replace('[c]', 'repair')
                                     cmd = cmd.replace('[C]', 'reinitialize')
                                     cmd = cmd.replace('[d]', pdsdir.root_)
@@ -382,8 +384,8 @@ for thing in ['volumes', 'calibrated', 'diagrams', 'metadata', 'previews']:
         r'%s/(.*?)/(.*)'                     % thing,
         r'archives-%s/\1/\2%s.tar.gz'        % (thing, thing_),
         [r'pdsarchives --[c] [d]%s/\1/\2'    % thing,
-         r'pdschecksums --[c] [d]archives-%s/\1/\2%s.tar.gz' % (thing, thing_),
-         r'pdsinfoshelf --[C] [d]archives-%s/\1/\2%s.tar.gz' % (thing, thing_)],
+         r'pdschecksums --[c] [d]archives-%s/\1[x]/\2%s.tar.gz' % (thing, thing_),
+         r'pdsinfoshelf --[C] [d]archives-%s/\1[x]/\2%s.tar.gz' % (thing, thing_)],
         suite='general', newer=True)
 
     _ = PdsDependency(
@@ -391,8 +393,8 @@ for thing in ['volumes', 'calibrated', 'diagrams', 'metadata', 'previews']:
         'archives-%s/$*/$%s.tar.gz'                             % (thing, thing_),
         r'archives-%s/(.*)/(.*)%s\.tar\.gz'                     % (thing, thing_),
         r'checksums-archives-%s/\1%s_md5.txt'                   % (thing, thing_),
-        [r'pdschecksums --[c] [d]archives-%s/\1/\2%s.tar.gz'    % (thing, thing_),
-         r'pdsinfoshelf --[C] [d]archives-%s/\1/\2%s.tar.gz'    % (thing, thing_)],
+        [r'pdschecksums --[c] [d]archives-%s/\1[x]/\2%s.tar.gz' % (thing, thing_),
+         r'pdsinfoshelf --[C] [d]archives-%s/\1[x]/\2%s.tar.gz' % (thing, thing_)],
         suite='general', newer=True)
 
     _ = PdsDependency(
@@ -464,7 +466,7 @@ for (name, suffix, newer) in [
             ('raw_image'     , 'raw_image_index.tab'    , False),
             ('profile'       , 'profile_index.tab'      , False),
             ('obsindex'      , 'obsindex.tab'           , False),
-            ('sl9'           , 'sl9_index.tab'          , False)]:
+            ('sl9'           , 'sl9_mosaic_index.tab'   , False)]:
 
     _ = PdsDependency(
         name.capitalize() + ' metadata required',
@@ -565,8 +567,8 @@ for nines in ('99', '999', '9_9999', 'NH'):
         r'metadata/(.*?)/(.*?)/\2(_.*?)\.(tab|csv)',
         r'archives-metadata/\1/\2_metadata.tar.gz',
         [r'pdsarchives --[c] [d]metadata/\1/\2',
-         r'pdschecksums --[c] [d]archives-metadata/\1/\2_metadata.tar.gz',
-         r'pdsinfoshelf --[C] [d]archives-metadata/\1/\2_metadata.tar.gz'],
+         r'pdschecksums --[c] [d]archives-metadata/\1[x]/\2_metadata.tar.gz',
+         r'pdsinfoshelf --[C] [d]archives-metadata/\1[x]/\2_metadata.tar.gz'],
         suite=name, newer=True, func=cumname, args=(nines,))
 
     _ = PdsDependency(
@@ -574,8 +576,8 @@ for nines in ('99', '999', '9_9999', 'NH'):
         'archives-metadata/$/$_metadata.tar.gz',
         r'archives-metadata/(.*?)/(.*)_metadata.tar.gz',
         r'checksums-archives-metadata/\1_metadata_md5.txt',
-        [r'pdschecksums --[c] [d]archives-metadata/\1/\2_metadata.tar.gz',
-         r'pdsinfoshelf --[C] [d]archives-metadata/\1/\2_metadata.tar.gz'],
+        [r'pdschecksums --[c] [d]archives-metadata/\1[x]/\2_metadata.tar.gz',
+         r'pdsinfoshelf --[C] [d]archives-metadata/\1[x]/\2_metadata.tar.gz'],
         suite=name, newer=True, func=cumname, args=(nines,))
 
     _ = PdsDependency(
@@ -583,7 +585,7 @@ for nines in ('99', '999', '9_9999', 'NH'):
         'archives-metadata/$/$_metadata.tar.gz',
         r'archives-metadata/(.*?)/(.*)_metadata.tar.gz',
         r'checksums-archives-metadata/\1_metadata_md5.txt',
-        r'pdsinfoshelf --[C] [d]archives-metadata/\1/\2_metadata.tar.gz',
+        r'pdsinfoshelf --[C] [d]archives-metadata/\1[x]/\2_metadata.tar.gz',
         suite=name, newer=True, func=cumname, args=(nines,))
 
 ################################################################################
@@ -905,6 +907,18 @@ _ = PdsDependency(
      r'previews/\1/\3_full.jpg'],
     r'<PREVIEW> [d]volumes/\1/\3.LBL -> [d]previews/\1/\3_*.jpg',
     suite='hst', newer=False)
+
+# For JNOSRU_xxxx
+_ = PdsDependency(
+    'Previews of every JNOSRU image file',
+    'volumes/$/$/DATA/*/*/*/*.FIT',
+    r'volumes/(.*)\.FIT',
+    [r'previews/\1_thumb.jpg',
+     r'previews/\1_small.jpg',
+     r'previews/\1_med.jpg',
+     r'previews/\1_full.jpg'],
+    r'<PREVIEW> [d]volumes/\1.FIT -> [d]previews/\1*.jpg',
+    suite='jnosru', newer=False)
 
 # For NHxxLO_xxxx and NHxxMV_xxxx browse, stripping version number if present
 _ = PdsDependency(
