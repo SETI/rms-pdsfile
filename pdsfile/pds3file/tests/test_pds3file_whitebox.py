@@ -894,7 +894,7 @@ class TestPdsFileWhiteBox:
         [
             ('',
              'volumexs',
-             ['Invalid category', 'directory no found', 'Unrecognized volume type']),
+             ['Invalid category', 'directory no found', 'Unrecognized volume/bundle type']),
         ]
     )
     # For path 2776-2779, self.category_ is only empty when pdsFile is empty,

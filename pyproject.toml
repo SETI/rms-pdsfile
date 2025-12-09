@@ -53,6 +53,11 @@ pdsdependency = "holdings_maintenance.pds3.pdsdependency:main"
 pdsindexshelf = "holdings_maintenance.pds3.pdsindexshelf:main"
 pdsinfoshelf = "holdings_maintenance.pds3.pdsinfoshelf:main"
 pdslinkshelf = "holdings_maintenance.pds3.pdslinkshelf:main"
+pds4archives = "holdings_maintenance.pds4.pds4archives:main"
+pds4checksums = "holdings_maintenance.pds4.pds4checksums:main"
+pds4indexshelf = "holdings_maintenance.pds4.pds4indexshelf:main"
+pds4infoshelf = "holdings_maintenance.pds4.pds4infoshelf:main"
+pds4linkshelf = "holdings_maintenance.pds4.pds4linkshelf:main"
 
 [tool.setuptools]
 packages = ["pdsfile", "holdings_maintenance"]
