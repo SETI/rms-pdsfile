@@ -3,13 +3,14 @@
 # Synchronize one volume set from one pdsdata drive to another.
 #
 # Usage:
-#   pdsdata-sync-volume-metadata <old> <new> <volset> <volume> [--dry-run]
+#   pdsdata-sync-volume-metadata <old> <new> <volset> <volume> [--dry-run] [--delete]
 #
 # Syncs the specified metadata for the volume <volset/volume> from the drive
 # /Volumes/pdsdata-<old> to the drive /Volumes/pdsdata-<new>. Append
 # "--dry-run" for a test dry run.
 # This only syncs the metadata and associated directories and should be used
 # when syncing versioned metadata.
+# Append "--delete" to delete extraneous files in the remote directory.
 #
 # Example:
 #   pdsdata-sync-volume-metadata admin raid45 GO_0xxx GO_0023
@@ -20,8 +21,8 @@
 SRC=$1
 DEST=$2
 VOLSET=$3
-VOLUME=$4
-ARGS=$5
+ARG1=$4
+ARG2=$5
 
 for TYPE in metadata
 do
@@ -30,52 +31,52 @@ do
     rsync -av --include="${VOLUME}.tar.gz" --include="${VOLUME}_${TYPE}.tar.gz" \
               --exclude="*" --exclude=".DS_Store" --exclude="._* " \
               /Volumes/pdsdata-${SRC}/holdings/archives-${TYPE}/${VOLSET}/ \
-              /Volumes/pdsdata-${DEST}/holdings/archives-${TYPE}/${VOLSET}/ ${ARGS}
+              /Volumes/pdsdata-${DEST}/holdings/archives-${TYPE}/${VOLSET}/ ${ARG1} ${ARG2}
 
     echo "\n\n**** holdings/checksums-${TYPE}/${VOLSET}/${VOLUME}*_md5.txt ****"
     rsync -av --include="${VOLUME}_md5.txt" --include="${VOLUME}_${TYPE}_md5.txt" \
               --exclude="*" \
               /Volumes/pdsdata-${SRC}/holdings/checksums-${TYPE}/${VOLSET}/ \
-              /Volumes/pdsdata-${DEST}/holdings/checksums-${TYPE}/${VOLSET}/ ${ARGS}
+              /Volumes/pdsdata-${DEST}/holdings/checksums-${TYPE}/${VOLSET}/ ${ARG1} ${ARG2}
 
     echo "\n\n**** holdings/checksums-archives-${TYPE}/${VOLSET}_*md5.txt ****"
     rsync -av --include="${VOLSET}_md5.txt" --include="${VOLSET}_${TYPE}_md5.txt" \
               --exclude="*" \
               /Volumes/pdsdata-${SRC}/holdings/checksums-archives-${TYPE}/ \
-              /Volumes/pdsdata-${DEST}/holdings/checksums-archives-${TYPE}/ ${ARGS}
+              /Volumes/pdsdata-${DEST}/holdings/checksums-archives-${TYPE}/ ${ARG1} ${ARG2}
 
     echo "\n\n**** holdings/_infoshelf-${TYPE}/${VOLSET}/${VOLUME}_info.* ****"
     rsync -av --include="${VOLUME}_info.py" --include="${VOLUME}_info.pickle" \
               --exclude="*" \
               /Volumes/pdsdata-${SRC}/holdings/_infoshelf-${TYPE}/${VOLSET}/ \
-              /Volumes/pdsdata-${DEST}/holdings/_infoshelf-${TYPE}/${VOLSET}/ ${ARGS}
+              /Volumes/pdsdata-${DEST}/holdings/_infoshelf-${TYPE}/${VOLSET}/ ${ARG1} ${ARG2}
 
     echo "\n\n**** holdings/_infoshelf-archives-${TYPE}/${VOLSET}_info.* ****"
     rsync -av --include="${VOLSET}_info.py" --include="${VOLSET}_info.pickle" \
               --exclude="*" \
               /Volumes/pdsdata-${SRC}/holdings/_infoshelf-archives-${TYPE}/ \
-              /Volumes/pdsdata-${DEST}/holdings/_infoshelf-archives-${TYPE}/ ${ARGS}
+              /Volumes/pdsdata-${DEST}/holdings/_infoshelf-archives-${TYPE}/ ${ARG1} ${ARG2}
 
     if [ -d /Volumes/pdsdata-${SRC}/holdings/_linkshelf-${TYPE}/${VOLSET} ]; then
       echo "\n\n**** holdings/_linkshelf-${TYPE}/${VOLSET}/${VOLUME}_links.* ****"
       rsync -av --include="${VOLUME}_links.py" --include="${VOLUME}_links.pickle" \
                 --exclude="*" \
                 /Volumes/pdsdata-${SRC}/holdings/_linkshelf-${TYPE}/${VOLSET}/ \
-                /Volumes/pdsdata-${DEST}/holdings/_linkshelf-${TYPE}/${VOLSET}/ ${ARGS}
+                /Volumes/pdsdata-${DEST}/holdings/_linkshelf-${TYPE}/${VOLSET}/ ${ARG1} ${ARG2}
     fi
 
     if [ -d /Volumes/pdsdata-${SRC}/holdings/_indexshelf-${TYPE}/${VOLSET} ]; then
       echo "\n\n**** holdings/_indexshelf-${TYPE}/${VOLSET}/${VOLUME} ****"
       rsync -av --delete --exclude=".DS_Store" --exclude="._* " \
                 /Volumes/pdsdata-${SRC}/holdings/_indexshelf-${TYPE}/${VOLSET}/${VOLUME}/ \
-                /Volumes/pdsdata-${DEST}/holdings/_indexshelf-${TYPE}/${VOLSET}/${VOLUME}/ ${ARGS}
+                /Volumes/pdsdata-${DEST}/holdings/_indexshelf-${TYPE}/${VOLSET}/${VOLUME}/ ${ARG1} ${ARG2}
     fi
 
     if [ -d /Volumes/pdsdata-${SRC}/holdings/${TYPE}/${VOLSET} ]; then
       echo "\n\n**** holdings/${TYPE}/${VOLSET}/${VOLUME} ****"
       rsync -av --delete --exclude=".DS_Store" --exclude="._* " \
                 /Volumes/pdsdata-${SRC}/holdings/${TYPE}/${VOLSET}/${VOLUME}/ \
-                /Volumes/pdsdata-${DEST}/holdings/${TYPE}/${VOLSET}/${VOLUME}/ ${ARGS}
+                /Volumes/pdsdata-${DEST}/holdings/${TYPE}/${VOLSET}/${VOLUME}/ ${ARG1} ${ARG2}
     fi
 
   fi
@@ -85,14 +86,14 @@ if [ -f /Volumes/pdsdata-${SRC}/holdings/_volinfo/${VOLSET}.txt ]; then
   echo "\n\n**** holdings/_volinfo/${VOLSET}.txt ****"
   rsync -av --include="${VOLSET}.txt" --exclude="*" \
         /Volumes/pdsdata-${SRC}/holdings/_volinfo/ \
-        /Volumes/pdsdata-${DEST}/holdings/_volinfo/ ${ARGS}
+        /Volumes/pdsdata-${DEST}/holdings/_volinfo/ ${ARG1} ${ARG2}
 fi
 
 if [ -d /Volumes/pdsdata-${SRC}/holdings/documents/${VOLSET} ]; then
   echo "\n\n**** holdings/documents/${VOLSET} ****"
   rsync -av --delete --exclude=".DS_Store" --exclude="._* " \
         /Volumes/pdsdata-${SRC}/holdings/documents/${VOLSET}/ \
-        /Volumes/pdsdata-${DEST}/holdings/documents/${VOLSET}/ ${ARGS}
+        /Volumes/pdsdata-${DEST}/holdings/documents/${VOLSET}/ ${ARG1} ${ARG2}
 fi
 
 ################################################################################
