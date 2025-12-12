@@ -19,8 +19,9 @@
 SRC=$1
 DEST=$2
 VOLSET=$3
-ARG1=$4
-ARG2=$5
+VOLUME=$4
+ARG1=$5
+ARG2=$6
 
 for TYPE in metadata previews calibrated diagrams volumes
 do
