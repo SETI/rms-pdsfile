@@ -4,46 +4,26 @@
 # Synchronize the previews of one volume set from one pdsdata drive to another.
 #
 # Usage:
-#   pdsdata-sync-volset-previews [--dry-run] [--delete] <old> <new> <volset>
+#   pdsdata-sync-volset-previews <old> <new> <volset> [--dry-run] [--delete]
 #
 # Syncs the previews for the specified volume set <volset> from the drive
-# /Volumes/pdsdata-<old> to the drive /Volumes/pdsdata-<new>. Use the option "--dry-run" 
-# for a test dry run. Use the option "--delete" to delete extraneous files in the remote 
-# directory. The rsync options -a (archive) mode and -v (verbose) are included by default.
-# This only syncs the previews and associated directories.
+# /Volumes/pdsdata-<old> to the drive /Volumes/pdsdata-<new>. This only syncs the previews
+# and associated directories. Use the "--dry-run" option for a test dry run. Use the 
+# "--delete" option to delete extraneous files in the remote directory. The rsync options 
+# -a (archive) mode and -v (verbose) are included by default.
 #
 # Example:
-#   pdsdata-sync-volset-previews --delete admin staging NHxxMV_xxxx
+#   pdsdata-sync-volset-previews admin staging NHxxMV_xxxx --delete
 # copies all files relevant to the previews for volume set "NHxxMV_xxxx" from the drive 
 # pdsdata-admin to the drive pdsdata-staging, deleting any extraneous files in the 
 # destination directories.
 #########################################################################################
 
-ARG1=""
-ARG2=""
-
-# Check for the optional flags (--dry-run and --delete)
-while [[ $# -gt 0 && $1 == --* ]]; do
-  case $1 in
-    --dry-run)
-      ARG1="--dry-run"
-      shift
-      ;;
-    --delete)
-      ARG2="--delete"
-      shift
-      ;;
-    *)
-      echo "Unknown option: $1"
-      exit 1
-      ;;
-  esac
-done
-
-# Assign the required positional arguments
 SRC=$1
 DEST=$2
 VOLSET=$3
+ARG1=$4
+ARG2=$5
 
 for TYPE in previews
 do

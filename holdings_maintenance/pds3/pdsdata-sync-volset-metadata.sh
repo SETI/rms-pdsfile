@@ -4,47 +4,25 @@
 # Synchronize the metadata of one volume set from one pdsdata drive to another.
 #
 # Usage:
-#   pdsdata-sync-volset-metadata [--dry-run] [--delete] <old> <new> <volset>
+#   pdsdata-sync-volset-metadata <old> <new> <volset> [--dry-run] [--delete]
 #
 # Syncs the metadata for the specified volume set <volset> from the drive
-# /Volumes/pdsdata-<old> to the drive /Volumes/pdsdata-<new>. Use the option "--dry-run" 
-# for a test dry run. Use the option "--delete" to delete extraneous files in the remote 
+# /Volumes/pdsdata-<old> to the drive /Volumes/pdsdata-<new>. Use the "--dry-run" option 
+# for a test dry run. Use the "--delete" option to delete extraneous files in the remote 
 # directory. The rsync options -a (archive) mode and -v (verbose) are included by default.
-# This only syncs the metadata and associated directories and should be used when syncing 
-# versioned metadata.
 #
 # Example:
-#   pdsdata-sync-volset-metadata --delete admin staging VGx_9xxx
+#   pdsdata-sync-volset-metadata admin staging VGx_9xxx --delete
 # copies all files relevant to the metadata for volume set "VGx_9xxx" from the drive 
 # pdsdata-admin to the drive pdsdata-staging, deleting any extraneous files in the 
 # destination directories.
 #########################################################################################
 
-ARG1=""
-ARG2=""
-
-# Check for the optional flags (--dry-run and --delete)
-while [[ $# -gt 0 && $1 == --* ]]; do
-  case $1 in
-    --dry-run)
-      ARG1="--dry-run"
-      shift
-      ;;
-    --delete)
-      ARG2="--delete"
-      shift
-      ;;
-    *)
-      echo "Unknown option: $1"
-      exit 1
-      ;;
-  esac
-done
-
-# Assign the required positional arguments
 SRC=$1
 DEST=$2
 VOLSET=$3
+ARG1=$4
+ARG2=$5
 
 for TYPE in metadata
 do
