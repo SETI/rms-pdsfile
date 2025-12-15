@@ -121,9 +121,9 @@ fi
 
 if [ -d /Volumes/pdsdata-${SRC}/holdings/documents/${VOLSET} ]; then
   echo "\n\n**** holdings/documents/${VOLSET} ****"
-  rsync -av --exclude=".DS_Store" --exclude="._*" \
+  rsync -av ${ARG1} ${ARG2} --exclude=".DS_Store" --exclude="._*" \
         /Volumes/pdsdata-${SRC}/holdings/documents/${VOLSET}/ \
-        /Volumes/pdsdata-${DEST}/holdings/documents/${VOLSET}/ ${ARG1} ${ARG2}
+        /Volumes/pdsdata-${DEST}/holdings/documents/${VOLSET}/
 fi
 
 #########################################################################################
