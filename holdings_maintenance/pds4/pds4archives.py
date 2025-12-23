@@ -3,7 +3,7 @@
 # pdsarchives.py library and main program
 #
 # Syntax:
-#   pdsarchives.py --task path [path ...]
+#   pds4archives.py --task path [path ...]
 #
 # Enter the --help option to see more information.
 ################################################################################
@@ -35,8 +35,8 @@ BACKUP_FILENAME = re.compile(r'.*[-_](20\d\d-\d\d-\d\dT\d\d-\d\d-\d\d'
 ################################################################################
 
 def load_directory_info(pdsdir, *, logger=None, limits=None):
-    """Generate a list of tuples (abspath, dirpath, nbytes, mod time)
-    recursively for the given directory tree.
+    """Generate a list of tuples (abspath, dirpath, nbytes, mod time) recursively
+    for the given directory tree.
     """
 
     if limits is None:
@@ -52,7 +52,7 @@ def load_directory_info(pdsdir, *, logger=None, limits=None):
     logger.open('Generating file info', dirpath, limits=merged_limits)
 
     try:
-        (tarpath, lskip) = pdsdir.archive_path_and_lskip()
+        (_, lskip) = pdsdir.archive_path_and_lskip()
 
         tuples = [(dirpath, dirpath[lskip:], 0, 0)]
         for (path, dirs, files) in os.walk(dirpath):
@@ -78,7 +78,7 @@ def load_directory_info(pdsdir, *, logger=None, limits=None):
 
                 nbytes = os.path.getsize(abspath)
                 modtime = os.path.getmtime(abspath)
-                logger.info('File info generated', abspath)
+                logger.normal('File info generated', abspath)
 
                 tuples.append((abspath, abspath[lskip:], nbytes, modtime))
 
@@ -93,7 +93,7 @@ def load_directory_info(pdsdir, *, logger=None, limits=None):
                 if '/.' in abspath:             # flag invisible files
                     logger.invisible('Invisible directory', abspath)
 
-                logger.info('Directory info generated', abspath)
+                logger.normal('Directory info generated', abspath)
 
                 tuples.append((abspath, abspath[lskip:], 0, 0))
 
@@ -109,29 +109,24 @@ def load_directory_info(pdsdir, *, logger=None, limits=None):
 ################################################################################
 
 def read_archive_info(tarpath, *, logger=None, limits=None):
-    """Return a list of tuples (abspath, dirpath, nbytes, modtime) from a
-    .tar.gz file.
-    """
+    """Return a list of tuples (abspath, dirpath, nbytes, modtime) from a .tar.gz
+    file."""
 
     if limits is None:
         limits = {}
 
     tarpath = os.path.abspath(tarpath)
-    pdstar = pdsfile.Pds3File.from_abspath(tarpath)
+    pdstar = pdsfile.Pds4File.from_abspath(tarpath)
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdstar.root_)
-
-    if not os.path.exists(tarpath):
-        logger.critical('File does not exist', tarpath)
-        return []
 
     merged_limits = READ_ARCHIVE_INFO_LIMITS.copy()
     merged_limits.update(limits)
     logger.open('Reading archive file', tarpath, limits=merged_limits)
 
     try:
-        (dirpath, prefix) = pdstar.dirpath_and_prefix_for_archive()
+        (_, prefix) = pdstar.dirpath_and_prefix_for_archive()
 
         tuples = []
         with tarfile.open(tarpath, 'r:gz') as f:
@@ -155,7 +150,7 @@ def read_archive_info(tarpath, *, logger=None, limits=None):
                     tuples.append((abspath, member.name, member.size,
                                             member.mtime))
 
-                logger.info('Info read', abspath)
+                logger.normal('Info read', abspath)
 
     except (zlib.error, Exception, KeyboardInterrupt) as e:
         logger.exception(e)
@@ -200,7 +195,7 @@ def write_archive(pdsdir, *, clobber=True, archive_invisibles=True,
                 logger.invisible('Invisible file skipped', member.name)
                 return None
 
-        logger.info('File archived', member.name)
+        logger.normal('File archived', member.name)
         return member
 
     #### Begin active code
@@ -215,23 +210,31 @@ def write_archive(pdsdir, *, clobber=True, archive_invisibles=True,
     logger.open('Writing .tar.gz file for', dirpath, limits=merged_limits)
 
     try:
-        (tarpath, lskip) = pdsdir.archive_path_and_lskip()
+        archive_paths = pdsdir.archive_paths()
+        archive_dirs = pdsdir.archive_dirs()
 
         # Create parent directory if necessary
+        tarpath = archive_paths[0]
         parent = os.path.split(tarpath)[0]
         if not os.path.exists(parent):
-            logger.info('Creating directory', parent)
+            logger.normal('Creating directory', parent)
             os.makedirs(parent)
 
-        if not clobber and os.path.exists(tarpath):
-            logger.error('Archive file already exists', tarpath)
-            return
+        for tarpath in archive_paths:
+            if not clobber and os.path.exists(tarpath):
+                logger.error('Archive file already exists', tarpath)
+                # keep checking and creating archive files that are missing
+                continue
 
-        f = tarfile.open(tarpath, mode='w:gz')
-        f.add(dirpath, arcname=dirpath[lskip:], recursive=True,
-                      filter=archive_filter)
-        logger.info('Written', tarpath)
-        f.close()
+            current_archive_dirs = archive_dirs[tarpath]
+
+            logger.normal('Open for gzip compressed writing', tarpath)
+            with tarfile.open(tarpath, mode='w:gz') as tar:
+                for dir_path in current_archive_dirs:
+                    _, _, fname = dir_path.rpartition('/')
+                    tar.add(dir_path, arcname=fname, recursive=True,
+                            filter=archive_filter)
+
 
     except (Exception, KeyboardInterrupt) as e:
         logger.exception(e)
@@ -284,7 +287,7 @@ def validate_tuples(dir_tuples, tar_tuples, *, logger=None,
                 del tardict[abspath]
 
             else:
-                logger.info('Validated', dirpath)
+                logger.normal('Validated', dirpath)
                 del tardict[abspath]
 
         keys = list(tardict.keys())
@@ -306,74 +309,92 @@ def validate_tuples(dir_tuples, tar_tuples, *, logger=None,
 # Simplified functions to perform tasks
 ################################################################################
 
-def initialize(pdsdir, *, logger=None, limits=None):
-    if limits is None:
-        limits = {}
-    write_archive(pdsdir, clobber=False, logger=logger, limits=limits)
+def initialize(pdsdir, logger=None):
+    write_archive(pdsdir, clobber=False, logger=logger)
     return True
 
-def reinitialize(pdsdir, *, logger=None, limits=None):
-    if limits is None:
-        limits = {}
-    write_archive(pdsdir, clobber=True, logger=logger, limits=limits)
+def reinitialize(pdsdir, logger=None):
+    write_archive(pdsdir, clobber=True, logger=logger)
     return True
 
-def validate(pdsdir, *, logger=None, limits=None):
-    if limits is None:
-        limits = {}
-    dir_tuples = load_directory_info(pdsdir, logger=logger, limits=limits)
+def validate(pdsdir, logger=None):
 
-    tarpath = pdsdir.archive_path_and_lskip()[0]
-    tar_tuples = read_archive_info(tarpath, logger=logger, limits=limits)
+    dir_tuples = load_directory_info(pdsdir, logger=logger)
 
-    return validate_tuples(dir_tuples, tar_tuples, logger=logger,
-                           limits=limits)
+    archive_paths = pdsdir.archive_paths()
+    archive_dirs = pdsdir.archive_dirs()
 
-def repair(pdsdir, *, logger=None, limits=None):
+    for tarpath in archive_paths:
+        tar_tuples = read_archive_info(tarpath, logger=logger)
 
-    if limits is None:
-        limits = {}
+        roots = archive_dirs[tarpath]
+        actual_dir_tuples = [
+            t for t in dir_tuples
+            if any(t[0] == root or t[0].startswith(root + '/') for root in roots)
+        ]
 
-    tarpath = pdsdir.archive_path_and_lskip()[0]
-    if not os.path.exists(tarpath):
+        valid = validate_tuples(actual_dir_tuples, tar_tuples, logger=logger)
+
+        if not valid:
+            return False
+
+    return True
+
+def repair(pdsdir, logger=None):
+
+    archive_paths = pdsdir.archive_paths()
+    archive_dirs = pdsdir.archive_dirs()
+
+    for tarpath in archive_paths:
+        if not os.path.exists(tarpath):
+            logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
+            logger.warning('Archive file does not exist; initializing', tarpath)
+            initialize(pdsdir, logger=logger)
+            return True
+
+        tar_tuples = read_archive_info(tarpath, logger=logger)
+        dir_tuples = load_directory_info(pdsdir, logger=logger)
+        roots = archive_dirs[tarpath]
+        actual_dir_tuples = [
+            t for t in dir_tuples
+            if any(t[0] == root or t[0].startswith(root + '/') for root in roots)
+        ]
+
+        # Compare
+        actual_dir_tuples.sort()
+        tar_tuples.sort()
+        canceled = (actual_dir_tuples == tar_tuples)
+        if canceled:
+            logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
+            logger.info('!!! Files match; repair canceled', tarpath)
+            continue
+
+        # Overwrite tar file if necessary
         logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
-        logger.warning('Archive file does not exist; initializing', tarpath)
-        initialize(pdsdir, logger=logger, limits=limits)
+        logger.info('Discrepancies found; writing new file', tarpath)
+        write_archive(pdsdir, clobber=True, logger=logger)
         return True
 
-    tar_tuples = read_archive_info(tarpath, logger=logger, limits=limits)
-    dir_tuples = load_directory_info(pdsdir, logger=logger, limits=limits)
+    # no repair is performed
+    return False
 
-    # Compare
-    dir_tuples.sort()
-    tar_tuples.sort()
-    canceled = (dir_tuples == tar_tuples)
-    if canceled:
-        logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
-        logger.info('!!! Files match; repair canceled', tarpath, force=True)
-        return False
+def update(pdsdir, logger=None):
 
-    # Overwrite tar file if necessary
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
-    logger.info('Discrepancies found; writing new file', tarpath, force=True)
+    archive_paths = pdsdir.archive_paths()
+    wrote_any = False
 
-    write_archive(pdsdir, clobber=True, logger=logger, limits=limits)
-    return True
+    for tarpath in archive_paths:
+        if os.path.exists(tarpath):
+            logger.info('Archive file exists; skipping', tarpath)
+            continue
+        # write only missing ones in write_archive
+        write_archive(pdsdir, clobber=False, logger=logger)
+        wrote_any = True
+        # All missing archive files are created in write_archive
+        break
 
-def update(pdsdir, *, logger=None, limits=None):
-
-    if limits is None:
-        limits = {}
-
-    tarpath = pdsdir.archive_path_and_lskip()[0]
-    if os.path.exists(tarpath):
-        logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
-        logger.info('Archive file exists; skipping', tarpath, force=True)
-        return False
-
-    # Write tar file if necessary
-    write_archive(pdsdir, clobber=True, logger=logger, limits=limits)
-    return True
+    return wrote_any
 
 ################################################################################
 # Executable program
@@ -384,21 +405,21 @@ def main():
     # Set up parser
     parser = argparse.ArgumentParser(
         description='pdsarchives: Create, maintain and validate .tar.gz '      +
-                    'archives of PDS volume directory trees.')
+                    'archives of PDS bundle directory trees.')
 
     parser.add_argument('--initialize', '--init', const='initialize',
                         default='', action='store_const', dest='task',
-                        help='Create a .tar.gz archive for a volume. Abort '   +
+                        help='Create a .tar.gz archive for a bundle. Abort '   +
                              'if the archive already exists.')
 
     parser.add_argument('--reinitialize', '--reinit', const='reinitialize',
                         default='', action='store_const', dest='task',
-                        help='Create a .tar.gz archive for a volume. Replace ' +
+                        help='Create a .tar.gz archive for a bundle. Replace ' +
                              'the archive if it already exists.')
 
     parser.add_argument('--validate', const='validate',
                         default='', action='store_const', dest='task',
-                        help='Validate every file in a volume against the '    +
+                        help='Validate every file in a bundle against the '    +
                              'contents of its .tar.gz archive. Files match '   +
                              'if they have identical byte counts and '         +
                              'modification dates; file contents are not '      +
@@ -406,20 +427,20 @@ def main():
 
     parser.add_argument('--repair', const='repair',
                         default='', action='store_const', dest='task',
-                        help='Validate every file in a volume against the '    +
+                        help='Validate every file in a bundle against the '    +
                              'contents of its .tar.gz archive. If any file '   +
                              'has changed, write a new archive.')
 
     parser.add_argument('--update', const='update',
                         default='', action='store_const', dest='task',
-                        help='Search a volume set directory for any new '      +
-                             'volumes and create a new archive file for each ' +
+                        help='Search a bundle set directory for any new '      +
+                             'bundles and create a new archive file for each ' +
                              'of them; do not update any pre-existing archive '+
                              'files.')
 
-    parser.add_argument('volume', nargs='+', type=str,
-                        help='The path to the root of the volume or volume '   +
-                             'set. For a volume set, all the volume '          +
+    parser.add_argument('bundle', nargs='+', type=str,
+                        help='The path to the root of the bundle or bundle '   +
+                             'set. For a bundle set, all the bundle '          +
                              'directories inside it are handled in sequence.')
 
     parser.add_argument('--log', '-l', type=str, default='',
@@ -454,26 +475,29 @@ def main():
 
     # Initialize the logger
     logger = pdslogger.PdsLogger(LOGNAME)
-    pdsfile.Pds3File.set_log_root(args.log)
+    pdsfile.Pds4File.set_log_root(args.log)
 
     if not args.quiet:
         logger.add_handler(pdslogger.stdout_handler)
 
     if args.log:
         path = os.path.join(args.log, 'pdsarchives')
+        warning_handler = pdslogger.warning_handler(path)
+        logger.add_handler(warning_handler)
+
         error_handler = pdslogger.error_handler(path)
         logger.add_handler(error_handler)
 
-    # Generate a list of pdsfiles for volume directories
+    # Generate a list of pdsfiles for bundle directories
     pdsdirs = []
-    for path in args.volume:
+    for path in args.bundle:
 
         path = os.path.abspath(path)
         if not os.path.exists(path):
             print('No such file or directory: ' + path)
             sys.exit(1)
 
-        pdsf = pdsfile.Pds3File.from_abspath(path)
+        pdsf = pdsfile.Pds4File.from_abspath(path)
         if pdsf.checksums_:
             print('No archives for checksum files: ' + path)
             sys.exit(1)
@@ -482,14 +506,9 @@ def main():
             print('No archives for archive files: ' + path)
             sys.exit(1)
 
-        pdsdir = pdsf.volume_pdsfile()
-        if pdsdir and pdsdir.isdir:
-            pdsdirs.append(pdsdir)
-        else:
-            pdsdir = pdsf.volset_pdsfile()
-            children = [pdsdir.child(c) for c in pdsdir.childnames]
-            pdsdirs += [c for c in children if c.isdir]
-                    # "if c.isdir" is False for volset level readme files
+        # pdsdirs: a list, each element is the path of a bundle set, bundle, or a bundle
+        # collection
+        pdsdirs.append(pdsf)
 
     # Begin logging and loop through pdsdirs...
     logger.open(' '.join(sys.argv))
@@ -497,10 +516,10 @@ def main():
         for pdsdir in pdsdirs:
 
             # Save logs in up to two places
-            logfiles = set([pdsdir.log_path_for_volume('_links',
+            logfiles = set([pdsdir.log_path_for_bundle('_archives',
                                                        task=args.task,
                                                        dir='pdsarchives'),
-                            pdsdir.log_path_for_volume('_links',
+                            pdsdir.log_path_for_bundle('_archives',
                                                        task=args.task,
                                                        dir='pdsarchives',
                                                        place='parallel')])
@@ -512,8 +531,9 @@ def main():
                 logdir = os.path.split(logfile)[0]
 
                 # These handlers are only used if they don't already exist
+                warning_handler = pdslogger.warning_handler(logdir)
                 error_handler = pdslogger.error_handler(logdir)
-                local_handlers += [error_handler]
+                local_handlers += [warning_handler, error_handler]
 
             # Open the next level of the log
             if len(pdsdirs) > 1:
@@ -527,19 +547,19 @@ def main():
                     logger.info('Log file', logfile)
 
                 if args.task == 'initialize':
-                    proceed = initialize(pdsdir)
+                    initialize(pdsdir)
 
                 elif args.task == 'reinitialize':
-                    proceed = reinitialize(pdsdir)
+                    reinitialize(pdsdir)
 
                 elif args.task == 'validate':
-                    proceed = validate(pdsdir)
+                    validate(pdsdir)
 
                 elif args.task == 'repair':
-                    proceed = repair(pdsdir)
+                    repair(pdsdir)
 
                 else:       # update
-                    proceed = update(pdsdir)
+                    update(pdsdir)
 
             except (Exception, KeyboardInterrupt) as e:
                 logger.exception(e)
@@ -551,11 +571,10 @@ def main():
     except (Exception, KeyboardInterrupt) as e:
         logger.exception(e)
         status = 1
-        proceed = False
         raise
 
     finally:
-        (fatal, errors, warnings, tests) = logger.close()
+        (fatal, errors, _, _) = logger.close()
         if fatal or errors:
             status = 1
 

@@ -668,7 +668,7 @@ class LinkInfo(object):
         return ('%d %s %s %s' % (self.recno, self.linktext, str(self.is_target),
                                  self.target or '[' + self.linkname + ']'))
 
-def generate_links(dirpath, old_links={}, *, logger=None, limits={}):
+def generate_links(dirpath, old_links=None, *, logger=None, limits=None):
     """Generate a dictionary keyed by the absolute file path for files in the
     given directory tree, which must correspond to a volume.
 
@@ -686,6 +686,11 @@ def generate_links(dirpath, old_links={}, *, logger=None, limits={}):
 
     Also return the latest modification date among all the files checked.
     """
+
+    if old_links is None:
+        old_links = {}
+    if limits is None:
+        limits = {}
 
     dirpath = os.path.abspath(dirpath)
     pdsdir = pdsfile.Pds3File.from_abspath(dirpath)
@@ -981,6 +986,7 @@ def generate_links(dirpath, old_links={}, *, logger=None, limits={}):
             # If this was copied from old_links, it's already a list of tuples
             values = linkinfo_dict[key]
             if isinstance(values, list):
+                # Normalize to (recno, basename, abspath)
                 new_list = []
                 for item in values:
                   if isinstance(item, LinkInfo):
@@ -1122,9 +1128,12 @@ def locate_link_with_path(abspath, filename):
 
 ################################################################################
 
-def load_links(dirpath, *, logger=None, limits={}):
+def load_links(dirpath, *, logger=None, limits=None):
     """Load link dictionary from a shelf file, converting interior paths to
     absolute paths."""
+
+    if limits is None:
+        limits = {}
 
     dirpath = os.path.abspath(dirpath)
     pdsdir = pdsfile.Pds3File.from_abspath(dirpath)
@@ -1140,7 +1149,6 @@ def load_links(dirpath, *, logger=None, limits={}):
 
     try:
         (link_path, lskip) = pdsdir.shelf_path_and_lskip('link')
-        prefix_ = pdsdir.volume_abspath() + '/'
 
         logger.info('Link shelf file', link_path)
 
@@ -1184,8 +1192,11 @@ def load_links(dirpath, *, logger=None, limits={}):
 
 ################################################################################
 
-def write_linkdict(dirpath, link_dict, *, logger=None, limits={}):
+def write_linkdict(dirpath, link_dict, *, logger=None, limits=None):
     """Write a new link shelf file for a directory tree."""
+
+    if limits is None:
+        limits = {}
 
     # Initialize
     dirpath = os.path.abspath(dirpath)
@@ -1208,9 +1219,9 @@ def write_linkdict(dirpath, link_dict, *, logger=None, limits={}):
         for (key, values) in link_dict.items():
             if isinstance(values, list):
                 new_list = []
-                for (basename, recno, link_abspath) in values:
+                for (recno, basename, link_abspath) in values:
                     if link_abspath[:lskip] == prefix:
-                        new_list.append((basename, recno, link_abspath[lskip:]))
+                        new_list.append((recno, basename, link_abspath[lskip:]))
                     else:      # link outside this volume
                         link = pdsfile.Pds3File.from_abspath(link_abspath)
                         if (link.category_ == pdsdir.category_ and
@@ -1224,7 +1235,7 @@ def write_linkdict(dirpath, link_dict, *, logger=None, limits={}):
                             link_relpath = ('../../../' + link.category_ +
                                             link.bundleset_ +
                                             link.bundlename_ + link.interior)
-                        new_list.append((basename, recno, link_relpath))
+                        new_list.append((recno, basename, link_relpath))
 
                 interior_dict[key[lskip:]] = new_list
             else:
@@ -1311,7 +1322,10 @@ def write_linkdict(dirpath, link_dict, *, logger=None, limits={}):
 
 ################################################################################
 
-def validate_links(dirpath, dirdict, shelfdict, *, logger=None, limits={}):
+def validate_links(dirpath, dirdict, shelfdict, *, logger=None, limits=None):
+
+    if limits is None:
+        limits = {}
 
     dirpath = os.path.abspath(dirpath)
     pdsdir = pdsfile.Pds3File.from_abspath(dirpath)
@@ -1405,7 +1419,10 @@ def move_old_links(shelf_file, logger=None):
 # Simplified functions to perform tasks
 ################################################################################
 
-def initialize(pdsdir, *, logger=None, limits={}):
+def initialize(pdsdir, *, logger=None, limits=None):
+
+    if limits is None:
+        limits = {}
 
     link_path = pdsdir.shelf_path_and_lskip('link')[0]
 
@@ -1426,7 +1443,10 @@ def initialize(pdsdir, *, logger=None, limits={}):
     # Save link files
     write_linkdict(pdsdir.abspath, link_dict, logger=logger, limits=limits)
 
-def reinitialize(pdsdir, *, logger=None, limits={}):
+def reinitialize(pdsdir, *, logger=None, limits=None):
+
+    if limits is None:
+        limits = {}
 
     link_path = pdsdir.shelf_path_and_lskip('link')[0]
 
@@ -1449,7 +1469,10 @@ def reinitialize(pdsdir, *, logger=None, limits={}):
     # Save link files
     write_linkdict(pdsdir.abspath, link_dict, logger=logger, limits=limits)
 
-def validate(pdsdir, *, logger=None, limits={}):
+def validate(pdsdir, *, logger=None, limits=None):
+
+    if limits is None:
+        limits = {}
 
     link_path = pdsdir.shelf_path_and_lskip('link')[0]
 
@@ -1470,7 +1493,10 @@ def validate(pdsdir, *, logger=None, limits={}):
     validate_links(pdsdir.abspath, dir_linkdict, shelf_linkdict, logger=logger,
                    limits=limits)
 
-def repair(pdsdir, *, logger=None, limits={}):
+def repair(pdsdir, *, logger=None, limits=None):
+
+    if limits is None:
+        limits = {}
 
     link_path = pdsdir.shelf_path_and_lskip('link')[0]
 
@@ -1531,7 +1557,10 @@ def repair(pdsdir, *, logger=None, limits={}):
     move_old_links(link_path, logger=logger)
     write_linkdict(pdsdir.abspath, dir_linkdict, logger=logger, limits=limits)
 
-def update(pdsdir, *, logger=None, limits={}):
+def update(pdsdir, *, logger=None, limits=None):
+
+    if limits is None:
+        limits = {}
 
     link_path = pdsdir.shelf_path_and_lskip('link')[0]
 

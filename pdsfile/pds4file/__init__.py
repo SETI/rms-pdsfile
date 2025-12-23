@@ -13,6 +13,9 @@ from pdsfile.preload_and_cache import cache_lifetime_for_class
 
 class Pds4File(PdsFile):
 
+    PDS_HOLDINGS = 'pds4-holdings'
+    BUNDLE_DIR_NAME = 'bundles'
+
     BUNDLESET_REGEX = re.compile(r'^(uranus_occs_earthbased|' +
                                  r'cassini_uvis_solarocc_beckerjarmak2023|' +
                                  r'cassini_iss|' +
@@ -25,6 +28,7 @@ class Pds4File(PdsFile):
                                         r'((|_calibrated|_diagrams|_metadata|_previews)' +
                                         r'(|_md5\.txt|\.tar\.gz))$')
     BUNDLESET_PLUS_REGEX_I = re.compile(BUNDLESET_PLUS_REGEX.pattern, re.I)
+    BUNDLENAME_REGEX = re.compile(r'^([a-zA-z_].+)$')
 
     BUNDLENAME_REGEX = re.compile(r'^(uranus_occ_u\d{0,4}._[a-z]*_(fos|\d{2,3}cm)|' +
                                   r'cassini_[a-z]{3,4}_(cruise|saturn)|' +
@@ -32,9 +36,12 @@ class Pds4File(PdsFile):
     BUNDLENAME_PLUS_REGEX  = re.compile(BUNDLENAME_REGEX.pattern[:-1] +
                                         r'(|_[a-z]+)(|_md5\.txt|\.tar\.gz)$')
     BUNDLENAME_PLUS_REGEX_I = re.compile(BUNDLENAME_PLUS_REGEX.pattern, re.I)
-
-    PDS_HOLDINGS = 'pds4-holdings'
-    BUNDLE_DIR_NAME = 'bundles'
+    BUNDLENAME_VERSION     = re.compile(BUNDLENAME_REGEX.pattern[:-1] +
+                                        r'(_v[0-9]+\.[0-9]+\.[0-9]+|'+
+                                        r'_v[0-9]+\.[0-9]+|_v[0-9]+|'+
+                                        r'_in_prep|_prelim|_peer_review|'+
+                                        r'_lien_resolution)$')
+    BUNDLENAME_VERSION_I   = re.compile(BUNDLENAME_VERSION.pattern, re.I)
 
     # Logger
     LOGGER = pdslogger.NullLogger()
@@ -74,6 +81,9 @@ class Pds4File(PdsFile):
 
     IDX_EXT = '.csv'
     LBL_EXT = '.xml'
+
+    ARCHIVE_PATHS = rules.ARCHIVE_PATHS
+    ARCHIVE_DIRS = rules.ARCHIVE_DIRS
 
     def __init__(self):
         super().__init__()
@@ -139,6 +149,45 @@ class Pds4File(PdsFile):
         """
         cls.set_logger(pdslogger.EasyLogger())
 
+    ############################################################################
+    # Archive path associations
+    ############################################################################
+    def archive_paths(self):
+        """Return the absolute path to the archive files associated with this given
+        pdsfile (it could be a bundle set, a bundle or a bundle collection)
+        """
+
+        # pdsf = self.bundle_pdsfile()
+        # if not pdsf:
+        #     pdsf = self.bundleset_pdsfile()
+        archive_paths = [self.root_ + p
+                         for p in self.ARCHIVE_PATHS.all(self.logical_path)]
+
+        return archive_paths
+
+    def archive_dirs(self):
+        """Return a dictionary that is keyed by a archive path and the list of
+        directories included in that archive path as the value.
+        """
+
+        archive_paths = self.archive_paths()
+
+        archive_dirs = {}
+        for p in archive_paths:
+            dir_abs_patterns = [self.root_ + dir_pattern
+                                for dir_pattern in self.ARCHIVE_DIRS.all(p)]
+
+            # Get the existing paths included in each archive file
+            dir_abspaths = []
+            for pattern in dir_abs_patterns:
+                these_abspaths = self.glob_glob(pattern, force_case_sensitive=True)
+                dir_abspaths += these_abspaths
+
+            archive_dirs[p] = dir_abspaths
+
+        return archive_dirs
+
+
 ##########################################################################################
 # Initialize the global registry of subclasses
 ##########################################################################################
@@ -155,6 +204,7 @@ try:
     from .rules import (cassini_iss,
                         cassini_uvis_solarocc_beckerjarmak2023,
                         cassini_vims,
+                        cassini_uvis_solarocc_beckerjarmak2023,
                         uranus_occs_earthbased)
 except AttributeError:
     pass                    # This occurs when running pytests on individual
