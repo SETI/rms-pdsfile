@@ -40,6 +40,7 @@ class TestPds3FileBlackBox:
                 'JNOJIR_xxxx': pds3file.rules.JNOJIR_xxxx.JNOJIR_xxxx,
                 'JNOJNC_xxxx': pds3file.rules.JNOJNC_xxxx.JNOJNC_xxxx,
                 'JNOSP_xxxx': pds3file.rules.JNOSP_xxxx.JNOSP_xxxx,
+                'JNOSRU_xxxx': pds3file.rules.JNOSRU_xxxx.JNOSRU_xxxx,
                 'NHSP_xxxx': pds3file.rules.NHSP_xxxx.NHSP_xxxx,
                 'NHxxxx_xxxx': pds3file.rules.NHxxxx_xxxx.NHxxxx_xxxx,
                 'RES_xxxx': pds3file.rules.RES_xxxx.RES_xxxx,
