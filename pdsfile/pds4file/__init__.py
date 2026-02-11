@@ -75,7 +75,7 @@ class Pds4File(PdsFile):
     SUBCLASSES = {}
 
     IDX_EXT = '.csv'
-    LBL_EXT = '.xml'
+    LBL_EXT = ['.xml', '.lblx']
 
     def __init__(self):
         super().__init__()

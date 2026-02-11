@@ -177,8 +177,9 @@ filespec_to_bundleset = translator.TranslatorByRegex([
 # OPUS_ID_TO_PRIMARY_LOGICAL_PATH
 ##########################################################################################
 
+# primary filespec will be the data label file under data_mosaic for each opus id
 opus_id_to_primary_logical_path = translator.TranslatorByRegex([
-    (r'co-uvis-occ-(\d{4})-(\d{3})-sun-([ei])',     0,  r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/data/uvis_euv_\1_\2_solar_time_series_\3*gress.xml'),
+    (r'co-iss-fring-mosaic-(.*)',     0,  r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/data_mosaic/\1/\1_mosaic.lblx'),
 ])
 
 ##########################################################################################
@@ -214,7 +215,7 @@ class cassini_iss_fring_mosaics_rsfrench2025(pds4file.Pds4File):
 
 # Global attribute shared by all subclasses
 pds4file.Pds4File.OPUS_ID_TO_SUBCLASS = translator.TranslatorByRegex(
-    [(r'co-uvis-occ.*', 0, cassini_iss_fring_mosaics_rsfrench2025)]
+    [(r'co-iss-fring-mosaic.*', 0, cassini_iss_fring_mosaics_rsfrench2025)]
 ) + pds4file.Pds4File.OPUS_ID_TO_SUBCLASS
 
 ##########################################################################################
