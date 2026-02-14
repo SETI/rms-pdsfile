@@ -1915,13 +1915,15 @@ class PdsFile(object):
 
         cls = type(self)
         if self._index_pdslabel is None:
-            label_abspath = self.abspath.replace (cls.IDX_EXT, cls.LBL_EXT)
-            label_abspath = label_abspath.replace(cls.IDX_EXT.upper(),
-                                                  cls.LBL_EXT.upper())
-            try:
-              self._index_pdslabel = pdsparser.PdsLabel.from_file(label_abspath)
-            except:
-              self._index_pdslabel = 'failed'
+            for ext in cls.LBL_EXT:
+                label_abspath = self.abspath.replace (cls.IDX_EXT, ext)
+                label_abspath = label_abspath.replace(cls.IDX_EXT.upper(), ext.upper())
+                try:
+                    self._index_pdslabel = pdsparser.PdsLabel.from_file(label_abspath)
+                    break
+                except:
+                    self._index_pdslabel = 'failed'
+                    continue
 
             self._recache()
 
@@ -2629,12 +2631,19 @@ class PdsFile(object):
             return ''
 
         # Take a first guess at the label filename; PDS3 only!
+        uppercase_lbl_ext = [ext.upper() for ext in cls.LBL_EXT]
         if self.extension.isupper():
-            ext_guesses = (cls.LBL_EXT.upper(), cls.LBL_EXT)
+            ext_guesses = (*uppercase_lbl_ext, *cls.LBL_EXT)
         else:
-            ext_guesses = (cls.LBL_EXT, cls.LBL_EXT.upper())
+            ext_guesses = (*cls.LBL_EXT, *uppercase_lbl_ext)
 
-        rootname = self.basename[:-len(self.extension)]
+        # For viewables with label (like f ring browse mosaic), we need to get rid of
+        # _thumb, _full, _med, and _small from the data file names to obtain the correct
+        # root name for the label files.
+        if self.is_viewable:
+            rootname, _, _ = self.basename.rpartition('_')
+        else:
+            rootname = self.basename[:-len(self.extension)]
         test_basenames = [rootname + ext for ext in ext_guesses]
 
         # If one of the guessed files exist, it's the label
@@ -5508,7 +5517,8 @@ class PdsFile(object):
         """
 
         cls = type(self)
-        return (len(basename) > 4) and (basename[-4:].lower() == cls.LBL_EXT)
+        _, _, lbl_ext = basename.rpartition('.')
+        return (len(basename) > 4) and (f'.{lbl_ext}'.lower() in cls.LBL_EXT)
 
     def basename_is_viewable(self, basename=None):
         """Return True if this basename is viewable. Override if viewable files can
