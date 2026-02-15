@@ -21,12 +21,13 @@ description_and_icon_by_regex = translator.TranslatorByRegex([
 ##########################################################################################
 
 default_viewables = translator.TranslatorByRegex([
-    (r'.*/(cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*)/data(|/supplemental)/(uvis_euv.*)\.[a-z]{3}', 0,
+    # (r'.*/(cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*)/data(|/supplemental)/(uvis_euv.*)\.[a-z]{3}', 0,
+    (r'.*/(cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*)/(data|browse)_mosaic.*/((iss|iosic)_[a-zA-Z0-9_]*)/(iss|iosic)_[a-zA-Z0-9_]*_mosaic.*\.[a-z]{3,4}', 0,
      [
-         r'previews/\1/data\2/\3_preview_full.png',
-         r'previews/\1/data\2/\3_preview_med.png',
-         r'previews/\1/data\2/\3_preview_small.png',
-         r'previews/\1/data\2/\3_preview_thumb.png',
+         r'bundles/\1/browse_mosaic_bkg_sub/\3/\3_browse_mosaic_bkg_sub_full.png',
+         r'bundles/\1/browse_mosaic_bkg_sub/\3/\3_browse_mosaic_bkg_sub_med.png',
+         r'bundles/\1/browse_mosaic_bkg_sub/\3/\3_browse_mosaic_bkg_sub_small.png',
+         r'bundles/\1/browse_mosaic_bkg_sub/\3/\3_browse_mosaic_bkg_sub_thumb.png',
      ]),
 ])
 
@@ -167,7 +168,6 @@ opus_products = translator.TranslatorByRegex([
         r'bundles/\1/browse_mosaic_bkg_sub/\3/\3_browse_mosaic_bkg_sub_med.png',
         r'bundles/\1/browse_mosaic_bkg_sub/\3/\3_browse_mosaic_bkg_sub_small.png',
         r'bundles/\1/browse_mosaic_bkg_sub/\3/\3_browse_mosaic_bkg_sub_thumb.png',
-        # TODO: previews (under previews/cassini_iss_fring_mosaics_rsfrench2025)
     ]),
 ])
 
