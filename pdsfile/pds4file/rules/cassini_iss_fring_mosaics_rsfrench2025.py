@@ -19,7 +19,7 @@ description_and_icon_by_regex = translator.TranslatorByRegex([
 ##########################################################################################
 # VIEWABLES
 ##########################################################################################
-# Use .png files under mosaic_bkg_sub as previews
+# Use .png files under browse_mosaic_bkg_sub as previews
 default_viewables = translator.TranslatorByRegex([
     (r'.*/(cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*)/(data|browse)_mosaic.*/((iss|iosic)_[a-zA-Z0-9_]*)/(iss|iosic)_[a-zA-Z0-9_]*_mosaic.*\.[a-z]{3,4}', 0,
      [
@@ -60,26 +60,35 @@ associations_to_bundles = translator.TranslatorByRegex([
             r'bundles/\1/browse_mosaic_bkg_sub/\3/\3_browse_mosaic_bkg_sub_thumb.png',
             r'bundles/\1/browse_mosaic_bkg_sub/\3/\3_browse_mosaic_bkg_sub.lblx',
         ]),
+    # TODO: assume we will have documents for this bundle under documents/
+    # if not, put the actual documents directory here later
     (r'documents/cassini_iss_fring_mosaics_rsfrench2025[^/]*', 0,
         r'bundles/cassini_iss_fring_mosaics_rsfrench2025'),
 ])
 
+# Use .png files under browse_mosaic and browse_mosaic_bkg_sub as previews
+# TODO: assume we won't have previews/cassini_iss_fring_mosaics_rsfrench2025
+# if we do add previews/cassini_iss_fring_mosaics_rsfrench2025, modify this rule later
 associations_to_previews = translator.TranslatorByRegex([
-    (r'.*/(cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*)/data(|/supplemental)/(uvis_euv_.*_(egress|ingress))(|_supplement)\.[a-z]{3}', 0,
+    (r'.*/(cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*)/(data|browse)_mosaic.*/((iss|iosic)_[a-zA-Z0-9_]*)/(iss|iosic)_[a-zA-Z0-9_]*_mosaic.*\.[a-z]{3,4}', 0,
         [
-            r'previews/\1/data/\3_preview_full.png',
-            r'previews/\1/data/\3_preview_med.png',
-            r'previews/\1/data/\3_preview_small.png',
-            r'previews/\1/data/\3_preview_thumb.png',
-            r'previews/\1/data/supplemental/\3_supplement_preview_full.png',
-            r'previews/\1/data/supplemental/\3_supplement_preview_med.png',
-            r'previews/\1/data/supplemental/\3_supplement_preview_small.png',
-            r'previews/\1/data/supplemental/\3_supplement_preview_thumb.png',
+            # browse_mosaic
+            r'bundles/\1/browse_mosaic/\3/\3_browse_mosaic_full.png',
+            r'bundles/\1/browse_mosaic/\3/\3_browse_mosaic_med.png',
+            r'bundles/\1/browse_mosaic/\3/\3_browse_mosaic_small.png',
+            r'bundles/\1/browse_mosaic/\3/\3_browse_mosaic_thumb.png',
+            r'bundles/\1/browse_mosaic/\3/\3_browse_mosaic.lblx',
+            # browse_mosaic_bkg_sub
+            r'bundles/\1/browse_mosaic_bkg_sub/\3/\3_browse_mosaic_bkg_sub_full.png',
+            r'bundles/\1/browse_mosaic_bkg_sub/\3/\3_browse_mosaic_bkg_sub_med.png',
+            r'bundles/\1/browse_mosaic_bkg_sub/\3/\3_browse_mosaic_bkg_sub_small.png',
+            r'bundles/\1/browse_mosaic_bkg_sub/\3/\3_browse_mosaic_bkg_sub_thumb.png',
+            r'bundles/\1/browse_mosaic_bkg_sub/\3/\3_browse_mosaic_bkg_sub.lblx',
         ]),
 ])
 
 associations_to_metadata = translator.TranslatorByRegex([
-    (r'.*/(cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*)/data(|/supplemental)/(uvis_euv_.*_(egress|ingress))(|_supplement)\.[a-z]{3}', 0,
+    (r'.*/(cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*)/(data|browse)_mosaic.*/((iss|iosic)_[a-zA-Z0-9_]*)/(iss|iosic)_[a-zA-Z0-9_]*_mosaic.*\.[a-z]{3,4}', 0,
         [
         ]),
 ])
