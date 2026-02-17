@@ -19,9 +19,8 @@ description_and_icon_by_regex = translator.TranslatorByRegex([
 ##########################################################################################
 # VIEWABLES
 ##########################################################################################
-
+# Use .png files under mosaic_bkg_sub as previews
 default_viewables = translator.TranslatorByRegex([
-    # (r'.*/(cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*)/data(|/supplemental)/(uvis_euv.*)\.[a-z]{3}', 0,
     (r'.*/(cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*)/(data|browse)_mosaic.*/((iss|iosic)_[a-zA-Z0-9_]*)/(iss|iosic)_[a-zA-Z0-9_]*_mosaic.*\.[a-z]{3,4}', 0,
      [
          r'bundles/\1/browse_mosaic_bkg_sub/\3/\3_browse_mosaic_bkg_sub_full.png',
@@ -36,14 +35,30 @@ default_viewables = translator.TranslatorByRegex([
 ##########################################################################################
 
 associations_to_bundles = translator.TranslatorByRegex([
-    (r'.*/(cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*)/data(|/supplemental)/(uvis_euv_.*_(egress|ingress))(|_supplement)\.[a-z]{3}', 0,
+    (r'.*/(cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*)/(data|browse)_mosaic.*/((iss|iosic)_[a-zA-Z0-9_]*)/(iss|iosic)_[a-zA-Z0-9_]*_mosaic.*\.[a-z]{3,4}', 0,
         [
-            r'bundles/\1/data/\3.tab',
-            r'bundles/\1/data/\3.xml',
-            r'bundles/\1/data/supplemental/\3_supplement.tab',
-            r'bundles/\1/data/supplemental/\3_supplement.xml',
-            r'bundles/\1/browse/\3.jpg',
-            r'bundles/\1/browse/\3.xml',
+            # data_mosaic
+            r'bundles/\1/data_mosaic/\3/\3_mosaic_metadata_params.tab',
+            r'bundles/\1/data_mosaic/\3/\3_mosaic_metadata_src_imgs.tab',
+            r'bundles/\1/data_mosaic/\3/\3_mosaic.img',
+            r'bundles/\1/data_mosaic/\3/\3_mosaic.lblx',
+            # data_mosaic_bkg_sub
+            r'bundles/\1/data_mosaic_bkg_sub/\3/\3_mosaic_bkg_sub_metadata_params.tab',
+            r'bundles/\1/data_mosaic_bkg_sub/\3/\3_mosaic_bkg_sub_metadata_src_imgs.tab',
+            r'bundles/\1/data_mosaic_bkg_sub/\3/\3_mosaic_bkg_sub.img',
+            r'bundles/\1/data_mosaic_bkg_sub/\3/\3_mosaic_bkg_sub.lblx',
+            # browse_mosaic
+            r'bundles/\1/browse_mosaic/\3/\3_browse_mosaic_full.png',
+            r'bundles/\1/browse_mosaic/\3/\3_browse_mosaic_med.png',
+            r'bundles/\1/browse_mosaic/\3/\3_browse_mosaic_small.png',
+            r'bundles/\1/browse_mosaic/\3/\3_browse_mosaic_thumb.png',
+            r'bundles/\1/browse_mosaic/\3/\3_browse_mosaic.lblx',
+            # browse_mosaic_bkg_sub
+            r'bundles/\1/browse_mosaic_bkg_sub/\3/\3_browse_mosaic_bkg_sub_full.png',
+            r'bundles/\1/browse_mosaic_bkg_sub/\3/\3_browse_mosaic_bkg_sub_med.png',
+            r'bundles/\1/browse_mosaic_bkg_sub/\3/\3_browse_mosaic_bkg_sub_small.png',
+            r'bundles/\1/browse_mosaic_bkg_sub/\3/\3_browse_mosaic_bkg_sub_thumb.png',
+            r'bundles/\1/browse_mosaic_bkg_sub/\3/\3_browse_mosaic_bkg_sub.lblx',
         ]),
     (r'documents/cassini_iss_fring_mosaics_rsfrench2025[^/]*', 0,
         r'bundles/cassini_iss_fring_mosaics_rsfrench2025'),
