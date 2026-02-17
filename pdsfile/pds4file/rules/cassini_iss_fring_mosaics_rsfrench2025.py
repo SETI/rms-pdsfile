@@ -144,12 +144,13 @@ opus_type = translator.TranslatorByRegex([
     (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_mosaic/(iss|iosic)_.*/(iss|iosic)_.*full.*\.png',            0, ('Cassini ISS F Ring Mosaics', 80, 'coiss_f_ring_mosaic_browse_full', 'Browse Mosaic Image (full)', True)),
 
     # browse_mosaic_bkg_sub
+    # TODO: if we use these as previews, do we keep the same opus types as ones in other bundles? Or do we create new opus types?
     (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_mosaic_bkg_sub/(iss|iosic)_.*/(iss|iosic)_.*thumb.*\.png',            0, ('Cassini ISS F Ring Mosaics', 90, 'coiss_f_ring_mosaic_browse_bkg_sub_thumb', 'Background-Subtracted Browse Mosaic Image (thumbnail)', True)),
     (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_mosaic_bkg_sub/(iss|iosic)_.*/(iss|iosic)_.*small.*\.png',            0, ('Cassini ISS F Ring Mosaics', 100, 'coiss_f_ring_mosaic_browse_bkg_sub_samll', 'Background-Subtracted Browse Mosaic Image (small)', True)),    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_mosaic_bkg_sub/(iss|iosic)_.*/(iss|iosic)_.*med.*\.png',            0, ('Cassini ISS F Ring Mosaics', 110, 'coiss_f_ring_mosaic_browse_bkg_sub_med', 'Background-Subtracted Browse Mosaic Image (medium)', True)),
     (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_mosaic_bkg_sub/(iss|iosic)_.*/(iss|iosic)_.*full.*\.png',            0, ('Cassini ISS F Ring Mosaics', 120, 'coiss_f_ring_mosaic_browse_bkg_sub_full', 'Background-Subtracted Browse Mosaic Image (full)', True)),
 
     # document
-    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/(readme.txt|document/.*/.*mosaic.*\.(pdf|xml))',               0, ('Cassini ISS F Ring Mosaics', 130, 'coiss_f_ring_documentation', 'Documentation', False)),
+    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/(readme.txt|document/.*/.*mosaic.*\.(lblx|pdf|tab))',               0, ('Cassini ISS F Ring Mosaics', 130, 'coiss_f_ring_documentation', 'Documentation', False)),
 ])
 
 ##########################################################################################
@@ -269,18 +270,18 @@ pds4file.Pds4File.SUBCLASSES['cassini_iss_fring_mosaics_rsfrench2025'] = cassini
 import pytest
 from .pytest_support import *
 
-# @pytest.mark.parametrize(
-#     ('input_path', 'expected'),
-#     [
-#         ('bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/data/uvis_euv_2005_159_solar_time_series_ingress.xml',
-#          'cassini_iss_fring_mosaics_rsfrench2025/opus_products/uvis_euv_2005_159_solar_time_series_ingress.txt'),
-#         ('bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/data/uvis_euv_2008_083_solar_time_series_egress.xml',
-#          'cassini_iss_fring_mosaics_rsfrench2025/opus_products/uvis_euv_2008_083_solar_time_series_egress.txt'),
-#     ]
-# )
-# def test_opus_products(request, input_path, expected):
-#     update = request.config.option.update
-#     opus_products_test(pds4file.Pds4File, input_path, TEST_RESULTS_DIR+expected, update)
+@pytest.mark.parametrize(
+    ('input_path', 'expected'),
+    [
+        ('bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/data_mosaic/iosic_276rb_complitb4001_si/iosic_276rb_complitb4001_si_mosaic.lblx',
+         'cassini_iss_fring_mosaics_rsfrench2025/opus_products/iosic_276rb_complitb4001_si_mosaic.txt'),
+        ('bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/data_mosaic/iss_006ri_lphrlfmov001_prime/iss_006ri_lphrlfmov001_prime_mosaic.lblx',
+         'cassini_iss_fring_mosaics_rsfrench2025/opus_products/iss_006ri_lphrlfmov001_prime_mosaic.txt'),
+    ]
+)
+def test_opus_products(request, input_path, expected):
+    update = request.config.option.update
+    opus_products_test(pds4file.Pds4File, input_path, TEST_RESULTS_DIR+expected, update)
 
 # @pytest.mark.parametrize(
 #     ('input_path', 'category', 'expected'),
