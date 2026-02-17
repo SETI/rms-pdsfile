@@ -283,28 +283,28 @@ def test_opus_products(request, input_path, expected):
     update = request.config.option.update
     opus_products_test(pds4file.Pds4File, input_path, TEST_RESULTS_DIR+expected, update)
 
-# @pytest.mark.parametrize(
-#     ('input_path', 'category', 'expected'),
-#     [
-#         ('bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/data/uvis_euv_2006_257_solar_time_series_ingress.xml',
-#          'bundles',
-#          'cassini_iss_fring_mosaics_rsfrench2025/associated_abspaths/bundles_uvis_euv_2006_257_solar_time_series_ingress.txt'),
-#         ('bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/data/uvis_euv_2008_083_solar_time_series_egress.xml',
-#          'bundles',
-#          'cassini_iss_fring_mosaics_rsfrench2025/associated_abspaths/bundles_uvis_euv_2008_083_solar_time_series_egress.txt'),
-#         ('bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/data/uvis_euv_2006_257_solar_time_series_ingress.xml',
-#          'previews',
-#          'cassini_iss_fring_mosaics_rsfrench2025/associated_abspaths/previews_uvis_euv_2006_257_solar_time_series_ingress.txt'),
-#         ('bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/data/uvis_euv_2008_083_solar_time_series_egress.xml',
-#          'previews',
-#          'cassini_iss_fring_mosaics_rsfrench2025/associated_abspaths/previews_uvis_euv_2008_083_solar_time_series_egress.txt'),
-#     ]
-# )
+@pytest.mark.parametrize(
+    ('input_path', 'category', 'expected'),
+    [
+        ('bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/data_mosaic/iosic_276rb_complitb4001_si/iosic_276rb_complitb4001_si_mosaic.lblx',
+         'bundles',
+         'cassini_iss_fring_mosaics_rsfrench2025/associated_abspaths/bundles_iosic_276rb_complitb4001_si_mosaic.txt'),
+        ('bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/data_mosaic/iosic_276rb_complitb4001_si/iosic_276rb_complitb4001_si_mosaic.lblx',
+         'previews',
+         'cassini_iss_fring_mosaics_rsfrench2025/associated_abspaths/previews_iosic_276rb_complitb4001_si_mosaic.txt'),
+        ('bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/data_mosaic/iss_006ri_lphrlfmov001_prime/iss_006ri_lphrlfmov001_prime_mosaic.lblx',
+         'bundles',
+         'cassini_iss_fring_mosaics_rsfrench2025/associated_abspaths/bundles_iss_006ri_lphrlfmov001_prime_mosaic.txt'),
+        ('bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/data_mosaic/iss_006ri_lphrlfmov001_prime/iss_006ri_lphrlfmov001_prime_mosaic.lblx',
+         'previews',
+         'cassini_iss_fring_mosaics_rsfrench2025/associated_abspaths/previews_iss_006ri_lphrlfmov001_prime_mosaic.txt'),
+    ]
+)
 
-# def test_associated_abspaths(request, input_path, category, expected):
-#     update = request.config.option.update
-#     associated_abspaths_test(pds4file.Pds4File, input_path, category,
-#                              TEST_RESULTS_DIR+expected, update)
+def test_associated_abspaths(request, input_path, category, expected):
+    update = request.config.option.update
+    associated_abspaths_test(pds4file.Pds4File, input_path, category,
+                             TEST_RESULTS_DIR+expected, update)
 
 # def test_opus_id_to_primary_logical_path():
 #     for logical_path in PRIMARY_FILESPEC_LIST:
