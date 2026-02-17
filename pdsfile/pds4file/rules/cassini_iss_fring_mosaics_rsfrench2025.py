@@ -6,7 +6,7 @@ import pdsfile.pds4file as pds4file
 import translator
 import re
 
-# from .cassini_iss_fring_mosaics_rsfrench2025_primary_filespec import PRIMARY_FILESPEC_LIST
+from .cassini_iss_fring_mosaics_rsfrench2025_primary_filespec import PRIMARY_FILESPEC_LIST
 
 ##########################################################################################
 # DESCRIPTION_AND_ICON
@@ -306,12 +306,12 @@ def test_associated_abspaths(request, input_path, category, expected):
     associated_abspaths_test(pds4file.Pds4File, input_path, category,
                              TEST_RESULTS_DIR+expected, update)
 
-# def test_opus_id_to_primary_logical_path():
-#     for logical_path in PRIMARY_FILESPEC_LIST:
-#         test_pdsf = pds4file.Pds4File.from_logical_path(logical_path)
-#         opus_id = test_pdsf.opus_id
-#         opus_id_pdsf = pds4file.Pds4File.from_opus_id(opus_id)
-#         assert opus_id_pdsf.logical_path == logical_path
+def test_opus_id_to_primary_logical_path():
+    for logical_path in PRIMARY_FILESPEC_LIST:
+        test_pdsf = pds4file.Pds4File.from_logical_path(logical_path)
+        opus_id = test_pdsf.opus_id
+        opus_id_pdsf = pds4file.Pds4File.from_opus_id(opus_id)
+        assert opus_id_pdsf.logical_path == logical_path
 
 
 
