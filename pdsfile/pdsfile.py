@@ -4782,15 +4782,40 @@ class PdsFile(object):
                 for abspath in these_abspaths:
                     opus_type_for_abspath[abspath] = opus_type
 
-            abspaths += these_abspaths
+            for path in these_abspaths:
+                abspaths.append((path, cls))
+
+        # Handle cross pds products
+        cross_pds_products_patterns = self.CROSS_PDS3_PDS4_PRODUCTS.all(self.logical_path)
+        new_root = ''
+        other_pds_cls = None
+        parent_cls = cls.__base__.__base__
+        sibling_cls_list = parent_cls.__subclasses__()
+        # Get the proper root directory name for corss pds products
+        for sub_cls in sibling_cls_list:
+            if cls.__base__ != sub_cls:
+                if sub_cls.LOCAL_PRELOADED:
+                    new_root = f'{sub_cls.LOCAL_PRELOADED[0]}/'
+                else:
+                    new_root = self.root_.replace(cls.PDS_HOLDINGS, sub_cls.PDS_HOLDINGS)
+                other_pds_cls = sub_cls
+
+        # Append the cross pds products
+        for pattern in cross_pds_products_patterns:
+            pattern = new_root + pattern
+            these_abspaths = other_pds_cls.glob_glob(pattern,
+                                                     force_case_sensitive=True)
+
+            for path in these_abspaths:
+                abspaths.append((path, other_pds_cls))
 
         # Get PdsFiles for abspaths, organized by labels vs. datafiles
         # label_files[label_abspath] = [label_pdsfile, fmt1_pdsfile, ...]
         # data_files is a list
         label_pdsfiles = {}
         data_pdsfiles = []
-        for abspath in abspaths:
-            pdsf = cls.from_abspath(abspath)
+        for (abspath, pds_class) in abspaths:
+            pdsf = pds_class.from_abspath(abspath)
             if pdsf.islabel:
                 # Check if the corresponding link info exists. If not, we issue
                 # a warning and skip looking for the .fmt files.
@@ -4806,7 +4831,7 @@ class PdsFile(object):
                     links = set(pdsf.linked_abspaths)
                     fmts = [f for f in links if f.lower().endswith('.fmt')]
                     fmts.sort()
-                    fmt_pdsfiles = cls.pdsfiles_for_abspaths(fmts,
+                    fmt_pdsfiles = pds_class.pdsfiles_for_abspaths(fmts,
                                                              must_exist=True)
                 label_pdsfiles[abspath] = [pdsf] + fmt_pdsfiles
             else:

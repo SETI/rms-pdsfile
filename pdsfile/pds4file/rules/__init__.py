@@ -546,6 +546,8 @@ OPUS_PRODUCTS = translator.TranslatorByRegex([
     (r'volumes/([A-Z0-9a-z]+_[A-Z0-9a-z]+).*', 0, [r'documents/\1/*.[!lz]*'])
 ])
 
+CROSS_PDS3_PDS4_PRODUCTS = translator.TranslatorByRegex([])
+
 ##########################################################################################
 # OPUS_ID
 #

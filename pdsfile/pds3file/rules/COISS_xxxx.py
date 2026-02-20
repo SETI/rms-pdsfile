@@ -259,7 +259,7 @@ opus_format = translator.TranslatorByRegex([
 ##########################################################################################
 
 opus_products = translator.TranslatorByRegex([
-    (r'.*/(COISS_[12]xxx)(|_v[0-9\.]+)/(COISS_[12]...)/data/(\w+/[NW][0-9]{10}_[0-9]+).*', 0,
+    (r'.*/(COISS_[12]xxx)(|_v[0-9\.]+)/(COISS_[12]...)/data/(\w+/([NW])([0-9]{10})_[0-9]+).*', 0,
             [r'volumes/\1*/\3/data/\4.IMG',
              r'volumes/\1*/\3/data/\4.LBL',
              r'volumes/\1*/\3/extras/thumbnail/\4.IMG.jpeg_small',
@@ -285,6 +285,23 @@ opus_products = translator.TranslatorByRegex([
              r'metadata/\1/\3/\3_index.tab',
              r'metadata/\1/\3/\3_index.lbl',
              r'documents/COISS_0xxx/*.[!lz]*',
+            ]),
+])
+
+cross_pds3_pds4_products = translator.TranslatorByRegex([
+    (r'.*/(COISS_[12]xxx)(|_v[0-9\.]+)/(COISS_[12]...)/data/(\w+/([NW])([0-9]{10})_[0-9]+).*', 0,
+            [# Reproj
+             # data_reproj_img
+             r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025*/data_reproj_img/*/\6#LOWER#\5_reproj_img_metadata_params.tab',
+             r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025*/data_reproj_img/*/\6#LOWER#\5_reproj_img.img',
+             r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025*/data_reproj_img/*/\6#LOWER#\5_reproj_img.lblx',
+             r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025*/data_reproj_img/*/\6#LOWER#\5_reproj_suppl.txt',
+             # browse_reporj_img
+             r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025*/browse_reproj_img/*/\6#LOWER#\5_browse_reproj_img_full.png',
+             r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025*/browse_reproj_img/*/\6#LOWER#\5_browse_reproj_img_med.png',
+             r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025*/browse_reproj_img/*/\6#LOWER#\5_browse_reproj_img_small.png',
+             r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025*/browse_reproj_img/*/\6#LOWER#\5_browse_reproj_img_thumb.png',
+             r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025*/browse_reproj_img/*/\6#LOWER#\5_browse_reproj_img.lblx',
             ]),
 ])
 
@@ -385,6 +402,7 @@ class COISS_xxxx(pds3file.Pds3File):
     OPUS_TYPE = opus_type + pds3file.Pds3File.OPUS_TYPE
     OPUS_FORMAT = opus_format + pds3file.Pds3File.OPUS_FORMAT
     OPUS_PRODUCTS = opus_products + pds3file.Pds3File.OPUS_PRODUCTS
+    CROSS_PDS3_PDS4_PRODUCTS = cross_pds3_pds4_products + pds3file.Pds3File.CROSS_PDS3_PDS4_PRODUCTS
     OPUS_ID = opus_id
     OPUS_ID_TO_PRIMARY_LOGICAL_PATH = opus_id_to_primary_logical_path
 
