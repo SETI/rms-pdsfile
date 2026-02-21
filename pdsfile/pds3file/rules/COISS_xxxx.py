@@ -443,7 +443,10 @@ from .pytest_support import *
     'input_path,expected',
     [
         ('volumes/COISS_1xxx/COISS_1001/data/1294561143_1295221348/W1294561202_1.IMG',
-         'COISS_xxxx/opus_products/W1294561202_1.txt')
+         'COISS_xxxx/opus_products/W1294561202_1.txt'),
+        # the volume with reporoj images
+        ('volumes/COISS_2xxx/COISS_2113/data/1874248873_1874630321/W1874525875_1.IMG',
+         'COISS_xxxx/opus_products/W1874525875_1.txt')
     ]
 )
 def test_opus_products(request, input_path, expected):
