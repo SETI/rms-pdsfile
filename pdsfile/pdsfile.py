@@ -2640,7 +2640,8 @@ class PdsFile(object):
         # For viewables with label (like f ring browse mosaic), we need to get rid of
         # _thumb, _full, _med, and _small from the data file names to obtain the correct
         # root name for the label files.
-        if self.is_viewable:
+        if ('_thumb' in self.basename or '_full' in self.basename or
+            'med' in self.basename or 'small' in self.basename):
             rootname, _, _ = self.basename.rpartition('_')
         else:
             rootname = self.basename[:-len(self.extension)]
