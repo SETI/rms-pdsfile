@@ -3,6 +3,7 @@
 ##########################################################################################
 
 import pdsfile.pds3file as pds3file
+import pdsfile.pds4file as pds4file
 import translator
 import re
 
@@ -664,7 +665,11 @@ def test_opus_id_to_primary_logical_path():
         product_pdsfiles = []
         for pdsf_lists in product_dict.values():
             for pdsf_list in pdsf_lists:
-                product_pdsfiles += pdsf_list
+                for pdsf in pdsf_list:
+                    # Bypass cross pds products
+                    if isinstance(pdsf, pds4file.Pds4File):
+                        continue
+                    product_pdsfiles.append(pdsf)
 
         # Filter out the metadata/documents products and format files
         product_pdsfiles = [pdsf for pdsf in product_pdsfiles
