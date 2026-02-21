@@ -6072,7 +6072,12 @@ class PdsFile(object):
                 if label_abspath not in abspaths:
                     abspaths.append(label_abspath)
 
-            abspaths += self.data_abspaths
+            if must_exist:
+                for path in self.data_abspaths:
+                    if cls.os_path_exists(path):
+                        abspaths.append(path)
+            else:
+                abspaths += self.data_abspaths
 
         # Remove duplicates
         abspaths = [p for (k,p) in enumerate(abspaths) if p not in abspaths[:k]]
