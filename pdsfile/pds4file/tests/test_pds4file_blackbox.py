@@ -49,6 +49,11 @@ class TestPds4FileBlackBox:
             #  'co-vims-v1308947009_002'),
             # ('cassini_vims/cassini_vims_cruise/browse_raw/130xxxxxxx/13089xxxxx/1308947715-full.png',
             #  'co-vims-v1308947715'),
+            # cassini_iss_fring_mosaics_rsfrench2025
+            ('cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/data_mosaic/iss_006ri_lphrlfmov001_prime/iss_006ri_lphrlfmov001_prime_mosaic.lblx',
+             'co-iss-fring-mosaic-iss_006ri_lphrlfmov001_prime'),
+            ('cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/data_mosaic/iosic_276rb_complitb4001_si/iosic_276rb_complitb4001_si_mosaic.lblx',
+             'co-iss-fring-mosaic-iosic_276rb_complitb4001_si'),
             # cassini_uvis_solarocc_beckerjarmak2023
             ('cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023/data/uvis_euv_2005_159_solar_time_series_ingress.tab',
              'co-uvis-occ-2005-159-sun-i'),
@@ -571,6 +576,26 @@ class TestPds4FileBlackBox:
             #      f'/{PDS4_HOLDINGS_NAME}/previews/cassini_vims/cassini_vims_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947079_xxx/1308947079_003_thumb.png',
             #  ]
             # ),
+            # cassini_iss_fring_mosaics_rsfrench2025
+            # using .png files under browse_mosaic_bkg_sub
+            (
+                'cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/data_mosaic/iss_006ri_lphrlfmov001_prime/iss_006ri_lphrlfmov001_prime_mosaic.lblx',
+                [
+                    f'/{PDS4_HOLDINGS_NAME}/bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_mosaic_bkg_sub/iss_006ri_lphrlfmov001_prime/iss_006ri_lphrlfmov001_prime_browse_mosaic_bkg_sub_full.png',
+                    f'/{PDS4_HOLDINGS_NAME}/bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_mosaic_bkg_sub/iss_006ri_lphrlfmov001_prime/iss_006ri_lphrlfmov001_prime_browse_mosaic_bkg_sub_med.png',
+                    f'/{PDS4_HOLDINGS_NAME}/bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_mosaic_bkg_sub/iss_006ri_lphrlfmov001_prime/iss_006ri_lphrlfmov001_prime_browse_mosaic_bkg_sub_small.png',
+                    f'/{PDS4_HOLDINGS_NAME}/bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_mosaic_bkg_sub/iss_006ri_lphrlfmov001_prime/iss_006ri_lphrlfmov001_prime_browse_mosaic_bkg_sub_thumb.png'
+                ]
+            ),
+            (
+                'cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/data_mosaic/iosic_276rb_complitb4001_si/iosic_276rb_complitb4001_si_mosaic.lblx',
+                [
+                    f'/{PDS4_HOLDINGS_NAME}/bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_mosaic_bkg_sub/iosic_276rb_complitb4001_si/iosic_276rb_complitb4001_si_browse_mosaic_bkg_sub_full.png',
+                    f'/{PDS4_HOLDINGS_NAME}/bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_mosaic_bkg_sub/iosic_276rb_complitb4001_si/iosic_276rb_complitb4001_si_browse_mosaic_bkg_sub_med.png',
+                    f'/{PDS4_HOLDINGS_NAME}/bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_mosaic_bkg_sub/iosic_276rb_complitb4001_si/iosic_276rb_complitb4001_si_browse_mosaic_bkg_sub_small.png',
+                    f'/{PDS4_HOLDINGS_NAME}/bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_mosaic_bkg_sub/iosic_276rb_complitb4001_si/iosic_276rb_complitb4001_si_browse_mosaic_bkg_sub_thumb.png'
+                ]
+            ),
             # cassini_uvis_solarocc_beckerjarmak2023
             (
                 'cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023/data/uvis_euv_2005_159_solar_time_series_ingress.xml',
@@ -648,6 +673,83 @@ class TestPds4FileBlackBox:
     @pytest.mark.parametrize(
     'input_path,expected',
     [
+        # cassini_iss_fring_mosaics_rsfrench2025
+        (
+            'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/data_mosaic/iss_006ri_lphrlfmov001_prime/iss_006ri_lphrlfmov001_prime_mosaic.lblx',
+            'coiss_f_ring_mosaic'
+        ),
+        (
+            'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/data_mosaic/iss_006ri_lphrlfmov001_prime/iss_006ri_lphrlfmov001_prime_mosaic_metadata_src_imgs.tab',
+            'coiss_f_ring_mosaic_metadata'
+        ),
+        (
+            'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/data_mosaic_bkg_sub/iss_006ri_lphrlfmov001_prime/iss_006ri_lphrlfmov001_prime_mosaic_bkg_sub.lblx',
+            'coiss_f_ring_mosaic_bkg_sub'
+        ),
+        (
+            'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/data_mosaic_bkg_sub/iss_006ri_lphrlfmov001_prime/iss_006ri_lphrlfmov001_prime_mosaic_bkg_sub_metadata_src_imgs.tab',
+            'coiss_f_ring_mosaic_bkg_sub_metadata'
+        ),
+        (
+            'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_mosaic/iss_006ri_lphrlfmov001_prime/iss_006ri_lphrlfmov001_prime_browse_mosaic_full.png',
+            'coiss_f_ring_mosaic_browse_full'
+        ),
+        (
+            'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_mosaic/iss_006ri_lphrlfmov001_prime/iss_006ri_lphrlfmov001_prime_browse_mosaic_med.png',
+            'coiss_f_ring_mosaic_browse_med'
+        ),
+        (
+            'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_mosaic/iss_006ri_lphrlfmov001_prime/iss_006ri_lphrlfmov001_prime_browse_mosaic_small.png',
+            'coiss_f_ring_mosaic_browse_small'
+        ),
+        (
+            'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_mosaic/iss_006ri_lphrlfmov001_prime/iss_006ri_lphrlfmov001_prime_browse_mosaic_thumb.png',
+            'coiss_f_ring_mosaic_browse_thumb'
+        ),
+        (
+            'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_mosaic_bkg_sub/iss_006ri_lphrlfmov001_prime/iss_006ri_lphrlfmov001_prime_browse_mosaic_bkg_sub_full.png',
+            'coiss_f_ring_mosaic_browse_bkg_sub_full'
+        ),
+        (
+            'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_mosaic_bkg_sub/iss_006ri_lphrlfmov001_prime/iss_006ri_lphrlfmov001_prime_browse_mosaic_bkg_sub_med.png',
+            'coiss_f_ring_mosaic_browse_bkg_sub_med'
+        ),
+        (
+            'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_mosaic_bkg_sub/iss_006ri_lphrlfmov001_prime/iss_006ri_lphrlfmov001_prime_browse_mosaic_bkg_sub_small.png',
+            'coiss_f_ring_mosaic_browse_bkg_sub_small'
+        ),
+        (
+            'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_mosaic_bkg_sub/iss_006ri_lphrlfmov001_prime/iss_006ri_lphrlfmov001_prime_browse_mosaic_bkg_sub_thumb.png',
+            'coiss_f_ring_mosaic_browse_bkg_sub_thumb'
+        ),
+        (
+            'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/document/user_guide/f-ring-mosaics-user-guide.pdf',
+            'coiss_f_ring_documentation'
+        ),
+        (
+            'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/data_reproj_img/iss_006ri_lphrlfmov001_prime/1492052683n_reproj_img.lblx',
+            'coiss_f_ring_reproj_img'
+        ),
+        (
+            'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/data_reproj_img/iss_006ri_lphrlfmov001_prime/1492052683n_reproj_img_metadata_params.tab',
+            'coiss_f_ring_reproj_img_metadata'
+        ),
+        (
+            'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_reproj_img/iss_006ri_lphrlfmov001_prime/1492052683n_browse_reproj_img_full.png',
+            'coiss_f_ring_browse_reproj_img_full'
+        ),
+        (
+            'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_reproj_img/iss_006ri_lphrlfmov001_prime/1492052683n_browse_reproj_img_med.png',
+            'coiss_f_ring_browse_reproj_img_med'
+        ),
+        (
+            'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_reproj_img/iss_006ri_lphrlfmov001_prime/1492052683n_browse_reproj_img_small.png',
+            'coiss_f_ring_browse_reproj_img_small'
+        ),
+        (
+            'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_reproj_img/iss_006ri_lphrlfmov001_prime/1492052683n_browse_reproj_img_thumb.png',
+            'coiss_f_ring_browse_reproj_img_thumb'
+        ),
         # cassini_uvis_solarocc_beckerjarmak2023
         (
             'bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023/data/uvis_euv_2005_159_solar_time_series_ingress.xml',
