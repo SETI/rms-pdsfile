@@ -315,8 +315,8 @@ def write_infodict(pdsdir, infodict, *, logger=None, limits=None):
         # Write the python dictionary version
         python_path = info_path.rpartition('.')[0] + '.py'
         name = os.path.basename(python_path)
-        parts = name.split('_')
-        name = '_'.join(parts[:2]) + '_info'
+        # Make sure the variable name inside infoshelf is the same as the file name
+        name, _, _ = name.rpartition('.py')
         abspaths = list(infodict.keys())
         abspaths.sort()
 
