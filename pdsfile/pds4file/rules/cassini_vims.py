@@ -349,31 +349,14 @@ archive_dirs = translator.TranslatorByRegex([
          r'\1/\2/document',
          r'\1/\2/xml_schema',
          r'\1/\2/calibration',
-         r'\1/\2/context']),
-    # browse_raw
-    *[
-        (rf'.*archives-(.*/cassini_vims)/(cassini_vims_saturn)/(browse_raw)_1{num}xxxxxxx\.tar\.gz',
-         0, [rf'\1/\2/\3/1{num}xxxxxxx',
-             r'\1/\2/\3/collection_\3.csv',
-             r'\1/\2/\3/collection_\3.xml'])
-        for num in range(45, 89)
-    ],
-    # (r'.*archives-(.*/cassini_vims)/(cassini_vims_saturn)/(browse_raw)_col_xml_csv.tar.gz', 0,
-    #     [r'\1/\2/\3/collection_\3.csv',
-    #      r'\1/\2/\3/collection_\3.xml']
-    # ),
-    # data_raw
-    *[
-        (rf'.*archives-(.*/cassini_vims)/(cassini_vims_saturn)/(data_raw)_1{num}xxxxxxx\.tar\.gz',
-         0, [rf'\1/\2/\3/1{num}xxxxxxx',
-             r'\1/\2/\3/collection_\3.csv',
-             r'\1/\2/\3/collection_\3.xml'])
-        for num in range(45, 89)
-    ],
-    # (r'.*archives-(.*/cassini_vims)/(cassini_vims_saturn)/(data_raw)_col_xml_csv.tar.gz', 0,
-    #     [r'\1/\2/\3/collection_\3.csv',
-    #      r'\1/\2/\3/collection_\3.xml']
-    # ),
+         r'\1/\2/context']
+    ),
+    # browse_raw and data_raw
+    (r'.*archives-(.*/cassini_vims)/(cassini_vims_\w+)/(\w+_raw)_1(\d\d)xxxxxxx\.tar\.gz', 0,
+        [r'\1/\2/\3/1\4??xxxxx',
+         r'\1/\2/\3/collection_\3.csv',
+         r'\1/\2/\3/collection_\3.xml']
+    ),
 ])
 
 ##########################################################################################

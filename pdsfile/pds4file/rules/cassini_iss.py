@@ -367,71 +367,19 @@ archive_paths = translator.TranslatorByRegex([
 # Map a logical path of an archive file name to a list of logical paths of the included
 # directories
 archive_dirs = translator.TranslatorByRegex([
-    ### cassini_iss_cruise ###
     # bundle xml, non browse_raw or data_raw collections
-    (r'.*archives-(.*/cassini_iss)/(cassini_iss_cruise)/bundle_xml_non_data_browse_collections\.tar\.gz', 0,
+    (r'.*archives-(.*/cassini_iss)/(cassini_iss_\w+)/bundle_xml_non_data_browse_collections\.tar\.gz', 0,
         [r'\1/\2/bundle.xml',
          r'\1/\2/document',
          r'\1/\2/xml_schema',
          r'\1/\2/context']
     ),
-    # browse_raw
-    *[
-        (rf'.*archives-(.*/cassini_iss)/(cassini_iss_cruise)/(browse_raw)_1{num}xxxxxxx\.tar\.gz',
-         0, [rf'\1/\2/\3/1{num}xxxxxxx',
-             r'\1/\2/\3/collection_\3.csv',
-             r'\1/\2/\3/collection_\3.xml'])
-        for num in range(29,46)
-    ],
-    # (r'.*archives-(.*/cassini_iss)/(cassini_iss_cruise)/(browse_raw)_col_xml_csv.tar.gz', 0,
-    #     [r'\1/\2/\3/collection_\3.csv',
-    #      r'\1/\2/\3/collection_\3.xml']
-    # ),
-    # data_raw
-    *[
-        (rf'.*archives-(.*/cassini_iss)/(cassini_iss_cruise)/(data_raw)_1{num}xxxxxxx\.tar\.gz',
-         0, [rf'\1/\2/\3/1{num}xxxxxxx',
-             r'\1/\2/\3/collection_\3.csv',
-             r'\1/\2/\3/collection_\3.xml'])
-        for num in range(29,46)
-    ],
-    # (r'.*archives-(.*/cassini_iss)/(cassini_iss_cruise)/(data_raw)_col_xml_csv.tar.gz', 0,
-    #     [r'\1/\2/\3/collection_\3.csv',
-    #      r'\1/\2/\3/collection_\3.xml']
-    # ),
-
-    ### cassini_iss_saturn ###
-    # bundle xml, context, document, and xml_schema collections
-    (r'.*archives-(.*/cassini_iss)/(cassini_iss_saturn)/bundle_xml_non_data_browse_collections\.tar\.gz', 0,
-        [r'\1/\2/bundle.xml',
-         r'\1/\2/document',
-         r'\1/\2/xml_schema',
-         r'\1/\2/context']
-    ),
-    # browse_raw
-    *[
-        (rf'.*archives-(.*/cassini_iss)/(cassini_iss_saturn)/(browse_raw)_1{num}xxxxxxx\.tar\.gz',
-         0, [rf'\1/\2/\3/1{num}xxxxxxx',
-             r'\1/\2/\3/collection_\3.csv',
-             r'\1/\2/\3/collection_\3.xml'])
-        for num in range(45, 89)
-    ],
-    # (r'.*archives-(.*/cassini_iss)/(cassini_iss_saturn)/(browse_raw)_col_xml_csv.tar.gz', 0,
-    #     [r'\1/\2/\3/collection_\3.csv',
-    #      r'\1/\2/\3/collection_\3.xml']
-    # ),
-    # data_raw
-    *[
-        (rf'.*archives-(.*/cassini_iss)/(cassini_iss_saturn)/(data_raw)_1{num}xxxxxxx\.tar\.gz',
-         0, [rf'\1/\2/\3/1{num}xxxxxxx',
-             r'\1/\2/\3/collection_\3.csv',
-             r'\1/\2/\3/collection_\3.xml'])
-        for num in range(45, 89)
-    ],
-    # (r'.*archives-(.*/cassini_iss)/(cassini_iss_saturn)/(data_raw)_col_xml_csv.tar.gz', 0,
-    #     [r'\1/\2/\3/collection_\3.csv',
-    #      r'\1/\2/\3/collection_\3.xml']
-    # ),
+    # browse_raw and data_raw
+    (r'.*archives-(.*/cassini_iss)/(cassini_iss_\w+)/(\w+_raw)_1(\d\d)xxxxxxx\.tar\.gz', 0,
+        [r'\1/\2/\3/1\4??xxxxx',
+         r'\1/\2/\3/collection_\3.csv',
+         r'\1/\2/\3/collection_\3.xml']
+    )
 ])
 
 ##########################################################################################
