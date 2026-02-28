@@ -431,16 +431,35 @@ opus_id_to_primary_logical_path = translator.TranslatorByRegex(opus_id_to_primar
 # Archives
 ##########################################################################################
 # Map a bundle set or a bundle to a list of logical paths of the archive file names.
+bundle_set_list = [f'uranus_occ_{entry[0]}' for entry in prefix_mapping]
 archive_paths = translator.TranslatorByRegex([
-    (r'.*(bundles|metadata|previews|diagrams)/(uranus_occs_earthbased).*', 0, [
-        r'archives-\1/\2/\2.tar.gz'
+    # input is the uranus bundle
+    (r'.*(bundles|metadata|previews|diagrams)/(uranus_occs_earthbased)(|/)$', 0, [
+        *[rf'archives-\1/\2/{bundle_set}.tar.gz' for bundle_set in bundle_set_list],
+        r'archives-\1/\2/bundle_xml_non_bundle_set_collections.tar.gz'
+    ]),
+    # input is a path of one bundle set
+    (r'.*(bundles|metadata|previews|diagrams)/(uranus_occs_earthbased)/(uranus_occ_u.*)(|/)$', 0, [
+        r'archives-\1/\2/\3.tar.gz'
+    ]),
+    # input is a path of non bundle set collections: uranus_occ_support, superseded, and
+    # checksums_uranus_occs_earthbased
+    (r'.*(bundles|metadata|previews|diagrams)/(uranus_occs_earthbased)/(uranus_occ_support|checksums.*|superseded)(|/)$', 0, [
+        r'archives-\1/\2/bundle_xml_non_bundle_set_collections.tar.gz'
     ]),
 ])
 
 # Map a logical path of an archive file name to a list of logical paths of the included
 # directories
 archive_dirs = translator.TranslatorByRegex([
-    (r'.*archives-(.*/uranus_occs_earthbased)/(.*).tar.gz', 0, [r'\1']),
+    # Bundle set
+    (r'.*archives-(.*/uranus_occs_earthbased)/(uranus_occ_u.*).tar.gz', 0, [r'\1/\2']),
+    # Non bundle set collections: uranus_occ_support, superseded, and
+    # checksums_uranus_occs_earthbased
+    (r'.*archives-(.*/uranus_occs_earthbased)/bundle_xml_non_bundle_set_collections.tar.gz', 0,
+        [r'\1/checksums_uranus_occs_earthbased',
+         r'\1/superseded',
+         r'\1/uranus_occ_support']),
 ])
 
 ##########################################################################################
