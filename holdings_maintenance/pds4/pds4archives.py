@@ -52,7 +52,7 @@ def load_directory_info(pdsdir, *, logger=None, limits=None):
     logger.open('Generating file info', dirpath, limits=merged_limits)
 
     try:
-        (_, lskip) = pdsdir.archive_path_and_lskip()
+        lskip = len(pdsdir.root_) + len(pdsdir.category_) + len(pdsdir.bundleset_)
 
         tuples = [(dirpath, dirpath[lskip:], 0, 0)]
         for (path, dirs, files) in os.walk(dirpath):
