@@ -170,6 +170,23 @@ opus_id_to_primary_logical_path = translator.TranslatorByRegex([
 ])
 
 ##########################################################################################
+# Archives
+##########################################################################################
+# Map a bundle set or a bundle to a list of logical paths of the archive file names.
+archive_paths = translator.TranslatorByRegex([
+    # input is the beckerjarmak bundle set
+    (r'.*(bundles|metadata|previews|diagrams)/(cassini_uvis_solarocc_beckerjarmak2023)(|/)$', 0, [
+        r'archives-\1/\2/\2.tar.gz'
+    ]),
+])
+
+# Map a logical path of an archive file name to a list of logical paths of the included
+# directories
+archive_dirs = translator.TranslatorByRegex([
+    (r'.*archives-(.*/cassini_uvis_solarocc_beckerjarmak2023)/(.*).tar.gz', 0, [r'\1']),
+])
+
+##########################################################################################
 # Subclass definition
 ##########################################################################################
 
