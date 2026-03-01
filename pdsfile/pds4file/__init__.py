@@ -147,8 +147,17 @@ class Pds4File(PdsFile):
     # Archive path associations
     ############################################################################
     def archive_paths(self):
-        """Return the absolute path to the archive files associated with this given
-        pdsfile (it could be a bundle set, a bundle or a bundle collection)
+        """Return the absolute paths to archive files associated with this PdsFile.
+
+        Determines the archive file paths based on the logical path of this PdsFile
+        instance. The PdsFile can represent a bundle set, a bundle, or a bundle
+        collection. Archive paths are resolved using the ARCHIVE_PATHS translator
+        rules and converted to absolute paths by prepending the root directory.
+
+        Returns:
+            list[str]: A list of absolute paths to archive files (typically .tar.gz
+                files) associated with this PdsFile. Returns an empty list if no
+                archive paths are found for the logical path.
         """
 
         # pdsf = self.bundle_pdsfile()
@@ -160,8 +169,20 @@ class Pds4File(PdsFile):
         return archive_paths
 
     def archive_dirs(self):
-        """Return a dictionary that is keyed by a archive path and the list of
-        directories included in that archive path as the value.
+        """Return a mapping of archive paths to directories included in each archive.
+
+        For each archive file path associated with this PdsFile, determines which
+        directories are included in that archive. Uses the ARCHIVE_DIRS translator
+        rules to get directory patterns for each archive path, then resolves those
+        patterns to actual existing directory paths using glob matching.
+
+        Returns:
+            dict[str, list[str]]: A dictionary where:
+                - Keys are absolute paths to archive files (typically .tar.gz files)
+                - Values are lists of absolute paths to directories included in each
+                  archive file. Each list contains the actual existing directories
+                  that match the archive's directory patterns. Returns an empty list
+                  for an archive path if no matching directories are found.
         """
 
         archive_paths = self.archive_paths()
