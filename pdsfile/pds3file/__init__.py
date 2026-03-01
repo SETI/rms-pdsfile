@@ -280,6 +280,7 @@ try:
                         JNOJIR_xxxx,
                         JNOJNC_xxxx,
                         JNOSP_xxxx,
+                        JNOSRU_xxxx,
                         NHSP_xxxx,
                         NHxxxx_xxxx,
                         RES_xxxx,
