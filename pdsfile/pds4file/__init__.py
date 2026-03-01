@@ -204,7 +204,6 @@ try:
     from .rules import (cassini_iss,
                         cassini_uvis_solarocc_beckerjarmak2023,
                         cassini_vims,
-                        cassini_uvis_solarocc_beckerjarmak2023,
                         uranus_occs_earthbased)
 except AttributeError:
     pass                    # This occurs when running pytests on individual
