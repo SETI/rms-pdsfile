@@ -430,12 +430,50 @@ opus_id_to_primary_logical_path = translator.TranslatorByRegex(opus_id_to_primar
 ##########################################################################################
 # Archives
 ##########################################################################################
-# Map a bundle set or a bundle to a list of logical paths of the archive file names.
-bundle_set_list = [f'uranus_occ_{entry[0]}' for entry in prefix_mapping]
+# Bundle layout:
+# - The uranus_occs_earthbased bundle set contains multiple individual bundles, each
+#   representing a unique Uranus occultation observation from a specific telescope
+#   and date (e.g., 'uranus_occ_u0_kao_91cm', 'uranus_occ_u12_ctio_400cm')
+# - Each individual bundle includes:
+#   - 'data/rings/': ring occultation profiles at various resolutions
+#   - 'data/atmosphere/': atmospheric occultation time series
+#   - 'data/global/': ring-plane occultation profiles
+#   - 'data/ring_models/': ring model files (SQW models, fitted/predicted data)
+#   - 'browse/': browse images (PDFs, XML)
+# - Additionally, there are non-bundle collections at the bundle set level:
+#   - 'uranus_occ_support/': supporting data (ring fits, SPICE kernels, documentation)
+#   - 'checksums_uranus_occs_earthbased/': checksum files
+#   - 'superseded/': superseded data files
+#
+# How archives are split:
+# - Individual bundles: Each bundle gets its own dedicated archive
+#   - Archive name: '{bundle_name}.tar.gz' (e.g., 'uranus_occ_u0_kao_91cm.tar.gz')
+#   - Contains all data, browse, and metadata for that specific occultation observation
+#   - This approach allows users to download data for specific observations independently
+# - Bundle set level: When requesting the entire bundle set, returns:
+#   - One archive per individual bundle (all bundles listed in bundle_name_list)
+#   - One combined archive: 'bundle_xml_non_bundle_set_collections.tar.gz'
+#     - Contains uranus_occ_support, checksums_uranus_occs_earthbased, and superseded
+#     - These are shared resources not tied to a specific observation
+# - Non-bundle collections: When requesting uranus_occ_support, checksums, or superseded
+#   directly, returns the combined archive path
+#
+# bundle_name_list: A list of bundle names generated from the prefix_mapping dictionary.
+bundle_name_list = [f'uranus_occ_{entry[0]}' for entry in prefix_mapping]
+
+# archive_paths: A TranslatorByRegex object that maps logical paths of bundle sets,
+# bundles, or bundle collections to lists of logical paths of archive file names.
+# When given a PdsFile logical path (e.g., 'bundles/uranus_occs_earthbased'), this
+# translator returns archive file paths for all bundles in the set (e.g.,
+# 'archives-bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm.tar.gz'). For
+# individual bundle paths, it returns the specific bundle's archive path. For non-bundle
+# collections (like uranus_occ_support), it returns a combined archive path.
+# archive paths are used by the archive_paths() method in Pds4File to determine which
+# archive files are associated with a given bundle or bundle set.
 archive_paths = translator.TranslatorByRegex([
     # input is the uranus bundle set
     (r'.*(bundles|metadata|previews|diagrams)/(uranus_occs_earthbased)(|/)$', 0, [
-        *[rf'archives-\1/\2/{bundle_set}.tar.gz' for bundle_set in bundle_set_list],
+        *[rf'archives-\1/\2/{bundle_set}.tar.gz' for bundle_set in bundle_name_list],
         r'archives-\1/\2/bundle_xml_non_bundle_set_collections.tar.gz'
     ]),
     # input is a path of one bundle
@@ -449,8 +487,15 @@ archive_paths = translator.TranslatorByRegex([
     ]),
 ])
 
-# Map a logical path of an archive file name to a list of logical paths of the included
-# directories
+# archive_dirs: A TranslatorByRegex object that maps logical paths of archive files
+# to lists of logical paths of directories included in those archives. When given
+# an archive file path (e.g., 'archives-bundles/uranus_occs_earthbased/
+# uranus_occ_u0_kao_91cm.tar.gz'), this translator returns the directory paths that
+# are packaged within that archive (e.g., 'bundles/uranus_occs_earthbased/
+# uranus_occ_u0_kao_91cm'). For the combined archive containing non-bundle collections,
+# it returns paths to uranus_occ_support, superseded, and checksums directories. This
+# mapping is used by the archive_dirs() method in Pds4File to determine which
+# directories are included in each archive file.
 archive_dirs = translator.TranslatorByRegex([
     # Bundle
     (r'.*archives-(.*/uranus_occs_earthbased)/(uranus_occ_u.*).tar.gz', 0, [r'\1/\2']),

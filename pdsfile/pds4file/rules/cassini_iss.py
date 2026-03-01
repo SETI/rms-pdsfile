@@ -289,9 +289,43 @@ opus_id_to_primary_logical_path = translator.TranslatorByRegex([
 ##########################################################################################
 # Archives
 ##########################################################################################
-# Map a bundle set or a bundle to a list of logical paths of the archive file names.
 # TODO: split regex matched pattern group 1 (bundles|metadata|previews|diagrams) into
 # separate entries if we use different archive file names for different categories
+
+# Bundle layout:
+# - Each high-level Cassini ISS bundle (e.g., 'cassini_iss_cruise', 'cassini_iss_saturn')
+#   is organized into multiple collections:
+#   - 'bundle.xml', 'context', 'document', 'xml_schema' (non-data, non-browse collections)
+#   - 'browse_raw/...': preview/browse collections for raw images
+#   - 'data_raw/...': the primary raw science data collections
+#
+# How archives are split:
+# - For each bundle name, we generate multiple .tar.gz archives instead of a single
+#   monolithic archive. This keeps individual archives reasonably sized and makes
+#   re-creation/update more targeted.
+# - 'other_col' archives:
+#   - Contain bundle.xml and all non-data, non-browse collections
+#   - Always a single archive per bundle:
+#       'bundle_xml_non_data_browse_collections.tar.gz'
+# - 'browse_raw' archives:
+#   - The raw browse collection is split by leading spacecraft clock block
+#   - For cruise: one archive per 1xx clock block where 29 <= xx < 46
+#   - For saturn: one archive per 1xx clock block where 45 <= xx < 89
+#   - Each pattern 'browse_raw_1{num}xxxxxxx.tar.gz' groups all files whose
+#     first 3 SCET digits are '1{num}' into a single archive.
+# - 'data_raw' archives:
+#   - Mirrored strategy to 'browse_raw', but for the underlying raw data collections
+#   - Uses the same 1xx clock block ranges for cruise vs saturn as above.
+#
+# ARCHIVE_PATHS_DICT: A dictionary that organizes archive path patterns by bundle name
+# and collection type.
+# Dictionary structure:
+# - Top-level keys are bundle names (e.g., 'cassini_iss_cruise', 'cassini_iss_saturn').
+# - Each bundle name contains sub-dictionaries keyed by collection type:
+#     'other_col', 'browse_raw', 'data_raw'
+# - Values are lists of regex pattern strings that will be expanded into archive file
+#   paths. The patterns use regex backreferences (\1, \2) that are filled from the
+#   input logical path (e.g., category and bundle path) when archive_paths is called.
 ARCHIVE_PATHS_DICT = {
     'cassini_iss_cruise': {
         'other_col': [
@@ -320,6 +354,16 @@ ARCHIVE_PATHS_DICT = {
         ],
     }
 }
+
+# archive_paths: A TranslatorByRegex object that maps logical paths of bundle sets,
+# bundles, or bundle collections to lists of logical paths of archive file names.
+# When given a PdsFile logical path (e.g., 'bundles/cassini_iss/cassini_iss_cruise'),
+# this translator returns the corresponding archive file paths (e.g.,
+# 'archives-bundles/cassini_iss/cassini_iss_cruise/browse_raw_1xxxxxxx.tar.gz').
+# The translator uses regex patterns to match input paths and extracts archive path
+# patterns from ARCHIVE_PATHS_DICT based on the bundle set and collection type.
+# These archive paths are used by the archive_paths() method in Pds4File to determine
+# which archive files are associated with a given bundle or bundle set.
 archive_paths = translator.TranslatorByRegex([
     ### cassini_iss_cruise ###
     (r'.*(bundles|metadata|previews|diagrams)/(cassini_iss/cassini_iss_cruise)(|/)$', 0, [
@@ -364,8 +408,13 @@ archive_paths = translator.TranslatorByRegex([
 
 ])
 
-# Map a logical path of an archive file name to a list of logical paths of the included
-# directories
+# archive_dirs: A TranslatorByRegex object that maps logical paths of archive files
+# to lists of logical paths of directories included in those archives. When given
+# an archive file path (e.g., 'archives-bundles/cassini_iss/cassini_iss_cruise/
+# browse_raw_1xxxxxxx.tar.gz'), this translator returns the directory paths that are
+# packaged within that archive (e.g., 'bundles/cassini_iss/cassini_iss_cruise/
+# browse_raw/1xxxxxxx'). This mapping is used by the archive_dirs() method in Pds4File
+# to determine which directories are included in each archive file.
 archive_dirs = translator.TranslatorByRegex([
     # bundle xml, non browse_raw or data_raw collections
     (r'.*archives-(.*/cassini_iss)/(cassini_iss_\w+)/bundle_xml_non_data_browse_collections\.tar\.gz', 0,

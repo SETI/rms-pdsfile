@@ -172,7 +172,32 @@ opus_id_to_primary_logical_path = translator.TranslatorByRegex([
 ##########################################################################################
 # Archives
 ##########################################################################################
-# Map a bundle set or a bundle to a list of logical paths of the archive file names.
+# Bundle layout:
+# - The cassini_uvis_solarocc_beckerjarmak2023 bundle set contains a single bundle
+#   with the same name as the bundle set
+# - The bundle includes:
+#   - 'data/': primary occultation time series data files (tab/xml)
+#   - 'data/supplemental/': supplemental data files
+#   - 'browse/': browse images (jpg/xml)
+#   - 'document/': documentation files (PDFs, XML)
+#   - 'readme.txt': bundle readme file
+#
+# How archives are split:
+# - All content is packaged into a single monolithic archive per bundle set
+# - Archive name: '{bundle_set_name}.tar.gz' (e.g., 'cassini_uvis_solarocc_beckerjarmak2023.tar.gz')
+# - This simple approach is used because:
+#   - The bundle set contains a single bundle (not multiple bundles)
+#   - The total data volume is relatively small
+#   - All collections (data, browse, documents) are packaged together
+#
+# archive_paths: A TranslatorByRegex object that maps logical paths of bundle sets
+# or bundles to lists of logical paths of archive file names. When given a PdsFile
+# logical path (e.g., 'bundles/cassini_uvis_solarocc_beckerjarmak2023'), this
+# translator returns the corresponding archive file path (e.g.,
+# 'archives-bundles/cassini_uvis_solarocc_beckerjarmak2023/
+# cassini_uvis_solarocc_beckerjarmak2023.tar.gz'). These archive paths are
+# used by the archive_paths() method in Pds4File to determine which archive files
+# are associated with a given bundle or bundle set.
 archive_paths = translator.TranslatorByRegex([
     # input is the beckerjarmak bundle set
     (r'.*(bundles|metadata|previews|diagrams)/(cassini_uvis_solarocc_beckerjarmak2023)(|/)$', 0, [
@@ -180,8 +205,14 @@ archive_paths = translator.TranslatorByRegex([
     ]),
 ])
 
-# Map a logical path of an archive file name to a list of logical paths of the included
-# directories
+# archive_dirs: A TranslatorByRegex object that maps logical paths of archive files
+# to lists of logical paths of directories included in those archives. When given
+# an archive file path (e.g., 'archives-bundles/cassini_uvis_solarocc_beckerjarmak2023/
+# cassini_uvis_solarocc_beckerjarmak2023.tar.gz'), this translator returns the
+# directory paths that are packaged within that archive (e.g.,
+# 'bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023').
+# This mapping is used by the archive_dirs() method in Pds4File to determine which
+# directories are included in each archive file.
 archive_dirs = translator.TranslatorByRegex([
     (r'.*archives-(.*/cassini_uvis_solarocc_beckerjarmak2023)/(.*).tar.gz', 0, [r'\1']),
 ])
