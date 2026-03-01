@@ -3020,7 +3020,7 @@ class PdsFile(object):
         """
 
         version_id = ''
-        if suffix == '':
+        if suffix == '' or suffix is None:
             version_message = 'Current version'
             version_rank = 999999
         elif suffix == '_in_prep':
@@ -3638,7 +3638,7 @@ class PdsFile(object):
                 this.bundleset  = matchobj.group(1)
                 this.suffix  = matchobj.group(2)
 
-                if matchobj.group(3):
+                if len(matchobj.groups()) > 2 and matchobj.group(3):
                     this.bundleset_ = ''
                     this.interior = basename
                     parts = this.suffix.split('_')
@@ -4108,8 +4108,9 @@ class PdsFile(object):
             if matchobj:
                 subparts = matchobj.group(1).partition('_')
                 this.bundleset = subparts[0].upper() + '_' + subparts[2].lower()
-                suffix    = matchobj.group(2).lower()
-                extension = (matchobj.group(3) + matchobj.group(4)).lower()
+                suffix    = matchobj.group(2).lower() if matchobj.group(2) else ''
+                extension = ((matchobj.group(3) + matchobj.group(4)).lower()
+                             if len(matchobj.groups()) > 2 else '')
 
                 # <bundleset>...tar.gz must be an archive file
                 if extension.endswith('.tar.gz'):
@@ -5480,8 +5481,12 @@ class PdsFile(object):
         # Special case: bundleset[_...], bundleset[_...]_md5.txt, bundleset[_...].tar.gz
         matchobj = cls.BUNDLESET_PLUS_REGEX.match(basename)
         if matchobj is not None:
-            return (matchobj.group(1), matchobj.group(2) + matchobj.group(3),
-                    matchobj.group(4))
+            # For PDS4, we capture bundle set + version, so two groups
+            if len(matchobj.groups()) == 2:
+                return (matchobj.group(1), matchobj.group(2), '')
+            else:
+                return (matchobj.group(1), matchobj.group(2) + matchobj.group(3),
+                        matchobj.group(4))
 
         # Special case: bundlename[_...]_md5.txt, bundlename[_...].tar.gz
         matchobj = cls.BUNDLENAME_PLUS_REGEX.match(basename)
@@ -5549,10 +5554,14 @@ class PdsFile(object):
             matchobj = cls.BUNDLESET_PLUS_REGEX_I.match(basename)
             if matchobj is not None:
                 splits = matchobj.groups()
-                parts = [splits[0],
-                         -cls.version_info(splits[1])[0],
-                         matchobj.group(2),
-                         matchobj.group(3)]
+                # For PDS4, we capture bundle set + version, so two groups
+                if len(splits) == 2:
+                    parts = [splits[0], -cls.version_info(splits[1])[0], '', '']
+                else:
+                    parts = [splits[0],
+                            -cls.version_info(splits[1])[0],
+                            matchobj.group(2),
+                            matchobj.group(3)]
             else:
                 # Otherwise, the sort is based on split_basename()
                 modified = self.SORT_KEY.first(basename)

@@ -22,11 +22,7 @@ class Pds4File(PdsFile):
                                  r'cassini_vims)$')
     BUNDLESET_PLUS_REGEX   = re.compile(BUNDLESET_REGEX.pattern[:-1] +
                                         r'(_v[0-9]+\.[0-9]+\.[0-9]+|' +
-                                        r'_v[0-9]+\.[0-9]+|_v[0-9]+|' +
-                                        r'_in_prep|_prelim|_peer_review|' +
-                                        r'_lien_resolution|)' +
-                                        r'((|_calibrated|_diagrams|_metadata|_previews)' +
-                                        r'(|_md5\.txt|\.tar\.gz))$')
+                                        r'_v[0-9]+\.[0-9]+)*$')
     BUNDLESET_PLUS_REGEX_I = re.compile(BUNDLESET_PLUS_REGEX.pattern, re.I)
     BUNDLENAME_REGEX = re.compile(r'^([a-zA-z_].+)$')
 
