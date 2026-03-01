@@ -4147,7 +4147,7 @@ class PdsFile(object):
 
                 # If there is a matched extension
                 # if matchobj.group(2) and matchobj.group(3):
-                if matchobj.group(3):
+                if len(matchobj.groups()) > 2 and matchobj.group(3):
                     this.basename = matchobj.group(0).replace('.targz', '.tar.gz')
                     extension = (matchobj.group(2) + matchobj.group(3)).lower()
 
@@ -5494,7 +5494,11 @@ class PdsFile(object):
             test = self.SPLIT_RULES.first(basename) # a split rule overrides
                                                     # the default behavior
             if test == basename:
-                return (matchobj.group(1), matchobj.group(2), matchobj.group(3))
+                # For PDS4, we capture bundle name + version, so two groups
+                if len(matchobj.groups()) == 2:
+                    return (matchobj.group(1), matchobj.group(2), '')
+                else:
+                    return (matchobj.group(1), matchobj.group(2), matchobj.group(3))
             else:
                 return test
 
