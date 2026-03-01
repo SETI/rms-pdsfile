@@ -717,7 +717,7 @@ def main():
                              'than the shelf file, update the shelf file\'s '  +
                              'modification date.')
 
-    parser.add_argument('volume', nargs='+', type=str, required=True,
+    parser.add_argument('volume', nargs='+', type=str,
                         help='The path to the root of the volume or volume '   +
                              'set. For a volume set, all the volume '          +
                              'directories inside it are handled in sequence.')
