@@ -377,7 +377,7 @@ def main():
                              'each one. Existing index shelf files are not '   +
                              'checked.')
 
-    parser.add_argument('--table', nargs='+', type=str,
+    parser.add_argument('table', nargs='+', type=str,
                         help='Path to an index file or metadata directory.')
 
     parser.add_argument('--log', '-l', type=str, default='',
