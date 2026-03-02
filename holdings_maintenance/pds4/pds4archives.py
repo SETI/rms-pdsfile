@@ -348,6 +348,7 @@ def repair(pdsdir, logger=None):
 
     archive_paths = pdsdir.archive_paths()
     archive_dirs = pdsdir.archive_dirs()
+    dir_tuples = load_directory_info(pdsdir, logger=logger)
 
     for tarpath in archive_paths:
         if not os.path.exists(tarpath):
@@ -357,7 +358,7 @@ def repair(pdsdir, logger=None):
             return True
 
         tar_tuples = read_archive_info(tarpath, logger=logger)
-        dir_tuples = load_directory_info(pdsdir, logger=logger)
+
         roots = archive_dirs[tarpath]
         actual_dir_tuples = [
             t for t in dir_tuples
