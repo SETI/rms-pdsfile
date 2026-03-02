@@ -213,6 +213,10 @@ def write_archive(pdsdir, *, clobber=True, archive_invisibles=True,
         archive_paths = pdsdir.archive_paths()
         archive_dirs = pdsdir.archive_dirs()
 
+        if not archive_paths:
+            logger.error('No archive paths resolved for', pdsdir.logical_path)
+            raise
+
         # Create parent directory if necessary
         tarpath = archive_paths[0]
         parent = os.path.split(tarpath)[0]
