@@ -3636,7 +3636,7 @@ class PdsFile(object):
 
                 this.bundleset_ = basename + '/'
                 this.bundleset  = matchobj.group(1)
-                this.suffix  = matchobj.group(2)
+                this.suffix  = '' if matchobj.group(2) is None else matchobj.group(2)
 
                 if len(matchobj.groups()) > 2 and matchobj.group(3):
                     this.bundleset_ = ''
