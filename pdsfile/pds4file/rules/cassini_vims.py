@@ -356,6 +356,13 @@ ARCHIVE_PATHS_DICT = {
 # These archive paths are used by the archive_paths() method in Pds4File to determine
 # which archive files are associated with a given bundle or bundle set.
 archive_paths = translator.TranslatorByRegex([
+    # input path is the whole cassini_vims bundle set
+    (r'.*(bundles|metadata|previews|diagrams)/(cassini_vims)(|/)$', 0, [
+        r'archives-\1/\2/\2_cruise/\2_cruise.tar.gz',
+        r'archives-\1/\2/\2_saturn/bundle_xml_non_data_browse_collections.tar.gz',
+        *[rf'archives-\1/\2/\2_saturn/browse_raw_1{num}xxxxxxx.tar.gz' for num in range(45, 89)],
+        *[rf'archives-\1/\2/\2_saturn/data_raw_1{num}xxxxxxx.tar.gz' for num in range(45, 89)],
+    ]),
     ### cassini_vims_cruise ###
     (r'.*(bundles|metadata|previews|diagrams)/(cassini_vims)/(cassini_vims_cruise)(|/)$', 0,
         ARCHIVE_PATHS_DICT['cassini_vims_cruise']['all']),

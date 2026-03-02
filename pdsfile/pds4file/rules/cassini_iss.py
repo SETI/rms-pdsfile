@@ -367,12 +367,12 @@ ARCHIVE_PATHS_DICT = {
 archive_paths = translator.TranslatorByRegex([
     # input path is the whole cassini_iss bundle set
     (r'.*(bundles|metadata|previews|diagrams)/(cassini_iss)(|/)$', 0, [
-        r'archives-\1/\2/cassini_iss_cruise/bundle_xml_non_data_browse_collections.tar.gz',
-        *[rf'archives-\1/\2/cassini_iss_cruise/browse_raw_1{num}xxxxxxx.tar.gz' for num in range(29,46)],
-        *[rf'archives-\1/\2/cassini_iss_cruise/data_raw_1{num}xxxxxxx.tar.gz' for num in range(29,46)],
-        r'archives-\1/\2/cassini_iss_saturn/bundle_xml_non_data_browse_collections.tar.gz',
-        *[rf'archives-\1/\2/cassini_iss_saturn/browse_raw_1{num}xxxxxxx.tar.gz' for num in range(45, 89)],
-        *[rf'archives-\1/\2/cassini_iss_saturn/data_raw_1{num}xxxxxxx.tar.gz' for num in range(45, 89)],
+        r'archives-\1/\2/\2_cruise/bundle_xml_non_data_browse_collections.tar.gz',
+        *[rf'archives-\1/\2/\2_cruise/browse_raw_1{num}xxxxxxx.tar.gz' for num in range(29,46)],
+        *[rf'archives-\1/\2/\2_cruise/data_raw_1{num}xxxxxxx.tar.gz' for num in range(29,46)],
+        r'archives-\1/\2/\2_saturn/bundle_xml_non_data_browse_collections.tar.gz',
+        *[rf'archives-\1/\2/\2_saturn/browse_raw_1{num}xxxxxxx.tar.gz' for num in range(45, 89)],
+        *[rf'archives-\1/\2/\2_saturn/data_raw_1{num}xxxxxxx.tar.gz' for num in range(45, 89)],
     ]),
     ### cassini_iss_cruise ###
     # input path is a bundle path
