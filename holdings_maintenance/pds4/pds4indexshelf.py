@@ -325,7 +325,7 @@ def repair(pdsf, logger=None):
     # Write new info
     write_indexdict(pdsf, table_indexdict, logger=logger)
 
-def update(pdsf, selection=None, logger=None):
+def update(pdsf, logger=None):
 
     shelf_path = pdsf.indexshelf_abspath
     if os.path.exists(shelf_path):
