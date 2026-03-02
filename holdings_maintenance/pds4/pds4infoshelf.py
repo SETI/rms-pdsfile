@@ -838,21 +838,21 @@ def main():
 
             # Save logs in up to two places
             if pdsf.bundlename:
-                logfiles = set([pdsf.log_path_for_bundle('_info',
-                                                         task=args.task,
-                                                         dir='pdsinfoshelf'),
-                                pdsf.log_path_for_bundle('_info',
-                                                         task=args.task,
-                                                         dir='pdsinfoshelf',
-                                                         place='parallel')])
+                logfiles = {pdsf.log_path_for_bundle('_info',
+                                                     task=args.task,
+                                                     dir='pdsinfoshelf'),
+                            pdsf.log_path_for_bundle('_info',
+                                                     task=args.task,
+                                                     dir='pdsinfoshelf',
+                                                     place='parallel')}
             else:
-                logfiles = set([pdsf.log_path_for_bundleset('_info',
-                                                            task=args.task,
-                                                            dir='pdsinfoshelf'),
-                                pdsf.log_path_for_bundleset('_info',
-                                                            task=args.task,
-                                                            dir='pdsinfoshelf',
-                                                            place='parallel')])
+                logfiles = {pdsf.log_path_for_bundleset('_info',
+                                                        task=args.task,
+                                                        dir='pdsinfoshelf'),
+                            pdsf.log_path_for_bundleset('_info',
+                                                        task=args.task,
+                                                        dir='pdsinfoshelf',
+                                                        place='parallel')}
 
             # Create all the handlers for this level in the logger
             local_handlers = []
