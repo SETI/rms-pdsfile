@@ -5562,10 +5562,12 @@ class PdsFile(object):
                 if len(splits) == 2:
                     parts = [splits[0], -cls.version_info(splits[1])[0], '', '']
                 else:
-                    parts = [splits[0],
-                            -cls.version_info(splits[1])[0],
-                            matchobj.group(2),
-                            matchobj.group(3)]
+                    parts = [
+                        splits[0],
+                        -cls.version_info(splits[1])[0],
+                        matchobj.group(2),
+                        matchobj.group(3)
+                    ]
             else:
                 # Otherwise, the sort is based on split_basename()
                 modified = self.SORT_KEY.first(basename)
