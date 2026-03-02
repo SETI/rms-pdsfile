@@ -246,6 +246,9 @@ class cassini_uvis_solarocc_beckerjarmak2023(pds4file.Pds4File):
     ASSOCIATIONS['metadata']   += associations_to_metadata
     ASSOCIATIONS['documents']  += associations_to_documents
 
+    ARCHIVE_PATHS = archive_paths + pds4file.Pds4File.ARCHIVE_PATHS
+    ARCHIVE_DIRS = archive_dirs + pds4file.Pds4File.ARCHIVE_DIRS
+
     pds4file.Pds4File.FILESPEC_TO_BUNDLESET = filespec_to_bundleset + pds4file.Pds4File.FILESPEC_TO_BUNDLESET
 
 # Global attribute shared by all subclasses
