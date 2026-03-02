@@ -503,19 +503,19 @@ def main():
                     logger.info('Log file', logfile)
 
                 if args.task == 'initialize':
-                    initialize(pdsf)
+                    initialize(pdsf, logger=logger)
 
                 elif args.task == 'reinitialize':
-                    reinitialize(pdsf)
+                    reinitialize(pdsf, logger=logger)
 
                 elif args.task == 'validate':
-                    validate(pdsf)
+                    validate(pdsf, logger=logger)
 
                 elif args.task == 'repair':
-                    repair(pdsf)
+                    repair(pdsf, logger=logger)
 
                 else:   # update
-                    update(pdsf)
+                    update(pdsf, logger=logger)
 
             except (Exception, KeyboardInterrupt) as e:
                 logger.exception(e)
