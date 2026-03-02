@@ -263,7 +263,7 @@ def validate(pdsf, logger=None):
     validate_infodict(pdsf, table_indexdict, shelf_indexdict,
                       logger=logger)
 
-def repair(pdsf, logger=None, op='repair'):
+def repair(pdsf, logger=None):
 
     shelf_path = pdsf.indexshelf_abspath
 
