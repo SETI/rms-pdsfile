@@ -884,22 +884,22 @@ def main():
                     logger.info('Log file', logfile)
 
                 if args.task == 'initialize':
-                    initialize(pdsdir, selection)
+                    initialize(pdsdir, selection, logger=logger)
 
                 elif args.task == 'reinitialize':
                     if selection:       # don't erase everything else!
-                        update(pdsdir, selection)
+                        update(pdsdir, selection, logger=logger)
                     else:
-                        reinitialize(pdsdir, selection)
+                        reinitialize(pdsdir, selection, logger=logger)
 
                 elif args.task == 'validate':
-                    validate(pdsdir, selection)
+                    validate(pdsdir, selection, logger=logger)
 
                 elif args.task == 'repair':
-                    repair(pdsdir, selection)
+                    repair(pdsdir, selection, logger=logger)
 
                 else:   # update
-                    update(pdsdir, selection)
+                    update(pdsdir, selection, logger=logger)
 
             except (Exception, KeyboardInterrupt) as e:
                 logger.exception(e)
