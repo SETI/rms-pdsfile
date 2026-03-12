@@ -2641,7 +2641,7 @@ class PdsFile(object):
         # _thumb, _full, _med, and _small from the data file names to obtain the correct
         # root name for the label files.
         if ('_thumb' in self.basename or '_full' in self.basename or
-            'med' in self.basename or 'small' in self.basename):
+            '_med' in self.basename or '_small' in self.basename):
             rootname, _, _ = self.basename.rpartition('_')
         else:
             rootname = self.basename[:-len(self.extension)]
