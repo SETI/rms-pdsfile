@@ -1921,7 +1921,7 @@ class PdsFile(object):
                 try:
                     self._index_pdslabel = pdsparser.PdsLabel.from_file(label_abspath)
                     break
-                except:
+                except OSError:
                     self._index_pdslabel = 'failed'
                     continue
 
