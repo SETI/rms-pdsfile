@@ -60,15 +60,11 @@ associations_to_bundles = translator.TranslatorByRegex([
             r'bundles/\1/browse_mosaic_bkg_sub/\3/\3_browse_mosaic_bkg_sub_thumb.png',
             r'bundles/\1/browse_mosaic_bkg_sub/\3/\3_browse_mosaic_bkg_sub.lblx',
         ]),
-    # TODO: assume we will have documents for this bundle under documents/
-    # if not, put the actual documents directory here later
     (r'documents/cassini_iss_fring_mosaics_rsfrench2025[^/]*', 0,
         r'bundles/cassini_iss_fring_mosaics_rsfrench2025'),
 ])
 
 # Use .png files under browse_mosaic and browse_mosaic_bkg_sub as previews
-# TODO: assume we won't have previews/cassini_iss_fring_mosaics_rsfrench2025
-# if we do add previews/cassini_iss_fring_mosaics_rsfrench2025, modify this rule later
 associations_to_previews = translator.TranslatorByRegex([
     (r'.*/(cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*)/(data|browse)_mosaic.*/((iss|iosic)_[a-zA-Z0-9_]*)/(iss|iosic)_[a-zA-Z0-9_]*_mosaic.*\.[a-z]{3,4}', 0,
         [
@@ -144,7 +140,6 @@ opus_type = translator.TranslatorByRegex([
     (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_mosaic/(iss|iosic)_.*/(iss|iosic)_.*full.*\.png',            0, ('Cassini ISS F Ring Mosaics', 80, 'coiss_f_ring_mosaic_browse_full', 'Browse Mosaic Image (full)', True)),
 
     # browse_mosaic_bkg_sub
-    # TODO: if we use these as previews, do we keep the same opus types as ones in other bundles? Or do we create new opus types?
     (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_mosaic_bkg_sub/(iss|iosic)_.*/(iss|iosic)_.*thumb.*\.png',            0, ('Cassini ISS F Ring Mosaics', 90, 'coiss_f_ring_mosaic_browse_bkg_sub_thumb', 'Background-Subtracted Browse Mosaic Image (thumbnail)', True)),
     (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_mosaic_bkg_sub/(iss|iosic)_.*/(iss|iosic)_.*small.*\.png',            0, ('Cassini ISS F Ring Mosaics', 100, 'coiss_f_ring_mosaic_browse_bkg_sub_small', 'Background-Subtracted Browse Mosaic Image (small)', True)),    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_mosaic_bkg_sub/(iss|iosic)_.*/(iss|iosic)_.*med.*\.png',            0, ('Cassini ISS F Ring Mosaics', 110, 'coiss_f_ring_mosaic_browse_bkg_sub_med', 'Background-Subtracted Browse Mosaic Image (medium)', True)),
     (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_mosaic_bkg_sub/(iss|iosic)_.*/(iss|iosic)_.*full.*\.png',            0, ('Cassini ISS F Ring Mosaics', 120, 'coiss_f_ring_mosaic_browse_bkg_sub_full', 'Background-Subtracted Browse Mosaic Image (full)', True)),
