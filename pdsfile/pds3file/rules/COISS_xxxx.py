@@ -669,9 +669,6 @@ def test_opus_id_to_primary_logical_path():
         for pdsf_lists in product_dict.values():
             for pdsf_list in pdsf_lists:
                 for pdsf in pdsf_list:
-                    # Bypass cross pds products
-                    if isinstance(pdsf, pds4file.Pds4File):
-                        continue
                     product_pdsfiles.append(pdsf)
 
         # Filter out the metadata/documents products and format files
@@ -697,7 +694,12 @@ def test_opus_id_to_primary_logical_path():
                     assert viewable.abspath in opus_id_abspaths
 
             # Every associated product is in the product set except metadata
-            for category in ('volumes', 'calibrated', 'previews'):
+            categories = ('volumes', 'calibrated', 'previews')
+            # cross pds products
+            if isinstance(pdsf, pds4file.Pds4File):
+                categories = ('bundles', 'calibrated', 'previews')
+
+            for category in categories:
                 for abspath in pdsf.associated_abspaths(category):
                     assert abspath in opus_id_abspaths
 
