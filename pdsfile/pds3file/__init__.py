@@ -89,7 +89,7 @@ class Pds3File(PdsFile):
     FILESPEC_TO_BUNDLESET = rules.FILESPEC_TO_BUNDLESET
 
     IDX_EXT = '.tab'
-    LBL_EXT = ['.lbl']
+    LBL_EXT = ('.lbl',)
 
     def __init__(self):
         super().__init__()
