@@ -60,7 +60,7 @@ associations_to_bundles = translator.TranslatorByRegex([
             r'bundles/\1/browse_mosaic_bkg_sub/\3/\3_browse_mosaic_bkg_sub_thumb.png',
             r'bundles/\1/browse_mosaic_bkg_sub/\3/\3_browse_mosaic_bkg_sub.lblx',
         ]),
-    (r'documents/cassini_iss_fring_mosaics_rsfrench2025[^/]*', 0,
+    (r'.*/(cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*)/document.*', 0,
         r'bundles/cassini_iss_fring_mosaics_rsfrench2025'),
 ])
 
@@ -127,12 +127,12 @@ sort_key = translator.TranslatorByRegex([
 
 opus_type = translator.TranslatorByRegex([
     # data_mosaic
-    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/data_mosaic/(iss|iosic)_.*/(iss|iosic)_.*\.(img|lblx)',              0, ('Cassini ISS F Ring Mosaics', 10, 'coiss_f_ring_mosaic', 'Data Mosaic', True)),
-    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/data_mosaic/(iss|iosic)_.*/(iss|iosic)_.*metadata.*\.tab',              0, ('Cassini ISS F Ring Mosaics', 20, 'coiss_f_ring_mosaic_metadata', 'Data Mosaic Metadata', True)),
+    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/data_mosaic/(iss|iosic)_.*/(iss|iosic)_.*\.(img|lblx)',              0, ('Cassini ISS F Ring Mosaics', 10, 'coiss_f_ring_mosaic', 'Mosaic', True)),
+    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/data_mosaic/(iss|iosic)_.*/(iss|iosic)_.*metadata.*\.tab',              0, ('Cassini ISS F Ring Mosaics', 20, 'coiss_f_ring_mosaic_metadata', 'Mosaic Metadata', True)),
 
     # data_mosaic_bkg_sub
-    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/data_mosaic_bkg_sub/(iss|iosic)_.*/(iss|iosic)_.*\.(img|lblx)', 0, ('Cassini ISS F Ring Mosaics', 30, 'coiss_f_ring_mosaic_bkg_sub', 'Background-Subtracted Data Mosaic', True)),
-    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/data_mosaic_bkg_sub/(iss|iosic)_.*/(iss|iosic)_.*metadata.*\.tab', 0, ('Cassini ISS F Ring Mosaics', 40, 'coiss_f_ring_mosaic_bkg_sub_metadata', 'Background-Subtracted Data Mosaic Metadata', True)),
+    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/data_mosaic_bkg_sub/(iss|iosic)_.*/(iss|iosic)_.*\.(img|lblx)', 0, ('Cassini ISS F Ring Mosaics', 30, 'coiss_f_ring_mosaic_bkg_sub', 'Background-Subtracted Mosaic', True)),
+    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/data_mosaic_bkg_sub/(iss|iosic)_.*/(iss|iosic)_.*metadata.*\.tab', 0, ('Cassini ISS F Ring Mosaics', 40, 'coiss_f_ring_mosaic_bkg_sub_metadata', 'Background-Subtracted Mosaic Metadata', True)),
 
     # browse_mosaic
     (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_mosaic/(iss|iosic)_.*/(iss|iosic)_.*thumb.*\.png',            0, ('Cassini ISS F Ring Mosaics', 50, 'coiss_f_ring_mosaic_browse_thumb', 'Browse Mosaic Image (thumbnail)', True)),
@@ -140,22 +140,25 @@ opus_type = translator.TranslatorByRegex([
     (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_mosaic/(iss|iosic)_.*/(iss|iosic)_.*full.*\.png',            0, ('Cassini ISS F Ring Mosaics', 80, 'coiss_f_ring_mosaic_browse_full', 'Browse Mosaic Image (full)', True)),
 
     # browse_mosaic_bkg_sub
-    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_mosaic_bkg_sub/(iss|iosic)_.*/(iss|iosic)_.*thumb.*\.png',            0, ('Cassini ISS F Ring Mosaics', 90, 'coiss_f_ring_mosaic_browse_bkg_sub_thumb', 'Background-Subtracted Browse Mosaic Image (thumbnail)', True)),
-    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_mosaic_bkg_sub/(iss|iosic)_.*/(iss|iosic)_.*small.*\.png',            0, ('Cassini ISS F Ring Mosaics', 100, 'coiss_f_ring_mosaic_browse_bkg_sub_small', 'Background-Subtracted Browse Mosaic Image (small)', True)),    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_mosaic_bkg_sub/(iss|iosic)_.*/(iss|iosic)_.*med.*\.png',            0, ('Cassini ISS F Ring Mosaics', 110, 'coiss_f_ring_mosaic_browse_bkg_sub_med', 'Background-Subtracted Browse Mosaic Image (medium)', True)),
-    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_mosaic_bkg_sub/(iss|iosic)_.*/(iss|iosic)_.*full.*\.png',            0, ('Cassini ISS F Ring Mosaics', 120, 'coiss_f_ring_mosaic_browse_bkg_sub_full', 'Background-Subtracted Browse Mosaic Image (full)', True)),
+    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_mosaic_bkg_sub/(iss|iosic)_.*/(iss|iosic)_.*thumb.*\.png',            0, ('Cassini ISS F Ring Mosaics', 90, 'coiss_f_ring_mosaic_browse_bkg_sub_thumb', 'Browse Background-Subtracted Mosaic Image (thumbnail)', True)),
+    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_mosaic_bkg_sub/(iss|iosic)_.*/(iss|iosic)_.*small.*\.png',            0, ('Cassini ISS F Ring Mosaics', 100, 'coiss_f_ring_mosaic_browse_bkg_sub_small', 'Browse Background-Subtracted Mosaic Image (small)', True)),    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_mosaic_bkg_sub/(iss|iosic)_.*/(iss|iosic)_.*med.*\.png',            0, ('Cassini ISS F Ring Mosaics', 110, 'coiss_f_ring_mosaic_browse_bkg_sub_med', 'Browse Background-Subtracted Mosaic Image (medium)', True)),
+    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_mosaic_bkg_sub/(iss|iosic)_.*/(iss|iosic)_.*full.*\.png',            0, ('Cassini ISS F Ring Mosaics', 120, 'coiss_f_ring_mosaic_browse_bkg_sub_full', 'Browse Background-Subtracted Mosaic Image (full)', True)),
+
+    # index under document/
+    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/document/supplemental/.*_index\.(lblx|tab)',               0, ('Cassini ISS F Ring Mosaics', 130, 'coiss_f_ring_global_index', 'Global Index', False)),
 
     # document
-    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/(readme.txt|document/.*/.*mosaic.*\.(lblx|pdf|tab))',               0, ('Cassini ISS F Ring Mosaics', 130, 'coiss_f_ring_documentation', 'Documentation', False)),
+    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/(readme.txt|document/user_guide/.*mosaic.*\.(lblx|pdf))',               0, ('Cassini ISS F Ring Mosaics', 140, 'coiss_f_ring_documentation', 'Documentation', False)),
 
     # Reprojected Images
-    # data_reporj_img from cassini_iss_fring_mosaics_rsfrench2025
-    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/data_reproj_img/(iss|iosic)_.*/.*_reproj_.*.*\.(img|lblx|txt)',              0, ('Cassini ISS', 150, 'coiss_f_ring_reproj_img', 'Reprojected Image', True)),
-    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/data_reproj_img/(iss|iosic)_.*/.*_reproj_img_metadata_params\.tab',              0, ('Cassini ISS', 160, 'coiss_f_ring_reproj_img_metadata', 'Reprojected Image Metadata', True)),
-    # brose_reporoj_img cassini_iss_fring_mosaics_rsfrench2025
-    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_reproj_img/(iss|iosic)_.*/.*_browse_reproj_img_thumb\.png',              0, ('Cassini ISS', 170, 'coiss_f_ring_browse_reproj_img_thumb', 'Browse Reprojected Image (thumbnail)', True)),
-    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_reproj_img/(iss|iosic)_.*/.*_browse_reproj_img_small\.png',              0, ('Cassini ISS', 180, 'coiss_f_ring_browse_reproj_img_small', 'Browse Reprojected Image (small)', True)),
-    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_reproj_img/(iss|iosic)_.*/.*_browse_reproj_img_med\.png',              0, ('Cassini ISS', 190, 'coiss_f_ring_browse_reproj_img_med', 'Browse Reprojected Image (medium)', True)),
-    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_reproj_img/(iss|iosic)_.*/.*_browse_reproj_img_full\.png',              0, ('Cassini ISS', 200, 'coiss_f_ring_browse_reproj_img_full', 'Browse Reprojected Image (full)', True)),
+    # data_reproj_img from cassini_iss_fring_mosaics_rsfrench2025
+    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/data_reproj_img/(iss|iosic)_.*/.*_reproj_.*.*\.(img|lblx|txt)',              0, ('Cassini ISS F Ring Reprojected Image', 150, 'coiss_f_ring_reproj_img', 'Reprojected Image', False)),
+    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/data_reproj_img/(iss|iosic)_.*/.*_reproj_img_metadata_params\.tab',              0, ('Cassini ISS F Ring Reprojected Image', 160, 'coiss_f_ring_reproj_img_metadata', 'Reprojected Image Metadata', False)),
+    # brose_reproj_img cassini_iss_fring_mosaics_rsfrench2025
+    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_reproj_img/(iss|iosic)_.*/.*_browse_reproj_img_thumb\.png',              0, ('Cassini ISS F Ring Reprojected Image', 170, 'coiss_f_ring_browse_reproj_img_thumb', 'Browse Reprojected Image (thumbnail)', False)),
+    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_reproj_img/(iss|iosic)_.*/.*_browse_reproj_img_small\.png',              0, ('Cassini ISS F Ring Reprojected Image', 180, 'coiss_f_ring_browse_reproj_img_small', 'Browse Reprojected Image (small)', False)),
+    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_reproj_img/(iss|iosic)_.*/.*_browse_reproj_img_med\.png',              0, ('Cassini ISS F Ring Reprojected Image', 190, 'coiss_f_ring_browse_reproj_img_med', 'Browse Reprojected Image (medium)', False)),
+    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_reproj_img/(iss|iosic)_.*/.*_browse_reproj_img_full\.png',              0, ('Cassini ISS F Ring Reprojected Image', 200, 'coiss_f_ring_browse_reproj_img_full', 'Browse Reprojected Image (full)', False)),
 ])
 
 ##########################################################################################
@@ -176,10 +179,6 @@ opus_products = translator.TranslatorByRegex([
         r'bundles/\1/data_mosaic_bkg_sub/\3/\3_mosaic_bkg_sub.lblx',
         r'bundles/\1/data_mosaic_bkg_sub/\3/\3_mosaic_bkg_sub_metadata_params.tab',
         r'bundles/\1/data_mosaic_bkg_sub/\3/\3_mosaic_bkg_sub_metadata_src_imgs.tab',
-        # bundles browse_mosaic/
-        r'bundles/\1/browse_mosaic/\3/\3_browse_mosaic.lblx',
-        # bundles browse_mosaic_bkg_sub/
-        r'bundles/\1/browse_mosaic_bkg_sub/\3/\3_browse_mosaic_bkg_sub.lblx',
         # bundles readme.txt
         r'bundles/\1/readme.txt',
         # document
@@ -189,6 +188,10 @@ opus_products = translator.TranslatorByRegex([
         r'bundles/\1/document/supplemental/global_mosaic_bkg_sub_index.tab',
         r'bundles/\1/document/supplemental/global_mosaic_index.lblx',
         r'bundles/\1/document/supplemental/global_mosaic_index.tab',
+        # bundles browse_mosaic/
+        r'bundles/\1/browse_mosaic/\3/\3_browse_mosaic.lblx',
+        # bundles browse_mosaic_bkg_sub/
+        r'bundles/\1/browse_mosaic_bkg_sub/\3/\3_browse_mosaic_bkg_sub.lblx',
         # previews (under browse_mosaic*)
         r'bundles/\1/browse_mosaic/\3/\3_browse_mosaic_full.png',
         r'bundles/\1/browse_mosaic/\3/\3_browse_mosaic_med.png',

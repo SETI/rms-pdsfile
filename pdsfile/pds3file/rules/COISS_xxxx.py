@@ -260,7 +260,7 @@ opus_format = translator.TranslatorByRegex([
 ##########################################################################################
 
 opus_products = translator.TranslatorByRegex([
-    (r'.*/(COISS_[12]xxx)(|_v[0-9\.]+)/(COISS_[12]...)/data/(\w+/([NW])([0-9]{10})_[0-9]+).*', 0,
+    (r'.*/(COISS_[12]xxx)(|_v[0-9\.]+)/(COISS_[12]...)/data/(\w+/[NW][0-9]{10}_[0-9]+).*', 0,
             [r'volumes/\1*/\3/data/\4.IMG',
              r'volumes/\1*/\3/data/\4.LBL',
              r'volumes/\1*/\3/extras/thumbnail/\4.IMG.jpeg_small',
@@ -293,16 +293,16 @@ cross_pds3_pds4_products = translator.TranslatorByRegex([
     (r'.*/(COISS_[12]xxx)(|_v[0-9\.]+)/(COISS_[12]...)/data/(\w+/([NW])([0-9]{10})_[0-9]+).*', 0,
             [# Reproj
              # data_reproj_img
-             r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025*/data_reproj_img/*/\6#LOWER#\5_reproj_img_metadata_params.tab',
-             r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025*/data_reproj_img/*/\6#LOWER#\5_reproj_img.img',
-             r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025*/data_reproj_img/*/\6#LOWER#\5_reproj_img.lblx',
-             r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025*/data_reproj_img/*/\6#LOWER#\5_reproj_suppl.txt',
-             # browse_reporj_img
-             r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025*/browse_reproj_img/*/\6#LOWER#\5_browse_reproj_img_full.png',
-             r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025*/browse_reproj_img/*/\6#LOWER#\5_browse_reproj_img_med.png',
-             r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025*/browse_reproj_img/*/\6#LOWER#\5_browse_reproj_img_small.png',
-             r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025*/browse_reproj_img/*/\6#LOWER#\5_browse_reproj_img_thumb.png',
-             r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025*/browse_reproj_img/*/\6#LOWER#\5_browse_reproj_img.lblx',
+             r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/data_reproj_img/*/\6#LOWER#\5_reproj_img_metadata_params.tab',
+             r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/data_reproj_img/*/\6#LOWER#\5_reproj_img.img',
+             r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/data_reproj_img/*/\6#LOWER#\5_reproj_img.lblx',
+             r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/data_reproj_img/*/\6#LOWER#\5_reproj_suppl.txt',
+             # browse_reproj_img
+             r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_reproj_img/*/\6#LOWER#\5_browse_reproj_img_full.png',
+             r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_reproj_img/*/\6#LOWER#\5_browse_reproj_img_med.png',
+             r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_reproj_img/*/\6#LOWER#\5_browse_reproj_img_small.png',
+             r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_reproj_img/*/\6#LOWER#\5_browse_reproj_img_thumb.png',
+             r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_reproj_img/*/\6#LOWER#\5_browse_reproj_img.lblx',
             ]),
 ])
 
@@ -444,7 +444,7 @@ from .pytest_support import *
     [
         ('volumes/COISS_1xxx/COISS_1001/data/1294561143_1295221348/W1294561202_1.IMG',
          'COISS_xxxx/opus_products/W1294561202_1.txt'),
-        # the volume with reporoj images
+        # the volume with reproj images
         ('volumes/COISS_2xxx/COISS_2113/data/1873427694_1873496724/N1873427694_1.IMG',
          'COISS_xxxx/opus_products/N1873427694_1.txt')
     ]
