@@ -228,6 +228,39 @@ opus_id_to_primary_logical_path = translator.TranslatorByRegex([
 ])
 
 ##########################################################################################
+# Archives
+##########################################################################################
+archive_paths = translator.TranslatorByRegex([
+    # input is the cassini_iss_fring_mosaics_rsfrench2025 bundle set
+    (r'.*(bundles|metadata|previews|diagrams)/(cassini_iss_fring_mosaics_rsfrench2025)(|/)$', 0, [
+        r'archives-\1/\2/\2/bundle_non_data_browse_collections.tar.gz',
+        r'archives-\1/\2/\2/data_browse_mosaic.tar.gz',
+        r'archives-\1/\2/\2/data_browse_reproj.tar.gz',
+    ]),
+])
+
+archive_dirs = translator.TranslatorByRegex([
+    (r'.*archives-(.*/cassini_iss_fring_mosaics_rsfrench2025)/(cassini_iss_fring_mosaics_rsfrench2025)/bundle_non_data_browse_collections\.tar\.gz', 0, [
+        r'\1/\2/bundle.lblx',
+        r'\1/\2/context',
+        r'\1/\2/document',
+        r'\1/\2/readme.txt',
+        r'\1/\2/spice_kernels',
+        r'\1/\2/xml_schema',
+    ]),
+    (r'.*archives-(.*/cassini_iss_fring_mosaics_rsfrench2025)/(cassini_iss_fring_mosaics_rsfrench2025)/data_browse_mosaic\.tar\.gz', 0, [
+        r'\1/\2/browse_mosaic',
+        r'\1/\2/browse_mosaic_bkg_sub',
+        r'\1/\2/data_mosaic',
+        r'\1/\2/data_mosaic_bkg_sub',
+    ]),
+    (r'.*archives-(.*/cassini_iss_fring_mosaics_rsfrench2025)/(cassini_iss_fring_mosaics_rsfrench2025)/data_browse_reproj\.tar\.gz', 0, [
+        r'\1/\2/browse_reproj_img',
+        r'\1/\2/data_reproj_img',
+    ]),
+])
+
+##########################################################################################
 # Subclass definition
 ##########################################################################################
 
