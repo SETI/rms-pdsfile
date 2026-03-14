@@ -4802,13 +4802,23 @@ class PdsFile(object):
                 other_pds_cls = sub_cls
 
         # Append the cross pds products
+        tmp_abspaths = []
         for pattern in cross_pds_products_patterns:
             pattern = new_root + pattern
             these_abspaths = other_pds_cls.glob_glob(pattern,
                                                      force_case_sensitive=True)
 
             for path in these_abspaths:
-                abspaths.append((path, other_pds_cls))
+                tmp_abspaths.append((path, other_pds_cls))
+
+        is_all_idx = True
+        for path in tmp_abspaths:
+            if '_index' not in path[0]:
+                is_all_idx = False
+                break
+        # Don't include reproj index if there is no reproj files
+        if not is_all_idx:
+            abspaths += tmp_abspaths
 
         # Get PdsFiles for abspaths, organized by labels vs. datafiles
         # label_files[label_abspath] = [label_pdsfile, fmt1_pdsfile, ...]

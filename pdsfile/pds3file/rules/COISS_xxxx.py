@@ -303,6 +303,9 @@ cross_pds3_pds4_products = translator.TranslatorByRegex([
              r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_reproj_img/*/\6#LOWER#\5_browse_reproj_img_small.png',
              r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_reproj_img/*/\6#LOWER#\5_browse_reproj_img_thumb.png',
              r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_reproj_img/*/\6#LOWER#\5_browse_reproj_img.lblx',
+             # index
+             r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/document/supplemental/global_reproj_img_index.lblx',
+             r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/document/supplemental/global_reproj_img_index.tab',
             ]),
 ])
 

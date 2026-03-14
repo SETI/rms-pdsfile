@@ -60,8 +60,6 @@ associations_to_bundles = translator.TranslatorByRegex([
             r'bundles/\1/browse_mosaic_bkg_sub/\3/\3_browse_mosaic_bkg_sub_thumb.png',
             r'bundles/\1/browse_mosaic_bkg_sub/\3/\3_browse_mosaic_bkg_sub.lblx',
         ]),
-    (r'.*/(cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*)/document.*', 0,
-        r'bundles/cassini_iss_fring_mosaics_rsfrench2025'),
 ])
 
 # Use .png files under browse_mosaic and browse_mosaic_bkg_sub as previews
