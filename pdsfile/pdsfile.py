@@ -4790,16 +4790,23 @@ class PdsFile(object):
         cross_pds_products_patterns = self.CROSS_PDS3_PDS4_PRODUCTS.all(self.logical_path)
         new_root = ''
         other_pds_cls = None
-        parent_cls = cls.__base__.__base__
-        sibling_cls_list = parent_cls.__subclasses__()
+
+        direct_pds_subclasses = PdsFile.__subclasses__()
+        family_cls = cls if cls in direct_pds_subclasses else cls.__base__
+        sibling_cls_list = [sub_cls for sub_cls in direct_pds_subclasses
+                            if sub_cls is not family_cls]
+
         # Get the proper root directory name for corss pds products
         for sub_cls in sibling_cls_list:
-            if cls.__base__ != sub_cls:
-                if sub_cls.LOCAL_PRELOADED:
-                    new_root = f'{sub_cls.LOCAL_PRELOADED[0]}/'
-                else:
-                    new_root = self.root_.replace(cls.PDS_HOLDINGS, sub_cls.PDS_HOLDINGS)
-                other_pds_cls = sub_cls
+            if sub_cls.LOCAL_PRELOADED:
+                new_root = f'{sub_cls.LOCAL_PRELOADED[0]}/'
+            else:
+                new_root = self.root_.replace(cls.PDS_HOLDINGS, sub_cls.PDS_HOLDINGS)
+            other_pds_cls = sub_cls
+            break
+
+        if other_pds_cls is None:
+            cross_pds_products_patterns = []
 
         # Append the cross pds products
         tmp_abspaths = []
