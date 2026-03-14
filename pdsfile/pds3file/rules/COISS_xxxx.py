@@ -3,7 +3,6 @@
 ##########################################################################################
 
 import pdsfile.pds3file as pds3file
-import pdsfile.pds4file as pds4file
 import translator
 import re
 
@@ -470,6 +469,7 @@ def test_associated_abspaths(request, input_path, category, expected):
                              TEST_RESULTS_DIR+expected, update)
 
 def test_opus_id_to_primary_logical_path():
+    import pdsfile.pds4file as pds4file
     TESTS = [
         'volumes/COISS_1xxx/COISS_1001/data/1294561143_1295221348/W1294561143_1.IMG',
         'volumes/COISS_1xxx/COISS_1001/data/1294561143_1295221348/W1294561143_1.IMG',
