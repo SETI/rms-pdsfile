@@ -232,33 +232,79 @@ opus_id_to_primary_logical_path = translator.TranslatorByRegex([
 ##########################################################################################
 # Archives
 ##########################################################################################
+# Four archive files
+# - One archive for the entire bundle.
+# - One archive for just the reprojected images.
+# - One archive for just the plain mosaics.
+# - One archive for just the background-subtracted mosaics.
 archive_paths = translator.TranslatorByRegex([
     # input is the cassini_iss_fring_mosaics_rsfrench2025 bundle set
     (r'.*(bundles|metadata|previews|diagrams)/(cassini_iss_fring_mosaics_rsfrench2025)(|/)$', 0, [
-        r'archives-\1/\2/\2/bundle_non_data_browse_collections.tar.gz',
-        r'archives-\1/\2/\2/data_browse_mosaic.tar.gz',
-        r'archives-\1/\2/\2/data_browse_reproj.tar.gz',
+        r'archives-\1/\2/\2.tar.gz',
+        r'archives-\1/\2/data_browse_reproj_img.tar.gz',
+        r'archives-\1/\2/data_browse_mosaic.tar.gz',
+        r'archives-\1/\2/data_browse_mosaic_bkg_sub.tar.gz',
     ]),
 ])
 
 archive_dirs = translator.TranslatorByRegex([
-    (r'.*archives-(.*/cassini_iss_fring_mosaics_rsfrench2025)/(cassini_iss_fring_mosaics_rsfrench2025)/bundle_non_data_browse_collections\.tar\.gz', 0, [
-        r'\1/\2/bundle.lblx',
-        r'\1/\2/context',
-        r'\1/\2/document',
-        r'\1/\2/readme.txt',
-        r'\1/\2/spice_kernels',
-        r'\1/\2/xml_schema',
+    # include the entire bundle
+    (r'.*archives-(.*/cassini_iss_fring_mosaics_rsfrench2025)/cassini_iss_fring_mosaics_rsfrench2025\.tar\.gz', 0, [
+        r'\1'
     ]),
-    (r'.*archives-(.*/cassini_iss_fring_mosaics_rsfrench2025)/(cassini_iss_fring_mosaics_rsfrench2025)/data_browse_mosaic\.tar\.gz', 0, [
-        r'\1/\2/browse_mosaic',
-        r'\1/\2/browse_mosaic_bkg_sub',
-        r'\1/\2/data_mosaic',
-        r'\1/\2/data_mosaic_bkg_sub',
+    # include:
+    # - data/browse reproj dir
+    # - related files under document
+    # - all the top-level support stuff (readme, bundle.xml, spice kernels, xml schema, etc.)
+    (r'.*archives-(.*)/(cassini_iss_fring_mosaics_rsfrench2025)/data_browse_reproj_img\.tar\.gz', 0, [
+        r'\1/\2/\2/browse_reproj_img',
+        r'\1/\2/\2/data_reproj_img',
+        r'\1/\2/\2/document/collection_document.csv',
+        r'\1/\2/\2/document/collection_document.lblx',
+        r'\1/\2/\2/document/supplemental/global_reproj_img_index.lblx',
+        r'\1/\2/\2/document/supplemental/global_reproj_img_index.tab',
+        r'\1/\2/\2/document/user_guide',
+        r'\1/\2/\2/bundle.lblx',
+        r'\1/\2/\2/context',
+        r'\1/\2/\2/readme.txt',
+        r'\1/\2/\2/spice_kernels',
+        r'\1/\2/\2/xml_schema',
     ]),
-    (r'.*archives-(.*/cassini_iss_fring_mosaics_rsfrench2025)/(cassini_iss_fring_mosaics_rsfrench2025)/data_browse_reproj\.tar\.gz', 0, [
-        r'\1/\2/browse_reproj_img',
-        r'\1/\2/data_reproj_img',
+    # include:
+    # - data/browse reproj dir
+    # - related files under document
+    # - all the top-level support stuff (readme, bundle.xml, spice kernels, xml schema, etc.)
+    (r'.*archives-(.*)/(cassini_iss_fring_mosaics_rsfrench2025)/data_browse_mosaic\.tar\.gz', 0, [
+        r'\1/\2/\2/browse_mosaic',
+        r'\1/\2/\2/data_mosaic',
+        r'\1/\2/\2/document/collection_document.csv',
+        r'\1/\2/\2/document/collection_document.lblx',
+        r'\1/\2/\2/document/supplemental/global_mosaic_index.lblx',
+        r'\1/\2/\2/document/supplemental/global_mosaic_index.tab',
+        r'\1/\2/\2/document/user_guide',
+        r'\1/\2/\2/bundle.lblx',
+        r'\1/\2/\2/context',
+        r'\1/\2/\2/readme.txt',
+        r'\1/\2/\2/spice_kernels',
+        r'\1/\2/\2/xml_schema',
+    ]),
+    # include:
+    # - data/browse mosaic bkg sub dir
+    # - related files under document
+    # - all the top-level support stuff (readme, bundle.xml, spice kernels, xml schema, etc.)
+    (r'.*archives-(.*)/(cassini_iss_fring_mosaics_rsfrench2025)/data_browse_mosaic_bkg_sub\.tar\.gz', 0, [
+        r'\1/\2/\2/browse_mosaic_bkg_sub',
+        r'\1/\2/\2/data_mosaic_bkg_sub',
+        r'\1/\2/\2/document/collection_document.csv',
+        r'\1/\2/\2/document/collection_document.lblx',
+        r'\1/\2/\2/document/supplemental/global_mosaic_bkg_sub_index.lblx',
+        r'\1/\2/\2/document/supplemental/global_mosaic_bkg_sub_index.tab',
+        r'\1/\2/\2/document/user_guide',
+        r'\1/\2/\2/bundle.lblx',
+        r'\1/\2/\2/context',
+        r'\1/\2/\2/readme.txt',
+        r'\1/\2/\2/spice_kernels',
+        r'\1/\2/\2/xml_schema',
     ]),
 ])
 
@@ -309,7 +355,11 @@ pds4file.Pds4File.SUBCLASSES['cassini_iss_fring_mosaics_rsfrench2025'] = cassini
 ##########################################################################################
 
 import pytest
-from .pytest_support import *
+from .pytest_support import (
+    TEST_RESULTS_DIR,
+    associated_abspaths_test,
+    opus_products_test,
+)
 
 @pytest.mark.parametrize(
     ('input_path', 'expected'),
