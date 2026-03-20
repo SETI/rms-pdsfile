@@ -1321,13 +1321,14 @@ class PdsFile(object):
             return os.path.exists(abspath)
 
         # Handle index rows
-        if f'{cls.IDX_EXT}/' in abspath:
-            parts = abspath.partition(f'{cls.IDX_EXT}/')
-            if not cls.os_path_exists(parts[0] + cls.IDX_EXT):
-                return False
-            pdsf = cls.from_abspath(parts[0] + cls.IDX_EXT)
-            return (pdsf.exists and
-                    pdsf.child_of_index(parts[2], flag='').exists)
+        for ext in cls.IDX_EXT:
+            if f'{ext}/' in abspath:
+                parts = abspath.partition(f'{ext}/')
+                if not cls.os_path_exists(parts[0] + ext):
+                    return False
+                pdsf = cls.from_abspath(parts[0] + ext)
+                return (pdsf.exists and
+                        pdsf.child_of_index(parts[2], flag='').exists)
 
         # If it's for documentation, we don't create shelf files, we will just use the
         # os.path.exists
@@ -1866,14 +1867,17 @@ class PdsFile(object):
 
         cls = type(self)
         if self._indexshelf_abspath is None:
-            if self.extension not in (cls.IDX_EXT, cls.IDX_EXT.upper()):
+            if self.extension not in (
+                *cls.IDX_EXT,
+                *tuple(ext.upper() for ext in cls.IDX_EXT)
+            ):
                 self._indexshelf_abspath = ''
             else:
                 abspath = self.abspath
                 abspath = abspath.replace(f'/{cls.PDS_HOLDINGS}/',
                                           f'/{cls.PDS_HOLDINGS}/_indexshelf-')
-                abspath = abspath.replace(cls.IDX_EXT, '.pickle')
-                abspath = abspath.replace(cls.IDX_EXT.upper(), '.pickle')
+                abspath = abspath.replace(self.extension, '.pickle')
+                abspath = abspath.replace(self.extension.upper(), '.pickle')
                 self._indexshelf_abspath = abspath
 
             self._recache()
@@ -1896,9 +1900,10 @@ class PdsFile(object):
                 # This supports the temporary situation where the indexshelf
                 # file is being created.
                 # XXX This is a real hack and should be looked at again later
-                if ('/metadata/' in self.abspath
-                    and self.abspath.lower().endswith(cls.IDX_EXT)):
-                    return True  # this value is not cached
+                if '/metadata/' in self.abspath:
+                    for ext in cls.IDX_EXT:
+                        if self.abspath.lower().endswith(ext):
+                            return True  # this value is not cached
 
                 self._is_index = False
 
@@ -1915,15 +1920,17 @@ class PdsFile(object):
 
         cls = type(self)
         if self._index_pdslabel is None:
-            for ext in cls.LBL_EXT:
-                label_abspath = self.abspath.replace (cls.IDX_EXT, ext)
-                label_abspath = label_abspath.replace(cls.IDX_EXT.upper(), ext.upper())
-                try:
-                    self._index_pdslabel = pdsparser.PdsLabel.from_file(label_abspath)
-                    break
-                except OSError:
-                    self._index_pdslabel = 'failed'
-                    continue
+            for lbl_ext in cls.LBL_EXT:
+                for idx_ext in cls.IDX_EXT:
+                    label_abspath = self.abspath.replace(idx_ext, lbl_ext)
+                    label_abspath = label_abspath.replace(idx_ext.upper(),
+                                                          lbl_ext.upper())
+                    try:
+                        self._index_pdslabel = pdsparser.PdsLabel.from_file(label_abspath)
+                        break
+                    except OSError:
+                        self._index_pdslabel = 'failed'
+                        continue
 
             self._recache()
 
@@ -6054,32 +6061,33 @@ class PdsFile(object):
         for pattern in patterns:
 
             # Handle an index row by separating the filepath from the suffix
-            if f'{cls.IDX_EXT}/' in pattern:
-                parts = pattern.rpartition(cls.IDX_EXT)
-                pattern = parts[0] + parts[1]
-                suffix = parts[2][1:]
-            else:
-                suffix = ''
+            for ext in cls.IDX_EXT:
+                if f'{ext}/' in pattern:
+                    parts = pattern.rpartition(ext)
+                    pattern = parts[0] + parts[1]
+                    suffix = parts[2][1:]
+                else:
+                    suffix = ''
 
-            # Find the file(s) that match the pattern
-            if not must_exist and not _needs_glob(pattern):
-                test_abspaths = [pattern]
-            else:
-                test_abspaths = cls.glob_glob(pattern, force_case_sensitive=True)
-            # With a suffix, make sure it matches a row of the index
-            if suffix:
-                filtered_abspaths = []
-                for abspath in test_abspaths:
-                    try:
-                        parent = cls.from_abspath(abspath)
-                        pdsf = parent.child_of_index(suffix)
-                        filtered_abspaths.append(pdsf.abspath)
-                    except (KeyError, IOError):
-                        pass
+                # Find the file(s) that match the pattern
+                if not must_exist and not _needs_glob(pattern):
+                    test_abspaths = [pattern]
+                else:
+                    test_abspaths = cls.glob_glob(pattern, force_case_sensitive=True)
+                # With a suffix, make sure it matches a row of the index
+                if suffix:
+                    filtered_abspaths = []
+                    for abspath in test_abspaths:
+                        try:
+                            parent = cls.from_abspath(abspath)
+                            pdsf = parent.child_of_index(suffix)
+                            filtered_abspaths.append(pdsf.abspath)
+                        except (KeyError, IOError):
+                            pass
 
-                test_abspaths = filtered_abspaths
+                    test_abspaths = filtered_abspaths
 
-            abspaths += test_abspaths
+                abspaths += test_abspaths
 
         # Include any labels and targets
         if category == self.voltype_[:-1]:

@@ -75,7 +75,7 @@ class Pds4File(PdsFile):
     LOCAL_PRELOADED = []
     SUBCLASSES = {}
 
-    IDX_EXT = '.csv'
+    IDX_EXT = ('.csv', '.tab')
     LBL_EXT = ('.xml', '.lblx')
 
     def __init__(self):
