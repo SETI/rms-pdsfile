@@ -47,5 +47,5 @@
                                                                    'metadata/COISS_2xxx/COISS_2113/COISS_2113_moon_summary.tab'],
  ('metadata', 50, 'ring_geometry', 'Ring Geometry Index', False): ['metadata/COISS_2xxx/COISS_2113/COISS_2113_ring_summary.lbl',
                                                                    'metadata/COISS_2xxx/COISS_2113/COISS_2113_ring_summary.tab'],
- ('metadata', 160, 'coiss_f_ring_global_reproj_img_index', 'Global Reprojected Image Index', False): ['bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/document/supplemental/global_reproj_img_index.lblx',
-                                                                                                      'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/document/supplemental/global_reproj_img_index.tab']}
+ ('metadata', 160, 'coiss_f_ring_global_reproj_img_index', 'Global Reprojected Image Index', False): ['bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/miscellaneous/global_reproj_img_index.lblx',
+                                                                                                      'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/miscellaneous/global_reproj_img_index.tab']}
