@@ -148,9 +148,9 @@ opus_type = translator.TranslatorByRegex([
 
     # index under document/
     # put all index files under metadata category
-    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/document/supplemental/.*mosaic_index\.(lblx|tab)',               0, ('metadata', 140, 'coiss_f_ring_global_mosaic_index', 'Global Mosaic Index', False)),
-    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/document/supplemental/.*mosaic_bkg.*index\.(lblx|tab)',               0, ('metadata', 150, 'coiss_f_ring_global_mosaic_bkg_sub_index', 'Global Background-Subtracted Mosaic Index', False)),
-    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/document/supplemental/.*reproj_img_index\.(lblx|tab)',               0, ('metadata', 160, 'coiss_f_ring_global_reproj_img_index', 'Global Reprojected Image Index', False)),
+    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/miscellaneous/.*mosaic_index\.(lblx|tab)',               0, ('metadata', 140, 'coiss_f_ring_global_mosaic_index', 'Global Mosaic Index', False)),
+    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/miscellaneous/.*mosaic_bkg.*index\.(lblx|tab)',               0, ('metadata', 150, 'coiss_f_ring_global_mosaic_bkg_sub_index', 'Global Background-Subtracted Mosaic Index', False)),
+    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/miscellaneous/.*reproj_img_index\.(lblx|tab)',               0, ('metadata', 160, 'coiss_f_ring_global_reproj_img_index', 'Global Reprojected Image Index', False)),
 
     # Reprojected Images
     # data_reproj_img from cassini_iss_fring_mosaics_rsfrench2025
@@ -189,10 +189,10 @@ opus_products = translator.TranslatorByRegex([
         # document
         r'bundles/\1/document/user_guide/f-ring-mosaics-user-guide.lblx',
         r'bundles/\1/document/user_guide/f-ring-mosaics-user-guide.pdf',
-        r'bundles/\1/document/supplemental/global_mosaic_bkg_sub_index.lblx',
-        r'bundles/\1/document/supplemental/global_mosaic_bkg_sub_index.tab',
-        r'bundles/\1/document/supplemental/global_mosaic_index.lblx',
-        r'bundles/\1/document/supplemental/global_mosaic_index.tab',
+        r'bundles/\1/miscellaneous/global_mosaic_bkg_sub_index.lblx',
+        r'bundles/\1/miscellaneous/global_mosaic_bkg_sub_index.tab',
+        r'bundles/\1/miscellaneous/global_mosaic_index.lblx',
+        r'bundles/\1/miscellaneous/global_mosaic_index.tab',
         # bundles browse_mosaic/
         r'bundles/\1/browse_mosaic/\3/\3_browse_mosaic.lblx',
         # bundles browse_mosaic_bkg_sub/
@@ -266,8 +266,8 @@ archive_dirs = translator.TranslatorByRegex([
         r'\1/\2/\2/data_reproj_img',
         r'\1/\2/\2/document/collection_document.csv',
         r'\1/\2/\2/document/collection_document.lblx',
-        r'\1/\2/\2/document/supplemental/global_reproj_img_index.lblx',
-        r'\1/\2/\2/document/supplemental/global_reproj_img_index.tab',
+        r'\1/\2/\2/miscellaneous/global_reproj_img_index.lblx',
+        r'\1/\2/\2/miscellaneous/global_reproj_img_index.tab',
         r'\1/\2/\2/document/user_guide',
         r'\1/\2/\2/bundle.lblx',
         r'\1/\2/\2/context',
@@ -284,8 +284,8 @@ archive_dirs = translator.TranslatorByRegex([
         r'\1/\2/\2/data_mosaic',
         r'\1/\2/\2/document/collection_document.csv',
         r'\1/\2/\2/document/collection_document.lblx',
-        r'\1/\2/\2/document/supplemental/global_mosaic_index.lblx',
-        r'\1/\2/\2/document/supplemental/global_mosaic_index.tab',
+        r'\1/\2/\2/miscellaneous/global_mosaic_index.lblx',
+        r'\1/\2/\2/miscellaneous/global_mosaic_index.tab',
         r'\1/\2/\2/document/user_guide',
         r'\1/\2/\2/bundle.lblx',
         r'\1/\2/\2/context',
@@ -302,8 +302,8 @@ archive_dirs = translator.TranslatorByRegex([
         r'\1/\2/\2/data_mosaic_bkg_sub',
         r'\1/\2/\2/document/collection_document.csv',
         r'\1/\2/\2/document/collection_document.lblx',
-        r'\1/\2/\2/document/supplemental/global_mosaic_bkg_sub_index.lblx',
-        r'\1/\2/\2/document/supplemental/global_mosaic_bkg_sub_index.tab',
+        r'\1/\2/\2/miscellaneous/global_mosaic_bkg_sub_index.lblx',
+        r'\1/\2/\2/miscellaneous/global_mosaic_bkg_sub_index.tab',
         r'\1/\2/\2/document/user_guide',
         r'\1/\2/\2/bundle.lblx',
         r'\1/\2/\2/context',
