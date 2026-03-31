@@ -60,7 +60,7 @@ TARGET_REGEX2 = re.compile(r'^ *,? *' + PATTERN, re.I)
 LINK_REGEX = re.compile(r'(?:|.*?[^/@\w\.])/?(?:\.\./)*(([A-Z0-9][-\w]+/)*' +
                         r'(makefile\.?|[A-Z0-9][\w-]*(\.[\w-]+)+))', re.I)
 
-EXTS_WO_LABELS = {'.XML', '.CAT', '.FMT', '.SFD'}
+EXTS_WO_LABELS = {'.XML', '.LBLX', '.CAT', '.FMT', '.SFD'}
 
 ################################################################################
 
@@ -189,7 +189,7 @@ def generate_links(dirpath, old_links=None, *, logger=None, limits=None):
                 local_basenames.append(basename)
                 local_basenames_uc.append(basename.upper())
 
-            local_labels = [f for f in local_basenames if '.xml' in f]
+            local_labels = [f for f in local_basenames if '.xml' in f or '.lblx' in f]
             local_labels_abspath = [os.path.join(root, f) for f in local_labels]
 
             # Update linkinfo_dict, searching each relevant file for possible links.
@@ -205,7 +205,8 @@ def generate_links(dirpath, old_links=None, *, logger=None, limits=None):
                 basename_uc = basename.upper()
 
                 # Only check XML, CAT etc.
-                ext = basename_uc[-4:] if len(basename) >= 4 else ''
+                _, is_ext_exists, ext = basename_uc.rpartition('.')
+                ext = f'.{ext}' if is_ext_exists else ''
                 if ext not in EXTS_WO_LABELS:
                     continue
 
@@ -330,10 +331,10 @@ def generate_links(dirpath, old_links=None, *, logger=None, limits=None):
                     new_linkinfo_list.append(info)
 
                     # Could this be the label?
-                    if ext != '.XML':       # nope
+                    if ext != '.XML' and ext != '.LBLX':       # nope
                         continue
 
-                    # If names match up to '.XML', then yes
+                    # If names match up to '.XML' or '.LBLX', then yes
                     if (len(linkname_uc) > ltest and
                         linkname_uc[:ltest] == baseroot_uc and
                         linkname_uc[ltest] == '.'):
@@ -363,8 +364,9 @@ def generate_links(dirpath, old_links=None, *, logger=None, limits=None):
             for basename in local_basenames:
 
                 basename_uc = basename.upper()
-                ext = basename_uc[-4:] if len(basename) >= 4 else ''
-                if ext in (".XML", ".FMT"):     # these can't have labels
+                _, is_ext_exists, ext = basename_uc.rpartition('.')
+                ext = f'.{ext}' if is_ext_exists else ''
+                if ext in ('.XML', '.LBLX', '.FMT'):     # these can't have labels
                     continue
 
                 abspath = os.path.join(root, basename)
@@ -420,11 +422,17 @@ def generate_links(dirpath, old_links=None, *, logger=None, limits=None):
                 candidates = candidate_labels.get(basename, [])
 
                 # Determine if the obvious label file exists
-                label_guess_uc = basename_uc.partition('.')[0] + '.XML'
-                if label_guess_uc in local_basenames_uc:
-                    k = local_basenames_uc.index(label_guess_uc)
-                    obvious_label_basename = local_basenames[k]
-                else:
+                lbl_ext = ('.XML', '.LBLX')
+                label_guess_uc = [basename_uc.partition('.')[0] + ext for ext in lbl_ext]
+
+                obvious_label_basename = None
+                for guess in label_guess_uc:
+                    if guess in local_basenames_uc:
+                        k = local_basenames_uc.index(guess)
+                        obvious_label_basename = local_basenames[k]
+                        break
+
+                if not obvious_label_basename:
                     obvious_label_basename = ''
 
                 # Simplest case...
