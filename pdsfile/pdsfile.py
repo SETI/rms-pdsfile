@@ -2650,6 +2650,10 @@ class PdsFile(object):
         if ('_thumb' in self.basename or '_full' in self.basename or
             '_med' in self.basename or '_small' in self.basename):
             rootname, _, _ = self.basename.rpartition('_')
+        elif ('_metadata_') in self.basename:
+            # for metadata files of data products (like f ring data mosaic), we need to
+            # trim the string after "_metadata_"
+            rootname, _, _ = self.basename.rpartition('_metadata_')
         else:
             rootname = self.basename[:-len(self.extension)]
         test_basenames = [rootname + ext for ext in ext_guesses]
@@ -4878,6 +4882,11 @@ class PdsFile(object):
                 sublist = [pdsf] + label_pdsfiles[pdsf.label_abspath]
             else:
                 sublist = [pdsf]
+
+            if 'iosic_276rb_complitb4001_si_mosaic_metadata' in pdsf.abspath:
+                print('xxxxxxxxxx')
+                print(pdsf.label_abspath)
+                print(pdsf.opus_type)
 
             pdsfile_dict[key].append(sublist)
 
