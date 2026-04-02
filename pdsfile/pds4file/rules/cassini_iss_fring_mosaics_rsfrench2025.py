@@ -154,9 +154,9 @@ opus_type = translator.TranslatorByRegex([
 
     # Reprojected Images
     # data_reproj_img from cassini_iss_fring_mosaics_rsfrench2025
-    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/data_reproj_img/(iss|iosic)_.*/.*_reproj_.*.*\.(img|lblx)',              0, ('Cassini ISS F Ring Reprojected Image', 170, 'coiss_f_ring_reproj_img', 'Reprojected Image', False)),
-    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/data_reproj_img/(iss|iosic)_.*/.*_reproj_suppl\.txt',              0, ('Cassini ISS F Ring Reprojected Image', 180, 'coiss_f_ring_reproj_img_spice_pointing', 'Reprojected Image SPICE Pointing', False)),
-    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/data_reproj_img/(iss|iosic)_.*/.*_reproj_img_metadata_params\.tab',              0, ('Cassini ISS F Ring Reprojected Image', 190, 'coiss_f_ring_reproj_img_metadata', 'Reprojected Image Metadata', False)),
+    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/data_reproj_img/(iss|iosic)_.*/.*_reproj_.*.*\.(img|lblx)',              0, ('Cassini ISS F Ring Reprojected Images', 170, 'coiss_f_ring_reproj_img', 'Reprojected Image', False)),
+    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/data_reproj_img/(iss|iosic)_.*/.*_reproj_suppl\.txt',              0, ('Cassini ISS F Ring Reprojected Images', 180, 'coiss_f_ring_reproj_img_spice_pointing', 'Reprojected Image SPICE Pointing', False)),
+    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/data_reproj_img/(iss|iosic)_.*/.*_reproj_img_metadata_params\.tab',              0, ('Cassini ISS F Ring Reprojected Images', 190, 'coiss_f_ring_reproj_img_metadata', 'Reprojected Image Metadata', False)),
 
     # browse_reproj_img cassini_iss_fring_mosaics_rsfrench2025
     # put all browse files under browse category
