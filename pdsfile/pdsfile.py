@@ -2644,6 +2644,8 @@ class PdsFile(object):
         else:
             ext_guesses = (*cls.LBL_EXT, *uppercase_lbl_ext)
 
+
+        # Map a data file to the corresponding label file
         # For viewables with label (like f ring browse mosaic), we need to get rid of
         # _thumb, _full, _med, and _small from the data file names to obtain the correct
         # root name for the label files.
@@ -2654,6 +2656,12 @@ class PdsFile(object):
             # for metadata files of data products (like f ring data mosaic), we need to
             # trim the string after "_metadata_"
             rootname, _, _ = self.basename.rpartition('_metadata_')
+        elif ('_suppl') in self.basename:
+            # for reprojected images spice pointing files (*_suppl.txt in f ring bundle),
+            # we need to trim the string after "_suppl" and append "_img" to get the
+            # correct root name for the label files.
+            rootname, _, _ = self.basename.rpartition('_suppl')
+            rootname += '_img'
         else:
             rootname = self.basename[:-len(self.extension)]
         test_basenames = [rootname + ext for ext in ext_guesses]
@@ -4882,11 +4890,6 @@ class PdsFile(object):
                 sublist = [pdsf] + label_pdsfiles[pdsf.label_abspath]
             else:
                 sublist = [pdsf]
-
-            if 'iosic_276rb_complitb4001_si_mosaic_metadata' in pdsf.abspath:
-                print('xxxxxxxxxx')
-                print(pdsf.label_abspath)
-                print(pdsf.opus_type)
 
             pdsfile_dict[key].append(sublist)
 
