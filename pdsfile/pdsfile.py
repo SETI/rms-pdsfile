@@ -2656,11 +2656,11 @@ class PdsFile(object):
             # for metadata files of data products (like f ring data mosaic), we need to
             # trim the string after "_metadata_"
             rootname, _, _ = self.basename.rpartition('_metadata_')
-        elif ('_suppl') in self.basename:
+        elif ('_suppl.txt') in self.basename:
             # for reprojected images spice pointing files (*_suppl.txt in f ring bundle),
             # we need to trim the string after "_suppl" and append "_img" to get the
             # correct root name for the label files.
-            rootname, _, _ = self.basename.rpartition('_suppl')
+            rootname, _, _ = self.basename.rpartition('_suppl.txt')
             rootname += '_img'
         else:
             rootname = self.basename[:-len(self.extension)]
