@@ -33,30 +33,35 @@ do
           --include="${VOLUME}_${TYPE}.tar.gz" --exclude="*" \
           /Volumes/pdsdata-${SRC}/holdings/archives-${TYPE}/${VOLSET}/ \
           /Volumes/pdsdata-${DEST}/holdings/archives-${TYPE}/${VOLSET}/
+    find /Volumes/pdsdata-${DEST}/holdings/archives-${TYPE}/${VOLSET}/ -name "._*" -delete
 
     echo "\n\n**** holdings/checksums-${TYPE}/${VOLSET}/${VOLUME}*_md5.txt ****"
     rsync -av ${ARG1} ${ARG2} --include="${VOLUME}_md5.txt" \
           --include="${VOLUME}_${TYPE}_md5.txt" --exclude="*" \
           /Volumes/pdsdata-${SRC}/holdings/checksums-${TYPE}/${VOLSET}/ \
           /Volumes/pdsdata-${DEST}/holdings/checksums-${TYPE}/${VOLSET}/
+    find /Volumes/pdsdata-${DEST}/holdings/checksums-${TYPE}/${VOLSET}/ -name "._*" -delete
 
     echo "\n\n**** holdings/checksums-archives-${TYPE}/${VOLSET}_*md5.txt ****"
     rsync -av ${ARG1} ${ARG2} --include="${VOLSET}_md5.txt" \
           --include="${VOLSET}_${TYPE}_md5.txt" --exclude="*" \
           /Volumes/pdsdata-${SRC}/holdings/checksums-archives-${TYPE}/ \
           /Volumes/pdsdata-${DEST}/holdings/checksums-archives-${TYPE}/
+    find /Volumes/pdsdata-${DEST}/holdings/checksums-archives-${TYPE}/ -name "._*" -delete
 
     echo "\n\n**** holdings/_infoshelf-${TYPE}/${VOLSET}/${VOLUME}_info.* ****"
     rsync -av ${ARG1} ${ARG2} --include="${VOLUME}_info.py" \
           --include="${VOLUME}_info.pickle" --exclude="*" \
           /Volumes/pdsdata-${SRC}/holdings/_infoshelf-${TYPE}/${VOLSET}/ \
           /Volumes/pdsdata-${DEST}/holdings/_infoshelf-${TYPE}/${VOLSET}/
+    find /Volumes/pdsdata-${DEST}/holdings/_infoshelf-${TYPE}/${VOLSET}/ -name "._*" -delete
 
     echo "\n\n**** holdings/_infoshelf-archives-${TYPE}/${VOLSET}_info.* ****"
     rsync -av ${ARG1} ${ARG2} --include="${VOLSET}_info.py" \
           --include="${VOLSET}_info.pickle" --exclude="*" \
           /Volumes/pdsdata-${SRC}/holdings/_infoshelf-archives-${TYPE}/ \
           /Volumes/pdsdata-${DEST}/holdings/_infoshelf-archives-${TYPE}/
+    find /Volumes/pdsdata-${DEST}/holdings/_infoshelf-archives-${TYPE}/ -name "._*" -delete
 
     if [ -d /Volumes/pdsdata-${SRC}/holdings/_linkshelf-${TYPE}/${VOLSET} ]; then
       echo "\n\n**** holdings/_linkshelf-${TYPE}/${VOLSET}/${VOLUME}_links.* ****"
@@ -64,6 +69,7 @@ do
             --include="${VOLUME}_links.pickle" --exclude="*" \
             /Volumes/pdsdata-${SRC}/holdings/_linkshelf-${TYPE}/${VOLSET}/ \
             /Volumes/pdsdata-${DEST}/holdings/_linkshelf-${TYPE}/${VOLSET}/
+      find /Volumes/pdsdata-${DEST}/holdings/_linkshelf-${TYPE}/${VOLSET}/ -name "._*" -delete
     fi
 
     if [ -d /Volumes/pdsdata-${SRC}/holdings/_indexshelf-${TYPE}/${VOLSET} ]; then
@@ -71,6 +77,7 @@ do
       rsync -av ${ARG1} ${ARG2} --exclude=".DS_Store" --exclude="._*" \
             /Volumes/pdsdata-${SRC}/holdings/_indexshelf-${TYPE}/${VOLSET}/${VOLUME}/ \
             /Volumes/pdsdata-${DEST}/holdings/_indexshelf-${TYPE}/${VOLSET}/${VOLUME}/
+      find /Volumes/pdsdata-${DEST}/holdings/_indexshelf-${TYPE}/${VOLSET}/${VOLUME}/ -name "._*" -delete
     fi
 
     if [ -d /Volumes/pdsdata-${SRC}/holdings/${TYPE}/${VOLSET} ]; then
@@ -78,6 +85,7 @@ do
       rsync -av ${ARG1} ${ARG2} --exclude=".DS_Store" --exclude="._*" \
             /Volumes/pdsdata-${SRC}/holdings/${TYPE}/${VOLSET}/${VOLUME}/ \
             /Volumes/pdsdata-${DEST}/holdings/${TYPE}/${VOLSET}/${VOLUME}/
+      find /Volumes/pdsdata-${DEST}/holdings/${TYPE}/${VOLSET}/${VOLUME}/ -name "._*" -delete
     fi
 
   fi
@@ -88,6 +96,7 @@ if [ -f /Volumes/pdsdata-${SRC}/holdings/_volinfo/${VOLSET}.txt ]; then
   rsync -av ${ARG1} ${ARG2} --include="${VOLSET}.txt" --exclude="*" \
         /Volumes/pdsdata-${SRC}/holdings/_volinfo/ \
         /Volumes/pdsdata-${DEST}/holdings/_volinfo/
+  find /Volumes/pdsdata-${DEST}/holdings/_volinfo/ -name "._*" -delete
 fi
 
 if [ -d /Volumes/pdsdata-${SRC}/holdings/documents/${VOLSET} ]; then
@@ -95,6 +104,7 @@ if [ -d /Volumes/pdsdata-${SRC}/holdings/documents/${VOLSET} ]; then
   rsync -av ${ARG1} ${ARG2} --exclude=".DS_Store" --exclude="._*" \
         /Volumes/pdsdata-${SRC}/holdings/documents/${VOLSET}/ \
         /Volumes/pdsdata-${DEST}/holdings/documents/${VOLSET}/
+  find /Volumes/pdsdata-${DEST}/holdings/documents/${VOLSET}/ -name "._*" -delete
 fi
 
 echo

@@ -32,11 +32,13 @@ do
     rsync -av ${ARG1} ${ARG2} --exclude=".DS_Store" --exclude="._*" \
           /Volumes/pdsdata-${SRC}/holdings/archives-${TYPE}/${VOLSET}/ \
           /Volumes/pdsdata-${DEST}/holdings/archives-${TYPE}/${VOLSET}/
+    find /Volumes/pdsdata-${DEST}/holdings/archives-${TYPE}/${VOLSET}/ -name "._*" -delete
 
     echo "\n\n**** holdings/checksums-${TYPE}/${VOLSET} ****"
     rsync -av ${ARG1} ${ARG2} --exclude=".DS_Store" --exclude="._*" \
           /Volumes/pdsdata-${SRC}/holdings/checksums-${TYPE}/${VOLSET}/ \
           /Volumes/pdsdata-${DEST}/holdings/checksums-${TYPE}/${VOLSET}/
+    find /Volumes/pdsdata-${DEST}/holdings/checksums-${TYPE}/${VOLSET}/ -name "._*" -delete
 
     echo "\n\n**** holdings/checksums-archives-${TYPE}/${VOLSET}_*md5.txt ****"
     rsync -av ${ARG1} ${ARG2} \
@@ -44,11 +46,13 @@ do
           --exclude="*" \
           /Volumes/pdsdata-${SRC}/holdings/checksums-archives-${TYPE}/ \
           /Volumes/pdsdata-${DEST}/holdings/checksums-archives-${TYPE}/
+    find /Volumes/pdsdata-${DEST}/holdings/checksums-archives-${TYPE}/ -name "._*" -delete
 
     echo "\n\n**** holdings/_infoshelf-${TYPE}/${VOLSET} ****"
     rsync -av ${ARG1} ${ARG2} --exclude=".DS_Store" --exclude="._*" \
           /Volumes/pdsdata-${SRC}/holdings/_infoshelf-${TYPE}/${VOLSET}/ \
           /Volumes/pdsdata-${DEST}/holdings/_infoshelf-${TYPE}/${VOLSET}/
+    find /Volumes/pdsdata-${DEST}/holdings/_infoshelf-${TYPE}/${VOLSET}/ -name "._*" -delete
 
     echo "\n\n**** holdings/_infoshelf-archives-${TYPE}/${VOLSET}_info.py ****"
     rsync -av ${ARG1} ${ARG2} \
@@ -56,12 +60,14 @@ do
           --exclude="*" \
           /Volumes/pdsdata-${SRC}/holdings/_infoshelf-archives-${TYPE}/ \
           /Volumes/pdsdata-${DEST}/holdings/_infoshelf-archives-${TYPE}/
+    find /Volumes/pdsdata-${DEST}/holdings/_infoshelf-archives-${TYPE}/ -name "._*" -delete
 
     if [ -d /Volumes/pdsdata-${SRC}/holdings/_linkshelf-${TYPE}/${VOLSET} ]; then
       echo "\n\n**** holdings/_linkshelf-${TYPE}/${VOLSET} ****"
       rsync -av ${ARG1} ${ARG2} --exclude=".DS_Store" --exclude="._*" \
             /Volumes/pdsdata-${SRC}/holdings/_linkshelf-${TYPE}/${VOLSET}/ \
             /Volumes/pdsdata-${DEST}/holdings/_linkshelf-${TYPE}/${VOLSET}/
+      find /Volumes/pdsdata-${DEST}/holdings/_linkshelf-${TYPE}/${VOLSET}/ -name "._*" -delete
     fi
 
     if [ -d /Volumes/pdsdata-${SRC}/holdings/_indexshelf-${TYPE}/${VOLSET} ]; then
@@ -69,13 +75,14 @@ do
       rsync -av ${ARG1} ${ARG2} --exclude=".DS_Store" --exclude="._*" \
             /Volumes/pdsdata-${SRC}/holdings/_indexshelf-${TYPE}/${VOLSET}/ \
             /Volumes/pdsdata-${DEST}/holdings/_indexshelf-${TYPE}/${VOLSET}/
+      find /Volumes/pdsdata-${DEST}/holdings/_indexshelf-${TYPE}/${VOLSET}/ -name "._*" -delete
     fi
 
     echo "\n\n**** holdings/${TYPE}/${VOLSET} ****"
     rsync -av ${ARG1} ${ARG2} --exclude=".DS_Store" --exclude="._*" \
           /Volumes/pdsdata-${SRC}/holdings/${TYPE}/${VOLSET}/ \
           /Volumes/pdsdata-${DEST}/holdings/${TYPE}/${VOLSET}/
-
+    find /Volumes/pdsdata-${DEST}/holdings/${TYPE}/${VOLSET}/ -name "._*" -delete
   fi
 done
 
@@ -84,6 +91,7 @@ if [ -f /Volumes/pdsdata-${SRC}/holdings/_volinfo/${VOLSET}.txt ]; then
   rsync -av ${ARG1} ${ARG2} --include="${VOLSET}.txt" --exclude="*" \
         /Volumes/pdsdata-${SRC}/holdings/_volinfo/ \
         /Volumes/pdsdata-${DEST}/holdings/_volinfo/
+  find /Volumes/pdsdata-${DEST}/holdings/_volinfo/ -name "._*" -delete
 fi
 
 if [ -d /Volumes/pdsdata-${SRC}/holdings/documents/${VOLSET} ]; then
@@ -91,6 +99,8 @@ if [ -d /Volumes/pdsdata-${SRC}/holdings/documents/${VOLSET} ]; then
   rsync -av ${ARG1} ${ARG2} --exclude=".DS_Store" --exclude="._*" \
         /Volumes/pdsdata-${SRC}/holdings/documents/${VOLSET}/ \
         /Volumes/pdsdata-${DEST}/holdings/documents/${VOLSET}/
+  find /Volumes/pdsdata-${DEST}/holdings/documents/${VOLSET}/ -name "._*" -delete
+>>>>>>> Stashed changes
 fi
 
 #########################################################################################
