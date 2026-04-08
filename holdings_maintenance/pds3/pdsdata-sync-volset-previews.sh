@@ -100,7 +100,6 @@ if [ -d /Volumes/pdsdata-${SRC}/holdings/documents/${VOLSET} ]; then
         /Volumes/pdsdata-${SRC}/holdings/documents/${VOLSET}/ \
         /Volumes/pdsdata-${DEST}/holdings/documents/${VOLSET}/
   find /Volumes/pdsdata-${DEST}/holdings/documents/${VOLSET}/ -name "._*" -delete
->>>>>>> Stashed changes
 fi
 
 #########################################################################################

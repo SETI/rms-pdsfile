@@ -33,7 +33,7 @@ do
     rsync -av ${ARG1} ${ARG2} --exclude=".DS_Store" --exclude="._*" \
           /Volumes/pdsdata-${SRC}/holdings/archives-${TYPE}/${VOLSET}* \
           /Volumes/pdsdata-${DEST}/holdings/archives-${TYPE}/
-    find /Volumes/pdsdata-${DEST}/holdings/archives-${TYPE}/${VOLSET}/ -name "._*" -delete
+    find /Volumes/pdsdata-${DEST}/holdings/archives-${TYPE}/ -name "._*" -delete
 
     echo "\n\n**** holdings/checksums-${TYPE}/${VOLSET}* ****"
     rsync -av ${ARG1} ${ARG2} --exclude=".DS_Store" --exclude="._*" \
