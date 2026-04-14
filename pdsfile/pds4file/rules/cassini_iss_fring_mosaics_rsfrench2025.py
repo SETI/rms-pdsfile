@@ -134,25 +134,28 @@ opus_type = translator.TranslatorByRegex([
 
     # browse_mosaic
     # put all browse files under browse category
-    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_mosaic/(iss|iosic)_.*/(iss|iosic)_.*thumb.*\.png',            0, ('browse', 50, 'coiss_f_ring_mosaic_browse_thumb', 'Browse Mosaic Image (thumbnail)', True)),
-    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_mosaic/(iss|iosic)_.*/(iss|iosic)_.*small.*\.png',            0, ('browse', 60, 'coiss_f_ring_mosaic_browse_small', 'Browse Mosaic Image (small)', True)),    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_mosaic/(iss|iosic)_.*/(iss|iosic)_.*med.*\.png',            0, ('browse', 70, 'coiss_f_ring_mosaic_browse_med', 'Browse Mosaic Image (medium)', True)),
-    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_mosaic/(iss|iosic)_.*/(iss|iosic)_.*full.*\.png',            0, ('browse', 80, 'coiss_f_ring_mosaic_browse_full', 'Browse Mosaic Image (full)', True)),
+    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_mosaic/(iss|iosic)_.*/(iss|iosic)_.*thumb.*\.png',            0, ('browse', 50, 'coiss_f_ring_mosaic_browse_thumb', 'Browse Mosaic Image (thumbnail)', False)),
+    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_mosaic/(iss|iosic)_.*/(iss|iosic)_.*small.*\.png',            0, ('browse', 60, 'coiss_f_ring_mosaic_browse_small', 'Browse Mosaic Image (small)', False)),    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_mosaic/(iss|iosic)_.*/(iss|iosic)_.*med.*\.png',            0, ('browse', 70, 'coiss_f_ring_mosaic_browse_med', 'Browse Mosaic Image (medium)', True)),
+    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_mosaic/(iss|iosic)_.*/(iss|iosic)_.*full.*\.png',            0, ('browse', 80, 'coiss_f_ring_mosaic_browse_full', 'Browse Mosaic Image (full)', False)),
 
     # browse_mosaic_bkg_sub
-    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_mosaic_bkg_sub/(iss|iosic)_.*/(iss|iosic)_.*thumb.*\.png',            0, ('browse', 90, 'coiss_f_ring_mosaic_browse_bkg_sub_thumb', 'Browse Background-Subtracted Mosaic Image (thumbnail)', True)),
-    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_mosaic_bkg_sub/(iss|iosic)_.*/(iss|iosic)_.*small.*\.png',            0, ('browse', 100, 'coiss_f_ring_mosaic_browse_bkg_sub_small', 'Browse Background-Subtracted Mosaic Image (small)', True)),    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_mosaic_bkg_sub/(iss|iosic)_.*/(iss|iosic)_.*med.*\.png',            0, ('browse', 110, 'coiss_f_ring_mosaic_browse_bkg_sub_med', 'Browse Background-Subtracted Mosaic Image (medium)', True)),
-    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_mosaic_bkg_sub/(iss|iosic)_.*/(iss|iosic)_.*full.*\.png',            0, ('browse', 120, 'coiss_f_ring_mosaic_browse_bkg_sub_full', 'Browse Background-Subtracted Mosaic Image (full)', True)),
+    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_mosaic_bkg_sub/(iss|iosic)_.*/(iss|iosic)_.*thumb.*\.png',            0, ('browse', 90, 'coiss_f_ring_mosaic_browse_bkg_sub_thumb', 'Browse Background-Subtracted Mosaic Image (thumbnail)', False)),
+    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_mosaic_bkg_sub/(iss|iosic)_.*/(iss|iosic)_.*small.*\.png',            0, ('browse', 100, 'coiss_f_ring_mosaic_browse_bkg_sub_small', 'Browse Background-Subtracted Mosaic Image (small)', False)),    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_mosaic_bkg_sub/(iss|iosic)_.*/(iss|iosic)_.*med.*\.png',            0, ('browse', 110, 'coiss_f_ring_mosaic_browse_bkg_sub_med', 'Browse Background-Subtracted Mosaic Image (medium)', True)),
+    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_mosaic_bkg_sub/(iss|iosic)_.*/(iss|iosic)_.*full.*\.png',            0, ('browse', 120, 'coiss_f_ring_mosaic_browse_bkg_sub_full', 'Browse Background-Subtracted Mosaic Image (full)', False)),
 
     # document
     (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/(readme.txt|document/user_guide/.*mosaic.*\.(lblx|pdf))',               0, ('Cassini ISS F Ring Mosaics', 130, 'coiss_f_ring_documentation', 'Documentation', False)),
 
-    # index under document/
+    # index files under miscellaneous/
     # put all index files under metadata category
     (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/miscellaneous/.*mosaic_index\.(lblx|tab)',               0, ('metadata', 140, 'coiss_f_ring_global_mosaic_index', 'Global Mosaic Index', False)),
     (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/miscellaneous/.*mosaic_bkg.*index\.(lblx|tab)',               0, ('metadata', 150, 'coiss_f_ring_global_mosaic_bkg_sub_index', 'Global Background-Subtracted Mosaic Index', False)),
     (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/miscellaneous/.*reproj_img_index\.(lblx|tab)',               0, ('metadata', 160, 'coiss_f_ring_global_reproj_img_index', 'Global Reprojected Image Index', False)),
 
-    # Reprojected Images
+    # Reprojected Images: these reproj files are in the PDS4 cassini_iss_fring_mosaics_rsfrench2025
+    # bundle, so we define their opus types here for consistency. In OPUS they are treated as
+    # downloadable products for regular Cassini ISS (PDS3) images, not as F-ring mosaic bundle
+    # products.
     # data_reproj_img from cassini_iss_fring_mosaics_rsfrench2025
     (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/data_reproj_img/(iss|iosic)_.*/.*_reproj_.*.*\.(img|lblx)',              0, ('Cassini ISS F Ring Reprojected Images', 170, 'coiss_f_ring_reproj_img', 'Reprojected Image', False)),
     (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/data_reproj_img/(iss|iosic)_.*/.*_reproj_suppl\.txt',              0, ('Cassini ISS F Ring Reprojected Images', 180, 'coiss_f_ring_reproj_img_spice_pointing', 'Reprojected Image SPICE Pointing', False)),
@@ -169,7 +172,8 @@ opus_type = translator.TranslatorByRegex([
 ##########################################################################################
 # OPUS_PRODUCTS
 ##########################################################################################
-
+# OPUS products for PDS4 F ring mosaics bundle only. Reprojected images live in the OPUS products of
+# pds3file/rules/COISS_xxxx.py with other PDS3 Cassini ISS products.
 opus_products = translator.TranslatorByRegex([
     (r'bundles/(cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*)/(data|browse)_mosaic.*/((iss|iosic)_[a-zA-Z0-9_]*)/(iss|iosic)_[a-zA-Z0-9_]*_mosaic.*\.[a-z]{3,4}', 0,
      [
@@ -260,15 +264,18 @@ archive_dirs = translator.TranslatorByRegex([
     # include:
     # - data/browse reproj dir
     # - related files under document
+    # - related files under miscellaneous
     # - all the top-level support stuff (readme, bundle.xml, spice kernels, xml schema, etc.)
     (r'.*archives-(.*)/(cassini_iss_fring_mosaics_rsfrench2025)/data_browse_reproj_img\.tar\.gz', 0, [
         r'\1/\2/\2/browse_reproj_img',
         r'\1/\2/\2/data_reproj_img',
         r'\1/\2/\2/document/collection_document.csv',
         r'\1/\2/\2/document/collection_document.lblx',
+        r'\1/\2/\2/document/user_guide',
+        r'\1/\2/\2/miscellaneous/collection_miscellaneous.csv',
+        r'\1/\2/\2/miscellaneous/collection_miscellaneous.lblx',
         r'\1/\2/\2/miscellaneous/global_reproj_img_index.lblx',
         r'\1/\2/\2/miscellaneous/global_reproj_img_index.tab',
-        r'\1/\2/\2/document/user_guide',
         r'\1/\2/\2/bundle.lblx',
         r'\1/\2/\2/context',
         r'\1/\2/\2/readme.txt',
@@ -314,6 +321,22 @@ archive_dirs = translator.TranslatorByRegex([
 ])
 
 ##########################################################################################
+# PRODUCT_LBL_BASENAME_WO_EXT
+##########################################################################################
+# When a data file basename does not share the same root as its PDS4 label, map the product
+# root to the label root (PdsFile.label_basename / label_abspath).
+product_lbl_basename_wo_ext = translator.TranslatorByRegex([
+    # Browse PNG previews: drop _thumb / _full / _med / _small so the root matches the browse .lblx.
+    (r'(.*browse_(mosaic|reproj).*)_(full|med|small|thumb)\.png$', 0, [r'\1',]),
+    # Mosaic or reprojected metadata .tab files: strip _metadata* so the root matches the data
+    # label.
+    (r'(.*_(mosaic|reproj).*)_metadata.*\.tab$', 0, [r'\1',]),
+    # Reprojected SPICE pointing (*_reproj_suppl.txt): paired label is *_reproj_img, not
+    # *_reproj_suppl.
+    (r'(.*_reproj)_suppl\.txt$', 0, [r'\1_img',]),
+])
+
+##########################################################################################
 # Subclass definition
 ##########################################################################################
 
@@ -333,6 +356,8 @@ class cassini_iss_fring_mosaics_rsfrench2025(pds4file.Pds4File):
     OPUS_PRODUCTS = opus_products + pds4file.Pds4File.OPUS_PRODUCTS
     OPUS_ID = opus_id
     OPUS_ID_TO_PRIMARY_LOGICAL_PATH = opus_id_to_primary_logical_path
+
+    PRODUCT_LBL_BASENAME_WO_EXT = product_lbl_basename_wo_ext
 
     VIEWABLES = {'default': default_viewables}
 

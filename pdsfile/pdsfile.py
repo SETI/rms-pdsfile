@@ -412,6 +412,8 @@ class PdsFile(object):
     OPUS_ID = None
     OPUS_ID_TO_PRIMARY_LOGICAL_PATH = None
 
+    PRODUCT_LBL_BASENAME_WO_EXT = None
+
     OPUS_ID_TO_SUBCLASS = None
 
     FILESPEC_TO_BUNDLESET = None
@@ -2644,24 +2646,9 @@ class PdsFile(object):
         else:
             ext_guesses = (*cls.LBL_EXT, *uppercase_lbl_ext)
 
-
-        # Map a data file to the corresponding label file
-        # For viewables with label (like f ring browse mosaic), we need to get rid of
-        # _thumb, _full, _med, and _small from the data file names to obtain the correct
-        # root name for the label files.
-        if ('_thumb' in self.basename or '_full' in self.basename or
-            '_med' in self.basename or '_small' in self.basename):
-            rootname, _, _ = self.basename.rpartition('_')
-        elif ('_metadata_') in self.basename:
-            # for metadata files of data products (like f ring data mosaic), we need to
-            # trim the string after "_metadata_"
-            rootname, _, _ = self.basename.rpartition('_metadata_')
-        elif ('_suppl.txt') in self.basename:
-            # for reprojected images spice pointing files (*_suppl.txt in f ring bundle),
-            # we need to trim the string after "_suppl" and append "_img" to get the
-            # correct root name for the label files.
-            rootname, _, _ = self.basename.rpartition('_suppl.txt')
-            rootname += '_img'
+        if (self.PRODUCT_LBL_BASENAME_WO_EXT is not None and
+            self.PRODUCT_LBL_BASENAME_WO_EXT.first(self.basename)):
+            rootname = self.PRODUCT_LBL_BASENAME_WO_EXT.first(self.basename)
         else:
             rootname = self.basename[:-len(self.extension)]
         test_basenames = [rootname + ext for ext in ext_guesses]

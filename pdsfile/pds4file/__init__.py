@@ -70,13 +70,14 @@ class Pds4File(PdsFile):
 
     OPUS_ID_TO_SUBCLASS = rules.OPUS_ID_TO_SUBCLASS
     FILESPEC_TO_BUNDLESET = rules.FILESPEC_TO_BUNDLESET
-    FILESPEC_TO_BUNDLESET = FILESPEC_TO_BUNDLESET
 
     LOCAL_PRELOADED = []
     SUBCLASSES = {}
 
     IDX_EXT = ('.csv', '.tab')
     LBL_EXT = ('.xml', '.lblx')
+
+    PRODUCT_LBL_BASENAME_WO_EXT = rules.PRODUCT_LBL_BASENAME_WO_EXT
 
     def __init__(self):
         super().__init__()

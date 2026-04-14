@@ -603,3 +603,12 @@ LID_AFTER_DSID = translator.TranslatorByRegex([
 DATA_SET_ID = translator.NullTranslator()
 
 ##########################################################################################
+# PRODUCT_LBL_BASENAME_WO_EXT
+#
+# Translates a data product basename to its corresponding label file basename without
+# extension.
+##########################################################################################
+
+PRODUCT_LBL_BASENAME_WO_EXT = translator.TranslatorByRegex([])
+
+##########################################################################################
