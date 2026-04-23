@@ -64,7 +64,10 @@ opus_type = translator.TranslatorByRegex([
 ##########################################################################################
 # Archives
 ##########################################################################################
-
+# Three archive files
+# - One archive for the entire bundle.
+# - One archive for data_derived.
+# - One archive for browse_derived.
 archive_paths = translator.TranslatorByRegex([
     (r'.*(bundles|metadata|previews|diagrams)/(cassini_iss_spokes_hedman-hamilton-2024)(|/)$', 0, [
         r'archives-\1/\2/\2.tar.gz',
@@ -74,9 +77,14 @@ archive_paths = translator.TranslatorByRegex([
 ])
 
 archive_dirs = translator.TranslatorByRegex([
+    # include the entire bundle
     (r'.*archives-(.*/cassini_iss_spokes_hedman-hamilton-2024)/cassini_iss_spokes_hedman-hamilton-2024\.tar\.gz', 0, [
         r'\1',
     ]),
+    # include:
+    # - data_derived dir
+    # - all files under document
+    # - all the top-level support stuff (readme, bundle.xml, spice kernels, xml schema, etc.)
     (r'.*archives-(.*)/(cassini_iss_spokes_hedman-hamilton-2024)/data_derived\.tar\.gz', 0, [
         r'\1/\2/\2/data_derived',
         r'\1/\2/\2/bundle.lblx',
@@ -85,6 +93,10 @@ archive_dirs = translator.TranslatorByRegex([
         r'\1/\2/\2/spice_kernels',
         r'\1/\2/\2/xml_schema',
     ]),
+     # include:
+    # - browse_derived dir
+    # - all files under document
+    # - all the top-level support stuff (readme, bundle.xml, spice kernels, xml schema, etc.)
     (r'.*archives-(.*)/(cassini_iss_spokes_hedman-hamilton-2024)/browse_derived\.tar\.gz', 0, [
         r'\1/\2/\2/browse_derived',
         r'\1/\2/\2/bundle.lblx',
@@ -100,6 +112,8 @@ archive_dirs = translator.TranslatorByRegex([
 ##########################################################################################
 
 product_lbl_basename_wo_ext = translator.TranslatorByRegex([
+    # Reprojected SPICE pointing (*_rprj_suppl.txt): paired label is *_rprj, not
+    # *_rprj_suppl.
     (r'(.*_rprj)_suppl\.txt$', 0, [r'\1',]),
 ])
 
