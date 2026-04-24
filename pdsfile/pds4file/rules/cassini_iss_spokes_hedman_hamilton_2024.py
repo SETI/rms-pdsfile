@@ -125,8 +125,6 @@ class cassini_iss_spokes_hedman_hamilton_2024(pds4file.Pds4File):
 
     PRODUCT_LBL_BASENAME_WO_EXT = product_lbl_basename_wo_ext
 
-    VIEWABLES = {'default': default_viewables}
-
 ##########################################################################################
 # Update the global dictionary of subclasses
 ##########################################################################################
