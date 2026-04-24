@@ -750,6 +750,23 @@ class TestPds4FileBlackBox:
             'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_reproj_img/iss_006ri_lphrlfmov001_prime/1492052683n_browse_reproj_img_thumb.png',
             'coiss_f_ring_browse_reproj_img_thumb'
         ),
+        # cassini_iss_spokes_hedman-hamilton-2024
+        (
+            'bundles/cassini_iss_spokes_hedman-hamilton-2024/cassini_iss_spokes_hedman-hamilton-2024/readme.txt',
+            'coiss_b_ring_documentation'
+        ),
+        (
+            'bundles/cassini_iss_spokes_hedman-hamilton-2024/cassini_iss_spokes_hedman-hamilton-2024/data_derived/147XXXXXXX/1479210132n_rprj.fits',
+            'coiss_b_ring_reproj_img'
+        ),
+        (
+            'bundles/cassini_iss_spokes_hedman-hamilton-2024/cassini_iss_spokes_hedman-hamilton-2024/data_derived/147XXXXXXX/1479210132n_rprj_suppl.txt',
+            'coiss_b_ring_reproj_img_spice_pointing'
+        ),
+        (
+            'bundles/cassini_iss_spokes_hedman-hamilton-2024/cassini_iss_spokes_hedman-hamilton-2024/browse_derived/147XXXXXXX/1479210132n_rprj_browse.png',
+            'coiss_b_ring_browse_reproj_img'
+        ),
         # cassini_uvis_solarocc_beckerjarmak2023
         (
             'bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023/data/uvis_euv_2005_159_solar_time_series_ingress.xml',
