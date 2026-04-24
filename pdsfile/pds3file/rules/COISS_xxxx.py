@@ -289,8 +289,8 @@ opus_products = translator.TranslatorByRegex([
 ])
 
 cross_pds3_pds4_products = translator.TranslatorByRegex([
-    (r'.*/(COISS_[12]xxx)(|_v[0-9\.]+)/(COISS_[12]...)/data/(\w+/([NW])([0-9]{10})_[0-9]+).*', 0,
-            [# Reproj
+    (r'.*/(COISS_[12]xxx)(|_v[0-9\.]+)/(COISS_[12]...)/data/(\w+/([NW])(([0-9]{3})[0-9]{7})_[0-9]+).*', 0,
+            [# F Ring Reproj (cassini_iss_fring_mosaics_rsfrench2025)
              # data_reproj_img
              r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/data_reproj_img/*/\6#LOWER#\5_reproj_img_metadata_params.tab',
              r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/data_reproj_img/*/\6#LOWER#\5_reproj_img.img',
@@ -305,6 +305,15 @@ cross_pds3_pds4_products = translator.TranslatorByRegex([
              # index
              r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/miscellaneous/global_reproj_img_index.lblx',
              r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/miscellaneous/global_reproj_img_index.tab',
+
+             # B Ring Reproj (cassini_iss_spokes_hedman-hamilton-2024)
+             # data_derived
+             r'bundles/cassini_iss_spokes_hedman-hamilton-2024/cassini_iss_spokes_hedman-hamilton-2024/data_derived/\7*/\6#LOWER#\5_rprj_suppl.txt',
+             r'bundles/cassini_iss_spokes_hedman-hamilton-2024/cassini_iss_spokes_hedman-hamilton-2024/data_derived/\7*/\6#LOWER#\5_rprj.fits',
+             r'bundles/cassini_iss_spokes_hedman-hamilton-2024/cassini_iss_spokes_hedman-hamilton-2024/data_derived/\7*/\6#LOWER#\5_rprj.lblx',
+            #  browse_derived
+             r'bundles/cassini_iss_spokes_hedman-hamilton-2024/cassini_iss_spokes_hedman-hamilton-2024/browse_derived/\7*/\6#LOWER#\5_rprj_browse.lblx',
+             r'bundles/cassini_iss_spokes_hedman-hamilton-2024/cassini_iss_spokes_hedman-hamilton-2024/browse_derived/\7*/\6#LOWER#\5_rprj_browse.png',
             ]),
 ])
 
@@ -446,9 +455,15 @@ from .pytest_support import *
     [
         ('volumes/COISS_1xxx/COISS_1001/data/1294561143_1295221348/W1294561202_1.IMG',
          'COISS_xxxx/opus_products/W1294561202_1.txt'),
-        # the volume with reproj images
+        # the volume with f ring reproj images
         ('volumes/COISS_2xxx/COISS_2113/data/1873427694_1873496724/N1873427694_1.IMG',
-         'COISS_xxxx/opus_products/N1873427694_1.txt')
+         'COISS_xxxx/opus_products/N1873427694_1.txt'),
+        # the volume with b ring reproj images
+        ('volumes/COISS_2xxx/COISS_2008/data/1481264980_1481267140/N1481265970_1.IMG',
+         'COISS_xxxx/opus_products/N1481265970_1.txt'),
+        # the volume with f ring and b ring reproj images
+        ('volumes/COISS_2xxx/COISS_2008/data/1479208692_1479461954/N1479210132_1.IMG',
+         'COISS_xxxx/opus_products/N1479210132_1.txt'),
     ]
 )
 def test_opus_products(request, input_path, expected):
