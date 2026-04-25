@@ -43,9 +43,9 @@ sort_key = translator.TranslatorByRegex([
 ##########################################################################################
 
 opus_type = translator.TranslatorByRegex([
-    (r'bundles/cassini_iss_spokes_hedman-hamilton-2024/cassini_iss_spokes_hedman-hamilton-2024[^/]*/data_derived/.*/.*_rprj\.(fits|lblx)',              0, ('Cassini ISS B Ring Reprojected Images', 170, 'coiss_b_ring_reproj_img', 'B Ring Reprojected Image', False)),
-    (r'bundles/cassini_iss_spokes_hedman-hamilton-2024/cassini_iss_spokes_hedman-hamilton-2024[^/]*/data_derived/.*/.*_rprj_suppl\.txt',              0, ('Cassini ISS B Ring Reprojected Images', 180, 'coiss_b_ring_reproj_img_spice_pointing', 'B Ring Reprojected Image SPICE Pointing', False)),
-    (r'bundles/cassini_iss_spokes_hedman-hamilton-2024/cassini_iss_spokes_hedman-hamilton-2024[^/]*/browse_derived/.*/.*_rprj_browse\.png',              0, ('browse', 190, 'coiss_b_ring_browse_reproj_img', 'B Ring Browse Reprojected Image', False)),
+    (r'bundles/cassini_iss_spokes_hedman-hamilton-2024/cassini_iss_spokes_hedman-hamilton-2024[^/]*/data_derived/.*/.*_rprj\.(fits|lblx)',              0, ('Cassini ISS B Ring Reprojected Images', 150, 'coiss_b_ring_reproj_img', 'B Ring Reprojected Image', False)),
+    (r'bundles/cassini_iss_spokes_hedman-hamilton-2024/cassini_iss_spokes_hedman-hamilton-2024[^/]*/data_derived/.*/.*_rprj_suppl\.txt',              0, ('Cassini ISS B Ring Reprojected Images', 160, 'coiss_b_ring_reproj_img_spice_pointing', 'B Ring Reprojected Image SPICE Pointing', False)),
+    (r'bundles/cassini_iss_spokes_hedman-hamilton-2024/cassini_iss_spokes_hedman-hamilton-2024[^/]*/browse_derived/.*/.*_rprj_browse\.png',              0, ('browse', 170, 'coiss_b_ring_browse_reproj_img', 'B Ring Browse Reprojected Image', False)),
 ])
 
 ##########################################################################################
