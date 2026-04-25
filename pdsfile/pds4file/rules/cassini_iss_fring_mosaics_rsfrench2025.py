@@ -157,16 +157,16 @@ opus_type = translator.TranslatorByRegex([
     # downloadable products for regular Cassini ISS (PDS3) images, not as F-ring mosaic bundle
     # products.
     # data_reproj_img from cassini_iss_fring_mosaics_rsfrench2025
-    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/data_reproj_img/(iss|iosic)_.*/.*_reproj_.*.*\.(img|lblx)',              0, ('Cassini ISS F Ring Reprojected Images', 170, 'coiss_f_ring_reproj_img', 'Reprojected Image', False)),
-    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/data_reproj_img/(iss|iosic)_.*/.*_reproj_suppl\.txt',              0, ('Cassini ISS F Ring Reprojected Images', 180, 'coiss_f_ring_reproj_img_spice_pointing', 'Reprojected Image SPICE Pointing', False)),
-    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/data_reproj_img/(iss|iosic)_.*/.*_reproj_img_metadata_params\.tab',              0, ('Cassini ISS F Ring Reprojected Images', 190, 'coiss_f_ring_reproj_img_metadata', 'Reprojected Image Metadata', False)),
+    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/data_reproj_img/(iss|iosic)_.*/.*_reproj_.*.*\.(img|lblx)',              0, ('Cassini ISS F Ring Reprojected Images', 170, 'coiss_f_ring_reproj_img', 'F Ring Reprojected Image', False)),
+    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/data_reproj_img/(iss|iosic)_.*/.*_reproj_suppl\.txt',              0, ('Cassini ISS F Ring Reprojected Images', 180, 'coiss_f_ring_reproj_img_spice_pointing', 'F Ring Reprojected Image SPICE Pointing', False)),
+    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/data_reproj_img/(iss|iosic)_.*/.*_reproj_img_metadata_params\.tab',              0, ('Cassini ISS F Ring Reprojected Images', 190, 'coiss_f_ring_reproj_img_metadata', 'F Ring Reprojected Image Metadata', False)),
 
     # browse_reproj_img cassini_iss_fring_mosaics_rsfrench2025
     # put all browse files under browse category
-    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_reproj_img/(iss|iosic)_.*/.*_browse_reproj_img_thumb\.png',              0, ('browse', 200, 'coiss_f_ring_browse_reproj_img_thumb', 'Browse Reprojected Image (thumbnail)', False)),
-    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_reproj_img/(iss|iosic)_.*/.*_browse_reproj_img_small\.png',              0, ('browse', 210, 'coiss_f_ring_browse_reproj_img_small', 'Browse Reprojected Image (small)', False)),
-    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_reproj_img/(iss|iosic)_.*/.*_browse_reproj_img_med\.png',              0, ('browse', 220, 'coiss_f_ring_browse_reproj_img_med', 'Browse Reprojected Image (medium)', False)),
-    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_reproj_img/(iss|iosic)_.*/.*_browse_reproj_img_full\.png',              0, ('browse', 230, 'coiss_f_ring_browse_reproj_img_full', 'Browse Reprojected Image (full)', False)),
+    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_reproj_img/(iss|iosic)_.*/.*_browse_reproj_img_thumb\.png',              0, ('browse', 200, 'coiss_f_ring_browse_reproj_img_thumb', 'F Ring Browse Reprojected Image (thumbnail)', False)),
+    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_reproj_img/(iss|iosic)_.*/.*_browse_reproj_img_small\.png',              0, ('browse', 210, 'coiss_f_ring_browse_reproj_img_small', 'F Ring Browse Reprojected Image (small)', False)),
+    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_reproj_img/(iss|iosic)_.*/.*_browse_reproj_img_med\.png',              0, ('browse', 220, 'coiss_f_ring_browse_reproj_img_med', 'F Ring Browse Reprojected Image (medium)', False)),
+    (r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025[^/]*/browse_reproj_img/(iss|iosic)_.*/.*_browse_reproj_img_full\.png',              0, ('browse', 230, 'coiss_f_ring_browse_reproj_img_full', 'F Ring Browse Reprojected Image (full)', False)),
 ])
 
 ##########################################################################################
