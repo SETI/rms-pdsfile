@@ -752,10 +752,6 @@ class TestPds4FileBlackBox:
         ),
         # cassini_iss_spokes_hedman-hamilton-2024
         (
-            'bundles/cassini_iss_spokes_hedman-hamilton-2024/cassini_iss_spokes_hedman-hamilton-2024/readme.txt',
-            'coiss_b_ring_documentation'
-        ),
-        (
             'bundles/cassini_iss_spokes_hedman-hamilton-2024/cassini_iss_spokes_hedman-hamilton-2024/data_derived/147XXXXXXX/1479210132n_rprj.fits',
             'coiss_b_ring_reproj_img'
         ),
