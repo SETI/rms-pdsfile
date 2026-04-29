@@ -619,7 +619,6 @@ for product_id_range, observation_id in _PRODUCT_ID_TO_F_RING_OBSERVATION_ID_MAP
                 ]),
     ]
 
-
 cross_pds3_pds4_products = translator.TranslatorByRegex([
     (r'.*/(COISS_[12]xxx)(|_v[0-9\.]+)/(COISS_[12]...)/data/(\w+/([NW])(([0-9]{3})[0-9]{7})_[0-9]+).*', 0,
             [# F Ring Reproj (cassini_iss_fring_mosaics_rsfrench2025)
