@@ -604,7 +604,7 @@ for product_id_range, observation_id in _PRODUCT_ID_TO_F_RING_OBSERVATION_ID_MAP
     product_id_regex = range_regex(*product_id_range)
     _f_ring_cross_products_list += [
         (rf'.*/(COISS_[12]xxx)(|_v[0-9\.]+)/(COISS_[12]...)/data/(\w+/([NW])({product_id_regex})_[0-9]+).*', 0,
-                [# F Ring Reproj (cassini_iss_fring_mosaics_rsfrench2025)
+            [# F Ring Reproj (cassini_iss_fring_mosaics_rsfrench2025)
                 # data_reproj_img
                 rf'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/data_reproj_img/{observation_id}/\6#LOWER#\5_reproj_img_metadata_params.tab',
                 rf'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/data_reproj_img/{observation_id}/\6#LOWER#\5_reproj_img.img',
@@ -616,25 +616,25 @@ for product_id_range, observation_id in _PRODUCT_ID_TO_F_RING_OBSERVATION_ID_MAP
                 rf'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_reproj_img/{observation_id}/\6#LOWER#\5_browse_reproj_img_small.png',
                 rf'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_reproj_img/{observation_id}/\6#LOWER#\5_browse_reproj_img_thumb.png',
                 rf'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_reproj_img/{observation_id}/\6#LOWER#\5_browse_reproj_img.lblx',
-                ]),
+            ]),
     ]
 
 cross_pds3_pds4_products = translator.TranslatorByRegex([
     (r'.*/(COISS_[12]xxx)(|_v[0-9\.]+)/(COISS_[12]...)/data/(\w+/([NW])(([0-9]{3})[0-9]{7})_[0-9]+).*', 0,
-            [# F Ring Reproj (cassini_iss_fring_mosaics_rsfrench2025)
-             # index
-             r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/miscellaneous/global_reproj_img_index.lblx',
-             r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/miscellaneous/global_reproj_img_index.tab',
+        [   # F Ring Reproj (cassini_iss_fring_mosaics_rsfrench2025)
+            # index
+            r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/miscellaneous/global_reproj_img_index.lblx',
+            r'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/miscellaneous/global_reproj_img_index.tab',
 
-             # B Ring Reproj (cassini_iss_spokes_hedman-hamilton-2024)
-             # data_derived
-             r'bundles/cassini_iss_spokes_hedman-hamilton-2024/cassini_iss_spokes_hedman-hamilton-2024/data_derived/\7XXXXXXX/\6#LOWER#\5_rprj_suppl.txt',
-             r'bundles/cassini_iss_spokes_hedman-hamilton-2024/cassini_iss_spokes_hedman-hamilton-2024/data_derived/\7XXXXXXX/\6#LOWER#\5_rprj.fits',
-             r'bundles/cassini_iss_spokes_hedman-hamilton-2024/cassini_iss_spokes_hedman-hamilton-2024/data_derived/\7XXXXXXX/\6#LOWER#\5_rprj.lblx',
-            #  browse_derived
-             r'bundles/cassini_iss_spokes_hedman-hamilton-2024/cassini_iss_spokes_hedman-hamilton-2024/browse_derived/\7XXXXXXX/\6#LOWER#\5_rprj_browse.lblx',
-             r'bundles/cassini_iss_spokes_hedman-hamilton-2024/cassini_iss_spokes_hedman-hamilton-2024/browse_derived/\7XXXXXXX/\6#LOWER#\5_rprj_browse.png',
-            ]),
+            # B Ring Reproj (cassini_iss_spokes_hedman-hamilton-2024)
+            # data_derived
+            r'bundles/cassini_iss_spokes_hedman-hamilton-2024/cassini_iss_spokes_hedman-hamilton-2024/data_derived/\7XXXXXXX/\6#LOWER#\5_rprj_suppl.txt',
+            r'bundles/cassini_iss_spokes_hedman-hamilton-2024/cassini_iss_spokes_hedman-hamilton-2024/data_derived/\7XXXXXXX/\6#LOWER#\5_rprj.fits',
+            r'bundles/cassini_iss_spokes_hedman-hamilton-2024/cassini_iss_spokes_hedman-hamilton-2024/data_derived/\7XXXXXXX/\6#LOWER#\5_rprj.lblx',
+            # browse_derived
+            r'bundles/cassini_iss_spokes_hedman-hamilton-2024/cassini_iss_spokes_hedman-hamilton-2024/browse_derived/\7XXXXXXX/\6#LOWER#\5_rprj_browse.lblx',
+            r'bundles/cassini_iss_spokes_hedman-hamilton-2024/cassini_iss_spokes_hedman-hamilton-2024/browse_derived/\7XXXXXXX/\6#LOWER#\5_rprj_browse.png',
+        ]),
     *_f_ring_cross_products_list
 ])
 
