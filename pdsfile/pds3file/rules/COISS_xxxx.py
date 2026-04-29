@@ -596,7 +596,7 @@ _PRODUCT_ID_TO_F_RING_OBSERVATION_ID_MAPPING = {
     (1883514713, 1883516501): 'iss_292ri_propretrg001_prime',
 }
 
-# Build explicit product id range rules for f ring cross products.
+# Build explicit product id range rules for F Ring cross products.
 # This avoids broad wildcard matching during lookup and keeps OPUS import fast.
 _f_ring_cross_products_list = []
 
