@@ -428,6 +428,72 @@ for bundle_prefix, opus_id_prefix_e, opus_id_prefix_i, opus_id_prefix_a in prefi
 opus_id_to_primary_logical_path = translator.TranslatorByRegex(opus_id_to_primary_filespec_list)
 
 ##########################################################################################
+# Archives
+##########################################################################################
+# Bundle layout:
+# - The uranus_occs_earthbased bundle set contains multiple individual bundles, each
+#   representing a unique Uranus occultation observation from a specific telescope
+#   and date (e.g., 'uranus_occ_u0_kao_91cm', 'uranus_occ_u12_ctio_400cm').
+# - Each individual bundle typically includes:
+#   - 'data/rings/': ring occultation profiles at various resolutions
+#   - 'data/atmosphere/': atmospheric occultation time series
+#   - 'data/global/': ring-plane occultation profiles
+#   - 'data/ring_models/': ring model files (SQW models, fitted/predicted data)
+#   - 'browse/': browse products (images, PDFs, XML)
+# - Additionally, there are non-bundle collections at the bundle-set level:
+#   - 'uranus_occ_support/': supporting data (ring fits, SPICE kernels, documentation)
+#   - 'checksums_uranus_occs_earthbased/': checksum files
+#   - 'superseded/': superseded data files.
+#
+# How archives are split:
+# - Rather than creating one archive per individual bundle, we now archive at the
+#   top-level bundle-set tree:
+#   - For each top-level directory 'uranus_occs_earthbased*' under a category
+#     (e.g., 'bundles/uranus_occs_earthbased', 'bundles/uranus_occs_earthbased_v2'),
+#     we create a single .tar.gz file that contains the entire tree below it.
+#   - Archive name: '{top_level_name}.tar.gz'
+#     e.g., 'archives-bundles/uranus_occs_earthbased/uranus_occs_earthbased.tar.gz'.
+#   - This single archive includes all individual observation bundles plus the
+#     shared collections (support, checksums, superseded) under that top-level tree.
+# - This design keeps the rules and maintenance simpler: any new observation bundle
+#   added under a given 'uranus_occs_earthbased*' tree is automatically included
+#   in that tree's archive, without needing additional archive rules.
+#
+# archive_paths: A TranslatorByRegex object that maps logical paths of bundle sets,
+# bundles, or bundle collections to a list containing the logical path of the
+# corresponding archive file name.
+# - For any category path whose bundle-set portion matches 'uranus_occs_earthbased*'
+#   (in bundles, metadata, previews, or diagrams), this translator returns a single
+#   archive path of the form:
+#       'archives-<category>/<bundle_set>/<bundle_set>.tar.gz'
+#   e.g., 'archives-bundles/uranus_occs_earthbased/uranus_occs_earthbased.tar.gz'.
+# - These archive paths are used by the archive_paths() method in Pds4File to
+#   determine which archive file is associated with a given uranus_occs_earthbased*
+#   bundle-set tree.
+archive_paths = translator.TranslatorByRegex([
+    # input is the uranus bundle set
+    (r'.*(bundles|metadata|previews|diagrams)/(uranus_occs_earthbased[^/]*)(|/)$', 0, [
+        r'archives-\1/\2/\2.tar.gz'
+    ]),
+])
+
+# archive_dirs: A TranslatorByRegex object that maps logical paths of archive files
+# to lists of logical paths of directories included in those archives.
+# - For an archive file path of the form
+#       'archives-<category>/uranus_occs_earthbased*/<name>.tar.gz'
+#   this translator returns the top-level bundle-set directory under the holdings
+#   tree that the archive is built from, e.g.:
+#       'bundles/uranus_occs_earthbased' or
+#       'bundles/uranus_occs_earthbased_v2' (if we have v2 in the future).
+# - The archive creation code then recursively includes everything under that
+#   directory in the tarball (all individual bundles plus shared collections).
+# - This mapping is used by the archive_dirs() method in Pds4File to determine which
+#   root directories should be walked when creating or validating each archive file.
+archive_dirs = translator.TranslatorByRegex([
+    (r'.*archives-(.*/uranus_occs_earthbased)/(.*).tar.gz', 0, [r'\1']),
+])
+
+##########################################################################################
 # Subclass definition
 ##########################################################################################
 
@@ -458,6 +524,9 @@ class uranus_occs_earthbased(pds4file.Pds4File):
     ASSOCIATIONS['diagrams'] += associations_to_diagrams
     ASSOCIATIONS['metadata']   += associations_to_metadata
     ASSOCIATIONS['documents']  += associations_to_documents
+
+    ARCHIVE_PATHS = archive_paths + pds4file.Pds4File.ARCHIVE_PATHS
+    ARCHIVE_DIRS = archive_dirs + pds4file.Pds4File.ARCHIVE_DIRS
 
     pds4file.Pds4File.FILESPEC_TO_BUNDLESET = filespec_to_bundleset + \
                                               pds4file.Pds4File.FILESPEC_TO_BUNDLESET

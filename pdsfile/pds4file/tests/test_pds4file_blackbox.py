@@ -12,6 +12,14 @@ from .helper import (PDS4_BUNDLES_DIR,
                      instantiate_target_pdsfile)
 PDS4_HOLDINGS_NAME = 'pds4-holdings'
 
+
+class _DummyTranslator:
+    def __init__(self, mapping=None):
+        self.mapping = mapping or {}
+
+    def all(self, key):
+        return self.mapping.get(key, [])
+
 ##########################################################################################
 # Blackbox tests for pds4file.py
 ##########################################################################################
@@ -387,6 +395,65 @@ class TestPds4FileBlackBox:
         target_pdsfile = instantiate_target_pdsfile(input_path)
         res = target_pdsfile.bundleset
         assert res == expected
+
+    def test_archive_paths_returns_rooted_archives(self):
+        dummy = pds4file.Pds4File.__new__(pds4file.Pds4File)
+        dummy.root_ = '/mock/root/'
+        dummy.logical_path = 'bundles/sample/path'
+        dummy.ARCHIVE_PATHS = _DummyTranslator({
+            'bundles/sample/path': [
+                'archives/foo.tar.gz',
+                'archives/bar.tar.gz',
+            ],
+        })
+
+        result = dummy.archive_paths()
+
+        assert result == [
+            '/mock/root/archives/foo.tar.gz',
+            '/mock/root/archives/bar.tar.gz',
+        ]
+
+    def test_archive_dirs_maps_archives_to_existing_dirs(self):
+        dummy = pds4file.Pds4File.__new__(pds4file.Pds4File)
+        dummy.root_ = '/mock/root/'
+        dummy.logical_path = 'bundles/sample/path'
+        dummy.ARCHIVE_PATHS = _DummyTranslator({
+            'bundles/sample/path': [
+                'archives/foo.tar.gz',
+                'archives/bar.tar.gz',
+            ],
+        })
+        dummy.ARCHIVE_DIRS = _DummyTranslator({
+            '/mock/root/archives/foo.tar.gz': [
+                'bundles/sample/data/*',
+                'bundles/sample/docs/*',
+            ],
+            '/mock/root/archives/bar.tar.gz': [],
+        })
+        fake_glob_results = {
+            '/mock/root/bundles/sample/data/*': [
+                '/mock/root/bundles/sample/data/a',
+                '/mock/root/bundles/sample/data/b',
+            ],
+            '/mock/root/bundles/sample/docs/*': [
+                '/mock/root/bundles/sample/docs/readme',
+            ],
+        }
+        dummy.glob_glob = lambda pattern, force_case_sensitive=True: (
+            fake_glob_results.get(pattern, [])
+        )
+
+        result = dummy.archive_dirs()
+
+        assert result == {
+            '/mock/root/archives/foo.tar.gz': [
+                '/mock/root/bundles/sample/data/a',
+                '/mock/root/bundles/sample/data/b',
+                '/mock/root/bundles/sample/docs/readme',
+            ],
+            '/mock/root/archives/bar.tar.gz': [],
+        }
 
 
     @pytest.mark.parametrize(
