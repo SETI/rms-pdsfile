@@ -611,4 +611,17 @@ DATA_SET_ID = translator.NullTranslator()
 
 PRODUCT_LBL_BASENAME_WO_EXT = translator.TranslatorByRegex([])
 
+# ARCHIVE_PATHS
+# Translates a file path (absolute or logical) to a list of logical paths of the archive
+# file names
+##########################################################################################
+ARCHIVE_PATHS = translator.TranslatorByRegex([])
+
+##########################################################################################
+# ARCHIVE_DIRS
+# Translates a archive file path (absolute or logical) to a list of logical paths of the
+# directories included in that archive file.
+##########################################################################################
+ARCHIVE_DIRS = translator.TranslatorByRegex([])
+
 ##########################################################################################

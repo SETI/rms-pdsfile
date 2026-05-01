@@ -13,6 +13,9 @@ from pdsfile.preload_and_cache import cache_lifetime_for_class
 
 class Pds4File(PdsFile):
 
+    PDS_HOLDINGS = 'pds4-holdings'
+    BUNDLE_DIR_NAME = 'bundles'
+
     BUNDLESET_REGEX = re.compile(r'^(uranus_occs_earthbased|' +
                                  r'cassini_uvis_solarocc_beckerjarmak2023|' +
                                  r'cassini_iss|' +
@@ -21,11 +24,7 @@ class Pds4File(PdsFile):
                                  r'cassini_vims)$')
     BUNDLESET_PLUS_REGEX   = re.compile(BUNDLESET_REGEX.pattern[:-1] +
                                         r'(_v[0-9]+\.[0-9]+\.[0-9]+|' +
-                                        r'_v[0-9]+\.[0-9]+|_v[0-9]+|' +
-                                        r'_in_prep|_prelim|_peer_review|' +
-                                        r'_lien_resolution|)' +
-                                        r'((|_calibrated|_diagrams|_metadata|_previews)' +
-                                        r'(|_md5\.txt|\.tar\.gz))$')
+                                        r'_v[0-9]+\.[0-9]+)*$')
     BUNDLESET_PLUS_REGEX_I = re.compile(BUNDLESET_PLUS_REGEX.pattern, re.I)
 
     BUNDLENAME_REGEX = re.compile(r'^(uranus_occ_u\d{0,4}._[a-z]*_(fos|\d{2,3}cm)|' +
@@ -36,9 +35,10 @@ class Pds4File(PdsFile):
     BUNDLENAME_PLUS_REGEX  = re.compile(BUNDLENAME_REGEX.pattern[:-1] +
                                         r'(|_[a-z]+)(|_md5\.txt|\.tar\.gz)$')
     BUNDLENAME_PLUS_REGEX_I = re.compile(BUNDLENAME_PLUS_REGEX.pattern, re.I)
-
-    PDS_HOLDINGS = 'pds4-holdings'
-    BUNDLE_DIR_NAME = 'bundles'
+    BUNDLENAME_VERSION     = re.compile(BUNDLENAME_REGEX.pattern[:-1] +
+                                        r'(_v[0-9]+\.[0-9]+\.[0-9]+|'+
+                                        r'_v[0-9]+\.[0-9]+|_v[0-9]+)*$')
+    BUNDLENAME_VERSION_I   = re.compile(BUNDLENAME_VERSION.pattern, re.I)
 
     # Logger
     LOGGER = pdslogger.NullLogger()
@@ -80,6 +80,9 @@ class Pds4File(PdsFile):
     LBL_EXT = ('.xml', '.lblx')
 
     PRODUCT_LBL_BASENAME_WO_EXT = rules.PRODUCT_LBL_BASENAME_WO_EXT
+
+    ARCHIVE_PATHS = rules.ARCHIVE_PATHS
+    ARCHIVE_DIRS = rules.ARCHIVE_DIRS
 
     def __init__(self):
         super().__init__()
@@ -144,6 +147,66 @@ class Pds4File(PdsFile):
             cls -- the class calling the other methods inside the function
         """
         cls.set_logger(pdslogger.EasyLogger())
+
+    ############################################################################
+    # Archive path associations
+    ############################################################################
+    def archive_paths(self):
+        """Return the absolute paths to archive files associated with this PdsFile.
+
+        Determines the archive file paths based on the logical path of this PdsFile
+        instance. The PdsFile can represent a bundle set, a bundle, or a bundle
+        collection. Archive paths are resolved using the ARCHIVE_PATHS translator
+        rules and converted to absolute paths by prepending the root directory.
+
+        Returns:
+            list[str]: A list of absolute paths to archive files (typically .tar.gz
+                files) associated with this PdsFile. Returns an empty list if no
+                archive paths are found for the logical path.
+        """
+
+        # pdsf = self.bundle_pdsfile()
+        # if not pdsf:
+        #     pdsf = self.bundleset_pdsfile()
+        archive_paths = [self.root_ + p
+                         for p in self.ARCHIVE_PATHS.all(self.logical_path)]
+
+        return archive_paths
+
+    def archive_dirs(self):
+        """Return a mapping of archive paths to directories included in each archive.
+
+        For each archive file path associated with this PdsFile, determines which
+        directories are included in that archive. Uses the ARCHIVE_DIRS translator
+        rules to get directory patterns for each archive path, then resolves those
+        patterns to actual existing directory paths using glob matching.
+
+        Returns:
+            dict[str, list[str]]: A dictionary where:
+                - Keys are absolute paths to archive files (typically .tar.gz files)
+                - Values are lists of absolute paths to directories included in each
+                  archive file. Each list contains the actual existing directories
+                  that match the archive's directory patterns. Returns an empty list
+                  for an archive path if no matching directories are found.
+        """
+
+        archive_paths = self.archive_paths()
+
+        archive_dirs = {}
+        for p in archive_paths:
+            dir_abs_patterns = [self.root_ + dir_pattern
+                                for dir_pattern in self.ARCHIVE_DIRS.all(p)]
+
+            # Get the existing paths included in each archive file
+            dir_abspaths = []
+            for pattern in dir_abs_patterns:
+                these_abspaths = self.glob_glob(pattern, force_case_sensitive=True)
+                dir_abspaths += these_abspaths
+
+            archive_dirs[p] = dir_abspaths
+
+        return archive_dirs
+
 
 ##########################################################################################
 # Initialize the global registry of subclasses

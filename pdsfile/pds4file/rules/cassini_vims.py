@@ -283,6 +283,142 @@ opus_id_to_primary_logical_path = translator.TranslatorByRegex([
 ])
 
 ##########################################################################################
+# Archives
+##########################################################################################
+# TODO: split regex matched pattern group 1 (bundles|metadata|previews|diagrams) into
+# separate entries if we use different archive file names for different categories
+
+# Bundle layout:
+# - Each high-level Cassini VIMS bundle (e.g., 'cassini_vims_cruise', 'cassini_vims_saturn')
+#   is organized into multiple collections:
+#   - 'bundle.xml', 'calibration', 'context', 'document', 'xml_schema' (non-data, non-browse)
+#   - 'browse_raw/...': preview/browse collections for raw VIMS data
+#   - 'data_raw/...': the primary raw science data collections
+#
+# How archives are split:
+# - For 'cassini_vims_cruise':
+#   - All content is packaged into a single monolithic archive per bundle
+#   - Archive name: '{bundle_name}.tar.gz' (e.g., 'cassini_vims_cruise.tar.gz')
+#   - This simpler approach is used because cruise data volume is smaller
+# - For 'cassini_vims_saturn':
+#   - Similar to ISS, the bundle is split into multiple archives for better manageability
+#   - 'other_col' archives:
+#     - Contain bundle.xml, calibration, context, document, and xml_schema collections
+#     - Always a single archive per bundle: 'bundle_xml_non_data_browse_collections.tar.gz'
+#   - 'browse_raw' archives:
+#     - The raw browse collection is split by leading spacecraft clock block
+#     - One archive per 1xx clock block where 45 <= xx < 89
+#     - Each pattern 'browse_raw_1{num}xxxxxxx.tar.gz' groups all files whose
+#       first 3 SCET digits are '1{num}' into a single archive
+#   - 'data_raw' archives:
+#     - Mirrored strategy to 'browse_raw', but for the underlying raw data collections
+#     - Uses the same 1xx clock block range (45-89) as browse_raw
+#
+# ARCHIVE_PATHS_DICT: A dictionary that organizes archive path patterns by bundle name
+# and collection type.
+# Dictionary structure:
+# - Top-level keys are bundle names (e.g., 'cassini_vims_cruise', 'cassini_vims_saturn')
+# - Cruise bundles use an 'all' key containing a single archive pattern
+# - Saturn bundles contain sub-dictionaries keyed by collection type:
+#     'other_col', 'browse_raw', 'data_raw'
+# - Values are lists of regex pattern strings that will be expanded into archive file
+#   paths. The patterns use regex backreferences (\1, \2, \3) that are filled from the
+#   input logical path (e.g., category, bundle set, and bundle name) when archive_paths
+#   is called.
+ARCHIVE_PATHS_DICT = {
+    'cassini_vims_cruise': {
+        'all': [
+            r'archives-\1/\2/\3/\3.tar.gz'
+        ],
+    },
+    'cassini_vims_saturn': {
+        'other_col': [
+            r'archives-\1/\2/bundle_xml_non_data_browse_collections.tar.gz'
+        ],
+        'browse_raw': [
+            *[rf'archives-\1/\2/browse_raw_1{num}xxxxxxx.tar.gz' for num in range(45, 89)],
+            # r'archives-\1/\2/browse_raw_col_xml_csv.tar.gz',
+        ],
+        'data_raw': [
+            *[rf'archives-\1/\2/data_raw_1{num}xxxxxxx.tar.gz' for num in range(45, 89)],
+            # r'archives-\1/\2/data_raw_col_xml_csv.tar.gz',
+        ],
+    }
+}
+
+# archive_paths: A TranslatorByRegex object that maps logical paths of bundle sets,
+# bundles, or bundle collections to lists of logical paths of archive file names.
+# When given a PdsFile logical path (e.g., 'bundles/cassini_vims/cassini_vims_saturn'),
+# this translator returns the corresponding archive file paths (e.g.,
+# 'archives-bundles/cassini_vims/cassini_vims_saturn/browse_raw_1xxxxxxx.tar.gz').
+# The translator uses regex patterns to match input paths and extracts archive path
+# patterns from ARCHIVE_PATHS_DICT based on the bundle set and collection type.
+# These archive paths are used by the archive_paths() method in Pds4File to determine
+# which archive files are associated with a given bundle or bundle set.
+archive_paths = translator.TranslatorByRegex([
+    # input path is the whole cassini_vims bundle set
+    (r'.*(bundles|metadata|previews|diagrams)/(cassini_vims)(|/)$', 0, [
+        r'archives-\1/\2/\2_cruise/\2_cruise.tar.gz',
+        r'archives-\1/\2/\2_saturn/bundle_xml_non_data_browse_collections.tar.gz',
+        *[rf'archives-\1/\2/\2_saturn/browse_raw_1{num}xxxxxxx.tar.gz' for num in range(45, 89)],
+        *[rf'archives-\1/\2/\2_saturn/data_raw_1{num}xxxxxxx.tar.gz' for num in range(45, 89)],
+    ]),
+    ### cassini_vims_cruise ###
+    (r'.*(bundles|metadata|previews|diagrams)/(cassini_vims)/(cassini_vims_cruise)(|/)$', 0,
+        ARCHIVE_PATHS_DICT['cassini_vims_cruise']['all']),
+
+    ### cassini_vims_saturn ###
+    # input path is a bundle path
+    (r'.*(bundles|metadata|previews|diagrams)/(cassini_vims/cassini_vims_saturn)(|/)$', 0, [
+        # bundle xml, context, document, and xml_schema
+        *ARCHIVE_PATHS_DICT['cassini_vims_saturn']['other_col'],
+        # browse_raw
+        *ARCHIVE_PATHS_DICT['cassini_vims_saturn']['browse_raw'],
+        # data_raw
+        *ARCHIVE_PATHS_DICT['cassini_vims_saturn']['data_raw'],
+    ]),
+    # input path is a bundle collection path
+    # bundle xml, calibration, context, document, and xml_schema
+    (r'.*(bundles|metadata|previews|diagrams)/(cassini_vims/cassini_vims_saturn)/(calibration|context|document|xml_schema|bundle\.xml)', 0,
+        ARCHIVE_PATHS_DICT['cassini_vims_saturn']['other_col']),
+    # browse_raw
+    (r'.*(bundles|metadata|previews|diagrams)/(cassini_vims/cassini_vims_saturn)/browse_(\w*)', 0,
+        ARCHIVE_PATHS_DICT['cassini_vims_saturn']['browse_raw']),
+    # data_raw
+    (r'.*(bundles|metadata|previews|diagrams)/(cassini_vims/cassini_vims_saturn)/data_(\w*)', 0,
+        ARCHIVE_PATHS_DICT['cassini_vims_saturn']['data_raw']),
+
+])
+
+# archive_dirs: A TranslatorByRegex object that maps logical paths of archive files
+# to lists of logical paths of directories included in those archives. When given
+# an archive file path (e.g., 'archives-bundles/cassini_vims/cassini_vims_saturn/
+# browse_raw_1xxxxxxx.tar.gz'), this translator returns the directory paths that are
+# packaged within that archive (e.g., 'bundles/cassini_vims/cassini_vims_saturn/
+# browse_raw/1xxxxxxx'). This mapping is used by the archive_dirs() method in Pds4File
+# to determine which directories are included in each archive file.
+archive_dirs = translator.TranslatorByRegex([
+    ### cassini_vims_cruise ###
+    (r'.*archives-(.*/cassini_vims)/(cassini_vims_cruise)/.*\.tar\.gz', 0, [r'\1/\2']),
+
+    ### cassini_vims_saturn ###
+    # bundle xml, calibration, context, document, and xml_schema collections
+    (r'.*archives-(.*/cassini_vims)/(cassini_vims_saturn)/bundle_xml_non_data_browse_collections\.tar\.gz', 0,
+        [r'\1/\2/bundle.xml',
+         r'\1/\2/document',
+         r'\1/\2/xml_schema',
+         r'\1/\2/calibration',
+         r'\1/\2/context']
+    ),
+    # browse_raw and data_raw
+    (r'.*archives-(.*/cassini_vims)/(cassini_vims_\w+)/(\w+_raw)_1(\d\d)xxxxxxx\.tar\.gz', 0,
+        [r'\1/\2/\3/1\4??xxxxx',
+         r'\1/\2/\3/collection_\3.csv',
+         r'\1/\2/\3/collection_\3.xml']
+    ),
+])
+
+##########################################################################################
 # Subclass definition
 ##########################################################################################
 
@@ -309,6 +445,9 @@ class cassini_vims(pds4file.Pds4File):
     ASSOCIATIONS['previews']   += associations_to_previews
     ASSOCIATIONS['metadata']   += associations_to_metadata
     ASSOCIATIONS['documents']  += associations_to_documents
+
+    ARCHIVE_PATHS = archive_paths + pds4file.Pds4File.ARCHIVE_PATHS
+    ARCHIVE_DIRS = archive_dirs + pds4file.Pds4File.ARCHIVE_DIRS
 
     pds4file.Pds4File.FILESPEC_TO_BUNDLESET = filespec_to_bundleset + pds4file.Pds4File.FILESPEC_TO_BUNDLESET
 
