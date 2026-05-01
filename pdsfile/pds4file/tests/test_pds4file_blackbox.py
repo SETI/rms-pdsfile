@@ -726,6 +726,12 @@ class TestPds4FileBlackBox:
         ]
     )
     def test_viewset(self, input_path, expected):
+        # TODO: When cassini_iss_fring_mosaics_rsfrench2025 bundle is available in
+        # test holdings, remove this skip and enable viewset cases for that bundle.
+        if 'cassini_iss_fring_mosaics_rsfrench2025' in input_path:
+            pytest.skip(
+                'cassini_iss_fring_mosaics_rsfrench2025 viewset tests skipped'
+            )
         target_pdsfile = instantiate_target_pdsfile(input_path)
         res = target_pdsfile.viewset
         if res != False:
