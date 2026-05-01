@@ -80,14 +80,15 @@ class Pds3File(PdsFile):
     OPUS_TYPE = rules.OPUS_TYPE
     OPUS_FORMAT = rules.OPUS_FORMAT
     OPUS_PRODUCTS = rules.OPUS_PRODUCTS
+    CROSS_PDS3_PDS4_PRODUCTS = rules.CROSS_PDS3_PDS4_PRODUCTS
     OPUS_ID = rules.OPUS_ID
     OPUS_ID_TO_PRIMARY_LOGICAL_PATH = rules.OPUS_ID_TO_PRIMARY_LOGICAL_PATH
 
     OPUS_ID_TO_SUBCLASS = rules.OPUS_ID_TO_SUBCLASS
     FILESPEC_TO_BUNDLESET = rules.FILESPEC_TO_BUNDLESET
 
-    IDX_EXT = '.tab'
-    LBL_EXT = '.lbl'
+    IDX_EXT = ('.tab',)
+    LBL_EXT = ('.lbl',)
 
     def __init__(self):
         super().__init__()

@@ -19,14 +19,18 @@ class Pds4File(PdsFile):
     BUNDLESET_REGEX = re.compile(r'^(uranus_occs_earthbased|' +
                                  r'cassini_uvis_solarocc_beckerjarmak2023|' +
                                  r'cassini_iss|' +
+                                 r'cassini_iss_fring_mosaics_rsfrench2025|' +
+                                 r'cassini_iss_spokes_hedman-hamilton-2024|' +
                                  r'cassini_vims)$')
     BUNDLESET_PLUS_REGEX   = re.compile(BUNDLESET_REGEX.pattern[:-1] +
                                         r'(_v[0-9]+\.[0-9]+\.[0-9]+|' +
                                         r'_v[0-9]+\.[0-9]+)*$')
     BUNDLESET_PLUS_REGEX_I = re.compile(BUNDLESET_PLUS_REGEX.pattern, re.I)
 
-    BUNDLENAME_REGEX = re.compile(r'^(uranus_occ_u\d{0,4}._[a-z]*_(fos|\d{2,3}cm)(|_.*)|' +
-                                  r'cassini_[a-z]{3,4}_(cruise|saturn)(|_.*)|' +
+    BUNDLENAME_REGEX = re.compile(r'^(uranus_occ_u\d{0,4}._[a-z]*_(fos|\d{2,3}cm)|' +
+                                  r'cassini_[a-z]{3,4}_(cruise|saturn)|' +
+                                  r'cassini_iss_fring_mosaics_rsfrench2025(|_.*)|'
+                                  r'cassini_iss_spokes_hedman-hamilton-2024(|_.*)|'
                                   r'cassini_uvis_solarocc_beckerjarmak2023(|_.*))$')
     BUNDLENAME_PLUS_REGEX  = re.compile(BUNDLENAME_REGEX.pattern[:-1] +
                                         r'(|_[a-z]+)(|_md5\.txt|\.tar\.gz)$')
@@ -62,18 +66,20 @@ class Pds4File(PdsFile):
     OPUS_TYPE = rules.OPUS_TYPE
     OPUS_FORMAT = rules.OPUS_FORMAT
     OPUS_PRODUCTS = rules.OPUS_PRODUCTS
+    CROSS_PDS3_PDS4_PRODUCTS = rules.CROSS_PDS3_PDS4_PRODUCTS
     OPUS_ID = rules.OPUS_ID
     OPUS_ID_TO_PRIMARY_LOGICAL_PATH = rules.OPUS_ID_TO_PRIMARY_LOGICAL_PATH
 
     OPUS_ID_TO_SUBCLASS = rules.OPUS_ID_TO_SUBCLASS
     FILESPEC_TO_BUNDLESET = rules.FILESPEC_TO_BUNDLESET
-    FILESPEC_TO_BUNDLESET = FILESPEC_TO_BUNDLESET
 
     LOCAL_PRELOADED = []
     SUBCLASSES = {}
 
-    IDX_EXT = '.csv'
-    LBL_EXT = '.xml'
+    IDX_EXT = ('.csv', '.tab')
+    LBL_EXT = ('.xml', '.lblx')
+
+    PRODUCT_LBL_BASENAME_WO_EXT = rules.PRODUCT_LBL_BASENAME_WO_EXT
 
     ARCHIVE_PATHS = rules.ARCHIVE_PATHS
     ARCHIVE_DIRS = rules.ARCHIVE_DIRS
@@ -216,6 +222,8 @@ try:
     # Data set-specific rules are implemented as subclasses of Pds4File
     # from pdsfile_reorg.Pds4File.rules import *
     from .rules import (cassini_iss,
+                        cassini_iss_fring_mosaics_rsfrench2025,
+                        cassini_iss_spokes_hedman_hamilton_2024,
                         cassini_uvis_solarocc_beckerjarmak2023,
                         cassini_vims,
                         uranus_occs_earthbased)

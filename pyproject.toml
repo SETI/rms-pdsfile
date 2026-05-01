@@ -13,6 +13,7 @@ dependencies = [
     "pillow",
     "pyparsing",
     "pytest",
+    "range_ex",
     "rms-pdslogger>=3.1.1",
     "rms-pdstable",
     "rms-translator",

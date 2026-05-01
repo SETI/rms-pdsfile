@@ -267,7 +267,11 @@ pds4file.Pds4File.SUBCLASSES['cassini_uvis_solarocc_beckerjarmak2023'] = cassini
 ##########################################################################################
 
 import pytest
-from .pytest_support import *
+from .pytest_support import (
+    TEST_RESULTS_DIR,
+    associated_abspaths_test,
+    opus_products_test,
+)
 
 @pytest.mark.parametrize(
     ('input_path', 'expected'),

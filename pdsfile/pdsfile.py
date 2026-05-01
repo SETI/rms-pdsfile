@@ -388,6 +388,8 @@ class PdsFile(object):
     OPUS_ID = None
     OPUS_ID_TO_PRIMARY_LOGICAL_PATH = None
 
+    PRODUCT_LBL_BASENAME_WO_EXT = None
+
     OPUS_ID_TO_SUBCLASS = None
 
     FILESPEC_TO_BUNDLESET = None
@@ -1297,13 +1299,14 @@ class PdsFile(object):
             return os.path.exists(abspath)
 
         # Handle index rows
-        if f'{cls.IDX_EXT}/' in abspath:
-            parts = abspath.partition(f'{cls.IDX_EXT}/')
-            if not cls.os_path_exists(parts[0] + cls.IDX_EXT):
-                return False
-            pdsf = cls.from_abspath(parts[0] + cls.IDX_EXT)
-            return (pdsf.exists and
-                    pdsf.child_of_index(parts[2], flag='').exists)
+        for ext in cls.IDX_EXT:
+            if f'{ext}/' in abspath:
+                parts = abspath.partition(f'{ext}/')
+                if not cls.os_path_exists(parts[0] + ext):
+                    return False
+                pdsf = cls.from_abspath(parts[0] + ext)
+                return (pdsf.exists and
+                        pdsf.child_of_index(parts[2], flag='').exists)
 
         # If it's for documentation, we don't create shelf files, we will just use the
         # os.path.exists
@@ -1842,14 +1845,17 @@ class PdsFile(object):
 
         cls = type(self)
         if self._indexshelf_abspath is None:
-            if self.extension not in (cls.IDX_EXT, cls.IDX_EXT.upper()):
+            if self.extension not in (
+                *cls.IDX_EXT,
+                *tuple(ext.upper() for ext in cls.IDX_EXT)
+            ):
                 self._indexshelf_abspath = ''
             else:
                 abspath = self.abspath
                 abspath = abspath.replace(f'/{cls.PDS_HOLDINGS}/',
                                           f'/{cls.PDS_HOLDINGS}/_indexshelf-')
-                abspath = abspath.replace(cls.IDX_EXT, '.pickle')
-                abspath = abspath.replace(cls.IDX_EXT.upper(), '.pickle')
+                abspath = abspath.replace(self.extension, '.pickle')
+                abspath = abspath.replace(self.extension.upper(), '.pickle')
                 self._indexshelf_abspath = abspath
 
             self._recache()
@@ -1872,9 +1878,10 @@ class PdsFile(object):
                 # This supports the temporary situation where the indexshelf
                 # file is being created.
                 # XXX This is a real hack and should be looked at again later
-                if ('/metadata/' in self.abspath
-                    and self.abspath.lower().endswith(cls.IDX_EXT)):
-                    return True  # this value is not cached
+                if '/metadata/' in self.abspath:
+                    for ext in cls.IDX_EXT:
+                        if self.abspath.lower().endswith(ext):
+                            return True  # this value is not cached
 
                 self._is_index = False
 
@@ -1891,13 +1898,17 @@ class PdsFile(object):
 
         cls = type(self)
         if self._index_pdslabel is None:
-            label_abspath = self.abspath.replace (cls.IDX_EXT, cls.LBL_EXT)
-            label_abspath = label_abspath.replace(cls.IDX_EXT.upper(),
-                                                  cls.LBL_EXT.upper())
-            try:
-              self._index_pdslabel = pdsparser.PdsLabel.from_file(label_abspath)
-            except:
-              self._index_pdslabel = 'failed'
+            for lbl_ext in cls.LBL_EXT:
+                for idx_ext in cls.IDX_EXT:
+                    label_abspath = self.abspath.replace(idx_ext, lbl_ext)
+                    label_abspath = label_abspath.replace(idx_ext.upper(),
+                                                          lbl_ext.upper())
+                    try:
+                        self._index_pdslabel = pdsparser.PdsLabel.from_file(label_abspath)
+                        break
+                    except OSError:
+                        self._index_pdslabel = 'failed'
+                        continue
 
             self._recache()
 
@@ -2605,12 +2616,17 @@ class PdsFile(object):
             return ''
 
         # Take a first guess at the label filename; PDS3 only!
+        uppercase_lbl_ext = [ext.upper() for ext in cls.LBL_EXT]
         if self.extension.isupper():
-            ext_guesses = (cls.LBL_EXT.upper(), cls.LBL_EXT)
+            ext_guesses = (*uppercase_lbl_ext, *cls.LBL_EXT)
         else:
-            ext_guesses = (cls.LBL_EXT, cls.LBL_EXT.upper())
+            ext_guesses = (*cls.LBL_EXT, *uppercase_lbl_ext)
 
-        rootname = self.basename[:-len(self.extension)]
+        if (self.PRODUCT_LBL_BASENAME_WO_EXT is not None and
+            self.PRODUCT_LBL_BASENAME_WO_EXT.first(self.basename)):
+            rootname = self.PRODUCT_LBL_BASENAME_WO_EXT.first(self.basename)
+        else:
+            rootname = self.basename[:-len(self.extension)]
         test_basenames = [rootname + ext for ext in ext_guesses]
 
         # If one of the guessed files exist, it's the label
@@ -4751,15 +4767,57 @@ class PdsFile(object):
                 for abspath in these_abspaths:
                     opus_type_for_abspath[abspath] = opus_type
 
-            abspaths += these_abspaths
+            for path in these_abspaths:
+                abspaths.append((path, cls))
+
+        # Handle cross pds products
+        cross_pds_products_patterns = self.CROSS_PDS3_PDS4_PRODUCTS.all(self.logical_path)
+        new_root = ''
+        other_pds_cls = None
+
+        direct_pds_subclasses = PdsFile.__subclasses__()
+        family_cls = cls if cls in direct_pds_subclasses else cls.__base__
+        sibling_cls_list = [sub_cls for sub_cls in direct_pds_subclasses
+                            if sub_cls is not family_cls]
+
+        # Get the proper root directory name for corss pds products
+        for sub_cls in sibling_cls_list:
+            if sub_cls.LOCAL_PRELOADED:
+                new_root = f'{sub_cls.LOCAL_PRELOADED[0]}/'
+            else:
+                new_root = self.root_.replace(cls.PDS_HOLDINGS, sub_cls.PDS_HOLDINGS)
+            other_pds_cls = sub_cls
+            break
+
+        if other_pds_cls is None:
+            cross_pds_products_patterns = []
+
+        # Append the cross pds products
+        tmp_abspaths = []
+        for pattern in cross_pds_products_patterns:
+            pattern = new_root + pattern
+            these_abspaths = other_pds_cls.glob_glob(pattern,
+                                                     force_case_sensitive=True)
+
+            for path in these_abspaths:
+                tmp_abspaths.append((path, other_pds_cls))
+
+        is_all_idx = True
+        for path in tmp_abspaths:
+            if '_index' not in path[0]:
+                is_all_idx = False
+                break
+        # Don't include reproj index if there is no reproj files
+        if not is_all_idx:
+            abspaths += tmp_abspaths
 
         # Get PdsFiles for abspaths, organized by labels vs. datafiles
         # label_files[label_abspath] = [label_pdsfile, fmt1_pdsfile, ...]
         # data_files is a list
         label_pdsfiles = {}
         data_pdsfiles = []
-        for abspath in abspaths:
-            pdsf = cls.from_abspath(abspath)
+        for (abspath, pds_class) in abspaths:
+            pdsf = pds_class.from_abspath(abspath)
             if pdsf.islabel:
                 # Check if the corresponding link info exists. If not, we issue
                 # a warning and skip looking for the .fmt files.
@@ -4775,7 +4833,7 @@ class PdsFile(object):
                     links = set(pdsf.linked_abspaths)
                     fmts = [f for f in links if f.lower().endswith('.fmt')]
                     fmts.sort()
-                    fmt_pdsfiles = cls.pdsfiles_for_abspaths(fmts,
+                    fmt_pdsfiles = pds_class.pdsfiles_for_abspaths(fmts,
                                                              must_exist=True)
                 label_pdsfiles[abspath] = [pdsf] + fmt_pdsfiles
             else:
@@ -5513,7 +5571,8 @@ class PdsFile(object):
         """
 
         cls = type(self)
-        return (len(basename) > 4) and (basename[-4:].lower() == cls.LBL_EXT)
+        _, _, lbl_ext = basename.rpartition('.')
+        return (len(basename) > 4) and (f'.{lbl_ext}'.lower() in cls.LBL_EXT)
 
     def basename_is_viewable(self, basename=None):
         """Return True if this basename is viewable. Override if viewable files can
@@ -6012,32 +6071,33 @@ class PdsFile(object):
         for pattern in patterns:
 
             # Handle an index row by separating the filepath from the suffix
-            if f'{cls.IDX_EXT}/' in pattern:
-                parts = pattern.rpartition(cls.IDX_EXT)
-                pattern = parts[0] + parts[1]
-                suffix = parts[2][1:]
-            else:
-                suffix = ''
+            for ext in cls.IDX_EXT:
+                if f'{ext}/' in pattern:
+                    parts = pattern.rpartition(ext)
+                    pattern = parts[0] + parts[1]
+                    suffix = parts[2][1:]
+                else:
+                    suffix = ''
 
-            # Find the file(s) that match the pattern
-            if not must_exist and not _needs_glob(pattern):
-                test_abspaths = [pattern]
-            else:
-                test_abspaths = cls.glob_glob(pattern, force_case_sensitive=True)
-            # With a suffix, make sure it matches a row of the index
-            if suffix:
-                filtered_abspaths = []
-                for abspath in test_abspaths:
-                    try:
-                        parent = cls.from_abspath(abspath)
-                        pdsf = parent.child_of_index(suffix)
-                        filtered_abspaths.append(pdsf.abspath)
-                    except (KeyError, IOError):
-                        pass
+                # Find the file(s) that match the pattern
+                if not must_exist and not _needs_glob(pattern):
+                    test_abspaths = [pattern]
+                else:
+                    test_abspaths = cls.glob_glob(pattern, force_case_sensitive=True)
+                # With a suffix, make sure it matches a row of the index
+                if suffix:
+                    filtered_abspaths = []
+                    for abspath in test_abspaths:
+                        try:
+                            parent = cls.from_abspath(abspath)
+                            pdsf = parent.child_of_index(suffix)
+                            filtered_abspaths.append(pdsf.abspath)
+                        except (KeyError, IOError):
+                            pass
 
-                test_abspaths = filtered_abspaths
+                    test_abspaths = filtered_abspaths
 
-            abspaths += test_abspaths
+                abspaths += test_abspaths
 
         # Include any labels and targets
         if category == self.bundletype_[:-1]:
@@ -6048,7 +6108,12 @@ class PdsFile(object):
                 if label_abspath not in abspaths:
                     abspaths.append(label_abspath)
 
-            abspaths += self.data_abspaths
+            if must_exist:
+                for path in self.data_abspaths:
+                    if cls.os_path_exists(path):
+                        abspaths.append(path)
+            else:
+                abspaths += self.data_abspaths
 
         # Remove duplicates
         abspaths = [p for (k,p) in enumerate(abspaths) if p not in abspaths[:k]]
