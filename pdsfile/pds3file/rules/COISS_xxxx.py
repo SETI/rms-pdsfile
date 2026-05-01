@@ -773,6 +773,11 @@ import os
 import pytest
 from .pytest_support import *
 
+# TODO: When cassini_iss_fring_mosaics_rsfrench2025 and
+# cassini_iss_spokes_hedman-hamilton-2024 bundles are available (e.g. in test
+# holdings), drop _coiss_opus_products_golden_references_pds4_reproj and the
+# test_opus_products / test_opus_id_to_primary_logical_path skips so PDS4 reproj
+# goldens are exercised again.
 _PDS4_REPROJ_BUNDLE_MARKERS = (
     'cassini_iss_spokes_hedman-hamilton-2024',
     'cassini_iss_fring_mosaics_rsfrench2025',
@@ -805,6 +810,9 @@ def _coiss_opus_products_golden_references_pds4_reproj(expected_relative):
     ]
 )
 def test_opus_products(request, input_path, expected):
+    # TODO: When cassini_iss_fring_mosaics_rsfrench2025 and
+    # cassini_iss_spokes_hedman-hamilton-2024 bundles are available, remove this
+    # skip and enable all parametrized cases that reference PDS4 reproj goldens.
     if _coiss_opus_products_golden_references_pds4_reproj(expected):
         pytest.skip(
             'Golden opus_products lists PDS4 reproj paths for '
@@ -1021,6 +1029,9 @@ def test_opus_id_to_primary_logical_path():
 
     for logical_path in TESTS:
         stem, _ = os.path.splitext(os.path.basename(logical_path))
+        # TODO: When cassini_iss_fring_mosaics_rsfrench2025 and
+        # cassini_iss_spokes_hedman-hamilton-2024 bundles are available, remove
+        # this continue so iterations with PDS4 reproj goldens run again.
         if _coiss_opus_products_golden_references_pds4_reproj(
                 f'COISS_xxxx/opus_products/{stem}.txt'):
             continue

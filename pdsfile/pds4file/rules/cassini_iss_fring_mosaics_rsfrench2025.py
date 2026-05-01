@@ -391,6 +391,8 @@ from .pytest_support import (
     opus_products_test,
 )
 
+# TODO: When cassini_iss_fring_mosaics_rsfrench2025 bundle is available, remove pytestmark
+# and enable these rule unit tests.
 pytestmark = pytest.mark.skip(reason='cassini_iss_fring_mosaics_rsfrench2025 rule tests skipped')
 
 @pytest.mark.parametrize(

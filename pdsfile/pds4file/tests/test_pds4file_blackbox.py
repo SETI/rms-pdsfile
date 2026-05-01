@@ -945,6 +945,9 @@ class TestPds4FileBlackBox:
     )
     def test_opus_type(self, input_path, expected):
         """opus_type: return self._opus_type_filled"""
+        # TODO: When cassini_iss_fring_mosaics_rsfrench2025 and
+        # cassini_iss_spokes_hedman-hamilton-2024 bundles are available, remove
+        # this skip and enable opus_type parametrized cases for those bundles.
         if ('cassini_iss_fring_mosaics_rsfrench2025' in input_path
                 or 'cassini_iss_spokes_hedman-hamilton-2024' in input_path):
             pytest.skip(
