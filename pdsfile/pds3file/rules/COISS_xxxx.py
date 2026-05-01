@@ -1011,9 +1011,15 @@ def test_opus_id_to_primary_logical_path():
                     product_pdsfiles.append(pdsf)
 
         # Filter out the metadata/documents products and format files
-        product_pdsfiles = [pdsf for pdsf in product_pdsfiles
-                                 if pdsf.voltype_ != 'metadata/'
-                                 and pdsf.voltype_ != 'documents/']
+        product_pdsfiles = []
+        for pdsf in product_pdsfiles:
+            if isinstance(pdsf, pds3file.Pds3File):
+                if pdsf.voltype_ != 'metadata/' and pdsf.voltype_ != 'documents/':
+                    product_pdsfiles.append(pdsf)
+            else:
+                if pdsf.bundletype_ != 'metadata/' and pdsf.bundletype_ != 'documents/':
+                    product_pdsfiles.append(pdsf)
+
         product_pdsfiles = [pdsf for pdsf in product_pdsfiles
                                  if pdsf.extension.lower() != '.fmt']
 
