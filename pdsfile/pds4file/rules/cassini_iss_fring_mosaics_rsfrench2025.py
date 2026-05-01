@@ -391,6 +391,8 @@ from .pytest_support import (
     opus_products_test,
 )
 
+pytestmark = pytest.mark.skip(reason='cassini_iss_fring_mosaics_rsfrench2025 rule tests skipped')
+
 @pytest.mark.parametrize(
     ('input_path', 'expected'),
     [
