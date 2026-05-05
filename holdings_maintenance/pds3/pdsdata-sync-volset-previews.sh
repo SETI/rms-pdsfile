@@ -25,9 +25,14 @@ VOLSET=$3
 ARG1=$4
 ARG2=$5
 
+set -e
+
 if [ "$DEST" = "production" ]; then
   echo "Remounting pdsdata-production as read-write..."
-  sudo mount -u -o rw /Volumes/pdsdata-production
+  if ! sudo mount -u -o rw /Volumes/pdsdata-production; then
+    echo "ERROR: unable to remount /Volumes/pdsdata-production as read-write." >&2
+    exit 1
+  fi
   trap 'echo "Remounting pdsdata-production as read-only..."; sudo mount -u -o ro /Volumes/pdsdata-production' EXIT
 fi
 
