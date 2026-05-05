@@ -24,6 +24,26 @@ VOLSET=$3
 ARG1=$4
 ARG2=$5
 
+set -e
+
+if [ "$DEST" = "production" ]; then
+  echo "Remounting pdsdata-production as read-write..."
+  if ! sudo mount -u -o rw /Volumes/pdsdata-production; then
+    echo "ERROR: unable to remount /Volumes/pdsdata-production as read-write." >&2
+    exit 1
+  fi
+  remount_production_read_only_on_exit() {
+    local status=$?
+    echo "Remounting pdsdata-production as read-only..."
+    if ! sudo mount -u -o ro /Volumes/pdsdata-production; then
+      echo "ERROR: unable to remount /Volumes/pdsdata-production as read-only." >&2
+      status=1
+    fi
+    return $status
+  }
+  trap remount_production_read_only_on_exit EXIT
+fi
+
 for TYPE in metadata
 do
   if [ -d /Volumes/pdsdata-${SRC}/holdings/${TYPE}/${VOLSET} ]; then
