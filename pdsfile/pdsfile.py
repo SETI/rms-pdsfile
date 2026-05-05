@@ -260,30 +260,6 @@ class PdsFile(object):
     VIEWABLE_EXTS = set(['jpg', 'png', 'gif', 'tif', 'tiff', 'jpeg', 'jpeg_small'])
     DATAFILE_EXTS = set(['dat', 'img', 'cub', 'qub', 'fit', 'fits'])
 
-    # REGEX
-    BUNDLESET_REGEX        = re.compile(r'^([A-Z][A-Z0-9x]{1,5}_[0-9x]{3}x)$')
-    BUNDLESET_REGEX_I      = re.compile(BUNDLESET_REGEX.pattern, re.I)
-    BUNDLESET_PLUS_REGEX   = re.compile(BUNDLESET_REGEX.pattern[:-1] +
-                                        r'(_v[0-9]+\.[0-9]+\.[0-9]+|'+
-                                        r'_v[0-9]+\.[0-9]+|_v[0-9]+|'+
-                                        r'_in_prep|_prelim|_peer_review|'+
-                                        r'_lien_resolution|)' +
-                                        r'((|_calibrated|_diagrams|_metadata|_previews)' +
-                                        r'(|_md5\.txt|\.tar\.gz))$')
-    BUNDLESET_PLUS_REGEX_I = re.compile(BUNDLESET_PLUS_REGEX.pattern, re.I)
-
-    BUNDLENAME_REGEX       = re.compile(r'^([A-Z][A-Z0-9]{1,5}_(?:[0-9]{4}))$')
-    BUNDLENAME_REGEX_I     = re.compile(BUNDLENAME_REGEX.pattern, re.I)
-    BUNDLENAME_PLUS_REGEX  = re.compile(BUNDLENAME_REGEX.pattern[:-1] +
-                                        r'(|_[a-z]+)(|_md5\.txt|\.tar\.gz)$')
-    BUNDLENAME_PLUS_REGEX_I = re.compile(BUNDLENAME_PLUS_REGEX.pattern, re.I)
-    BUNDLENAME_VERSION     = re.compile(BUNDLENAME_REGEX.pattern[:-1] +
-                                        r'(_v[0-9]+\.[0-9]+\.[0-9]+|'+
-                                        r'_v[0-9]+\.[0-9]+|_v[0-9]+|'+
-                                        r'_in_prep|_prelim|_peer_review|'+
-                                        r'_lien_resolution)$')
-    BUNDLENAME_VERSION_I   = re.compile(BUNDLENAME_VERSION.pattern, re.I)
-
     CATEGORY_REGEX      = re.compile(r'^(|checksums\-)(|archives\-)(\w+)$')
     CATEGORY_REGEX_I    = re.compile(CATEGORY_REGEX.pattern, re.I)
 
@@ -412,6 +388,8 @@ class PdsFile(object):
     OPUS_ID = None
     OPUS_ID_TO_PRIMARY_LOGICAL_PATH = None
 
+    PRODUCT_LBL_BASENAME_WO_EXT = None
+
     OPUS_ID_TO_SUBCLASS = None
 
     FILESPEC_TO_BUNDLESET = None
@@ -497,10 +475,10 @@ class PdsFile(object):
         self.root_        = ''      # Disk path + '/holdings/'
         self.html_root_   = ''      # '/holdings/', '/holdings2/', etc.
 
-        self.category_    = ''      # Always checksums_ + archives_ + voltype_
+        self.category_    = ''      # Always checksums_ + archives_ + bundletype_
         self.checksums_   = ''      # Either 'checksums-' or ''
         self.archives_    = ''      # Either 'archives-' or ''
-        self.voltype_     = ''      # One of 'volumes', 'metadata', etc.
+        self.bundletype_     = ''      # One of 'volumes', 'metadata', etc.
 
         self.bundleset_   = ''      # Bundleset name + suffix + '/'
         self.bundleset    = ''      # Bundleset name, suffix stripped
@@ -556,8 +534,8 @@ class PdsFile(object):
         self._all_version_abspaths  = None
         self._html_path_filled      = None
         self._description_and_icon_filled    = None
-        self._volume_publication_date_filled = None
-        self._volume_version_id_filled       = None
+        self._bundle_publication_date_filled = None
+        self._bundle_version_id_filled       = None
         self._volume_data_set_ids_filled     = None
         self._lid_filled                     = None
         self._lidvid_filled                  = None
@@ -608,7 +586,7 @@ class PdsFile(object):
             this.category_       = self.category_
             this.checksums_      = self.checksums_
             this.archives_       = self.archives_
-            this.voltype_        = self.voltype_
+            this.bundletype_        = self.bundletype_
             this.bundleset_      = self.bundleset_
             this.bundleset       = self.bundleset
             this.suffix          = self.suffix
@@ -1126,7 +1104,7 @@ class PdsFile(object):
         this.category_    = basename.rstrip('/') + '/'
         this.checksums_   = 'checksums-' if 'checksums-' in basename else ''
         this.archives_    = 'archives-'  if 'archives-'  in basename else ''
-        this.voltype_     = basename.split('-')[-1].rstrip('/') + '/'
+        this.bundletype_     = basename.split('-')[-1].rstrip('/') + '/'
 
         this.bundleset_   = ''
         this.bundleset    = ''
@@ -1169,8 +1147,8 @@ class PdsFile(object):
         this._opus_type_filled      = ''
         this._opus_format_filled    = ''
         this._view_options_filled   = (False, False, False)
-        this._volume_publication_date_filled = ''
-        this._volume_version_id_filled       = ''
+        this._bundle_publication_date_filled = ''
+        this._bundle_version_id_filled       = ''
         this._volume_data_set_ids_filled     = ''
         this._lid_filled                     = ''
         this._lidvid_filled                  = ''
@@ -1230,8 +1208,8 @@ class PdsFile(object):
         this._all_version_abspaths  = None
         this._html_path_filled      = None
         this._description_and_icon_filled    = None
-        this._volume_publication_date_filled = self.volume_publication_date
-        this._volume_version_id_filled       = self.volume_version_id
+        this._bundle_publication_date_filled = self.bundle_publication_date
+        this._bundle_version_id_filled       = self.bundle_version_id
         this._volume_data_set_ids_filled     = self.volume_data_set_ids
         this._lid_filled                     = ''
         this._lidvid_filled                  = ''
@@ -1321,13 +1299,14 @@ class PdsFile(object):
             return os.path.exists(abspath)
 
         # Handle index rows
-        if f'{cls.IDX_EXT}/' in abspath:
-            parts = abspath.partition(f'{cls.IDX_EXT}/')
-            if not cls.os_path_exists(parts[0] + cls.IDX_EXT):
-                return False
-            pdsf = cls.from_abspath(parts[0] + cls.IDX_EXT)
-            return (pdsf.exists and
-                    pdsf.child_of_index(parts[2], flag='').exists)
+        for ext in cls.IDX_EXT:
+            if f'{ext}/' in abspath:
+                parts = abspath.partition(f'{ext}/')
+                if not cls.os_path_exists(parts[0] + ext):
+                    return False
+                pdsf = cls.from_abspath(parts[0] + ext)
+                return (pdsf.exists and
+                        pdsf.child_of_index(parts[2], flag='').exists)
 
         # If it's for documentation, we don't create shelf files, we will just use the
         # os.path.exists
@@ -1726,7 +1705,7 @@ class PdsFile(object):
     def is_documents(self):
         """Return True if the file is under documents directory."""
 
-        return self.voltype_ == 'documents/'
+        return self.bundletype_ == 'documents/'
 
     @property
     def filespec(self):
@@ -1866,14 +1845,17 @@ class PdsFile(object):
 
         cls = type(self)
         if self._indexshelf_abspath is None:
-            if self.extension not in (cls.IDX_EXT, cls.IDX_EXT.upper()):
+            if self.extension not in (
+                *cls.IDX_EXT,
+                *tuple(ext.upper() for ext in cls.IDX_EXT)
+            ):
                 self._indexshelf_abspath = ''
             else:
                 abspath = self.abspath
                 abspath = abspath.replace(f'/{cls.PDS_HOLDINGS}/',
                                           f'/{cls.PDS_HOLDINGS}/_indexshelf-')
-                abspath = abspath.replace(cls.IDX_EXT, '.pickle')
-                abspath = abspath.replace(cls.IDX_EXT.upper(), '.pickle')
+                abspath = abspath.replace(self.extension, '.pickle')
+                abspath = abspath.replace(self.extension.upper(), '.pickle')
                 self._indexshelf_abspath = abspath
 
             self._recache()
@@ -1896,9 +1878,10 @@ class PdsFile(object):
                 # This supports the temporary situation where the indexshelf
                 # file is being created.
                 # XXX This is a real hack and should be looked at again later
-                if ('/metadata/' in self.abspath
-                    and self.abspath.lower().endswith(cls.IDX_EXT)):
-                    return True  # this value is not cached
+                if '/metadata/' in self.abspath:
+                    for ext in cls.IDX_EXT:
+                        if self.abspath.lower().endswith(ext):
+                            return True  # this value is not cached
 
                 self._is_index = False
 
@@ -1915,13 +1898,17 @@ class PdsFile(object):
 
         cls = type(self)
         if self._index_pdslabel is None:
-            label_abspath = self.abspath.replace (cls.IDX_EXT, cls.LBL_EXT)
-            label_abspath = label_abspath.replace(cls.IDX_EXT.upper(),
-                                                  cls.LBL_EXT.upper())
-            try:
-              self._index_pdslabel = pdsparser.PdsLabel.from_file(label_abspath)
-            except:
-              self._index_pdslabel = 'failed'
+            for lbl_ext in cls.LBL_EXT:
+                for idx_ext in cls.IDX_EXT:
+                    label_abspath = self.abspath.replace(idx_ext, lbl_ext)
+                    label_abspath = label_abspath.replace(idx_ext.upper(),
+                                                          lbl_ext.upper())
+                    try:
+                        self._index_pdslabel = pdsparser.PdsLabel.from_file(label_abspath)
+                        break
+                    except OSError:
+                        self._index_pdslabel = 'failed'
+                        continue
 
             self._recache()
 
@@ -2208,8 +2195,8 @@ class PdsFile(object):
             # Try lookup with and without voltype
             base_key = base_key.lower()
             keys = (self.logical_path.lower(),)
-            if self.voltype_ != 'documents/':
-                keys += (self.voltype_ + base_key, base_key)
+            if self.bundletype_ != 'documents/':
+                keys += (self.bundletype_ + base_key, base_key)
 
             for key in keys:
                 try:
@@ -2249,13 +2236,13 @@ class PdsFile(object):
             # based on volume type. Example: This changes "Cassini data" to
             # "Previews of Cassini data" for preview data.
             desc_lc = desc.lower()
-            if self.voltype_ == 'calibrated/' and 'calib' not in desc_lc:
+            if self.bundletype_ == 'calibrated/' and 'calib' not in desc_lc:
                 desc = 'Calibrated ' + desc
-            elif self.voltype_ == 'diagrams/' and 'diagram' not in desc_lc:
+            elif self.bundletype_ == 'diagrams/' and 'diagram' not in desc_lc:
                 desc = 'Diagrams for ' + desc
-            elif self.voltype_ == 'previews/' and 'preview' not in desc_lc:
+            elif self.bundletype_ == 'previews/' and 'preview' not in desc_lc:
                 desc = 'Previews of ' + desc
-            elif self.voltype_ == 'metadata/' and 'metadata' not in desc_lc:
+            elif self.bundletype_ == 'metadata/' and 'metadata' not in desc_lc:
                 desc = 'Metadata for ' + desc
 
             # Fill in missing icon types
@@ -2518,7 +2505,7 @@ class PdsFile(object):
         if self.isdir or self.checksums_ or self.archives_:
             self._internal_links_filled = []
 
-        elif self.voltype_ not in ('volumes/', 'calibrated/', 'metadata/'):
+        elif self.bundletype_ not in ('volumes/', 'calibrated/', 'metadata/'):
             self._internal_links_filled = []
 
         # Otherwise, look up the info in the shelf file
@@ -2549,7 +2536,7 @@ class PdsFile(object):
                     self._internal_links_filled = []
 
             else:
-                volume_path_ = self.volume_abspath() + '/'
+                volume_path_ = self.bundle_abspath() + '/'
 
                 # A string value means that this is actually the abspath of this
                 # file's external PDS label
@@ -2574,7 +2561,7 @@ class PdsFile(object):
                         abspath = abspath_for_logical_path(self.category_ +
                                                            internal_path[6:], cls)
                       elif internal_path.startswith('../'):
-                        abspath = (self.volset_abspath() + internal_path[2:])
+                        abspath = (self.bundleset_abspath() + internal_path[2:])
                       else:
                         abspath = volume_path_ + internal_path
                       new_list.append((recno, basename, abspath))
@@ -2629,12 +2616,17 @@ class PdsFile(object):
             return ''
 
         # Take a first guess at the label filename; PDS3 only!
+        uppercase_lbl_ext = [ext.upper() for ext in cls.LBL_EXT]
         if self.extension.isupper():
-            ext_guesses = (cls.LBL_EXT.upper(), cls.LBL_EXT)
+            ext_guesses = (*uppercase_lbl_ext, *cls.LBL_EXT)
         else:
-            ext_guesses = (cls.LBL_EXT, cls.LBL_EXT.upper())
+            ext_guesses = (*cls.LBL_EXT, *uppercase_lbl_ext)
 
-        rootname = self.basename[:-len(self.extension)]
+        if (self.PRODUCT_LBL_BASENAME_WO_EXT is not None and
+            self.PRODUCT_LBL_BASENAME_WO_EXT.first(self.basename)):
+            rootname = self.PRODUCT_LBL_BASENAME_WO_EXT.first(self.basename)
+        else:
+            rootname = self.basename[:-len(self.extension)]
         test_basenames = [rootname + ext for ext in ext_guesses]
 
         # If one of the guessed files exist, it's the label
@@ -2807,11 +2799,11 @@ class PdsFile(object):
         return self._iconset_filled[0]
 
     @property
-    def volume_publication_date(self):
-        """Return the publication date for this volume as a formatted string."""
+    def bundle_publication_date(self):
+        """Return the publication date for this bundle as a formatted string."""
 
-        if self._volume_publication_date_filled is not None:
-            return self._volume_publication_date_filled
+        if self._bundle_publication_date_filled is not None:
+            return self._bundle_publication_date_filled
 
         date = self._volume_info[3]
         if date is None:
@@ -2819,13 +2811,13 @@ class PdsFile(object):
 
         if date == '':
             try:
-                date = self.volume_pdsfile().date[:10]
+                date = self.bundle_pdsfile().date[:10]
             except (ValueError, AttributeError):
                 pass
 
         if date == '':
             try:
-                date = self.volset_pdsfile().date[:10]
+                date = self.bundleset_pdsfile().date[:10]
             except (ValueError, AttributeError):
                 pass
 
@@ -2835,24 +2827,24 @@ class PdsFile(object):
             except (ValueError, AttributeError):
                 pass
 
-        self._volume_publication_date_filled = date
+        self._bundle_publication_date_filled = date
 
         self._recache()
-        return self._volume_publication_date_filled
+        return self._bundle_publication_date_filled
 
     @property
-    def volume_version_id(self):
-        """Return version ID of this volume."""
+    def bundle_version_id(self):
+        """Return version ID of this bundle."""
 
-        if self._volume_version_id_filled is None:
+        if self._bundle_version_id_filled is None:
             if self._volume_info[2] is None:
-                self._volume_version_id_filled = ''
+                self._bundle_version_id_filled = ''
             else:
-                self._volume_version_id_filled = self._volume_info[2]
+                self._bundle_version_id_filled = self._volume_info[2]
 
             self._recache()
 
-        return self._volume_version_id_filled
+        return self._bundle_version_id_filled
 
     @property
     def volume_data_set_ids(self):
@@ -3044,7 +3036,7 @@ class PdsFile(object):
         """
 
         version_id = ''
-        if suffix == '':
+        if suffix == '' or suffix is None:
             version_message = 'Current version'
             version_rank = 999999
         elif suffix == '_in_prep':
@@ -3231,8 +3223,8 @@ class PdsFile(object):
     # Utilities
     ############################################################################
 
-    def volume_pdsfile(self, category=None, rank=None):
-        """Return PdsFile object for the root volume file or directory associated with
+    def bundle_pdsfile(self, category=None, rank=None):
+        """Return PdsFile object for the root bundle file or directory associated with
         this or another category and this or another version. It returns None if the file
         does not exist.
 
@@ -3243,7 +3235,7 @@ class PdsFile(object):
 
         cls = type(self)
 
-        abspath = self.volume_abspath(category)
+        abspath = self.bundle_abspath(category)
         if abspath and cls.os_path_exists(abspath):
             pdsf = cls.from_abspath(abspath)
         else:
@@ -3257,8 +3249,8 @@ class PdsFile(object):
 
         return pdsf
 
-    def volset_pdsfile(self, category=None, rank=None):
-        """Return PdsFile object for the root volume set for this or another category
+    def bundleset_pdsfile(self, category=None, rank=None):
+        """Return PdsFile object for the root bundle set for this or another category
         and this or another version. It returns None if the file does not exist.
 
         Keyword arguments:
@@ -3268,7 +3260,7 @@ class PdsFile(object):
 
         cls = type(self)
 
-        abspath = self.volset_abspath(category)
+        abspath = self.bundleset_abspath(category)
         if abspath and cls.os_path_exists(abspath):
             pdsf = cls.from_abspath(abspath)
         else:
@@ -3323,7 +3315,7 @@ class PdsFile(object):
         """Return True if this is a category-level directory (i.e., above bundleset)."""
         return (self.bundleset == '')
 
-    def volume_abspath(self, category=None):
+    def bundle_abspath(self, category=None):
         """Return the absolute path to the volume file or directory associated with this
         object. It can be in this category or another. If the category's voltype is the
         same as that of self, the returned abspath will have the same version rank;
@@ -3346,7 +3338,7 @@ class PdsFile(object):
         if len(parts) == 3:         # if checksums-archives-something
             return ''
 
-        if parts[-1] == self.voltype_:
+        if parts[-1] == self.bundletype_:
             suffix = self.suffix    # if voltype is unchanged, keep the version
         else:
             suffix = ''             # otherwise, use the most recent version
@@ -3368,7 +3360,7 @@ class PdsFile(object):
         return (self.root_ + category_ + self.bundleset + suffix + '/' +
                 self.bundlename + insert + ext)
 
-    def volset_abspath(self, category=None):
+    def bundleset_abspath(self, category=None):
         """Return the absolute path to a volset file or directory associated with this
         object. It can be in this category or another. If the category's voltype is the
         same as that of self, the returned abspath will have the same version rank;
@@ -3389,7 +3381,7 @@ class PdsFile(object):
 
         parts = category_.split('-')
 
-        if parts[-1] == self.voltype_:
+        if parts[-1] == self.bundletype_:
             suffix = self.suffix    # if voltype is unchanged, keep this version
         else:
             suffix = ''             # otherwise, use the most recent version
@@ -3660,13 +3652,13 @@ class PdsFile(object):
 
                 this.bundleset_ = basename + '/'
                 this.bundleset  = matchobj.group(1)
-                this.suffix  = matchobj.group(2)
+                this.suffix  = '' if matchobj.group(2) is None else matchobj.group(2)
 
-                if matchobj.group(3):
+                if len(matchobj.groups()) > 2 and matchobj.group(3):
                     this.bundleset_ = ''
                     this.interior = basename
                     parts = this.suffix.split('_')
-                    if parts[-1] == this.voltype_[:-1]:
+                    if parts[-1] == this.bundletype_[:-1]:
                         this.suffix = '_'.join(parts[:-1])
 
                 (this.version_rank,
@@ -3703,15 +3695,16 @@ class PdsFile(object):
                 if fix_case:
                     this.checksums_ = matchobj.group(1).lower()
                     this.archives_  = matchobj.group(2).lower()
-                    this.voltype_   = matchobj.group(3).lower() + '/'
+                    this.bundletype_   = matchobj.group(3).lower() + '/'
                 else:
                     this.checksums_ = matchobj.group(1)
                     this.archives_  = matchobj.group(2)
-                    this.voltype_   = matchobj.group(3) + '/'
+                    this.bundletype_   = matchobj.group(3) + '/'
 
-                if this.voltype_[:-1] not in cls.VOLTYPES:
-                    raise ValueError('Unrecognized volume type "%s": %s' %
-                                     (this.voltype_[:-1], this.logical_path))
+                if this.bundletype_[:-1] not in cls.VOLTYPES:
+                    raise ValueError('Unrecognized volume/bundle ' +
+                                     f'type "{this.bundletype_[:-1]}": ' +
+                                     f'{this.logical_path}')
 
                 return this._complete(must_exist, caching, lifetime)
 
@@ -4071,7 +4064,7 @@ class PdsFile(object):
             # If the pseudo-path starts with "volumes/", "diagrams/", etc., this
             # is the volume type
             elif part in cls.VOLTYPES:
-                this.voltype_ = part + '/'
+                this.bundletype_ = part + '/'
 
             # If the pseudo-path starts with "v1", "v1.1", "peer_review", etc.,
             # this is the version suffix; otherwise, this is something else
@@ -4107,7 +4100,7 @@ class PdsFile(object):
             # If the pseudo-path starts with "volumes/", "diagrams/", etc., this
             # is the volume type
             elif part in cls.VOLTYPES:
-                this.voltype_ = part + '/'
+                this.bundletype_ = part + '/'
 
             # If the pseudo-path starts with "v1", "v1.1", "peer_review", etc.,
             # this is the version suffix; otherwise, this is something else
@@ -4131,8 +4124,9 @@ class PdsFile(object):
             if matchobj:
                 subparts = matchobj.group(1).partition('_')
                 this.bundleset = subparts[0].upper() + '_' + subparts[2].lower()
-                suffix    = matchobj.group(2).lower()
-                extension = (matchobj.group(3) + matchobj.group(4)).lower()
+                suffix    = matchobj.group(2).lower() if matchobj.group(2) else ''
+                extension = ((matchobj.group(3) + matchobj.group(4)).lower()
+                             if len(matchobj.groups()) > 2 else '')
 
                 # <bundleset>...tar.gz must be an archive file
                 if extension.endswith('.tar.gz'):
@@ -4145,7 +4139,7 @@ class PdsFile(object):
                 # <bundleset>_diagrams... must be in the diagrams tree, etc.
                 for test_type in cls.VOLTYPES:
                     if extension[1:].startswith(test_type):
-                        this.voltype_ = test_type + '/'
+                        this.bundletype_ = test_type + '/'
                         break
 
                 # An explicit suffix here overrides any other; don't change an
@@ -4169,7 +4163,7 @@ class PdsFile(object):
 
                 # If there is a matched extension
                 # if matchobj.group(2) and matchobj.group(3):
-                if matchobj.group(3):
+                if len(matchobj.groups()) > 2 and matchobj.group(3):
                     this.basename = matchobj.group(0).replace('.targz', '.tar.gz')
                     extension = (matchobj.group(2) + matchobj.group(3)).lower()
 
@@ -4184,7 +4178,7 @@ class PdsFile(object):
                     # <bundlename>_diagrams... must be in the diagrams tree, etc.
                     for test_type in cls.VOLTYPES:
                         if extension[1:].startswith(test_type):
-                            this.voltype_ = test_type + '/'
+                            this.bundletype_ = test_type + '/'
                             break
 
                 # Pop the first entry from the pseudo-path and try again
@@ -4206,11 +4200,11 @@ class PdsFile(object):
 
         # If the voltype is missing, it must be "volumes" (for PDS3). For PDS4, it's
         # "bundles"
-        if this.voltype_ == '':
-            # this.voltype_ = 'volumes/'
-            this.voltype_ = cls.BUNDLE_DIR_NAME + '/'
+        if this.bundletype_ == '':
+            # this.bundletype_ = 'volumes/'
+            this.bundletype_ = cls.BUNDLE_DIR_NAME + '/'
 
-        this.category_ = this.checksums_ + this.archives_ + this.voltype_
+        this.category_ = this.checksums_ + this.archives_ + this.bundletype_
 
         # If a bundle name was found, try to find the absolute path
         if this.bundlename:
@@ -4605,7 +4599,7 @@ class PdsFile(object):
             if not filespec_key:
                 return ''
 
-            parts = [self.volset_abspath('volumes')]
+            parts = [self.bundleset_abspath('volumes')]
             if volume_key:
                 parts.append(row_dict[volume_key].strip('/'))
             if path_key:
@@ -4773,15 +4767,57 @@ class PdsFile(object):
                 for abspath in these_abspaths:
                     opus_type_for_abspath[abspath] = opus_type
 
-            abspaths += these_abspaths
+            for path in these_abspaths:
+                abspaths.append((path, cls))
+
+        # Handle cross pds products
+        cross_pds_products_patterns = self.CROSS_PDS3_PDS4_PRODUCTS.all(self.logical_path)
+        new_root = ''
+        other_pds_cls = None
+
+        direct_pds_subclasses = PdsFile.__subclasses__()
+        family_cls = cls if cls in direct_pds_subclasses else cls.__base__
+        sibling_cls_list = [sub_cls for sub_cls in direct_pds_subclasses
+                            if sub_cls is not family_cls]
+
+        # Get the proper root directory name for corss pds products
+        for sub_cls in sibling_cls_list:
+            if sub_cls.LOCAL_PRELOADED:
+                new_root = f'{sub_cls.LOCAL_PRELOADED[0]}/'
+            else:
+                new_root = self.root_.replace(cls.PDS_HOLDINGS, sub_cls.PDS_HOLDINGS)
+            other_pds_cls = sub_cls
+            break
+
+        if other_pds_cls is None:
+            cross_pds_products_patterns = []
+
+        # Append the cross pds products
+        tmp_abspaths = []
+        for pattern in cross_pds_products_patterns:
+            pattern = new_root + pattern
+            these_abspaths = other_pds_cls.glob_glob(pattern,
+                                                     force_case_sensitive=True)
+
+            for path in these_abspaths:
+                tmp_abspaths.append((path, other_pds_cls))
+
+        is_all_idx = True
+        for path in tmp_abspaths:
+            if '_index' not in path[0]:
+                is_all_idx = False
+                break
+        # Don't include reproj index if there is no reproj files
+        if not is_all_idx:
+            abspaths += tmp_abspaths
 
         # Get PdsFiles for abspaths, organized by labels vs. datafiles
         # label_files[label_abspath] = [label_pdsfile, fmt1_pdsfile, ...]
         # data_files is a list
         label_pdsfiles = {}
         data_pdsfiles = []
-        for abspath in abspaths:
-            pdsf = cls.from_abspath(abspath)
+        for (abspath, pds_class) in abspaths:
+            pdsf = pds_class.from_abspath(abspath)
             if pdsf.islabel:
                 # Check if the corresponding link info exists. If not, we issue
                 # a warning and skip looking for the .fmt files.
@@ -4797,7 +4833,7 @@ class PdsFile(object):
                     links = set(pdsf.linked_abspaths)
                     fmts = [f for f in links if f.lower().endswith('.fmt')]
                     fmts.sort()
-                    fmt_pdsfiles = cls.pdsfiles_for_abspaths(fmts,
+                    fmt_pdsfiles = pds_class.pdsfiles_for_abspaths(fmts,
                                                              must_exist=True)
                 label_pdsfiles[abspath] = [pdsf] + fmt_pdsfiles
             else:
@@ -4813,11 +4849,18 @@ class PdsFile(object):
             if key not in pdsfile_dict:
                 pdsfile_dict[key] = []
 
-            # avoid duplicated label files in one opus type category
-            if pdsf.label_abspath and pdsf.label_abspath not in label_visited[key]:
-                label_visited[key].append(pdsf.label_abspath)
-                sublist = [pdsf] + label_pdsfiles[pdsf.label_abspath]
-            else:
+            # The try and except here is to bypass the error raised by missing link shelf
+            # in internal_link_info when SHELVES_REQUIRED is set to True. In current opus
+            # import for pds4, we don't have link shelf files, so the opus_prodcuts call
+            # there will raise an error if we don't bypass it.
+            try:
+                # avoid duplicated label files in one opus type category
+                if pdsf.label_abspath and pdsf.label_abspath not in label_visited[key]:
+                    label_visited[key].append(pdsf.label_abspath)
+                    sublist = [pdsf] + label_pdsfiles[pdsf.label_abspath]
+                else:
+                    sublist = [pdsf]
+            except (IOError, KeyError, ValueError):
                 sublist = [pdsf]
 
             pdsfile_dict[key].append(sublist)
@@ -4866,10 +4909,10 @@ class PdsFile(object):
             raise ValueError('No checksums of checksum files: ' +
                              self.logical_path)
 
-        if self.voltype_ == 'volumes/':
+        if self.bundletype_ == 'volumes/' or self.bundletype_ == 'bundles/':
             suffix = ''
         else:
-            suffix = '_' + self.voltype_[:-1]
+            suffix = '_' + self.bundletype_[:-1]
 
         if self.archives_:
             abspath = ''.join([self.root_, 'checksums-', self.category_,
@@ -4882,6 +4925,15 @@ class PdsFile(object):
             lskip = (len(self.root_) + len('checksums_') + len(self.category_) +
                      len(self.bundleset_))
 
+        # for non bundle directories under a bundleset
+        elif (self.basename.startswith('checksums_') or
+              self.basename.startswith('superseded') or
+              self.basename.endswith('_support')):
+
+            abspath = ''.join([self.root_, 'checksums-', self.category_,
+                               self.bundleset_, self.basename, suffix, '_md5.txt'])
+            lskip = (len(self.root_) + len('checksums_') + len(self.category_) +
+                     len(self.bundleset_))
         else:
             raise ValueError('Missing volume name for checksum file: ' +
                              self.logical_path)
@@ -4917,14 +4969,13 @@ class PdsFile(object):
         """
 
         if self.archives_:
-            dirpath = ''.join([self.root_, self.archives_, self.voltype_,
-                               self.bundleset, self.suffix])
-            prefix_ = ''.join([self.root_, self.archives_, self.voltype_,
-                               self.bundleset, self.suffix, '/'])
+            dirpath = (f'{self.root_}{self.archives_}{self.bundletype_}' +
+                       f'{self.bundleset}{self.suffix}')
+            prefix_ = f'{dirpath}/'
         else:
-            dirpath = ''.join([self.root_, self.archives_, self.voltype_,
-                               self.bundleset_, self.bundlename])
-            prefix_ = ''.join([self.root_, self.voltype_, self.bundleset_])
+            dirpath = (f'{self.root_}{self.archives_}{self.bundletype_}' +
+                       f'{self.bundleset_}{self.bundlename}')
+            prefix_ = f'{self.root_}{self.bundletype_}{self.bundleset_}'
 
         return (dirpath, prefix_)
 
@@ -4946,10 +4997,10 @@ class PdsFile(object):
             raise ValueError('No archives for archive files: ' +
                              self.logical_path)
 
-        if self.voltype_ == 'volumes/':
+        if self.bundletype_ == 'volumes/' or self.bundletype_ == 'bundles/':
             suffix = ''
         else:
-            suffix = '_' + self.voltype_[:-1]
+            suffix = '_' + self.bundletype_[:-1]
 
         if not self.bundlename:
             raise ValueError('Archives require bundle names: ' +
@@ -4987,10 +5038,8 @@ class PdsFile(object):
     def dirpath_and_prefix_for_archive(self):
         """Return the absolute path to the directory associated with this archive path."""
 
-        dirpath = ''.join([self.root_, self.voltype_,
-                           self.bundleset_, self.bundlename])
-
-        parent = ''.join([self.root_, self.voltype_, self.bundleset_])
+        dirpath = f'{self.root_}{self.bundletype_}{self.bundleset_}{self.bundlename}'
+        parent  = f'{self.root_}{self.bundletype_}{self.bundleset_}'
 
         return (dirpath, parent)
 
@@ -5005,7 +5054,7 @@ class PdsFile(object):
         this.checksums_ = ''
         if this.archives_ == 'archives-':
             this.archives_ = ''
-            this.category_ = this.voltype_
+            this.category_ = this.bundletype_
 
         return this.log_path_for_bundle('_targz', task=task, dir='archives')
 
@@ -5052,14 +5101,20 @@ class PdsFile(object):
                      len(self.bundleset_))
 
         else:
-            if not self.bundlename_ and not bundlename:
-                raise ValueError('Non-archive shelves require bundle names: ' +
-                                 self.logical_path)
-
             if bundlename:
                 this_bundlename = bundlename.rstrip('/')
             else:
                 this_bundlename = self.bundlename
+
+            if not self.bundlename_ and not bundlename:
+                # for non-bundle directories under a bundleset
+                if (self.basename.startswith('checksums_') or
+                    self.basename.startswith('superseded') or
+                    self.basename.endswith('_support')):
+                    this_bundlename = self.basename
+                else:
+                    raise ValueError('Non-archive shelves require bundle names: ' +
+                                     self.logical_path)
 
             abspath = ''.join([self.root_, dir_prefix,
                                self.category_, self.bundleset_, this_bundlename,
@@ -5484,8 +5539,12 @@ class PdsFile(object):
         # Special case: bundleset[_...], bundleset[_...]_md5.txt, bundleset[_...].tar.gz
         matchobj = cls.BUNDLESET_PLUS_REGEX.match(basename)
         if matchobj is not None:
-            return (matchobj.group(1), matchobj.group(2) + matchobj.group(3),
-                    matchobj.group(4))
+            # For PDS4, we capture bundle set + version, so two groups
+            if len(matchobj.groups()) == 2:
+                return (matchobj.group(1), matchobj.group(2), '')
+            else:
+                return (matchobj.group(1), matchobj.group(2) + matchobj.group(3),
+                        matchobj.group(4))
 
         # Special case: bundlename[_...]_md5.txt, bundlename[_...].tar.gz
         matchobj = cls.BUNDLENAME_PLUS_REGEX.match(basename)
@@ -5493,7 +5552,11 @@ class PdsFile(object):
             test = self.SPLIT_RULES.first(basename) # a split rule overrides
                                                     # the default behavior
             if test == basename:
-                return (matchobj.group(1), matchobj.group(2), matchobj.group(3))
+                # For PDS4, we capture bundle name + version, so two groups
+                if len(matchobj.groups()) == 2:
+                    return (matchobj.group(1), matchobj.group(2), '')
+                else:
+                    return (matchobj.group(1), matchobj.group(2), matchobj.group(3))
             else:
                 return test
 
@@ -5508,7 +5571,8 @@ class PdsFile(object):
         """
 
         cls = type(self)
-        return (len(basename) > 4) and (basename[-4:].lower() == cls.LBL_EXT)
+        _, _, lbl_ext = basename.rpartition('.')
+        return (len(basename) > 4) and (f'.{lbl_ext}'.lower() in cls.LBL_EXT)
 
     def basename_is_viewable(self, basename=None):
         """Return True if this basename is viewable. Override if viewable files can
@@ -5553,10 +5617,16 @@ class PdsFile(object):
             matchobj = cls.BUNDLESET_PLUS_REGEX_I.match(basename)
             if matchobj is not None:
                 splits = matchobj.groups()
-                parts = [splits[0],
-                         -cls.version_info(splits[1])[0],
-                         matchobj.group(2),
-                         matchobj.group(3)]
+                # For PDS4, we capture bundle set + version, so two groups
+                if len(splits) == 2:
+                    parts = [splits[0], -cls.version_info(splits[1])[0], '', '']
+                else:
+                    parts = [
+                        splits[0],
+                        -cls.version_info(splits[1])[0],
+                        matchobj.group(2),
+                        matchobj.group(3)
+                    ]
             else:
                 # Otherwise, the sort is based on split_basename()
                 modified = self.SORT_KEY.first(basename)
@@ -6001,35 +6071,36 @@ class PdsFile(object):
         for pattern in patterns:
 
             # Handle an index row by separating the filepath from the suffix
-            if f'{cls.IDX_EXT}/' in pattern:
-                parts = pattern.rpartition(cls.IDX_EXT)
-                pattern = parts[0] + parts[1]
-                suffix = parts[2][1:]
-            else:
-                suffix = ''
+            for ext in cls.IDX_EXT:
+                if f'{ext}/' in pattern:
+                    parts = pattern.rpartition(ext)
+                    pattern = parts[0] + parts[1]
+                    suffix = parts[2][1:]
+                else:
+                    suffix = ''
 
-            # Find the file(s) that match the pattern
-            if not must_exist and not _needs_glob(pattern):
-                test_abspaths = [pattern]
-            else:
-                test_abspaths = cls.glob_glob(pattern, force_case_sensitive=True)
-            # With a suffix, make sure it matches a row of the index
-            if suffix:
-                filtered_abspaths = []
-                for abspath in test_abspaths:
-                    try:
-                        parent = cls.from_abspath(abspath)
-                        pdsf = parent.child_of_index(suffix)
-                        filtered_abspaths.append(pdsf.abspath)
-                    except (KeyError, IOError):
-                        pass
+                # Find the file(s) that match the pattern
+                if not must_exist and not _needs_glob(pattern):
+                    test_abspaths = [pattern]
+                else:
+                    test_abspaths = cls.glob_glob(pattern, force_case_sensitive=True)
+                # With a suffix, make sure it matches a row of the index
+                if suffix:
+                    filtered_abspaths = []
+                    for abspath in test_abspaths:
+                        try:
+                            parent = cls.from_abspath(abspath)
+                            pdsf = parent.child_of_index(suffix)
+                            filtered_abspaths.append(pdsf.abspath)
+                        except (KeyError, IOError):
+                            pass
 
-                test_abspaths = filtered_abspaths
+                    test_abspaths = filtered_abspaths
 
-            abspaths += test_abspaths
+                abspaths += test_abspaths
 
         # Include any labels and targets
-        if category == self.voltype_[:-1]:
+        if category == self.bundletype_[:-1]:
             label_basename = self.label_basename
             if label_basename:
                 parent_abspath = os.path.split(self.abspath)[0]
@@ -6037,7 +6108,12 @@ class PdsFile(object):
                 if label_abspath not in abspaths:
                     abspaths.append(label_abspath)
 
-            abspaths += self.data_abspaths
+            if must_exist:
+                for path in self.data_abspaths:
+                    if cls.os_path_exists(path):
+                        abspaths.append(path)
+            else:
+                abspaths += self.data_abspaths
 
         # Remove duplicates
         abspaths = [p for (k,p) in enumerate(abspaths) if p not in abspaths[:k]]
@@ -6100,7 +6176,7 @@ class PdsFile(object):
         # Interpret the category
         if category is None:
             category = self.category_[:-1]
-            voltype = self.voltype_[:-1]
+            voltype = self.bundletype_[:-1]
         else:
             category = category.rstrip('/')
             voltype = category.rpartition('-')[-1]
@@ -6113,7 +6189,7 @@ class PdsFile(object):
             return cls.from_logical_path(category)
 
         # Handle a change in voltype
-        if voltype != self.voltype_[:-1]:
+        if voltype != self.bundletype_[:-1]:
 
             # Rank "latest" works; "previous" and "next" do not
             if rank == 'latest':
@@ -6138,7 +6214,7 @@ class PdsFile(object):
         if isinstance(rank, str):
             rankstr = rank
 
-            if voltype != self.voltype_[:-1]:
+            if voltype != self.bundletype_[:-1]:
                 raise ValueError(f'rank "{rank}" not supported')
 
             this_rank = self.version_rank
@@ -6165,7 +6241,7 @@ class PdsFile(object):
 
         # Handle a bundleset-level parallel
         if not self.bundlename:
-            parallel = self.volset_pdsfile(category, rank)
+            parallel = self.bundleset_pdsfile(category, rank)
             return _cache_and_return(parallel)
 
         # If category is unchanged, use all_versions() instead
@@ -6175,13 +6251,13 @@ class PdsFile(object):
             return _cache_and_return(self.all_versions().get(rank,None))
 
         # Prepare for parallel volume tree comparion
-        old_root = self.volume_pdsfile()
-        new_root = self.volume_pdsfile(category, rank)
+        old_root = self.bundle_pdsfile()
+        new_root = self.bundle_pdsfile(category, rank)
 
         if not new_root:
             # If there's no volume-level match, try the volset-leve match
             # This happens for category = 'checksums-archives-whatever'
-            return _cache_and_return(self.volset_pdsfile(category, rank))
+            return _cache_and_return(self.bundleset_pdsfile(category, rank))
 
         if new_root.abspath == old_root.abspath:
             return _cache_and_return(self)

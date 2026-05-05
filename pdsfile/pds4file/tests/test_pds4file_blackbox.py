@@ -12,6 +12,14 @@ from .helper import (PDS4_BUNDLES_DIR,
                      instantiate_target_pdsfile)
 PDS4_HOLDINGS_NAME = 'pds4-holdings'
 
+
+class _DummyTranslator:
+    def __init__(self, mapping=None):
+        self.mapping = mapping or {}
+
+    def all(self, key):
+        return self.mapping.get(key, [])
+
 ##########################################################################################
 # Blackbox tests for pds4file.py
 ##########################################################################################
@@ -49,6 +57,11 @@ class TestPds4FileBlackBox:
             #  'co-vims-v1308947009_002'),
             # ('cassini_vims/cassini_vims_cruise/browse_raw/130xxxxxxx/13089xxxxx/1308947715-full.png',
             #  'co-vims-v1308947715'),
+            # cassini_iss_fring_mosaics_rsfrench2025
+            ('cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/data_mosaic/iss_006ri_lphrlfmov001_prime/iss_006ri_lphrlfmov001_prime_mosaic.lblx',
+             'co-iss-fring-mosaic-iss_006ri_lphrlfmov001_prime'),
+            ('cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/data_mosaic/iosic_276rb_complitb4001_si/iosic_276rb_complitb4001_si_mosaic.lblx',
+             'co-iss-fring-mosaic-iosic_276rb_complitb4001_si'),
             # cassini_uvis_solarocc_beckerjarmak2023
             ('cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023/data/uvis_euv_2005_159_solar_time_series_ingress.tab',
              'co-uvis-occ-2005-159-sun-i'),
@@ -388,6 +401,65 @@ class TestPds4FileBlackBox:
         res = target_pdsfile.bundleset
         assert res == expected
 
+    def test_archive_paths_returns_rooted_archives(self):
+        dummy = pds4file.Pds4File.__new__(pds4file.Pds4File)
+        dummy.root_ = '/mock/root/'
+        dummy.logical_path = 'bundles/sample/path'
+        dummy.ARCHIVE_PATHS = _DummyTranslator({
+            'bundles/sample/path': [
+                'archives/foo.tar.gz',
+                'archives/bar.tar.gz',
+            ],
+        })
+
+        result = dummy.archive_paths()
+
+        assert result == [
+            '/mock/root/archives/foo.tar.gz',
+            '/mock/root/archives/bar.tar.gz',
+        ]
+
+    def test_archive_dirs_maps_archives_to_existing_dirs(self):
+        dummy = pds4file.Pds4File.__new__(pds4file.Pds4File)
+        dummy.root_ = '/mock/root/'
+        dummy.logical_path = 'bundles/sample/path'
+        dummy.ARCHIVE_PATHS = _DummyTranslator({
+            'bundles/sample/path': [
+                'archives/foo.tar.gz',
+                'archives/bar.tar.gz',
+            ],
+        })
+        dummy.ARCHIVE_DIRS = _DummyTranslator({
+            '/mock/root/archives/foo.tar.gz': [
+                'bundles/sample/data/*',
+                'bundles/sample/docs/*',
+            ],
+            '/mock/root/archives/bar.tar.gz': [],
+        })
+        fake_glob_results = {
+            '/mock/root/bundles/sample/data/*': [
+                '/mock/root/bundles/sample/data/a',
+                '/mock/root/bundles/sample/data/b',
+            ],
+            '/mock/root/bundles/sample/docs/*': [
+                '/mock/root/bundles/sample/docs/readme',
+            ],
+        }
+        dummy.glob_glob = lambda pattern, force_case_sensitive=True: (
+            fake_glob_results.get(pattern, [])
+        )
+
+        result = dummy.archive_dirs()
+
+        assert result == {
+            '/mock/root/archives/foo.tar.gz': [
+                '/mock/root/bundles/sample/data/a',
+                '/mock/root/bundles/sample/data/b',
+                '/mock/root/bundles/sample/docs/readme',
+            ],
+            '/mock/root/archives/bar.tar.gz': [],
+        }
+
 
     @pytest.mark.parametrize(
         'input_path,expected',
@@ -571,6 +643,26 @@ class TestPds4FileBlackBox:
             #      f'/{PDS4_HOLDINGS_NAME}/previews/cassini_vims/cassini_vims_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947079_xxx/1308947079_003_thumb.png',
             #  ]
             # ),
+            # cassini_iss_fring_mosaics_rsfrench2025
+            # using .png files under browse_mosaic_bkg_sub
+            (
+                'cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/data_mosaic/iss_006ri_lphrlfmov001_prime/iss_006ri_lphrlfmov001_prime_mosaic.lblx',
+                [
+                    f'/{PDS4_HOLDINGS_NAME}/bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_mosaic_bkg_sub/iss_006ri_lphrlfmov001_prime/iss_006ri_lphrlfmov001_prime_browse_mosaic_bkg_sub_full.png',
+                    f'/{PDS4_HOLDINGS_NAME}/bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_mosaic_bkg_sub/iss_006ri_lphrlfmov001_prime/iss_006ri_lphrlfmov001_prime_browse_mosaic_bkg_sub_med.png',
+                    f'/{PDS4_HOLDINGS_NAME}/bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_mosaic_bkg_sub/iss_006ri_lphrlfmov001_prime/iss_006ri_lphrlfmov001_prime_browse_mosaic_bkg_sub_small.png',
+                    f'/{PDS4_HOLDINGS_NAME}/bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_mosaic_bkg_sub/iss_006ri_lphrlfmov001_prime/iss_006ri_lphrlfmov001_prime_browse_mosaic_bkg_sub_thumb.png'
+                ]
+            ),
+            (
+                'cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/data_mosaic/iosic_276rb_complitb4001_si/iosic_276rb_complitb4001_si_mosaic.lblx',
+                [
+                    f'/{PDS4_HOLDINGS_NAME}/bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_mosaic_bkg_sub/iosic_276rb_complitb4001_si/iosic_276rb_complitb4001_si_browse_mosaic_bkg_sub_full.png',
+                    f'/{PDS4_HOLDINGS_NAME}/bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_mosaic_bkg_sub/iosic_276rb_complitb4001_si/iosic_276rb_complitb4001_si_browse_mosaic_bkg_sub_med.png',
+                    f'/{PDS4_HOLDINGS_NAME}/bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_mosaic_bkg_sub/iosic_276rb_complitb4001_si/iosic_276rb_complitb4001_si_browse_mosaic_bkg_sub_small.png',
+                    f'/{PDS4_HOLDINGS_NAME}/bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_mosaic_bkg_sub/iosic_276rb_complitb4001_si/iosic_276rb_complitb4001_si_browse_mosaic_bkg_sub_thumb.png'
+                ]
+            ),
             # cassini_uvis_solarocc_beckerjarmak2023
             (
                 'cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023/data/uvis_euv_2005_159_solar_time_series_ingress.xml',
@@ -634,6 +726,12 @@ class TestPds4FileBlackBox:
         ]
     )
     def test_viewset(self, input_path, expected):
+        # TODO: When cassini_iss_fring_mosaics_rsfrench2025 bundle is available in
+        # test holdings, remove this skip and enable viewset cases for that bundle.
+        if 'cassini_iss_fring_mosaics_rsfrench2025' in input_path:
+            pytest.skip(
+                'cassini_iss_fring_mosaics_rsfrench2025 viewset tests skipped'
+            )
         target_pdsfile = instantiate_target_pdsfile(input_path)
         res = target_pdsfile.viewset
         if res != False:
@@ -648,6 +746,96 @@ class TestPds4FileBlackBox:
     @pytest.mark.parametrize(
     'input_path,expected',
     [
+        # cassini_iss_fring_mosaics_rsfrench2025
+        (
+            'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/data_mosaic/iss_006ri_lphrlfmov001_prime/iss_006ri_lphrlfmov001_prime_mosaic.lblx',
+            'coiss_f_ring_mosaic'
+        ),
+        (
+            'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/data_mosaic/iss_006ri_lphrlfmov001_prime/iss_006ri_lphrlfmov001_prime_mosaic_metadata_src_imgs.tab',
+            'coiss_f_ring_mosaic_metadata'
+        ),
+        (
+            'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/data_mosaic_bkg_sub/iss_006ri_lphrlfmov001_prime/iss_006ri_lphrlfmov001_prime_mosaic_bkg_sub.lblx',
+            'coiss_f_ring_mosaic_bkg_sub'
+        ),
+        (
+            'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/data_mosaic_bkg_sub/iss_006ri_lphrlfmov001_prime/iss_006ri_lphrlfmov001_prime_mosaic_bkg_sub_metadata_src_imgs.tab',
+            'coiss_f_ring_mosaic_bkg_sub_metadata'
+        ),
+        (
+            'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_mosaic/iss_006ri_lphrlfmov001_prime/iss_006ri_lphrlfmov001_prime_browse_mosaic_full.png',
+            'coiss_f_ring_mosaic_browse_full'
+        ),
+        (
+            'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_mosaic/iss_006ri_lphrlfmov001_prime/iss_006ri_lphrlfmov001_prime_browse_mosaic_med.png',
+            'coiss_f_ring_mosaic_browse_med'
+        ),
+        (
+            'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_mosaic/iss_006ri_lphrlfmov001_prime/iss_006ri_lphrlfmov001_prime_browse_mosaic_small.png',
+            'coiss_f_ring_mosaic_browse_small'
+        ),
+        (
+            'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_mosaic/iss_006ri_lphrlfmov001_prime/iss_006ri_lphrlfmov001_prime_browse_mosaic_thumb.png',
+            'coiss_f_ring_mosaic_browse_thumb'
+        ),
+        (
+            'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_mosaic_bkg_sub/iss_006ri_lphrlfmov001_prime/iss_006ri_lphrlfmov001_prime_browse_mosaic_bkg_sub_full.png',
+            'coiss_f_ring_mosaic_browse_bkg_sub_full'
+        ),
+        (
+            'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_mosaic_bkg_sub/iss_006ri_lphrlfmov001_prime/iss_006ri_lphrlfmov001_prime_browse_mosaic_bkg_sub_med.png',
+            'coiss_f_ring_mosaic_browse_bkg_sub_med'
+        ),
+        (
+            'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_mosaic_bkg_sub/iss_006ri_lphrlfmov001_prime/iss_006ri_lphrlfmov001_prime_browse_mosaic_bkg_sub_small.png',
+            'coiss_f_ring_mosaic_browse_bkg_sub_small'
+        ),
+        (
+            'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_mosaic_bkg_sub/iss_006ri_lphrlfmov001_prime/iss_006ri_lphrlfmov001_prime_browse_mosaic_bkg_sub_thumb.png',
+            'coiss_f_ring_mosaic_browse_bkg_sub_thumb'
+        ),
+        (
+            'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/document/user_guide/f-ring-mosaics-user-guide.pdf',
+            'coiss_f_ring_documentation'
+        ),
+        (
+            'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/data_reproj_img/iss_006ri_lphrlfmov001_prime/1492052683n_reproj_img.lblx',
+            'coiss_f_ring_reproj_img'
+        ),
+        (
+            'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/data_reproj_img/iss_006ri_lphrlfmov001_prime/1492052683n_reproj_img_metadata_params.tab',
+            'coiss_f_ring_reproj_img_metadata'
+        ),
+        (
+            'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_reproj_img/iss_006ri_lphrlfmov001_prime/1492052683n_browse_reproj_img_full.png',
+            'coiss_f_ring_browse_reproj_img_full'
+        ),
+        (
+            'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_reproj_img/iss_006ri_lphrlfmov001_prime/1492052683n_browse_reproj_img_med.png',
+            'coiss_f_ring_browse_reproj_img_med'
+        ),
+        (
+            'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_reproj_img/iss_006ri_lphrlfmov001_prime/1492052683n_browse_reproj_img_small.png',
+            'coiss_f_ring_browse_reproj_img_small'
+        ),
+        (
+            'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/browse_reproj_img/iss_006ri_lphrlfmov001_prime/1492052683n_browse_reproj_img_thumb.png',
+            'coiss_f_ring_browse_reproj_img_thumb'
+        ),
+        # cassini_iss_spokes_hedman-hamilton-2024
+        (
+            'bundles/cassini_iss_spokes_hedman-hamilton-2024/cassini_iss_spokes_hedman-hamilton-2024/data_derived/147XXXXXXX/1479210132n_rprj.fits',
+            'coiss_b_ring_reproj_img'
+        ),
+        (
+            'bundles/cassini_iss_spokes_hedman-hamilton-2024/cassini_iss_spokes_hedman-hamilton-2024/data_derived/147XXXXXXX/1479210132n_rprj_suppl.txt',
+            'coiss_b_ring_reproj_img_spice_pointing'
+        ),
+        (
+            'bundles/cassini_iss_spokes_hedman-hamilton-2024/cassini_iss_spokes_hedman-hamilton-2024/browse_derived/147XXXXXXX/1479210132n_rprj_browse.png',
+            'coiss_b_ring_browse_reproj_img'
+        ),
         # cassini_uvis_solarocc_beckerjarmak2023
         (
             'bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023/data/uvis_euv_2005_159_solar_time_series_ingress.xml',
@@ -763,6 +951,15 @@ class TestPds4FileBlackBox:
     )
     def test_opus_type(self, input_path, expected):
         """opus_type: return self._opus_type_filled"""
+        # TODO: When cassini_iss_fring_mosaics_rsfrench2025 and
+        # cassini_iss_spokes_hedman-hamilton-2024 bundles are available, remove
+        # this skip and enable opus_type parametrized cases for those bundles.
+        if ('cassini_iss_fring_mosaics_rsfrench2025' in input_path
+                or 'cassini_iss_spokes_hedman-hamilton-2024' in input_path):
+            pytest.skip(
+                'cassini_iss_fring_mosaics_rsfrench2025 and '
+                'cassini_iss_spokes_hedman-hamilton-2024 opus_type tests skipped'
+            )
         target_pdsfile = instantiate_target_pdsfile(input_path, False)
         res = target_pdsfile.opus_type
         assert res != '', 'No opus_type returned'

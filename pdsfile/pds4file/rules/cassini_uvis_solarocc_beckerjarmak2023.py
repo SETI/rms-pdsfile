@@ -13,7 +13,6 @@ from .cassini_uvis_solarocc_beckerjarmak2023_primary_filespec import PRIMARY_FIL
 ##########################################################################################
 
 description_and_icon_by_regex = translator.TranslatorByRegex([
-
 ])
 
 ##########################################################################################
@@ -81,7 +80,6 @@ associations_to_documents = translator.TranslatorByRegex([
 ##########################################################################################
 
 view_options = translator.TranslatorByRegex([
-
 ])
 
 ##########################################################################################
@@ -89,7 +87,6 @@ view_options = translator.TranslatorByRegex([
 ##########################################################################################
 
 neighbors = translator.TranslatorByRegex([
-
 ])
 
 ##########################################################################################
@@ -97,7 +94,6 @@ neighbors = translator.TranslatorByRegex([
 ##########################################################################################
 
 sort_key = translator.TranslatorByRegex([
-
 ])
 
 ##########################################################################################
@@ -174,6 +170,54 @@ opus_id_to_primary_logical_path = translator.TranslatorByRegex([
 ])
 
 ##########################################################################################
+# Archives
+##########################################################################################
+# Bundle layout:
+# - The cassini_uvis_solarocc_beckerjarmak2023 bundle set contains a single bundle
+#   with the same name as the bundle set
+# - The bundle includes:
+#   - 'data/': primary occultation time series data files (tab/xml)
+#   - 'data/supplemental/': supplemental data files
+#   - 'browse/': browse images (jpg/xml)
+#   - 'document/': documentation files (PDFs, XML)
+#   - 'readme.txt': bundle readme file
+#
+# How archives are split:
+# - All content is packaged into a single monolithic archive per bundle set
+# - Archive name: '{bundle_set_name}.tar.gz' (e.g., 'cassini_uvis_solarocc_beckerjarmak2023.tar.gz')
+# - This simple approach is used because:
+#   - The bundle set contains a single bundle (not multiple bundles)
+#   - The total data volume is relatively small
+#   - All collections (data, browse, documents) are packaged together
+#
+# archive_paths: A TranslatorByRegex object that maps logical paths of bundle sets
+# or bundles to lists of logical paths of archive file names. When given a PdsFile
+# logical path (e.g., 'bundles/cassini_uvis_solarocc_beckerjarmak2023'), this
+# translator returns the corresponding archive file path (e.g.,
+# 'archives-bundles/cassini_uvis_solarocc_beckerjarmak2023/
+# cassini_uvis_solarocc_beckerjarmak2023.tar.gz'). These archive paths are
+# used by the archive_paths() method in Pds4File to determine which archive files
+# are associated with a given bundle or bundle set.
+archive_paths = translator.TranslatorByRegex([
+    # input is the beckerjarmak bundle set
+    (r'.*(bundles|metadata|previews|diagrams)/(cassini_uvis_solarocc_beckerjarmak2023)(|/)$', 0, [
+        r'archives-\1/\2/\2.tar.gz'
+    ]),
+])
+
+# archive_dirs: A TranslatorByRegex object that maps logical paths of archive files
+# to lists of logical paths of directories included in those archives. When given
+# an archive file path (e.g., 'archives-bundles/cassini_uvis_solarocc_beckerjarmak2023/
+# cassini_uvis_solarocc_beckerjarmak2023.tar.gz'), this translator returns the
+# directory paths that are packaged within that archive (e.g.,
+# 'bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023').
+# This mapping is used by the archive_dirs() method in Pds4File to determine which
+# directories are included in each archive file.
+archive_dirs = translator.TranslatorByRegex([
+    (r'.*archives-(.*/cassini_uvis_solarocc_beckerjarmak2023)/(.*).tar.gz', 0, [r'\1']),
+])
+
+##########################################################################################
 # Subclass definition
 ##########################################################################################
 
@@ -202,6 +246,9 @@ class cassini_uvis_solarocc_beckerjarmak2023(pds4file.Pds4File):
     ASSOCIATIONS['metadata']   += associations_to_metadata
     ASSOCIATIONS['documents']  += associations_to_documents
 
+    ARCHIVE_PATHS = archive_paths + pds4file.Pds4File.ARCHIVE_PATHS
+    ARCHIVE_DIRS = archive_dirs + pds4file.Pds4File.ARCHIVE_DIRS
+
     pds4file.Pds4File.FILESPEC_TO_BUNDLESET = filespec_to_bundleset + pds4file.Pds4File.FILESPEC_TO_BUNDLESET
 
 # Global attribute shared by all subclasses
@@ -220,7 +267,11 @@ pds4file.Pds4File.SUBCLASSES['cassini_uvis_solarocc_beckerjarmak2023'] = cassini
 ##########################################################################################
 
 import pytest
-from .pytest_support import *
+from .pytest_support import (
+    TEST_RESULTS_DIR,
+    associated_abspaths_test,
+    opus_products_test,
+)
 
 @pytest.mark.parametrize(
     ('input_path', 'expected'),
