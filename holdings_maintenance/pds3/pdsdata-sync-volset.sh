@@ -30,7 +30,16 @@ if [ "$DEST" = "production" ]; then
     echo "ERROR: unable to remount /Volumes/pdsdata-production as read-write." >&2
     exit 1
   fi
-  trap 'echo "Remounting pdsdata-production as read-only..."; sudo mount -u -o ro /Volumes/pdsdata-production' EXIT
+  remount_production_read_only_on_exit() {
+    local status=$?
+    echo "Remounting pdsdata-production as read-only..."
+    if ! sudo mount -u -o ro /Volumes/pdsdata-production; then
+      echo "ERROR: unable to remount /Volumes/pdsdata-production as read-only." >&2
+      status=1
+    fi
+    return $status
+  }
+  trap remount_production_read_only_on_exit EXIT
 fi
 
 for TYPE in metadata previews calibrated diagrams volumes
