@@ -25,6 +25,12 @@ VOLUME=$4
 ARG1=$5
 ARG2=$6
 
+if [ "$DEST" = "production" ]; then
+  echo "Remounting pdsdata-production as read-write..."
+  sudo mount -u -o rw /Volumes/pdsdata-production
+  trap 'echo "Remounting pdsdata-production as read-only..."; sudo mount -u -o ro /Volumes/pdsdata-production' EXIT
+fi
+
 for TYPE in metadata
 do
   if [ -d /Volumes/pdsdata-${SRC}/holdings/${TYPE}/${VOLSET}/${VOLUME} ]; then
