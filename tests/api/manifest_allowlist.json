@@ -1,0 +1,5 @@
+{
+  "_comment": "Forgiveness rules for the public-API freeze (PR-02). See plan section 6.1. 'exact' entries are {module, name, reason, pr} and forgive one specific attribute diff; here 'module' holds the diff LOCATION -- the module name for a module-level attribute, or the class key (e.g. 'pdsfile.pds3file.Pds3File') for a class-member diff -- and 'name' is the attribute/member. 'categories' entries are {pattern, kind, reason, pr} regex predicates matched against '<location>::<name>' (kind optional / '*' = any) that forgive a whole class of expected diffs. The two pre-approved forgiveness categories are added in PR-07 (tests subpackages leave the package) and PR-08 (rule modules lose their test-only names). Never edit the manifest or dumper to hide a diff; add an entry here only under a pre-approved category or with new owner approval.",
+  "exact": [],
+  "categories": []
+}
