@@ -4,6 +4,8 @@ run-name: "Run Tests: ${{ github.ref_type }} ${{ github.ref_name }} by ${{ githu
 on:
   workflow_dispatch:
   workflow_call:
+  pull_request:
+    branches: [ rewrite ]
   push:
     branches: [ main ]
   schedule:
@@ -74,7 +76,7 @@ jobs:
           fi
           python -m pip install --upgrade pip
           python -m pip install wheel
-          python -m pip install -r requirements.txt
+          python -m pip install -e ".[dev]"
           echo
           python -m pip freeze
           echo
