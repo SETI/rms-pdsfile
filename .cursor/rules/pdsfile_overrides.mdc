@@ -39,6 +39,8 @@ conflicts with a rule below, follow the rule below. See
    type annotation, forbidden by (1).
 5. **No FCPath / rms-filecache.** Plain `os.path` handling stays. `filecache.mdc`
    is deliberately not present in this repo's rules and must not be adopted.
+   `PdsLogger` still operates on `FCPath` internally but you should use standard
+   `pathlib.Path` objects when interacting with it.
 6. **`re_validate.py` and the sync shell scripts are frozen** (document-only): do
    not refactor their internals (email/batch logic, ordering) — only mechanical
    renames/moves with their package.

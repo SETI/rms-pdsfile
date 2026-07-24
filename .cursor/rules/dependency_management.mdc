@@ -33,7 +33,7 @@ description: Standards for declaring, installing, and maintaining Python project
 
 ## 5. Security and Maintenance
 
-- Run `pip audit` in CI to catch known vulnerabilities.
+- Run `pip-audit` in CI to catch known vulnerabilities.
 - Enable automated dependency update tooling (Dependabot, Renovate).
 - Review update PRs for breaking changes before merging.
 - Periodically remove unused dependencies to reduce attack surface.

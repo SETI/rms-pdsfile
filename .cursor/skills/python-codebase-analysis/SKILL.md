@@ -37,11 +37,11 @@ Compare against project rules when present (e.g. `.cursor/rules/python.mdc`). Ch
 - Constants: no magic numbers/strings; config or env for tunables.
 - Error handling: narrow try/except; no bare except; logging over print in libraries.
 - Public API: clear `__all__`, `py.typed` for typed packages, separation of public vs `_private`.
-- Library hygiene: use `logging.getLogger(__name__)`, never configure the root logger, set `NullHandler` in top-level `__init__.py`. No `print()` in library code (only in explicit CLI entry points). No `sys.exit()` in library code; raise exceptions instead.
+- Library hygiene: No `print()` in library code (only in explicit CLI entry points). No `sys.exit()` in library code; raise exceptions instead.
 - Error message quality: exceptions include enough context to diagnose (`ValueError("x must be positive, got -3")` not `ValueError("bad value")`). Custom base exception class (e.g. `class ReponameError(Exception)`) so callers can catch library errors specifically. Appropriate use of `warnings.warn()` with `DeprecationWarning`/`FutureWarning` for planned changes.
 - Encoding and I/O: explicit `encoding='utf-8'` on `open()` calls (platform default varies). Consistent use of `pathlib.Path` over `os.path` string manipulation. Accept `str | Path` in public API. Context managers for all files and connections.
 
-**Evidence**: Rule name or quote, example file:line or pattern. Grep for `print(`, `sys.exit`, `sys.stdout`, `open(` without `encoding=`, `logging.basicConfig` in non-CLI code.
+**Evidence**: Rule name or quote, example file:line or pattern. Grep for `print(`, `sys.exit`, `sys.stdout`, `open(` without `encoding=`, in non-CLI code.
 
 ### 3. Types and static checks
 
@@ -186,10 +186,10 @@ If the repo contains a `.cursor/rules/` directory, treat those rule files as the
 | 7 Security and robustness | `security.mdc` |
 | 8 Dependencies and tooling, 10 Packaging and distribution | `dependency_management.mdc`, `environment.mdc` |
 | Process (commits, pull requests, bug reports) | `git_workflow.mdc`, `pull_request.mdc`, `bug_report.mdc` |
-| 2 Best practices (logging in library code) | `logging.mdc`, `logging_nav.mdc` |
+| 2 Best practices (logging in library code) | `logging.mdc` |
 | 2 Best practices, 5 Performance (transparent local/remote file I/O) | `filecache.mdc` |
 
-Not every project ships every rule. **If a referenced rule file does not exist, skip the corresponding part of the analysis** rather than inventing a standard or reporting the rule's absence as a finding. In particular, the `filecache` and `logging` (and `logging_nav`) rules are project-specific and are frequently absent; when they are missing, ignore the file-access and logging-convention checks that depend on them.
+Not every project ships every rule. **If a referenced rule file does not exist, skip the corresponding part of the analysis** rather than inventing a standard or reporting the rule's absence as a finding. In particular, the `filecache` and `logging` rules are project-specific and are frequently absent; when they are missing, ignore the file-access and logging-convention checks that depend on them.
 
 ## Reference
 

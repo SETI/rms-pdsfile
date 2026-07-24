@@ -56,8 +56,9 @@ Every bug report MUST include:
 ## Actual Behavior
 [What actually happens, including the full traceback.]
 
-## Traceback / Logs
-[Paste full traceback or relevant log output here]
+## Traceback / Logs / Screenshots / Other Evidence
+[Paste full traceback, relevant log output, screenshots, or other relevant evidence
+here when available]
 
 ## Additional Notes
 [Workarounds, frequency, related issues.]

@@ -35,7 +35,6 @@ description: Security best practices for Python library development — secrets,
 
 - NEVER log secrets, tokens, passwords, or full stack traces containing sensitive data.
 - Sanitize PII (personally identifiable information) before logging.
-- Use the `logging` module with appropriate levels so callers can control verbosity.
 
 ## 6. Code Review Security Checklist
 

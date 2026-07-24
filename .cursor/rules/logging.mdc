@@ -1,6 +1,6 @@
 ---
 alwaysApply: true
-description: Generic best practices for logging with PdsLogger (rms-pdslogger), including sectioning, deferred formatting, and FCPath interaction.
+description: Generic best practices for logging with PdsLogger (rms-pdslogger), including sectioning, and deferred formatting.
 ---
 
 # Logging Best Practices
@@ -66,22 +66,7 @@ logger.info(f'Writing metadata to {metadata_file}')
 - Use `exception` (not `error`) inside an `except` block so the traceback is
   captured automatically.
 
-## 3. Interaction with FCPath
-
-Log file paths are typically `FCPath` objects (from `rms-filecache`). Follow the
-`filecache` rule: never call `mkdir` on the log directory --
-`PdsLogger` creates the directory through `FileCache` internally when it opens
-the file handler.
-
-```python
-# BAD - do not mkdir the log directory yourself
-log_dir.mkdir(parents=True, exist_ok=True)
-```
-
-Pass the `FCPath` (local or remote) straight to the handler factory; transparent
-local-or-remote handling is provided by `filecache`.
-
-## 4. Quick Reference
+## 3. Quick Reference
 
 | Task | Pattern |
 |------|---------|
