@@ -103,8 +103,11 @@ write_to = "src/pdsfile/_version.py"
 
 [tool.pytest.ini_options]
 # No -n/xdist or --cov in addopts: worker count and coverage are chosen per
-# invocation (--update runs and full-data runs must be serial). No src pythonpath
-# or tests testpaths yet (the moves are Phase 2; PR-07 adds pythonpath=["src"]).
+# invocation (--update runs and full-data runs must be serial). pythonpath=["src"]
+# makes pdsfile importable during collection now that the tests live in the
+# top-level tests/ tree; no testpaths yet (rule-module tests are still under
+# src/ until PR-08).
+pythonpath = ["src"]
 addopts = ["--strict-markers", "--strict-config"]
 markers = [
   "full_holdings: test is only meaningful against the complete real holdings tree (sizes, volume counts); auto-skipped under the mini fixtures",
@@ -194,11 +197,11 @@ extend-ignore = ["PT011", "SIM105", "SIM108"]
 "src/pdsfile/pds3file/rules/VG_28xx.py" = ["E402", "E501", "F403", "F405", "I001", "N801", "N806", "N999", "PT006", "RUF012"]
 "src/pdsfile/pds3file/rules/__init__.py" = ["E501", "I001", "RUF022"]
 "src/pdsfile/pds3file/rules/pytest_support.py" = ["F401", "I001"]
-"src/pdsfile/pds3file/tests/helper.py" = ["B904", "I001", "N806"]
-"src/pdsfile/pds3file/tests/test_pds3file_blackbox.py" = ["A002", "B011", "E501", "E711", "F401", "F841", "I001", "PT006", "PT015", "PT017"]
-"src/pdsfile/pds3file/tests/test_pds3file_blackbox_cached.py" = ["E501", "F401", "I001", "PT006"]
-"src/pdsfile/pds3file/tests/test_pds3file_whitebox.py" = ["E501", "E711", "F401", "F841", "I001", "PT006", "PT012", "PT017"]
-"src/pdsfile/pds3file/tests/test_pdsviewable_blackbox.py" = ["I001", "PT006"]
+"tests/pds3file/helper.py" = ["B904", "I001", "N806"]
+"tests/pds3file/test_pds3file_blackbox.py" = ["A002", "B011", "E501", "E711", "F401", "F841", "I001", "PT006", "PT015", "PT017"]
+"tests/pds3file/test_pds3file_blackbox_cached.py" = ["E501", "F401", "I001", "PT006"]
+"tests/pds3file/test_pds3file_whitebox.py" = ["E501", "E711", "F401", "F841", "I001", "PT006", "PT012", "PT017"]
+"tests/pds3file/test_pdsviewable_blackbox.py" = ["I001", "PT006"]
 "src/pdsfile/pds4file/__init__.py" = ["E721", "F401", "I001", "RUF012"]
 "src/pdsfile/pds4file/rules/__init__.py" = ["E501", "I001", "RUF022"]
 "src/pdsfile/pds4file/rules/cassini_iss.py" = ["E402", "E501", "F401", "F403", "I001", "N801", "RUF012"]
@@ -209,8 +212,8 @@ extend-ignore = ["PT011", "SIM105", "SIM108"]
 "src/pdsfile/pds4file/rules/cassini_vims.py" = ["E402", "E501", "F401", "F403", "I001", "N801", "RUF012"]
 "src/pdsfile/pds4file/rules/pytest_support.py" = ["F401", "I001"]
 "src/pdsfile/pds4file/rules/uranus_occs_earthbased.py" = ["B007", "E402", "E501", "I001", "N801", "PT006", "RUF012"]
-"src/pdsfile/pds4file/tests/helper.py" = ["B904", "I001", "N806"]
-"src/pdsfile/pds4file/tests/test_pds4file_blackbox.py" = ["E501", "E712", "F401", "I001", "PT006", "PT014"]
+"tests/pds4file/helper.py" = ["B904", "I001", "N806"]
+"tests/pds4file/test_pds4file_blackbox.py" = ["E501", "E712", "F401", "I001", "PT006", "PT014"]
 "src/pdsfile/pdscache.py" = ["A001", "E701", "E721", "F401", "F541", "F841", "I001", "RUF015", "RUF059", "SIM102", "UP004", "UP031"]
 "src/pdsfile/pdsfile.py" = ["A002", "B007", "B018", "B904", "B905", "C405", "E501", "E701", "E713", "E721", "E722", "F841", "I001", "N806", "RUF005", "RUF012", "RUF059", "SIM102", "SIM103", "SIM114", "SIM118", "UP004", "UP015", "UP024", "UP031"]
 "src/pdsfile/pdsfile_test_helper.py" = ["I001", "N806", "UP015"]
