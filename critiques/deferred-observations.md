@@ -36,3 +36,10 @@ phase/PR that owns them.
   post-PR-02 (plan §6.4), so it was ratcheted (`["RUF100"]`) rather than edited.
   A later PR could remove the dead noqa (comment-only, freeze-neutral) with owner
   sign-off, then drop the ratchet entry.
+
+## From PR-06 (CodeRabbit review of #97)
+- **17 pre-existing bugs/quality issues in the holdings-maintenance tools** (1
+  Critical, 6 Major, 10 Minor) surfaced when PR-06 moved the tools into the
+  package. None introduced by the move. Captured in full in
+  `critiques/coderabbit-findings.md` — to be addressed in a maintenance-tools
+  quality pass (with tests), issue #82, not in a mechanical move PR.
