@@ -371,9 +371,9 @@ run_code_checks() {
     local failed=false
     local failed_checks=""
 
-    # rms-pdsfile: no src/ layout yet (Phase 2 moves it); lint the current tree.
-    # Re-point these targets in each Phase-2 move PR.
-    RUFF_TARGETS="pdsfile holdings_maintenance utility scripts conftest.py"
+    # rms-pdsfile: pdsfile moved to src/ in PR-05; holdings_maintenance/utility
+    # move under the package in PR-06. Re-point these targets in each Phase-2 PR.
+    RUFF_TARGETS="src/pdsfile holdings_maintenance utility scripts conftest.py"
 
     if [ "$RUN_RUFF_CHECK" = true ] && [ "$ENABLE_RUFF_CHECK" = true ]; then
         print_info "Running ruff check..."
