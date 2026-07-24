@@ -29,3 +29,10 @@ phase/PR that owns them.
   internal to `PdsFile`. There is therefore no external signature to protect, so
   the freeze's class-member-only signature coverage is sufficient. No dumper
   change; no plan addendum needed.
+
+## From PR-03+04
+- **`scripts/dump_public_api.py` trips RUF100 (unused `# noqa: BLE001`).** BLE is
+  not in the ruff `select` set, so the noqa is unused. The file is frozen
+  post-PR-02 (plan §6.4), so it was ratcheted (`["RUF100"]`) rather than edited.
+  A later PR could remove the dead noqa (comment-only, freeze-neutral) with owner
+  sign-off, then drop the ratchet entry.

@@ -13,7 +13,9 @@ if [[ -z ${PDS4_HOLDINGS_DIR+x} ]]; then
 fi
 
 pip3 install --upgrade pip
-pip3 install -r requirements.txt
+# requirements.txt is now just "-e ."; the self-hosted suite also needs the dev
+# tools (coverage, pytest plugins) so install the dev extra.
+pip3 install -e ".[dev]"
 echo
 
 echo "================================================================"
@@ -22,7 +24,7 @@ echo "================================================================"
 echo
 echo "Test start:" `date`
 echo
-python -m coverage run -m pytest pdsfile/pds3file/tests/ pdsfile/pds3file/rules/*.py pdsfile/pds4file/tests/ pdsfile/pds4file/rules/*.py --mode ns
+python -m coverage run -m pytest tests/api/ pdsfile/pds3file/tests/ pdsfile/pds3file/rules/*.py pdsfile/pds4file/tests/ pdsfile/pds4file/rules/*.py --mode ns
 if [ $? -ne 0 ]; then
     echo "**************************************************"
     echo "*** PDSFILE NOT-SHELVES-ONLY FAILED UNIT TESTS ***"
