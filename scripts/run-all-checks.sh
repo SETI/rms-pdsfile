@@ -371,9 +371,10 @@ run_code_checks() {
     local failed=false
     local failed_checks=""
 
-    # rms-pdsfile: pdsfile moved to src/ in PR-05; holdings_maintenance/utility
-    # move under the package in PR-06. Re-point these targets in each Phase-2 PR.
-    RUFF_TARGETS="src/pdsfile holdings_maintenance utility scripts conftest.py"
+    # rms-pdsfile: the whole package lives under src/pdsfile as of PR-06
+    # (holdings_maintenance and show_opus_products moved in); lint it plus the
+    # standalone scripts and the root conftest.
+    RUFF_TARGETS="src/pdsfile scripts conftest.py"
 
     if [ "$RUN_RUFF_CHECK" = true ] && [ "$ENABLE_RUFF_CHECK" = true ]; then
         print_info "Running ruff check..."

@@ -15,10 +15,11 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-# Lint targets at this phase: pdsfile moved to src/ in PR-05; holdings_maintenance
-# and utility move under the package in PR-06. Keep in sync with the ruff targets
-# in scripts/run-all-checks.sh; re-point both in each Phase-2 move PR.
-TARGETS = ['src/pdsfile', 'holdings_maintenance', 'utility', 'scripts', 'conftest.py']
+# Lint targets at this phase: the whole package (holdings_maintenance and the
+# show_opus_products tool moved under src/pdsfile/ in PR-06), plus the standalone
+# scripts and root conftest. Keep in sync with the ruff targets in
+# scripts/run-all-checks.sh.
+TARGETS = ['src/pdsfile', 'scripts', 'conftest.py']
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 

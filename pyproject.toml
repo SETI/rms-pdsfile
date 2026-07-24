@@ -63,8 +63,8 @@ dev = [
   "pytest-cov>=4.0",
   "pytest-xdist>=3.8.0",
   "ruff>=0.8",
-  # Only utility/show_opus_products.py uses tabulate, and it stays a `python -m`
-  # tool (not a shipped console script), so tabulate is a dev dependency only.
+  # Only src/pdsfile/tools/show_opus_products.py uses tabulate, and it stays a
+  # `python -m` tool (not a shipped console script), so tabulate is dev-only.
   "tabulate",
   # Self-referential extra: the distribution is rms-pdsfile (the import module
   # is pdsfile), so this must be the distribution name, not "pdsfile".
@@ -78,25 +78,24 @@ docs = [
 ]
 
 [project.scripts]
-pdsarchives = "holdings_maintenance.pds3.pdsarchives:main"
-pdschecksums = "holdings_maintenance.pds3.pdschecksums:main"
-pdsdependency = "holdings_maintenance.pds3.pdsdependency:main"
-pdsindexshelf = "holdings_maintenance.pds3.pdsindexshelf:main"
-pdsinfoshelf = "holdings_maintenance.pds3.pdsinfoshelf:main"
-pdslinkshelf = "holdings_maintenance.pds3.pdslinkshelf:main"
-pds4archives = "holdings_maintenance.pds4.pds4archives:main"
-pds4checksums = "holdings_maintenance.pds4.pds4checksums:main"
-pds4indexshelf = "holdings_maintenance.pds4.pds4indexshelf:main"
-pds4infoshelf = "holdings_maintenance.pds4.pds4infoshelf:main"
-pds4linkshelf = "holdings_maintenance.pds4.pds4linkshelf:main"
+pdsarchives = "pdsfile.holdings_maintenance.pds3.pdsarchives:main"
+pdschecksums = "pdsfile.holdings_maintenance.pds3.pdschecksums:main"
+pdsdependency = "pdsfile.holdings_maintenance.pds3.pdsdependency:main"
+pdsindexshelf = "pdsfile.holdings_maintenance.pds3.pdsindexshelf:main"
+pdsinfoshelf = "pdsfile.holdings_maintenance.pds3.pdsinfoshelf:main"
+pdslinkshelf = "pdsfile.holdings_maintenance.pds3.pdslinkshelf:main"
+pds4archives = "pdsfile.holdings_maintenance.pds4.pds4archives:main"
+pds4checksums = "pdsfile.holdings_maintenance.pds4.pds4checksums:main"
+pds4indexshelf = "pdsfile.holdings_maintenance.pds4.pds4indexshelf:main"
+pds4infoshelf = "pdsfile.holdings_maintenance.pds4.pds4infoshelf:main"
+pds4linkshelf = "pdsfile.holdings_maintenance.pds4.pds4linkshelf:main"
 
-# Dual-discovery for the src/ move (PR-05): pdsfile now lives under src/, but
-# holdings_maintenance is still at the repo root until PR-06 and all 11
-# [project.scripts] entry points target it. Discover both roots so the CLI tools
-# stay packaged; PR-06 collapses this to where=["src"] once the tools move.
+# src-only discovery (PR-06): the maintenance tools (holdings_maintenance) and
+# show_opus_products now live under src/pdsfile/, so everything ships as
+# subpackages of pdsfile and the transient dual-discovery from PR-05 is gone.
 [tool.setuptools.packages.find]
-where = ["src", "."]
-include = ["pdsfile*", "holdings_maintenance*"]
+where = ["src"]
+include = ["pdsfile*"]
 
 [tool.setuptools_scm]
 local_scheme = "no-local-version"
@@ -152,20 +151,20 @@ extend-ignore = ["PT011", "SIM105", "SIM108"]
 # Each entry lists a file's existing violation codes so `ruff check` passes now.
 # This ratchet may only SHRINK in later PRs (never grow, never gain inline noqa).
 "conftest.py" = ["F401", "I001", "N806"]
-"holdings_maintenance/pds3/crlf.py" = ["PT028"]
-"holdings_maintenance/pds3/pdsarchives.py" = ["A001", "C405", "F841", "I001", "RUF059", "SIM115", "UP031"]
-"holdings_maintenance/pds3/pdschecksums.py" = ["A001", "B006", "B007", "B012", "C405", "I001", "N806", "RUF059", "SIM115", "UP015", "UP024", "UP031"]
-"holdings_maintenance/pds3/pdsdependency.py" = ["B006", "C405", "I001", "PT028", "RUF012", "RUF059", "UP004", "UP031"]
-"holdings_maintenance/pds3/pdsindexshelf.py" = ["I001", "RUF059", "UP031"]
-"holdings_maintenance/pds3/pdsinfoshelf.py" = ["A001", "B006", "B007", "B012", "C405", "E402", "E701", "I001", "N806", "RUF005", "RUF015", "RUF059", "UP024", "UP031"]
-"holdings_maintenance/pds3/pdslinkshelf.py" = ["B007", "B012", "C405", "E701", "E721", "F541", "I001", "N806", "RUF059", "UP004", "UP015", "UP024", "UP031"]
-"holdings_maintenance/pds3/re-validate.py" = ["B007", "C405", "E402", "E701", "E721", "I001", "RUF005", "RUF051", "RUF059", "UP031", "UP034"]
-"holdings_maintenance/pds3/shelf-consistency-check.py" = ["B007", "E401", "E701", "F821", "I001", "UP031", "W291"]
-"holdings_maintenance/pds4/pds4archives.py" = ["A001", "C405", "I001", "UP031"]
-"holdings_maintenance/pds4/pds4checksums.py" = ["A001", "B007", "C405", "E701", "I001", "RUF059", "UP015", "UP024", "UP031"]
-"holdings_maintenance/pds4/pds4indexshelf.py" = ["I001", "RUF059", "UP031"]
-"holdings_maintenance/pds4/pds4infoshelf.py" = ["A001", "B007", "I001", "RUF005", "RUF015", "UP024", "UP031"]
-"holdings_maintenance/pds4/pds4linkshelf.py" = ["B007", "E701", "I001", "SIM102", "UP004", "UP015", "UP024", "UP031"]
+"src/pdsfile/holdings_maintenance/pds3/crlf.py" = ["PT028"]
+"src/pdsfile/holdings_maintenance/pds3/pdsarchives.py" = ["A001", "C405", "F841", "I001", "RUF059", "SIM115", "UP031"]
+"src/pdsfile/holdings_maintenance/pds3/pdschecksums.py" = ["A001", "B006", "B007", "B012", "C405", "I001", "N806", "RUF059", "SIM115", "UP015", "UP024", "UP031"]
+"src/pdsfile/holdings_maintenance/pds3/pdsdependency.py" = ["B006", "C405", "I001", "PT028", "RUF012", "RUF059", "UP004", "UP031"]
+"src/pdsfile/holdings_maintenance/pds3/pdsindexshelf.py" = ["I001", "RUF059", "UP031"]
+"src/pdsfile/holdings_maintenance/pds3/pdsinfoshelf.py" = ["A001", "B006", "B007", "B012", "C405", "E402", "E701", "I001", "N806", "RUF005", "RUF015", "RUF059", "UP024", "UP031"]
+"src/pdsfile/holdings_maintenance/pds3/pdslinkshelf.py" = ["B007", "B012", "C405", "E701", "E721", "F541", "I001", "N806", "RUF059", "UP004", "UP015", "UP024", "UP031"]
+"src/pdsfile/holdings_maintenance/pds3/re_validate.py" = ["B007", "C405", "E402", "E701", "E721", "I001", "RUF005", "RUF051", "RUF059", "UP031", "UP034"]
+"src/pdsfile/holdings_maintenance/pds3/shelf_consistency_check.py" = ["B007", "E401", "E701", "F821", "I001", "UP031", "W291"]
+"src/pdsfile/holdings_maintenance/pds4/pds4archives.py" = ["A001", "C405", "I001", "UP031"]
+"src/pdsfile/holdings_maintenance/pds4/pds4checksums.py" = ["A001", "B007", "C405", "E701", "I001", "RUF059", "UP015", "UP024", "UP031"]
+"src/pdsfile/holdings_maintenance/pds4/pds4indexshelf.py" = ["I001", "RUF059", "UP031"]
+"src/pdsfile/holdings_maintenance/pds4/pds4infoshelf.py" = ["A001", "B007", "I001", "RUF005", "RUF015", "UP024", "UP031"]
+"src/pdsfile/holdings_maintenance/pds4/pds4linkshelf.py" = ["B007", "E701", "I001", "SIM102", "UP004", "UP015", "UP024", "UP031"]
 "src/pdsfile/__init__.py" = ["F403", "F841", "I001"]
 "src/pdsfile/pds3file/__init__.py" = ["A002", "E721", "F401", "F811", "I001", "RUF012"]
 "src/pdsfile/pds3file/rules/ASTROM_xxxx.py" = ["E501", "I001", "N801", "N999"]
@@ -217,7 +216,7 @@ extend-ignore = ["PT011", "SIM105", "SIM108"]
 "src/pdsfile/pdsfile_test_helper.py" = ["I001", "N806", "UP015"]
 "src/pdsfile/pdsviewable.py" = ["B006", "B007", "B020", "C405", "E701", "E721", "F401", "F821", "I001", "RUF015", "RUF059", "UP004", "UP024"]
 "scripts/dump_public_api.py" = ["RUF100"]
-"utility/show_opus_products.py" = ["I001"]
+"src/pdsfile/tools/show_opus_products.py" = ["I001"]
 
 [tool.pymarkdown.plugins.md013]
 # Line length (disable so README/CONTRIBUTING can use longer lines).
