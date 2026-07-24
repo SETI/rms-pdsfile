@@ -13,21 +13,17 @@ import os
 import glob
 import argparse
 import datetime
-from pathlib import Path
 import socket
 from smtplib import SMTP
 
 import pdslogger
 import pdsfile
 
-REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-sys.path.insert(0, str(REPO_ROOT))
-
-from holdings_maintenance.pds3 import pdschecksums
-from holdings_maintenance.pds3 import pdsarchives
-from holdings_maintenance.pds3 import pdsinfoshelf
-from holdings_maintenance.pds3 import pdslinkshelf
-from holdings_maintenance.pds3 import pdsdependency
+from pdsfile.holdings_maintenance.pds3 import pdschecksums
+from pdsfile.holdings_maintenance.pds3 import pdsarchives
+from pdsfile.holdings_maintenance.pds3 import pdsinfoshelf
+from pdsfile.holdings_maintenance.pds3 import pdslinkshelf
+from pdsfile.holdings_maintenance.pds3 import pdsdependency
 
 LOGNAME = 'pds.validation'
 LOGROOT_ENV = 'PDS_LOG_ROOT'

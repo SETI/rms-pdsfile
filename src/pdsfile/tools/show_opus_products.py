@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
 import argparse
+import os
 from pdsfile import (Pds3File,
                      Pds4File)
-from pdsfile.pds3file.tests.helper import PDS3_HOLDINGS_DIR
-from pdsfile.pds4file.tests.helper import PDS4_HOLDINGS_DIR
 import pprint
 import tabulate
 import traceback
+
+# Holdings roots read straight from the environment. These were previously
+# imported from the pds{3,4}file test helpers; the tests package leaves the
+# distribution in PR-07, so this tool reads the env vars directly.
+PDS3_HOLDINGS_DIR = os.environ['PDS3_HOLDINGS_DIR']
+PDS4_HOLDINGS_DIR = os.environ['PDS4_HOLDINGS_DIR']
 
 # Set up parser
 parser = argparse.ArgumentParser(

@@ -21,7 +21,7 @@ from PIL import Image
 import pdslogger
 import pdsfile
 
-from holdings_maintenance.pds4 import pds4checksums
+from pdsfile.holdings_maintenance.pds4 import pds4checksums
 
 # Holds log file directories temporarily, used by move_old_info()
 LOGDIRS = []
