@@ -371,10 +371,10 @@ run_code_checks() {
     local failed=false
     local failed_checks=""
 
-    # rms-pdsfile: the whole package lives under src/pdsfile as of PR-06
-    # (holdings_maintenance and show_opus_products moved in); lint it plus the
-    # standalone scripts and the root conftest.
-    RUFF_TARGETS="src/pdsfile scripts conftest.py"
+    # rms-pdsfile: lint the package under src/pdsfile, the top-level tests/ tree
+    # (tests moved out of the package in PR-07), the standalone scripts, and the
+    # root conftest.
+    RUFF_TARGETS="src/pdsfile tests scripts conftest.py"
 
     if [ "$RUN_RUFF_CHECK" = true ] && [ "$ENABLE_RUFF_CHECK" = true ]; then
         print_info "Running ruff check..."

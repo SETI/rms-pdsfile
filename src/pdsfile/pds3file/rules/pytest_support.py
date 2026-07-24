@@ -10,7 +10,12 @@ import pdsfile.pds3file as pds3file
 import re
 import translator
 
-TEST_RESULTS_DIR = os.path.dirname(pds3file.__file__) + '/test_results/'
+# Golden opus/associated-path results moved to the top-level tests/ tree in PR-07
+# (tests/golden/full/pds3/); the package dir is src/pdsfile/pds3file, so the repo
+# root is three levels up.
+_REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(pds3file.__file__),
+                                          '..', '..', '..'))
+TEST_RESULTS_DIR = os.path.join(_REPO_ROOT, 'tests', 'golden', 'full', 'pds3') + '/'
 
 def translate_all(trans, path):
     """Return logical paths of all files found using given translator on path.

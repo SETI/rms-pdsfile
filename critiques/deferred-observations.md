@@ -37,6 +37,16 @@ phase/PR that owns them.
   A later PR could remove the dead noqa (comment-only, freeze-neutral) with owner
   sign-off, then drop the ratchet entry.
 
+## From PR-07
+- **`helper.py` double-import (benign, resolved in PR-08).** After the tests
+  move to the top-level `tests/` tree, `helper.py` loads under two module names:
+  `pds{3,4}file.helper` (test modules' relative `from .helper`, since `tests/`
+  has no `__init__.py` so pytest prepend-mode names the package `pds{3,4}file`)
+  and `tests.pds{3,4}file.helper` (root conftest). Harmless — read-only env-var
+  constants + stateless functions, no name collision with `pdsfile.pds{3,4}file`.
+  PR-08 (conftest moves, tests restructured, `testpaths` added) removes the
+  divergence; no action needed before then.
+
 ## From PR-06 (CodeRabbit review of #97)
 - **17 pre-existing bugs/quality issues in the holdings-maintenance tools** (1
   Critical, 6 Major, 10 Minor) surfaced when PR-06 moved the tools into the
