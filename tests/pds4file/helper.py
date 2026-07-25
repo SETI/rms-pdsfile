@@ -4,15 +4,14 @@
 # Helper functions for tests on pds4file
 ##########################################################################################
 
-import os
 import pdsfile.pds4file as pds4file
 
-try:
-    PDS4_HOLDINGS_DIR = os.environ['PDS4_HOLDINGS_DIR']
-except KeyError: # pragma: no cover
-    # TODO: update this when we know the actual path of pds4 holdings on the webserver
-    raise KeyError("'PDS4_HOLDINGS_DIR' environment variable not set")
+from tests.support.holdings import resolve_holdings
 
+# Holdings root for the selected session flavor (see tests.support.holdings). When
+# no holdings are available this is a placeholder and every test is skipped, so it
+# is never dereferenced.
+PDS4_HOLDINGS_DIR = resolve_holdings().pds4_root
 PDS4_BUNDLES_DIR = f'{PDS4_HOLDINGS_DIR}/bundles'
 
 def instantiate_target_pdsfile(path, is_abspath=True):
