@@ -1,11 +1,11 @@
 ##########################################################################################
-# pdsfile/pdsfile_test_helper.py
+# tests/support/pdsfile_test_helper.py
 # Store general pdsfile test functions or helpers that can be applied to both Pds3File and
 # Pds4File testings. This will help us avoid maintaining the same testing functions at
 # different places.
 ##########################################################################################
 
-from .pdsfile import abspath_for_logical_path
+from pdsfile.pdsfile import abspath_for_logical_path
 import ast
 import os
 from pathlib import Path

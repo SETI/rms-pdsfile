@@ -1,5 +1,12 @@
 {
   "_comment": "Forgiveness rules for the public-API freeze (PR-02). See plan section 6.1. 'exact' entries are {module, name, reason, pr} and forgive one specific attribute diff; here 'module' holds the diff LOCATION -- the module name for a module-level attribute, or the class key (e.g. 'pdsfile.pds3file.Pds3File') for a class-member diff -- and 'name' is the attribute/member. 'categories' entries are {pattern, kind, reason, pr} regex predicates matched against '<location>::<name>' (kind optional / '*' = any) that forgive a whole class of expected diffs. The two pre-approved forgiveness categories are added in PR-07 (tests subpackages leave the package) and PR-08 (rule modules lose their test-only names). Never edit the manifest or dumper to hide a diff; add an entry here only under a pre-approved category or with new owner approval.",
   "exact": [],
-  "categories": []
+  "categories": [
+    {
+      "pattern": "\\.rules\\.[^:]+::(TEST_RESULTS_DIR|associated_abspaths_test|instantiate_target_pdsfile|opus_products_test|translate_all|unmatched_patterns|versions_test|os|pytest|pytestmark|test_[A-Za-z0-9_]+)$",
+      "kind": "*",
+      "reason": "PR-08 extracted the per-dataset rule modules' inline tests to tests/rules/ and dropped their `from .pytest_support import *`. Each rule module thereby loses its test-only public names: the test functions (test_*), the pytest skip marker (pytestmark), and the star-imported test helpers and fixtures (pytest, os where it was test-only, TEST_RESULTS_DIR, opus_products_test, associated_abspaths_test, instantiate_target_pdsfile, translate_all, unmatched_patterns, versions_test). Production names (rule translator tables, the subclass, re/translator/pds3file/pds4file, and os where production uses it) are unchanged. This is the pre-approved category #2 (plan section 6.1).",
+      "pr": "PR-08"
+    }
+  ]
 }

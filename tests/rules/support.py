@@ -1,21 +1,38 @@
 ##########################################################################################
-# pds3file/rules/pytest_support.py
+# tests/rules/support.py
+#
+# Shared helpers for the extracted rule-module tests (formerly the two
+# src/pdsfile/pds{3,4}file/rules/pytest_support.py modules, merged here in PR-08).
+# The golden opus/associated-path results live in the top-level tests/ tree
+# (tests/golden/full/pds{3,4}/); this file sits at tests/rules/, so the golden
+# directories are one level up.
 ##########################################################################################
 
 import os
-from pdsfile.pdsfile_test_helper import (associated_abspaths_test,
-                                         instantiate_target_pdsfile,
-                                         opus_products_test)
-import pdsfile.pds3file as pds3file
-import re
-import translator
 
-# Golden opus/associated-path results moved to the top-level tests/ tree in PR-07
-# (tests/golden/full/pds3/); the package dir is src/pdsfile/pds3file, so the repo
-# root is three levels up.
-_REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(pds3file.__file__),
-                                          '..', '..', '..'))
-TEST_RESULTS_DIR = os.path.join(_REPO_ROOT, 'tests', 'golden', 'full', 'pds3') + '/'
+import pdsfile.pds3file as pds3file
+from tests.support.pdsfile_test_helper import (
+    associated_abspaths_test,
+    instantiate_target_pdsfile,
+    opus_products_test,
+)
+
+__all__ = [
+    'PDS3_TEST_RESULTS_DIR',
+    'PDS4_TEST_RESULTS_DIR',
+    'associated_abspaths_test',
+    'instantiate_target_pdsfile',
+    'opus_products_test',
+    'translate_all',
+    'unmatched_patterns',
+    'versions_test',
+]
+
+PDS3_TEST_RESULTS_DIR = os.path.join(
+    os.path.dirname(__file__), '..', 'golden', 'full', 'pds3') + '/'
+PDS4_TEST_RESULTS_DIR = os.path.join(
+    os.path.dirname(__file__), '..', 'golden', 'full', 'pds4') + '/'
+
 
 def translate_all(trans, path):
     """Return logical paths of all files found using given translator on path.
@@ -38,6 +55,7 @@ def translate_all(trans, path):
 
     return abspaths
 
+
 def unmatched_patterns(trans, path):
     """Return a list of all translated patterns that did not find a matching path in the
     file system.
@@ -58,6 +76,7 @@ def unmatched_patterns(trans, path):
             unmatched.append(pattern)
 
     return unmatched
+
 
 ##########################################################################################
 # Dave's test suite helpers

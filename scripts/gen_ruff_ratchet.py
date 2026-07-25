@@ -16,9 +16,10 @@ from collections import defaultdict
 from pathlib import Path
 
 # Lint targets at this phase: the whole package under src/pdsfile, the top-level
-# tests/ tree (tests moved out in PR-07), the standalone scripts, and the root
-# conftest. Keep in sync with the ruff targets in scripts/run-all-checks.sh.
-TARGETS = ['src/pdsfile', 'tests', 'scripts', 'conftest.py']
+# tests/ tree (tests moved out in PR-07; conftest.py moved into tests/ in PR-08),
+# and the standalone scripts. Keep in sync with the ruff targets in
+# scripts/run-all-checks.sh.
+TARGETS = ['src/pdsfile', 'tests', 'scripts']
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 
