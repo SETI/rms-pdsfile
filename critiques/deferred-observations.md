@@ -47,6 +47,27 @@ phase/PR that owns them.
   PR-08 (conftest moves, tests restructured, `testpaths` added) removes the
   divergence; no action needed before then.
 
+## From PR-08 (round 1)
+- **Sub-plan prose error re COISS `os` (no code impact).**
+  `plans/2026-07-24-pr-08-subplan.md` says COISS "keeps `import os` (production
+  use at line 1031)", but old line 1031 is inside
+  `test_opus_id_to_primary_logical_path()` — COISS's `os` was entirely
+  test-only. PR-08's implementation is correct (COISS rule module has no
+  `import os`; `os` moved to the test file); only the plan prose is wrong.
+  Owner: doc cleanup, harmless.
+- **`_is_forgiven` ignores a category's `pr` field.**
+  `tests/api/test_api_freeze.py::_is_forgiven` never reads `pr`, so §6.1's
+  "a category activates only from its named PR" is not enforced in code
+  (pre-existing in the PR-02 checker; the file is frozen post-PR-02). The PR-08
+  allowlist entry still records `"pr": "PR-08"` for provenance. Owner: a future
+  checker-hardening PR with owner sign-off.
+- **PR-07's `helper.py` double-import is NOT resolved by PR-08.** The owner's
+  split narrowed PR-08 to rule-test extraction only — it did not add
+  `testpaths` or restructure `tests/pds{3,4}file/`, which still use `from
+  .helper import …`. Re-deferred to whichever PR adds `testpaths` / the
+  pds{3,4}file test restructure (the PR-07 note that attributed this to PR-08
+  predates the split).
+
 ## From PR-06 (CodeRabbit review of #97)
 - **17 pre-existing bugs/quality issues in the holdings-maintenance tools** (1
   Critical, 6 Major, 10 Minor) surfaced when PR-06 moved the tools into the
