@@ -47,6 +47,30 @@ phase/PR that owns them.
   PR-08 (conftest moves, tests restructured, `testpaths` added) removes the
   divergence; no action needed before then.
 
+## From PR-08 (rounds 1–3)
+- **Pre-existing pds4 uranus s-mode blackbox failures (full-holdings golden
+  area, owner-deferred).** A full `pytest tests --mode s` (i.e. including
+  `tests/pds4file/`) shows 5 failures in
+  `tests/pds4file/test_pds4file_blackbox.py` (uranus_occ, a
+  `KeyError`→`UnboundLocalError` around `pdsfile.py:4254/4265`). Verified
+  **identical on `origin/rewrite`** — pre-existing, not introduced by PR-08 —
+  and **not** exercised by the CI s-mode invocation, which is pds3-only
+  (`tests/pds3file tests/rules/pds3 --mode s`). Sits in the full-holdings
+  golden/shelf-reproducibility area the owner split out of PR-08. Owner:
+  the deferred additive-coverage / golden-reproducibility follow-up.
+- **`_is_forgiven` ignores a category's `pr` field.**
+  `tests/api/test_api_freeze.py::_is_forgiven` never reads `pr`, so §6.1's
+  "a category activates only from its named PR" is not enforced in code
+  (pre-existing in the PR-02 checker; the file is frozen post-PR-02). The PR-08
+  allowlist entry still records `"pr": "PR-08"` for provenance. Owner: a future
+  checker-hardening PR with owner sign-off.
+- **PR-07's `helper.py` double-import is NOT resolved by PR-08.** The owner's
+  split narrowed PR-08 to rule-test extraction only — it did not add
+  `testpaths` or restructure `tests/pds{3,4}file/`, which still use `from
+  .helper import …`. Re-deferred to whichever PR adds `testpaths` / the
+  pds{3,4}file test restructure (the PR-07 note that attributed this to PR-08
+  predates the split).
+
 ## From PR-06 (CodeRabbit review of #97)
 - **17 pre-existing bugs/quality issues in the holdings-maintenance tools** (1
   Critical, 6 Major, 10 Minor) surfaced when PR-06 moved the tools into the

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Dump the public API surface of the ``pdsfile`` package to a deterministic manifest.
 
-This is the generator behind the public-API freeze (PR-02 of the modernization
+This is the generator behind the public-API freeze (see the modernization
 plan, ``plans/2026-07-17-modernization-plan.md``). It records the *names and
 kinds* of every public attribute of a fixed set of modules, plus the public
 member surface of every class those modules define. It records **names and
@@ -48,7 +48,7 @@ _RULES_PACKAGES = ['pdsfile.pds3file.rules', 'pdsfile.pds4file.rules']
 # support this repo's own tests only (ground rule 1 exception); ``_version`` is
 # a build artifact. Excluding ``pytest_support`` here also keeps the manifest
 # from recording its star-imported ``os``/``re``/``translator``/``pds3file``
-# names, whose later removal (PR-08) would otherwise read as an API break.
+# names, whose removal would otherwise read as an API break.
 _EXCLUDED_RULES_STEMS = {'pytest_support', '__init__'}
 
 

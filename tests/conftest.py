@@ -1,7 +1,7 @@
 ##########################################################################################
-# pds-webtools/conftest.py
+# tests/conftest.py
 #
-# Configuration & setup before running tests on pds4file
+# Configuration & setup before running tests on pds3file and pds4file
 ##########################################################################################
 
 import os

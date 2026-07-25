@@ -107,3 +107,116 @@ failed to post on GitHub; captured here from the two review-summary bodies.)
     safety-critical "remount `pdsdata-production` read-write, trap EXIT to remount
     read-only" block is copy-pasted across several sync scripts. Extract to one
     sourced helper so future fixes apply everywhere at once.
+
+## From PR #100 (PR-08 — rule-module tests extracted), 2026-07-25
+
+CodeRabbit review profile ASSERTIVE, 19 actionable findings. PR-08 moved the
+inline rule-module tests to `tests/rules/pds{3,4}/` **verbatim** (behavior-
+preserving), so every finding below is a **pre-existing** test-quality issue that
+came along with the move — none was introduced by PR-08, and all are confirmed
+present on `origin/rewrite`. They are deliberately **not** fixed in PR-08 (that
+would break the verbatim/behavior-preservation guarantee and could surface real
+masked failures the owner deferred). Natural home: a dedicated rule-test quality
+pass (relates to #37 / the deferred additive-coverage follow-up). Line numbers
+are as of the extracted files under `tests/rules/`. Verify each before fixing.
+
+Findings that are about PR-08 *itself* (its new README / sub-plan doc, and the
+docstring-coverage pre-merge check) are handled separately and are **not** in
+this backlog.
+
+### 🔴 Critical
+
+1. **`tests/rules/pds3/test_coiss_xxxx.py` (`test_opus_id_to_primary_logical_path`,
+   ~L288-299) — filter loop clears the list it iterates, so every downstream
+   assertion is dead.** `product_pdsfiles = []` is rebound immediately *before*
+   the `for pdsf in product_pdsfiles:` loop that is supposed to populate the
+   filtered list, so the loop body never runs and the list stays empty. The
+   viewset/version/associated assertions (~L306-324) then iterate nothing — the
+   test silently validates only the opus_id round-trip. Fix: filter into a
+   separate list. **Re-enabling the assertions may surface real failures that
+   were masked.** (Verified pre-existing on `origin/rewrite`
+   `COISS_xxxx.py`. COCIRS/CORSS use list comprehensions and are not affected,
+   but audit every `test_opus_id_to_primary_logical_path` when fixing.)
+
+### 🟠 Major
+
+2. **`tests/rules/pds3/test_cocirs_xxxx.py` (~L155-161) — `fpx` derived from a
+   leaked loop variable.** `parts = pdsf.abspath.split('_FP')` uses `pdsf`, whose
+   value is whatever a prior loop last bound — not `test_pdsf`, the file under
+   test. Depends on iteration order; `NameError` if the product list is empty,
+   `IndexError` if that path has no `_FP`. Fix: derive from `test_pdsf` and guard
+   the split.
+
+3. **`tests/rules/pds3/test_hstxx_xxxx.py` (~L74-83) — duplicated viewset
+   validation loop.** Lines 80-83 repeat 76-79 verbatim (`for viewset in
+   pdsf.all_viewsets…: assert viewable.abspath in opus_id_abspaths`), doubling
+   the work with no added coverage. Remove the second loop.
+
+### 🟡 Minor
+
+4. **`tests/rules/pds3/test_cocirs_xxxx.py` (~L44-47) — unused `trimmed` in the
+   failure message.** The assert prints raw `abspaths` while a computed `trimmed`
+   (holdings-relative) is discarded; use `trimmed` to match
+   `test_associations_to_diagrams`.
+
+5. **`tests/rules/pds3/test_covims_0xxx.py` (~L212-217) — un-parametrized
+   round-trip over ~170 paths.** One test loops all paths, stops at the first
+   failure, and reports no case identity. Parametrize with
+   `@pytest.mark.parametrize('file_path', TESTS)` (or at least add `file_path` to
+   the assert message, as `test_go_0xxx.py` does).
+
+### 🔵 Trivial / design
+
+6. **`tests/rules/pds3/test_coiss_xxxx.py` (~L24-30) — skip decision reads
+   golden-file content instead of holdings-bundle presence.**
+   `_coiss_opus_products_golden_references_pds4_reproj` opens the committed golden
+   and greps `_PDS4_REPROJ_BUNDLE_MARKERS`, so a regenerated golden silently
+   re-enables/disables the case. Gate on whether the PDS4 reproj bundle exists in
+   the holdings tree instead (the TODO anticipates removal).
+
+7. **`tests/rules/pds3/test_coiss_xxxx.py` (~L267-278) — silent `continue` hides
+   skipped cases.** Deferred paths leave no record in the report; use per-path
+   parametrization or an explicit skip so deferred coverage is visible.
+
+8. **`tests/rules/pds3/test_ebrocc_xxxx.py` (~L12-16) &
+   `test_nhxxxx_xxxx.py` (~L12-14) — explanatory comment sits *inside* the
+   `@pytest.mark.parametrize(` call**, between the decorator open and the argnames
+   string, obscuring the signature. Move each note above the decorator.
+
+9. **`tests/rules/pds3/test_go_0xxx.py` (~L328-331) — duplicate test tuples.**
+   Two identical pairs (`GO_0019/REDO/C3/JUPITER/C0368441600R.LBL` and
+   `…/E6/IO/C0383655111R.LBL`) double the work; keep one of each.
+
+10. **`tests/rules/pds3/test_nhxxxx_xxxx.py` (~L163-169) — hex-code substitution
+    operates on the whole abspath.** `test_pdsf.abspath.split('0x')[1]` and
+    `.replace(hex_code, alt_hex_code)` act on the full path, so any `0x…` in the
+    holdings root or a parent dir yields the wrong `alt_abspath`. Derive from
+    `pdsf.basename` and rebuild the path.
+
+11. **`tests/rules/pds3/test_vg_28xx.py` (~L77-82) — duplicate entry**
+    `VG_2803/U_RINGS/EASYDATA/KM00_25/RU4P2XEI.TAB` (appears twice).
+
+12. **`tests/rules/pds3/test_vgiss_xxxx.py` (~L56-143) — ~10 consecutive
+    duplicate `TESTS` pairs.** Each re-runs a full `opus_products()` +
+    `associated_abspaths()` sweep for no added coverage; dedupe to cut runtime.
+
+13. **`tests/rules/pds3/test_vgiss_xxxx.py` (~L287-288) — magic `filepath[6]`
+    index** for the volume-set. Derive from the path's first component/prefix
+    (e.g. `filepath.split('/')[0][:7] + 'xxx'`) so it survives prefix-length
+    changes.
+
+14. **`tests/rules/pds4/test_uranus_occs_earthbased.py` (~L76-110) — 35-line
+    stale commented-out OPUS-products block.** Internally inconsistent
+    (`product_pds4files` vs `product_pdsfiles`; pds3-only `volumes` category) so
+    it won't run if uncommented. Replace with a short TODO + issue reference for
+    the deferred coverage. (CodeRabbit offered to open a tracking issue.)
+
+### Style — already ratcheted; the formatting phase (PR-23/24) will resolve
+
+15. **Ruff `E701` one-line `if …: continue`** in `test_corss_8xxx.py` (L249,
+    L255), `test_couvis_0xxx.py` (L82-93), `test_covims_8xxx.py` (L80). These are
+    in the per-file-ignore ratchet, so the lint gate passes today; splitting them
+    is routine ratchet-shrinking for the formatting phase.
+
+16. **Blank line between `@pytest.mark.parametrize` and `def`** in the three pds4
+    test modules (cosmetic; reads as an orphaned decorator).

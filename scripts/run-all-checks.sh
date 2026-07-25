@@ -22,6 +22,7 @@
 #   --pytest               Run pytest only
 #   --pyroma               Run pyroma only
 #   --api-freeze           Run the public-API freeze check only
+#   --clean-install        Run the clean-install (runtime-dep leak) gate only
 #   --bandit               Run bandit only
 #   --vulture              Run vulture only
 #   --sphinx               Run Sphinx build only
@@ -37,22 +38,22 @@
 #
 #   RUN_* (set by this script from CLI or full-run defaults): RUN_RUFF_CHECK,
 #   RUN_RUFF_FORMAT, RUN_MYPY, RUN_PYTEST, RUN_PYROMA, RUN_API_FREEZE,
-#   RUN_BANDIT, RUN_VULTURE, RUN_SPHINX, RUN_PYMARKDOWN
+#   RUN_CLEAN_INSTALL, RUN_BANDIT, RUN_VULTURE, RUN_SPHINX, RUN_PYMARKDOWN
 #
-#   Per-check toggles (true/false). rms-pdsfile turns gates on as they become
-#   able to pass (see pdsfile_overrides.mdc and the modernization plan). Each
-#   check runs only if both RUN_* and ENABLE_* are true (RUN_* from CLI or
-#   defaults below; ENABLE_* from env):
+#   Per-check toggles (true/false). Each check runs only if both RUN_* and
+#   ENABLE_* are true (RUN_* from CLI or defaults below; ENABLE_* from env; see
+#   pdsfile_overrides.mdc for which checks are permanently off):
 #     ENABLE_RUFF_CHECK   (default: true)
-#     ENABLE_RUFF_FORMAT  (default: false — one-time reformat phase)
+#     ENABLE_RUFF_FORMAT  (default: false — not enforced yet)
 #     ENABLE_MYPY         (default: false — never; no inline typing)
-#     ENABLE_PYTEST       (default: false — hermetic pytest arrives Phase 4)
+#     ENABLE_PYTEST       (default: false — not enabled yet)
 #     ENABLE_PYROMA       (default: true)
 #     ENABLE_API_FREEZE   public-API freeze (default: true)
+#     ENABLE_CLEAN_INSTALL clean-install runtime-dep leak gate (default: true)
 #     ENABLE_BANDIT       (default: false — never)
 #     ENABLE_VULTURE      (default: false — never)
-#     ENABLE_SPHINX       (default: false — docs phase)
-#     ENABLE_PYMARKDOWN   PyMarkdown scan (default: false — docs phase)
+#     ENABLE_SPHINX       (default: false — not enabled yet)
+#     ENABLE_PYMARKDOWN   PyMarkdown scan (default: false — not enabled yet)
 #
 # Checks (each run separately; -d runs both Sphinx and Markdown):
 #   Code:     optional: ruff check, ruff format --check, mypy, pytest, pyroma,
@@ -84,6 +85,7 @@ RUN_MYPY=false
 RUN_PYTEST=false
 RUN_PYROMA=false
 RUN_API_FREEZE=false
+RUN_CLEAN_INSTALL=false
 RUN_BANDIT=false
 RUN_VULTURE=false
 RUN_SPHINX=false
@@ -93,17 +95,17 @@ SCOPE_SPECIFIED=false
 # Per-check defaults (override by exporting before invoking this script, or
 # permanently change here).
 #
-# rms-pdsfile modernization: gates are turned on as they become able to pass
-# (mirrors the plan's compliance schedule). At this phase only ruff-check,
-# api-freeze, and pyroma are enabled. pytest (hermetic) turns on with Phase 4;
-# ruff-format with the one-time reformat; sphinx/pymarkdown with the docs phase;
-# mypy/bandit/vulture never (ground rules / pdsfile_overrides.mdc).
+# Gates are enabled as they become able to pass. Currently enabled: ruff-check,
+# pyroma, api-freeze, and the clean-install gate. Not enabled yet: pytest
+# (hermetic), ruff-format, sphinx, and pymarkdown. Never enabled: mypy, bandit,
+# vulture (ground rules / pdsfile_overrides.mdc).
 : "${ENABLE_RUFF_CHECK:=true}"
 : "${ENABLE_RUFF_FORMAT:=false}"
 : "${ENABLE_MYPY:=false}"
 : "${ENABLE_PYTEST:=false}"
 : "${ENABLE_PYROMA:=true}"
 : "${ENABLE_API_FREEZE:=true}"
+: "${ENABLE_CLEAN_INSTALL:=true}"
 : "${ENABLE_BANDIT:=false}"
 : "${ENABLE_VULTURE:=false}"
 : "${ENABLE_SPHINX:=false}"
@@ -223,6 +225,7 @@ while [[ $# -gt 0 ]]; do
             RUN_PYTEST=true
             RUN_PYROMA=true
             RUN_API_FREEZE=true
+            RUN_CLEAN_INSTALL=true
             RUN_BANDIT=true
             RUN_VULTURE=true
             SCOPE_SPECIFIED=true
@@ -269,6 +272,11 @@ while [[ $# -gt 0 ]]; do
             SCOPE_SPECIFIED=true
             shift
             ;;
+        --clean-install)
+            RUN_CLEAN_INSTALL=true
+            SCOPE_SPECIFIED=true
+            shift
+            ;;
         --bandit)
             RUN_BANDIT=true
             SCOPE_SPECIFIED=true
@@ -309,6 +317,7 @@ if [ "$SCOPE_SPECIFIED" = false ]; then
     RUN_PYTEST=true
     RUN_PYROMA=true
     RUN_API_FREEZE=true
+    RUN_CLEAN_INSTALL=true
     RUN_BANDIT=true
     RUN_VULTURE=true
     RUN_SPHINX=true
@@ -336,6 +345,7 @@ _code_checks_any_scheduled() {
     [ "$RUN_PYTEST" = true ] && [ "$ENABLE_PYTEST" = true ] && return 0
     [ "$RUN_PYROMA" = true ] && [ "$ENABLE_PYROMA" = true ] && return 0
     [ "$RUN_API_FREEZE" = true ] && [ "$ENABLE_API_FREEZE" = true ] && return 0
+    [ "$RUN_CLEAN_INSTALL" = true ] && [ "$ENABLE_CLEAN_INSTALL" = true ] && return 0
     [ "$RUN_BANDIT" = true ] && [ "$ENABLE_BANDIT" = true ] && return 0
     [ "$RUN_VULTURE" = true ] && [ "$ENABLE_VULTURE" = true ] && return 0
     return 1
@@ -371,10 +381,9 @@ run_code_checks() {
     local failed=false
     local failed_checks=""
 
-    # rms-pdsfile: lint the package under src/pdsfile, the top-level tests/ tree
-    # (tests moved out of the package in PR-07), the standalone scripts, and the
-    # root conftest.
-    RUFF_TARGETS="src/pdsfile tests scripts conftest.py"
+    # Lint the package under src/pdsfile, the top-level tests/ tree (which
+    # includes tests/conftest.py), and the standalone scripts.
+    RUFF_TARGETS="src/pdsfile tests scripts"
 
     if [ "$RUN_RUFF_CHECK" = true ] && [ "$ENABLE_RUFF_CHECK" = true ]; then
         print_info "Running ruff check..."
@@ -410,10 +419,10 @@ run_code_checks() {
     fi
 
     # -n controls parallelism; --dist loadscope keeps each test module on one
-    # worker to avoid cross-test interference. rms-pdsfile keeps no -n/--cov in
-    # pyproject addopts (chosen per invocation), so they are passed here. This
-    # branch is disabled until the hermetic pytest phase, which also re-points
-    # the target to the moved tests/ tree.
+    # worker to avoid cross-test interference. No -n/--cov live in pyproject
+    # addopts (chosen per invocation), so they are passed here. This branch runs
+    # only when the pytest gate is enabled (ENABLE_PYTEST) and targets the
+    # top-level tests/ tree.
     if [ "$RUN_PYTEST" = true ] && [ "$ENABLE_PYTEST" = true ]; then
         print_info "Running pytest (-n ${PYTEST_WORKERS})..."
         if python -m pytest -q -n "$PYTEST_WORKERS" --dist loadscope tests; then
@@ -436,18 +445,34 @@ run_code_checks() {
         fi
     fi
 
-    # rms-pdsfile: public-API freeze. --confcutdir=tests bypasses the root
-    # conftest.py (which still requires holdings env vars to import until PR-09),
-    # so this check is hermetic. The freeze test regenerates the manifest in a
-    # clean subprocess and needs no holdings itself.
+    # Public-API freeze. --confcutdir=tests/api bypasses tests/conftest.py,
+    # which requires holdings env vars to import, so this check stays hermetic.
+    # The freeze test regenerates the manifest in a clean subprocess and needs
+    # no holdings itself.
     if [ "$RUN_API_FREEZE" = true ] && [ "$ENABLE_API_FREEZE" = true ]; then
         print_info "Running API-freeze check..."
-        if python -m pytest tests/api/test_api_freeze.py --confcutdir=tests -p no:cacheprovider -q; then
+        if python -m pytest tests/api/test_api_freeze.py --confcutdir=tests/api -p no:cacheprovider -q; then
             print_success "API-freeze check passed"
         else
             print_error "API-freeze check failed"
             failed=true
             failed_checks="${failed_checks}Code - API freeze"$'\n'
+        fi
+    fi
+
+    # Clean-install gate (permanent). Builds a throwaway venv, installs the
+    # project with NO extras, and imports the whole public module surface. The
+    # only check that catches a runtime-dependency leak (every other run has the
+    # dev extra present). Runs its own subprocess venv, independent of the
+    # activated dev venv here.
+    if [ "$RUN_CLEAN_INSTALL" = true ] && [ "$ENABLE_CLEAN_INSTALL" = true ]; then
+        print_info "Running clean-install gate (runtime-dep leak)..."
+        if bash "$PROJECT_ROOT/scripts/clean_install_check.sh"; then
+            print_success "Clean-install gate passed"
+        else
+            print_error "Clean-install gate failed"
+            failed=true
+            failed_checks="${failed_checks}Code - Clean install"$'\n'
         fi
     fi
 

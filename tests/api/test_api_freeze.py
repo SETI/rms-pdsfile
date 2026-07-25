@@ -3,20 +3,20 @@
 Regenerates the public-API manifest with ``scripts/dump_public_api.py`` and
 asserts it is identical to the committed ``api_manifest.json``, modulo the
 forgiveness rules in ``manifest_allowlist.json``. This is the compatibility
-contract for the whole modernization rewrite (PR-02 of
+contract for the whole modernization rewrite (see
 ``plans/2026-07-17-modernization-plan.md``): the public surface reachable via
 ``import pdsfile`` must not change except through pre-approved allowlist entries.
 
-The test needs no holdings data. (Until PR-09 makes the root ``conftest.py``
-skip-aware, *collecting* the suite still imports that conftest, which requires
-the holdings env vars; the self-hosted gate and local runs set them. From PR-14
-the hermetic CI runs this test with no holdings at all.)
+The test needs no holdings data itself. Collecting the suite still imports
+``tests/conftest.py``, which requires the holdings env vars, so the self-hosted
+gate and local runs set them; ``--confcutdir=tests/api`` collects this test
+without that conftest for a fully hermetic run.
 
 The fresh manifest is generated in a **child subprocess** (a clean interpreter
 running ``scripts/dump_public_api.py``), never in this process. This is
 deliberate: the frozen contract is the *import-time* public surface, and
-``PdsFile.preload()`` -- run by the session-autouse fixture in the root
-conftest whenever holdings are present -- injects extra runtime class
+``PdsFile.preload()`` -- run by the session-autouse fixture in
+``tests/conftest.py`` whenever holdings are present -- injects extra runtime class
 attributes into the live classes. Regenerating in-process would pick those up
 and make the test pass hermetically (no preload) but fail on the self-hosted
 holdings gate (preload). A fresh subprocess imports ``pdsfile`` without the
