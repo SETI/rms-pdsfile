@@ -21,10 +21,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        # Because we can run multiple tests at the same time
-        # under Linux, we can do our multi-Python-version test
-        # there, and then just run a single version under
-        # Windows to make sure the code still works there.
+        # Self-hosted Linux runs the full multi-Python-version test. Windows is
+        # no longer supported and has been removed from the matrix. macOS entries
+        # are kept commented for possible future re-enablement.
         #
         # MacOS: Python 3.8-3.10 does not currently work on MacOS.
         include:
@@ -42,10 +41,6 @@ jobs:
           #  python-version: "3.12"
           #- os: self-hosted-macos
           #  python-version: "3.13"
-          - os: self-hosted-windows
-            python-version: "3.12"
-          - os: self-hosted-windows
-            python-version: "3.13"
       fail-fast: true
     steps:
       - name: Checkout rms-pdsfile
@@ -69,11 +64,7 @@ jobs:
           echo
           rm -rf venv
           python -m venv venv
-          if [[ ${{ matrix.os }} == self-hosted-windows ]]; then
-            source venv/Scripts/activate
-          else
-            source venv/bin/activate
-          fi
+          source venv/bin/activate
           python -m pip install --upgrade pip
           python -m pip install wheel
           python -m pip install -e ".[dev]"
