@@ -63,6 +63,10 @@ def _resolve_full():
     if missing:
         raise RuntimeError(
             "PDSFILE_TEST_HOLDINGS=full requires " + ' and '.join(missing) + " to be set")
+    invalid = [path for path in (pds3, pds4) if not os.path.isdir(path)]
+    if invalid:
+        raise RuntimeError(
+            "PDSFILE_TEST_HOLDINGS=full: missing holdings tree(s): " + ', '.join(invalid))
     return HoldingsConfig('full', pds3, pds4)
 
 
