@@ -40,21 +40,20 @@
 #   RUN_RUFF_FORMAT, RUN_MYPY, RUN_PYTEST, RUN_PYROMA, RUN_API_FREEZE,
 #   RUN_CLEAN_INSTALL, RUN_BANDIT, RUN_VULTURE, RUN_SPHINX, RUN_PYMARKDOWN
 #
-#   Per-check toggles (true/false). rms-pdsfile turns gates on as they become
-#   able to pass (see pdsfile_overrides.mdc and the modernization plan). Each
-#   check runs only if both RUN_* and ENABLE_* are true (RUN_* from CLI or
-#   defaults below; ENABLE_* from env):
+#   Per-check toggles (true/false). Each check runs only if both RUN_* and
+#   ENABLE_* are true (RUN_* from CLI or defaults below; ENABLE_* from env; see
+#   pdsfile_overrides.mdc for which checks are permanently off):
 #     ENABLE_RUFF_CHECK   (default: true)
-#     ENABLE_RUFF_FORMAT  (default: false — one-time reformat phase)
+#     ENABLE_RUFF_FORMAT  (default: false — not enforced yet)
 #     ENABLE_MYPY         (default: false — never; no inline typing)
-#     ENABLE_PYTEST       (default: false — hermetic pytest arrives Phase 4)
+#     ENABLE_PYTEST       (default: false — not enabled yet)
 #     ENABLE_PYROMA       (default: true)
 #     ENABLE_API_FREEZE   public-API freeze (default: true)
 #     ENABLE_CLEAN_INSTALL clean-install runtime-dep leak gate (default: true)
 #     ENABLE_BANDIT       (default: false — never)
 #     ENABLE_VULTURE      (default: false — never)
-#     ENABLE_SPHINX       (default: false — docs phase)
-#     ENABLE_PYMARKDOWN   PyMarkdown scan (default: false — docs phase)
+#     ENABLE_SPHINX       (default: false — not enabled yet)
+#     ENABLE_PYMARKDOWN   PyMarkdown scan (default: false — not enabled yet)
 #
 # Checks (each run separately; -d runs both Sphinx and Markdown):
 #   Code:     optional: ruff check, ruff format --check, mypy, pytest, pyroma,
@@ -96,11 +95,10 @@ SCOPE_SPECIFIED=false
 # Per-check defaults (override by exporting before invoking this script, or
 # permanently change here).
 #
-# rms-pdsfile modernization: gates are turned on as they become able to pass
-# (mirrors the plan's compliance schedule). At this phase only ruff-check,
-# api-freeze, and pyroma are enabled. pytest (hermetic) turns on with Phase 4;
-# ruff-format with the one-time reformat; sphinx/pymarkdown with the docs phase;
-# mypy/bandit/vulture never (ground rules / pdsfile_overrides.mdc).
+# Gates are enabled as they become able to pass. Currently enabled: ruff-check,
+# pyroma, api-freeze, and the clean-install gate. Not enabled yet: pytest
+# (hermetic), ruff-format, sphinx, and pymarkdown. Never enabled: mypy, bandit,
+# vulture (ground rules / pdsfile_overrides.mdc).
 : "${ENABLE_RUFF_CHECK:=true}"
 : "${ENABLE_RUFF_FORMAT:=false}"
 : "${ENABLE_MYPY:=false}"
@@ -421,10 +419,10 @@ run_code_checks() {
     fi
 
     # -n controls parallelism; --dist loadscope keeps each test module on one
-    # worker to avoid cross-test interference. rms-pdsfile keeps no -n/--cov in
-    # pyproject addopts (chosen per invocation), so they are passed here. This
-    # branch is disabled until the hermetic pytest phase, which also re-points
-    # the target to the moved tests/ tree.
+    # worker to avoid cross-test interference. No -n/--cov live in pyproject
+    # addopts (chosen per invocation), so they are passed here. This branch runs
+    # only when the pytest gate is enabled (ENABLE_PYTEST) and targets the
+    # top-level tests/ tree.
     if [ "$RUN_PYTEST" = true ] && [ "$ENABLE_PYTEST" = true ]; then
         print_info "Running pytest (-n ${PYTEST_WORKERS})..."
         if python -m pytest -q -n "$PYTEST_WORKERS" --dist loadscope tests; then

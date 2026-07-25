@@ -135,9 +135,8 @@ target-version = "py310"
 line-length = 100
 
 [tool.ruff.format]
-# Configured but NOT enforced yet: the one-time reformat (and the
-# `ruff format --check` gate) lands in the formatting phase, subject to the
-# owner churn checkpoint. Aligned rule tables are excluded there.
+# Configured but NOT enforced yet: `ruff format` is not run as a gate. When
+# formatting is enforced, aligned rule tables are excluded from it.
 quote-style = "single"
 
 [tool.ruff.lint]
