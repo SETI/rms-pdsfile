@@ -47,7 +47,17 @@ phase/PR that owns them.
   PR-08 (conftest moves, tests restructured, `testpaths` added) removes the
   divergence; no action needed before then.
 
-## From PR-08 (round 1–2)
+## From PR-08 (rounds 1–3)
+- **Pre-existing pds4 uranus s-mode blackbox failures (full-holdings golden
+  area, owner-deferred).** A full `pytest tests --mode s` (i.e. including
+  `tests/pds4file/`) shows 5 failures in
+  `tests/pds4file/test_pds4file_blackbox.py` (uranus_occ, a
+  `KeyError`→`UnboundLocalError` around `pdsfile.py:4254/4265`). Verified
+  **identical on `origin/rewrite`** — pre-existing, not introduced by PR-08 —
+  and **not** exercised by the CI s-mode invocation, which is pds3-only
+  (`tests/pds3file tests/rules/pds3 --mode s`). Sits in the full-holdings
+  golden/shelf-reproducibility area the owner split out of PR-08. Owner:
+  the deferred additive-coverage / golden-reproducibility follow-up.
 - **`_is_forgiven` ignores a category's `pr` field.**
   `tests/api/test_api_freeze.py::_is_forgiven` never reads `pr`, so §6.1's
   "a category activates only from its named PR" is not enforced in code
