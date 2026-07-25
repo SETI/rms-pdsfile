@@ -22,10 +22,10 @@ echo "================================================================"
 echo "CLEAN-INSTALL GATE (runtime-dependency leak)"
 echo "================================================================"
 echo
-# PR-08: verify the full pdsfile module surface imports from a bare `pip install
-# .` (no extras). Catches a runtime module still importing a dev-only dependency
-# (e.g. pytest). Holdings-independent; runs before the data tests so a leak fails
-# fast. Builds its own throwaway venv.
+# Verify the full pdsfile module surface imports from a bare `pip install .` (no
+# extras). Catches a runtime module still importing a dev-only dependency (e.g.
+# pytest). Holdings-independent; runs before the data tests so a leak fails fast.
+# Builds its own throwaway venv.
 bash scripts/clean_install_check.sh
 if [ $? -ne 0 ]; then
     echo "**************************************"

@@ -12,11 +12,11 @@ dependencies = [
   "numpy",
   "pillow",
   "pyparsing",
-  # pytest is NOT a runtime dependency: PR-08 extracted the per-dataset rule
-  # modules' inline tests to tests/rules/ and removed their `from
-  # .pytest_support import *`, so importing pdsfile no longer needs pytest. It
-  # lives in the dev extra, and the clean-install gate
-  # (scripts/clean_install_check.sh) enforces that no runtime module imports it.
+  # pytest is a dev-only dependency, not a runtime one: the per-dataset rule
+  # modules' tests live under tests/rules/ (not inline in the modules), so
+  # importing pdsfile does not need pytest. It lives in the dev extra, and the
+  # clean-install gate (scripts/clean_install_check.sh) enforces that no runtime
+  # module imports it.
   "range_ex",
   "rms-pdslogger>=3.1.1",
   "rms-pdstable",
@@ -91,9 +91,9 @@ pds4indexshelf = "pdsfile.holdings_maintenance.pds4.pds4indexshelf:main"
 pds4infoshelf = "pdsfile.holdings_maintenance.pds4.pds4infoshelf:main"
 pds4linkshelf = "pdsfile.holdings_maintenance.pds4.pds4linkshelf:main"
 
-# src-only discovery (PR-06): the maintenance tools (holdings_maintenance) and
-# show_opus_products now live under src/pdsfile/, so everything ships as
-# subpackages of pdsfile and the transient dual-discovery from PR-05 is gone.
+# src-only discovery: the maintenance tools (holdings_maintenance) and
+# show_opus_products live under src/pdsfile/, so everything ships as subpackages
+# of pdsfile.
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["pdsfile*"]

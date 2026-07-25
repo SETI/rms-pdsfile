@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Clean-install gate (PR-08, permanent).
+# Clean-install gate (permanent).
 #
 # Builds a throwaway virtualenv, installs the project with NO optional extras
 # (`pip install .`, not `-e ".[dev]"`), and imports the entire public pdsfile

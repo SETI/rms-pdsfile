@@ -383,9 +383,8 @@ run_code_checks() {
     local failed=false
     local failed_checks=""
 
-    # rms-pdsfile: lint the package under src/pdsfile, the top-level tests/ tree
-    # (tests moved out of the package in PR-07; conftest.py moved into tests/ in
-    # PR-08), and the standalone scripts.
+    # Lint the package under src/pdsfile, the top-level tests/ tree (which
+    # includes tests/conftest.py), and the standalone scripts.
     RUFF_TARGETS="src/pdsfile tests scripts"
 
     if [ "$RUN_RUFF_CHECK" = true ] && [ "$ENABLE_RUFF_CHECK" = true ]; then
@@ -448,11 +447,10 @@ run_code_checks() {
         fi
     fi
 
-    # rms-pdsfile: public-API freeze. --confcutdir=tests/api bypasses the
-    # tests/conftest.py (PR-08 moved conftest.py from the repo root into tests/;
-    # it still requires holdings env vars to import until PR-09), so this check
-    # stays hermetic. The freeze test regenerates the manifest in a clean
-    # subprocess and needs no holdings itself.
+    # Public-API freeze. --confcutdir=tests/api bypasses tests/conftest.py,
+    # which requires holdings env vars to import, so this check stays hermetic.
+    # The freeze test regenerates the manifest in a clean subprocess and needs
+    # no holdings itself.
     if [ "$RUN_API_FREEZE" = true ] && [ "$ENABLE_API_FREEZE" = true ]; then
         print_info "Running API-freeze check..."
         if python -m pytest tests/api/test_api_freeze.py --confcutdir=tests/api -p no:cacheprovider -q; then
@@ -464,11 +462,11 @@ run_code_checks() {
         fi
     fi
 
-    # rms-pdsfile: clean-install gate (PR-08, permanent). Builds a throwaway
-    # venv, installs the project with NO extras, and imports the whole public
-    # module surface. The only check that catches a runtime-dependency leak
-    # (every other run has the dev extra present). Runs its own subprocess venv,
-    # independent of the activated dev venv here.
+    # Clean-install gate (permanent). Builds a throwaway venv, installs the
+    # project with NO extras, and imports the whole public module surface. The
+    # only check that catches a runtime-dependency leak (every other run has the
+    # dev extra present). Runs its own subprocess venv, independent of the
+    # activated dev venv here.
     if [ "$RUN_CLEAN_INSTALL" = true ] && [ "$ENABLE_CLEAN_INSTALL" = true ]; then
         print_info "Running clean-install gate (runtime-dep leak)..."
         if bash "$PROJECT_ROOT/scripts/clean_install_check.sh"; then

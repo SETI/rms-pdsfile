@@ -1,11 +1,9 @@
 ##########################################################################################
 # tests/rules/support.py
 #
-# Shared helpers for the extracted rule-module tests (formerly the two
-# src/pdsfile/pds{3,4}file/rules/pytest_support.py modules, merged here in PR-08).
-# The golden opus/associated-path results live in the top-level tests/ tree
-# (tests/golden/full/pds{3,4}/); this file sits at tests/rules/, so the golden
-# directories are one level up.
+# Shared helpers for the rule-module tests. The golden opus/associated-path
+# results live in the top-level tests/ tree (tests/golden/full/pds{3,4}/); this
+# file sits at tests/rules/, so the golden directories are one level up.
 ##########################################################################################
 
 import os

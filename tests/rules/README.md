@@ -1,10 +1,9 @@
 # Rule-module tests (`tests/rules/`)
 
 These are the per-dataset unit tests for the PDS3 and PDS4 **rule modules**
-(`src/pdsfile/pds{3,4}file/rules/*.py`). Until PR-08 each test lived inline at
-the bottom of its rule module, guarded by `import pytest` and
-`from .pytest_support import *`. PR-08 extracted them here **verbatim** (no test
-logic changed) so that importing `pdsfile` no longer needs `pytest` at runtime.
+(`src/pdsfile/pds{3,4}file/rules/*.py`). They live here as standalone test
+modules rather than inline in the rule modules, so that importing `pdsfile` does
+not need `pytest` at runtime.
 
 ## Layout
 
@@ -61,8 +60,8 @@ The modernization plan's *additive-coverage* step — adding the missing
 `test_versions` / `test_associations` / `test_duplicated_products` and generating
 their goldens with `--update` — is **deferred to a follow-up PR**, pending an
 investigation into why some full-holdings goldens do not reproduce on the local
-`/data/pdsdata` copy while passing on the limited testing copy. PR-08 changed no
-goldens.
+`/data/pdsdata` copy while passing on the limited testing copy. No goldens are
+modified here.
 
 This table records, for each dataset, whether each additive test is already
 present (**✓**), is **deferred** (the underlying rule table exists and is

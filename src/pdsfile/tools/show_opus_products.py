@@ -7,9 +7,9 @@ import pprint
 import tabulate
 import traceback
 
-# Holdings roots read straight from the environment. These were previously
-# imported from the pds{3,4}file test helpers; the tests package leaves the
-# distribution in PR-07, so this tool reads the env vars directly.
+# Holdings roots read straight from the environment. The test helpers that also
+# expose these live in the tests package (not the distribution), so this tool
+# reads the env vars directly.
 PDS3_HOLDINGS_DIR = os.environ['PDS3_HOLDINGS_DIR']
 PDS4_HOLDINGS_DIR = os.environ['PDS4_HOLDINGS_DIR']
 

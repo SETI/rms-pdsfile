@@ -11,7 +11,8 @@ exits non-zero.
 
 This is the only gate that catches a runtime-dependency leak: the normal test
 runs and ``pip install -e ".[dev]"`` always have pytest present, so they cannot
-see the coupling that PR-08 removed. Keep this permanent.
+detect a runtime module that still imports a dev-only dependency; this gate can.
+Keep it permanent.
 
 Standalone by design: it imports only ``pdsfile`` and the stdlib, never anything
 under ``scripts/`` or ``tests/`` (which are not installed in the clean venv).
@@ -36,8 +37,8 @@ _TOP_MODULES = [
 _RULES_PACKAGES = ['pdsfile.pds3file.rules', 'pdsfile.pds4file.rules']
 
 # Stems never part of the runtime surface (mirror dump_public_api's exclusions).
-# ``pytest_support`` was deleted in PR-08; guard anyway so a stray copy cannot
-# reintroduce a pytest import into this gate.
+# There is no runtime ``pytest_support`` module; guard anyway so a stray copy
+# cannot reintroduce a pytest import into this gate.
 _EXCLUDED_RULES_STEMS = {'pytest_support', '__init__'}
 
 
