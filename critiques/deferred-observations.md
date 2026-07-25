@@ -47,14 +47,7 @@ phase/PR that owns them.
   PR-08 (conftest moves, tests restructured, `testpaths` added) removes the
   divergence; no action needed before then.
 
-## From PR-08 (round 1)
-- **Sub-plan prose error re COISS `os` (no code impact).**
-  `plans/2026-07-24-pr-08-subplan.md` says COISS "keeps `import os` (production
-  use at line 1031)", but old line 1031 is inside
-  `test_opus_id_to_primary_logical_path()` — COISS's `os` was entirely
-  test-only. PR-08's implementation is correct (COISS rule module has no
-  `import os`; `os` moved to the test file); only the plan prose is wrong.
-  Owner: doc cleanup, harmless.
+## From PR-08 (round 1–2)
 - **`_is_forgiven` ignores a category's `pr` field.**
   `tests/api/test_api_freeze.py::_is_forgiven` never reads `pr`, so §6.1's
   "a category activates only from its named PR" is not enforced in code
