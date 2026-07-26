@@ -11,4 +11,5 @@ design record and future options live in `2026-07-25-mini-holdings-plan.md`
 and completed per-PR sub-plans are kept in `archive/` (currently the v1 plan
 and the PR-03/04 and PR-08 sub-plans). Deviations from the active plan are
 recorded as dated addendum files here and acknowledged by the owner before
-the deviating change merges.
+the deviating change merges; the first is
+`2026-07-25-addendum-holdings-free-marker.md` (raised by PR-13).

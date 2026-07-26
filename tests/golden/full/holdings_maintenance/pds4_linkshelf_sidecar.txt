@@ -1,0 +1,9 @@
+uranus_occ_links = {
+  "data/rings/u0_kao_91cm_734nm_radius_alpha_egress_1000m.xml": [( 233, "u0_kao_91cm_734nm_radius_alpha_egress_1000m.tab", "data/rings/u0_kao_91cm_734nm_radius_alpha_egress_1000m.tab")],
+  "data/rings/u0_kao_91cm_734nm_radius_beta_egress_1000m.xml" : [( 233, "u0_kao_91cm_734nm_radius_beta_egress_1000m.tab" , "data/rings/u0_kao_91cm_734nm_radius_beta_egress_1000m.tab")],
+  "data/rings/u0_kao_91cm_734nm_radius_gamma_egress_1000m.xml": [( 233, "u0_kao_91cm_734nm_radius_gamma_egress_1000m.tab", "data/rings/u0_kao_91cm_734nm_radius_gamma_egress_1000m.tab")],
+  "data/rings/u0_kao_91cm_734nm_radius_alpha_egress_1000m.tab": "data/rings/u0_kao_91cm_734nm_radius_alpha_egress_1000m.xml",
+  "data/rings/u0_kao_91cm_734nm_radius_beta_egress_1000m.tab" : "data/rings/u0_kao_91cm_734nm_radius_beta_egress_1000m.xml",
+  "data/rings/u0_kao_91cm_734nm_radius_gamma_egress_1000m.tab": "data/rings/u0_kao_91cm_734nm_radius_gamma_egress_1000m.xml",
+}
+

@@ -113,6 +113,7 @@ pythonpath = [".", "src"]
 addopts = ["--strict-markers", "--strict-config"]
 markers = [
   "full_holdings: test is only meaningful against the complete real holdings tree (sizes, volume counts); auto-skipped under the mini fixtures",
+  "holdings_free: test builds its own inputs and needs no holdings tree; runs even when no holdings are available",
 ]
 
 # Tool configuration

@@ -1,0 +1,9 @@
+##########################################################################################
+Pdsfile: volumes/HSTNx_xxxx/HSTN0_7176/DATA/VISIT_01/N4BI01L4Q.LBL
+##########################################################################################
+{('HST', 10, 'hst_text', 'FITS Header Text', True): ['volumes/HSTNx_xxxx/HSTN0_7176/DATA/VISIT_01/N4BI01L4Q.ASC',
+                                                     'volumes/HSTNx_xxxx/HSTN0_7176/DATA/VISIT_01/N4BI01L4Q.LBL'],
+ ('HST', 40, 'hst_calib', 'Calibrated Data Preview', True): ['volumes/HSTNx_xxxx/HSTN0_7176/DATA/VISIT_01/N4BI01L4Q_CAL.JPG'],
+ ('HST', 80, 'hst_ima', 'Pre-mosaic Preview', True): ['volumes/HSTNx_xxxx/HSTN0_7176/DATA/VISIT_01/N4BI01L4Q_IMA.JPG'],
+ ('HST', 30, 'hst_raw', 'Raw Data Preview', True): ['volumes/HSTNx_xxxx/HSTN0_7176/DATA/VISIT_01/N4BI01L4Q_RAW.JPG'],
+ ('HST', 20, 'hst_tiff', 'Raw Data Preview (lossless)', True): ['volumes/HSTNx_xxxx/HSTN0_7176/DATA/VISIT_01/N4BI01L4Q_RAW.TIF']}

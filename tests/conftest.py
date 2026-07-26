@@ -34,10 +34,13 @@ def pytest_configure(config):
 def pytest_collection_modifyitems(config, items):
     holdings = config._pdsfile_holdings
     if not holdings.available:
-        # No holdings: skip everything (the suite is data-dependent) with a clear
-        # reason instead of failing collection.
+        # No holdings: skip every data-dependent test (nearly the whole suite) with
+        # a clear reason instead of failing collection. Tests marked holdings_free
+        # build their own inputs and must still run on a machine with no holdings.
         skip = pytest.mark.skip(reason=SKIP_REASON)
         for item in items:
+            if 'holdings_free' in item.keywords:
+                continue
             item.add_marker(skip)
         return
     if holdings.flavor == 'mini':

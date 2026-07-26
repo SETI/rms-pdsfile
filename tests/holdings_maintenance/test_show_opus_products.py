@@ -1,0 +1,134 @@
+##########################################################################################
+# tests/holdings_maintenance/test_show_opus_products.py
+#
+# show_opus_products has no main() yet, so it is driven here as a subprocess
+# (`python -m ...`) -- the same interface an in-process main() will replace later
+# without changing what is asserted.
+#
+# The tool runs Pds3File.use_shelves_only(True), so it answers entirely out of the
+# info shelves. This module therefore dogfoods pdschecksums and pdsinfoshelf onto
+# the copied tree first (the `tree` fixture) and then queries it.
+#
+# Every test rebuilds the tree first, so each one is independent and order-agnostic.
+##########################################################################################
+
+import pytest
+
+from tests.holdings_maintenance import subsets, support
+
+pytestmark = pytest.mark.full_holdings
+
+SOURCE_FLAVOR = 'pds3'
+SOURCE_FINGERPRINTS = subsets.PDS3_VOLUME_SOURCES + subsets.PDS3_VOLINFO_SOURCES
+SOURCE_PATHS = subsets.paths_of(SOURCE_FINGERPRINTS)
+SOURCE_MTIMES = subsets.PDS3_MTIMES
+
+VOLUME_DIR = f'volumes/{subsets.PDS3_VOLSET}/{subsets.PDS3_VOLUME}'
+LABEL = f'{VOLUME_DIR}/DATA/VISIT_01/N4BI01L4Q.LBL'
+LOGICAL_LABEL = LABEL
+
+EXPECTED_OPUS_TYPES = ('hst_text', 'hst_calib', 'hst_ima', 'hst_raw', 'hst_tiff')
+
+
+@pytest.fixture
+def tree(fresh_tree):
+    """The module tree with checksums and info shelves generated.
+
+    show_opus_products sets use_shelves_only(True) for Pds3File, so without the
+    info shelf it would resolve nothing.
+    """
+
+    for tool in ('pdschecksums', 'pdsinfoshelf'):
+        support.initialize(fresh_tree, tool, fresh_tree.path(VOLUME_DIR))
+
+    return fresh_tree
+
+
+def test_table_output_lists_every_opus_type(tree):
+    """The default table output names the file and every one of its opus types.
+
+    Asserted structurally rather than against a golden: the table is rendered by
+    `tabulate`, so a byte-exact golden would pin a third-party library's formatting
+    and break on an unrelated release. The `--pprint` output, which is pdsfile's
+    own, carries the byte-exact golden.
+    """
+
+    run = support.run_tool(tree, 'show_opus_products', '--paths', tree.path(LABEL))
+    assert run.returncode == 0, run.describe()
+
+    assert f'Pdsfile: {LOGICAL_LABEL}' in run.output, run.describe()
+    assert 'opus_type' in run.output, run.describe()
+    assert 'opus_products' in run.output, run.describe()
+    for opus_type in EXPECTED_OPUS_TYPES:
+        assert opus_type in run.output, run.describe()
+
+    # Each product appears under the table, by logical path.
+    for product in ('N4BI01L4Q.ASC', 'N4BI01L4Q_CAL.JPG', 'N4BI01L4Q_IMA.JPG',
+                    'N4BI01L4Q_RAW.JPG', 'N4BI01L4Q_RAW.TIF'):
+        assert f'{VOLUME_DIR}/DATA/VISIT_01/{product}' in run.output, run.describe()
+
+    # No absolute path from the temporary tree leaks into what the tool printed.
+    # stdout, not the merged capture: the subprocess runs with cwd=tree.disk, so a
+    # library warning naming the working directory would fail this spuriously.
+    assert str(tree.disk) not in run.stdout, run.describe()
+
+
+def test_pprint_output_maps_each_product_category(tree, golden_update):
+    """--pprint emits the raw product dictionary, keyed by product category."""
+
+    run = support.run_tool(tree, 'show_opus_products', '--pprint',
+                           '--paths', tree.path(LABEL))
+    assert run.returncode == 0, run.describe()
+
+    # stdout only: a library warning on stderr is not this tool's output.
+    text = run.stdout.replace(str(tree.disk), '$DISK')
+    support.check_golden('show_opus_products_pprint', text, golden_update)
+
+    # Real values: the TIFF product is reachable and is listed by logical path.
+    assert f'{VOLUME_DIR}/DATA/VISIT_01/N4BI01L4Q_RAW.TIF' in run.output, run.describe()
+    assert 'hst_tiff' in run.output, run.describe()
+
+
+def test_logical_paths_are_accepted(tree):
+    """A logical path resolves the same way an absolute path does."""
+
+    absolute = support.run_tool(tree, 'show_opus_products', '--paths',
+                                tree.path(LABEL))
+    logical = support.run_tool(tree, 'show_opus_products', '--paths', LOGICAL_LABEL)
+    assert logical.returncode == 0, logical.describe()
+    assert logical.stdout == absolute.stdout, logical.describe()
+
+
+def test_opus_type_filter_restricts_the_output(tree):
+    """--opus-types keeps only the requested category."""
+
+    run = support.run_tool(tree, 'show_opus_products', '--opus-types', 'hst_tiff',
+                           '--paths', tree.path(LABEL))
+    assert run.returncode == 0, run.describe()
+    assert 'hst_tiff' in run.output, run.describe()
+    for opus_type in ('hst_text', 'hst_calib', 'hst_ima', 'hst_raw'):
+        assert opus_type not in run.output, run.describe()
+
+
+def test_an_unknown_opus_type_warns_and_bypasses(tree):
+    """An opus type the file does not have is reported and the file is skipped."""
+
+    run = support.run_tool(tree, 'show_opus_products', '--opus-types', 'not_a_type',
+                           '--paths', tree.path(LABEL))
+    assert run.returncode == 0, run.describe()
+    assert 'WARNING: not_a_type is not valid' in run.output, run.describe()
+    assert 'bypassing output' in run.output, run.describe()
+    # The valid types are offered instead, and no product table is printed.
+    assert 'None of the given opus types exist; valid values:' in run.output, \
+        run.describe()
+    assert 'Pdsfile:' not in run.output, run.describe()
+    assert 'N4BI01L4Q_RAW.TIF' not in run.output, run.describe()
+
+
+def test_a_nonexistent_path_warns_rather_than_failing(tree):
+    """A path that resolves but does not exist produces a warning, not an error."""
+
+    missing = f'{VOLUME_DIR}/DATA/VISIT_01/N4BI01ZZZ.LBL'
+    run = support.run_tool(tree, 'show_opus_products', '--paths', missing)
+    assert run.returncode == 0, run.describe()
+    assert "doesn't exist" in run.output, run.describe()
