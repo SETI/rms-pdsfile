@@ -496,10 +496,11 @@ def md5_file_mapping(path):
 def sidecar_text(path):
     """Return a shelf `.py` sidecar as normalized text.
 
-    The tools write sidecar entries in a deterministic, machine-independent order
-    (sorted keys, or table-row order for index shelves); this strips trailing
-    whitespace and normalizes line endings so the comparison does not depend on
-    either.
+    The tools write sidecar entries in a deterministic, machine-independent order:
+    sorted keys for info shelves, table-row order for index shelves, and for link
+    shelves the list-valued entries before the str-valued ones with each group
+    sorted. This strips trailing whitespace and normalizes line endings so the
+    comparison does not depend on either.
 
     Args:
         path: The `*.py` sidecar to read.

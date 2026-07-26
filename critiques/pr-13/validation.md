@@ -119,10 +119,12 @@ this record names roots by role only.
 
 ## Deviations from the active plan
 
-Two, both forced by PR-13's own deliverables and both written up for owner
-acknowledgement in `plans/2026-07-25-addendum-holdings-free-marker.md`: the
-`holdings_free` exemption in PR-09's collect-and-skip rule, and adding the tool
-tests to one suite invocation rather than both.
+Four, all written up for owner acknowledgement in
+`plans/2026-07-25-addendum-holdings-free-marker.md`: the `holdings_free` exemption
+in PR-09's collect-and-skip rule; adding the tool tests to one suite invocation
+rather than both; the source tables living in `subsets.py` and aliased one line per
+module rather than copied into each; and invoking every tool as
+`python -m <module>` rather than `python <path>.py`.
 
 ## Behaviour preservation
 
