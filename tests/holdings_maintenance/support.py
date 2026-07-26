@@ -496,7 +496,8 @@ def md5_file_mapping(path):
 def sidecar_text(path):
     """Return a shelf `.py` sidecar as normalized text.
 
-    The tools already write sidecar entries sorted by path; this strips trailing
+    The tools write sidecar entries in a deterministic, machine-independent order
+    (sorted keys, or table-row order for index shelves); this strips trailing
     whitespace and normalizes line endings so the comparison does not depend on
     either.
 

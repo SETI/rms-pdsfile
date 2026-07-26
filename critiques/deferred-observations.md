@@ -99,10 +99,12 @@ phase/PR that owns them.
 
 ## From PR-13 (maintenance-tool test suite, issue #82)
 
-Five pre-existing defects surfaced while writing the tool tests. **None is fixed
-in PR-13** — that PR is behavior-preserving (§6.4) — but each is pinned by a test
-that asserts today's behavior and names, in its docstring, the source line and the
-PR that owns the fix. Whichever PR changes the behavior will see the pin fail.
+Seven pre-existing defects surfaced: entries 1-5 while writing the tool tests,
+entries 10-11 during the adversarial review rounds. **None is fixed in PR-13** —
+that PR is behavior-preserving (§6.4) — but each is pinned by a test that asserts
+today's behavior and points at its numbered entry below, where the defect, its
+location and the owning PR are written up. Whichever PR changes the behavior will
+see the pin fail.
 
 1. **`pds4archives` cannot round-trip.** `write_archive()` adds members under
    `arcname=<bundle-set basename>` (`pds4archives.py:238-241`) while

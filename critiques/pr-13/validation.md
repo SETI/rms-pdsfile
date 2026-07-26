@@ -17,7 +17,7 @@ Holdings roots are referred to by role only, never by path (§3.4.1):
 | API-freeze manifest test | **Pass** (1 passed). PR-13 changes nothing under `src/`, so the manifest cannot move; the run confirms it. |
 | Clean-install import check | **Pass** — "all runtime modules import with no dev extras". |
 | Full-data suite, both modes | **Pass**, per-test set diffed below. |
-| Adversarial pre-PR review loop | **Converged in 2 rounds**, both `goal met` with zero Major. See `round-1.md` and `round-2.md`. |
+| Adversarial pre-PR review loop | **Converged in 4 rounds**, every round `goal met` with zero Major. See `round-1.md` … `round-4.md`. |
 
 `ENABLE_PYTEST` in `scripts/run-all-checks.sh` stays `false`; PR-14 flips it.
 
@@ -82,7 +82,7 @@ With `PDSFILE_TEST_HOLDINGS`, `PDS3_HOLDINGS_DIR`, `PDS4_HOLDINGS_DIR` and
 | | Result |
 |---|---|
 | before PR-13 | 713 skipped, **0 passed** |
-| after PR-13 | 794 skipped, **23 passed** |
+| after PR-13 | 795 skipped, **23 passed** |
 
 The 23 are the 17 `crlf` classifier tests and the 6 `shelf_consistency_check`
 tests that build their own legacy-layout tree. The PR-13 spec requires the crlf

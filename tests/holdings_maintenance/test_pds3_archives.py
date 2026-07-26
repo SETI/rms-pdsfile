@@ -158,12 +158,16 @@ def test_update_skips_an_existing_archive(fresh_tree):
     assert member in support.tar_member_names(fresh_tree.path(ARCHIVE)), run.describe()
 
 
-def test_update_creates_a_missing_archive(fresh_tree):
-    """--update does build an archive for a volume that has none."""
+def test_update_creates_a_missing_archive(fresh_tree, golden_update):
+    """--update does build an archive for a volume that has none.
+
+    The archive it builds is the same one --initialize would have built.
+    """
 
     run = support.run_tool(fresh_tree, 'pdsarchives', '--update',
                            fresh_tree.path(VOLUME_DIR))
     assert run.returncode == 0, run.describe()
     assert fresh_tree.path(ARCHIVE).exists(), run.describe()
-    assert support.tar_member_text(fresh_tree.path(ARCHIVE)) == \
-        (support.GOLDEN_DIR / 'pds3_archives_members.txt').read_text(encoding='utf-8')
+    support.check_golden('pds3_archives_members',
+                         support.tar_member_text(fresh_tree.path(ARCHIVE)),
+                         golden_update)
