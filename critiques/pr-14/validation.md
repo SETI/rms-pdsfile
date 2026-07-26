@@ -296,8 +296,44 @@ recorded in `critiques/deferred-observations.md`. Nothing was half-landed.
   that job runs were audited for that class of assumption (the `crlf` classifier
   units build their own bytes in `tmp_path`; the holdings-free
   `shelf_consistency_check` cases build their own tiny tree; the freeze test
-  shells out to the dumper and compares JSON). **First real proof comes from the
-  CI run on this PR.**
+  shells out to the dumper and compares JSON). First real proof comes from the
+  CI run on this PR — see §8b.
+
+## 8b. First real CI run (PR #107, run 30217863593) — all six jobs green
+
+The stock-runner unknown is now closed. Every job succeeded on the first attempt;
+no PR-13-style environment-pinning failure appeared.
+
+**Hosted `Lint and holdings-free tests`**, both legs, on `ubuntu-latest` with no
+holdings and a fresh pip resolution:
+
+| leg | pytest line | result | wall |
+|---|---|---|---|
+| 3.10 | `Running pytest (-n 1; no holdings: holdings-free subset only)...` | **24 passed, 800 skipped** | 24 s total for all five gates |
+| 3.13 | same | **24 passed, 800 skipped** | comparable |
+
+Both legs also show `Final rating: 10/10` (pyroma), `✓ Ruff check passed`,
+`✓ API-freeze check passed`, and the clean-install gate building its throwaway
+venv and importing the full module surface — the first time that gate has run on
+a machine with no holdings env vars at all. The printed flavor line is the
+no-holdings branch, so the job is demonstrably running the subset it claims and
+not silently something else.
+
+**Self-hosted `Test pdsfile`**, all four Python versions green; the 3.13 leg's
+two passes read:
+
+```
+790 passed, 34 skipped in 378.62s      (--mode ns)
+555 passed,  3 skipped in 282.15s      (--mode s)
+```
+
+Identical to the baseline in §3 and to the local runs, on a different machine and
+a different holdings root — which independently corroborates the "no behavior
+change" claim rather than merely repeating it.
+
+The six check names GitHub produced match the ones given to the owner for branch
+protection exactly: `Lint and holdings-free tests (3.10)`, `(3.13)`, and
+`Test pdsfile (self-hosted-linux, 3.10 … 3.13)`.
 
 ## 8a. The Windows classifier, and why macOS keeps its own
 
