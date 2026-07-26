@@ -280,13 +280,14 @@ public and empty; it stays empty for now. The merged mini-ready plumbing
    pytest/coverage/ruff; Phase 7 additionally needs `sphinx` + extensions
    (part of the `docs` extra).
 3. **Consumer-smoke baseline.** PR-37 compares the rms-opus import smoke and
-   rms-viewmaster startup against a recorded baseline. v1 specified capturing
-   it in Phase 0; **verify it exists under `critiques/`** (as of 2026-07-25 it
-   is not there). If absent, capture it **before Phase 5 begins** (all merged
-   PRs to that point are behavior-preserving, so the capture is still valid)
-   and commit it as `critiques/baselines/consumer-smoke-baseline.md`. It must
-   record the pre-existing rms-viewmaster `cache_lifetime` startup failure
-   (ground rule 1).
+   rms-viewmaster startup against a recorded baseline. **Captured** at
+   `critiques/baselines/consumer-smoke-baseline.md` (2026-07-26, against
+   `rewrite` at the end of Phase 3, while every merged PR is still
+   behavior-preserving). It records the rms-opus import paths as 4/4 resolving
+   and the rms-viewmaster startup as 5 stages ok / 3 pre-existing failures —
+   the ground-rule-1 flat names `cache_lifetime` (raises) and `DEFAULT_CACHING`
+   (silently assigns onto pdsfile and is never read). **PR-37's gate is "same
+   outcome as baseline", so fewer failures is as much a flag as more.**
 4. **Harness.** The four-level subagent nesting (§6.7) with `git`/`gh`/
    `pytest`/`ruff` available to subagents; fallback collapse rules in §6.7.
 
