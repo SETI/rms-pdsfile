@@ -12,6 +12,15 @@
 # pdsdependency is pds3-only by design: the modernization plan records that it has
 # no pds4 twin and stays a standalone tool.
 #
+# The order of the emitted steps is NOT pinned. Within one dependency rule the tool
+# iterates an unsorted `glob.glob`, so steps come out in directory-enumeration
+# order, which varies by filesystem -- the same tree gives a different order on a
+# different machine. The golden is therefore compared as a sorted multiset, which
+# still pins the exact set and text of every step; what order genuinely is
+# specified (a target's checksums step before its infoshelf step, because those
+# come from different rules) is asserted separately below. See entry 12 of
+# "From PR-13" in critiques/deferred-observations.md.
+#
 # Every test rebuilds the tree first, so each one is independent and order-agnostic.
 ##########################################################################################
 
@@ -57,7 +66,7 @@ def test_missing_derived_products_are_reported(fresh_tree, golden_update):
 
     steps = steps_required(run, fresh_tree)
     support.check_golden('pds3_dependency_steps', ''.join(f'{s}\n' for s in steps),
-                         golden_update)
+                         golden_update, unordered=True)
 
     # The list is a real work plan, not an opaque blob.
     assert any(step.startswith('pdschecksums --initialize') for step in steps), steps
@@ -65,6 +74,14 @@ def test_missing_derived_products_are_reported(fresh_tree, golden_update):
     assert any(step.startswith('pdsarchives --initialize') for step in steps), steps
     assert any(step.startswith('pdslinkshelf --initialize') for step in steps), steps
     assert any(step.startswith('pdsindexshelf --initialize') for step in steps), steps
+
+    # The ordering the tool does specify: a target's checksums step comes before
+    # its infoshelf step, because those are separate rules run in a fixed order.
+    # (Order *within* a rule is filesystem-dependent and deliberately not pinned.)
+    for target in (VOLUME_DIR, METADATA_DIR):
+        checksums = steps.index(f'pdschecksums --initialize $DISK/holdings/{target}')
+        infoshelf = steps.index(f'pdsinfoshelf --initialize $DISK/holdings/{target}')
+        assert checksums < infoshelf, steps
 
     # Every step names a path inside the temporary tree; none leaks a real root.
     for step in steps:

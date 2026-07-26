@@ -10,6 +10,7 @@
 # is portable; every comparison goes through one of the normalizers below.
 ##########################################################################################
 
+import difflib
 import hashlib
 import os
 import shutil
@@ -560,13 +561,20 @@ def tar_member_names(path):
 # Golden comparison
 ##########################################################################################
 
-def check_golden(name, text, update):
+def check_golden(name, text, update, *, unordered=False):
     """Compare normalized text against a committed golden artifact.
 
     Args:
         name: The golden's basename, without extension.
         text: The normalized text produced by the test.
         update: True to rewrite the golden instead of comparing (pytest --update).
+        unordered: True to compare the lines as a sorted multiset instead of in
+            order. Opt in **only** where the producing tool leaves the order
+            genuinely unspecified -- it weakens the comparison, and for most of
+            these artifacts (shelf sidecars, archive member tuples, the sorted md5
+            mapping) the order is deterministic and worth pinning. The golden file
+            itself is still written and kept in the tool's own order, so it stays
+            readable; only the comparison ignores order.
 
     Raises:
         AssertionError: If the golden is absent (and update was not requested) or
@@ -582,5 +590,38 @@ def check_golden(name, text, update):
     assert path.exists(), (
         f'missing golden {path}; regenerate the tool-test goldens with '
         f'`pytest tests/holdings_maintenance --update` against real holdings')
+
     expected = path.read_text(encoding='utf-8')
-    assert text == expected, f'golden mismatch: {path}'
+    actual_cmp, expected_cmp = text, expected
+    if unordered:
+        actual_cmp = ''.join(sorted(text.splitlines(keepends=True)))
+        expected_cmp = ''.join(sorted(expected.splitlines(keepends=True)))
+
+    if actual_cmp != expected_cmp:
+        raise AssertionError(golden_diff(path, expected_cmp, actual_cmp,
+                                         unordered=unordered))
+
+
+def golden_diff(path, expected, actual, *, unordered=False):
+    """Return a unified diff of a golden mismatch, for the assertion message.
+
+    pytest cannot show its own diff once an assertion carries a custom message, so
+    the message has to carry one itself; a bare "golden mismatch" leaves whoever
+    reads the CI log with nothing to go on.
+
+    Args:
+        path: The golden file that did not match.
+        expected: The golden's text, as compared.
+        actual: The text the test produced, as compared.
+        unordered: True when both sides were sorted before comparison.
+
+    Returns:
+        str: The message to raise.
+    """
+
+    ordering = 'sorted lines' if unordered else 'in order'
+    diff = difflib.unified_diff(expected.splitlines(), actual.splitlines(),
+                                fromfile=f'{path.name} (golden)',
+                                tofile=f'{path.name} (produced)', lineterm='')
+
+    return (f'golden mismatch ({ordering}): {path}\n' + '\n'.join(diff))
