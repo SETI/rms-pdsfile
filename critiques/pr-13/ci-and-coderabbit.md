@@ -174,9 +174,11 @@ line matters.
 **Also checked while here:** the `--pprint` golden is the one artefact whose text
 is produced by a standard-library formatter, so it could in principle drift
 between the interpreters in the CI matrix. `pprint.pp` output for this data shape
-is byte-identical on 3.12 and 3.14 (the two interpreters available here, spanning
-the 3.10-3.13 matrix); 3.10 and 3.11 were not available locally and CI now covers
-them.
+is byte-identical on 3.12 and 3.14 -- the only two interpreters available on this
+machine. Those are a spot check, not matrix coverage: 3.12 is the one point they
+share with the 3.10-3.13 matrix, and 3.14 sits outside it. **3.10, 3.11 and 3.13
+were not verified locally at all**; the evidence that the golden holds on them is
+the CI matrix, which passes on all four.
 
 ## 3. CodeRabbit findings (reviewed commit `c00430d`)
 
