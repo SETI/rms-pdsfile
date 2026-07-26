@@ -46,7 +46,7 @@ echo "================================================================"
 echo
 echo "Test start:" `date`
 echo
-python -m coverage run -m pytest tests/api/ tests/pds3file/ tests/rules/pds3/ tests/pds4file/ tests/rules/pds4/ --mode ns
+python -m coverage run -m pytest tests/api/ tests/holdings_maintenance/ tests/pds3file/ tests/rules/pds3/ tests/pds4file/ tests/rules/pds4/ --mode ns
 if [ $? -ne 0 ]; then
     echo "**************************************************"
     echo "*** PDSFILE NOT-SHELVES-ONLY FAILED UNIT TESTS ***"
@@ -65,6 +65,10 @@ echo "================================================================"
 echo
 echo "Test start:" `date`
 echo
+# tests/holdings_maintenance/ is deliberately absent here and runs only in the
+# not-shelves-only pass above. Those tests drive each tool in its own subprocess,
+# so --mode (which only flips use_shelves_only inside *this* pytest process) makes
+# no difference to them; running them twice would just double their cost.
 python -m coverage run -a -m pytest tests/pds3file/ tests/rules/pds3/ --mode s
 if [ $? -ne 0 ]; then
     echo "********************************************"
