@@ -77,3 +77,22 @@ phase/PR that owns them.
   package. None introduced by the move. Captured in full in
   `critiques/coderabbit-findings.md` — to be addressed in a maintenance-tools
   quality pass (with tests), issue #82, not in a mechanical move PR.
+
+## From PR-09 (owner request, 2026-07-25)
+- **Remove the `PDSFILE_TEST_HOLDINGS` selector env var — deferred to PR-11.**
+  The owner wants the explicit `PDSFILE_TEST_HOLDINGS=full` selector to go away.
+  It can be replaced without an env var, but not by markers alone: markers pick
+  *which tests* run (per-item), while *which data tree to preload* is a
+  session-level choice whose locations are machine-specific (`PDS3/4_HOLDINGS_DIR`
+  for full; `PDSFILE_TEST_DATA_DIR` for the mini checkout) and so cannot become
+  markers. Planned end-state, to land with the mini tree in PR-11:
+  - Infer the flavor: mini when `PDSFILE_TEST_DATA_DIR` resolves to real trees,
+    else full when `PDS3_HOLDINGS_DIR`/`PDS4_HOLDINGS_DIR` are set and valid,
+    else skip all gracefully.
+  - Add a `--holdings full|mini` pytest CLI option (parallels `--mode`/`--update`)
+    as the explicit override for the "both present" case — a flag, not an env var.
+  - Then drop `export PDSFILE_TEST_HOLDINGS=full` from
+    `scripts/automated_tests/pdsfile_main_test.sh` (full becomes inferred).
+  - Keep `full_holdings` as the applicability marker (auto-skip under mini); PR-11
+    also tags the actual size/volume-count tests with `@pytest.mark.full_holdings`.
+  PR-09 keeps the explicit-`full` selector as originally spec'd until then.

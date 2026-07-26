@@ -12,6 +12,11 @@ if [[ -z ${PDS4_HOLDINGS_DIR+x} ]]; then
     exit -1
 fi
 
+# Run against the complete real holdings. The suite defaults to the mini fixtures
+# (skipping everything when they are absent), so the full-data run selects the
+# full flavor explicitly; PDS3_HOLDINGS_DIR / PDS4_HOLDINGS_DIR supply the roots.
+export PDSFILE_TEST_HOLDINGS=full
+
 pip3 install --upgrade pip
 # requirements.txt is now just "-e ."; the self-hosted suite also needs the dev
 # tools (coverage, pytest plugins) so install the dev extra.

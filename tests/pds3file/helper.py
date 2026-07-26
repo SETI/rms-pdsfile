@@ -4,13 +4,14 @@
 # Helper functions for tests on pds3file
 ##########################################################################################
 
-import os
 import pdsfile.pds3file as pds3file
 
-try:
-    PDS3_HOLDINGS_DIR = os.environ['PDS3_HOLDINGS_DIR']
-except KeyError: # pragma: no cover
-    raise KeyError("'PDS3_HOLDINGS_DIR' environment variable not set")
+from tests.support.holdings import resolve_holdings
+
+# Holdings root for the selected session flavor (see tests.support.holdings). When
+# no holdings are available this is a placeholder and every test is skipped, so it
+# is never dereferenced.
+PDS3_HOLDINGS_DIR = resolve_holdings().pds3_root
 
 def instantiate_target_pdsfile(path, is_abspath=True):
     if is_abspath:
