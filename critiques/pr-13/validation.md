@@ -17,7 +17,7 @@ Holdings roots are referred to by role only, never by path (§3.4.1):
 | API-freeze manifest test | **Pass** (1 passed). PR-13 changes nothing under `src/`, so the manifest cannot move; the run confirms it. |
 | Clean-install import check | **Pass** — "all runtime modules import with no dev extras". |
 | Full-data suite, both modes | **Pass**, per-test set diffed below. |
-| Adversarial pre-PR review loop | Rounds 1-4 (pre-PR) all `goal met`, zero Major. Round 5, after the CI failure, returned **`goal not met`** with 2 Major, both fixed; round 6 confirmed. See `round-1.md` … `round-6.md`. |
+| Adversarial review loop | Six rounds. 1-4 before the PR was opened: all `goal met`, zero Major. Round 5, after the CI failure: **`goal not met`**, 2 Major, both fixed. Round 6, scoped confirmation: `goal met`, zero new Major. See `round-1.md` … `round-6.md`. |
 
 `ENABLE_PYTEST` in `scripts/run-all-checks.sh` stays `false`; PR-14 flips it.
 
