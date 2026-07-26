@@ -3,8 +3,15 @@
 **Date:** 2026-07-25
 **Active plan:** `2026-07-25-modernization-plan.md`
 **Raised by:** PR-13 (`test: maintenance-tool test suite`, issue #82)
-**Status:** awaiting owner acknowledgement (§6.4: deviations are recorded as dated
-addendum files here and acknowledged before the deviating change merges)
+**Status:** **ACKNOWLEDGED — all four deviations accepted by the owner,
+2026-07-26**, satisfying §6.4 ("deviations from this plan require an addendum
+file in `plans/` acknowledged by the owner before the deviating PR merges"). No
+"if rejected" fallback below applies; each is recorded for provenance only.
+
+Follow-on recorded at acceptance: deviation 2 (tool tests in the `--mode ns`
+invocation only) rests on every tool running in a subprocess, which PR-28 changes
+for two of them. That expiry is tracked as entry 13 in
+`critiques/deferred-observations.md`.
 
 PR-13 makes four departures from the letter of the active plan. All four are
 small, none changes a deliverable, and each is described here so the owner can
