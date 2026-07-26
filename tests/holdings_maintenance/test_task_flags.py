@@ -47,7 +47,7 @@ def task_announced(run):
         if sep and ' for' in tail:
             return tail.partition(' for')[0].strip('" ')
 
-    raise AssertionError(f'no task header in output\n{run.describe()}')
+    return pytest.fail(f'no task header in output\n{run.describe()}')
 
 
 def test_a_missing_task_is_an_error(fresh_tree):
@@ -92,13 +92,17 @@ def test_another_pds3_tool_resolves_task_flags_the_same_way(fresh_tree):
     assert task_announced(run) == 'update', run.describe()
 
 
-def test_short_and_long_aliases_select_the_same_task(fresh_tree):
-    """--init is an alias of --initialize, and --reinit of --reinitialize."""
+@pytest.mark.parametrize(('flag', 'expected'),
+                        [('--initialize', 'initialize'),
+                         ('--init', 'initialize'),
+                         ('--reinitialize', 'reinitialize'),
+                         ('--reinit', 'reinitialize'),
+                         ('--validate', 'validate'),
+                         ('--repair', 'repair'),
+                         ('--update', 'update')])
+def test_each_task_flag_selects_its_own_task(fresh_tree, flag, expected):
+    """Every task flag, and both short aliases, announce the task they name."""
 
-    run = support.run_tool(fresh_tree, 'pdsarchives', '--init',
+    run = support.run_tool(fresh_tree, 'pdsarchives', flag,
                            fresh_tree.path(VOLUME_DIR))
-    assert task_announced(run) == 'initialize', run.describe()
-
-    run = support.run_tool(fresh_tree, 'pdsarchives', '--reinit',
-                           fresh_tree.path(VOLUME_DIR))
-    assert task_announced(run) == 'reinitialize', run.describe()
+    assert task_announced(run) == expected, run.describe()

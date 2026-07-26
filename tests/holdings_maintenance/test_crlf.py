@@ -103,18 +103,20 @@ class TestRepair:
 
 
 class TestArgumentValidation:
-    """Bad arguments raise ValueError before the file is opened."""
+    """Bad arguments raise ValueError before the file is opened.
+
+    Each case passes a path that does not exist: if validation ever moved after
+    the read, these would raise FileNotFoundError instead and fail.
+    """
 
     def test_unknown_task_rejected(self, tmp_path):
-        path = write(tmp_path, 'ok.txt', b'ONE\r\n')
         with pytest.raises(ValueError, match='invalid task'):
-            crlf.test_crlf(path, task='destroy')
+            crlf.test_crlf(tmp_path / 'no_such_file.txt', task='destroy')
 
     @pytest.mark.parametrize('threshold', [-0.1, 1.1])
     def test_threshold_out_of_range_rejected(self, tmp_path, threshold):
-        path = write(tmp_path, 'ok.txt', b'ONE\r\n')
         with pytest.raises(ValueError, match='invalid threshold'):
-            crlf.test_crlf(path, threshold=threshold)
+            crlf.test_crlf(tmp_path / 'no_such_file.txt', threshold=threshold)
 
     def test_an_empty_file_raises_zerodivisionerror(self, tmp_path):
         """A zero-byte file divides by zero.
