@@ -96,3 +96,72 @@ phase/PR that owns them.
   - Keep `full_holdings` as the applicability marker (auto-skip under mini); PR-11
     also tags the actual size/volume-count tests with `@pytest.mark.full_holdings`.
   PR-09 keeps the explicit-`full` selector as originally spec'd until then.
+
+## From PR-13 (maintenance-tool test suite, issue #82)
+
+Five pre-existing defects surfaced while writing the tool tests. **None is fixed
+in PR-13** — that PR is behavior-preserving (§6.4) — but each is pinned by a test
+that asserts today's behavior and names, in its docstring, the source line and the
+PR that owns the fix. Whichever PR changes the behavior will see the pin fail.
+
+1. **`pds4archives` cannot round-trip.** `write_archive()` adds members under
+   `arcname=<bundle-set basename>` (`pds4archives.py:238-241`) while
+   `read_archive_info()` rebuilds each member path with the prefix that already
+   ends at the bundle set (`pds4archives.py:126-135`, via
+   `dirpath_and_prefix_for_archive`). Every member comes back doubled
+   (`bundles/<bs>/<bs>/…`), so `--validate` fails immediately after a successful
+   `--initialize`. The complete holdings set's `archives-bundles/<bs>/` directory
+   is empty, i.e. this has never round-tripped in production either.
+   Pinned by `test_pds4_archives.test_validate_cannot_round_trip`. **Owner: PR-25.**
+2. **`pds4archives` on a bundle raises `RuntimeError: No active exception to
+   reraise`** — the "no archive paths resolved" branch is a bare `raise` outside
+   any `except` (`pds4archives.py:214-218`). Reached whenever the tool is pointed
+   at a bundle in a bundle set whose archives are defined at the set level.
+   Pinned by `test_pds4_archives.test_initialize_on_a_bundle_raises`.
+   **Owner: PR-25.**
+3. **`pds4indexshelf` cannot shelve any PDS4 metadata table that exists today.**
+   `generate_indexdict()` builds a `pdstable.PdsTable` from `pdsf.label_abspath`
+   (`pds4indexshelf.py:52`), a PDS3 detached-label reader. For
+   `uranus_occs_earthbased` the `.csv` has no PDS3 label, so `label_abspath` is
+   empty and the read raises `FileNotFoundError`; for
+   `cassini_uvis_solarocc_beckerjarmak2023` the `.xml` is misparsed as a PDS3
+   label and raises `ValueError: row count mismatch`. Both PDS4 bundle sets that
+   exist fail. Pinned by
+   `test_pds4_indexshelf.test_initialize_cannot_read_a_pds4_index`.
+   **Owner: PR-27.**
+4. **`pds4linkshelf --update` raises against any existing shelf.**
+   `generate_links()` is handed the *loaded* shelf as `old_links`, whose values are
+   the plain tuples that were pickled, and then dereferences `info.linktext` on
+   them (`pds4linkshelf.py:395`) — `AttributeError: 'tuple' object has no
+   attribute 'linktext'`. The pds3 twin merges the same data correctly, so this is
+   pds4-only. Pinned by
+   `test_pds4_linkshelf.test_update_is_broken_and_repair_is_the_working_path`.
+   **Owner: PR-27.**
+5. **`pdschecksums` and `pds4checksums` never propagate errors into the exit
+   code.** Both compute a `proceed` flag from `fatal or errors` and then use it
+   only to gate the optional `--infoshelf` chain (`pdschecksums.py:905-919`,
+   `pds4checksums.py:878-892`); neither ends in `sys.exit(status)` the way the
+   other nine tools do. A `--validate` that reports checksum mismatches still
+   exits 0. Pinned in both checksum test modules (see
+   `support.TOOLS_WITHOUT_EXIT_STATUS`). **Owner: PR-25** — its `run_main()` spec
+   says "set exit code from fatal/errors", which will change these two tools'
+   exit codes; that is an intended, plan-sanctioned behavior change and the pins
+   must be updated with it.
+
+Two further observations, not defects in a single tool:
+
+6. **`shelf_consistency_check` targets a legacy holdings layout.** It walks for
+   `shelves/<info|links|index>/…`, but current holdings keep shelves in
+   `_infoshelf-volumes/`, `_linkshelf-volumes/` and `_indexshelf-metadata/`, none
+   of which contain the substring `shelves`. Run against a modern tree with real,
+   valid shelves it reports "Tests performed: 0, Errors found: 0". Its
+   `error += 1` / `errors` typo (already on PR-15's list, fixed in PR-28) is only
+   reachable through the legacy layout. Both are pinned in
+   `test_shelf_consistency_check.py`. **PR-28**, which gives this tool a `main()`,
+   is where the layout question has to be answered.
+7. **Info-shelf sidecars are local-time dependent.** `pdsinfoshelf` /
+   `pds4infoshelf` format modification times with
+   `datetime.fromtimestamp(...).strftime(...)`, so the same tree shelved in two
+   time zones produces different sidecars. The tests pin `TZ=UTC` in the tool
+   subprocess environment to make goldens portable; whether the tools themselves
+   should record UTC is a behavior question for the Phase 6 consolidation.
