@@ -44,7 +44,7 @@ So the CI failure is reproduced on demand, and the fix is shown to remove it.
 
 **In the test, not the tool.** The unsorted glob is pre-existing behaviour and
 PR-13 is behaviour-preserving; adding a sort to `pdsdependency` would be a
-behaviour change outside this PR's remit. It is recorded instead as entry 12 of
+behaviour change outside this PR's remit. It is recorded instead as entry 14 of
 "From PR-13" in `critiques/deferred-observations.md`, owned by Phase 6.
 
 `support.check_golden` gains an opt-in `unordered=True`, used by this one test.
@@ -57,8 +57,13 @@ still fails if a step appears, disappears, or changes text — verified directly
 - reversing the whole list → accepted, which is the intent.
 
 The ordering the tool genuinely does specify is asserted separately, so it stays
-pinned: for each target, its `pdschecksums` step must precede its `pdsinfoshelf`
-step, because those come from different rules run in a fixed order.
+pinned. A dependency rule emits its messages in source order, once per path its
+glob matched; only rules that matched *several* paths are exposed to enumeration
+order. For this subset that is exactly the six steps naming an individual metadata
+table — measured by running the tool with its enumeration forced both ways, which
+left the other twelve byte-identical in position. Those twelve are compared
+against the golden **in exact order**, so a rule reordering its message list, or
+the rules being reordered relative to each other, still fails the test.
 
 `unordered` is deliberately opt-in and used exactly once. Every other golden —
 shelf sidecars, archive member tuples, the sorted md5 mapping — has a
@@ -69,8 +74,7 @@ deterministic order that is worth pinning, and still is.
 `check_golden`'s custom assertion message suppressed pytest's own diff, so CI
 reported "golden mismatch" and nothing else; that cost a full debugging round.
 Golden failures now carry a `difflib.unified_diff` of expected vs. produced, with
-the path and whether the comparison was ordered. Sample output is in the round-5
-record.
+the path and whether the comparison was ordered.
 
 ### Cross-module audit
 

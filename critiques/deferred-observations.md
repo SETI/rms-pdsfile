@@ -100,8 +100,9 @@ phase/PR that owns them.
 ## From PR-13 (maintenance-tool test suite, issue #82)
 
 Eight pre-existing defects surfaced: entries 1-5 while writing the tool tests,
-entries 10-11 during the adversarial review rounds, and entry 12 from the CI
-failure of PR #105. **None is fixed in PR-13** —
+entries 10-11 during the adversarial review rounds, and entry 14 from the CI
+failure of PR #105. (Entries 12-13 are process observations from the coordinator
+review, not tool defects.) **None is fixed in PR-13** —
 that PR is behavior-preserving (§6.4) — but each is pinned by a test that asserts
 today's behavior and points at its numbered entry below, where the defect, its
 location and the owning PR are written up. Whichever PR changes the behavior will
@@ -252,7 +253,7 @@ Two further observations, not defects in a single tool:
 
 ### Added by the CI failure of PR #105 (2026-07-26)
 
-12. **`pdsdependency` emits its "Steps required" plan in filesystem-enumeration
+14. **`pdsdependency` emits its "Steps required" plan in filesystem-enumeration
     order.** Each dependency rule does `abspaths = glob.glob(pattern)` with no
     sort and then iterates it, so the steps a single rule contributes come out in
     whatever order the directory happens to enumerate. `glob` does not sort, and
@@ -271,7 +272,7 @@ Two further observations, not defects in a single tool:
     **PR-13 did not change the tool.** It stopped depending on the unspecified
     order instead: the step-list golden is compared as a sorted multiset
     (`support.check_golden(..., unordered=True)`), which still pins the exact set
-    and text of every step, while the ordering the tool *does* specify — a
-    target's checksums step before its infoshelf step, since those come from
-    different rules — is asserted separately. When the tool starts sorting, the
-    test keeps passing and the golden stays valid.
+    and text of every step, while the twelve steps whose position the tool *does*
+    determine — those from rules whose glob matched a single path — are pinned in
+    exact order, so a rule reordering its messages still fails the test. When the
+    tool starts sorting, the test keeps passing and the golden stays valid.
