@@ -17,7 +17,7 @@ Holdings roots are referred to by role only, never by path (§3.4.1):
 | API-freeze manifest test | **Pass** (1 passed). PR-13 changes nothing under `src/`, so the manifest cannot move; the run confirms it. |
 | Clean-install import check | **Pass** — "all runtime modules import with no dev extras". |
 | Full-data suite, both modes | **Pass**, per-test set diffed below. |
-| Adversarial pre-PR review loop | **Converged in 4 rounds**, every round `goal met` with zero Major. See `round-1.md` … `round-4.md`. |
+| Adversarial pre-PR review loop | **5 rounds**, every round `goal met` with zero Major. See `round-1.md` … `round-5.md`. |
 
 `ENABLE_PYTEST` in `scripts/run-all-checks.sh` stays `false`; PR-14 flips it.
 
@@ -31,10 +31,10 @@ Against the goldens' reference root:
 
 | Mode | Baseline | After PR-13 | Set diff |
 |---|---|---|---|
-| `ns` | 713 tests: 679 passed / 34 skipped | 818 tests: 784 passed / 34 skipped | **0 removed, 0 outcome changes**, 105 added — all in `tests.holdings_maintenance` |
+| `ns` | 713 tests: 679 passed / 34 skipped | 824 tests: 790 passed / 34 skipped | **0 removed, 0 outcome changes**, 111 added — all in `tests.holdings_maintenance` |
 | `s` | 558 tests: 555 passed / 3 skipped | 558 tests: 555 passed / 3 skipped | **identical set** |
 
-No pre-existing test changed outcome in either mode. The only delta is the 105
+No pre-existing test changed outcome in either mode. The only delta is the 111
 new tests, which is the PR's deliverable.
 
 `--mode s` is unchanged by design: the tool tests drive each tool in its own
@@ -43,12 +43,40 @@ only) cannot affect them. Running them a second time would add cost and no
 signal; the reason is recorded in a comment in
 `scripts/automated_tests/pdsfile_main_test.sh`.
 
+## What this record claimed before, and what CI showed
+
+The first version of this record said the suite was green, and it was — on two
+holdings roots, on one machine. **CI then failed**, on one test, for a reason
+neither root could expose: `pdsdependency` emits its "Steps required" plan in
+directory-enumeration order, which is a property of the *filesystem the temporary
+tree is built on*, not of the holdings root being read. The development machine
+and the CI runner enumerate the same tree differently, so the committed golden
+matched here and not there.
+
+That is a gap in what "green on both roots" proves, and it is worth stating
+plainly: passing against two holdings roots establishes that the *input data* is
+equivalent, not that the *test* is environment-independent. The fix removed the
+dependency on an order the tool never specified, and the cross-module audit below
+confirms no other artefact had the same exposure. Full analysis, including the
+reproduction and the audit method, is in `ci-and-coderabbit.md` in this directory.
+
+Two things changed as a result, both in the tests:
+
+- The `pdsdependency` step-list golden is compared as a sorted multiset. It still
+  fails if any step appears, disappears, or changes text; only the order is
+  unpinned, and the ordering the tool *does* specify is asserted separately. The
+  opt-in is used exactly once — every other golden's order is deterministic and
+  stays pinned.
+- Golden mismatches now print a unified diff. The CI log had said only "golden
+  mismatch" with no indication of what differed, because a custom assertion
+  message suppresses pytest's own diff.
+
 ## Tool tests against **both** holdings roots
 
 | Root | Result |
 |---|---|
-| the goldens' reference root | **105 passed**, 0 skipped, ~120 s serial / ~40 s under `-n 4` |
-| the complete set | **105 passed**, 0 skipped |
+| the goldens' reference root | **111 passed**, 0 skipped |
+| the complete set | **111 passed**, 0 skipped |
 
 No module skipped against either root, and the committed goldens matched
 byte-for-byte against both. That is the point of the design: every declared source
@@ -82,7 +110,7 @@ With `PDSFILE_TEST_HOLDINGS`, `PDS3_HOLDINGS_DIR`, `PDS4_HOLDINGS_DIR` and
 | | Result |
 |---|---|
 | before PR-13 | 713 skipped, **0 passed** |
-| after PR-13 | 795 skipped, **23 passed** |
+| after PR-13 | 801 skipped, **23 passed** |
 
 The 23 are the 17 `crlf` classifier tests and the 6 `shelf_consistency_check`
 tests that build their own legacy-layout tree. The PR-13 spec requires the crlf

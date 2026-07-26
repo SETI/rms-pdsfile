@@ -99,8 +99,9 @@ phase/PR that owns them.
 
 ## From PR-13 (maintenance-tool test suite, issue #82)
 
-Seven pre-existing defects surfaced: entries 1-5 while writing the tool tests,
-entries 10-11 during the adversarial review rounds. **None is fixed in PR-13** —
+Eight pre-existing defects surfaced: entries 1-5 while writing the tool tests,
+entries 10-11 during the adversarial review rounds, and entry 12 from the CI
+failure of PR #105. **None is fixed in PR-13** —
 that PR is behavior-preserving (§6.4) — but each is pinned by a test that asserts
 today's behavior and points at its numbered entry below, where the defect, its
 location and the owning PR are written up. Whichever PR changes the behavior will
@@ -248,3 +249,29 @@ Two further observations, not defects in a single tool:
     PR-28** (re-derive for the two tools it converts), with **PR-14** noting the
     same coupling if it changes how the suite is invoked. Entry 12 above is the
     related question of what mode a `--mode`-less run selects at all.
+
+### Added by the CI failure of PR #105 (2026-07-26)
+
+12. **`pdsdependency` emits its "Steps required" plan in filesystem-enumeration
+    order.** Each dependency rule does `abspaths = glob.glob(pattern)` with no
+    sort and then iterates it, so the steps a single rule contributes come out in
+    whatever order the directory happens to enumerate. `glob` does not sort, and
+    ext4 returns entries in a per-filesystem hash order, so the *same* tree yields
+    a different plan order on a different machine — which is exactly how this
+    surfaced: the tool tests passed against both holdings roots on the development
+    machine and failed on the CI runner, with the two cumulative-table steps
+    swapped and nothing else changed.
+
+    Not a correctness defect — the *set* of steps is identical and the plan works
+    in any order within a rule — but it makes the output unstable for anyone
+    diffing two runs, and it is the kind of thing a shared tool core should fix
+    once. **Owner: Phase 6** (`pdsdependency` stays standalone in PR-25, so
+    whichever PR touches it next): sort the glob results.
+
+    **PR-13 did not change the tool.** It stopped depending on the unspecified
+    order instead: the step-list golden is compared as a sorted multiset
+    (`support.check_golden(..., unordered=True)`), which still pins the exact set
+    and text of every step, while the ordering the tool *does* specify — a
+    target's checksums step before its infoshelf step, since those come from
+    different rules — is asserted separately. When the tool starts sorting, the
+    test keeps passing and the golden stays valid.
