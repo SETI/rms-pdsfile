@@ -17,7 +17,7 @@ Holdings roots are referred to by role only, never by path (§3.4.1):
 | API-freeze manifest test | **Pass** (1 passed). PR-13 changes nothing under `src/`, so the manifest cannot move; the run confirms it. |
 | Clean-install import check | **Pass** — "all runtime modules import with no dev extras". |
 | Full-data suite, both modes | **Pass**, per-test set diffed below. |
-| Adversarial review loop | Six rounds. 1-4 before the PR was opened: all `goal met`, zero Major. Round 5, after the CI failure: **`goal not met`**, 2 Major, both fixed. Round 6, scoped confirmation: `goal met`, zero new Major. See `round-1.md` … `round-6.md`. |
+| Adversarial review loop | Seven rounds. 1-4 before the PR was opened: all `goal met`, zero Major. Round 5 (after the first CI failure) and round 7 (after the second) each returned **`goal not met`** with 2 Major, all four fixed; round 6 confirmed round 5's. See `round-1.md` … `round-7.md`. |
 
 `ENABLE_PYTEST` in `scripts/run-all-checks.sh` stays `false`; PR-14 flips it.
 
@@ -60,9 +60,11 @@ and `run_tool` was merging stderr into what the golden compared, so the
 
 That is a gap in what "green on both roots" proves, and it is worth stating
 plainly: passing against two holdings roots establishes that the *input data* is
-equivalent, not that the *test* is environment-independent. Three axes had to be
-pinned before that became true — the filesystem's enumeration order, the tool
-subprocess's output streams, and (from the outset) the timezone and file mtimes. The fix removed the
+equivalent, not that the *test* is environment-independent. Four axes had to be pinned
+before that became true — the filesystem's enumeration order, which stream of the
+tool subprocess a test reads, and (from the outset) the timezone and the file
+mtimes. All three CI-driven defects were the same shape: a test pinning something
+about the *environment* rather than about the tool. The fix removed the
 dependency on an order the tool never specified, and the cross-module audit below
 confirms no other artefact had the same exposure. Full analysis, including the
 reproduction and the audit method, is in `ci-and-coderabbit.md` in this directory.

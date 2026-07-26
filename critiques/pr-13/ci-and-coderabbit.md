@@ -128,13 +128,31 @@ be installed.
 **Fix.** `run_tool` now captures the two streams separately. `ToolRun` exposes
 `stdout`, `stderr`, and `output` (= stdout + stderr) — and the rule is stated in
 its docstring: **anything compared against a golden, or parsed for structure, must
-come from `stdout`**, because stderr is not the tool's product. Four places moved
-to `stdout`: the `show_opus_products` golden, `pdsdependency`'s "Steps required"
-extraction, `shelf_consistency_check`'s summary-count parser, and
-`test_task_flags`' task-header parser. Plain substring assertions still read the
-merged `output`, since they check for a specific tool string and extra stderr
-noise cannot make them wrong. `describe()` now shows both streams labelled, so a
-future failure says which stream a line came from.
+come from `stdout`**, because stderr is not the tool's product.
+
+Six places read `stdout`: the `show_opus_products` golden and its no-leaked-path
+check, the two-invocation equality in the same module, `pdsdependency`'s "Steps
+required" extraction, `shelf_consistency_check`'s summary-count parser,
+`test_task_flags`' task-header parser -- and, widest of all,
+`ToolRun.error_lines`, which filters the capture by log-level marker and feeds
+roughly forty assertions including fourteen `== []` equalities. The first attempt
+at this fix moved only the four obvious parsers and left `error_lines` on the
+merged stream; review round 7 caught it and demonstrated 28 failures under a
+stderr line containing `| ERROR |`.
+
+Plain substring assertions still read the merged `output`. That is safe for the
+positive ones, and for the negative ones only where the string is tool-specific;
+round 7 found the one counter-example -- `assert str(tree.disk) not in
+run.output`, which the subprocess's own `cwd` makes reachable -- and it now reads
+`stdout`.
+
+Three assertions **must** stay on the merged stream and are commented as such:
+argparse writes `not allowed with argument` to stderr, so reading `stdout` there
+would silently make the check vacuous. That is the mirror image of the trap this
+section is about, and worth the two lines of comment.
+
+`describe()` now shows both streams labelled, so a future failure says which
+stream a line came from.
 
 **Verified** by reproducing the CI condition locally — a `sitecustomize` that
 raises a `FutureWarning` at interpreter start in every tool subprocess:
@@ -146,6 +164,12 @@ raises a `FutureWarning` at interpreter start in every tool subprocess:
 
 and the whole tool suite passes with the warning injected into all 200+ subprocess
 invocations.
+
+After round 7 the harness was made deliberately hostile -- a stderr line carrying
+**both** the working directory and a `| ERROR |` / `| FATAL |` marker, in every
+subprocess. The suite passes 111/111; reverting `error_lines` alone to the merged
+stream under that same harness fails 28 tests, which is the proof that the one
+line matters.
 
 **Also checked while here:** the `--pprint` golden is the one artefact whose text
 is produced by a standard-library formatter, so it could in principle drift
