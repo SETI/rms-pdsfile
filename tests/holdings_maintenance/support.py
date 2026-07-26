@@ -241,7 +241,11 @@ class ToolRun:
         stderr: Everything else the process wrote: tracebacks, and any warning an
             imported library chose to emit.
         output: stdout followed by stderr, for assertions that do not care which
-            stream a message arrived on.
+            stream a message arrived on. The two are separated by a newline, so no
+            match can span them: a tool whose last stdout line has no terminator
+            would otherwise fuse it with stderr's first line and could satisfy --
+            or wrongly break -- a substring assertion that neither stream alone
+            does.
     """
 
     def __init__(self, argv, returncode, stdout, stderr):
@@ -249,7 +253,8 @@ class ToolRun:
         self.returncode = returncode
         self.stdout = stdout
         self.stderr = stderr
-        self.output = stdout + stderr
+        separator = '\n' if stdout and not stdout.endswith('\n') else ''
+        self.output = stdout + separator + stderr
 
     def __repr__(self):
         return f'ToolRun(argv={self.argv!r}, returncode={self.returncode})'

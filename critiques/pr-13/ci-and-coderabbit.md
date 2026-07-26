@@ -106,7 +106,7 @@ other three interpreters were cancelled by fail-fast) in
 `test_show_opus_products.py::test_pprint_output_maps_each_product_category`, again
 a golden mismatch. This time the new unified diff answered it immediately:
 
-```
+```text
 +.../site-packages/google/api_core/_python_version_support.py:254: FutureWarning:
    You are using a Python version (3.10.13) which Google will stop supporting ...
 +  warnings.warn(message, FutureWarning)
