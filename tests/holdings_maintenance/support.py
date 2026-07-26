@@ -1,0 +1,539 @@
+##########################################################################################
+# tests/holdings_maintenance/support.py
+#
+# Shared machinery for the maintenance-tool tests: building a disposable holdings
+# tree from a declared source subset, running a tool as a subprocess, applying the
+# fixed corruption scenarios, and normalizing tool output for golden comparison.
+#
+# Nothing here compares raw bytes of a generated artifact. The tools write md5
+# files in os.walk order and .tar.gz members in filesystem order, neither of which
+# is portable; every comparison goes through one of the normalizers below.
+##########################################################################################
+
+import hashlib
+import os
+import shutil
+import subprocess
+import sys
+import tarfile
+from pathlib import Path
+
+# Repository root: tests/holdings_maintenance/support.py -> repo root.
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+# Golden artifacts for these tests. The "full/" level matches the rest of the
+# golden tree (tests/golden/full/pds3, .../pds4).
+GOLDEN_DIR = REPO_ROOT / 'tests' / 'golden' / 'full' / 'holdings_maintenance'
+
+# The tools, addressed as importable modules. Subprocesses run
+# `python -m <module>`, which enters each tool through exactly the main() its
+# console script calls, and which is also the invocation the plan settles on for
+# the three tools that will never get a console script (settled decision 8.4).
+TOOL_MODULES = {
+    'pdsarchives':    'pdsfile.holdings_maintenance.pds3.pdsarchives',
+    'pdschecksums':   'pdsfile.holdings_maintenance.pds3.pdschecksums',
+    'pdsdependency':  'pdsfile.holdings_maintenance.pds3.pdsdependency',
+    'pdsindexshelf':  'pdsfile.holdings_maintenance.pds3.pdsindexshelf',
+    'pdsinfoshelf':   'pdsfile.holdings_maintenance.pds3.pdsinfoshelf',
+    'pdslinkshelf':   'pdsfile.holdings_maintenance.pds3.pdslinkshelf',
+    'pds4archives':   'pdsfile.holdings_maintenance.pds4.pds4archives',
+    'pds4checksums':  'pdsfile.holdings_maintenance.pds4.pds4checksums',
+    'pds4indexshelf': 'pdsfile.holdings_maintenance.pds4.pds4indexshelf',
+    'pds4infoshelf':  'pdsfile.holdings_maintenance.pds4.pds4infoshelf',
+    'pds4linkshelf':  'pdsfile.holdings_maintenance.pds4.pds4linkshelf',
+    'shelf_consistency_check':
+        'pdsfile.holdings_maintenance.pds3.shelf_consistency_check',
+    'show_opus_products': 'pdsfile.tools.show_opus_products',
+}
+
+HOLDINGS_DIRNAME = {'pds3': 'holdings', 'pds4': 'pds4-holdings'}
+
+# Tools whose main() computes a failure flag but never feeds it to sys.exit, so
+# they exit 0 even after logging ERRORs (pdschecksums.py:905-919,
+# pds4checksums.py:878-892 -- both use a `proceed` variable that only gates the
+# optional --infoshelf chain; every other tool ends in `sys.exit(status)`). The
+# tests below pin that as current behavior; PR-25's shared run_main() is where the
+# exit code becomes uniform, and these pins are what will catch the change.
+TOOLS_WITHOUT_EXIT_STATUS = frozenset({'pdschecksums', 'pds4checksums'})
+
+TOOL_TIMEOUT = 600      # seconds; every subset here runs in well under a second
+
+
+def md5_of(path):
+    """Return the hex md5 digest of a file.
+
+    Args:
+        path: Path to the file.
+
+    Returns:
+        str: The lowercase hex digest.
+    """
+
+    digest = hashlib.md5()
+    with open(path, 'rb') as f:
+        for block in iter(lambda: f.read(1 << 20), b''):
+            digest.update(block)
+
+    return digest.hexdigest()
+
+
+def missing_sources(root, sources):
+    """Return the reasons a declared source subset is unusable under a holdings root.
+
+    A declared path that is absent, the wrong size, or has different content is
+    treated identically: the module that declared it must skip, because its
+    goldens were generated from specific bytes.
+
+    Args:
+        root: Path to the holdings root to check.
+        sources: A sequence of (holdings-relative path, size, md5) tuples.
+
+    Returns:
+        dict[str, str]: A human-readable reason keyed by the relative path of each
+        unusable file; empty if all are present and identical to what was declared.
+    """
+
+    reasons = {}
+    for relpath, size, md5 in sources:
+        abspath = Path(root) / relpath
+        if not abspath.is_file():
+            reasons[relpath] = f'{relpath}: missing'
+            continue
+        actual_size = abspath.stat().st_size
+        if actual_size != size:
+            reasons[relpath] = f'{relpath}: size {actual_size} != declared {size}'
+            continue
+        actual_md5 = md5_of(abspath)
+        if actual_md5 != md5:
+            reasons[relpath] = f'{relpath}: md5 {actual_md5} != declared {md5}'
+
+    return reasons
+
+
+class SourceStage:
+    """A local, verified copy of the declared source files, shared by every module.
+
+    Every module builds its own disposable tree, but they all draw on the same
+    handful of source files. Reading and hashing those files straight from the
+    holdings root once per module is expensive when the root is a network mount
+    (measured at several minutes for the first module against the complete set),
+    so each file is verified and staged locally the first time any module asks for
+    it and copied from the stage thereafter.
+
+    Attributes:
+        directory: The staging directory for this flavor.
+    """
+
+    def __init__(self, directory):
+        self.directory = Path(directory)
+        self._verified = {}         # relpath -> None if usable, else the reason
+
+    def ensure(self, root, sources):
+        """Verify and stage a source table, returning the reasons any file is unusable.
+
+        Args:
+            root: The holdings root to read from.
+            sources: A sequence of (holdings-relative path, size, md5) tuples.
+
+        Returns:
+            list[str]: One reason per unusable file; empty when all are staged.
+        """
+
+        pending = [entry for entry in sources if entry[0] not in self._verified]
+        unusable = missing_sources(root, pending)
+        for relpath, _, _ in pending:
+            self._verified[relpath] = unusable.get(relpath)
+
+        for relpath, _, _ in pending:
+            if self._verified[relpath] is not None:
+                continue
+            target = self.directory / relpath
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(Path(root) / relpath, target)
+
+        return [self._verified[relpath] for relpath, _, _ in sources
+                if self._verified[relpath] is not None]
+
+
+class ToolTree:
+    """A disposable holdings tree containing one declared source subset.
+
+    Attributes:
+        disk: The temporary directory that plays the role of the disk holding the
+            tree. Both a `holdings/` and a `pds4-holdings/` directory live under
+            it, and tool logs land in `logs/` beside them.
+        holdings: The holdings root for this tree's flavor.
+        flavor: 'pds3' or 'pds4'.
+    """
+
+    def __init__(self, disk, flavor):
+        self.disk = Path(disk)
+        self.flavor = flavor
+        self.holdings = self.disk / HOLDINGS_DIRNAME[flavor]
+
+    def path(self, relpath):
+        """Return the absolute path of a holdings-relative path in this tree.
+
+        Args:
+            relpath: A holdings-relative path.
+
+        Returns:
+            pathlib.Path: The absolute path inside this tree.
+        """
+
+        return self.holdings / relpath
+
+    @property
+    def env(self):
+        """Return the environment for a tool subprocess run against this tree.
+
+        Both holdings env vars point inside the temporary tree, so a tool can
+        never resolve a path back to the real holdings. PDS_LOG_ROOT is removed so
+        logs land in `<disk>/logs/`, and TZ is pinned so that shelf sidecars --
+        which format modification times in local time -- are reproducible.
+        """
+
+        env = dict(os.environ)
+        env['PDS3_HOLDINGS_DIR'] = str(self.disk / 'holdings')
+        env['PDS4_HOLDINGS_DIR'] = str(self.disk / 'pds4-holdings')
+        env['TZ'] = 'UTC'
+        for name in ('PDS_LOG_ROOT', 'PDSFILE_TEST_HOLDINGS', 'PDSFILE_TEST_DATA_DIR'):
+            env.pop(name, None)
+
+        return env
+
+
+class ToolRun:
+    """The result of one tool subprocess.
+
+    Attributes:
+        argv: The command line that was run.
+        returncode: The tool's exit code.
+        output: stdout and stderr, decoded and concatenated.
+    """
+
+    def __init__(self, argv, returncode, output):
+        self.argv = argv
+        self.returncode = returncode
+        self.output = output
+
+    def __repr__(self):
+        return f'ToolRun(argv={self.argv!r}, returncode={self.returncode})'
+
+    @property
+    def error_lines(self):
+        """Return the tool's log lines at ERROR or FATAL level."""
+
+        return [line for line in self.output.splitlines()
+                if '| ERROR |' in line or '| FATAL |' in line]
+
+    def describe(self):
+        """Return a message suitable for an assertion failure."""
+
+        return f'{self.argv}\nexit={self.returncode}\n{self.output}'
+
+
+def run_tool(tree, tool, *args):
+    """Run one maintenance tool as a subprocess against a temporary tree.
+
+    Args:
+        tree: The ToolTree to run against.
+        tool: A key of TOOL_MODULES.
+        *args: Command-line arguments, path-like or str.
+
+    Returns:
+        ToolRun: The exit code and combined output.
+    """
+
+    argv = [sys.executable, '-m', TOOL_MODULES[tool]] + [str(a) for a in args]
+    proc = subprocess.run(argv, cwd=str(tree.disk), env=tree.env,
+                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                          timeout=TOOL_TIMEOUT, check=False)
+    output = proc.stdout.decode('utf-8', errors='replace')
+
+    return ToolRun(argv, proc.returncode, output)
+
+
+def build_tree(tmp_dir, root, flavor, paths, mtimes):
+    """Copy a declared source subset into a fresh temporary holdings tree.
+
+    The holdings layout is preserved exactly, and every copied file's modification
+    time is pinned from the caller's table so that checksum, shelf and archive
+    output is byte-for-byte reproducible.
+
+    Args:
+        tmp_dir: The temporary directory to build in.
+        root: The holdings root to copy from.
+        flavor: 'pds3' or 'pds4'.
+        paths: The holdings-relative paths to copy.
+        mtimes: Mapping of holdings-relative path to POSIX mtime.
+
+    Returns:
+        ToolTree: The populated tree.
+    """
+
+    tree = ToolTree(tmp_dir, flavor)
+    for name in HOLDINGS_DIRNAME.values():
+        (tree.disk / name).mkdir(parents=True, exist_ok=True)
+
+    for relpath in paths:
+        source = Path(root) / relpath
+        target = tree.holdings / relpath
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(source, target)
+        mtime = mtimes[relpath]
+        os.utime(target, (mtime, mtime))
+
+    return tree
+
+
+def add_file(tree, relpath, contents, mtime):
+    """Create a new file inside a temporary tree, with a pinned modification time.
+
+    Args:
+        tree: The ToolTree to write into.
+        relpath: The holdings-relative path of the new file.
+        contents: Bytes to write.
+        mtime: POSIX modification time to pin.
+
+    Returns:
+        pathlib.Path: The path written.
+    """
+
+    target = tree.path(relpath)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(contents)
+    os.utime(target, (mtime, mtime))
+
+    return target
+
+
+##########################################################################################
+# Corruption verbs
+#
+# The per-module CORRUPTIONS tables name one of these verbs plus a fixed target;
+# nothing is randomized and nothing is chosen at run time.
+##########################################################################################
+
+def overwrite_first_byte(path, value=0xFF):
+    """Overwrite byte 0 of a file, leaving its length and mtime unchanged.
+
+    Args:
+        path: The file to damage.
+        value: The byte value to write.
+    """
+
+    path = Path(path)
+    stat = path.stat()
+    with open(path, 'r+b') as f:
+        f.write(bytes([value]))
+    os.utime(path, (stat.st_atime, stat.st_mtime))
+
+
+def truncate_file(path, nbytes):
+    """Truncate a file to a fixed length, leaving its mtime unchanged.
+
+    Args:
+        path: The file to damage.
+        nbytes: The length to truncate to.
+    """
+
+    path = Path(path)
+    stat = path.stat()
+    with open(path, 'r+b') as f:
+        f.truncate(nbytes)
+    os.utime(path, (stat.st_atime, stat.st_mtime))
+
+
+def shift_mtime(path, seconds):
+    """Move a file's modification time by a fixed number of seconds.
+
+    Args:
+        path: The file to touch.
+        seconds: The offset to apply.
+    """
+
+    path = Path(path)
+    mtime = path.stat().st_mtime + seconds
+    os.utime(path, (mtime, mtime))
+
+
+def replace_bytes(path, old, new):
+    """Replace one fixed byte string in a file, leaving its length and mtime alone.
+
+    Args:
+        path: The file to damage.
+        old: The byte string to replace; must occur exactly once.
+        new: The replacement, which must be the same length as `old`.
+
+    Raises:
+        AssertionError: If the lengths differ or `old` does not occur exactly once,
+            so a stale corruption table cannot pass silently.
+    """
+
+    assert len(old) == len(new), 'replacement must preserve the file length'
+    path = Path(path)
+    stat = path.stat()
+    data = path.read_bytes()
+    assert data.count(old) == 1, (
+        f'expected exactly one occurrence of {old!r} in {path}, found {data.count(old)}')
+    path.write_bytes(data.replace(old, new))
+    os.utime(path, (stat.st_atime, stat.st_mtime))
+
+
+def delete_md5_entry(md5_path, entry_suffix):
+    """Delete the line for one file from an md5 checksum file.
+
+    Args:
+        md5_path: The `*_md5.txt` file to edit.
+        entry_suffix: The trailing part of the path whose line is removed.
+
+    Raises:
+        AssertionError: If no line matched, so a stale table cannot pass silently.
+    """
+
+    md5_path = Path(md5_path)
+    lines = md5_path.read_text(encoding='latin-1').splitlines(keepends=True)
+    kept = [line for line in lines if not line.rstrip().endswith(entry_suffix)]
+    assert len(kept) == len(lines) - 1, (
+        f'expected exactly one md5 entry ending in {entry_suffix!r}, '
+        f'removed {len(lines) - len(kept)}')
+    md5_path.write_text(''.join(kept), encoding='latin-1')
+
+
+##########################################################################################
+# Normalizers: turn a generated artifact into stable, comparable text
+##########################################################################################
+
+def md5_file_text(path):
+    """Return an md5 checksum file as sorted "<path> <md5>" text.
+
+    The tools emit md5 files in os.walk order, which is not portable, so the
+    mapping rather than the file is what gets compared.
+
+    Args:
+        path: The `*_md5.txt` file to read.
+
+    Returns:
+        str: One "<path> <md5>" line per entry, sorted by path.
+    """
+
+    entries = {}
+    for line in Path(path).read_text(encoding='latin-1').splitlines():
+        if not line.strip():
+            continue
+        checksum, _, relpath = line.partition(' ')
+        entries[relpath.strip()] = checksum.strip()
+
+    return ''.join(f'{relpath} {entries[relpath]}\n' for relpath in sorted(entries))
+
+
+def md5_file_mapping(path):
+    """Return an md5 checksum file as a {path: md5} mapping.
+
+    Args:
+        path: The `*_md5.txt` file to read.
+
+    Returns:
+        dict[str, str]: Checksum by relative path.
+    """
+
+    entries = {}
+    for line in Path(path).read_text(encoding='latin-1').splitlines():
+        if not line.strip():
+            continue
+        checksum, _, relpath = line.partition(' ')
+        entries[relpath.strip()] = checksum.strip()
+
+    return entries
+
+
+def sidecar_text(path):
+    """Return a shelf `.py` sidecar as normalized text.
+
+    The tools already write sidecar entries sorted by path; this strips trailing
+    whitespace and normalizes line endings so the comparison does not depend on
+    either.
+
+    Args:
+        path: The `*.py` sidecar to read.
+
+    Returns:
+        str: The normalized sidecar text.
+    """
+
+    lines = Path(path).read_text(encoding='latin-1').splitlines()
+
+    return ''.join(line.rstrip() + '\n' for line in lines)
+
+
+def tar_member_text(path):
+    """Return a .tar.gz archive as sorted member tuples rendered as text.
+
+    Archive bytes are not reproducible (gzip metadata, os.walk order), so archives
+    are only ever compared by their members.
+
+    Member modification times are reported for files only: file mtimes come from
+    the pinned source table and are reproducible, while directory mtimes are set
+    by the copy itself and are not.
+
+    Args:
+        path: The `.tar.gz` file to read.
+
+    Returns:
+        str: One "<name> <kind> <size> <mtime>" line per member, sorted by name.
+    """
+
+    with tarfile.open(path, 'r:gz') as tar:
+        members = [(member.name, 'dir' if member.isdir() else 'file',
+                    0 if member.isdir() else member.size,
+                    0 if member.isdir() else int(member.mtime))
+                   for member in tar.getmembers()]
+    members.sort()
+
+    return ''.join(f'{name} {kind} {size} {mtime}\n'
+                   for name, kind, size, mtime in members)
+
+
+def tar_member_names(path):
+    """Return the sorted member names of a .tar.gz archive.
+
+    Args:
+        path: The `.tar.gz` file to read.
+
+    Returns:
+        list[str]: Member names, sorted.
+    """
+
+    with tarfile.open(path, 'r:gz') as tar:
+        return sorted(tar.getnames())
+
+
+##########################################################################################
+# Golden comparison
+##########################################################################################
+
+def check_golden(name, text, update):
+    """Compare normalized text against a committed golden artifact.
+
+    Args:
+        name: The golden's basename, without extension.
+        text: The normalized text produced by the test.
+        update: True to rewrite the golden instead of comparing (pytest --update).
+
+    Raises:
+        AssertionError: If the golden is absent (and update was not requested) or
+            differs from the text.
+    """
+
+    path = GOLDEN_DIR / f'{name}.txt'
+    if update:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding='utf-8')
+        return
+
+    assert path.exists(), (
+        f'missing golden {path}; regenerate the tool-test goldens with '
+        f'`pytest tests/holdings_maintenance --update` against real holdings')
+    expected = path.read_text(encoding='utf-8')
+    assert text == expected, f'golden mismatch: {path}'
