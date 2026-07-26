@@ -184,7 +184,7 @@ Two further observations, not defects in a single tool:
    fix works, and its cost is prohibitive on the gate that would pay it. Measured
    on the limited holdings copy with
 
-   ```
+   ```sh
    PDSFILE_TEST_HOLDINGS=full python -m coverage run -m pytest \
        tests/holdings_maintenance/test_pds3_archives.py --mode ns -q -p no:cacheprovider
    ```
@@ -429,3 +429,19 @@ Two further observations, not defects in a single tool:
     in a frozen file is freeze-neutral but needs owner sign-off, exactly like the
     dead-`noqa` item recorded under "From PR-03+04" above. **Owner:** the same
     owner-blessed touch-up of the frozen files.
+
+### Added by the CodeRabbit review of PR #107 (2026-07-26)
+
+22. **The self-hosted `test` job still runs on default workflow permissions.**
+    `zizmor` flags `excessive-permissions` on `.github/workflows/run-tests.yml`:
+    neither the workflow nor the `test` job declares a `permissions:` block, so
+    both `pull_request` jobs got the repository's default token scope. PR-14
+    fixed the half it owns — the new `lint` job declares
+    `permissions: contents: read` and its checkout sets
+    `persist-credentials: false` — but the PR-14 bullet says to keep the
+    self-hosted matrix exactly as it is, so the `test` job was left alone. It
+    checks out PR-head code and then runs it, and it additionally needs whatever
+    scope `codecov/codecov-action` uses, so the right block is not simply a copy
+    of the lint job's. The same applies to `run-tests-and-opus.yml`, which is
+    likewise untouched here. **Owner:** a CI-hardening pass, or PR-37's
+    finalization sweep.

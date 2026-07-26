@@ -122,7 +122,7 @@ Command: `pytest tests` with `PDS3_HOLDINGS_DIR`, `PDS4_HOLDINGS_DIR`,
 `passed + skipped == collected` in both. The set difference of passing test ids
 is exactly one test, in one direction:
 
-```
+```text
 + PASSED tests/api/test_api_freeze.py::test_public_api_frozen
 ```
 
@@ -136,7 +136,7 @@ was measured, not eyeballed. The blanket skip was lifted with a throwaway
 `tryfirst` plugin marking every collected item `holdings_free`, and the whole
 tree was run with all four holdings env vars unset:
 
-```
+```text
 315 passed, 387 failed, 122 skipped
 ```
 
@@ -241,7 +241,7 @@ Owner decision relayed 2026-07-26: `choices=('s', 'ns')` **and** `default='ns'`.
 Implemented as a spike and measured before deciding. Command, run twice with the
 limited holdings copy exported:
 
-```
+```sh
 PDSFILE_TEST_HOLDINGS=full python -m coverage run -m pytest \
     tests/holdings_maintenance/test_pds3_archives.py --mode ns -q -p no:cacheprovider
 ```
@@ -322,7 +322,7 @@ not silently something else.
 **Self-hosted `Test pdsfile`**, all four Python versions green; the 3.13 leg's
 two passes read:
 
-```
+```text
 790 passed, 34 skipped in 378.62s      (--mode ns)
 555 passed,  3 skipped in 282.15s      (--mode s)
 ```

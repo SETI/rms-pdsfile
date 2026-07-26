@@ -26,7 +26,7 @@ same silent 3% run the guard was added to eliminate. **Fixed:** the guard now
 fires when **either** root is present, so a half-configured environment reaches
 `_resolve_full` and fails the session by name. Verified:
 
-```
+```text
 Running pytest (-n 1; holdings selection is invalid, pytest will report it)...
 ERROR: PDSFILE_TEST_HOLDINGS=full requires PDS4_HOLDINGS_DIR to be set
 ✗ Pytest failed   ✗ FAILURE - 1 check(s) failed

@@ -74,3 +74,34 @@ is satisfied, with the recorded figures matching PR-13's baseline.
 Round 4 returns zero Major and no new un-rebutted Minor. Per §6.6 the loop is
 converged and the PR may be opened. Rounds 1-3 are in `round-1.md`, `round-2.md`
 and `round-3.md`; gate evidence is in `validation.md`.
+
+## Addendum — CodeRabbit review of PR #107
+
+Four findings, after the §6.6 loop had converged. Two fixed, one fixed in the
+half this PR owns, one rebutted.
+
+1. **Least-privilege permissions on the `pull_request` jobs** (Major, `zizmor`
+   `excessive-permissions`). Valid. **Fixed for the job this PR authors:** the
+   `lint` job declares `permissions: contents: read` and its checkout sets
+   `persist-credentials: false` — it runs PR-head code on a hosted runner and
+   never pushes, so it should hold nothing more. The self-hosted `test` job is
+   deliberately not touched (the PR-14 bullet freezes it, and it needs whatever
+   scope `codecov/codecov-action` uses, so its block is not a copy of the lint
+   job's). Recorded as deferred **entry 22**.
+2. **Pin actions to full commit SHAs instead of major tags** (Major).
+   **Rebutted.** `.cursor/rules/environment.mdc:19` mandates the opposite in so
+   many words: "Pin action versions to a major tag (e.g. `actions/checkout@v6`)
+   to balance stability and security updates." That rule has been in force since
+   PR-04, the whole repo follows it consistently across all four workflows, and
+   §6.6 says the plan and the repo rules win over a reviewer's preference.
+   Adopting SHAs would also mean editing the frozen self-hosted job's action
+   references. Changing this convention is an owner decision about
+   `environment.mdc`, not something a PR re-decides in passing.
+3. **`MD040`: fenced blocks without a language identifier** (Minor). Valid.
+   **Fixed** in `critiques/pr-14/validation.md` (4), `round-3.md` (1) and
+   `critiques/deferred-observations.md` (1). The pymarkdown gate does not land
+   until PR-34, but the fix is free.
+4. **The plan's gate-table row for the hosted job omitted `pyroma`** (Minor).
+   Valid — the job runs the whole check driver. **Fixed**, and the row now says
+   it runs whatever `run-all-checks.sh` enables rather than re-listing gates that
+   can drift.

@@ -190,7 +190,7 @@ for re-interpretation by the executor:
 | `ruff check` (ratcheted) | **Active** (PR-03) | Style; per-file-ignores may only shrink |
 | Clean-install import check | **Active** (PR-08) | `pip install .` with no extras; `import pdsfile` + every manifest module imports (runtime-dep leak guard) |
 | `ruff format --check` | PR-23 (core) / PR-24 (rest) — **conditional on the owner churn checkpoints in those PRs**; scope may be reduced or the gate dropped entirely | Formatting; not gated before the one-time reformat lands |
-| Hosted lint/no-holdings CI job | **Active** (PR-14) | ruff + API-freeze + clean-install + the holdings-free test subset on stock GitHub runners |
+| Hosted lint/no-holdings CI job | **Active** (PR-14) | ruff + pyroma + API-freeze + clean-install + the holdings-free test subset on stock GitHub runners (it runs `run-all-checks.sh`, so it is whatever that enables) |
 | sphinx -W -n build | PR-31 | Docs build clean |
 | Adversarial pre-PR review loop | **Active** (every PR) | A fresh, no-context reviewer cannot prove the PR misses its stated goal — zero Major and no new un-rebutted Minor findings (§6.6) |
 

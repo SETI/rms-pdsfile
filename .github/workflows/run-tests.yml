@@ -27,6 +27,10 @@ jobs:
     # data.
     name: Lint and holdings-free tests
     runs-on: ubuntu-latest
+    # This job runs code from the pull-request head on a hosted runner, so it
+    # gets no more than it needs to read the tree.
+    permissions:
+      contents: read
     strategy:
       matrix:
         python-version: ["3.10", "3.13"]
@@ -36,6 +40,9 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
+          # Nothing here pushes; leaving the token in .git/config would only
+          # expose it to the PR-authored code this job runs.
+          persist-credentials: false
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
