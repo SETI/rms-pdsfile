@@ -178,12 +178,54 @@ Two further observations, not defects in a single tool:
    from the 100+ new tests. Subprocess invocation is load-bearing and cannot be
    given up (see §2.2 of `plans/2026-07-25-pr-13-subplan.md`), so the fix is a
    `COVERAGE_PROCESS_START` / `sitecustomize` hook in the tests' subprocess
-   environment. **Owner: PR-14**, which owns CI/coverage correspondence.
-9. **`tests/api/test_api_freeze.py` is not marked `holdings_free`.** PR-14's spec
-   says the hosted no-holdings job must run the API-freeze test as part of its
-   pytest subset, but the collect-and-skip rule will still skip it there. PR-13
-   only owed the `crlf` tests. **Owner: PR-14** — mark the API-freeze test (and
-   any other genuinely holdings-free test) when that job is built.
+   environment. ~~**Owner: PR-14**, which owns CI/coverage correspondence.~~
+
+   **STILL DEFERRED — re-assigned by PR-14 (2026-07-26), with measurements.** The
+   fix works, and its cost is prohibitive on the gate that would pay it. Measured
+   on the limited holdings copy with
+
+   ```
+   PDSFILE_TEST_HOLDINGS=full python -m coverage run -m pytest \
+       tests/holdings_maintenance/test_pds3_archives.py --mode ns -q -p no:cacheprovider
+   ```
+
+   the only variable being whether
+   `tests/holdings_maintenance/support.py::run_tool` prefixes each tool
+   subprocess with `-m coverage run --parallel-mode --rcfile <repo>/pyproject.toml`
+   and sets an absolute `COVERAGE_FILE` in the subprocess environment:
+
+   | tool subprocesses | pytest summary line |
+   |---|---|
+   | uninstrumented (today) | `8 passed, 5 warnings in 16.06s` |
+   | instrumented | `8 passed, 5 warnings in 138.84s` |
+
+   An **8.6x** slowdown, on the arm of the self-hosted suite that runs on every PR
+   and nightly across four Python versions. The cost is the line tracer running
+   inside each tool, so the `sitecustomize` / `COVERAGE_PROCESS_START` route named
+   above measures the same and costs the same. It also requires parallel data
+   files plus a `coverage combine` step (guarded, because a holdings root that
+   lacks a declared source subset legitimately produces zero child data files) in
+   `scripts/automated_tests/pdsfile_main_test.sh` — the data-gate driver.
+
+   Two things make waiting cheap: coverage numbers stay informational until the
+   targets are set, and PR-28 converts the `shelf_consistency_check` and
+   `show_opus_products` tests to in-process `main()` calls, which are measured
+   with no subprocess machinery at all. If it is taken up, `COVERAGE_CORE=sysmon`
+   (Python 3.12+) is the lever worth measuring first — and note the coverage
+   artifact is uploaded from the 3.13 leg only, so the instrumentation need not be
+   paid on every leg. **Owner: PR-37** (Phase 8, "set codecov targets"), which is
+   where the number first has to mean something.
+9. ~~**`tests/api/test_api_freeze.py` is not marked `holdings_free`.**~~
+   **RESOLVED (PR-14).** `tests/api/conftest.py` marks every item collected from
+   `tests/api/` `holdings_free`, so the freeze test runs in the hosted
+   no-holdings job (`tests/api/test_api_freeze.py` itself is frozen by §6.4 and is
+   not edited). The directory-wide form also covers later additions such as
+   `tests/api/test_mixin_collisions.py` (PR-17).
+
+   The entry's second half — "and any other genuinely holdings-free test" — was
+   surveyed by measurement, not by inspection, and deliberately left unmarked;
+   the reasoning and the numbers are in §4 of `critiques/pr-14/validation.md`
+   and the residual option is recorded as entry 15 below.
 
 ### Added by the PR-13 adversarial review (round 2)
 
@@ -231,8 +273,22 @@ Two further observations, not defects in a single tool:
     direction (not decided here): give the option `choices=('s', 'ns')` plus an
     explicit `default`, so a typo fails loudly and the default is a mode the suite
     actually exercises — or document what the mixed combination is for and cover
-    it. **Owner: PR-14**, which owns CI / `run-all-checks.sh` pytest-invocation
-    correspondence.
+    it. ~~**Owner: PR-14**, which owns CI / `run-all-checks.sh` pytest-invocation
+    correspondence.~~
+
+    **RESOLVED (PR-14, owner decision 2026-07-26).** `--mode` now carries
+    `choices=('s', 'ns')` and `default='ns'`, so a mistyped mode is a usage error
+    and a bare `pytest` selects the broader of the two validated modes (`ns` is
+    the only mode in which the whole tree passes; the shelves-only pass is
+    pds3-only for that reason). The mixed `else` branch is deleted rather than
+    left unreachable: `setup` now derives one `shelves_only` boolean and applies
+    it to both classes, so a session where `Pds3File` and `Pds4File` disagree can
+    no longer be constructed. `scripts/run-all-checks.sh` passes `--mode ns`
+    explicitly so its invocation does not depend on the default. Every `--mode`
+    invocation in the repo was surveyed; all already passed an explicit `s` or
+    `ns`, so no existing invocation changes behavior, and the two full-data
+    per-test pass/fail sets are byte-identical to the pre-change runs
+    (`critiques/pr-14/validation.md`).
 13. **The maintenance-tool tests run in the `--mode ns` invocation only.**
     `scripts/automated_tests/pdsfile_main_test.sh` adds
     `tests/holdings_maintenance/` to the not-shelves-only pass and deliberately
@@ -250,6 +306,14 @@ Two further observations, not defects in a single tool:
     PR-28** (re-derive for the two tools it converts), with **PR-14** noting the
     same coupling if it changes how the suite is invoked. Entry 12 above is the
     related question of what mode a `--mode`-less run selects at all.
+
+    **PR-14 note (2026-07-26).** PR-14 leaves
+    `scripts/automated_tests/pdsfile_main_test.sh` untouched, so the two-pass
+    split and its `--mode ns`-only tool-test placement are unchanged. It does add
+    a third invocation, `scripts/run-all-checks.sh`, which runs the whole
+    `tests/` tree — including `tests/holdings_maintenance/` — once, under
+    `--mode ns`. That is the same mode the tool tests already ran in, so the
+    coupling recorded here is unchanged and PR-28 still owns re-deriving it.
 
 ### Added by the CI failure of PR #105 (2026-07-26)
 
@@ -276,3 +340,92 @@ Two further observations, not defects in a single tool:
     determine — those from rules whose glob matched a single path — are pinned in
     exact order, so a rule reordering its messages still fails the test. When the
     tool starts sorting, the test keeps passing and the golden stays valid.
+
+### Added by the PR-14 adversarial review (round 1)
+
+15. **~291 data-suite tests pass with no holdings present, and are deliberately
+    not marked `holdings_free`.** Measured on PR-14's branch by lifting the
+    blanket skip with a throwaway `tryfirst` plugin that marks every collected
+    item `holdings_free`, with all four holdings env vars unset:
+    **315 passed / 387 failed / 122 skipped** — i.e. 291 beyond the 24 the
+    hosted job runs today. Grouped by test *function*: 124 functions have every
+    parametrized case passing, 41 are **mixed** (some cases pass, some fail) and
+    126 fail outright. The four modules involved are
+    `tests/pds{3,4}file/test_pds{3,4}file_blackbox.py`,
+    `test_pds3file_blackbox_cached.py` and `test_pds3file_whitebox.py`. The
+    result is not order-dependent: each module run alone yields the same passing
+    set as it does inside the whole-tree run.
+
+    PR-14 did not mark them, for four reasons recorded in §4 of
+    `critiques/pr-14/validation.md`: they do not build their own inputs (they
+    concatenate the *resolved* holdings root, which with no holdings is PR-09's
+    synthetic `/pdsfile-no-holdings/...` placeholder — the test ids contain it,
+    so they assert against a root that does not exist); the pass/fail split runs
+    through the middle of parametrize tables, not along module, class or function
+    lines, so 41 functions cannot be marked at all; nothing pins the
+    no-filesystem-access property, so a mark is a CI-only tripwire right before
+    Phase 5 rewrites those very code paths; and the plan's own enumeration of the
+    subset (§1 G3: "API freeze, tool unit tests, import/collection smoke") does
+    not include the data suite.
+
+    Worth revisiting only together with **issue #92** (move inline
+    `@parametrize` values into golden files), which is where the tables would be
+    split into a data-dependent and a path-only half in the first place. #92 is
+    listed in §9 of the plan as future work outside this effort. **Owner: #92 /
+    post-merge.**
+16. **`run_tests_coverage.sh` at the repo root cannot run.** It invokes
+    `pytest pdsfile/pds3file/tests/ pdsfile/pds3file/rules/*.py`, paths that
+    stopped existing when PR-05 moved the package under `src/` and PR-07 moved
+    the tests to the top-level `tests/` tree. It is one of the `--mode` call
+    sites PR-14 surveyed (it passes valid modes, so PR-14's `choices` change does
+    not affect it) and was otherwise left alone. Delete it or update it to the
+    current layout. **Owner:** whichever PR next touches the root scripts;
+    PR-37's finalization sweep at the latest.
+17. **`CONTRIBUTING.md` documents `pytest` without holdings or `--mode`.** Its
+    testing section shows bare `pytest` / `pytest tests/<file>` with no mention
+    of `PDS3_HOLDINGS_DIR`/`PDS4_HOLDINGS_DIR`, `PDSFILE_TEST_HOLDINGS`, or
+    `--mode`. Now that the pytest gate is enabled, a contributor following it
+    gets an 800-skip run with no explanation of why. **Owner: Phase 7**
+    (PR-33 ch. 5 "Test-suite guide", or PR-34 with the README rewrite).
+18. **`tests/pds{3,4}file/helper.py` resolve holdings at import time.** Each
+    module does `PDS3_HOLDINGS_DIR = resolve_holdings().pds3_root` at import,
+    rather than reading the session's `config._pdsfile_holdings`. The two agree
+    today because the resolver is a pure function of the environment and nothing
+    mutates it mid-session, but they are two independent resolutions of the same
+    question. **Owner:** whichever PR restructures `tests/pds{3,4}file/` (the
+    same one that owns PR-07's `helper.py` double-import note above).
+
+### Added by the PR-14 adversarial review (round 2)
+
+19. **`[tool.pytest.ini_options]` declares no `testpaths`.** `python_testing.mdc`
+    asks for it, and `critiques/deferred-observations.md`'s PR-08 entry already
+    notes that "whichever PR adds `testpaths`" also owns PR-07's `helper.py`
+    double-import. Harmless today — every invocation names its paths explicitly,
+    and `venv/` is in pytest's default `norecursedirs` — so it is a tidiness item,
+    not a correctness one. Pre-existing since PR-03. **Owner:** the same PR that
+    restructures `tests/pds{3,4}file/` (see the PR-08 entry above).
+
+### Added by the PR-14 adversarial review (round 3)
+
+20. **The hosted no-holdings job has no floor on how many tests actually ran.**
+    The plan calls that run "itself the regression test for PR-09's graceful
+    skip", and it does catch the primary regression: a collection error exits
+    non-zero. But a regression that skipped *everything* — say the
+    `tests/api/conftest.py` path predicate quietly stopping matching — exits 0 and
+    the job stays green, because "0 passed, 824 skipped" is a passing pytest run.
+    PR-14 hardened the one known way that could happen (both sides of the path
+    comparison are resolved), and each PR's §6.2 record pins the expected
+    no-holdings counts, so a drop is visible in review — but nothing fails
+    automatically. A cheap tripwire (assert a floor on the passed count, or
+    require specific node ids to have run) belongs with whatever PR next touches
+    the hosted job. **Owner:** PR-37's finalization sweep, or any earlier PR that
+    edits the lint job.
+21. **Two §6.4-frozen files cite the archived v1 plan.**
+    `scripts/dump_public_api.py` and `tests/api/test_api_freeze.py` both point at
+    `plans/2026-07-17-modernization-plan.md`, which moved to `plans/archive/`.
+    Both files are under the absolute prohibition on editing, so PR-14 left them
+    alone (it did fix the same stale reference in
+    `.cursor/rules/pdsfile_overrides.mdc`, which is not frozen). Fixing a comment
+    in a frozen file is freeze-neutral but needs owner sign-off, exactly like the
+    dead-`noqa` item recorded under "From PR-03+04" above. **Owner:** the same
+    owner-blessed touch-up of the frozen files.
