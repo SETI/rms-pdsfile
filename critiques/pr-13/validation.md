@@ -17,7 +17,7 @@ Holdings roots are referred to by role only, never by path (§3.4.1):
 | API-freeze manifest test | **Pass** (1 passed). PR-13 changes nothing under `src/`, so the manifest cannot move; the run confirms it. |
 | Clean-install import check | **Pass** — "all runtime modules import with no dev extras". |
 | Full-data suite, both modes | **Pass**, per-test set diffed below. |
-| Adversarial pre-PR review loop | See `round-*.md` in this directory. |
+| Adversarial pre-PR review loop | **Converged in 2 rounds**, both `goal met` with zero Major. See `round-1.md` and `round-2.md`. |
 
 `ENABLE_PYTEST` in `scripts/run-all-checks.sh` stays `false`; PR-14 flips it.
 
@@ -31,10 +31,10 @@ Against the goldens' reference root:
 
 | Mode | Baseline | After PR-13 | Set diff |
 |---|---|---|---|
-| `ns` | 713 tests: 679 passed / 34 skipped | 817 tests: 783 passed / 34 skipped | **0 removed, 0 outcome changes**, 104 added — all in `tests.holdings_maintenance` |
+| `ns` | 713 tests: 679 passed / 34 skipped | 818 tests: 784 passed / 34 skipped | **0 removed, 0 outcome changes**, 105 added — all in `tests.holdings_maintenance` |
 | `s` | 558 tests: 555 passed / 3 skipped | 558 tests: 555 passed / 3 skipped | **identical set** |
 
-No pre-existing test changed outcome in either mode. The only delta is the 104
+No pre-existing test changed outcome in either mode. The only delta is the 105
 new tests, which is the PR's deliverable.
 
 `--mode s` is unchanged by design: the tool tests drive each tool in its own
@@ -47,8 +47,8 @@ signal; the reason is recorded in a comment in
 
 | Root | Result |
 |---|---|
-| the goldens' reference root | **104 passed**, 0 skipped, 119 s serial / 38 s under `-n 4` |
-| the complete set | **104 passed**, 0 skipped |
+| the goldens' reference root | **105 passed**, 0 skipped, ~120 s serial / ~40 s under `-n 4` |
+| the complete set | **105 passed**, 0 skipped |
 
 No module skipped against either root, and the committed goldens matched
 byte-for-byte against both. That is the point of the design: every declared source
@@ -117,10 +117,17 @@ real holdings roots and for the shared parent directory name they sit under: no
 match. Everything resolves from `$PDS3_HOLDINGS_DIR` / `$PDS4_HOLDINGS_DIR`, and
 this record names roots by role only.
 
+## Deviations from the active plan
+
+Two, both forced by PR-13's own deliverables and both written up for owner
+acknowledgement in `plans/2026-07-25-addendum-holdings-free-marker.md`: the
+`holdings_free` exemption in PR-09's collect-and-skip rule, and adding the tool
+tests to one suite invocation rather than both.
+
 ## Behaviour preservation
 
-PR-13 adds tests and touches no tool. Five pre-existing defects were found while
-writing the tests; per §6.4 none is fixed here. Each is pinned by a test that
+PR-13 adds tests and touches no tool. Seven pre-existing defects were found while
+writing the tests and during the review rounds; per §6.4 none is fixed here. Each is pinned by a test that
 asserts today's behaviour and points at the numbered entry under "From PR-13" in
 `critiques/deferred-observations.md`, where the defect, its location and the
 owning PR are written up. Whichever PR changes the behaviour will see the pin

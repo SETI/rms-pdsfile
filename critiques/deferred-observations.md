@@ -180,3 +180,28 @@ Two further observations, not defects in a single tool:
    pytest subset, but the collect-and-skip rule will still skip it there. PR-13
    only owed the `crlf` tests. **Owner: PR-14** — mark the API-freeze test (and
    any other genuinely holdings-free test) when that job is built.
+
+### Added by the PR-13 adversarial review (round 2)
+
+10. **`pdsinfoshelf`'s validate comparison is defective in three ways** (pds3
+    only; `pds4infoshelf` gets all three right, which is why the two test modules
+    expect opposite outcomes):
+    - `checksum1 != checksum1` compares a value to itself, so a content change is
+      never reported. Pinned by
+      `test_pds3_infoshelf.test_known_undetected_corruption[label_byte0_same_size]`.
+    - `abs(modtime1 != modtime2) > 1` takes `abs()` of a bool, which is 0 or 1 and
+      never `> 1`, so modification-time drift is never reported. Pinned by
+      `test_pds3_infoshelf.test_known_undetected_corruption[label_mtime_plus_100]`.
+    - The child-count message formats `(count1, count1)`, so it prints the
+      on-disk count twice instead of on-disk versus shelved. Pinned by
+      `test_pds3_infoshelf.test_update_picks_up_a_new_file`.
+    **Owner: PR-26.** The parent plan's PR-26 list already names the first two;
+    the message defect is not on it and should be folded in when the pair moves
+    onto the shared core. All three pins must be inverted at that point.
+11. **`crlf.test_crlf` raises `ZeroDivisionError` on a zero-byte file.** The
+    non-ASCII fraction divides by the decoded length without guarding an empty
+    file, so `crlf --repair` over a tree containing one dies instead of reporting
+    it. Pinned by
+    `test_crlf.TestArgumentValidation.test_an_empty_file_raises_zerodivisionerror`.
+    **Owner: PR-28**, which gives `crlf` a `main()`; deciding what an empty file
+    should classify as ('OK'? 'BINARY'?) is part of that work.
