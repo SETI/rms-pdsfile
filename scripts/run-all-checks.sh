@@ -36,9 +36,11 @@
 #   PDS3_HOLDINGS_DIR        Roots of the real holdings trees. Export both to run
 #   PDS4_HOLDINGS_DIR          the pytest gate as a full data suite; with neither
 #                              it runs the holdings-free subset and skips the
-#                              rest. Which run happened is printed.
-#   PDSFILE_TEST_HOLDINGS    Explicit tree selector (full|mini); set to full when
-#                              a root above is exported and it is not.
+#                              rest. Exporting only one is an error: the gate
+#                              fails and names the missing variable rather than
+#                              running the subset. Which run happened is printed.
+#   PDSFILE_TEST_HOLDINGS    Explicit tree selector (full|mini). Set to full when
+#                              either root above is exported and this is not.
 #
 #   The pytest gate here is ONE --mode ns pass over tests/. The self-hosted data
 #   gate (scripts/automated_tests/pdsfile_main_test.sh) runs that pass under

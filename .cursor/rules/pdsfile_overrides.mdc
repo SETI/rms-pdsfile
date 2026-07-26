@@ -53,8 +53,8 @@ conflicts with a rule below, follow the rule below. See
      3.13, which is the only place the data-dependent suite can run (it needs the
      real holdings tree, resolved from `PDS3_HOLDINGS_DIR`/`PDS4_HOLDINGS_DIR`);
    - a **hosted `ubuntu-latest`** lint / no-holdings job over Python 3.10 and 3.13
-     (floor and ceiling only — the self-hosted matrix already covers the two
-     versions in between), which runs `scripts/run-all-checks.sh` with no
+     (floor and ceiling only — the self-hosted matrix already covers all four
+     versions with data), which runs `scripts/run-all-checks.sh` with no
      holdings env vars set. It runs whatever gates that script enables — the
      script is the single source of truth (`environment.mdc`) — and its pytest
      gate collects the whole tree, runs the holdings-free subset and skips the
