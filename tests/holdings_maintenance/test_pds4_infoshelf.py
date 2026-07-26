@@ -2,17 +2,16 @@
 # tests/holdings_maintenance/test_pds4_infoshelf.py
 #
 # Full task cycle for pds4infoshelf against a copy of one declared PDS4 subset.
-# pds4infoshelf reads the checksum file written by pds4checksums, so the module
+# pds4infoshelf reads the checksum file written by pds4checksums, so every test
 # dogfoods pds4checksums first (the `tree` fixture).
 #
-# Note the deliberate contrast with test_pds3_infoshelf.py: pds4infoshelf's
-# validate_infodict compares `modtime1 != modtime2` and `checksum1 != checksum2`
-# (pds4infoshelf.py:393-399), so the two corruptions its pds3 twin silently
-# accepts are reported here. When PR-26 folds the pair onto a shared core, both
-# modules must agree.
+# Note the deliberate contrast with test_pds3_infoshelf.py: pds4infoshelf compares
+# modification times and checksums correctly, so the two corruptions its pds3 twin
+# silently accepts are reported here. See entry 1 of "From PR-13" in
+# critiques/deferred-observations.md; when the pair is folded onto a shared core,
+# both modules must agree.
 #
-# The `tool_tree` fixture is module-scoped, so these tests share one temporary tree
-# and run in definition order; every mutating test restores a clean tree.
+# Every test rebuilds the tree first, so each one is independent and order-agnostic.
 ##########################################################################################
 
 import datetime
@@ -37,7 +36,7 @@ ALPHA_LABEL = f'{BUNDLE_DIR}/data/rings/u0_kao_91cm_734nm_radius_alpha_egress_10
 ALPHA_TABLE = f'{BUNDLE_DIR}/data/rings/u0_kao_91cm_734nm_radius_alpha_egress_1000m.tab'
 
 NEW_FILE = f'{BUNDLE_DIR}/data/rings/u0_kao_91cm_extra_added_by_tests.xml'
-NEW_FILE_BYTES = b'<added-by-the-pr-13-update-test/>\n'
+NEW_FILE_BYTES = b'<added-by-an-update-test/>\n'
 NEW_FILE_MTIME = subsets.PDS4_MTIMES[ALPHA_LABEL] + 1000
 
 Corruption = namedtuple('Corruption', 'name description target damage expected')
@@ -58,13 +57,11 @@ CORRUPTIONS = (
 )
 
 
-def repin_mtimes(tree):
-    """Restore every declared source file's pinned modification time."""
+def sidecar_line(text, key):
+    """Return the sidecar line for one path, or None."""
 
-    for relpath, mtime in SOURCE_MTIMES.items():
-        path = tree.path(relpath)
-        if path.exists():
-            support.shift_mtime(path, mtime - path.stat().st_mtime)
+    return next((line for line in text.splitlines()
+                 if line.strip().startswith(f'"{key}"')), None)
 
 
 def refresh_checksums(tree):
@@ -74,35 +71,39 @@ def refresh_checksums(tree):
     assert run.returncode == 0, run.describe()
 
 
-@pytest.fixture(scope='module')
-def tree(tool_tree):
-    """The module tree with checksums already generated (pds4infoshelf needs them)."""
+@pytest.fixture
+def tree(fresh_tree):
+    """A freshly rebuilt tree with checksums generated (pds4infoshelf needs them)."""
 
-    run = support.run_tool(tool_tree, 'pds4checksums', '--initialize',
-                           tool_tree.path(BUNDLE_DIR))
-    assert run.returncode == 0, run.describe()
+    support.initialize(fresh_tree, 'pds4checksums', fresh_tree.path(BUNDLE_DIR))
 
-    return tool_tree
+    return fresh_tree
+
+
+@pytest.fixture
+def shelved_tree(tree):
+    """A freshly rebuilt tree with both the checksum file and the info shelf."""
+
+    support.initialize(tree, 'pds4infoshelf', tree.path(BUNDLE_DIR))
+
+    return tree
 
 
 def test_initialize_writes_the_expected_sidecar(tree, golden_update):
     """--initialize builds the info shelf and the .py sidecar matches the golden."""
 
-    run = support.run_tool(tree, 'pds4infoshelf', '--initialize', tree.path(BUNDLE_DIR))
-    assert run.returncode == 0, run.describe()
+    support.initialize(tree, 'pds4infoshelf', tree.path(BUNDLE_DIR))
 
     sidecar = tree.path(SIDECAR)
-    assert sidecar.exists(), run.describe()
-    assert tree.path(PICKLE).exists(), run.describe()
+    assert sidecar.exists()
+    assert tree.path(PICKLE).exists()
 
     text = support.sidecar_text(sidecar)
     support.check_golden('pds4_infoshelf_sidecar', text, golden_update)
 
     for relpath, size, md5 in SOURCE_FINGERPRINTS:
-        key = relpath.partition(f'{subsets.PDS4_BUNDLE}/')[2]
-        line = next((ln for ln in text.splitlines() if ln.strip().startswith(f'"{key}"')),
-                    None)
-        assert line is not None, f'{key} missing from sidecar\n{text}'
+        line = sidecar_line(text, relpath.partition(f'{subsets.PDS4_BUNDLE}/')[2])
+        assert line is not None, f'{relpath} missing from sidecar\n{text}'
         assert str(size) in line, line
         assert md5 in line, line
         stamp = datetime.datetime.fromtimestamp(
@@ -110,70 +111,95 @@ def test_initialize_writes_the_expected_sidecar(tree, golden_update):
         assert f'"{stamp.strftime("%Y-%m-%d %H:%M:%S.%f")}"' in line, line
 
 
-def test_initialize_refuses_to_clobber(tree):
+def test_initialize_refuses_to_clobber(shelved_tree):
     """A second --initialize reports the existing shelf and exits non-zero."""
 
-    run = support.run_tool(tree, 'pds4infoshelf', '--initialize', tree.path(BUNDLE_DIR))
+    run = support.run_tool(shelved_tree, 'pds4infoshelf', '--initialize',
+                           shelved_tree.path(BUNDLE_DIR))
     assert run.returncode == 1, run.describe()
     assert any('Info shelf file already exists' in line for line in run.error_lines), \
         run.describe()
 
 
-def test_validate_is_clean_after_initialize(tree):
+def test_validate_is_clean_after_initialize(shelved_tree):
     """--validate on an untouched tree exits 0 and logs no errors."""
 
-    run = support.run_tool(tree, 'pds4infoshelf', '--validate', tree.path(BUNDLE_DIR))
+    run = support.run_tool(shelved_tree, 'pds4infoshelf', '--validate',
+                           shelved_tree.path(BUNDLE_DIR))
     assert run.returncode == 0, run.describe()
     assert run.error_lines == [], run.describe()
 
 
 @pytest.mark.parametrize('corruption', CORRUPTIONS, ids=[c.name for c in CORRUPTIONS])
-def test_corruption_is_detected_and_repaired(tree, corruption):
+def test_corruption_is_detected_and_repaired(shelved_tree, corruption):
     """Each fixed corruption fails --validate, and --repair restores the shelf."""
 
-    target = tree.path(corruption.target)
-    original = target.read_bytes()
-    corruption.damage(target)
-    refresh_checksums(tree)
+    corruption.damage(shelved_tree.path(corruption.target))
+    refresh_checksums(shelved_tree)
 
-    run = support.run_tool(tree, 'pds4infoshelf', '--validate', tree.path(BUNDLE_DIR))
+    run = support.run_tool(shelved_tree, 'pds4infoshelf', '--validate',
+                           shelved_tree.path(BUNDLE_DIR))
     assert run.returncode == 1, f'{corruption.description}\n{run.describe()}'
     assert any(corruption.expected in line and corruption.target.rpartition('/')[2] in line
                for line in run.error_lines), \
         f'{corruption.description}\n{run.describe()}'
 
-    run = support.run_tool(tree, 'pds4infoshelf', '--repair', tree.path(BUNDLE_DIR))
+    run = support.run_tool(shelved_tree, 'pds4infoshelf', '--repair',
+                           shelved_tree.path(BUNDLE_DIR))
     assert run.returncode == 0, run.describe()
 
-    run = support.run_tool(tree, 'pds4infoshelf', '--validate', tree.path(BUNDLE_DIR))
+    run = support.run_tool(shelved_tree, 'pds4infoshelf', '--validate',
+                           shelved_tree.path(BUNDLE_DIR))
     assert run.returncode == 0, run.describe()
     assert run.error_lines == [], run.describe()
 
-    target.write_bytes(original)
-    repin_mtimes(tree)
-    refresh_checksums(tree)
-    run = support.run_tool(tree, 'pds4infoshelf', '--repair', tree.path(BUNDLE_DIR))
+    line = sidecar_line(support.sidecar_text(shelved_tree.path(SIDECAR)),
+                        corruption.target.partition(f'{subsets.PDS4_BUNDLE}/')[2])
+    assert str(shelved_tree.path(corruption.target).stat().st_size) in line, line
+
+
+def test_update_picks_up_a_new_file(shelved_tree):
+    """--update adds the new file's info to an existing shelf.
+
+    As in pds3, --update is additive and leaves the parent directories' aggregate
+    byte counts stale, so the following --validate reports them; --repair is what
+    rewrites the whole shelf.
+    """
+
+    support.add_file(shelved_tree, NEW_FILE, NEW_FILE_BYTES, NEW_FILE_MTIME)
+    refresh_checksums(shelved_tree)
+
+    run = support.run_tool(shelved_tree, 'pds4infoshelf', '--update',
+                           shelved_tree.path(BUNDLE_DIR))
     assert run.returncode == 0, run.describe()
 
+    text = support.sidecar_text(shelved_tree.path(SIDECAR))
+    line = sidecar_line(text, NEW_FILE.partition(f'{subsets.PDS4_BUNDLE}/')[2])
+    assert line is not None, text
+    assert f'({len(NEW_FILE_BYTES):11d},' in line, line
+    assert support.md5_of(shelved_tree.path(NEW_FILE)) in line, line
 
-def test_update_picks_up_a_new_file(tree):
-    """--update adds the new file's info to an existing shelf."""
+    run = support.run_tool(shelved_tree, 'pds4infoshelf', '--validate',
+                           shelved_tree.path(BUNDLE_DIR))
+    assert run.returncode == 1, run.describe()
+    assert all(any(kind in line for kind in ('File size mismatch',
+                                             'Child count mismatch',
+                                             'Modification time mismatch'))
+               for line in run.error_lines), run.describe()
+    assert not any('extra_added_by_tests' in line for line in run.error_lines), \
+        run.describe()
+    # Unlike its pds3 twin, this tool reports the real shelved child count, and it
+    # notices the parent directory's modification time moving.
+    assert any('Child count mismatch 7 6' in line for line in run.error_lines), \
+        run.describe()
+    assert any('Modification time mismatch' in line for line in run.error_lines), \
+        run.describe()
 
-    support.add_file(tree, NEW_FILE, NEW_FILE_BYTES, NEW_FILE_MTIME)
-    refresh_checksums(tree)
-
-    run = support.run_tool(tree, 'pds4infoshelf', '--update', tree.path(BUNDLE_DIR))
+    run = support.run_tool(shelved_tree, 'pds4infoshelf', '--repair',
+                           shelved_tree.path(BUNDLE_DIR))
     assert run.returncode == 0, run.describe()
 
-    text = support.sidecar_text(tree.path(SIDECAR))
-    assert 'u0_kao_91cm_extra_added_by_tests.xml' in text, text
-    assert str(len(NEW_FILE_BYTES)) in text
-
-    # As in pds3, --update is additive and leaves the parent directories' aggregate
-    # byte counts stale; --repair is what rewrites the whole shelf.
-    run = support.run_tool(tree, 'pds4infoshelf', '--repair', tree.path(BUNDLE_DIR))
-    assert run.returncode == 0, run.describe()
-
-    run = support.run_tool(tree, 'pds4infoshelf', '--validate', tree.path(BUNDLE_DIR))
+    run = support.run_tool(shelved_tree, 'pds4infoshelf', '--validate',
+                           shelved_tree.path(BUNDLE_DIR))
     assert run.returncode == 0, run.describe()
     assert run.error_lines == [], run.describe()

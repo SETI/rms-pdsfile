@@ -1,16 +1,15 @@
 ##########################################################################################
 # tests/holdings_maintenance/test_show_opus_products.py
 #
-# show_opus_products has no main() yet -- that is PR-28 -- so it is driven here as a
-# subprocess (`python -m ...`), which is the same interface PR-28's in-process
-# main() will replace without changing what is asserted.
+# show_opus_products has no main() yet, so it is driven here as a subprocess
+# (`python -m ...`) -- the same interface an in-process main() will replace later
+# without changing what is asserted.
 #
 # The tool runs Pds3File.use_shelves_only(True), so it answers entirely out of the
 # info shelves. This module therefore dogfoods pdschecksums and pdsinfoshelf onto
 # the copied tree first (the `tree` fixture) and then queries it.
 #
-# The `tool_tree` fixture is module-scoped, so these tests share one temporary tree
-# and run in definition order.
+# Every test rebuilds the tree first, so each one is independent and order-agnostic.
 ##########################################################################################
 
 import pytest
@@ -31,8 +30,8 @@ LOGICAL_LABEL = LABEL
 EXPECTED_OPUS_TYPES = ('hst_text', 'hst_calib', 'hst_ima', 'hst_raw', 'hst_tiff')
 
 
-@pytest.fixture(scope='module')
-def tree(tool_tree):
+@pytest.fixture
+def tree(fresh_tree):
     """The module tree with checksums and info shelves generated.
 
     show_opus_products sets use_shelves_only(True) for Pds3File, so without the
@@ -40,25 +39,36 @@ def tree(tool_tree):
     """
 
     for tool in ('pdschecksums', 'pdsinfoshelf'):
-        run = support.run_tool(tool_tree, tool, '--initialize',
-                               tool_tree.path(VOLUME_DIR))
-        assert run.returncode == 0, run.describe()
+        support.initialize(fresh_tree, tool, fresh_tree.path(VOLUME_DIR))
 
-    return tool_tree
+    return fresh_tree
 
 
-def test_table_output_lists_every_opus_type(tree, golden_update):
-    """The default table output matches the committed golden."""
+def test_table_output_lists_every_opus_type(tree):
+    """The default table output names the file and every one of its opus types.
+
+    Asserted structurally rather than against a golden: the table is rendered by
+    `tabulate`, so a byte-exact golden would pin a third-party library's formatting
+    and break on an unrelated release. The `--pprint` output, which is pdsfile's
+    own, carries the byte-exact golden.
+    """
 
     run = support.run_tool(tree, 'show_opus_products', '--paths', tree.path(LABEL))
     assert run.returncode == 0, run.describe()
 
-    text = run.output.replace(str(tree.disk), '$DISK')
-    support.check_golden('show_opus_products_table', text, golden_update)
-
+    assert f'Pdsfile: {LOGICAL_LABEL}' in run.output, run.describe()
+    assert 'opus_type' in run.output, run.describe()
+    assert 'opus_products' in run.output, run.describe()
     for opus_type in EXPECTED_OPUS_TYPES:
         assert opus_type in run.output, run.describe()
-    assert f'Pdsfile: {LOGICAL_LABEL}' in run.output, run.describe()
+
+    # Each product appears under the table, by logical path.
+    for product in ('N4BI01L4Q.ASC', 'N4BI01L4Q_CAL.JPG', 'N4BI01L4Q_IMA.JPG',
+                    'N4BI01L4Q_RAW.JPG', 'N4BI01L4Q_RAW.TIF'):
+        assert f'{VOLUME_DIR}/DATA/VISIT_01/{product}' in run.output, run.describe()
+
+    # No absolute path from the temporary tree leaks into the output.
+    assert str(tree.disk) not in run.output, run.describe()
 
 
 def test_pprint_output_maps_each_product_category(tree, golden_update):

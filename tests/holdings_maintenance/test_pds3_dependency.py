@@ -9,11 +9,10 @@
 # required" list against a golden, then perform some of those steps and show the
 # corresponding lines disappear.
 #
-# pdsdependency is pds3-only by design: the parent plan records that it has no
-# pds4 twin and stays a standalone tool.
+# pdsdependency is pds3-only by design: the modernization plan records that it has
+# no pds4 twin and stays a standalone tool.
 #
-# The `tool_tree` fixture is module-scoped, so these tests share one temporary tree
-# and run in definition order.
+# Every test rebuilds the tree first, so each one is independent and order-agnostic.
 ##########################################################################################
 
 import pytest
@@ -50,13 +49,13 @@ def steps_required(run, tree):
             for step in steps if step.strip()]
 
 
-def test_missing_derived_products_are_reported(tool_tree, golden_update):
+def test_missing_derived_products_are_reported(fresh_tree, golden_update):
     """With no derived products at all, the emitted step list matches the golden."""
 
-    run = support.run_tool(tool_tree, 'pdsdependency', tool_tree.path(VOLUME_DIR))
+    run = support.run_tool(fresh_tree, 'pdsdependency', fresh_tree.path(VOLUME_DIR))
     assert run.returncode == 1, run.describe()
 
-    steps = steps_required(run, tool_tree)
+    steps = steps_required(run, fresh_tree)
     support.check_golden('pds3_dependency_steps', ''.join(f'{s}\n' for s in steps),
                          golden_update)
 
@@ -76,23 +75,23 @@ def test_missing_derived_products_are_reported(tool_tree, golden_update):
                for line in run.error_lines), run.describe()
 
 
-def test_metadata_steps_disappear_once_performed(tool_tree):
+def test_metadata_steps_disappear_once_performed(fresh_tree):
     """Running the metadata checksum and info steps removes them from the report."""
 
     before = steps_required(
-        support.run_tool(tool_tree, 'pdsdependency', tool_tree.path(VOLUME_DIR)),
-        tool_tree)
+        support.run_tool(fresh_tree, 'pdsdependency', fresh_tree.path(VOLUME_DIR)),
+        fresh_tree)
     assert any('pdschecksums --initialize' in step and 'metadata' in step
                for step in before), before
 
     for tool in ('pdschecksums', 'pdsinfoshelf'):
-        run = support.run_tool(tool_tree, tool, '--initialize',
-                               tool_tree.path(METADATA_DIR))
+        run = support.run_tool(fresh_tree, tool, '--initialize',
+                               fresh_tree.path(METADATA_DIR))
         assert run.returncode == 0, run.describe()
 
     after = steps_required(
-        support.run_tool(tool_tree, 'pdsdependency', tool_tree.path(VOLUME_DIR)),
-        tool_tree)
+        support.run_tool(fresh_tree, 'pdsdependency', fresh_tree.path(VOLUME_DIR)),
+        fresh_tree)
 
     assert not any('pdschecksums --initialize' in step and step.endswith(
         f'metadata/{subsets.PDS3_VOLSET}/{subsets.PDS3_VOLUME}') for step in after), after
@@ -101,10 +100,10 @@ def test_metadata_steps_disappear_once_performed(tool_tree):
     assert len(after) < len(before), (before, after)
 
 
-def test_a_missing_volume_is_refused(tool_tree):
+def test_a_missing_volume_is_refused(fresh_tree):
     """A path that does not exist is refused before any dependency work starts."""
 
-    run = support.run_tool(tool_tree, 'pdsdependency',
-                           tool_tree.path('volumes/HSTNx_xxxx/HSTN0_0000'))
+    run = support.run_tool(fresh_tree, 'pdsdependency',
+                           fresh_tree.path('volumes/HSTNx_xxxx/HSTN0_0000'))
     assert run.returncode == 1, run.describe()
     assert 'No such file or directory' in run.output, run.describe()

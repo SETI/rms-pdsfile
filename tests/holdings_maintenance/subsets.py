@@ -16,8 +16,8 @@
 # file is byte-identical in both roots (verified file by file), and the
 # fingerprint check keeps it that way.
 #
-# Budget (parent plan): under ~50 files and ~50 MB per module. PDS3 subset = 10
-# files / ~1.1 MB; PDS4 subset = 9 files / ~0.25 MB.
+# Budget: under ~50 files and ~50 MB per module. PDS3 subset = 11 files / ~1.1 MB;
+# PDS4 subset = 9 files / ~0.5 MB.
 ##########################################################################################
 
 # Pinned modification times, POSIX epoch seconds. Tool subprocesses run with

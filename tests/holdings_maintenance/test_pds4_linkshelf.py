@@ -7,11 +7,10 @@
 # real edges in both directions (label -> table, table -> label) rather than the
 # empty lists a labels-only subset would produce.
 #
-# The final test pins a known defect: --update raises AttributeError against any
-# existing shelf (pds4linkshelf.py:395). PR-27 owns the fix.
+# The final test pins a known defect: --update raises against any existing shelf.
+# See entry 4 of "From PR-13" in critiques/deferred-observations.md.
 #
-# The `tool_tree` fixture is module-scoped, so these tests share one temporary tree
-# and run in definition order; every mutating test restores a clean tree.
+# Every test rebuilds the tree first, so each one is independent and order-agnostic.
 ##########################################################################################
 
 from collections import namedtuple
@@ -34,8 +33,10 @@ PICKLE = f'{SHELF_DIR}/{subsets.PDS4_BUNDLE}_links.pickle'
 ALPHA_LABEL = f'{BUNDLE_DIR}/data/rings/u0_kao_91cm_734nm_radius_alpha_egress_1000m.xml'
 ALPHA_TABLE = f'{BUNDLE_DIR}/data/rings/u0_kao_91cm_734nm_radius_alpha_egress_1000m.tab'
 
+RING_STEMS = ('alpha', 'beta', 'gamma')
+
 NEW_FILE = f'{BUNDLE_DIR}/data/rings/u0_kao_91cm_extra_added_by_tests.txt'
-NEW_FILE_BYTES = b'added by the pr-13 update test\n'
+NEW_FILE_BYTES = b'added by an update test\n'
 NEW_FILE_MTIME = subsets.PDS4_MTIMES[ALPHA_LABEL] + 1000
 
 Corruption = namedtuple('Corruption', 'name description target damage expected')
@@ -50,126 +51,113 @@ CORRUPTIONS = (
 )
 
 
-def repin_mtimes(tree):
-    """Restore every declared source file's pinned modification time."""
+@pytest.fixture
+def shelved_tree(fresh_tree):
+    """A freshly rebuilt tree with the link shelf already generated."""
 
-    for relpath, mtime in SOURCE_MTIMES.items():
-        path = tree.path(relpath)
-        if path.exists():
-            support.shift_mtime(path, mtime - path.stat().st_mtime)
+    support.initialize(fresh_tree, 'pds4linkshelf', fresh_tree.path(BUNDLE_DIR))
+
+    return fresh_tree
 
 
-def test_initialize_writes_the_expected_sidecar(tool_tree, golden_update):
+def test_initialize_writes_the_expected_sidecar(fresh_tree, golden_update):
     """--initialize builds the link shelf and the .py sidecar matches the golden."""
 
-    run = support.run_tool(tool_tree, 'pds4linkshelf', '--initialize',
-                           tool_tree.path(BUNDLE_DIR))
-    assert run.returncode == 0, run.describe()
+    support.initialize(fresh_tree, 'pds4linkshelf', fresh_tree.path(BUNDLE_DIR))
 
-    sidecar = tool_tree.path(SIDECAR)
-    assert sidecar.exists(), run.describe()
-    assert tool_tree.path(PICKLE).exists(), run.describe()
+    sidecar = fresh_tree.path(SIDECAR)
+    assert sidecar.exists()
+    assert fresh_tree.path(PICKLE).exists()
 
     text = support.sidecar_text(sidecar)
     support.check_golden('pds4_linkshelf_sidecar', text, golden_update)
 
     # Every label points at its table, and every table points back at its label.
-    for stem in ('alpha', 'beta', 'gamma'):
+    for stem in RING_STEMS:
         label = f'data/rings/u0_kao_91cm_734nm_radius_{stem}_egress_1000m.xml'
         table = f'data/rings/u0_kao_91cm_734nm_radius_{stem}_egress_1000m.tab'
-        label_line = next(ln for ln in text.splitlines()
-                          if ln.strip().startswith(f'"{label}"'))
+        label_line = next(line for line in text.splitlines()
+                          if line.strip().startswith(f'"{label}"'))
         assert table in label_line, label_line
-        table_line = next(ln for ln in text.splitlines()
-                          if ln.strip().startswith(f'"{table}"'))
+        table_line = next(line for line in text.splitlines()
+                          if line.strip().startswith(f'"{table}"'))
         assert table_line.rstrip().endswith(f'"{label}",'), table_line
 
 
-def test_initialize_refuses_to_clobber(tool_tree):
+def test_initialize_refuses_to_clobber(shelved_tree):
     """A second --initialize reports the existing shelf and exits non-zero."""
 
-    run = support.run_tool(tool_tree, 'pds4linkshelf', '--initialize',
-                           tool_tree.path(BUNDLE_DIR))
+    run = support.run_tool(shelved_tree, 'pds4linkshelf', '--initialize',
+                           shelved_tree.path(BUNDLE_DIR))
     assert run.returncode == 1, run.describe()
     assert any('Link shelf file already exists' in line for line in run.error_lines), \
         run.describe()
 
 
-def test_validate_is_clean_after_initialize(tool_tree):
+def test_validate_is_clean_after_initialize(shelved_tree):
     """--validate on an untouched tree exits 0 and logs no errors."""
 
-    run = support.run_tool(tool_tree, 'pds4linkshelf', '--validate',
-                           tool_tree.path(BUNDLE_DIR))
+    run = support.run_tool(shelved_tree, 'pds4linkshelf', '--validate',
+                           shelved_tree.path(BUNDLE_DIR))
     assert run.returncode == 0, run.describe()
     assert run.error_lines == [], run.describe()
 
 
 @pytest.mark.parametrize('corruption', CORRUPTIONS, ids=[c.name for c in CORRUPTIONS])
-def test_corruption_is_detected_and_repaired(tool_tree, corruption):
+def test_corruption_is_detected_and_repaired(shelved_tree, corruption):
     """Each fixed corruption fails --validate, and --repair restores a clean shelf."""
 
-    target = tool_tree.path(corruption.target)
-    original = target.read_bytes()
-    corruption.damage(target)
+    corruption.damage(shelved_tree.path(corruption.target))
 
-    run = support.run_tool(tool_tree, 'pds4linkshelf', '--validate',
-                           tool_tree.path(BUNDLE_DIR))
+    run = support.run_tool(shelved_tree, 'pds4linkshelf', '--validate',
+                           shelved_tree.path(BUNDLE_DIR))
     assert run.returncode == 1, f'{corruption.description}\n{run.describe()}'
     assert any(corruption.expected in line and corruption.target.rpartition('/')[2] in line
                for line in run.error_lines), \
         f'{corruption.description}\n{run.describe()}'
 
-    run = support.run_tool(tool_tree, 'pds4linkshelf', '--repair',
-                           tool_tree.path(BUNDLE_DIR))
+    run = support.run_tool(shelved_tree, 'pds4linkshelf', '--repair',
+                           shelved_tree.path(BUNDLE_DIR))
     assert run.returncode == 0, run.describe()
 
-    run = support.run_tool(tool_tree, 'pds4linkshelf', '--validate',
-                           tool_tree.path(BUNDLE_DIR))
+    run = support.run_tool(shelved_tree, 'pds4linkshelf', '--validate',
+                           shelved_tree.path(BUNDLE_DIR))
     assert run.returncode == 0, run.describe()
     assert run.error_lines == [], run.describe()
 
-    # Put the table back; the shelf must list it again after a second repair.
-    target.write_bytes(original)
-    repin_mtimes(tool_tree)
-    run = support.run_tool(tool_tree, 'pds4linkshelf', '--repair',
-                           tool_tree.path(BUNDLE_DIR))
-    assert run.returncode == 0, run.describe()
-    assert corruption.target.rpartition('/')[2] in \
-        support.sidecar_text(tool_tree.path(SIDECAR))
+    # The repaired shelf no longer references the deleted table.
+    text = support.sidecar_text(shelved_tree.path(SIDECAR))
+    assert corruption.target.rpartition('/')[2] not in text, text
 
 
-def test_update_is_broken_and_repair_is_the_working_path(tool_tree):
-    """Pin the known defect: pds4linkshelf --update raises on any existing shelf.
+def test_update_is_broken_and_repair_is_the_working_path(shelved_tree):
+    """--update raises against any existing shelf; --repair is what works.
 
-    generate_links() is handed the *loaded* shelf as its old_links argument, whose
-    values are the plain tuples that were pickled, then dereferences
-    `info.linktext` on them (pds4linkshelf.py:395). Any --update against an
-    existing shelf therefore dies with AttributeError. Its pds3 twin merges the
-    same data correctly, so this is a pds4-only defect; PR-27 owns the fix, and
-    when it lands this assertion must be inverted.
+    Pinned as current behaviour; see entry 4 of "From PR-13" in
+    critiques/deferred-observations.md. Its pds3 twin merges the same data
+    correctly, so this is pds4-only.
     """
 
-    support.add_file(tool_tree, NEW_FILE, NEW_FILE_BYTES, NEW_FILE_MTIME)
+    support.add_file(shelved_tree, NEW_FILE, NEW_FILE_BYTES, NEW_FILE_MTIME)
 
-    run = support.run_tool(tool_tree, 'pds4linkshelf', '--validate',
-                           tool_tree.path(BUNDLE_DIR))
+    run = support.run_tool(shelved_tree, 'pds4linkshelf', '--validate',
+                           shelved_tree.path(BUNDLE_DIR))
     assert run.returncode == 1, run.describe()
     assert any('Missing link shelf file entry for' in line
                and 'extra_added_by_tests' in line for line in run.error_lines), \
         run.describe()
 
-    run = support.run_tool(tool_tree, 'pds4linkshelf', '--update',
-                           tool_tree.path(BUNDLE_DIR))
+    run = support.run_tool(shelved_tree, 'pds4linkshelf', '--update',
+                           shelved_tree.path(BUNDLE_DIR))
     assert run.returncode == 1, run.describe()
     assert "'tuple' object has no attribute 'linktext'" in run.output, run.describe()
 
-    # --repair takes the same tree to a clean, complete shelf.
-    run = support.run_tool(tool_tree, 'pds4linkshelf', '--repair',
-                           tool_tree.path(BUNDLE_DIR))
+    run = support.run_tool(shelved_tree, 'pds4linkshelf', '--repair',
+                           shelved_tree.path(BUNDLE_DIR))
     assert run.returncode == 0, run.describe()
-    assert 'extra_added_by_tests' in support.sidecar_text(tool_tree.path(SIDECAR))
+    assert 'extra_added_by_tests' in support.sidecar_text(shelved_tree.path(SIDECAR))
 
-    run = support.run_tool(tool_tree, 'pds4linkshelf', '--validate',
-                           tool_tree.path(BUNDLE_DIR))
+    run = support.run_tool(shelved_tree, 'pds4linkshelf', '--validate',
+                           shelved_tree.path(BUNDLE_DIR))
     assert run.returncode == 0, run.describe()
     assert run.error_lines == [], run.describe()

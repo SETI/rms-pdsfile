@@ -67,6 +67,20 @@ def tool_tree(request, tmp_path_factory, source_stage):
                               module.SOURCE_PATHS, module.SOURCE_MTIMES)
 
 
+@pytest.fixture
+def fresh_tree(tool_tree):
+    """Return the module's tree rebuilt to its just-copied state.
+
+    The tree itself is module-scoped, but rebuilding it is cheap (the sources are
+    staged locally), so every test can start from the same known state instead of
+    depending on the test before it.
+    """
+
+    tool_tree.reset()
+
+    return tool_tree
+
+
 @pytest.fixture(scope='module')
 def golden_update(request):
     """Return True when the session was started with --update to rewrite goldens."""

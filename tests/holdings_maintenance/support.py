@@ -27,8 +27,8 @@ GOLDEN_DIR = REPO_ROOT / 'tests' / 'golden' / 'full' / 'holdings_maintenance'
 
 # The tools, addressed as importable modules. Subprocesses run
 # `python -m <module>`, which enters each tool through exactly the main() its
-# console script calls, and which is also the invocation the plan settles on for
-# the three tools that will never get a console script (settled decision 8.4).
+# console script calls, and which is also the invocation settled on for the three
+# tools that will never get a console script.
 TOOL_MODULES = {
     'pdsarchives':    'pdsfile.holdings_maintenance.pds3.pdsarchives',
     'pdschecksums':   'pdsfile.holdings_maintenance.pds3.pdschecksums',
@@ -48,15 +48,26 @@ TOOL_MODULES = {
 
 HOLDINGS_DIRNAME = {'pds3': 'holdings', 'pds4': 'pds4-holdings'}
 
-# Tools whose main() computes a failure flag but never feeds it to sys.exit, so
-# they exit 0 even after logging ERRORs (pdschecksums.py:905-919,
-# pds4checksums.py:878-892 -- both use a `proceed` variable that only gates the
-# optional --infoshelf chain; every other tool ends in `sys.exit(status)`). The
-# tests below pin that as current behavior; PR-25's shared run_main() is where the
-# exit code becomes uniform, and these pins are what will catch the change.
+# Tools that exit 0 even after logging ERRORs, because main() never feeds its
+# failure flag to sys.exit. Pinned as current behavior; see entry 5 under
+# "From PR-13" in critiques/deferred-observations.md.
 TOOLS_WITHOUT_EXIT_STATUS = frozenset({'pdschecksums', 'pds4checksums'})
 
 TOOL_TIMEOUT = 600      # seconds; every subset here runs in well under a second
+
+
+def expected_error_exit_code(tool):
+    """Return the exit code a tool uses today to report logged errors.
+
+    Args:
+        tool: A key of TOOL_MODULES.
+
+    Returns:
+        int: 1 for the nine tools that end in sys.exit(status), 0 for the two that
+        do not.
+    """
+
+    return 0 if tool in TOOLS_WITHOUT_EXIT_STATUS else 1
 
 
 def md5_of(path):
@@ -166,10 +177,26 @@ class ToolTree:
         flavor: 'pds3' or 'pds4'.
     """
 
-    def __init__(self, disk, flavor):
+    def __init__(self, disk, flavor, source_dir=None, paths=(), mtimes=None):
         self.disk = Path(disk)
         self.flavor = flavor
         self.holdings = self.disk / HOLDINGS_DIRNAME[flavor]
+        self.source_dir = None if source_dir is None else Path(source_dir)
+        self.paths = tuple(paths)
+        self.mtimes = dict(mtimes or {})
+
+    def reset(self):
+        """Discard everything the tools wrote and rebuild the declared subset.
+
+        Cheap (the sources are already staged locally), and it is what lets every
+        test start from the same known tree instead of depending on the test
+        before it.
+        """
+
+        assert self.source_dir is not None, 'this tree was not built from a source stage'
+        for name in [*HOLDINGS_DIRNAME.values(), 'logs']:
+            shutil.rmtree(self.disk / name, ignore_errors=True)
+        _populate(self, self.source_dir)
 
     def path(self, relpath):
         """Return the absolute path of a holdings-relative path in this tree.
@@ -254,6 +281,24 @@ def run_tool(tree, tool, *args):
     return ToolRun(argv, proc.returncode, output)
 
 
+def initialize(tree, tool, target):
+    """Run a tool's --initialize task and assert it succeeded.
+
+    Args:
+        tree: The ToolTree to run against.
+        tool: A key of TOOL_MODULES.
+        target: The path to initialize.
+
+    Returns:
+        ToolRun: The completed run.
+    """
+
+    run = run_tool(tree, tool, '--initialize', target)
+    assert run.returncode == 0, run.describe()
+
+    return run
+
+
 def build_tree(tmp_dir, root, flavor, paths, mtimes):
     """Copy a declared source subset into a fresh temporary holdings tree.
 
@@ -272,19 +317,24 @@ def build_tree(tmp_dir, root, flavor, paths, mtimes):
         ToolTree: The populated tree.
     """
 
-    tree = ToolTree(tmp_dir, flavor)
+    tree = ToolTree(tmp_dir, flavor, source_dir=root, paths=paths, mtimes=mtimes)
+    _populate(tree, root)
+
+    return tree
+
+
+def _populate(tree, root):
+    """Create both holdings roots under a tree and copy its declared subset in."""
+
     for name in HOLDINGS_DIRNAME.values():
         (tree.disk / name).mkdir(parents=True, exist_ok=True)
 
-    for relpath in paths:
-        source = Path(root) / relpath
+    for relpath in tree.paths:
         target = tree.holdings / relpath
         target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(source, target)
-        mtime = mtimes[relpath]
+        shutil.copyfile(Path(root) / relpath, target)
+        mtime = tree.mtimes[relpath]
         os.utime(target, (mtime, mtime))
-
-    return tree
 
 
 def add_file(tree, relpath, contents, mtime):

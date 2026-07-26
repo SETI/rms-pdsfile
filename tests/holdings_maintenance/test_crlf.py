@@ -116,6 +116,13 @@ class TestArgumentValidation:
         with pytest.raises(ValueError):
             crlf.test_crlf(path, threshold=threshold)
 
+    def test_an_empty_file_raises_zerodivisionerror(self, tmp_path):
+        """Pinned as current behaviour: the non-ASCII fraction divides by length."""
+
+        path = write(tmp_path, 'empty.txt', b'')
+        with pytest.raises(ZeroDivisionError):
+            crlf.test_crlf(path)
+
 
 def test_non_asciis_translation_table():
     """The module-level table marks control and high bytes, sparing \\t, \\r, \\n."""

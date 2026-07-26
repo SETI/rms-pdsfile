@@ -1,9 +1,9 @@
 ##########################################################################################
 # tests/holdings_maintenance/test_shelf_consistency_check.py
 #
-# shelf_consistency_check has no main() yet -- that is PR-28 -- so it is driven
-# here as a subprocess (`python -m ...`), which is the same interface PR-28's
-# in-process main() will replace without changing what is asserted.
+# shelf_consistency_check has no main() yet, so it is driven here as a subprocess
+# (`python -m ...`) -- the same interface an in-process main() will replace later
+# without changing what is asserted.
 #
 # The tool walks a tree looking for a `shelves/<info|links|index>/...` hierarchy
 # and reports shelf files with no counterpart under `holdings/`. That hierarchy is
@@ -147,10 +147,10 @@ def test_verbose_lists_the_holdings_path_of_every_shelf(legacy_tree):
 def test_an_extraneous_index_shelf_raises(legacy_tree):
     """Pin the known defect: the index branch increments an undefined name.
 
-    shelf_consistency_check.py:63 does `error += 1` where every other branch uses
-    `errors`, so the first extraneous *index* shelf kills the run with NameError
-    instead of being counted. PR-28 owns the fix; when it lands this must become
-    an ordinary "Extraneous shelf" report with a clean exit.
+    The index branch increments an undefined name where every other branch uses
+    the counter, so the first extraneous *index* shelf kills the run with
+    NameError instead of being counted. Pinned as current behaviour; see entry 6
+    of "From PR-13" in critiques/deferred-observations.md.
     """
 
     index_dir = legacy_tree.disk / 'shelves' / 'index' / 'metadata' / 'VG_28xx'
@@ -164,25 +164,25 @@ def test_an_extraneous_index_shelf_raises(legacy_tree):
 
 
 @pytest.mark.full_holdings
-def test_a_modern_holdings_tree_has_nothing_to_check(tool_tree):
+def test_a_modern_holdings_tree_has_nothing_to_check(fresh_tree):
     """Pin the layout gap: the tool finds no shelves in a current holdings tree.
 
     Current holdings keep shelves in `_infoshelf-volumes/` and friends, none of
     which contain the substring "shelves" the walk filters on, so a dogfooded tree
-    with real, valid shelves reports zero tests and zero errors. PR-28, which gives
-    this tool a main(), is where the layout question has to be answered.
+    with real, valid shelves reports zero tests and zero errors. Pinned as current
+    behaviour; see entry 6 of "From PR-13" in critiques/deferred-observations.md.
     """
 
-    run = support.run_tool(tool_tree, 'pdschecksums', '--initialize',
-                           tool_tree.path(VOLUME_DIR))
+    run = support.run_tool(fresh_tree, 'pdschecksums', '--initialize',
+                           fresh_tree.path(VOLUME_DIR))
     assert run.returncode == 0, run.describe()
-    run = support.run_tool(tool_tree, 'pdsinfoshelf', '--initialize',
-                           tool_tree.path(VOLUME_DIR))
+    run = support.run_tool(fresh_tree, 'pdsinfoshelf', '--initialize',
+                           fresh_tree.path(VOLUME_DIR))
     assert run.returncode == 0, run.describe()
-    assert tool_tree.path(
+    assert fresh_tree.path(
         f'_infoshelf-volumes/{subsets.PDS3_VOLSET}/'
         f'{subsets.PDS3_VOLUME}_info.pickle').exists()
 
-    run = support.run_tool(tool_tree, 'shelf_consistency_check', tool_tree.disk)
+    run = support.run_tool(fresh_tree, 'shelf_consistency_check', fresh_tree.disk)
     assert run.returncode == 0, run.describe()
     assert counts(run) == (0, 0), run.describe()

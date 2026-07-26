@@ -2,12 +2,14 @@
 # tests/holdings_maintenance/test_pds3_checksums.py
 #
 # Full task cycle for pdschecksums against a copy of one declared PDS3 subset:
-# --initialize -> golden -> --validate clean -> corrupt -> --validate fails with the
-# right log text -> --repair -> --validate clean -> --update after a new file.
+# --initialize -> golden -> --validate clean -> corrupt -> --validate reports it ->
+# --repair -> --validate clean -> --update after a new file.
 #
-# The `tool_tree` fixture is module-scoped, so these tests share one temporary tree
-# and run in definition order. Every mutating test restores a clean tree before it
-# returns, so only the final --update test leaves the tree changed.
+# Every test rebuilds the tree first (the `fresh_tree` fixture), so each one is
+# independent and order-agnostic.
+#
+# pdschecksums reports failure in the log, not the exit code; see entry 5 under
+# "From PR-13" in critiques/deferred-observations.md.
 ##########################################################################################
 
 from collections import namedtuple
@@ -27,11 +29,14 @@ VOLUME_DIR = f'volumes/{subsets.PDS3_VOLSET}/{subsets.PDS3_VOLUME}'
 CHECKSUM_FILE = f'checksums-volumes/{subsets.PDS3_VOLSET}/{subsets.PDS3_VOLUME}_md5.txt'
 LABEL = f'{VOLUME_DIR}/DATA/VISIT_01/N4BI01L4Q.LBL'
 ASCII_TABLE = f'{VOLUME_DIR}/DATA/VISIT_01/N4BI01L4Q.ASC'
+PREVIEW = f'{VOLUME_DIR}/DATA/VISIT_01/N4BI01L4Q_CAL.JPG'
 
-# A file added by the --update test, with a pinned modification time.
+# A file the --update test adds, with a pinned modification time.
 NEW_FILE = f'{VOLUME_DIR}/DATA/VISIT_01/N4BI01L4Q_EXTRA.TXT'
-NEW_FILE_BYTES = b'ADDED BY THE PDS-13 UPDATE TEST\r\n'
+NEW_FILE_BYTES = b'ADDED BY AN UPDATE TEST\r\n'
 NEW_FILE_MTIME = subsets.PDS3_MTIMES[LABEL] + 1000
+
+ERROR_EXIT = support.expected_error_exit_code('pdschecksums')
 
 Corruption = namedtuple('Corruption', 'name description target damage expected')
 
@@ -47,24 +52,13 @@ CORRUPTIONS = (
 )
 
 
-def repin_mtimes(tree):
-    """Restore every declared source file's pinned modification time."""
-
-    for relpath, mtime in SOURCE_MTIMES.items():
-        path = tree.path(relpath)
-        if path.exists():
-            support.shift_mtime(path, mtime - path.stat().st_mtime)
-
-
-def test_initialize_writes_the_expected_checksum_file(tool_tree, golden_update):
+def test_initialize_writes_the_expected_checksum_file(fresh_tree, golden_update):
     """--initialize from scratch produces the committed md5 golden."""
 
-    run = support.run_tool(tool_tree, 'pdschecksums', '--initialize',
-                           tool_tree.path(VOLUME_DIR))
-    assert run.returncode == 0, run.describe()
+    support.initialize(fresh_tree, 'pdschecksums', fresh_tree.path(VOLUME_DIR))
 
-    checksum_path = tool_tree.path(CHECKSUM_FILE)
-    assert checksum_path.exists(), run.describe()
+    checksum_path = fresh_tree.path(CHECKSUM_FILE)
+    assert checksum_path.exists()
 
     support.check_golden('pds3_checksums_md5', support.md5_file_text(checksum_path),
                          golden_update)
@@ -78,97 +72,86 @@ def test_initialize_writes_the_expected_checksum_file(tool_tree, golden_update):
     assert len(mapping) == len(SOURCE_FINGERPRINTS)
 
 
-def test_initialize_refuses_to_clobber(tool_tree):
-    """A second --initialize is an error, and leaves the checksum file alone.
+def test_initialize_refuses_to_clobber(fresh_tree):
+    """A second --initialize is an error, and leaves the checksum file alone."""
 
-    Also pins the known defect that pdschecksums exits 0 after logging an ERROR
-    (support.TOOLS_WITHOUT_EXIT_STATUS): its main() never calls sys.exit(status).
-    PR-25's shared run_main() is expected to change this.
-    """
+    support.initialize(fresh_tree, 'pdschecksums', fresh_tree.path(VOLUME_DIR))
+    before = fresh_tree.path(CHECKSUM_FILE).read_bytes()
 
-    before = tool_tree.path(CHECKSUM_FILE).read_bytes()
-    run = support.run_tool(tool_tree, 'pdschecksums', '--initialize',
-                           tool_tree.path(VOLUME_DIR))
-    assert 'Checksum file already exists' in run.output, run.describe()
+    run = support.run_tool(fresh_tree, 'pdschecksums', '--initialize',
+                           fresh_tree.path(VOLUME_DIR))
     assert any('Checksum file already exists' in line for line in run.error_lines), \
         run.describe()
-    assert run.returncode == 0, run.describe()     # known defect, pinned
-    assert tool_tree.path(CHECKSUM_FILE).read_bytes() == before
+    assert run.returncode == ERROR_EXIT, run.describe()
+    assert fresh_tree.path(CHECKSUM_FILE).read_bytes() == before
 
 
-def test_validate_is_clean_after_initialize(tool_tree):
+def test_validate_is_clean_after_initialize(fresh_tree):
     """--validate on an untouched tree exits 0 and logs no errors."""
 
-    run = support.run_tool(tool_tree, 'pdschecksums', '--validate',
-                           tool_tree.path(VOLUME_DIR))
+    support.initialize(fresh_tree, 'pdschecksums', fresh_tree.path(VOLUME_DIR))
+
+    run = support.run_tool(fresh_tree, 'pdschecksums', '--validate',
+                           fresh_tree.path(VOLUME_DIR))
     assert run.returncode == 0, run.describe()
     assert run.error_lines == [], run.describe()
 
 
 @pytest.mark.parametrize('corruption', CORRUPTIONS, ids=[c.name for c in CORRUPTIONS])
-def test_corruption_is_detected_and_repaired(tool_tree, corruption):
-    """Each fixed corruption fails --validate, and --repair restores a clean tree.
+def test_corruption_is_detected_and_repaired(fresh_tree, corruption):
+    """Each fixed corruption is reported by --validate; --repair restores a clean tree."""
 
-    Failure shows up in the log, not the exit code: see
-    support.TOOLS_WITHOUT_EXIT_STATUS.
-    """
+    support.initialize(fresh_tree, 'pdschecksums', fresh_tree.path(VOLUME_DIR))
+    corruption.damage(fresh_tree.path(corruption.target))
 
-    target = tool_tree.path(corruption.target)
-    original = target.read_bytes()
-    corruption.damage(target)
-
-    run = support.run_tool(tool_tree, 'pdschecksums', '--validate',
-                           tool_tree.path(VOLUME_DIR))
+    run = support.run_tool(fresh_tree, 'pdschecksums', '--validate',
+                           fresh_tree.path(VOLUME_DIR))
     assert any(corruption.expected in line and corruption.target.rpartition('/')[2] in line
                for line in run.error_lines), \
         f'{corruption.description}\n{run.describe()}'
 
-    run = support.run_tool(tool_tree, 'pdschecksums', '--repair',
-                           tool_tree.path(VOLUME_DIR))
+    run = support.run_tool(fresh_tree, 'pdschecksums', '--repair',
+                           fresh_tree.path(VOLUME_DIR))
     assert run.returncode == 0, run.describe()
 
-    run = support.run_tool(tool_tree, 'pdschecksums', '--validate',
-                           tool_tree.path(VOLUME_DIR))
+    run = support.run_tool(fresh_tree, 'pdschecksums', '--validate',
+                           fresh_tree.path(VOLUME_DIR))
     assert run.returncode == 0, run.describe()
     assert run.error_lines == [], run.describe()
 
-    # Restore the pristine subset and its checksum file for the next test.
-    target.write_bytes(original)
-    repin_mtimes(tool_tree)
-    run = support.run_tool(tool_tree, 'pdschecksums', '--repair',
-                           tool_tree.path(VOLUME_DIR))
-    assert run.returncode == 0, run.describe()
+    # The repaired file really carries the damaged file's new checksum.
+    mapping = support.md5_file_mapping(fresh_tree.path(CHECKSUM_FILE))
+    key = corruption.target.partition(f'{subsets.PDS3_VOLSET}/')[2]
+    assert mapping[key] == support.md5_of(fresh_tree.path(corruption.target))
 
 
-def test_missing_file_is_reported_as_a_missing_checksum(tool_tree):
+def test_missing_file_is_reported_as_a_missing_checksum(fresh_tree):
     """Deleting an md5 entry makes --validate report the file as unchecksummed."""
 
-    checksum_path = tool_tree.path(CHECKSUM_FILE)
-    original = checksum_path.read_bytes()
-    support.delete_md5_entry(checksum_path, 'N4BI01L4Q_CAL.JPG')
+    support.initialize(fresh_tree, 'pdschecksums', fresh_tree.path(VOLUME_DIR))
+    support.delete_md5_entry(fresh_tree.path(CHECKSUM_FILE), PREVIEW.rpartition('/')[2])
 
-    run = support.run_tool(tool_tree, 'pdschecksums', '--validate',
-                           tool_tree.path(VOLUME_DIR))
-    assert any('Missing checksum' in line and 'N4BI01L4Q_CAL.JPG' in line
+    run = support.run_tool(fresh_tree, 'pdschecksums', '--validate',
+                           fresh_tree.path(VOLUME_DIR))
+    assert any('Missing checksum' in line and PREVIEW.rpartition('/')[2] in line
                for line in run.error_lines), run.describe()
 
-    checksum_path.write_bytes(original)
 
-
-def test_update_picks_up_a_new_file(tool_tree):
+def test_update_picks_up_a_new_file(fresh_tree):
     """--update adds a newly created file to an existing checksum file."""
 
-    before = support.md5_file_mapping(tool_tree.path(CHECKSUM_FILE))
-    support.add_file(tool_tree, NEW_FILE, NEW_FILE_BYTES, NEW_FILE_MTIME)
+    support.initialize(fresh_tree, 'pdschecksums', fresh_tree.path(VOLUME_DIR))
+    before = support.md5_file_mapping(fresh_tree.path(CHECKSUM_FILE))
+    support.add_file(fresh_tree, NEW_FILE, NEW_FILE_BYTES, NEW_FILE_MTIME)
 
-    run = support.run_tool(tool_tree, 'pdschecksums', '--update',
-                           tool_tree.path(VOLUME_DIR))
+    run = support.run_tool(fresh_tree, 'pdschecksums', '--update',
+                           fresh_tree.path(VOLUME_DIR))
     assert run.returncode == 0, run.describe()
 
-    after = support.md5_file_mapping(tool_tree.path(CHECKSUM_FILE))
+    after = support.md5_file_mapping(fresh_tree.path(CHECKSUM_FILE))
     key = NEW_FILE.partition(f'{subsets.PDS3_VOLSET}/')[2]
     assert key in after, run.describe()
-    assert after[key] == support.md5_of(tool_tree.path(NEW_FILE))
+    assert after[key] == support.md5_of(fresh_tree.path(NEW_FILE))
     assert set(before) < set(after)
     for old_key, old_md5 in before.items():
         assert after[old_key] == old_md5, f'{old_key} changed during --update'
