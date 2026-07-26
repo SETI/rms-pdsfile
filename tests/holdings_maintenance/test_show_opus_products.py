@@ -78,7 +78,8 @@ def test_pprint_output_maps_each_product_category(tree, golden_update):
                            '--paths', tree.path(LABEL))
     assert run.returncode == 0, run.describe()
 
-    text = run.output.replace(str(tree.disk), '$DISK')
+    # stdout only: a library warning on stderr is not this tool's output.
+    text = run.stdout.replace(str(tree.disk), '$DISK')
     support.check_golden('show_opus_products_pprint', text, golden_update)
 
     # Real values: the TIFF product is reachable and is listed by logical path.

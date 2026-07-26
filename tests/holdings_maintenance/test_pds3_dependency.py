@@ -68,11 +68,14 @@ def steps_required(run, tree):
         run: The ToolRun to read.
         tree: The ToolTree the run was made against.
 
+    Read from stdout only: stderr carries interpreter and library warnings, which
+    vary by Python version and dependency version and are no part of the plan.
+
     Returns:
         list[str]: One command per line, in the order the tool printed them.
     """
 
-    lines = run.output.splitlines()
+    lines = run.stdout.splitlines()
     assert 'Steps required:' in lines, run.describe()
     steps = lines[lines.index('Steps required:') + 1:]
 

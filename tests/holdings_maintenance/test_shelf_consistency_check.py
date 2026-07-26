@@ -39,7 +39,7 @@ def counts(run):
     """
 
     tests = errors = None
-    for line in run.output.splitlines():
+    for line in run.stdout.splitlines():
         if line.startswith('Tests performed: '):
             tests = int(line.rpartition(' ')[2])
         elif line.startswith('Errors found: '):

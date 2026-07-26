@@ -237,13 +237,19 @@ class ToolRun:
     Attributes:
         argv: The command line that was run.
         returncode: The tool's exit code.
-        output: stdout and stderr, decoded and concatenated.
+        stdout: What the tool printed -- its logger output and its reports.
+        stderr: Everything else the process wrote: tracebacks, and any warning an
+            imported library chose to emit.
+        output: stdout followed by stderr, for assertions that do not care which
+            stream a message arrived on.
     """
 
-    def __init__(self, argv, returncode, output):
+    def __init__(self, argv, returncode, stdout, stderr):
         self.argv = argv
         self.returncode = returncode
-        self.output = output
+        self.stdout = stdout
+        self.stderr = stderr
+        self.output = stdout + stderr
 
     def __repr__(self):
         return f'ToolRun(argv={self.argv!r}, returncode={self.returncode})'
@@ -258,7 +264,8 @@ class ToolRun:
     def describe(self):
         """Return a message suitable for an assertion failure."""
 
-        return f'{self.argv}\nexit={self.returncode}\n{self.output}'
+        return (f'{self.argv}\nexit={self.returncode}\n'
+                f'--- stdout ---\n{self.stdout}\n--- stderr ---\n{self.stderr}')
 
 
 def run_tool(tree, tool, *args):
@@ -269,17 +276,22 @@ def run_tool(tree, tool, *args):
         tool: A key of TOOL_MODULES.
         *args: Command-line arguments, path-like or str.
 
+    The two streams are captured separately. Anything a test compares against a
+    golden must come from stdout: stderr carries whatever warnings the interpreter
+    and the installed libraries feel like emitting, which varies by Python version
+    and by dependency version and is no part of the tool's output.
+
     Returns:
-        ToolRun: The exit code and combined output.
+        ToolRun: The exit code and both streams.
     """
 
     argv = [sys.executable, '-m', TOOL_MODULES[tool]] + [str(a) for a in args]
     proc = subprocess.run(argv, cwd=str(tree.disk), env=tree.env,
-                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                          timeout=TOOL_TIMEOUT, check=False)
-    output = proc.stdout.decode('utf-8', errors='replace')
+                          capture_output=True, timeout=TOOL_TIMEOUT, check=False)
 
-    return ToolRun(argv, proc.returncode, output)
+    return ToolRun(argv, proc.returncode,
+                   proc.stdout.decode('utf-8', errors='replace'),
+                   proc.stderr.decode('utf-8', errors='replace'))
 
 
 def initialize(tree, tool, target):

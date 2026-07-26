@@ -53,9 +53,16 @@ tree is built on*, not of the holdings root being read. The development machine
 and the CI runner enumerate the same tree differently, so the committed golden
 matched here and not there.
 
+A second CI failure then made the same point again from a different angle: an
+unrelated dependency emits a deprecation warning on Python 3.10 and not on 3.12,
+and `run_tool` was merging stderr into what the golden compared, so the
+`show_opus_products` golden could only ever match on some interpreters.
+
 That is a gap in what "green on both roots" proves, and it is worth stating
 plainly: passing against two holdings roots establishes that the *input data* is
-equivalent, not that the *test* is environment-independent. The fix removed the
+equivalent, not that the *test* is environment-independent. Three axes had to be
+pinned before that became true — the filesystem's enumeration order, the tool
+subprocess's output streams, and (from the outset) the timezone and file mtimes. The fix removed the
 dependency on an order the tool never specified, and the cross-module audit below
 confirms no other artefact had the same exposure. Full analysis, including the
 reproduction and the audit method, is in `ci-and-coderabbit.md` in this directory.
@@ -69,7 +76,12 @@ Two things changed as a result, both in the tests:
   stays pinned.
 - Golden mismatches now print a unified diff. The CI log had said only "golden
   mismatch" with no indication of what differed, because a custom assertion
-  message suppresses pytest's own diff.
+  message suppresses pytest's own diff. This paid for itself within one run: it
+  identified the second failure's cause from the log alone.
+- The tool subprocess's stdout and stderr are captured separately, and anything
+  compared against a golden or parsed for structure reads **stdout only**. stderr
+  carries whatever the interpreter and the installed libraries choose to emit,
+  which is no part of a tool's output.
 
 ## Tool tests against **both** holdings roots
 

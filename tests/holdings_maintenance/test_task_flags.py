@@ -42,7 +42,7 @@ def task_announced(run):
         str: The task the tool actually ran.
     """
 
-    for line in run.output.splitlines():
+    for line in run.stdout.splitlines():
         _, sep, tail = line.partition('| HEADER | Task ')
         if sep and ' for' in tail:
             return tail.partition(' for')[0].strip('" ')

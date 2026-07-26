@@ -1,8 +1,9 @@
-# PR-13 (#105) — CI failure and CodeRabbit review
+# PR-13 (#105) — CI failures and CodeRabbit review
 
-Recorded after the PR was opened, against head `e89ba3a`.
+Recorded after the PR was opened. Two CI failures, with different causes, plus the
+CodeRabbit review.
 
-## 1. The CI failure
+## 1. First CI failure — enumeration order
 
 **Symptom.** Self-hosted matrix run 30196079913: Python 3.11 failed
 `tests/holdings_maintenance/test_pds3_dependency.py::test_missing_derived_products_are_reported`
@@ -98,7 +99,62 @@ of which depends on order. **`pdsdependency` was the only affected module** — 
 md5 files are the only other order-unstable artefact, and the suite already
 compared those as a mapping rather than as text.
 
-## 2. CodeRabbit findings (reviewed commit `c00430d`)
+## 2. Second CI failure — a library warning captured as tool output
+
+**Symptom.** After the fix above, run 30205754733 failed on Python **3.10** (the
+other three interpreters were cancelled by fail-fast) in
+`test_show_opus_products.py::test_pprint_output_maps_each_product_category`, again
+a golden mismatch. This time the new unified diff answered it immediately:
+
+```
++.../site-packages/google/api_core/_python_version_support.py:254: FutureWarning:
+   You are using a Python version (3.10.13) which Google will stop supporting ...
++  warnings.warn(message, FutureWarning)
+ ##################################################################...
+ Pdsfile: volumes/HSTNx_xxxx/HSTN0_7176/DATA/VISIT_01/N4BI01L4Q.LBL
+```
+
+**Root cause.** `run_tool` captured the tool subprocess with
+`stderr=subprocess.STDOUT`, so **anything** an imported library wrote to stderr
+became part of what the test treated as the tool's output — and the golden
+compared that whole capture. An unrelated transitive dependency emits a
+deprecation warning on Python 3.10 and not on 3.12, so the golden could only ever
+match on some interpreters.
+
+This is the same *class* of defect as the first failure and a strictly worse one:
+the first depended on the filesystem, this one on which library versions happen to
+be installed.
+
+**Fix.** `run_tool` now captures the two streams separately. `ToolRun` exposes
+`stdout`, `stderr`, and `output` (= stdout + stderr) — and the rule is stated in
+its docstring: **anything compared against a golden, or parsed for structure, must
+come from `stdout`**, because stderr is not the tool's product. Four places moved
+to `stdout`: the `show_opus_products` golden, `pdsdependency`'s "Steps required"
+extraction, `shelf_consistency_check`'s summary-count parser, and
+`test_task_flags`' task-header parser. Plain substring assertions still read the
+merged `output`, since they check for a specific tool string and extra stderr
+noise cannot make them wrong. `describe()` now shows both streams labelled, so a
+future failure says which stream a line came from.
+
+**Verified** by reproducing the CI condition locally — a `sitecustomize` that
+raises a `FutureWarning` at interpreter start in every tool subprocess:
+
+| | pre-fix (merged capture) | post-fix (stdout only) |
+|---|---|---|
+| warning present | **fails**, exactly as CI did | passes |
+| warning absent | passes | passes |
+
+and the whole tool suite passes with the warning injected into all 200+ subprocess
+invocations.
+
+**Also checked while here:** the `--pprint` golden is the one artefact whose text
+is produced by a standard-library formatter, so it could in principle drift
+between the interpreters in the CI matrix. `pprint.pp` output for this data shape
+is byte-identical on 3.12 and 3.14 (the two interpreters available here, spanning
+the 3.10-3.13 matrix); 3.10 and 3.11 were not available locally and CI now covers
+them.
+
+## 3. CodeRabbit findings (reviewed commit `c00430d`)
 
 | # | Finding | Disposition |
 |---|---|---|
