@@ -74,6 +74,8 @@ def test_two_task_flags_resolve_to_the_last_one(fresh_tree, flags, expected):
     run = support.run_tool(fresh_tree, 'pdsarchives', *flags,
                            fresh_tree.path(VOLUME_DIR))
     assert run.returncode != 2, run.describe()
+    # Merged output on purpose: argparse writes its errors to stderr, so reading
+    # stdout here would make this assertion vacuous.
     assert 'not allowed with argument' not in run.output, run.describe()
     assert task_announced(run) == expected, run.describe()
 
@@ -88,6 +90,8 @@ def test_another_pds3_tool_resolves_task_flags_the_same_way(fresh_tree):
 
     run = support.run_tool(fresh_tree, 'pdschecksums', '--validate', '--update',
                            fresh_tree.path(VOLUME_DIR))
+    # Merged output on purpose: argparse writes its errors to stderr, so reading
+    # stdout here would make this assertion vacuous.
     assert 'not allowed with argument' not in run.output, run.describe()
     assert task_announced(run) == 'update', run.describe()
 

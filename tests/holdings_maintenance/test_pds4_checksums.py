@@ -146,6 +146,8 @@ def test_two_task_flags_resolve_to_the_last_one(fresh_tree):
 
     run = support.run_tool(fresh_tree, 'pds4checksums', '--initialize', '--validate',
                            fresh_tree.path(BUNDLE_DIR))
+    # Merged output on purpose: argparse writes its errors to stderr, so reading
+    # stdout here would make this assertion vacuous.
     assert 'not allowed with argument' not in run.output, run.describe()
     assert '| HEADER | Task "validate" for' in run.output, run.describe()
     assert 'Checksum file already exists' not in run.output, run.describe()

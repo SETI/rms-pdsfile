@@ -67,8 +67,10 @@ def test_table_output_lists_every_opus_type(tree):
                     'N4BI01L4Q_RAW.JPG', 'N4BI01L4Q_RAW.TIF'):
         assert f'{VOLUME_DIR}/DATA/VISIT_01/{product}' in run.output, run.describe()
 
-    # No absolute path from the temporary tree leaks into the output.
-    assert str(tree.disk) not in run.output, run.describe()
+    # No absolute path from the temporary tree leaks into what the tool printed.
+    # stdout, not the merged capture: the subprocess runs with cwd=tree.disk, so a
+    # library warning naming the working directory would fail this spuriously.
+    assert str(tree.disk) not in run.stdout, run.describe()
 
 
 def test_pprint_output_maps_each_product_category(tree, golden_update):
@@ -94,7 +96,7 @@ def test_logical_paths_are_accepted(tree):
                                 tree.path(LABEL))
     logical = support.run_tool(tree, 'show_opus_products', '--paths', LOGICAL_LABEL)
     assert logical.returncode == 0, logical.describe()
-    assert logical.output == absolute.output, logical.describe()
+    assert logical.stdout == absolute.stdout, logical.describe()
 
 
 def test_opus_type_filter_restricts_the_output(tree):

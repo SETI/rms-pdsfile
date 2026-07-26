@@ -256,9 +256,13 @@ class ToolRun:
 
     @property
     def error_lines(self):
-        """Return the tool's log lines at ERROR or FATAL level."""
+        """Return the tool's log lines at ERROR or FATAL level.
 
-        return [line for line in self.output.splitlines()
+        Parsed from stdout, where the tools' console logger writes; a stderr line
+        that happened to contain the level marker is not a tool error.
+        """
+
+        return [line for line in self.stdout.splitlines()
                 if '| ERROR |' in line or '| FATAL |' in line]
 
     def describe(self):
