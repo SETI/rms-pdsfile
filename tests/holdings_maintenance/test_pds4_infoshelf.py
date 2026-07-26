@@ -7,7 +7,7 @@
 #
 # Note the deliberate contrast with test_pds3_infoshelf.py: pds4infoshelf compares
 # modification times and checksums correctly, so the two corruptions its pds3 twin
-# silently accepts are reported here. See entry 1 of "From PR-13" in
+# silently accepts are reported here. See entry 10 of "From PR-13" in
 # critiques/deferred-observations.md; when the pair is folded onto a shared core,
 # both modules must agree.
 #

@@ -106,6 +106,7 @@ def test_corruption_is_detected_and_repaired(fresh_tree, corruption):
     assert any(corruption.expected in line and corruption.target.rpartition('/')[2] in line
                for line in run.error_lines), \
         f'{corruption.description}\n{run.describe()}'
+    assert run.returncode == ERROR_EXIT, run.describe()
 
     run = support.run_tool(fresh_tree, 'pds4checksums', '--repair',
                            fresh_tree.path(BUNDLE_DIR))
@@ -132,6 +133,7 @@ def test_missing_file_is_reported_as_a_missing_checksum(fresh_tree):
                            fresh_tree.path(BUNDLE_DIR))
     assert any('Missing checksum' in line and BETA_TABLE.rpartition('/')[2] in line
                for line in run.error_lines), run.describe()
+    assert run.returncode == ERROR_EXIT, run.describe()
 
 
 def test_two_task_flags_resolve_to_the_last_one(fresh_tree):

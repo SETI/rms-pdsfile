@@ -109,6 +109,7 @@ def test_corruption_is_detected_and_repaired(fresh_tree, corruption):
     assert any(corruption.expected in line and corruption.target.rpartition('/')[2] in line
                for line in run.error_lines), \
         f'{corruption.description}\n{run.describe()}'
+    assert run.returncode == ERROR_EXIT, run.describe()
 
     run = support.run_tool(fresh_tree, 'pdschecksums', '--repair',
                            fresh_tree.path(VOLUME_DIR))
@@ -135,6 +136,7 @@ def test_missing_file_is_reported_as_a_missing_checksum(fresh_tree):
                            fresh_tree.path(VOLUME_DIR))
     assert any('Missing checksum' in line and PREVIEW.rpartition('/')[2] in line
                for line in run.error_lines), run.describe()
+    assert run.returncode == ERROR_EXIT, run.describe()
 
 
 def test_update_picks_up_a_new_file(fresh_tree):

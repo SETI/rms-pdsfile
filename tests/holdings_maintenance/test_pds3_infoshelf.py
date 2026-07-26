@@ -6,7 +6,7 @@
 # dogfoods pdschecksums first (the `tree` fixture).
 #
 # Two of the scenarios below pin corruptions that pdsinfoshelf --validate does NOT
-# report today, and one pins a wrong log message; see entry 1 of "From PR-13" in
+# report today, and one pins a wrong log message; see entry 10 of "From PR-13" in
 # critiques/deferred-observations.md. Its pds4 twin compares correctly, which is
 # why test_pds4_infoshelf.py expects the opposite outcome.
 #
@@ -171,7 +171,7 @@ def test_corruption_is_detected_and_repaired(shelved_tree, corruption):
 def test_known_undetected_corruption(shelved_tree, corruption):
     """These corruptions pass --validate today; the comparison is defective.
 
-    See entry 1 of "From PR-13" in critiques/deferred-observations.md. When the
+    See entry 10 of "From PR-13" in critiques/deferred-observations.md. When the
     comparison is fixed these assertions must be inverted -- that is the point of
     pinning them.
     """
@@ -231,7 +231,7 @@ def test_update_picks_up_a_new_file(shelved_tree):
     assert not any('N4BI01L4Q_EXTRA.TXT' in line for line in run.error_lines), \
         run.describe()
     # The child-count message reports the on-disk count twice instead of on-disk
-    # versus shelved (6); see entry 1 of "From PR-13" in the deferred observations.
+    # versus shelved (6); see entry 10 of "From PR-13" in the deferred observations.
     assert any('Child count mismatch 7 7' in line for line in run.error_lines), \
         run.describe()
 

@@ -52,7 +52,7 @@ class TestClassifier:
     def test_threshold_is_honored(self, tmp_path):
         # The same file is text once the threshold is raised above 0.10.
         path = write(tmp_path, 'binary.dat', b'\x00' * 10 + b'A' * 89 + b'\r\n')
-        assert crlf.test_crlf(path, threshold=0.5) != 'BINARY'
+        assert crlf.test_crlf(path, threshold=0.5) == 'OK'
         assert crlf.test_crlf(path, threshold=0.05) == 'BINARY'
 
     def test_tab_cr_and_lf_do_not_count_as_non_ascii(self, tmp_path):
@@ -107,20 +107,24 @@ class TestArgumentValidation:
 
     def test_unknown_task_rejected(self, tmp_path):
         path = write(tmp_path, 'ok.txt', b'ONE\r\n')
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match='invalid task'):
             crlf.test_crlf(path, task='destroy')
 
     @pytest.mark.parametrize('threshold', [-0.1, 1.1])
     def test_threshold_out_of_range_rejected(self, tmp_path, threshold):
         path = write(tmp_path, 'ok.txt', b'ONE\r\n')
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match='invalid threshold'):
             crlf.test_crlf(path, threshold=threshold)
 
     def test_an_empty_file_raises_zerodivisionerror(self, tmp_path):
-        """Pinned as current behaviour: the non-ASCII fraction divides by length."""
+        """A zero-byte file divides by zero.
+
+        Pinned as current behaviour; see entry 11 of "From PR-13" in
+        critiques/deferred-observations.md.
+        """
 
         path = write(tmp_path, 'empty.txt', b'')
-        with pytest.raises(ZeroDivisionError):
+        with pytest.raises(ZeroDivisionError, match='division by zero'):
             crlf.test_crlf(path)
 
 

@@ -146,8 +146,6 @@ PDS4_METADATA_SOURCES = (
      134225, 'a8165f8ed270cf3332ff0e652fab7f4b'),
 )
 
-PDS4_SOURCES = PDS4_BUNDLE_SOURCES + PDS4_METADATA_SOURCES
-
 PDS4_BUNDLE_MTIMES = {
     f'{_B}/u0_kao_91cm_734nm_radius_alpha_egress_1000m.xml': _EPOCH + 110,
     f'{_B}/u0_kao_91cm_734nm_radius_alpha_egress_1000m.tab': _EPOCH + 120,

@@ -468,12 +468,7 @@ def md5_file_text(path):
         str: One "<path> <md5>" line per entry, sorted by path.
     """
 
-    entries = {}
-    for line in Path(path).read_text(encoding='latin-1').splitlines():
-        if not line.strip():
-            continue
-        checksum, _, relpath = line.partition(' ')
-        entries[relpath.strip()] = checksum.strip()
+    entries = md5_file_mapping(path)
 
     return ''.join(f'{relpath} {entries[relpath]}\n' for relpath in sorted(entries))
 

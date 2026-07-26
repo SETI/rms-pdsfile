@@ -113,6 +113,31 @@ def test_directory_argument_shelves_every_table(fresh_tree):
         assert f'{table} = {{' in support.sidecar_text(sidecar)
 
 
+def test_update_shelves_a_table_that_has_none_and_leaves_the_rest(shelved_tree):
+    """--update over a partly shelved directory adds only what is missing.
+
+    The index table is already shelved; the sibling hstfiles table is not.
+    """
+
+    hstfiles_sidecar = shelved_tree.path(
+        f'{SHELF_DIR}/{subsets.PDS3_VOLUME}_hstfiles.py')
+    assert not hstfiles_sidecar.exists()
+    before = support.sidecar_text(shelved_tree.path(SIDECAR))
+
+    run = support.run_tool(shelved_tree, 'pdsindexshelf', '--update',
+                           shelved_tree.path(METADATA_DIR))
+    assert run.returncode == 0, run.describe()
+
+    assert hstfiles_sidecar.exists(), run.describe()
+    assert 'hstfiles = {' in support.sidecar_text(hstfiles_sidecar)
+    assert support.sidecar_text(shelved_tree.path(SIDECAR)) == before
+
+    run = support.run_tool(shelved_tree, 'pdsindexshelf', '--validate',
+                           shelved_tree.path(METADATA_DIR))
+    assert run.returncode == 0, run.describe()
+    assert run.error_lines == [], run.describe()
+
+
 def test_non_table_metadata_argument_is_rejected(fresh_tree):
     """A non-.tab file inside metadata/ is refused before any work is done."""
 
