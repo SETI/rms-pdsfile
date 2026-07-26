@@ -591,37 +591,38 @@ def check_golden(name, text, update, *, unordered=False):
         f'missing golden {path}; regenerate the tool-test goldens with '
         f'`pytest tests/holdings_maintenance --update` against real holdings')
 
-    expected = path.read_text(encoding='utf-8')
-    actual_cmp, expected_cmp = text, expected
+    # Compare line lists, never a joined string: joining sorted lines is not
+    # injective on multisets when a side lacks a trailing newline, so 'b\na' and
+    # 'ab\n' would compare equal.
+    actual_lines = text.splitlines()
+    expected_lines = path.read_text(encoding='utf-8').splitlines()
     if unordered:
-        actual_cmp = ''.join(sorted(text.splitlines(keepends=True)))
-        expected_cmp = ''.join(sorted(expected.splitlines(keepends=True)))
+        actual_lines, expected_lines = sorted(actual_lines), sorted(expected_lines)
 
-    if actual_cmp != expected_cmp:
-        raise AssertionError(golden_diff(path, expected_cmp, actual_cmp,
-                                         unordered=unordered))
+    if actual_lines != expected_lines:
+        ordering = 'sorted lines' if unordered else 'in order'
+        diff = difflib.unified_diff(expected_lines, actual_lines,
+                                    fromfile=f'{path.name} (golden)',
+                                    tofile=f'{path.name} (produced)', lineterm='')
+        # pytest shows no diff of its own once an assertion carries a message, so
+        # the message has to carry one; a bare "golden mismatch" in a CI log leaves
+        # the reader nothing to go on.
+        raise AssertionError(f'golden mismatch ({ordering}): {path}\n'
+                             + '\n'.join(diff))
 
 
-def golden_diff(path, expected, actual, *, unordered=False):
-    """Return a unified diff of a golden mismatch, for the assertion message.
+def golden_lines(name):
+    """Return a committed golden's lines, for assertions derived from it.
 
-    pytest cannot show its own diff once an assertion carries a custom message, so
-    the message has to carry one itself; a bare "golden mismatch" leaves whoever
-    reads the CI log with nothing to go on.
+    Only for checks that compare something *derived* from the golden, such as an
+    ordered subsequence of it. Whole-artifact comparisons go through check_golden,
+    which also handles --update and produces a diff on failure.
 
     Args:
-        path: The golden file that did not match.
-        expected: The golden's text, as compared.
-        actual: The text the test produced, as compared.
-        unordered: True when both sides were sorted before comparison.
+        name: The golden's basename, without extension.
 
     Returns:
-        str: The message to raise.
+        list[str]: The golden's lines, without terminators.
     """
 
-    ordering = 'sorted lines' if unordered else 'in order'
-    diff = difflib.unified_diff(expected.splitlines(), actual.splitlines(),
-                                fromfile=f'{path.name} (golden)',
-                                tofile=f'{path.name} (produced)', lineterm='')
-
-    return (f'golden mismatch ({ordering}): {path}\n' + '\n'.join(diff))
+    return (GOLDEN_DIR / f'{name}.txt').read_text(encoding='utf-8').splitlines()

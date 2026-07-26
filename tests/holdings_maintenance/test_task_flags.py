@@ -47,7 +47,7 @@ def task_announced(run):
         if sep and ' for' in tail:
             return tail.partition(' for')[0].strip('" ')
 
-    return pytest.fail(f'no task header in output\n{run.describe()}')
+    pytest.fail(f'no task header in output\n{run.describe()}')
 
 
 def test_a_missing_task_is_an_error(fresh_tree):

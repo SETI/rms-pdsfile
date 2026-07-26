@@ -12,14 +12,19 @@
 # pdsdependency is pds3-only by design: the modernization plan records that it has
 # no pds4 twin and stays a standalone tool.
 #
-# The order of the emitted steps is NOT pinned. Within one dependency rule the tool
-# iterates an unsorted `glob.glob`, so steps come out in directory-enumeration
-# order, which varies by filesystem -- the same tree gives a different order on a
-# different machine. The golden is therefore compared as a sorted multiset, which
-# still pins the exact set and text of every step; what order genuinely is
-# specified (a target's checksums step before its infoshelf step, because those
-# come from different rules) is asserted separately below. See entry 12 of
-# "From PR-13" in critiques/deferred-observations.md.
+# The emitted order is only partly pinned. A dependency rule emits its messages, in
+# source order, once per path its glob matched -- and that glob is unsorted, so
+# when a rule matches several files its steps land in directory-enumeration order,
+# which varies by filesystem. For this subset that is exactly the six steps naming
+# an individual metadata table; the other twelve come from rules matching a single
+# path and are emitted in a fixed order (verified by running the tool with its
+# enumeration forced both ways).
+#
+# So the golden is compared as a sorted multiset -- pinning the exact set and text
+# of every step -- and the twelve stable steps are additionally pinned in exact
+# order, which keeps the dependency semantics under test: a target's archive is
+# built before the checksums of that archive, and its checksums before its info
+# shelf. See entry 14 of "From PR-13" in critiques/deferred-observations.md.
 #
 # Every test rebuilds the tree first, so each one is independent and order-agnostic.
 ##########################################################################################
@@ -37,6 +42,23 @@ SOURCE_MTIMES = subsets.PDS3_MTIMES
 
 VOLUME_DIR = f'volumes/{subsets.PDS3_VOLSET}/{subsets.PDS3_VOLUME}'
 METADATA_DIR = f'metadata/{subsets.PDS3_VOLSET}/{subsets.PDS3_VOLUME}'
+
+
+def rule_ordered_steps(steps):
+    """Return the steps whose position the tool actually determines, in order.
+
+    Steps naming an individual metadata table come from a rule whose glob matched
+    several files, so their position is directory-enumeration order and is not the
+    tool's to promise. Every other step comes from a rule that matched one path.
+
+    Args:
+        steps: The emitted steps, in order.
+
+    Returns:
+        list[str]: The subsequence whose order is deterministic.
+    """
+
+    return [step for step in steps if '.tab' not in step]
 
 
 def steps_required(run, tree):
@@ -75,13 +97,27 @@ def test_missing_derived_products_are_reported(fresh_tree, golden_update):
     assert any(step.startswith('pdslinkshelf --initialize') for step in steps), steps
     assert any(step.startswith('pdsindexshelf --initialize') for step in steps), steps
 
-    # The ordering the tool does specify: a target's checksums step comes before
-    # its infoshelf step, because those are separate rules run in a fixed order.
-    # (Order *within* a rule is filesystem-dependent and deliberately not pinned.)
+    # Every step whose position the tool determines is pinned in exact order, so a
+    # rule reordering its messages -- or the rules themselves being reordered --
+    # still fails here even though the golden is compared unordered.
+    ordered = rule_ordered_steps(steps)
+    assert ordered == rule_ordered_steps(support.golden_lines('pds3_dependency_steps')), \
+        '\n'.join(ordered)
+    assert len(ordered) == 12, ordered
+
+    # Spelled out for the two relationships that matter most: an archive is built
+    # before the checksums of that archive, and a target's checksums before its
+    # info shelf.
     for target in (VOLUME_DIR, METADATA_DIR):
-        checksums = steps.index(f'pdschecksums --initialize $DISK/holdings/{target}')
-        infoshelf = steps.index(f'pdsinfoshelf --initialize $DISK/holdings/{target}')
-        assert checksums < infoshelf, steps
+        archives = ordered.index(f'pdsarchives --initialize $DISK/holdings/{target}')
+        category = target.partition('/')[0]
+        archive_sums = ordered.index(
+            f'pdschecksums --initialize $DISK/holdings/archives-{category}/'
+            f'{subsets.PDS3_VOLSET}')
+        assert archives < archive_sums, ordered
+        checksums = ordered.index(f'pdschecksums --initialize $DISK/holdings/{target}')
+        infoshelf = ordered.index(f'pdsinfoshelf --initialize $DISK/holdings/{target}')
+        assert checksums < infoshelf, ordered
 
     # Every step names a path inside the temporary tree; none leaks a real root.
     for step in steps:
