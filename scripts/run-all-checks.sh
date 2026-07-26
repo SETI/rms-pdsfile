@@ -12,7 +12,7 @@
 # Options:
 #   -p, --parallel         Run all requested checks in parallel (default)
 #   -s, --sequential       Run all requested checks sequentially
-#   -w, --pytest-workers N Pytest workers: auto (default), 1 (serial), or N
+#   -w, --pytest-workers N Pytest workers: 1 (serial, default), auto, or N
 #   -c, --code             Run all code checks (sets each RUN_* code flag true)
 #   -d, --docs             Run Sphinx and PyMarkdown (RUN_SPHINX, RUN_PYMARKDOWN)
 #   -m, --markdown         Run only PyMarkdown (RUN_PYMARKDOWN)
@@ -33,6 +33,18 @@
 #   VENV or VENV_PATH        Path to virtualenv (default: $PROJECT_ROOT/venv)
 #   CLEANUP_GRACE_PERIOD     Seconds to wait for graceful shutdown (default: 5)
 #
+#   PDS3_HOLDINGS_DIR        Roots of the real holdings trees. Export both to run
+#   PDS4_HOLDINGS_DIR          the pytest gate as a full data suite; with neither
+#                              it runs the holdings-free subset and skips the
+#                              rest. Which run happened is printed.
+#   PDSFILE_TEST_HOLDINGS    Explicit tree selector (full|mini); set to full when
+#                              a root above is exported and it is not.
+#
+#   The pytest gate here is ONE --mode ns pass over tests/. The self-hosted data
+#   gate (scripts/automated_tests/pdsfile_main_test.sh) runs that pass under
+#   coverage plus a second, pds3-only --mode s pass, so it is the authority on
+#   shelves-only behavior.
+#
 #   Pytest coverage minimum: configure fail_under in coverage config (e.g.
 #   pyproject.toml [tool.coverage.report] or .coveragerc [report]).
 #
@@ -46,7 +58,7 @@
 #     ENABLE_RUFF_CHECK   (default: true)
 #     ENABLE_RUFF_FORMAT  (default: false — not enforced yet)
 #     ENABLE_MYPY         (default: false — never; no inline typing)
-#     ENABLE_PYTEST       (default: false — not enabled yet)
+#     ENABLE_PYTEST       (default: true)
 #     ENABLE_PYROMA       (default: true)
 #     ENABLE_API_FREEZE   public-API freeze (default: true)
 #     ENABLE_CLEAN_INSTALL clean-install runtime-dep leak gate (default: true)
@@ -57,7 +69,7 @@
 #
 # Checks (each run separately; -d runs both Sphinx and Markdown):
 #   Code:     optional: ruff check, ruff format --check, mypy, pytest, pyroma,
-#             api-freeze, bandit, vulture (see ENABLE_* above)
+#             api-freeze, clean-install, bandit, vulture (see ENABLE_* above)
 #   Sphinx:   make -C docs html SPHINXOPTS="-W"
 #   Markdown: pymarkdown scan docs/ .cursor/ README.md CONTRIBUTING.md
 #
@@ -78,7 +90,10 @@ RESET='\033[0m'
 
 # Default options
 PARALLEL=true
-PYTEST_WORKERS=auto
+# Serial by default: with holdings present this gate is a full-data run, and each
+# xdist worker preloads its own copy of the holdings cache. Pass -w auto to
+# parallelize on a machine that can afford it.
+PYTEST_WORKERS=1
 RUN_RUFF_CHECK=false
 RUN_RUFF_FORMAT=false
 RUN_MYPY=false
@@ -96,13 +111,13 @@ SCOPE_SPECIFIED=false
 # permanently change here).
 #
 # Gates are enabled as they become able to pass. Currently enabled: ruff-check,
-# pyroma, api-freeze, and the clean-install gate. Not enabled yet: pytest
-# (hermetic), ruff-format, sphinx, and pymarkdown. Never enabled: mypy, bandit,
-# vulture (ground rules / pdsfile_overrides.mdc).
+# pytest, pyroma, api-freeze, and the clean-install gate. Not enabled yet:
+# ruff-format, sphinx, and pymarkdown. Never enabled: mypy, bandit, vulture
+# (ground rules / pdsfile_overrides.mdc).
 : "${ENABLE_RUFF_CHECK:=true}"
 : "${ENABLE_RUFF_FORMAT:=false}"
 : "${ENABLE_MYPY:=false}"
-: "${ENABLE_PYTEST:=false}"
+: "${ENABLE_PYTEST:=true}"
 : "${ENABLE_PYROMA:=true}"
 : "${ENABLE_API_FREEZE:=true}"
 : "${ENABLE_CLEAN_INSTALL:=true}"
@@ -421,11 +436,45 @@ run_code_checks() {
     # -n controls parallelism; --dist loadscope keeps each test module on one
     # worker to avoid cross-test interference. No -n/--cov live in pyproject
     # addopts (chosen per invocation), so they are passed here. This branch runs
-    # only when the pytest gate is enabled (ENABLE_PYTEST) and targets the
+    # only when the pytest gate is enabled (ENABLE_PYTEST) and targets the whole
     # top-level tests/ tree.
+    #
+    # --mode ns is the mode in which the whole tree passes; it is passed
+    # explicitly so this invocation does not depend on the option's default. Note
+    # this is one pass over everything, whereas the self-hosted data gate
+    # (scripts/automated_tests/pdsfile_main_test.sh) runs two: the same ns pass
+    # under coverage, then a pds3-only --mode s pass. A shelves-only-specific
+    # failure is therefore visible to that driver and not to this script.
     if [ "$RUN_PYTEST" = true ] && [ "$ENABLE_PYTEST" = true ]; then
-        print_info "Running pytest (-n ${PYTEST_WORKERS})..."
-        if python -m pytest -q -n "$PYTEST_WORKERS" --dist loadscope tests; then
+        # Which tree the suite runs against is chosen by PDSFILE_TEST_HOLDINGS
+        # (see tests/support/holdings.py); exporting the roots is not by itself
+        # enough. Either root present and no selector means someone meant to run
+        # against data, so select the full tree rather than quietly running the
+        # holdings-free subset and reporting success. With only one of the two
+        # exported the resolver then fails the session and names the missing
+        # variable, which is the point: half-configured is a mistake, not a
+        # 3%-of-the-suite pass. An explicit selector always wins.
+        if [ -z "${PDSFILE_TEST_HOLDINGS:-}" ] \
+                && { [ -n "${PDS3_HOLDINGS_DIR:-}" ] || [ -n "${PDS4_HOLDINGS_DIR:-}" ]; }; then
+            export PDSFILE_TEST_HOLDINGS=full
+        fi
+        # Report what the resolver actually resolved rather than re-deriving it
+        # here, so the log cannot disagree with the session.
+        holdings_flavor=$(python -c 'import sys; sys.path.insert(0, ".")
+from tests.support.holdings import resolve_holdings
+print(resolve_holdings().flavor or "none")' 2>/dev/null || echo 'unresolved')
+        case "$holdings_flavor" in
+            none)
+                print_info "Running pytest (-n ${PYTEST_WORKERS}; no holdings: holdings-free subset only)..."
+                ;;
+            unresolved)
+                print_info "Running pytest (-n ${PYTEST_WORKERS}; holdings selection is invalid, pytest will report it)..."
+                ;;
+            *)
+                print_info "Running pytest (-n ${PYTEST_WORKERS}; holdings: ${holdings_flavor})..."
+                ;;
+        esac
+        if python -m pytest -q -n "$PYTEST_WORKERS" --dist loadscope tests --mode ns; then
             print_success "Pytest passed"
         else
             print_error "Pytest failed"
@@ -445,10 +494,10 @@ run_code_checks() {
         fi
     fi
 
-    # Public-API freeze. --confcutdir=tests/api bypasses tests/conftest.py,
-    # which requires holdings env vars to import, so this check stays hermetic.
-    # The freeze test regenerates the manifest in a clean subprocess and needs
-    # no holdings itself.
+    # Public-API freeze. --confcutdir=tests/api collects the test without
+    # tests/conftest.py, so this check pulls in no session options, no holdings
+    # resolution and no preload. The freeze test regenerates the manifest in a
+    # clean subprocess and needs no holdings itself.
     if [ "$RUN_API_FREEZE" = true ] && [ "$ENABLE_API_FREEZE" = true ]; then
         print_info "Running API-freeze check..."
         if python -m pytest tests/api/test_api_freeze.py --confcutdir=tests/api -p no:cacheprovider -q; then

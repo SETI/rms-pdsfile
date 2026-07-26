@@ -9,7 +9,7 @@ These repo-specific decisions were locked with the owner and **take precedence
 over the template `.cursor/rules`**. When a template rule (`python.mdc`,
 `python_testing.mdc`, `dependency_management.mdc`, `filecache.mdc`, etc.)
 conflicts with a rule below, follow the rule below. See
-`plans/2026-07-17-modernization-plan.md` for the full rationale.
+`plans/2026-07-25-modernization-plan.md` for the full rationale.
 
 1. **No inline type annotations and no mypy.** Do not add inline type hints and
    do not run mypy. The public API is documented via a hand-written `.pyi` stub
@@ -47,8 +47,30 @@ conflicts with a rule below, follow the rule below. See
 7. **`pytest` `addopts` carries no `-n`/xdist or `--cov` flags** (unlike the
    template). Worker count and coverage are chosen per invocation, because
    `--update` runs and full-data runs must be serial.
-8. **The CI test matrix is 3-OS** (ubuntu / windows / macos), a deliberate
-   extension of the template's ubuntu-only matrix.
+8. **The CI test matrix is split by what the runner has, not by OS.**
+   `.github/workflows/run-tests.yml` runs two jobs:
+   - a **self-hosted Linux** full-data matrix over Python 3.10, 3.11, 3.12 and
+     3.13, which is the only place the data-dependent suite can run (it needs the
+     real holdings tree, resolved from `PDS3_HOLDINGS_DIR`/`PDS4_HOLDINGS_DIR`);
+   - a **hosted `ubuntu-latest`** lint / no-holdings job over Python 3.10 and 3.13
+     (floor and ceiling only — the self-hosted matrix already covers the two
+     versions in between), which runs `scripts/run-all-checks.sh` with no
+     holdings env vars set. It runs whatever gates that script enables — the
+     script is the single source of truth (`environment.mdc`) — and its pytest
+     gate collects the whole tree, runs the holdings-free subset and skips the
+     rest.
+
+   The two jobs run different drivers, and only their union matches the script's
+   enabled set: the hosted job runs the script itself, while the self-hosted job
+   runs `scripts/automated_tests/pdsfile_main_test.sh`, which adds coverage and a
+   second, pds3-only `--mode s` pass that the script does not have.
+
+   Windows is not in the matrix (dropped because the package is not supported
+   there; its trove classifier is dropped to match). macOS is a supported
+   platform and keeps its classifier — its matrix entries are commented out in
+   the workflow, not deleted, and may be re-enabled. Testing on a stock hosted
+   runner is therefore lint-and-holdings-free only; a data run needs a machine
+   with holdings.
 9. **`logging.mdc`'s "never bare `print()`" is waived for
    `holdings_maintenance/`.** The maintenance tools' console output (including the
    `print()`-driven `shelf_consistency_check`) is frozen behavior.
