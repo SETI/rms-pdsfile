@@ -165,3 +165,18 @@ Two further observations, not defects in a single tool:
    time zones produces different sidecars. The tests pin `TZ=UTC` in the tool
    subprocess environment to make goldens portable; whether the tools themselves
    should record UTC is a behavior question for the Phase 6 consolidation.
+
+### Added by the PR-13 adversarial review (round 1)
+
+8. **The tool tests contribute no measured coverage.** The suite driver runs
+   `python -m coverage run -m pytest`, but every maintenance tool runs in a child
+   process with no `COVERAGE_PROCESS_START`, so `coverage report` sees nothing
+   from the 100+ new tests. Subprocess invocation is load-bearing and cannot be
+   given up (see §2.2 of `plans/2026-07-25-pr-13-subplan.md`), so the fix is a
+   `COVERAGE_PROCESS_START` / `sitecustomize` hook in the tests' subprocess
+   environment. **Owner: PR-14**, which owns CI/coverage correspondence.
+9. **`tests/api/test_api_freeze.py` is not marked `holdings_free`.** PR-14's spec
+   says the hosted no-holdings job must run the API-freeze test as part of its
+   pytest subset, but the collect-and-skip rule will still skip it there. PR-13
+   only owed the `crlf` tests. **Owner: PR-14** — mark the API-freeze test (and
+   any other genuinely holdings-free test) when that job is built.

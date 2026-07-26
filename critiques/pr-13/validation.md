@@ -31,10 +31,10 @@ Against the goldens' reference root:
 
 | Mode | Baseline | After PR-13 | Set diff |
 |---|---|---|---|
-| `ns` | 713 tests: 679 passed / 34 skipped | 814 tests: 780 passed / 34 skipped | **0 removed, 0 outcome changes**, 101 added — all in `tests.holdings_maintenance` |
+| `ns` | 713 tests: 679 passed / 34 skipped | 817 tests: 783 passed / 34 skipped | **0 removed, 0 outcome changes**, 104 added — all in `tests.holdings_maintenance` |
 | `s` | 558 tests: 555 passed / 3 skipped | 558 tests: 555 passed / 3 skipped | **identical set** |
 
-No pre-existing test changed outcome in either mode. The only delta is the 101
+No pre-existing test changed outcome in either mode. The only delta is the 104
 new tests, which is the PR's deliverable.
 
 `--mode s` is unchanged by design: the tool tests drive each tool in its own
@@ -47,8 +47,8 @@ signal; the reason is recorded in a comment in
 
 | Root | Result |
 |---|---|
-| the goldens' reference root | **101 passed**, 0 skipped, 92 s |
-| the complete set | **101 passed**, 0 skipped, 451 s |
+| the goldens' reference root | **104 passed**, 0 skipped, 119 s serial / 38 s under `-n 4` |
+| the complete set | **104 passed**, 0 skipped |
 
 No module skipped against either root, and the committed goldens matched
 byte-for-byte against both. That is the point of the design: every declared source
@@ -60,18 +60,19 @@ products as zero-byte placeholders).
 
 ### Cost
 
-Against the reference root the 101 tool tests add ~92 s. Against the complete set
-the isolated run is 451 s, but **263 s of that is the pre-existing session
-preload** of the complete tree (measured by running only the holdings-free
-`test_crlf.py` against it: 16 passed in 263 s). That preload is paid once per
+Against the reference root the tool tests add ~119 s serially, or ~38 s under
+`pytest -n 4` (they are independent, so xdist works). Against the complete set an
+isolated run is several minutes longer, but most of that is the **pre-existing
+session preload** of the complete tree: running only the holdings-free
+`test_crlf.py` against it takes 263 s on its own. That preload is paid once per
 pytest session and is already paid by today's suite, so the marginal cost of
 adding `tests/holdings_maintenance/` to the existing not-shelves-only invocation
-is ~190 s, not 451 s.
+is roughly the reference-root figure plus source staging.
 
 Most of the remaining time is process startup: every tool runs as a subprocess and
-each one imports `pdsfile`. Session-level staging of the declared sources (added
-after a first measurement) cut the complete-set run from 624 s to 451 s by reading
-and hashing each source file once per session instead of once per module.
+each one imports `pdsfile`. Session-level staging of the declared sources cut the
+first complete-set measurement from 624 s to 451 s by reading and hashing each
+source file once per session instead of once per module.
 
 ## Holdings-free behaviour (feeds PR-14)
 
@@ -81,9 +82,9 @@ With `PDSFILE_TEST_HOLDINGS`, `PDS3_HOLDINGS_DIR`, `PDS4_HOLDINGS_DIR` and
 | | Result |
 |---|---|
 | before PR-13 | 713 skipped, **0 passed** |
-| after PR-13 | 792 skipped, **22 passed** |
+| after PR-13 | 794 skipped, **23 passed** |
 
-The 22 are the 16 `crlf` classifier tests and the 6 `shelf_consistency_check`
+The 23 are the 17 `crlf` classifier tests and the 6 `shelf_consistency_check`
 tests that build their own legacy-layout tree. The PR-13 spec requires the crlf
 tests to "run everywhere, including the PR-14 hosted job", which the merged
 collect-and-skip rule prevented: it skipped *every* item when no holdings were
@@ -95,24 +96,38 @@ the `full`/`mini`/skip resolver, the env vars, `full_holdings`,
 
 ## Goldens
 
-`tests/golden/full/holdings_maintenance/` — 12 text artifacts, **52 KB total**,
-well under the 1 MB budget. None contains an absolute path: the two
-`show_opus_products` goldens and the `pdsdependency` step list have the temporary
-root replaced by `$DISK`. Nothing is compared as raw bytes — md5 files are
-compared as a sorted `{path: md5}` mapping (the tools emit them in `os.walk`
-order), archives as sorted `(name, kind, size, mtime)` member tuples, and shelf
-`.py` sidecars as normalized text.
+`tests/golden/full/holdings_maintenance/` — 11 text artifacts, **~12 KB of
+content** (52 KB of disk blocks), far under the 1 MB budget. None contains an
+absolute path: the tools emit logical paths, and where a temporary root could
+appear (the `pdsdependency` step list) it is replaced by `$DISK`. Nothing is
+compared as raw bytes — md5 files are compared as a sorted `{path: md5}` mapping
+(the tools emit them in `os.walk` order), archives as sorted
+`(name, kind, size, mtime)` member tuples, and shelf `.py` sidecars as normalized
+text.
+
+`show_opus_products`' table output has **no** golden: it is rendered by
+`tabulate`, whose formatting is not ours to pin, so that test asserts structure
+(the file, each opus type, each product's logical path) and the byte-exact golden
+covers the `--pprint` output instead.
 
 ## Confidentiality (§3.4.1)
 
-`grep -rniE "/seti/opus|/data/pdsdata|pdsdata"` over every file this PR adds or
-changes returns nothing. Everything resolves from `$PDS3_HOLDINGS_DIR` /
-`$PDS4_HOLDINGS_DIR`, and this record names roots by role only.
+Every file this PR adds or changes was grepped for the absolute prefixes of both
+real holdings roots and for the shared parent directory name they sit under: no
+match. Everything resolves from `$PDS3_HOLDINGS_DIR` / `$PDS4_HOLDINGS_DIR`, and
+this record names roots by role only.
 
 ## Behaviour preservation
 
 PR-13 adds tests and touches no tool. Five pre-existing defects were found while
-writing the tests; per §6.4 none is fixed here. Each is pinned by a test whose
-docstring names the defect, the source line, and the PR that owns the fix, so
-that PR sees a failing pin the moment it changes the behaviour. They are listed
-in `critiques/deferred-observations.md` under "From PR-13".
+writing the tests; per §6.4 none is fixed here. Each is pinned by a test that
+asserts today's behaviour and points at the numbered entry under "From PR-13" in
+`critiques/deferred-observations.md`, where the defect, its location and the
+owning PR are written up. Whichever PR changes the behaviour will see the pin
+fail.
+
+## Test independence
+
+Every test rebuilds its module's tree from the local source stage before it runs,
+so none depends on another. Verified two ways: individual test ids pass in
+isolation, and the whole tool-test suite passes under `pytest -n 4`.
