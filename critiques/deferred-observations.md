@@ -555,9 +555,11 @@ each is recorded rather than fixed.
 
 ## From PR-16 (extract module-level path helpers, Phase 5)
 
-Both raised by the PR-16 adversarial review. Neither is fixable inside a pure
-move PR: the first is process, the second is a pre-existing defect in code that
-moved byte-for-byte and is outside PR-15's enumerated bug list.
+Four entries, all raised by the PR-16 adversarial review; 29 and 30 in round 1,
+31 and 32 in round 2. None is fixable inside a pure move PR: 29 is process, 30 is
+a pre-existing defect in code that moved byte-for-byte and is outside PR-15's
+enumerated bug list, 31 would change the public surface in whichever direction it
+were resolved, and 32 belongs to the PR that owns dead-code removal.
 
 29. **An extraction sweep must ask which module namespaces the tests *patch*, not
     only which globals the code *reads*.** PR-16's free-variable sweep answered
@@ -574,6 +576,15 @@ moved byte-for-byte and is outside PR-15's enumerated bug list.
     function; the general step belongs in every later extraction PR's checklist.
     It matters most for **PR-17**, which moves the `os`-resolving filesystem
     helpers, where a stale `os` patch would be both likelier and harder to spot.
+
+    **Extended by the PR-16 round-3 review:** the same asymmetry exists one level
+    down, for module-level *data* rather than modules. `FILE_BYTE_UNITS` is
+    re-exported by `pdsfile.pdsfile` but read by `formatted_file_size` through
+    `_path_utils`'s globals, so mutating the list in place still works while
+    *rebinding* `pdsfile.pdsfile.FILE_BYTE_UNITS` is now silently inert. Measured:
+    no consumer anywhere does either, so nothing is broken today. PR-17 moves
+    `PATH_EXISTS_CACHE_SIZE` and hits the same shape, so the sweep step should
+    cover rebinding of re-exported data, not only of modules.
     **Owner:** PR-17 onward (a step in each extraction PR's sweep).
 
 30. **`repair_case` raises `UnboundLocalError` on a single-component path.**

@@ -1,6 +1,7 @@
 ##########################################################################################
 # pdsfile/_path_utils.py
-# Module-level path helpers shared by the PdsFile classes
+# Module-level path helpers and small support functions shared by the PdsFile
+# classes
 ##########################################################################################
 
 import fnmatch

@@ -478,7 +478,7 @@ been measured there too.
 |---|---|
 | API-freeze manifest test | **passed**; and the dumped surface is byte-identical to the parent's — §4 |
 | Full-data suite, both modes | **passed** — both set diffs empty; §3 |
-| `ruff check src/pdsfile tests scripts` | **passed**; the ratchet gained no code — §5 |
+| `ruff check src/pdsfile tests scripts` | **passed**; the ratchet gained no code — §7 |
 | Clean-install import check | **passed** (throwaway venv, `pip install .`, full module surface imports) |
 | Hosted lint/no-holdings job (`scripts/run-all-checks.sh`, no holdings env vars) | **passed**, 59 passed / 800 skipped — identical to PR-15's §4 |
 | Adversarial review loop | `critiques/pr-16/round-<k>.md` |
@@ -511,7 +511,7 @@ against PR-15's baseline rather than against a fresh unrelated measurement.
 
 The manifest records `pdsfile.pdsfile`'s module-level names including imported
 modules, so this gate is stricter here than it looks: dropping the now-unreferenced
-`import glob` / `import math` would have been a manifest break. See §5.
+`import glob` / `import math` would have been a manifest break. See §6.
 
 `pdsfile._path_utils` is underscore-prefixed, so the dumper skips it where the
 submodule import binds it onto the `pdsfile` package — which is exactly the
@@ -692,13 +692,15 @@ manifest module surface — `pdsfile.pdsfile` among them — which cannot succee
 
 ### 10. Deferred observations
 
-Two new entries in `critiques/deferred-observations.md`, both raised by the
-review loop and both out of scope for a pure move:
+Four new entries in `critiques/deferred-observations.md`, all raised by the
+review loop and all out of scope for a pure move:
 
-| # | Observation |
-|---|---|
-| 29 | An extraction sweep must also ask which module namespaces the tests *patch*, not only which globals the code *reads* — the direction that produced this PR's one Major |
-| 30 | `repair_case` raises `UnboundLocalError` on a single-component path |
+| # | Observation | Raised in | Owner |
+|---|---|---|---|
+| 29 | An extraction sweep must also ask which module namespaces the tests *patch* — and which module-level *data* they rebind — not only which globals the code *reads*. The first half is the direction that produced this PR's one Major | round 1 (+ round 3) | PR-17 onward |
+| 30 | `repair_case` raises `UnboundLocalError` on a single-component path | round 1 | PR-23 |
+| 31 | `src/pdsfile/__init__.py`'s `from pdsfile import *` is a self-import that binds nothing, and is not simply fixable | round 2 | PR-24 |
+| 32 | A commented-out line rode along in the byte-for-byte move, so PR-22's dead-code line list must be rebuilt against the post-Phase-5 module set | round 2 | PR-22 |
 
 No entry in the existing 1–28 is resolved or invalidated by this PR, and none of
 them owns a symbol it touches.
@@ -707,8 +709,9 @@ them owns a symbol it touches.
 
 | Round | Verdict | Findings | Record |
 |---|---|---|---|
-| 1 | goal **not** met | **1 Major**, 4 Minor, 2 Deferred — all nine accepted and fixed, none rebutted | `critiques/pr-16/round-1.md` |
+| 1 | goal **not** met | **1 Major**, 4 Minor, 2 Deferred — the Major and all four Minor accepted and fixed, none rebutted | `critiques/pr-16/round-1.md` |
 | 2 | goal met | 0 Major, 5 Minor (4 accepted and fixed, 1 rebutted), 3 Deferred (2 new entries) | `critiques/pr-16/round-2.md` |
+| 3 | goal met | 0 Major, 6 Minor (all accepted and fixed, none rebutted), 2 Deferred (one folded into entry 29) | `critiques/pr-16/round-3.md` |
 
 Round 1's Major is the one worth carrying forward: the moved code was
 byte-perfect and every *call site* resolved, but a test **patched** the namespace

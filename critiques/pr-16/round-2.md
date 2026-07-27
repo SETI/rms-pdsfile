@@ -23,7 +23,7 @@ same brief as round 1 and explicitly told not to read the round-1 record.
 | Ratchet, per code, under the project config | E701 16 → 14+2, F841 7 → 6+1; `_path_utils.py` triggers exactly those two; `pdsfile.py`'s 23 codes all still triggered, so its entry could not shrink; no inline `noqa` in the diff |
 | Holdings-free run; `pytest tests/core/ tests/api/` | 59 passed / 800 skipped; 36 passed |
 | Sub-plan precedence (§6.4 step 1) | `e955a22` 00:45:52 precedes the code commit `a5d2321` 00:54:38 |
-| Confidentiality — the real root values, `/home/rfrench`, `Shared-OPUS`, `/seti/opus` grepped against every file this PR adds | clean |
+| Confidentiality — the values of `$PDS3_HOLDINGS_DIR` / `$PDS4_HOLDINGS_DIR` and their distinctive path components, grepped against every file this PR adds | clean, no literal root anywhere |
 | The round-1 test fix | `abspath_for_logical_path.__globals__` **is** `_path_utils.__dict__`; `monkeypatch.setitem` restores it; the removed import has no remaining references |
 
 ## Findings
