@@ -144,18 +144,21 @@ def _modules_named_by(node, package):
 
     Both the module a `from X import y` reads out of and each `X.y` it could be
     naming, because `from . import pdsfile` and `from .pdsfile import PdsFile`
-    are the same back-import written two ways. Relative levels are resolved
-    against the importing module's own package, or the check sees only the
-    absolute spelling.
+    are the same back-import written two ways. A relative level is resolved
+    against the importing module's own package; an absolute one is already
+    absolute and must not be prefixed with it.
     """
 
     if isinstance(node, ast.Import):
         return [alias.name for alias in node.names]
 
-    anchor = package
-    for _ in range(max(node.level - 1, 0)):
-        anchor = anchor.rpartition('.')[0]
-    base = f'{anchor}.{node.module}' if node.module else anchor
+    if node.level == 0:
+        base = node.module
+    else:
+        anchor = package
+        for _ in range(node.level - 1):
+            anchor = anchor.rpartition('.')[0]
+        base = f'{anchor}.{node.module}' if node.module else anchor
     return [base] + [f'{base}.{alias.name}' for alias in node.names]
 
 
@@ -164,11 +167,13 @@ def test_no_mixin_module_imports_pdsfile_at_module_level():
     # module-level import of the core module from a mixin is a cycle. A method
     # needing the class object uses a function-local deferred import instead.
     #
-    # Half the forms raise ImportError on their own and need no test; the other
-    # half -- the ones that bind the partially-initialized module object rather
-    # than a name out of it -- raise nothing at all, and this is what catches
-    # those. Read from source, because an import that raises is the case being
-    # ruled out.
+    # Some spellings raise ImportError on their own, but only when the name being
+    # imported is not yet bound on the half-initialized module -- and by the time
+    # pdsfile.py imports the first mixin, most of its module-level names are. So
+    # `from pdsfile.pdsfile import PdsFile` raises while
+    # `from pdsfile.pdsfile import repair_case` does not, and every spelling that
+    # binds the module object itself is silent. This covers all of them. Read from
+    # source, because an import that raises is one of the cases being ruled out.
     offenders = []
     for mixin in _mixins():
         package = mixin.__module__.rpartition('.')[0]
