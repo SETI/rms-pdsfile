@@ -754,11 +754,14 @@ than copied from the table. The re-measurement reproduced it exactly.
 **Date:** 2026-07-27
 **Sub-plan:** [`plans/2026-07-27-pr-17-subplan.md`](../plans/2026-07-27-pr-17-subplan.md)
 **Last change under `src/pdsfile/`:** commit `5320d83` (the round-2 docstring
-clause), at 04:02:58. The **head** runs recorded below were regenerated after it,
-per §6.6 step 5: their `--junitxml` timestamps are 04:03:09 and 04:06:00. The
-**baseline** runs (02:49:30 and 02:52:19) stand: they were taken in a detached
-worktree at `2ff83a4` that no round has touched, so re-running them would measure
-the same unchanged tree.
+clause), at 04:02:58. The **head** runs recorded below postdate it, per §6.6 step
+5: their `--junitxml` timestamps are **08:02:17 and 08:05:09**. They were
+regenerated once more after round 5's guard change — which touched `tests/` only
+and so did not stale the record, but which renamed a test id, and the enumeration
+in §3 is meant to be reproducible against the artifacts rather than approximately
+right. The **baseline** runs (02:49:30 and 02:52:19) stand: they were taken in a
+detached worktree at `2ff83a4` that no round has touched, so re-running them would
+measure the same unchanged tree.
 
 This PR is the first that creates **mixin classes**, so §5's mixin mechanics are
 exercised for real here rather than described. It is also the PR the parent plan
@@ -1329,15 +1332,26 @@ this PR does not touch. No entry in 1–34 is resolved or invalidated here.
 | 2 | goal met | 0 Major, 6 Minor (5 accepted and fixed, 1 partly rebutted), 3 Deferred (entries 36–38) | `critiques/pr-17/round-2.md` |
 | 3 | goal met | 0 Major, 3 Minor (all accepted and fixed), 3 Deferred (entries 39–41) | `critiques/pr-17/round-3.md` |
 | 4 (scoped) | **goal not met** | **1 new Major** (fixed), 0 new Minor, 3 non-blocking notes; 11 of 12 prior findings confirmed resolved | `critiques/pr-17/round-4.md` |
+| 5 (scoped, owner-authorized) | **goal not met** | round 4's Major **fully resolved**; **1 new Major, verified and deliberately NOT fixed** | `critiques/pr-17/round-5.md` |
 
 **The 4-round cap was reached with a new Major, which §6.6 makes an owner
-matter.** The Major was fixed — step 4 requires every Major to be resolved — and
-no fifth round was run. `critiques/pr-17/round-4.md` states the case for and
-against treating it as the mis-scope signal the cap is designed to catch; in
-short, rounds 1–3 returned zero Majors and were converging, and the Major is a
-regression this executor introduced in round 2 inside a check that is **not** a
-plan deliverable (the plan asks this file for a set-intersection check; the
-back-import guard is an extra, taken up from round 1's Deferred bucket).
+matter.** That Major was fixed — step 4 requires every Major to be resolved — and
+the executor stopped. **The owner then authorized a fifth round** on the grounds
+that rounds 1–3 each returned zero Majors, so the loop was converging rather than
+thrashing, and that the round-4 Major sat in a **voluntary addition** rather than
+a plan deliverable: the plan asks this file for a set-intersection check, and the
+back-import guard is an extra taken up from round 1's *Deferred* bucket.
+
+**Round 5 confirmed round 4's Major fully resolved and found a new one in the same
+guard** — an import in a `class` body is a real import-time cycle that the guard
+misses in silence, along with the `else` branch of `if TYPE_CHECKING:` and
+`match`/`case`. It is reproduced in `critiques/pr-17/round-5.md` and **left
+unfixed by instruction**: a second breach of the cap is the mis-scope signal the
+rule exists to raise, so the decision is the owner's — strip the guard from this
+PR and defer it (what round 1 originally proposed), apply the fix and accept a
+sixth round, or ship it documented. **Nothing under `src/pdsfile/` is affected by
+any of the three; the guard is a test**, and PR-17's actual plan deliverable —
+the set-intersection collision check — is untouched either way.
 
 Three rounds touched `src/pdsfile/` or its test surface. Under §6.6 step 5, round
 1's and round 2's fixes each forced a regeneration before the next reviewer; §3's
