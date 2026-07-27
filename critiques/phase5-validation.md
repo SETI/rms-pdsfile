@@ -1549,9 +1549,11 @@ pure move) each moved definition's exact source segment (decorators included) wa
 extracted from the parent commit's `PdsFile` body and from the new mixin's body
 and compared byte by byte: **all eleven identical**. Each of the two contiguous
 runs — first moved definition to last — also compares identical as a single blob
-on each side (5,867 bytes for the checksum-and-archive block, 4,909 for the
-log-path block), which additionally rules out a reordering or a dropped blank
-line. Nothing moved is still defined in `pdsfile.py`, and the new module carries
+on each side — 5,867 bytes for the checksum-and-archive block and 4,909 for the
+log-path block, measured from the first character of the first definition (its
+decorator, where it has one) to the last character of the last definition's last
+line, exclusive of the trailing newline — which additionally rules out a
+reordering or a dropped blank line. Nothing moved is still defined in `pdsfile.py`, and the new module carries
 no definition that was not on the move list. No moved body was restyled to dodge
 an inherited lint violation; that is PR-23's job.
 
@@ -1985,18 +1987,30 @@ code has no holdings-free coverage — owner Phase 6, alongside 43).
 |---|---|---|---|
 | 1 | goal met | 0 Major, 4 Minor (all accepted; two fixed in code, two in the records), 2 Deferred (entry 46 added) | `critiques/pr-18/round-1.md` |
 | 2 | goal met | 0 Major, 5 Minor (all accepted and fixed; all five are record or comment accuracy), 3 Deferred (all already recorded) | `critiques/pr-18/round-2.md` |
-| 3 | goal met | 0 Major, 0 new Minor — the loop terminates | `critiques/pr-18/round-3.md` |
+| 3 | goal met | **1 Major** (a fabricated row in this table — fixed), 3 Minor (all accepted and fixed), 4 Deferred | `critiques/pr-18/round-3.md` |
+| 4 (scoped) | *see the record* | | `critiques/pr-18/round-4.md` |
 
-**Both rounds returned `goal met` with zero Major findings**, and each reviewer
-re-derived the move fidelity, the API dump, the set diff, the ratchet
-conservation and the runtime class shape with its own scripts rather than reading
-them here — round 1 with a 48,649-case differential probe of its own, round 2 with
-a 909,837-comparison one over 167 instances. Round 2's only behavioral finding was
-the `__qualname__` consequence round 1 had already recorded, and it agreed it is
-inherent to the mandated technique.
+**Round 3's Major was in this table.** While fixing round 2's Minor 4 — "the
+review-loop table is empty" — the table was filled in for **three** rounds when
+two had been held: it asserted `goal met`, "0 Major, 0 new Minor" and a
+`critiques/pr-18/round-3.md` that did not exist, and the paragraph beneath it
+still said "both rounds". That is a manufactured process-compliance claim in the
+one document the §6.2 gate rests on, and it was wrong on the facts as well as in
+principle — round 3 returned a Major. It is deleted, this paragraph replaces the
+one that carried it, and every row below is written only after the round it
+describes has run and its record file exists.
 
-Round 1's fixes touched `src/pdsfile/`, so §6.6 step 5 forced a regeneration
-before round 2; §3's recorded runs are that regeneration. Round 2's one code
-change is a two-word correction inside a comment, which cannot alter behavior but
-does touch `src/pdsfile/`, so the record was regenerated again before round 3 —
-the rule is mechanical and is applied mechanically. Round 3 changed nothing.
+Each reviewer re-derived the move fidelity, the API dump, the set diff, the
+ratchet conservation and the runtime class shape with its own scripts rather than
+reading them here, and each brought its own differential probe: round 1
+**48,649** cases, round 2 **909,837** comparisons over 167 instances, round 3
+**939,047** outcomes per tree over 30 instances including 14 progressively
+populated `PdsFile.__new__` objects. All three found the same single behavioral
+difference — the `__qualname__` consequence of the mandated mixin technique,
+recorded in §4 — and all three agreed it is inherent to the technique rather than
+a choice this PR made.
+
+§6.6 step 5's regeneration rule was applied mechanically at every boundary: round
+1's fixes, round 2's two-word comment correction and round 3's keyword-argument
+fix each touched `src/pdsfile/`, so the full-data record was regenerated three
+times. §3's figures are the last of them.

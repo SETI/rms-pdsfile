@@ -212,7 +212,7 @@ class _DerivedPathsMixin:
         the log root, the optional subdirectory, the time tag, the task tag and the
         ".log" extension -- is the same for all three and is done here.
 
-        Keyword arguments:
+        Arguments:
             target -- a callable returning the parts naming what is being logged,
                       appended after the optional subdirectory. It is called here
                       rather than evaluated by the caller, so the attributes it
@@ -273,8 +273,9 @@ class _DerivedPathsMixin:
                       override of the default log root (default 'default')
         """
 
-        return self._log_path_for(lambda: [self.category_, self.bundleset_, self.bundlename],
-                                  suffix, task, dir, place)
+        return self._log_path_for(lambda: [self.category_, self.bundleset_,
+                                           self.bundlename],
+                                  suffix=suffix, task=task, subdir=dir, place=place)
 
     def log_path_for_bundleset(self, suffix='', task='', dir='', place='default'):
         """Return a complete log file path for this bundle set.
@@ -290,7 +291,7 @@ class _DerivedPathsMixin:
         """
 
         return self._log_path_for(lambda: [self.category_, self.bundleset, self.suffix],
-                                  suffix, task, dir, place)
+                                  suffix=suffix, task=task, subdir=dir, place=place)
 
     def log_path_for_index(self, task='', dir='index', place='default'):
         """Return a complete log file path for this bundle.
@@ -310,4 +311,4 @@ class _DerivedPathsMixin:
             raise ValueError('Not an index file: ' + self.logical_path)
 
         return self._log_path_for(lambda: [self.logical_path.rpartition('.')[0]],
-                                  '', task, dir, place)
+                                  suffix='', task=task, subdir=dir, place=place)

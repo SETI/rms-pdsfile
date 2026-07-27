@@ -906,3 +906,15 @@ files PR-18 does not touch, and the third is a note that PR-23 must carry.
     the other direction — the tool tests run this code but assert nothing about
     its output. A single holdings-free test module for the log-path builders would
     close both.
+
+### Added by the PR-18 adversarial review (round 3)
+
+47. **`log_path_for_index`'s docstring first line describes a bundle.**
+    `src/pdsfile/_derived_paths.py` opens it with "Return a complete log file path
+    for this bundle."; it returns an *index* log path, as its own second line and
+    its `is_index` guard both say. The sibling `log_path_for_bundleset` says
+    "for this bundle set", so the line is a copy that was never updated. PR-18
+    moved the definition byte-for-byte and deliberately did not touch it: a commit
+    that edited the text would break the byte-for-byte claim that makes the move
+    checkable, and the wording is not a behavior. **Owner: Phase 7** (PR-29–PR-34),
+    where `doc_python.mdc` comes into force and the docstrings are revised anyway.
