@@ -476,8 +476,9 @@ each is recorded rather than fixed.
     `lifetime=0`. **Owner:** a future pdscache PR, or phase "b".
 
 24. **`DictionaryCache.set_multi`'s `pause` parameter has never suppressed the
-    per-key trim, and still does not.** The broken call PR-15 repaired passed `pause=True` down to
-    `set()`, plainly intending to defer trimming until the batch finished. `set()`
+    per-key trim, and still does not.** The broken call PR-15 repaired passed
+    `pause=True` down to `set()`, plainly intending to defer trimming until the
+    batch finished. `set()`
     has no such parameter and never did, so the intent was never expressible;
     PR-15 dropped the keyword, which is the literal fix for "passes an
     unsupported kwarg". The consequence is that `pause` now governs only the

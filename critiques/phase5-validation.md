@@ -417,9 +417,11 @@ earlier findings resolved against the tree and found no Major.
 
 **No round found a Major and no finding was rebutted** — all sixteen Minor and
 non-blocking findings were accepted and fixed. §6.6's termination condition is
-met within the four-round cap. Rounds 1 and 2 each produced a `src/pdsfile/` fix, so every
-run recorded above was regenerated at or after commit `4fdadb0` before the next
-reviewer was spawned (§6.6 step 5). Round 3's fixes touched only `tests/` and
-`critiques/`, which under that same rule does not stale the record; the counts
-were regenerated anyway because the round added a test and therefore changed the
-set.
+met within the four-round cap.
+
+Rounds 1 and 2 each produced a `src/pdsfile/` fix, so every run recorded above
+was regenerated at or after commit `4fdadb0` before the next reviewer was
+spawned (§6.6 step 5). Rounds 3 and 4 touched only `tests/` and `critiques/`,
+which under that same rule does not stale the record; the counts were
+regenerated after round 3 anyway, because it added a test and therefore changed
+the set.
