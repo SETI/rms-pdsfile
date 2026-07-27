@@ -20,7 +20,6 @@
 # tree.
 ##########################################################################################
 
-import ast
 import inspect
 
 import pytest
@@ -134,100 +133,6 @@ def test_a_mixin_defines_only_callables_and_properties():
 
     assert not strays, (f'mixins hold class-level data, which belongs on PdsFile: '
                         f'{strays}')
-
-
-##########################################################################################
-# No mixin module imports the class it is a base of
-##########################################################################################
-def _modules_named_by(node, package):
-    """The absolute module names one import statement reaches for.
-
-    Both the module a `from X import y` reads out of and each `X.y` it could be
-    naming, because `from . import pdsfile` and `from .pdsfile import PdsFile`
-    are the same back-import written two ways. A relative level is resolved
-    against the importing module's own package; an absolute one is already
-    absolute and must not be prefixed with it.
-    """
-
-    if isinstance(node, ast.Import):
-        return [alias.name for alias in node.names]
-
-    if node.level == 0:
-        base = node.module
-    else:
-        anchor = package
-        for _ in range(node.level - 1):
-            anchor = anchor.rpartition('.')[0]
-        base = f'{anchor}.{node.module}' if node.module else anchor
-    return [base] + [f'{base}.{alias.name}' for alias in node.names]
-
-
-def _is_type_checking(test):
-    """True for the test of an `if TYPE_CHECKING:` / `if typing.TYPE_CHECKING:`."""
-
-    if isinstance(test, ast.Name):
-        return test.id == 'TYPE_CHECKING'
-    return isinstance(test, ast.Attribute) and test.attr == 'TYPE_CHECKING'
-
-
-def _imports_that_run_at_import_time(tree):
-    """Every import statement in a module that executes when the module is imported.
-
-    Not the same as the top-level body: an import nested in a module-level `try`,
-    `if` or `with` still runs, and `try: import x / except ImportError:` is a
-    pattern this package already uses. Three things are skipped because they do
-    not run at import time, so none of them can build the cycle:
-
-      * function and method bodies -- a deferred import inside a method is the
-        pattern the Phase 5 preamble prescribes, and flagging it would forbid the
-        one spelling that is allowed;
-      * class bodies, which cannot reach the module under construction usefully
-        anyway;
-      * `if TYPE_CHECKING:` blocks, which never execute.
-    """
-
-    def is_deferred(node):
-        return (isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
-                or (isinstance(node, ast.If) and _is_type_checking(node.test)))
-
-    found = []
-
-    def walk(body):
-        for node in body:
-            if isinstance(node, (ast.Import, ast.ImportFrom)):
-                found.append(node)
-            elif not is_deferred(node):
-                for field in ('body', 'orelse', 'finalbody'):
-                    walk(getattr(node, field, None) or [])
-                for handler in getattr(node, 'handlers', []):
-                    walk(handler.body)
-
-    walk(tree.body)
-    return found
-
-
-def test_no_mixin_module_imports_pdsfile_at_import_time():
-    # pdsfile/pdsfile.py imports the mixin modules to build the class, so a mixin
-    # importing the core module back at import time is a cycle. A method needing
-    # the class object uses a function-local deferred import instead, which is why
-    # the search above deliberately does not descend into function bodies.
-    #
-    # Some spellings raise ImportError on their own, but only when the name being
-    # imported is not yet bound on the half-initialized module -- and by the time
-    # pdsfile.py imports the first mixin, most of its module-level names are. So
-    # `from pdsfile.pdsfile import PdsFile` raises while
-    # `from pdsfile.pdsfile import repair_case` does not, and every spelling that
-    # binds the module object itself is silent. This covers all of them. Read from
-    # source, because an import that raises is one of the cases being ruled out.
-    offenders = []
-    for mixin in _mixins():
-        package = mixin.__module__.rpartition('.')[0]
-        tree = ast.parse(inspect.getsource(inspect.getmodule(mixin)))
-        for node in _imports_that_run_at_import_time(tree):
-            if 'pdsfile.pdsfile' in _modules_named_by(node, package):
-                offenders.append(f'{mixin.__module__}:{node.lineno} -> pdsfile.pdsfile')
-
-    assert not offenders, f'import-time back-imports of the core module: {offenders}'
 
 
 ##########################################################################################

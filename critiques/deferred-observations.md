@@ -770,3 +770,56 @@ A pure move has no licence to change any of them.
     a whole shelf pair under `tmp_path` or a change to which root CI uses.
     **Owner:** PR-37 (Phase 8), where CI root selection and coverage targets are
     settled.
+
+### Added by the PR-17 adversarial review (round 5) — and by its removal
+
+42. **A mixin module must not import `pdsfile.pdsfile` at import time, and nothing
+    checks it.** The Phase-5 preamble pins this ("a mixin module must **not** do a
+    module-level `from pdsfile.pdsfile import PdsFile` … any extracted method that
+    needs a *class object* uses a **function-local deferred import**"), and PR-17
+    is where the rule first has modules to apply to. PR-17 shipped **no** check for
+    it: one was written and then removed. That history is the entry's substance,
+    so it is recorded plainly rather than summarised away.
+
+    The check was a **voluntary addition** — the plan asks
+    `tests/api/test_mixin_collisions.py` for a set-intersection collision check,
+    and nothing more. It entered as a *Deferred* item in the PR-17 review's round
+    1, which this executor chose to take up rather than defer. It then produced a
+    **Major in round 4** (it missed every absolute `from pdsfile.pdsfile import X`,
+    a regression introduced while closing a relative-import hole — a silent
+    coverage *trade*) and, after that was fixed, another **Major in round 5** (it
+    missed an import in a `class` body, plus the `else` branch of
+    `if TYPE_CHECKING:` and `match`/`case`). Round 5 measured 56 of 252
+    spelling × nesting cells missing. Rounds 4 and 5 were the only rounds of five
+    to return a Major, and both were this check. **Removing it is what makes
+    §6.6's four-round cap actionable**: the cap exists to surface a mis-scope, and
+    the mis-scope was a guard the plan never asked for consuming two rounds.
+
+    **Design note for whoever takes this up — do not patch the AST walk a third
+    time.** Both Majors have the same root cause: the AST approach is a *syntactic
+    approximation of a runtime fact*, so its case matrix only ever grows. It has
+    so far had to learn about relative vs absolute spellings, aliased forms,
+    `from . import pdsfile` vs `from .pdsfile import X`, imports nested in
+    module-level `try`/`if`/`with`, class bodies (which **do** execute at import
+    time), the `else` branch of `if TYPE_CHECKING:`, and `match`/`case` — with
+    `__import__`, `importlib.import_module` and star-imports still ahead of it.
+    **The robust implementation is behavioral, not syntactic:** import each mixin
+    module in a **fresh interpreter, before `pdsfile.pdsfile` is imported**, and
+    assert `pdsfile.pdsfile` did not land in `sys.modules`. That cannot be fooled
+    by nesting or by spelling, it tests the property the preamble actually cares
+    about rather than a proxy for it, and it is shorter than the AST version.
+
+    Note what still catches the loudest cases in the meantime: the two spellings
+    that import `PdsFile` *itself* (`from pdsfile.pdsfile import PdsFile` and
+    `from .pdsfile import PdsFile`) raise `ImportError … circular import` and fail
+    the whole suite at collection, so an executor who writes the obvious wrong
+    thing finds out immediately. Only an import of some *other* already-bound name
+    out of the core module is silent.
+
+    **Owner: PR-22.** It is the last Phase-5 PR, so the behavioral check would run
+    over the **complete** mixin set at the moment that set is finished, which is
+    when it means the most; PR-22 already owns "add a module docstring mapping the
+    decomposition", and a coherence check on that decomposition belongs with the PR
+    that declares it complete; and adding a shared check mid-phase is precisely
+    what went wrong here — PR-18–PR-21 would inherit and trust an implementation
+    they never reviewed.

@@ -1,9 +1,11 @@
 # Addendum: the order of `PdsFile`'s mixin bases is alphabetical
 
 **Date:** 2026-07-27
-**Status:** **AWAITING OWNER ACKNOWLEDGEMENT** — §6.4 requires an addendum in
-`plans/` acknowledged by the owner before the deviating PR merges. PR-17 may be
-reviewed and opened without it; it may not **merge** without it.
+**Status:** **ACKNOWLEDGED — owner, 2026-07-27.** §6.4 requires an addendum in
+`plans/` acknowledged by the owner before the deviating PR merges; this is that
+acknowledgement. The rule below stands and
+`tests/api/test_mixin_collisions.py::test_the_mixin_bases_are_listed_alphabetically`
+stays.
 **Amends:** `plans/2026-07-25-modernization-plan.md` §5, the Phase-5 preamble
 (the one illustrative line quoted below).
 **Raised by:** the PR-17 adversarial review, rounds 1–3, all three rounds
@@ -81,22 +83,16 @@ the opposite order to the rule. Nothing is wrong today, but an executor of
 PR-18–PR-22 who reads only the plan will write a class statement the test
 rejects, and the round is wasted discovering why.
 
-## The two forms the decision can take
+## The decision
 
-Either is one line of work; PR-17 is green under (a) as delivered.
+**The rule stands** (owner, 2026-07-27), and the assertion stays in
+`tests/api/test_mixin_collisions.py`.
 
-**(a) Keep the rule.** Reorder the preamble's illustration and say so — e.g.
-`class PdsFile(_LocalFsMixin, _OpusMixin, _ShelfMixin, …)  # bases listed
-alphabetically`. Nothing in the branch changes.
-
-**(b) Drop the rule.** Delete
-`test_the_mixin_bases_are_listed_alphabetically` from
-`tests/api/test_mixin_collisions.py`; each later PR then appends its mixin
-wherever it likes. The convention stays documented in the sub-plan and the
-validation record but is not enforced.
-
-Both are behaviorally identical: PR-17's full-data set, its empty manifest diff
-and every other gate are unaffected either way, because the mixins are disjoint.
+**The preamble's illustration is being corrected separately, in PR #110**, which
+targets `rewrite` directly. `plans/2026-07-25-modernization-plan.md` is therefore
+**not** edited on the `pr-17-shelves-local-fs` branch — doing so would conflict
+with that PR. Anyone reading the preamble before #110 lands should read the
+illustration as showing the technique, not the ordering.
 
 ## Cross-references
 
