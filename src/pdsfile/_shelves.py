@@ -9,6 +9,52 @@ import pickle
 
 
 ##########################################################################################
+# Info shelf sidecar records
+##########################################################################################
+def _eval_null_key_record(rec):
+    """Return the values a line of an info shelf sidecar records for the null key.
+
+    Every info shelf "<bundlename>_info.pickle" is written alongside a readable
+    "<bundlename>_info.py" sidecar holding the same dictionary as Python source.
+    The sidecar's second line is the entry for the null key -- the bundle itself
+    -- and it is the only line this reads.
+
+    Keyword arguments:
+        rec -- the second line of an info shelf sidecar, as returned by
+               readline(), so it still carries its trailing newline.
+
+    The line has the form
+
+        "": (nbytes, count, modtime, checksum, (width, height)),
+
+    and the value returned is the tuple to the right of the colon: two ints, two
+    strings, and a pair. Every one of the 6,753 info sidecars in the complete
+    holdings set has exactly that shape.
+
+    The parse partitions on the *first* colon -- the one after the empty key,
+    since the timestamp's colons come later -- then strips the surrounding
+    whitespace and the newline, drops the final character (the trailing comma),
+    and evaluates what is left. That evaluation is an eval(), so:
+
+    * the sidecar is executable input, and the trust boundary is the holdings
+      tree, whose sidecars are written by this package's own maintenance tools;
+    * a line with no colon leaves an empty expression, and eval('') raises
+      SyntaxError, as does any incomplete expression;
+    * a line not ending in the trailing comma loses its last character anyway,
+      which can turn a valid expression into a SyntaxError or, less visibly, into
+      a different valid expression;
+    * a bare name in the expression resolves against this module's globals and
+      then the builtins, and raises NameError if it is in neither. No sidecar in
+      the holdings set contains a name, so nothing observes where that lookup
+      happens.
+    """
+
+    # Format is "": (bytes, count, date, checksum, (0,0)),
+    parts = rec.partition(':')
+    return eval(parts[2].strip()[:-1])
+
+
+##########################################################################################
 # Shelf support mixin
 ##########################################################################################
 class _ShelfMixin:
@@ -214,9 +260,7 @@ class _ShelfMixin:
                     rec = f.readline()
                     rec = f.readline()
 
-                # Format is "": (bytes, count, date, checksum, (0,0)),
-                parts = rec.partition(':')
-                values = eval(parts[2].strip()[:-1])
+                values = _eval_null_key_record(rec)
                 cls.SHELF_NULL_KEY_VALUES[shelf_path] = values
                 return values
 
