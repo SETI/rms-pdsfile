@@ -20,6 +20,7 @@
 # tree.
 ##########################################################################################
 
+import ast
 import inspect
 
 import pytest
@@ -93,9 +94,10 @@ def test_no_mixin_is_shadowed_by_pdsfile_itself():
     assert not shadowed, f'names PdsFile redefines over a mixin: {shadowed}'
 
 
-def test_every_public_mixin_name_is_reachable_through_pdsfile():
+def test_every_mixin_name_is_reachable_through_pdsfile():
     # The point of the move is that callers see no difference. Whatever a mixin
-    # defines has to arrive on PdsFile as that same object.
+    # defines -- private members included -- has to arrive on PdsFile as that
+    # same object.
     for mixin in _mixins():
         for name in sorted(_defined_names(mixin)):
             assert (inspect.getattr_static(PdsFile, name)
@@ -128,6 +130,31 @@ def test_a_mixin_defines_only_callables_and_properties():
 
     assert not strays, (f'mixins hold class-level data, which belongs on PdsFile: '
                         f'{strays}')
+
+
+##########################################################################################
+# No mixin module imports the class it is a base of
+##########################################################################################
+def test_no_mixin_module_imports_pdsfile_at_module_level():
+    # pdsfile/pdsfile.py imports the mixin modules to build the class, so a
+    # module-level `from pdsfile.pdsfile import PdsFile` in a mixin is a cycle. A
+    # method needing the class object uses a function-local deferred import
+    # instead. Read from source rather than from the imported module, because an
+    # import that raises is exactly the thing being ruled out.
+    offenders = []
+    for mixin in _mixins():
+        source = inspect.getsource(inspect.getmodule(mixin))
+        for node in ast.parse(source).body:
+            names = None
+            if isinstance(node, ast.ImportFrom) and node.module == 'pdsfile.pdsfile':
+                names = [alias.name for alias in node.names]
+            elif isinstance(node, ast.Import):
+                names = [alias.name for alias in node.names
+                         if alias.name == 'pdsfile.pdsfile']
+            if names:
+                offenders.append(f'{mixin.__module__}:{node.lineno} {names}')
+
+    assert not offenders, f'module-level back-imports of the core module: {offenders}'
 
 
 ##########################################################################################
