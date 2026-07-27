@@ -58,8 +58,10 @@ returned a Major.
 **Resolution: accepted without reservation; fixed.** The row and the sentence are
 deleted. §16 now says plainly that round 3's Major was in that table, why it got
 there, and that every row is written only after the round it describes has run and
-its record file exists. Round 4's row is present as an explicit forward reference
-to a record file, with no verdict and no findings claimed.
+its record file exists. The fix left round 4's row as an explicit forward reference
+to a record file, with no verdict and no findings claimed; **round 4 raised that
+too**, and it was removed in `5f60c3b` — a pointer to a file that does not exist
+is the same defect in a weaker form. See `round-4.md` MIN-1 and §16.
 
 This is precisely the failure the common brief's lesson 5 names — "state reasoning
 as a measurement, not an inspection" — committed in the act of fixing a different

@@ -2002,7 +2002,13 @@ enumerated list must follow), 46, from the round-1 review (the deduplicated code
 has no holdings-free coverage — owner Phase 6, alongside 43), and 47, from the
 round-3 review (`log_path_for_index`'s docstring first line describes a bundle;
 it moved verbatim, so editing it here would break the byte-for-byte claim —
-owner Phase 7).
+owner Phase 7). A sixth, 48, comes from the round-4 review:
+`tests/api/test_mixin_collisions.py`'s shadowing check looks at `PdsFile` only
+and not at `Pds3File` / `Pds4File`, which is where the method surface is actually
+extended — measured empty today, owner PR-19. Round 4 also found a second wrong
+docstring in `_derived_paths.py` (`dirpath_and_prefix_for_archive` says it
+returns a path and returns a tuple); it is **folded into entry 47** rather than
+given a number of its own, so the Phase-7 pass sees one entry naming both.
 
 ### 16. Review loop
 
@@ -2011,6 +2017,14 @@ owner Phase 7).
 | 1 | goal met | 0 Major, 4 Minor (all accepted; two fixed in code, two in the records), 2 Deferred (entry 46 added) | `critiques/pr-18/round-1.md` |
 | 2 | goal met | 0 Major, 5 Minor (all accepted and fixed; all five are record or comment accuracy), 3 Deferred (all already recorded) | `critiques/pr-18/round-2.md` |
 | 3 | goal met | **1 Major** (a fabricated row in this table — fixed), 3 Minor (all accepted and fixed), 4 Deferred | `critiques/pr-18/round-3.md` |
+| 4 | goal met | 0 Major, 1 Minor (accepted and fixed), 3 Deferred (entry 48 added; one folded into 47) | `critiques/pr-18/round-4.md` |
+
+**The loop terminates at round 4**, one round inside §6.6's four-round cap: a
+fresh reviewer returned zero Major and no new un-rebutted Minor. Its Minor was
+that `critiques/pr-18/round-3.md` still described this table as carrying a
+forward-reference row for round 4 after that row had been removed — the same
+record-accuracy defect as round 3's Major, one notch weaker, in the file that
+documents it. Fixed in the round-3 record, additively.
 
 **Round 3's Major was in this table.** While fixing round 2's Minor 4 — "the
 review-loop table is empty" — the table was filled in for **three** rounds when
@@ -2039,4 +2053,6 @@ a choice this PR made.
 §6.6 step 5's regeneration rule was applied mechanically at every boundary: round
 1's fixes, round 2's two-word comment correction and round 3's keyword-argument
 fix each touched `src/pdsfile/`, so the full-data record was regenerated three
-times. §3's figures are the last of them.
+times. §3's figures are the last of them. **Round 4's fix touches `critiques/`
+only, so the record carries forward unchanged** — which is the other half of the
+same rule, and is why the last change under `src/pdsfile/` is still `5115c38`.

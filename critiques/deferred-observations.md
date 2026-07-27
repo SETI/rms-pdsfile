@@ -918,3 +918,33 @@ files PR-18 does not touch, and the third is a note that PR-23 must carry.
     that edited the text would break the byte-for-byte claim that makes the move
     checkable, and the wording is not a behavior. **Owner: Phase 7** (PR-29–PR-34),
     where `doc_python.mdc` comes into force and the docstrings are revised anyway.
+
+    The PR-18 round-4 review found a second docstring in the same module with the
+    same defect, and it belongs to this entry rather than to a new one:
+    `dirpath_and_prefix_for_archive` says "Return the absolute path to the
+    directory associated with this archive path." and returns the 2-tuple
+    `(dirpath, parent)`. Its sibling `dirpath_and_prefix_for_checksum` gets this
+    right — "Return tuple (…)". Also moved verbatim, also correctly untouched
+    here. The Phase-7 docstring pass should treat `_derived_paths.py` as a file
+    with more than one of these, not as a single fix.
+
+### Added by the PR-18 adversarial review (round 4)
+
+48. **The mixin shadowing check looks at `PdsFile` only, not at `Pds3File` /
+    `Pds4File`.** `tests/api/test_mixin_collisions.py:89`
+    (`test_no_mixin_is_shadowed_by_pdsfile_itself`) intersects each mixin's names
+    with `_defined_names(PdsFile)` and stops there. But the subclasses are exactly
+    where `PdsFile`'s method surface is extended — `src/pdsfile/pds3file/__init__.py`
+    defines `log_path_for_volume` and `log_path_for_volset` as aliases — and they
+    are what the maintenance tools instantiate. A name added to a subclass that a
+    mixin also defines would silently make the mixin's copy unreachable on the
+    class callers actually use: the failure the test exists to catch, one level
+    down, where the test cannot see it.
+
+    Measured at PR-18's head: the intersection is **empty** for both subclasses
+    against all three mixins, so nothing is broken today and no PR is blocked. The
+    test file is PR-17's and is outside PR-18's diff, and PR-18's gate is an
+    identical pass/fail set, so strengthening the check would be a new assertion
+    in a test PR-18 does not otherwise touch. **Owner: PR-19**, or whichever
+    Phase-5 PR next edits the mixin harness — the extension is one more
+    intersection per subclass in the same test.
