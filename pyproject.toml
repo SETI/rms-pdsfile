@@ -157,8 +157,11 @@ extend-ignore = ["PT011", "SIM105", "SIM108"]
 "scripts/check_runtime_imports.py" = ["RUF100"]
 "scripts/dump_public_api.py" = ["RUF100"]
 "src/pdsfile/__init__.py" = ["F403", "F841", "I001"]
-# Every code below also appears in pdsfile.py's entry: these lines carry ratchet
-# violations that were pdsfile.py's before the code moved into these modules.
+# The private modules below hold code extracted from pdsfile.py. Their codes are a
+# split of pdsfile.py's ratchet entry, never an addition to it: each violation moves
+# with the lines that carry it, and pdsfile.py's entry drops any code it no longer
+# needs.
+"src/pdsfile/_derived_paths.py" = ["A002"]
 "src/pdsfile/_local_fs.py" = ["B007", "B905", "E701", "SIM103", "SIM118", "UP024"]
 "src/pdsfile/_path_utils.py" = ["E701", "F841"]
 "src/pdsfile/_shelves.py" = ["B904", "B905", "F841", "RUF059", "SIM103", "UP024", "UP031"]
@@ -213,7 +216,7 @@ extend-ignore = ["PT011", "SIM105", "SIM108"]
 "src/pdsfile/pds4file/rules/cassini_vims.py" = ["E501", "I001", "N801", "RUF012"]
 "src/pdsfile/pds4file/rules/uranus_occs_earthbased.py" = ["B007", "E501", "I001", "N801", "RUF012"]
 "src/pdsfile/pdscache.py" = ["A001", "E701", "E721", "F401", "F541", "F841", "I001", "RUF015", "RUF059", "SIM102", "UP004", "UP031"]
-"src/pdsfile/pdsfile.py" = ["A002", "B904", "C405", "E501", "E701", "E713", "E721", "F841", "I001", "N806", "RUF005", "RUF012", "SIM102", "SIM114", "SIM118", "UP004", "UP015", "UP024", "UP031"]
+"src/pdsfile/pdsfile.py" = ["B904", "C405", "E501", "E701", "E713", "E721", "F841", "I001", "N806", "RUF005", "RUF012", "SIM102", "SIM114", "SIM118", "UP004", "UP015", "UP024", "UP031"]
 "src/pdsfile/pdsviewable.py" = ["B006", "B007", "B020", "C405", "E701", "E721", "F401", "I001", "RUF015", "RUF059", "UP004", "UP024"]
 "src/pdsfile/tools/show_opus_products.py" = ["I001"]
 "tests/conftest.py" = ["F401", "I001", "N806"]
