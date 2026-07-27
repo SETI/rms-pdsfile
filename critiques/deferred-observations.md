@@ -882,3 +882,27 @@ files PR-18 does not touch, and the third is a note that PR-23 must carry.
     text alone would look for it in the wrong place and could conclude the
     suppression had been dropped. The same will be true of any other freeze-locked
     code the remaining Phase-5 PRs relocate. **Owner: PR-23.**
+
+### Added by the PR-18 adversarial review (round 1)
+
+46. **The one piece of code PR-18 changes has no holdings-free coverage at all.**
+    The hosted lint/no-holdings job runs 80 of the 880 ids and none of them
+    reaches `_log_path_for`; the whole regression net for the deduplication is
+    `tests/pds3file/test_pds3file_blackbox.py`'s 41 log-path ids, which need
+    `PDS3_HOLDINGS_DIR`. So a machine without holdings — which is every stock
+    GitHub runner, and every contributor the plan's risk table is about — cannot
+    catch a regression in this code, and the gate that runs there would stay green
+    through one.
+
+    This is a property of the tests rather than of PR-18: `log_path_for_*` is pure
+    string assembly over `self.disk_`, `self.category_`, `self.bundleset_`,
+    `self.bundlename`, `self.logical_path` and `cls.LOG_ROOT_`, so it is one of
+    the easiest things in the package to test without a holdings tree — an
+    instance built by hand with those six attributes set exercises every branch,
+    including both `place` values and the `is_index` guard. PR-18 may not add it:
+    its gate is an identical pass/fail set, and a new test id is movement.
+
+    **Owner: Phase 6**, alongside entry 43, which concerns the same surface from
+    the other direction — the tool tests run this code but assert nothing about
+    its output. A single holdings-free test module for the log-path builders would
+    close both.

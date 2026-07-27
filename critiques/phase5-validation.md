@@ -1358,11 +1358,14 @@ passed / 34 skipped (880 ids) and `--mode s` 555 passed / 3 skipped (558 ids) �
 than copied from the table. The re-measurement reproduced it exactly.
 **Date:** 2026-07-27
 **Sub-plan:** [`plans/2026-07-27-pr-18-subplan.md`](../plans/2026-07-27-pr-18-subplan.md)
-**Last change under `src/pdsfile/`:** commit `316d9c7` (the deduplication), at
-**14:28:55**. The **head** runs recorded below postdate it, per §6.6 step 5:
-their `--junitxml` timestamps are **14:29:04 and 14:31:56**. The **baseline**
-runs (14:19:27 and 14:22:21) were taken in a detached `git worktree` at `ca7a43d`
-that nothing has touched since.
+**Last change under `src/pdsfile/`:** commit `10fa308` (the round-1 fix that
+makes the log-path helper's target parts lazy), at **15:15:48**. The **head** runs
+recorded below postdate it, per §6.6 step 5: their `--junitxml` timestamps are
+**15:15:58 and 15:18:50**. They are the regeneration that step 5 requires, because
+round 1's fixes touched `src/pdsfile/`; the pre-fix pair (14:29:04 / 14:31:56)
+produced the same two empty diffs and is superseded. The **baseline** runs
+(14:19:27 and 14:22:21) stand: they were taken in a detached `git worktree` at
+`ca7a43d` that nothing has touched since.
 
 This PR is the first Phase-5 extraction whose set diff is **empty in both
 modes** — it adds no test file and no test id, so unlike PR-15, PR-16 and PR-17
@@ -1450,6 +1453,18 @@ submodule import binds it onto the `pdsfile` package; the same applies to
 `_DerivedPathsMixin` inside `pdsfile.pdsfile` and to the new `_log_path_for`
 helper on the mixin. That is the freeze-invisibility the Phase-5 preamble
 requires of new internal names.
+
+**One thing the manifest does not record, and that does change: member
+`__qualname__`.** `PdsFile.archive_logpath.__qualname__` is now
+`_DerivedPathsMixin.archive_logpath`, so a wrong-arity call reports
+`_DerivedPathsMixin.archive_logpath() missing 1 required positional argument`
+where it used to name `PdsFile`. This is a **phase-wide** consequence of the
+mandated mixin technique rather than anything PR-18 chose — it is already true of
+`_ShelfMixin` and `_LocalFsMixin` on the parent branch — and the dumper records
+`kind` and `signature`, never a qualname, which is why the dump is byte-identical
+regardless. Measured: nothing in `src/`, `tests/`, `scripts/`, rms-opus or
+rms-viewmaster matches on that text, so no caller, test or golden depends on it.
+Raised by round 1 as Minor 2.
 
 The three public signatures the deduplication passes through are frozen and
 unchanged, which the byte-identical dump also asserts:
@@ -1563,7 +1578,7 @@ is reproduced by a parameter rather than collapsed:
 | 1 | the default `dir` is `''`, `''` and `'index'` | the public signatures are frozen and untouched; each default is applied before the delegation |
 | 2 | `log_path_for_index` has **no `suffix` parameter** and no suffix step | it passes `suffix=''`, and `if suffix:` is then false — the same instructions execute |
 | 3 | `log_path_for_index` first raises `ValueError('Not an index file: …')` when `not self.is_index` | the check **stays in the public method, ahead of the delegation**, so it still precedes the `place` validation |
-| 4 | the parts naming the target: `[category_, bundleset_, bundlename]` / `[category_, bundleset, suffix]` / `[logical_path.rpartition('.')[0]]` | the helper's first argument |
+| 4 | the parts naming the target: `[category_, bundleset_, bundlename]` / `[category_, bundleset, suffix]` / `[logical_path.rpartition('.')[0]]` | a **callable**, the helper's first argument, invoked at the point the parts are appended |
 | 5 | everything else — the `place` branch, the log-root branch, the `dir` branch, the time tag, the task tag, `'.log'`, the `''.join` | identical in all three today, and is the helper's body, character for character |
 
 Divergence 3 is the subtle one, because it is an **ordering** fact rather than a
@@ -1580,28 +1595,46 @@ is underscore-prefixed, so it is freeze-invisible, and it introduces no state.
 Its `subdir` parameter is the public `dir` under a name that does not shadow the
 builtin, so the helper contributes no `A002` of its own.
 
-**Evaluation order, checked rather than assumed.** Building the target parts in
-the caller reads those attributes *before* the `place` validation instead of
-after. All six names are pure instance attributes: a walk over the **34 classes**
-in the `PdsFile` hierarchy found **no class-level definition of `category_`,
-`bundleset_`, `bundlename`, `bundleset`, `suffix` or `logical_path` in any MRO**,
-so no read can raise or have a side effect, and `str.rpartition` is pure. The
-same walk finds exactly one descriptor among the names these methods touch —
-`is_index`, a property that can call `self._recache()` — and that is divergence 3,
-deliberately left where it was.
+**Evaluation order, preserved exactly — and this is why divergence 4 is a
+callable.** Passing the target parts as an already-built list would read
+`category_`, `bundleset_`, `bundlename`, `bundleset`, `suffix` and `logical_path`
+in the *caller*, i.e. **before** the `place` option is validated rather than
+after. That is unobservable on any object the package's constructors can build —
+`PdsFile.__init__` assigns all six and `copy()` carries the whole `__dict__` — and
+a walk over the **34 classes** in the `PdsFile` hierarchy finds **no class-level
+definition of any of the six in any MRO**, so no read has a side effect. But "no
+side effect" is not "cannot raise": on a `PdsFile.__new__` instance, which has
+none of them, the reordered code answers `AttributeError` where today's answers
+`ValueError('unrecognized place option: …')`, and §2 says a PR that changes
+observable behavior is wrong without a reachability qualifier. So the parameter is
+a **zero-argument callable the helper invokes where the original built the list**,
+which puts every read back in its place at the cost of three `lambda:` prefixes
+and no duplicated code. This was raised by round 1 as Minor 1, with a prose
+correction as its suggested fix; the code fix is strictly stronger and is what
+shipped (`10fa308`).
 
-**Behavior identity, measured rather than asserted.** A 600-case probe calls the
-three methods and `archive_logpath` over every combination of both `place`
-values, three `place` spellings including an invalid one, four `dir` shapes
-(empty, plain, trailing-slash, and `'index'`), three `suffix` shapes (empty,
-plain, and one with a leading underscore, which exercises the `lstrip('_')`),
-two `task` shapes and three log roots (`None`, `'/florida'`, `'/florida/'`),
-plus the default-argument spellings, the keyword spellings, both `Pds3File` alias
-methods, `archive_logpath` with and without a task, and the two error paths —
-including `log_path_for_index` on a **non-index** file with an invalid `place`,
-which is what pins divergence 3. Each answer is recorded with the embedded time
-tag normalized. **The dump is byte-identical before and after `316d9c7`:** 600
-lines, `diff` empty, 240 of them `ValueError` lines carrying the same messages on
+The same walk finds exactly one descriptor among the names these methods touch —
+`is_index`, a property that can call `self._recache()` — and that is divergence 3,
+deliberately left in the public method.
+
+**Behavior identity, measured rather than asserted — and measured across trees,
+not across commits.** A **666-case** probe is run twice, once against a
+`PYTHONPATH` pointing at the parent worktree and once against this tree, so what
+is compared is the parent branch's behavior and this branch's, not two states of
+one file. It calls the three log-path methods, `archive_logpath` and the six
+checksum and archive builders over: three `place` spellings including an invalid
+one; four `dir` shapes (empty, plain, trailing-slash, and `'index'`); three
+`suffix` shapes (empty, plain, and one with a leading underscore, which exercises
+the `lstrip('_')`); two `task` shapes; three log roots (`None`, `'/florida'`,
+`'/florida/'`); the default-argument and keyword spellings; both `Pds3File` alias
+methods; `archive_logpath` with and without a task; and the error paths —
+`log_path_for_index` on a **non-index** file with an invalid `place`, which pins
+divergence 3, and **48 cases against a `PdsFile.__new__` instance that has none of
+the six target attributes**, which pin the evaluation-order question above. Each
+answer is recorded with the embedded time tag normalized.
+
+**The two dumps are byte-identical:** 666 lines each, `diff` empty, 40 of them
+`AttributeError` lines and 240 `ValueError` lines carrying the same messages on
 both sides.
 
 **`archive_logpath` is a free correctness check** on the result, because it calls
@@ -1937,8 +1970,12 @@ untouched: this PR adds a mixin module and §5 shows it is clean by the same
 parsing check, but it builds no guard. No entry in 1–42 is resolved or
 invalidated here.
 
-Entries added by this PR are listed in `critiques/deferred-observations.md` under
-its own heading.
+Four entries are **added**: 43 (the tool tests run the log-path builders but
+assert nothing about their output, and in-process coverage cannot see them at all
+— owner Phase 6), 44 (the golden tests' `20..` year prefix — owner PR-24), 45
+(`A002`'s freeze-locked home moves to `_derived_paths.py`, which PR-23's
+enumerated list must follow) and 46, from the round-1 review (the deduplicated
+code has no holdings-free coverage — owner Phase 6, alongside 43).
 
 ### 16. Review loop
 
