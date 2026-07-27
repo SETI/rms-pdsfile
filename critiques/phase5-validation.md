@@ -1006,30 +1006,44 @@ worktree and the module re-run:
 | no mixin bases at all | `test_the_mixins_are_found_and_come_from_private_modules` |
 | a mixin claims a public `__module__` | `test_the_mixins_are_found_and_come_from_private_modules` |
 | the class statement moved out of `pdsfile.pdsfile` | `test_the_class_statement_stays_in_pdsfile_pdsfile` |
-| any of four module-level back-import spellings (below) | `test_no_mixin_module_imports_pdsfile_at_module_level` |
+| any of seven silent module-level back-import spellings (below) | `test_no_mixin_module_imports_pdsfile_at_module_level` |
 
 Every check in the module is killed by at least one mutation.
 
 The last row is the one worth explaining, and it is why that check exists rather
 than being left to the import machinery. The preamble pins "no module-level
-`from pdsfile.pdsfile import PdsFile` in a mixin module". Six spellings reach the
-core module; each was injected into each mixin module in turn and the result
+`from pdsfile.pdsfile import PdsFile` in a mixin module". Nine spellings reach
+the core module; each was injected into each mixin module in turn and the result
 measured:
 
 | injected at a mixin module's top level | what happens |
 |---|---|
 | `from pdsfile.pdsfile import PdsFile` | `ImportError: cannot import name 'PdsFile' from partially initialized module` — the whole suite fails to collect |
 | `from .pdsfile import PdsFile` | the same `ImportError` |
+| `from pdsfile.pdsfile import repair_case` | **raises nothing** → caught by the check |
+| `from .pdsfile import repair_case` | **raises nothing** → caught by the check |
+| `from pdsfile.pdsfile import logical_path_from_abspath` | **raises nothing** → caught by the check |
 | `import pdsfile.pdsfile` | **raises nothing** → caught by the check |
 | `import pdsfile.pdsfile as _core` | **raises nothing** → caught by the check |
 | `from . import pdsfile as _core` | **raises nothing** → caught by the check |
 | `from pdsfile import pdsfile as _core` | **raises nothing** → caught by the check |
 
-Only the two that bind a *name out of* the partially-initialized module raise;
-the four that bind the module *object* are silent, and those are the ones the
-check exists for. It resolves relative levels against the importing module's own
-package, which is what makes rows 5 and 6 — the spelling this package uses
-everywhere — visible to it.
+**What decides whether a spelling raises is not its shape but whether the name it
+asks for is already bound.** `pdsfile.py` imports the first mixin at its line 60,
+by which point **33** of its module-level names exist, so
+`from pdsfile.pdsfile import repair_case` succeeds and establishes exactly the
+cycle the preamble forbids, silently. `PdsFile` itself is of course not yet bound,
+which is the only reason rows 1 and 2 raise — and rows 1 and 2 are the spelling
+the preamble happens to quote. Every spelling that binds the module *object* is
+silent regardless.
+
+The check therefore covers all nine, resolving each statement to the absolute
+module names it reaches: a relative level against the importing module's own
+package, an absolute one left alone. Evaluated directly on the helper — which is
+how rows 1 and 2 can be checked at all, since they never reach it in a live run —
+all nine are flagged and six legitimate imports (`os`, `pickle`, `bisect`,
+`from ._path_utils import _clean_glob, _needs_glob`, `from pdsfile import
+pdscache`, `from . import pdscache`) are not.
 
 ### 7. Ruff ratchet — four codes dropped, none gained
 
