@@ -19,7 +19,10 @@ from tests.support.holdings import resolve_holdings, SKIP_REASON
 # Setup before all tests
 ##########################################################################################
 def pytest_addoption(parser):
-    parser.addoption("--mode", action="store")
+    # 'ns' is the default because it is the broader pass: every test directory runs
+    # under it, while 's' covers pds3 only. choices makes a mistyped mode a loud
+    # usage error rather than a silently different session.
+    parser.addoption("--mode", action="store", choices=('s', 'ns'), default='ns')
     parser.addoption("--update", action="store_true")
 
 def pytest_configure(config):
@@ -63,16 +66,13 @@ def setup(request):
         # Every test is skipped; there is nothing to preload.
         return
 
-    mode = request.config.option.mode
-    if mode == 's':
-        Pds3File.use_shelves_only(True)
-        Pds4File.use_shelves_only(True)
-    elif mode == 'ns':
-        Pds3File.use_shelves_only(False)
-        Pds4File.use_shelves_only(False)
-    else: # pragma: no cover
-        Pds3File.use_shelves_only(True)
-        Pds4File.use_shelves_only(False)
+    # --mode is restricted to 's'/'ns' and defaults to 'ns', so the two modes are
+    # exhaustive: 's' is shelves-only for both classes, 'ns' is neither. The two
+    # classes are always set together; a session where they disagree is not a mode
+    # the suite exercises.
+    shelves_only = request.config.option.mode == 's'
+    Pds3File.use_shelves_only(shelves_only)
+    Pds4File.use_shelves_only(shelves_only)
 
     # turn_on_logger("test_log.txt")
     Pds3File.preload(holdings.pds3_root)

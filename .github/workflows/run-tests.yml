@@ -16,6 +16,54 @@ defaults:
     shell: bash
 
 jobs:
+  lint:
+    # Stock GitHub-hosted runners have no holdings tree, so this job is the
+    # everywhere-runnable half of the suite. It runs scripts/run-all-checks.sh
+    # rather than naming individual gates: that script is the single source of
+    # truth for which gates the repository runs (see environment.mdc), so the two
+    # cannot drift. With no holdings env vars set, its pytest gate collects the
+    # whole tree, runs the holdings-free tests and skips the rest. Python floor
+    # and ceiling only; the self-hosted matrix below covers every version with
+    # data.
+    name: Lint and holdings-free tests
+    runs-on: ubuntu-latest
+    # This job runs code from the pull-request head on a hosted runner, so it
+    # gets no more than it needs to read the tree.
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.13"]
+      fail-fast: true
+    steps:
+      - name: Checkout rms-pdsfile
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          # Nothing here pushes; leaving the token in .git/config would only
+          # expose it to the PR-authored code this job runs.
+          persist-credentials: false
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Run all checks
+        # run-all-checks.sh looks for the venv at ./venv and activates it itself.
+        # Sequential mode streams each gate's output straight to the job log.
+        run: |
+          rm -rf venv
+          python -m venv venv
+          source venv/bin/activate
+          python -m pip install --upgrade pip
+          python -m pip install wheel
+          python -m pip install -e ".[dev]"
+          echo
+          python -m pip freeze
+          echo
+          scripts/run-all-checks.sh --sequential
+
   test:
     name: Test pdsfile
     runs-on: ${{ matrix.os }}
