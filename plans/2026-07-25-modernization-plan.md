@@ -443,13 +443,25 @@ Every PR in this phase: API-freeze green, ruff/clean-install green, plus a
 per-test pass/fail set is diffed against the recorded baseline and recorded in
 `critiques/phase5-validation.md`** ("green" = identical set, §6.2). Technique:
 method groups move to **mixin classes** in new private modules
-(`class PdsFile(_ShelfMixin, _OpusMixin, …)`), module-level functions move to
+(`class PdsFile(_OpusMixin, _ShelfMixin, …)`), module-level functions move to
 private modules; `pdsfile/pdsfile.py` keeps re-exporting every name it
 exports today so `pdsfile.pdsfile.X` access is unchanged. Fixed mechanics for
 every extraction PR:
 - The `class PdsFile` statement itself **stays in `pdsfile/pdsfile.py`**
   (pickled instances and `PdsFile.__module__` keep their path; memcached
   pickles depend on it).
+- **Base order is alphabetical by mixin class name** (owner, 2026-07-27;
+  established by PR-17, which created the first two mixins and had to pick an
+  order to write the statement at all). The mixins are disjoint — the
+  collision test asserts they share no names and shadow nothing `PdsFile`
+  defines — so MRO order is behaviorally inert and the rule is chosen for
+  reviewability: every future mixin has exactly one legal position, derivable
+  without knowing which PR added what, and it is machine-checkable.
+  `tests/api/test_mixin_collisions.py` asserts it, so a base list in any other
+  order fails the gate. The illustration above is in that order. Trailing
+  `object` is **not** a mixin and is not required in Python 3; it predates
+  this effort and is left alone until PR-23's ruff cleanup, which already
+  carries `UP004` for that line.
 - Mixins define **no `__init__` and no new state** — methods/properties
   only, referencing existing instance/class attributes; class attributes
   (e.g. `SHELF_CACHE`) stay defined on `PdsFile`.
