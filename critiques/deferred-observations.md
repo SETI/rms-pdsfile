@@ -691,3 +691,37 @@ owner's to make.
     convention is what produces the wasted round; the choice is behaviorally inert
     either way — the mixins are disjoint and no name is shadowed, both asserted by
     the same test file. **Owner:** owner, before PR-18 appends the next mixin.
+
+### Added by the PR-17 adversarial review (round 2)
+
+Three entries, all pre-existing conditions of code PR-17 moved byte-for-byte.
+A pure move has no licence to change any of them.
+
+36. **`os_path_exists`'s `lru_cache` survives a `SHELVES_ONLY` toggle.** The
+    decorator on `_local_fs.py`'s `os_path_exists` keys the cache on
+    `(cls, abspath, force_case_sensitive)` only, while `PdsFile.use_shelves_only`
+    mutates `SHELVES_ONLY` on the subclasses. An entry computed in one mode is
+    returned in the other, and nothing clears the cache on the toggle. The
+    suite's two passes each set the mode once at session start, so it does not
+    bite there; a long-running consumer that toggles would see it. Pre-existing
+    and bit-identical across the move — the decorator line is one of the
+    byte-for-byte segments. **Owner:** phase "b" of issue #77, or whichever PR
+    next changes cache behavior.
+
+37. **`_get_shelf` discards the exception it is reporting.** `_shelves.py`'s
+    `_get_shelf` binds `except Exception as e` and raises
+    `IOError('Unable to open pickle file: %s' % shelf_path)` without `from e`, so
+    the underlying `UnpicklingError`/`EOFError` is lost and `e` is unused. This
+    is the F841 and one of the B904s that `_shelves.py`'s ratchet entry now
+    carries, inherited from `pdsfile.py`'s. **Owner:** PR-23, which owns the core
+    modules' ruff cleanup.
+
+38. **The two shelf-tree fallbacks are written asymmetrically.** In
+    `_local_fs.py`, `os_path_exists`'s "maybe it's in the infoshelf tree" block
+    probes with `cls.os_path_exists(...)` — the cached, shelf-aware method —
+    while the parallel block in `os_path_isdir` probes with bare
+    `os.path.exists(...)`. Both paths are reached only under `SHELVES_ONLY`. The
+    difference is at least a missed cache and possibly a behavior difference on a
+    path the shelves know about but the file system does not; deciding which is
+    correct requires a behavior change, which a move PR may not make. Recorded as
+    an observation, not a diagnosis. **Owner:** phase "b" of issue #77.

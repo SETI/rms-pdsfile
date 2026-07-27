@@ -752,9 +752,9 @@ passed / 34 skipped (859 ids) and `--mode s` 555 passed / 3 skipped (558 ids) �
 than copied from the table. The re-measurement reproduced it exactly.
 **Date:** 2026-07-27
 **Sub-plan:** [`plans/2026-07-27-pr-17-subplan.md`](../plans/2026-07-27-pr-17-subplan.md)
-**Last change under `src/pdsfile/`:** commit `114a5c1` (the round-1 docstring
-fixes), at 03:25:04. The **head** runs recorded below were regenerated after it,
-per §6.6 step 5: their `--junitxml` timestamps are 03:25:15 and 03:28:04. The
+**Last change under `src/pdsfile/`:** commit `5320d83` (the round-2 docstring
+clause), at 04:02:58. The **head** runs recorded below were regenerated after it,
+per §6.6 step 5: their `--junitxml` timestamps are 04:03:09 and 04:06:00. The
 **baseline** runs (02:49:30 and 02:52:19) stand: they were taken in a detached
 worktree at `2ff83a4` that no round has touched, so re-running them would measure
 the same unchanged tree.
@@ -794,13 +794,13 @@ measured there too.
 | Gate | Result |
 |---|---|
 | API-freeze manifest test | **passed** (14 tests); and the dumped surface is byte-identical to the parent's — §4 |
-| Full-data suite, both modes | **passed** — the only set movement is the 14 ids the new test file adds; §3 |
+| Full-data suite, both modes | **passed** — the only set movement is the 22 ids the two new test files add; §3 |
 | `ruff check src/pdsfile tests scripts` | **passed**; the ratchet gained no code and lost four — §7 |
 | Clean-install import check | **passed** (throwaway venv, `pip install .`, full module surface imports) |
-| Hosted lint/no-holdings job (`scripts/run-all-checks.sh`, no holdings env vars) | **passed**, 73 passed / 800 skipped — the parent's 59/800 plus the same 14 new ids, re-measured on the parent worktree rather than quoted |
+| Hosted lint/no-holdings job (`scripts/run-all-checks.sh`, no holdings env vars) | **passed**, 81 passed / 800 skipped — the parent's 59/800 plus the same 22 new ids, re-measured on the parent worktree rather than quoted |
 | Adversarial review loop | `critiques/pr-17/round-<k>.md` |
 
-### 3. Full-data suite — the only movement is the new test file
+### 3. Full-data suite — the only movement is the two new test files
 
 Both passes were run on the parent tip and on this branch's head with the same
 interpreter and the same holdings. Every `testcase` element of each `--junitxml`
@@ -809,15 +809,17 @@ were diffed with `diff -u`.
 
 | Run | parent `2ff83a4` | `pr-17-shelves-local-fs` | set diff |
 |---|---|---|---|
-| `--mode ns` | 825 passed / 34 skipped (859 ids) | 839 passed / 34 skipped (873 ids) | **14 additions, nothing else** |
+| `--mode ns` | 825 passed / 34 skipped (859 ids) | 847 passed / 34 skipped (881 ids) | **22 additions, nothing else** |
 | `--mode s` | 555 passed / 3 skipped (558 ids) | 555 passed / 3 skipped (558 ids) | **empty** |
 
 The parent numbers reproduce PR-16's recorded set, which is what makes this a
 comparison against PR-16's baseline rather than against a fresh unrelated
 measurement.
 
-The 14 additions are the whole of `tests/api/test_mixin_collisions.py`, every one
-an `added, passed` line and none of them a change to an existing id:
+The 22 additions are the whole of the two test files this PR adds — 14 from
+`tests/api/test_mixin_collisions.py` and 8 from
+`tests/core/test_shelf_sidecar_record.py` — every one an `added, passed` line and
+none of them a change to an existing id:
 
 ```
 +passed  tests.api.test_mixin_collisions::test_a_mixin_defines_no_construction_or_attribute_hook[__getattr__]
@@ -834,14 +836,22 @@ an `added, passed` line and none of them a change to an existing id:
 +passed  tests.api.test_mixin_collisions::test_the_class_statement_stays_in_pdsfile_pdsfile
 +passed  tests.api.test_mixin_collisions::test_the_mixin_bases_are_listed_alphabetically
 +passed  tests.api.test_mixin_collisions::test_the_mixins_are_found_and_come_from_private_modules
++passed  tests.core.test_shelf_sidecar_record.TestAMalformedRecord::test_an_unknown_name_is_a_name_error
++passed  tests.core.test_shelf_sidecar_record.TestAMalformedRecord::test_an_unparseable_line_raises_syntax_error[an unclosed tuple-"": ( 1,   2,\n]
++passed  tests.core.test_shelf_sidecar_record.TestAMalformedRecord::test_an_unparseable_line_raises_syntax_error[no colon at all-nothing to partition here\n]
++passed  tests.core.test_shelf_sidecar_record.TestAMalformedRecord::test_an_unparseable_line_raises_syntax_error[nothing after the colon-"":\n]
++passed  tests.core.test_shelf_sidecar_record.TestAMalformedRecord::test_the_last_character_is_dropped_whether_or_not_it_is_the_comma
++passed  tests.core.test_shelf_sidecar_record.TestAWellFormedRecord::test_a_line_read_back_off_a_written_sidecar_parses
++passed  tests.core.test_shelf_sidecar_record.TestAWellFormedRecord::test_the_five_values_come_back_as_python_objects
++passed  tests.core.test_shelf_sidecar_record.TestAWellFormedRecord::test_the_split_is_the_first_colon_and_not_one_of_the_timestamps
 ```
 
 Nothing was removed and no existing id changed outcome, in either mode. They
-appear in `--mode ns` only because `tests/api/` is in that pass alone (the
-`--mode s` pass runs `tests/pds3file/` and `tests/rules/pds3/`).
+appear in `--mode ns` only because `tests/api/` and `tests/core/` are in that pass
+alone (the `--mode s` pass runs `tests/pds3file/` and `tests/rules/pds3/`).
 
-The 14 tests are holdings-free, which is why the no-holdings count in §2 rises by
-the same 14.
+All 22 are holdings-free, which is why the no-holdings count in §2 rises by the
+same 22.
 
 ### 4. API freeze — empty diff, as a mixin move requires
 
@@ -995,20 +1005,30 @@ worktree and the module re-run:
 | no mixin bases at all | `test_the_mixins_are_found_and_come_from_private_modules` |
 | a mixin claims a public `__module__` | `test_the_mixins_are_found_and_come_from_private_modules` |
 | the class statement moved out of `pdsfile.pdsfile` | `test_the_class_statement_stays_in_pdsfile_pdsfile` |
-| `import pdsfile.pdsfile` at a mixin module's top level | `test_no_mixin_module_imports_pdsfile_at_module_level` |
+| any of four module-level back-import spellings (below) | `test_no_mixin_module_imports_pdsfile_at_module_level` |
 
 Every check in the module is killed by at least one mutation.
 
 The last row is the one worth explaining, and it is why that check exists rather
 than being left to the import machinery. The preamble pins "no module-level
-`from pdsfile.pdsfile import PdsFile` in a mixin module". That *form* cannot
-survive: injecting it into `_shelves.py` makes the whole suite fail to collect
-with `ImportError: cannot import name 'PdsFile' from partially initialized
-module`. But the sibling form, a plain `import pdsfile.pdsfile`, binds a
-partially-initialized module object and raises nothing — measured: with it
-injected, the suite still collects and only the new check goes red. So the import
-machinery guards half the rule and this check guards the other half, for every
-mixin PR-18 onward adds.
+`from pdsfile.pdsfile import PdsFile` in a mixin module". Six spellings reach the
+core module; each was injected into each mixin module in turn and the result
+measured:
+
+| injected at a mixin module's top level | what happens |
+|---|---|
+| `from pdsfile.pdsfile import PdsFile` | `ImportError: cannot import name 'PdsFile' from partially initialized module` — the whole suite fails to collect |
+| `from .pdsfile import PdsFile` | the same `ImportError` |
+| `import pdsfile.pdsfile` | **raises nothing** → caught by the check |
+| `import pdsfile.pdsfile as _core` | **raises nothing** → caught by the check |
+| `from . import pdsfile as _core` | **raises nothing** → caught by the check |
+| `from pdsfile import pdsfile as _core` | **raises nothing** → caught by the check |
+
+Only the two that bind a *name out of* the partially-initialized module raise;
+the four that bind the module *object* are silent, and those are the ones the
+check exists for. It resolves relative levels against the importing module's own
+package, which is what makes rows 5 and 6 — the spelling this package uses
+everywhere — visible to it.
 
 ### 7. Ruff ratchet — four codes dropped, none gained
 
@@ -1094,6 +1114,15 @@ It also states plainly that the sidecar is executable input and the trust
 boundary is the holdings tree, whose sidecars this package's own maintenance
 tools write. No validation was added.
 
+**Exercised by tests, not only by a one-off run.** `tests/core/test_shelf_sidecar_record.py`
+builds its own two-line sidecar in `tmp_path` and pins the contract the docstring
+states: the five values and their types, that the split is the *first* colon and
+not one of the timestamp's, that a line read back off a written file parses, and
+what each malformed shape does today — `SyntaxError` for a line with no colon, an
+unclosed tuple or nothing after the colon; `NameError` for a bare name; and the
+silent one, that the final character is dropped by position rather than by
+matching the comma, so `"": 123` yields `12`. Eight ids, holdings-free.
+
 **The one consequence worth measuring: the `eval` now runs in
 `pdsfile._shelves`'s module namespace rather than `pdsfile.pdsfile`'s** (and its
 locals shrink from `shelf_lookup`'s frame to just `rec` and `parts`). That is
@@ -1175,6 +1204,16 @@ at all:
 | `Pds3File`/`Pds4File.CACHE`, `.LOCAL_PRELOADED`, `.LOCAL_HOLDINGS_DIRS` | 8 | no — class attributes that stay on the classes |
 | `pdsviewable.ICON_SET_BY_TYPE` | 1 | no — different module |
 | `monkeypatch.setenv` / `delenv` | 6 | no — environment, not a namespace |
+
+One further site is not a `monkeypatch` at all and is easy to miss for that
+reason: `tests/pds4file/test_pds4file_blackbox.py:448` assigns
+`dummy.glob_glob = lambda …` directly. A regex over `tests/`, `scripts/` and
+`src/` for direct assignment to any of the fourteen moved names or
+`PATH_EXISTS_CACHE_SIZE` returns exactly that one. It is unaffected: the target is
+an **instance** attribute on a `Pds4File.__new__`-built dummy, and an instance
+attribute wins over the MRO both before and after the move. The test's assertion
+compares against `fake_glob_results`, so it would go red if the stub were
+bypassed.
 
 The four affected sites patch the **class** (`Pds3File`), not a module namespace,
 and the caller — the `infoshelf_path_and_key` property — invokes
