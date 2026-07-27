@@ -548,18 +548,19 @@ def _priority_of_icon_type(icon_type):
     """Return the priority recorded for an icon type by load_icons().
 
     load_icons() copies the priority out of REQUIRED_ICONS into every PdsViewSet
-    it creates, so the loaded icon sets are the authority on priority. An icon
-    type for which no icon was ever loaded has no priority and gets zero, the
-    same value as the least descriptive icon.
+    it creates, so the loaded icon sets are the authority on priority. All three
+    keys it writes are consulted, because the bare key is registered only for a
+    closed icon: an icon type whose only file ends in "_open" is reachable under
+    (icon_type, True) alone. An icon type for which no icon was ever loaded has
+    no priority and gets zero, the same value as the least descriptive icon.
     """
 
-    viewset = ICON_SET_BY_TYPE.get(icon_type)
-    if viewset is None:
-        viewset = ICON_SET_BY_TYPE.get((icon_type, False))
-    if viewset is None:
-        return 0
+    for key in (icon_type, (icon_type, False), (icon_type, True)):
+        viewset = ICON_SET_BY_TYPE.get(key)
+        if viewset is not None:
+            return viewset.priority
 
-    return viewset.priority
+    return 0
 
 def iconset_for(pdsfiles, is_open=False):
     """Select the icon set for a list of PdsFiles. Use the icon_type highest in
