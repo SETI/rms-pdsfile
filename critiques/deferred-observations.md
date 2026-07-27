@@ -348,9 +348,9 @@ Two further observations, not defects in a single tool:
     blanket skip with a throwaway `tryfirst` plugin that marks every collected
     item `holdings_free`, with all four holdings env vars unset:
     **315 passed / 387 failed / 122 skipped** — i.e. 291 beyond the 24 the
-    hosted job ran at the time of the measurement. (PR-15 raised that 24 to 58
-    by adding 34 genuinely holdings-free tests in `tests/core/`; a re-run of the
-    forced-marker experiment would collect those same 34 among its passes, so
+    hosted job ran at the time of the measurement. (PR-15 raised that 24 to 59
+    by adding 35 genuinely holdings-free tests in `tests/core/`; a re-run of the
+    forced-marker experiment would collect those same 35 among its passes, so
     **the surplus stays 291** and the observation is unchanged.) Grouped by test
     *function*: 124 functions have every parametrized case passing, 41 are
     **mixed** (some cases pass, some fail) and 126 fail outright. The four
@@ -416,7 +416,7 @@ Two further observations, not defects in a single tool:
     non-zero. But a regression that skipped *everything* — say the
     `tests/api/conftest.py` path predicate quietly stopping matching — exits 0 and
     the job stays green, because "0 passed, N skipped" is a passing pytest run
-    (N was 824 when this was written and is 858 after PR-15).
+    (N was 824 when this was written and is 859 after PR-15).
     PR-14 hardened the one known way that could happen (both sides of the path
     comparison are resolved), and each PR's §6.2 record pins the expected
     no-holdings counts, so a drop is visible in review — but nothing fails
@@ -475,8 +475,8 @@ each is recorded rather than fixed.
     enumerated list. Found because a test fixture built its throwaway cache with
     `lifetime=0`. **Owner:** a future pdscache PR, or phase "b".
 
-24. **`DictionaryCache.set_multi`'s `pause` parameter does not suppress the
-    per-key trim.** The broken call PR-15 repaired passed `pause=True` down to
+24. **`DictionaryCache.set_multi`'s `pause` parameter has never suppressed the
+    per-key trim, and still does not.** The broken call PR-15 repaired passed `pause=True` down to
     `set()`, plainly intending to defer trimming until the batch finished. `set()`
     has no such parameter and never did, so the intent was never expressible;
     PR-15 dropped the keyword, which is the literal fix for "passes an

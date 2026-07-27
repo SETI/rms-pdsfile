@@ -13,6 +13,8 @@
 # reads either real holdings root.
 ##########################################################################################
 
+from types import SimpleNamespace
+
 import pytest
 
 from pdsfile import Pds3File, Pds4File
@@ -83,9 +85,11 @@ class TestHoldingsEnvironmentVariable:
         monkeypatch.delenv('PDS4_HOLDINGS_DIR', raising=False)
         monkeypatch.setattr(Pds4File, 'LOCAL_PRELOADED', [])
         monkeypatch.setattr(Pds4File, 'LOCAL_HOLDINGS_DIRS', None)
-        # The last-resort branch globs a MacOS website install; stub it so the
-        # test does not depend on what the host happens to have.
-        monkeypatch.setattr(pdsfile_module.glob, 'glob', lambda pattern: [])
+        # The last-resort branch globs a MacOS website install. Replace the glob
+        # module the code resolves through rather than an attribute of the
+        # standard library's own module, so the stub reaches nothing else.
+        monkeypatch.setattr(pdsfile_module, 'glob',
+                            SimpleNamespace(glob=lambda pattern: []))
 
         with pytest.raises(ValueError, match='No holdings directory'):
             abspath_for_logical_path('bundles/cassini_iss', Pds4File)

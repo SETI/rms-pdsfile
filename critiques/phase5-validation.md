@@ -157,15 +157,16 @@ it stood at `a6496f8`, before the review loop — it was exact: predicted 823/34
 and 555/3 with zero movers, measured 823/34 and 555/3 with zero movers;
 predicted 57/800 with no holdings, measured 57/800.
 
-The final numbers in §3b and §4 are one higher (824/34, 858 ids; 58/800) for a
-reason that has nothing to do with the prediction: **round 1 of the adversarial
-review added one test** for the `_priority_of_icon_type` fix it prompted, and
-round 2 renamed and broadened that same test (see `critiques/pr-15/round-1.md`
-and `round-2.md`). Diffing each regenerated ns set against the previous one
-shows exactly that one id appearing, then being renamed, and nothing else. The
+The final numbers in §3b and §4 are two higher (825/34, 859 ids; 59/800) for a
+reason that has nothing to do with the prediction: **the review loop added two
+tests.** Round 1 added one for the `_priority_of_icon_type` fix it prompted and
+round 2 renamed and broadened it; round 3 added
+`test_a_class_does_not_borrow_another_class_holdings_root`, which pins bug 3's
+own behavior change. Diffing each regenerated ns set against the previous one
+shows exactly those ids appearing, one being renamed, and nothing else. The
 claim the prediction actually makes — **no pre-existing test moves** — was
-re-measured after each round's source fix and still holds with an empty diff in
-both modes (§3a).
+re-measured after each round and still holds with an empty diff in both modes
+(§3a).
 
 Nothing moved that was not predicted, so there is nothing to escalate under the
 "any unpredicted mover is a hard stop" rule.
@@ -408,14 +409,15 @@ the observations themselves stand.
 | 1 | goal met | 0 Major, 3 Minor (all accepted and fixed), 3 Deferred (all already recorded) | `critiques/pr-15/round-1.md` |
 | 2 | goal met | 0 Major, 5 Minor (all accepted and fixed), 2 Deferred (new entries 27–28) | `critiques/pr-15/round-2.md` |
 | 3 | goal met | 0 new Major, 4 Minor (all accepted and fixed), 1 Deferred (accepted and pinned by a test instead) | `critiques/pr-15/round-3.md` |
-| 4 | see the record | — | `critiques/pr-15/round-4.md` |
+| 4 | goal met | **0 new Major**; 4 non-blocking items, all fixed | `critiques/pr-15/round-4.md` |
 
 Round 3 was the scoped re-review §6.6 prescribes: confirm the prior rounds'
 findings are resolved, raise only new Major findings. It confirmed all eight
 earlier findings resolved against the tree and found no Major.
 
-**No round found a Major and no finding was rebutted** — all twelve Minors were
-accepted and fixed. Rounds 1 and 2 each produced a `src/pdsfile/` fix, so every
+**No round found a Major and no finding was rebutted** — all sixteen Minor and
+non-blocking findings were accepted and fixed. §6.6's termination condition is
+met within the four-round cap. Rounds 1 and 2 each produced a `src/pdsfile/` fix, so every
 run recorded above was regenerated at or after commit `4fdadb0` before the next
 reviewer was spawned (§6.6 step 5). Round 3's fixes touched only `tests/` and
 `critiques/`, which under that same rule does not stale the record; the counts
