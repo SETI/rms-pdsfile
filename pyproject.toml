@@ -157,6 +157,10 @@ extend-ignore = ["PT011", "SIM105", "SIM108"]
 "scripts/check_runtime_imports.py" = ["RUF100"]
 "scripts/dump_public_api.py" = ["RUF100"]
 "src/pdsfile/__init__.py" = ["F403", "F841", "I001"]
+# Split off pdsfile.py's entry with the path helpers, not added to it: both codes
+# are pre-existing violations of the moved lines and both remain in pdsfile.py's
+# own entry for the lines that stayed. PR-23 is where they get fixed.
+"src/pdsfile/_path_utils.py" = ["E701", "F841"]
 "src/pdsfile/holdings_maintenance/pds3/crlf.py" = ["PT028"]
 "src/pdsfile/holdings_maintenance/pds3/pdsarchives.py" = ["A001", "C405", "F841", "I001", "RUF059", "SIM115", "UP031"]
 "src/pdsfile/holdings_maintenance/pds3/pdschecksums.py" = ["A001", "B006", "B007", "B012", "C405", "I001", "N806", "RUF059", "SIM115", "UP015", "UP024", "UP031"]
