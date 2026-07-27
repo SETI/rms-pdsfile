@@ -832,7 +832,7 @@ none of them a change to an existing id:
 +passed  tests.api.test_mixin_collisions::test_a_mixin_defines_only_callables_and_properties
 +passed  tests.api.test_mixin_collisions::test_every_mixin_name_is_reachable_through_pdsfile
 +passed  tests.api.test_mixin_collisions::test_no_mixin_is_shadowed_by_pdsfile_itself
-+passed  tests.api.test_mixin_collisions::test_no_mixin_module_imports_pdsfile_at_module_level
++passed  tests.api.test_mixin_collisions::test_no_mixin_module_imports_pdsfile_at_import_time
 +passed  tests.api.test_mixin_collisions::test_no_two_mixins_define_the_same_name
 +passed  tests.api.test_mixin_collisions::test_the_class_statement_stays_in_pdsfile_pdsfile
 +passed  tests.api.test_mixin_collisions::test_the_mixin_bases_are_listed_alphabetically
@@ -1017,7 +1017,7 @@ worktree and the module re-run:
 | no mixin bases at all | `test_the_mixins_are_found_and_come_from_private_modules` |
 | a mixin claims a public `__module__` | `test_the_mixins_are_found_and_come_from_private_modules` |
 | the class statement moved out of `pdsfile.pdsfile` | `test_the_class_statement_stays_in_pdsfile_pdsfile` |
-| any of seven silent module-level back-import spellings (below) | `test_no_mixin_module_imports_pdsfile_at_module_level` |
+| any of eleven import-time back-import constructs (below) | `test_no_mixin_module_imports_pdsfile_at_import_time` |
 
 Every check in the module is killed by at least one mutation.
 
@@ -1050,11 +1050,38 @@ silent regardless.
 
 The check therefore covers all nine, resolving each statement to the absolute
 module names it reaches: a relative level against the importing module's own
-package, an absolute one left alone. Evaluated directly on the helper — which is
-how rows 1 and 2 can be checked at all, since they never reach it in a live run —
-all nine are flagged and six legitimate imports (`os`, `pickle`, `bisect`,
-`from ._path_utils import _clean_glob, _needs_glob`, `from pdsfile import
-pdscache`, `from . import pdscache`) are not.
+package, an absolute one left alone.
+
+**Spelling is only one of the two dimensions; nesting is the other.** An import
+inside a module-level `try`/`except`, `if` or `with` still runs when the module is
+imported — and `try: import pylibmc / except ImportError:` is a pattern
+`pdsfile.py` itself uses — so a walk of the top-level body alone leaves a hole of
+exactly the same shape as the absolute-spelling one. Three constructs must *not*
+be flagged, because they do not run at import time and so cannot build the cycle:
+a **function or method body**, which is the deferred-import pattern the preamble
+*prescribes* and which a stricter check would forbid; a class body; and an
+`if TYPE_CHECKING:` block.
+
+The final case matrix, each construct injected into **each** mixin module in turn
+and the check re-run — 17 cases × 2 modules, every one as required:
+
+| construct | required | result |
+|---|---|---|
+| the nine spellings above, at top level | flag | flag (two of them via `ImportError` at collection) |
+| `try: import pdsfile.pdsfile / except ImportError:` | flag | flag |
+| `if True:` wrapping `from pdsfile.pdsfile import repair_case` | flag | flag |
+| `try: from . import pdsfile as _c / finally:` | flag | flag |
+| `with contextlib.suppress(ImportError):` wrapping the import | flag | flag |
+| `if TYPE_CHECKING:` wrapping `from pdsfile.pdsfile import PdsFile` | **clean** | clean |
+| `def _d(): from pdsfile.pdsfile import PdsFile` — the deferred pattern | **clean** | clean |
+| `import os` | clean | clean |
+| `from ._path_utils import _clean_glob` | clean | clean |
+| `from pdsfile import pdscache` | clean | clean |
+| `from . import pdscache` | clean | clean |
+
+The helper was additionally evaluated directly on all nine spellings, which is how
+the two that raise at collection can be checked at all: it flags all nine and none
+of the legitimate imports.
 
 ### 7. Ruff ratchet — four codes dropped, none gained
 
