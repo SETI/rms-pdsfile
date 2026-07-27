@@ -1285,4 +1285,33 @@ this PR does not touch. No entry in 1–34 is resolved or invalidated here.
 
 ### 13. Review loop
 
-See `critiques/pr-17/round-<k>.md` and `critiques/pr-17/topology.md`.
+| Round | Verdict | Findings | Record |
+|---|---|---|---|
+| 1 | goal met | 0 Major, 3 Minor (all accepted and fixed), 2 Deferred — one of which was taken up rather than deferred | `critiques/pr-17/round-1.md` |
+| 2 | goal met | 0 Major, 6 Minor (5 accepted and fixed, 1 partly rebutted), 3 Deferred (entries 36–38) | `critiques/pr-17/round-2.md` |
+| 3 | goal met | 0 Major, 3 Minor (all accepted and fixed), 3 Deferred (entries 39–41) | `critiques/pr-17/round-3.md` |
+| 4 (scoped) | **goal not met** | **1 new Major** (fixed), 0 new Minor, 3 non-blocking notes; 11 of 12 prior findings confirmed resolved | `critiques/pr-17/round-4.md` |
+
+**The 4-round cap was reached with a new Major, which §6.6 makes an owner
+matter.** The Major was fixed — step 4 requires every Major to be resolved — and
+no fifth round was run. `critiques/pr-17/round-4.md` states the case for and
+against treating it as the mis-scope signal the cap is designed to catch; in
+short, rounds 1–3 returned zero Majors and were converging, and the Major is a
+regression this executor introduced in round 2 inside a check that is **not** a
+plan deliverable (the plan asks this file for a set-intersection check; the
+back-import guard is an extra, taken up from round 1's Deferred bucket).
+
+Three rounds touched `src/pdsfile/` or its test surface. Under §6.6 step 5, round
+1's and round 2's fixes each forced a regeneration before the next reviewer; §3's
+recorded runs are round 2's. Rounds 3 and 4 changed only `tests/`, `plans/` and
+`critiques/`, which under the same rule does not stale the record — and round 4's
+fix changes no test id, so the recorded 22-addition set diff still describes the
+tree.
+
+Two rebuttals are recorded rather than actioned, both about the base order
+(round 2's Minor 5 and, in part, round 3's M3): a class statement cannot be
+written without choosing an order, so "surface it, do not choose" cannot be
+satisfied literally by the PR whose deliverable is that statement. What was
+accepted is that the surfacing had to be blocking, which is why
+`plans/2026-07-27-addendum-phase5-mixin-base-order.md` exists and why PR-17
+cannot merge without the owner acknowledging it.
