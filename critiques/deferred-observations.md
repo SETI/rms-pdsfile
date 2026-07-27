@@ -555,11 +555,13 @@ each is recorded rather than fixed.
 
 ## From PR-16 (extract module-level path helpers, Phase 5)
 
-Four entries, all raised by the PR-16 adversarial review; 29 and 30 in round 1,
-31 and 32 in round 2. None is fixable inside a pure move PR: 29 is process, 30 is
-a pre-existing defect in code that moved byte-for-byte and is outside PR-15's
-enumerated bug list, 31 would change the public surface in whichever direction it
-were resolved, and 32 belongs to the PR that owns dead-code removal.
+Six entries, all raised by the PR-16 adversarial review; 29 and 30 in round 1,
+31 and 32 in round 2, 33 and 34 in round 4. None is fixable inside a pure move
+PR: 29 is process, 30 is a pre-existing defect in code that moved byte-for-byte
+and is outside PR-15's enumerated bug list, 31 would change the public surface in
+whichever direction it were resolved, 32 belongs to the PR that owns dead-code
+removal, and 33 and 34 are pre-existing conditions of files PR-16 does not
+touch.
 
 29. **An extraction sweep must ask which module namespaces the tests *patch*, not
     only which globals the code *reads*.** PR-16's free-variable sweep answered
@@ -628,3 +630,33 @@ were resolved, and 32 belongs to the PR that owns dead-code removal.
     line list is rebuilt against the post-Phase-5 module set rather than the
     pre-split one. **Owner:** PR-22 (with PR-23 for the extracted modules'
     style).
+
+### Added by the PR-16 adversarial review (round 4)
+
+33. **`scripts/gen_ruff_ratchet.py` cannot be exercised against the current
+    tree.** Its docstring workflow is "re-run this after a shrink and confirm the
+    diff only removes codes", but it runs `ruff check` with the project config,
+    whose committed `per-file-ignores` already suppress every violation, so it
+    emits an empty block. Reproducing a ratchet regeneration therefore requires
+    clearing the table first, which the script does not do and does not document.
+    Pre-existing and not touched by PR-16; noted because the ratchet is a
+    standing §2 gate and PR-23/PR-24 both lean on exactly that workflow when they
+    shrink the entries to their enumerated freeze-locked sets. **Owner:** PR-23.
+
+34. **Six pre-existing tracked files carry multi-component fragments of the real
+    holdings roots.** §3.4 requires that no absolute holdings path appear in
+    committed code, tests, docs, CI or `critiques/` records. Measured by scanning
+    every tracked file for any run of two or more consecutive components of
+    either root: `tests/pds3file/test_pds3file_whitebox.py`,
+    `plans/archive/2026-07-17-modernization-plan.md`,
+    `critiques/2026-07-21-unified-mini-holdings-analysis.md`,
+    `critiques/pr-02/validation.md`, `critiques/pr-14/round-1.md` and
+    `critiques/pr-14/validation.md`. No complete root appears in any of them; the
+    longest run is 29 characters, in the archived v1 plan. PR-16 does not touch
+    any of these files and cleaning them is outside a pure move PR's goal, so
+    they are recorded rather than fixed — but one of them is a **test module**,
+    which is the one category where a fragment could also become a portability
+    problem rather than only a disclosure one. The scan is a few lines and would
+    make a reasonable addition to `run-all-checks.sh` if the owner wants the rule
+    enforced rather than observed. **Owner:** owner decision, then PR-24 (records
+    and the archived plan) and PR-36 (the test module, via the critique pass).

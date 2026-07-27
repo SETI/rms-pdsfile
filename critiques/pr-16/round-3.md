@@ -64,17 +64,24 @@ section's "See §5" for the F401/redundant-alias evidence should be §6.
 
 ### Minor 5 — a committed record named distinctive components of the real holdings root
 
-`critiques/pr-16/round-2.md:26` listed `/home/rfrench`, `Shared-OPUS` and
-`/seti/opus` while describing the confidentiality grep — publishing two of the
-three distinctive segments of a path §3.4 says must appear in no committed file.
-The reviewer confirmed the full roots appear nowhere in tracked files, so this
-was a partial leak; it is nonetheless a line this PR added, in a file §3.4 names
-explicitly.
+While describing the confidentiality grep, `critiques/pr-16/round-2.md:26` spelled
+out a two-component absolute prefix of the real holdings roots and one further
+distinctive path segment — the kind of fragment §3.4 says must appear in no
+committed file, in a file category §3.4 names explicitly. No complete root
+appeared anywhere, so this was a partial leak, which is why the reviewer
+classified it Minor.
 
-**Accepted and fixed:** the row now says what was grepped by naming
+**Accepted and fixed:** the row now describes what was grepped by naming
 `$PDS3_HOLDINGS_DIR` / `$PDS4_HOLDINGS_DIR` and "their distinctive path
-components", with no literal. Re-grepped afterwards: the tokens appear in no file
-this PR touches.
+components", quoting no literal.
+
+**Round 4 caught that this write-up originally reintroduced the same three
+literals in the course of describing them, so the fix is stated here without
+them.** The check is now mechanical rather than a claim: a scan of every tracked
+file for any run of two or more consecutive components of either real root
+reports **no file this PR adds or modifies**. It does report six pre-existing
+files that this PR does not touch; those are recorded as deferred entry 34 rather
+than cleaned up here, since fixing them is outside this PR's goal.
 
 ### Minor 6 — the new module's header described contents it does not have
 

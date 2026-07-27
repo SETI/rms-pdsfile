@@ -695,7 +695,7 @@ manifest module surface — `pdsfile.pdsfile` among them — which cannot succee
 
 ### 10. Deferred observations
 
-Four new entries in `critiques/deferred-observations.md`, all raised by the
+Six new entries in `critiques/deferred-observations.md`, all raised by the
 review loop and all out of scope for a pure move:
 
 | # | Observation | Raised in | Owner |
@@ -704,6 +704,8 @@ review loop and all out of scope for a pure move:
 | 30 | `repair_case` raises `UnboundLocalError` on a single-component path | round 1 | PR-23 |
 | 31 | `src/pdsfile/__init__.py`'s `from pdsfile import *` is a self-import that binds nothing, and is not simply fixable | round 2 | PR-24 |
 | 32 | A commented-out line rode along in the byte-for-byte move, so PR-22's dead-code line list must be rebuilt against the post-Phase-5 module set | round 2 | PR-22 |
+| 33 | `scripts/gen_ruff_ratchet.py` emits an empty block against the current tree, so the ratchet-regeneration workflow PR-23/PR-24 depend on cannot be exercised as documented | round 4 | PR-23 |
+| 34 | Six pre-existing tracked files carry multi-component fragments of the real holdings roots (no complete root); one is a test module | round 4 | owner, then PR-24 / PR-36 |
 
 No entry in the existing 1–28 is resolved or invalidated by this PR, and none of
 them owns a symbol it touches.
@@ -715,6 +717,7 @@ them owns a symbol it touches.
 | 1 | goal **not** met | **1 Major**, 4 Minor, 2 Deferred — the Major and all four Minor accepted and fixed, none rebutted | `critiques/pr-16/round-1.md` |
 | 2 | goal met | 0 Major, 5 Minor (4 accepted and fixed, 1 rebutted), 3 Deferred (2 new entries) | `critiques/pr-16/round-2.md` |
 | 3 | goal met | 0 Major, 6 Minor (all accepted and fixed, none rebutted), 2 Deferred (one folded into entry 29) | `critiques/pr-16/round-3.md` |
+| 4 | goal met | **0 new Major**; the scoped re-review confirmed 15 of 16 prior findings resolved and the one rebuttal sound, and raised 1 incompletely-resolved Minor plus 2 non-blocking notes, all fixed | `critiques/pr-16/round-4.md` |
 
 Round 1's Major is the one worth carrying forward: the moved code was
 byte-perfect and every *call site* resolved, but a test **patched** the namespace
@@ -723,11 +726,13 @@ code it was written for while still passing. The §6.2 set diff cannot see that
 class of defect, which is what the adversarial round is for. Deferred entry 29
 turns it into a step for PR-17 onward.
 
-Round 1's fixes touched `src/pdsfile/pdsfile.py`, so the full-data record was
-regenerated before round 2 (§6.6 step 5) — both trees, both modes, after commit
-`37d4246`. Later rounds changed only `plans/` and `critiques/`, which under that
-same rule does not stale the record, so the runs recorded in §3 carry forward
-unchanged.
+Two rounds touched `src/pdsfile/`, and under §6.6 step 5 each forced a
+regeneration before the next reviewer. Round 1's fix (`37d4246`) regenerated both
+trees, both modes. Round 3's fix (`b86adba` — a comment line in `_path_utils.py`)
+regenerated the **head** side only, the baseline worktree being a detached tree at
+`1a5d85c` that no round has touched; §3 records the runs from that second
+regeneration. Round 2 changed only `plans/` and `critiques/`, which under the same
+rule does not stale the record.
 
 The one rebuttal is round 2's "the PR does not exist yet": §6.6 runs the loop
 **before** the PR is opened ("Termination — … Then open the PR"), so a reviewer
