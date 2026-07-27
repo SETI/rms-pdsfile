@@ -28,8 +28,7 @@ def _eval_null_key_record(rec):
         "": (nbytes, count, modtime, checksum, (width, height)),
 
     and the value returned is the tuple to the right of the colon: two ints, two
-    strings, and a pair. Every one of the 6,753 info sidecars in the complete
-    holdings set has exactly that shape.
+    strings, and a pair.
 
     The parse partitions on the *first* colon -- the one after the empty key,
     since the timestamp's colons come later -- then strips the surrounding
@@ -44,9 +43,9 @@ def _eval_null_key_record(rec):
       which can turn a valid expression into a SyntaxError or, less visibly, into
       a different valid expression;
     * a bare name in the expression resolves against this module's globals and
-      then the builtins, and raises NameError if it is in neither. No sidecar in
-      the holdings set contains a name, so nothing observes where that lookup
-      happens.
+      then the builtins, and raises NameError if it is in neither. A record the
+      maintenance tools wrote is a tuple of literals and contains no name, so
+      which module's globals are in scope is not observable.
     """
 
     # Format is "": (bytes, count, date, checksum, (0,0)),
@@ -63,9 +62,10 @@ class _ShelfMixin:
     A mixin of PdsFile; it holds methods only and defines no state of its own.
     The open-shelf cache lives on PdsFile as the SHELF_CACHE, SHELF_ACCESS,
     SHELF_CACHE_SIZE, SHELF_CACHE_SLOP, SHELF_ACCESS_COUNT and
-    SHELF_NULL_KEY_VALUES class attributes, so every subclass shares one cache;
-    SHELF_PATH_INFO, which maps a shelf type to its directory prefix and file
-    suffix, is defined on the Pds3File and Pds4File subclasses.
+    SHELF_NULL_KEY_VALUES class attributes, so every subclass shares one cache.
+    The other class attributes these methods read are LOGGER and PDS_HOLDINGS,
+    also on PdsFile, and SHELF_PATH_INFO -- which maps a shelf type to its
+    directory prefix and file suffix -- on the Pds3File and Pds4File subclasses.
     """
 
     def shelf_path_and_lskip(self, shelf_type='info', bundlename=''):

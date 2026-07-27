@@ -660,3 +660,26 @@ touch.
     make a reasonable addition to `run-all-checks.sh` if the owner wants the rule
     enforced rather than observed. **Owner:** owner decision, then PR-24 (records
     and the archived plan) and PR-36 (the test module, via the critique pass).
+
+## From PR-17 (extract the shelf and local-filesystem subsystems, Phase 5)
+
+One entry, raised by the PR-17 adversarial review in round 1. It is not fixable
+inside PR-17: it asks for a change to the parent plan's own text, which is the
+owner's to make.
+
+35. **The plan's Phase-5 preamble illustrates a base order that the mixin
+    convention PR-17 established now rejects.** The preamble writes the technique
+    as `class PdsFile(_ShelfMixin, _OpusMixin, …)`. PR-17 fixed the ordering rule
+    as **alphabetical by mixin class name, with `object` last** — recorded in
+    `plans/2026-07-27-pr-17-subplan.md` §4 and `critiques/phase5-validation.md`'s
+    PR-17 §6, and asserted by
+    `tests/api/test_mixin_collisions.py::test_the_mixin_bases_are_listed_alphabetically`.
+    `_OpusMixin` sorts before `_ShelfMixin`, so the preamble's illustration is in
+    the opposite order, and an executor of PR-18–PR-22 who reads only the plan
+    will write a class statement the test rejects. The illustration is plainly
+    illustrative — it lists two mixins that never arrive in the same PR and ends
+    in an ellipsis — so nothing is wrong today; the risk is a wasted round later.
+    The fix is one line in the preamble: either reorder the illustration and say
+    the order is alphabetical, or state that the order is fixed by the test and
+    point at it. **Owner:** owner (a plan edit), then PR-18 as the first PR that
+    appends to the list.
