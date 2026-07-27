@@ -15,6 +15,7 @@ class Pds3File(PdsFile):
 
     PDS_HOLDINGS = 'holdings'
     BUNDLE_DIR_NAME = 'volumes'
+    _HOLDINGS_ENV = 'PDS3_HOLDINGS_DIR'
 
     # REGEX
     BUNDLESET_REGEX        = re.compile(r'^([A-Z][A-Z0-9x]{1,5}_[0-9x]{3}x)$')

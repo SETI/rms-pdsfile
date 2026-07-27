@@ -194,8 +194,8 @@ def abspath_for_logical_path(path, cls):
     elif cls.LOCAL_HOLDINGS_DIRS:
         holdings_list = cls.LOCAL_HOLDINGS_DIRS
 
-    elif 'PDS3_HOLDINGS_DIR' in os.environ:
-        holdings_list = [os.environ['PDS3_HOLDINGS_DIR']]
+    elif cls._HOLDINGS_ENV in os.environ:
+        holdings_list = [os.environ[cls._HOLDINGS_ENV]]
         cls.LOCAL_HOLDINGS_DIRS = holdings_list
 
     # Without a preload or an environment variable, check the
@@ -398,6 +398,10 @@ class PdsFile(object):
 
     # Global will contain all the physical holdings directories on the system.
     LOCAL_HOLDINGS_DIRS = None
+
+    # Name of the environment variable that locates this class's holdings tree.
+    # Each subclass names its own; see abspath_for_logical_path().
+    _HOLDINGS_ENV = 'PDS3_HOLDINGS_DIR'
 
     ############################################################################
     # DEFAULT FILE SORT ORDER
@@ -709,7 +713,7 @@ class PdsFile(object):
                         str(len(cls.CACHE.permanent_values)))
 
         finally:
-            resume_caching()
+            resume_caching(cls)
 
     @classmethod
     def load_volume_info(cls, holdings):
@@ -1782,7 +1786,7 @@ class PdsFile(object):
         else:
             self._html_path_filled = self.html_root_ + self.logical_path
 
-        self._recache
+        self._recache()
         return self._html_path_filled
 
     @property
@@ -3017,7 +3021,7 @@ class PdsFile(object):
             try:
                 self._infoshelf_path_and_key = \
                     cls.shelf_path_and_key_for_abspath(self.abspath, 'info')
-            except:
+            except Exception:
                 self._infoshelf_path_and_key = ('', '')
 
             self._recache()

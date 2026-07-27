@@ -221,7 +221,7 @@ class DictionaryCache(PdsCache):
         """Set multiple values at one time based on a dictionary."""
 
         for (key, value) in mydict.items():
-            self.set(key, value, lifetime, pause=True)
+            self.set(key, value, lifetime)
 
         if not pause:
             self._trim_if_necessary()
@@ -795,7 +795,7 @@ class MemcachedCache(PdsCache):
         # Retrieve lifetimes from cache if necessary
         if lifetime is None and nonlocal_keys:
             nonlocal_dict = self.mc.get_multi(nonlocal_keys)
-            for (key, tuple) in nonlocal_dict:
+            for (key, tuple) in nonlocal_dict.items():
                 lifetime = tuple[1]
                 self.local_lifetime_by_key[key] = lifetime
 
