@@ -34,8 +34,8 @@ section per PR, in merge order.
 numbers exactly: `--mode ns` 790 passed / 34 skipped, `--mode s` 555 passed /
 3 skipped.
 **Date:** 2026-07-26
-**Last change under `src/pdsfile/`:** commit `a6496f8`. Every full-data run
-below was generated after it.
+**Last change under `src/pdsfile/`:** commit `21ac769` (the round-1 fix).
+Every run recorded below was regenerated after it, per §6.6 step 5.
 
 ### 0. Why this section is longer than the ones that follow
 
@@ -64,7 +64,7 @@ returned-values-unchanged claim by measurement instead of asserting it.
 | Full-data suite, both modes | **passed** — set diff empty for every pre-existing id; see §3 |
 | `ruff check src/pdsfile tests scripts` | **passed**; the ratchet **shrank** by three codes (§6) |
 | Clean-install import check | **passed** (throwaway venv, `pip install .`, full module surface imports) |
-| Hosted lint/no-holdings job (`scripts/run-all-checks.sh`) | **passed** with holdings (823/34) and without (57/800); see §4 |
+| Hosted lint/no-holdings job (`scripts/run-all-checks.sh`) | **passed** with holdings (824/34) and without (58/800); see §4 |
 | Adversarial review loop | `critiques/pr-15/round-<k>.md` |
 
 ### 3. Full-data suite
@@ -94,21 +94,23 @@ tests/rules/pds3/ tests/pds4file/ tests/rules/pds4/`.
 
 | Run | Result | Diff vs the `807956a` baseline set |
 |---|---|---|
-| `--mode ns` | **823 passed / 34 skipped** (857 ids) | 33 ids added, 0 removed, 0 changed |
+| `--mode ns` | **824 passed / 34 skipped** (858 ids) | 34 ids added, 0 removed, 0 changed |
 | `--mode s` | **555 passed / 3 skipped** (558 ids) | **empty** — `tests/core/` is not in this invocation |
 
-All 33 added ids are `tests.core.*` and all 33 pass; the count of added ids that
+All 34 added ids are `tests.core.*` and all 34 pass; the count of added ids that
 are **not** under `tests.core` is **0**, computed mechanically rather than read
 off the list. `--mode s` is untouched because the shelves-only pass runs
 `tests/pds3file/ tests/rules/pds3/` only.
 
-**PR-16 and PR-17 compare against the two sets in this sub-section: ns 823
-passed / 34 skipped (857 ids), s 555 passed / 3 skipped (558 ids).**
+**PR-16 and PR-17 compare against the two sets in this sub-section: ns 824
+passed / 34 skipped (858 ids), s 555 passed / 3 skipped (558 ids).**
 
 #### 3c. The prediction, written before any of these runs
 
-Recorded at commit `b646aee` — the tests-only commit, before a single source
-change — and reproduced here verbatim in substance:
+Written at commit `b646aee` — the tests-only commit, before a single change
+under `src/pdsfile/` — and committed verbatim as
+[`critiques/pr-15/prediction.md`](pr-15/prediction.md), whose header explains
+why a record commit necessarily post-dates what it records. Its three claims:
 
 > 1. `--mode s`: byte-identical to the baseline, 555 passed / 3 skipped.
 > 2. `--mode ns`: the baseline's 824 ids with exactly the 33 new `tests/core/…`
@@ -137,11 +139,22 @@ The reasoning behind it, also written first:
   `shelf_path_and_key_for_abspath` raises `ValueError`, `KeyError` and
   `AttributeError`, all still caught by `except Exception`.
 
-**Outcome: the prediction held exactly.** Predicted 823/34 and 555/3 with zero
-movers; measured 823/34 and 555/3 with zero movers. Predicted 57/800 with no
-holdings; measured 57/800. Nothing moved that was not predicted, so there is
-nothing to escalate under the brief's "any unpredicted mover is a hard stop"
-rule.
+**Outcome: the prediction held.** On the run it was written for — the branch as
+it stood at `a6496f8`, before the review loop — it was exact: predicted 823/34
+and 555/3 with zero movers, measured 823/34 and 555/3 with zero movers;
+predicted 57/800 with no holdings, measured 57/800.
+
+The final numbers in §3b and §4 are one higher (824/34, 858 ids; 58/800) for a
+reason that has nothing to do with the prediction: **round 1 of the adversarial
+review added one test**, `test_an_open_only_icon_type_is_still_ranked`, together
+with the `_priority_of_icon_type` fix it pins (see
+`critiques/pr-15/round-1.md`). Diffing the regenerated ns set against the
+pre-round-1 one shows exactly that single added id and nothing else. The claim
+the prediction actually makes — **no pre-existing test moves** — was re-measured
+after the round-1 fix and still holds with an empty diff in both modes (§3a).
+
+Nothing moved that was not predicted, so there is nothing to escalate under the
+"any unpredicted mover is a hard stop" rule.
 
 ### 4. No-holdings run
 
@@ -150,18 +163,18 @@ Whole `tests/` tree with `PDS3_HOLDINGS_DIR`, `PDS4_HOLDINGS_DIR`,
 
 | | `rewrite` @ `807956a` (PR-14's record) | this branch |
 |---|---|---|
-| passed | 24 | **57** |
+| passed | 24 | **58** |
 | skipped | 800 | **800** |
-| collected | 824 | **857** |
+| collected | 824 | **858** |
 
-`passed + skipped == collected` on both sides. The 33 additions are exactly the
+`passed + skipped == collected` on both sides. The 34 additions are exactly the
 `tests/core/` ids: every module there is marked `holdings_free` because every
 test builds its own inputs. Nothing stopped passing and the skip count is
 unchanged, so no pre-existing test lost its ability to run.
 
 This is a real improvement to the hosted job rather than a bookkeeping one: the
 hosted leg went from 24 of 824 tests actually running (deferred entry 20's
-concern) to 57 of 857.
+concern) to 58 of 858.
 
 ### 5. API freeze
 
@@ -240,11 +253,17 @@ are already filled on a category object by the time it is cached — `split`,
 `anchor`, `is_viewable` and the rest return early. `html_path` is not
 pre-filled, which is why the difference shows up on exactly these entries.)
 
-**Why no test observes it.** Nothing in the suite reads `DictionaryCache.dict`
-expirations or `DictionaryCache.keys`, and trimming — the only behavior an
-expiration feeds into — needs 220,000 tracked keys against the 11,242 the
-largest run produces. The three pre-existing test ids that read
-`PdsFile.html_path` at all assert the returned string.
+**Why no test observes it.** Not because the property is rarely read — it is
+read widely. Three pre-existing test ids read `PdsFile.html_path` directly, but
+`PdsFile.url` is an alias for it (`pdsfile.py:1797`) and is consumed by
+`pdsviewable.PdsViewable.from_pdsfile` and by `exact_archive_url` /
+`exact_checksum_url`, so the restored write-back fires across much of the suite.
+The invariant that actually makes it unobservable is narrower and stronger:
+**nothing in the suite reads `DictionaryCache.dict` expirations or
+`DictionaryCache.keys`**, and trimming — the only behavior an expiration feeds
+into — needs 220,000 tracked keys against the 11,242 the largest run produces.
+Every test that touches `html_path` or `url` asserts the returned string, and
+§7's table shows no returned string moved.
 
 ### 8. Regression tests came first, and are shown to have failed
 
@@ -258,6 +277,9 @@ claimed:
   is needed so the editable install of the main tree does not shadow it).
 - **`a6496f8`** applies the seven fixes. At that commit the same command reports
   **33 passed**.
+- **`21ac769`** is the round-1 review fix. It adds the 34th test, which was
+  likewise confirmed to fail against the two-key `_priority_of_icon_type` lookup
+  before the third probe was added. `pytest tests/core` reports **34 passed**.
 
 Failures at `b646aee`, grouped by the defect each pins:
 
@@ -277,9 +299,11 @@ environment, that a `ValueError` from the shelf-path lookup is still absorbed,
 that `html_path` still equals `html_root_ + logical_path`, that an object absent
 from the cache is still not added to it.
 
-The `tests/core/` modules run identically under `--mode ns` and `--mode s`
-(diffed, zero differing lines), which is why the suite driver runs the directory
-in the `ns` pass only, as it already does for `tests/holdings_maintenance/`.
+The `tests/core/` modules run identically under `--mode ns` and `--mode s` — all
+34 ids, diffed, zero differing lines — which is why the suite driver runs the
+directory in the `ns` pass only, as it already does for
+`tests/holdings_maintenance/`. Nothing there consults a shelf, so
+`use_shelves_only` cannot reach it.
 
 ### 9. Bug 7's behavior audit
 
@@ -329,6 +353,24 @@ mean pdsfile had grown a package-level name ground rule 1 forbids.
 
 ### 11. Deferred observations raised by this PR
 
-Recorded in `critiques/deferred-observations.md` under Phase 5. Nothing in the
-existing entries 1–22 is resolved or invalidated by these fixes; entries 10 and
-11 are maintenance-tool defects owned by PR-26/PR-28 and were not touched.
+Entries 23–26 of `critiques/deferred-observations.md`, all under Phase 5: the
+`DictionaryCache(lifetime=0)` trap, the now-near-vacuous `pause` parameter of
+`DictionaryCache.set_multi`, `MemcachedCache.set_multi`'s batch-wide lifetime,
+and `_recache()`'s downgrade of permanent cache entries. Each was found while
+fixing the seven the plan enumerates and each is outside the enumerated list, so
+each is recorded rather than fixed.
+
+Nothing in the existing entries 1–22 is resolved or invalidated by these fixes;
+entries 10 and 11 are maintenance-tool defects owned by PR-26/PR-28 and were not
+touched.
+
+### 12. Review loop
+
+| Round | Verdict | Findings | Record |
+|---|---|---|---|
+| 1 | goal met | 0 Major, 3 Minor (all accepted and fixed), 3 Deferred (all already recorded) | `critiques/pr-15/round-1.md` |
+| 2 | see the record | — | `critiques/pr-15/round-2.md` |
+
+Round 1's third Minor touched `src/pdsfile/`, so every run recorded above was
+regenerated at or after commit `21ac769` before round 2 was spawned (§6.6 step
+5).

@@ -508,6 +508,9 @@ than fixed.
     a full walk of the limited holdings copy), which is why this is recorded
     here rather than earlier — it is pre-existing behavior of the property
     pattern, not something the fix introduced, and `MemcachedCache` is unaffected
-    because its `set()` preserves a previously-defined lifetime. Whether a
-    long-running process should be able to expire a category entry at all is a
-    cache-design question for issue #77 phase "b". **Owner:** phase "b".
+    because its `set()` preserves a previously-defined lifetime. One further
+    consequence: a downgraded entry also joins `DictionaryCache.keys`, the
+    trimmable set, so a process that ever exceeds `limit + slop` (220,000) could
+    evict a category entry — previously impossible for a `lifetime=0` entry.
+    Whether a long-running process should be able to expire a category entry at
+    all is a cache-design question for issue #77 phase "b". **Owner:** phase "b".
