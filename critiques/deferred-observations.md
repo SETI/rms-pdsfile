@@ -690,7 +690,11 @@ owner's to make.
     written without *some* order, the plan settles none, and an unenforced
     convention is what produces the wasted round; the choice is behaviorally inert
     either way — the mixins are disjoint and no name is shadowed, both asserted by
-    the same test file. **Owner:** owner, before PR-18 appends the next mixin.
+    the same test file. The decision, with both forms spelled out, is written up
+    as a §6.4 addendum:
+    `plans/2026-07-27-addendum-phase5-mixin-base-order.md`, which PR-17 cannot
+    merge without. **Owner:** owner, before PR-17 merges and PR-18 appends the
+    next mixin.
 
 ### Added by the PR-17 adversarial review (round 2)
 
@@ -725,3 +729,44 @@ A pure move has no licence to change any of them.
     path the shelves know about but the file system does not; deciding which is
     correct requires a behavior change, which a move PR may not make. Recorded as
     an observation, not a diagnosis. **Owner:** phase "b" of issue #77.
+
+### Added by the PR-17 adversarial review (round 3)
+
+39. **The `__dict__` and `__weakref__` descriptors have moved off `PdsFile` onto
+    its first mixin base.** Measured: on the parent both are in
+    `vars(PdsFile)`; on this branch both are in `vars(_LocalFsMixin)` and
+    `vars(_ShelfMixin)` and neither is in `vars(PdsFile)`. That is ordinary
+    CPython behavior — the descriptors are created for the first class in a
+    hierarchy whose instances need them — and nothing observable changes:
+    `dir(PdsFile)`, the API manifest, instance `__dict__`, weak references and
+    pickling were each checked and are identical. The consequence worth recording
+    is that as Phase 5 adds mixins, the descriptors keep migrating to whichever
+    base sorts first, so any introspection of the form `'__dict__' in
+    vars(PdsFile)` is unstable across the phase's PRs. Nothing in `src/`,
+    `tests/`, `scripts/` or either consumer does that today.
+    `tests/api/test_mixin_collisions.py` excludes both names from what counts as
+    "defined by a mixin", which is why its collision check does not fire on them.
+    **Owner:** phase "b" of issue #77.
+
+40. **`test_no_mixin_module_imports_pdsfile_at_module_level` reads literal import
+    statements only.** It parses `ast.Import` / `ast.ImportFrom`, so all six
+    spellings of a module-level back-import are covered (two of which raise on
+    their own anyway), but a dynamic
+    `importlib.import_module('pdsfile.pdsfile')` at module level would pass. No
+    mixin module has a dynamic import today and none is expected to; tightening
+    the check is worth doing only if one grows one. **Owner:** whichever Phase-5
+    PR first adds a dynamic import to a mixin module, if any does.
+
+41. **`shelf_lookup`'s sidecar shortcut is dark in the reference holdings root.**
+    An info shelf is a `<bundlename>_info.pickle` plus a readable
+    `<bundlename>_info.py` sidecar, and `shelf_lookup` reads the sidecar's second
+    line for a bundle rather than unpickling the shelf. The limited testing copy
+    the goldens are tuned to carries the `.pickle` half only, so that branch is
+    never executed by either local pass and only the complete-set nightly reaches
+    it. PR-17 compensates for the parse itself with
+    `tests/core/test_shelf_sidecar_record.py` (holdings-free) plus a direct run
+    against the complete set, but the branch in `shelf_lookup` that *chooses* the
+    shortcut remains uncovered locally. Fixing it means either a test that builds
+    a whole shelf pair under `tmp_path` or a change to which root CI uses.
+    **Owner:** PR-37 (Phase 8), where CI root selection and coverage targets are
+    settled.

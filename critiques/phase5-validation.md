@@ -504,7 +504,8 @@ against PR-15's baseline rather than against a fresh unrelated measurement.
 
 ### 4. API freeze — empty diff, as a pure extraction requires
 
-1. `pytest tests/api/` passes. `tests/api/api_manifest.json`,
+1. `pytest tests/api/` passes — 15 ids, of which `test_api_freeze.py` contributes
+   one. `tests/api/api_manifest.json`,
    `tests/api/manifest_allowlist.json`, `scripts/dump_public_api.py` and
    `tests/api/test_api_freeze.py` are untouched by this PR (§6.4); no allowlist
    entry was added.
@@ -793,7 +794,7 @@ measured there too.
 
 | Gate | Result |
 |---|---|
-| API-freeze manifest test | **passed** (14 tests); and the dumped surface is byte-identical to the parent's — §4 |
+| API-freeze manifest test | **passed** — the freeze test itself is one id, and `pytest tests/api/` is 15 (that one plus the 14 this PR adds there); and the dumped surface is byte-identical to the parent's — §4 |
 | Full-data suite, both modes | **passed** — the only set movement is the 22 ids the two new test files add; §3 |
 | `ruff check src/pdsfile tests scripts` | **passed**; the ratchet gained no code and lost four — §7 |
 | Clean-install import check | **passed** (throwaway venv, `pip install .`, full module surface imports) |
@@ -953,7 +954,7 @@ is exactly checkable at `7b581a1`, and so that no commit mixes a move with a
 content edit (§2 commit granularity). `_LocalFsMixin` is byte-identical at HEAD
 as well as at the extraction commit.
 
-`pdsfile.py`: 6,125 → 5,436 lines; `_shelves.py` 355; `_local_fs.py` 437.
+`pdsfile.py`: 6,125 → 5,436 lines; `_shelves.py` 356; `_local_fs.py` 437.
 
 ### 6. The base order, and why it is alphabetical
 
