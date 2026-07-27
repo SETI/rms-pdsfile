@@ -445,3 +445,69 @@ Two further observations, not defects in a single tool:
     of the lint job's. The same applies to `run-tests-and-opus.yml`, which is
     likewise untouched here. **Owner:** a CI-hardening pass, or PR-37's
     finalization sweep.
+
+## From PR-15 (latent core-path bug fixes, Phase 5)
+
+Nothing in entries 1–22 is resolved or invalidated by PR-15. Entries 10 and 11
+are maintenance-tool defects owned by PR-26/PR-28 and were deliberately not
+touched: §5 keeps the tool-bug twins in Phase 6, where those files are already
+being edited. The four items below were found while fixing the seven the plan
+enumerates; §2 permits only the enumerated changes, so each is recorded rather
+than fixed.
+
+23. **`DictionaryCache(lifetime=0)` cannot serve `set()` without an explicit
+    lifetime.** The constructor documents `lifetime` as "default lifetime in
+    seconds; 0 for no expiration", and `set()` documents `lifetime=None` as "use
+    the default lifetime". But `set()` tests the default for truthiness
+    (`pdscache.py:196`, `if self.lifetime:`), so a default of `0` falls through
+    to `self.lifetime_func(value)`, which is `None` when the cache was built
+    with a constant — `TypeError: 'NoneType' object is not callable`. Every
+    caller in this repo passes a lifetime function or a non-zero constant, so
+    nothing hits it today; it is a trap for the next caller who takes the
+    docstring at its word. The fix is a `self.lifetime is not None` test, which
+    is a behavior change to a public class and therefore outside PR-15's
+    enumerated list. Found because a test fixture built its throwaway cache with
+    `lifetime=0`. **Owner:** a future pdscache PR, or phase "b".
+
+24. **`DictionaryCache.set_multi`'s `pause` parameter does not suppress the
+    per-key trim.** The broken call PR-15 repaired passed `pause=True` down to
+    `set()`, plainly intending to defer trimming until the batch finished. `set()`
+    has no such parameter and never did, so the intent was never expressible;
+    PR-15 dropped the keyword, which is the literal fix for "passes an
+    unsupported kwarg". The consequence is that `pause` now governs only the
+    final explicit `_trim_if_necessary()` call, while each `set()` inside the
+    loop still trims if the cache is not paused. Honoring the original intent
+    means either bypassing `resume()`'s trim or giving `set()` a real `pause`
+    parameter — both are new semantics for a public method, which §6.4 makes an
+    owner decision rather than an executor's. No caller exists in this repo.
+    **Owner:** a future pdscache PR, with the owner's read on the intended
+    semantics.
+
+25. **`MemcachedCache.set_multi` applies one key's lifetime to the whole batch.**
+    The lifetime-lookup loop assigns to a single `lifetime` local
+    (`pdscache.py:798-800`), so after it runs, `lifetime` holds whichever key
+    memcached happened to yield last. The store loop then passes that one value
+    to `set_local()` for **every** key, overwriting the correct per-key lifetimes
+    the lookup loop had just written into `local_lifetime_by_key`, and applying
+    it to keys that were already local as well. PR-15 fixed only the enumerated
+    defect on the same lines — iterating the dictionary as pairs — because until
+    that was fixed the method raised before reaching the store loop, and because
+    correcting the lifetime plumbing is a second, larger behavior change. The
+    regression test added for the enumerated fix uses a single key, so it does
+    not pin the batch behavior either way. **Owner:** a future pdscache PR.
+
+26. **`_recache()` silently downgrades a permanent cache entry to an expiring
+    one.** `preload` stores the top-level category entries with `lifetime=0`, so
+    they never expire. Any lazy property that fills in and then calls
+    `self._recache()` re-stores the object with `lifetime=None`, which
+    `DictionaryCache.set()` resolves through `cache_lifetime_for_class` to a
+    finite value — 7 days for a category object. Measured on `rewrite` @
+    `807956a`, i.e. *before* PR-15: reading `description` or `iconset_closed` on
+    the `volumes` object already flips its cache entry from permanent to
+    expiring. PR-15's `html_path` fix adds `html_path` to that set (14 entries in
+    a full walk of the limited holdings copy), which is why this is recorded
+    here rather than earlier — it is pre-existing behavior of the property
+    pattern, not something the fix introduced, and `MemcachedCache` is unaffected
+    because its `set()` preserves a previously-defined lifetime. Whether a
+    long-running process should be able to expire a category entry at all is a
+    cache-design question for issue #77 phase "b". **Owner:** phase "b".
