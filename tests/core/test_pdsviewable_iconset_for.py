@@ -1,14 +1,12 @@
 ##########################################################################################
 # tests/core/test_pdsviewable_iconset_for.py
 #
-# Regression tests for pdsfile.pdsviewable.iconset_for().
+# Tests for pdsfile.pdsviewable.iconset_for(). The function has no caller inside
+# this repository (Viewmaster is the consumer), so these tests are its only coverage.
+# The priority it ranks by is recorded on each loaded PdsViewSet by load_icons(),
+# which reads it from REQUIRED_ICONS.
 #
-# The function has no caller inside this repository (Viewmaster is the consumer), so
-# nothing in the suite reached it, and every call raised NameError on a lookup table
-# that no longer exists. The priority it needs is already recorded on each loaded
-# PdsViewSet by load_icons(), which reads it from REQUIRED_ICONS.
-#
-# These tests populate the icon dictionary the way load_icons() does, without any
+# The tests populate the icon dictionary the way load_icons() does, without any
 # image files, and need no holdings tree.
 ##########################################################################################
 
@@ -79,15 +77,17 @@ class TestIconsetFor:
         assert (pdsviewable.iconset_for(pdsfiles, is_open=True) is
                 icon_sets['IMAGE', True])
 
-    def test_an_open_only_icon_type_is_still_ranked(self, icon_sets):
-        # load_icons() registers the bare icon_type key only for a closed icon,
-        # so an icon whose only file ends in "_open" exists under (type, True)
-        # alone. Its priority still has to count.
-        opened = pdsviewable.PdsViewSet(priority=46)
+    def test_an_open_only_icon_type_wins_only_when_open_is_requested(self, icon_sets):
+        # load_icons() registers the bare icon_type key only for a closed icon, so
+        # an icon whose only file ends in "_open" exists under (type, True) alone.
+        # It outranks everything when open is requested, and counts for nothing
+        # when it is not, because there is no closed set to return.
+        opened = pdsviewable.PdsViewSet(priority=99999)
         icon_sets['PDSINFO', True] = opened
         pdsfiles = [_StubPdsFile('IMAGE'), _StubPdsFile('PDSINFO')]
 
         assert pdsviewable.iconset_for(pdsfiles, is_open=True) is opened
+        assert pdsviewable.iconset_for(pdsfiles) is icon_sets['IMAGE', False]
 
     def test_an_icon_type_with_no_loaded_icon_set_does_not_win(self, icon_sets):
         # A PdsFile can report an icon type for which no icon file was ever loaded.

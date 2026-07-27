@@ -1,14 +1,12 @@
 ##########################################################################################
 # tests/core/test_pdsfile_path_resolution.py
 #
-# Regression tests for two path-resolution defects in pdsfile.pdsfile.
+# Tests for two path-resolution behaviors of pdsfile.pdsfile:
 #
-#   * abspath_for_logical_path() read the PDS3 holdings environment variable by name
-#     even when it was resolving a PDS4 logical path, so a Pds4File fell back to the
-#     PDS3 tree whenever nothing had been preloaded;
-#   * infoshelf_path_and_key caught every exception with a bare except, including
-#     KeyboardInterrupt and SystemExit, which are not errors it can turn into a pair
-#     of empty strings.
+#   * abspath_for_logical_path() resolves each class against its own holdings
+#     environment variable;
+#   * infoshelf_path_and_key turns a failed shelf-path lookup into a pair of empty
+#     strings, but lets an interrupt through.
 #
 # The tests build their own inputs and need no holdings tree. The environment
 # variables they set are pointed at tmp_path and restored by monkeypatch; no test
@@ -61,7 +59,7 @@ class TestHoldingsEnvironmentVariable:
         abspath = abspath_for_logical_path(logical_path, cls)
 
         assert abspath == roots[env_var] + '/' + logical_path
-        # The resolved root is remembered on the class, as it was before.
+        # The resolved root is remembered on the class.
         assert list(cls.LOCAL_HOLDINGS_DIRS) == [roots[env_var]]
 
     def test_a_preloaded_root_still_wins_over_the_environment(
@@ -103,8 +101,8 @@ class TestInfoshelfPathAndKey:
         assert pdsf.infoshelf_path_and_key == ('', '')
 
     def test_an_unexpected_error_is_still_absorbed(self, monkeypatch, pds3_cache):
-        # The bare except caught everything; the replacement still catches every
-        # Exception, so an error class the caller never anticipated behaves as before.
+        # Every Exception is absorbed, not just the ones the lookup is known to
+        # raise.
         pdsf = blank_pds3file('volumes/NOSUCH_0xxx/NOSUCH_0002')
         monkeypatch.setattr(Pds3File, 'shelf_path_and_key_for_abspath',
                             _raise(AttributeError('abspath is None')))

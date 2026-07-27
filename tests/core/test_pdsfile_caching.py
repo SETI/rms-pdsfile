@@ -1,12 +1,10 @@
 ##########################################################################################
 # tests/core/test_pdsfile_caching.py
 #
-# Regression tests for two cache-maintenance defects in pdsfile.pdsfile.
+# Tests for two cache-maintenance behaviors of pdsfile.pdsfile:
 #
-#   * the html_path property evaluated self._recache instead of calling it, so the
-#     filled value was never written back to the cache;
-#   * get_permanent_values() called resume_caching() without the class argument it
-#     takes, so the pause it opened could never be closed.
+#   * the html_path property writes its filled value back to the cache;
+#   * get_permanent_values() resumes caching on the way out, on both its paths.
 #
 # The tests run against cache objects and PdsFile instances they build themselves and
 # need no holdings tree. Nothing here touches the session's preloaded cache: the
@@ -84,9 +82,8 @@ class _StubCategory:
 class _StubMemcache:
     """Stand-in for the MemcachedCache get_permanent_values() is written against.
 
-    A DictionaryCache has no permanent_values attribute, so this method only ever
-    ran against memcached, which is why its resume_caching() call was never
-    exercised by anything.
+    A DictionaryCache has no permanent_values attribute, so the method only runs
+    against memcached, which no test environment provides.
     """
 
     def __init__(self, missing_prefix=None):
@@ -117,7 +114,7 @@ class TestGetPermanentValues:
         assert Pds3File.get_permanent_values([], 0) is None
 
         assert stub.events == ['pause', 'resume']
-        # The walk really ran: every category was read, not just the first one.
+        # Every category is read, not just the first one.
         for category in Pds3File.CATEGORY_LIST:
             assert '$RANKS-' + category + '/' in stub.keys_read
             assert '$VOLS-' + category + '/' in stub.keys_read

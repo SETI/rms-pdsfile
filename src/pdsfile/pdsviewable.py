@@ -544,23 +544,22 @@ def load_icons(path, url, color='blue', logger=None):
 # Method to select among multiple icons
 ################################################################################
 
-def _priority_of_icon_type(icon_type):
-    """Return the priority recorded for an icon type by load_icons().
+def _priority_of_icon_type(icon_type, is_open):
+    """Return the priority of the icon set for this icon type and open state.
 
     load_icons() copies the priority out of REQUIRED_ICONS into every PdsViewSet
-    it creates, so the loaded icon sets are the authority on priority. All three
-    keys it writes are consulted, because the bare key is registered only for a
-    closed icon: an icon type whose only file ends in "_open" is reachable under
-    (icon_type, True) alone. An icon type for which no icon was ever loaded has
-    no priority and gets zero, the same value as the least descriptive icon.
+    it creates, so the loaded icon sets are the authority on priority. The lookup
+    is keyed on the open state that is actually being requested, so an icon type
+    can only win a comparison if the set that would then be returned exists.
+    A type with no icon set for this open state has no priority and gets zero,
+    the same value as the least descriptive icon.
     """
 
-    for key in (icon_type, (icon_type, False), (icon_type, True)):
-        viewset = ICON_SET_BY_TYPE.get(key)
-        if viewset is not None:
-            return viewset.priority
+    viewset = ICON_SET_BY_TYPE.get((icon_type, is_open))
+    if viewset is None:
+        return 0
 
-    return 0
+    return viewset.priority
 
 def iconset_for(pdsfiles, is_open=False):
     """Select the icon set for a list of PdsFiles. Use the icon_type highest in
@@ -570,11 +569,11 @@ def iconset_for(pdsfiles, is_open=False):
         pdsfiles = [pdsfiles]
 
     icon_type = 'UNKNOWN'
-    priority = _priority_of_icon_type(icon_type)
+    priority = _priority_of_icon_type(icon_type, is_open)
 
     for pdsf in pdsfiles:
         test_type = pdsf.icon_type
-        new_priority = _priority_of_icon_type(test_type)
+        new_priority = _priority_of_icon_type(test_type, is_open)
         if new_priority > priority:
             priority = new_priority
             icon_type = test_type

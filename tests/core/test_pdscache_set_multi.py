@@ -1,14 +1,10 @@
 ##########################################################################################
 # tests/core/test_pdscache_set_multi.py
 #
-# Regression tests for the two set_multi() implementations in pdsfile.pdscache.
+# Tests for the two set_multi() implementations in pdsfile.pdscache. Neither has a
+# caller anywhere in this repository, so these tests are the only coverage they get.
 #
-# Neither method has a caller anywhere in this repository, so nothing in the suite
-# reached them. Both were unconditionally broken for a non-empty dictionary:
-# DictionaryCache.set_multi() forwarded a keyword its own set() does not accept, and
-# MemcachedCache.set_multi() unpacked a dictionary's keys as if they were pairs.
-#
-# These tests build their own cache objects and need no holdings tree.
+# The tests build their own cache objects and need no holdings tree.
 ##########################################################################################
 
 import pytest
