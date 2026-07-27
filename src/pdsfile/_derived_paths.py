@@ -204,17 +204,25 @@ class _DerivedPathsMixin:
         else:
             cls.LOG_ROOT_ = root.rstrip('/') + '/'
 
-    def log_path_for_bundle(self, suffix='', task='', dir='', place='default'):
-        """Return a complete log file path for this bundle.
+    def _log_path_for(self, target, suffix, task, subdir, place):
+        """Return a complete log file path, given the parts that name what is logged.
 
-        The file name is [dir/]category/bundleset/bundlename_suffix_time[_task].log
+        The three log_path_for_* methods differ only in the parts that name their
+        target and in whether they accept a suffix. Everything else -- resolving
+        the log root, the optional subdirectory, the time tag, the task tag and the
+        ".log" extension -- is the same for all three and is done here.
 
-         Keyword arguments:
-            suffix -- the suffix of the log file (default '')
-            task   -- part of the log basename (default '')
-            dir    -- the directory of the log file (default '')
+        Keyword arguments:
+            target -- the parts naming what is being logged, appended after the
+                      optional subdirectory
+            suffix -- the suffix of the log file; '' appends nothing, which is what
+                      log_path_for_index passes because it takes no suffix
+            task   -- part of the log basename; '' appends nothing
+            subdir -- the directory of the log file; '' appends nothing. This is the
+                      log_path_for_* methods' "dir" argument under a name that does
+                      not shadow the builtin; theirs is frozen by the public API
             place  -- 'default' or 'parallel', the option provides for a temporary
-                      override of the default log root (default 'default')
+                      override of the default log root
         """
 
         cls = type(self)
@@ -232,10 +240,10 @@ class _DerivedPathsMixin:
         else:
             parts = [temporary_log_root]
 
-        if dir:
-            parts += [dir.rstrip('/'), '/']
+        if subdir:
+            parts += [subdir.rstrip('/'), '/']
 
-        parts += [self.category_, self.bundleset_, self.bundlename]
+        parts += target
 
         if suffix:
             parts += ['_', suffix.lstrip('_')]  # exactly one "_" before suffix
@@ -249,6 +257,22 @@ class _DerivedPathsMixin:
         parts += ['.log']
 
         return ''.join(parts)
+
+    def log_path_for_bundle(self, suffix='', task='', dir='', place='default'):
+        """Return a complete log file path for this bundle.
+
+        The file name is [dir/]category/bundleset/bundlename_suffix_time[_task].log
+
+         Keyword arguments:
+            suffix -- the suffix of the log file (default '')
+            task   -- part of the log basename (default '')
+            dir    -- the directory of the log file (default '')
+            place  -- 'default' or 'parallel', the option provides for a temporary
+                      override of the default log root (default 'default')
+        """
+
+        return self._log_path_for([self.category_, self.bundleset_, self.bundlename],
+                                  suffix, task, dir, place)
 
     def log_path_for_bundleset(self, suffix='', task='', dir='', place='default'):
         """Return a complete log file path for this bundle set.
@@ -263,38 +287,8 @@ class _DerivedPathsMixin:
                       override of the default log root (default 'default')
         """
 
-        cls = type(self)
-
-        # This option provides for a temporary override of the default log root
-        if place == 'default':
-            temporary_log_root = cls.LOG_ROOT_
-        elif place == 'parallel':
-            temporary_log_root = None
-        else:
-            raise ValueError('unrecognized place option: ' + place)
-
-        if temporary_log_root is None:
-            parts = [self.disk_, 'logs/']
-        else:
-            parts = [temporary_log_root]
-
-        if dir:
-            parts += [dir.rstrip('/'), '/']
-
-        parts += [self.category_, self.bundleset, self.suffix]
-
-        if suffix:
-            parts += ['_', suffix.lstrip('_')]  # exactly one "_" before suffix
-
-        timetag = datetime.datetime.now().strftime(cls.LOGFILE_TIME_FMT)
-        parts += ['_', timetag]
-
-        if task:
-            parts += ['_', task]
-
-        parts += ['.log']
-
-        return ''.join(parts)
+        return self._log_path_for([self.category_, self.bundleset, self.suffix],
+                                  suffix, task, dir, place)
 
     def log_path_for_index(self, task='', dir='index', place='default'):
         """Return a complete log file path for this bundle.
@@ -308,35 +302,10 @@ class _DerivedPathsMixin:
                       override of the default log root (default 'default')
         """
 
+        # This check precedes the place option's validation, so a non-index file
+        # reports that before an unrecognized place
         if not self.is_index:
             raise ValueError('Not an index file: ' + self.logical_path)
 
-        cls = type(self)
-
-        # This option provides for a temporary override of the default log root
-        if place == 'default':
-            temporary_log_root = cls.LOG_ROOT_
-        elif place == 'parallel':
-            temporary_log_root = None
-        else:
-            raise ValueError('unrecognized place option: ' + place)
-
-        if temporary_log_root is None:
-            parts = [self.disk_, 'logs/']
-        else:
-            parts = [temporary_log_root]
-
-        if dir:
-            parts += [dir.rstrip('/'), '/']
-
-        parts += [self.logical_path.rpartition('.')[0]]
-
-        timetag = datetime.datetime.now().strftime(cls.LOGFILE_TIME_FMT)
-        parts += ['_', timetag]
-
-        if task:
-            parts += ['_', task]
-
-        parts += ['.log']
-
-        return ''.join(parts)
+        return self._log_path_for([self.logical_path.rpartition('.')[0]],
+                                  '', task, dir, place)
