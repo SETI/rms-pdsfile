@@ -440,9 +440,12 @@ than copied from the table, exactly as PR-15 re-measured `rewrite`'s. The
 re-measurement reproduced §3b exactly.
 **Date:** 2026-07-27
 **Sub-plan:** [`plans/2026-07-27-pr-16-subplan.md`](../plans/2026-07-27-pr-16-subplan.md)
-**Last change under `src/pdsfile/`:** commit `37d4246` (the round-1 fix), at
-01:18:32. Every run recorded below was regenerated after it, per §6.6 step 5 —
-the four `--junitxml` timestamps are 01:19:13, 01:22:05, 01:24:02 and 01:26:51.
+**Last change under `src/pdsfile/`:** commit `b86adba` (the round-3 fix — a
+comment line in `_path_utils.py`), at 02:02:17. The **head** runs recorded below
+were regenerated after it, per §6.6 step 5: their `--junitxml` timestamps are
+02:02:25 and 02:05:15. The **baseline** runs (01:19:13 and 01:22:05) stand: they
+were taken in a detached worktree at `1a5d85c` that no round has touched, so
+re-running them would measure the same unchanged tree.
 
 This PR is a pure extraction. Unlike PR-15 it has **no licence to move the
 pass/fail set in either direction**, so the gate here is simply "the two set
