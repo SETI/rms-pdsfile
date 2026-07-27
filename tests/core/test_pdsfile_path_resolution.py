@@ -16,6 +16,7 @@
 import pytest
 
 from pdsfile import Pds3File, Pds4File
+from pdsfile import pdsfile as pdsfile_module
 from pdsfile.pdsfile import PdsFile, abspath_for_logical_path
 from tests.core.support import blank_pds3file
 
@@ -73,8 +74,24 @@ class TestHoldingsEnvironmentVariable:
 
         assert abspath == preloaded + '/volumes/COISS_2xxx'
 
+    def test_a_class_does_not_borrow_another_class_holdings_root(
+            self, monkeypatch, tmp_path):
+        # With only the PDS3 root exported, a PDS4 logical path has nowhere to
+        # resolve to and says so, rather than quietly answering with the PDS3
+        # tree.
+        monkeypatch.setenv('PDS3_HOLDINGS_DIR', str(tmp_path / 'pds3' / 'holdings'))
+        monkeypatch.delenv('PDS4_HOLDINGS_DIR', raising=False)
+        monkeypatch.setattr(Pds4File, 'LOCAL_PRELOADED', [])
+        monkeypatch.setattr(Pds4File, 'LOCAL_HOLDINGS_DIRS', None)
+        # The last-resort branch globs a MacOS website install; stub it so the
+        # test does not depend on what the host happens to have.
+        monkeypatch.setattr(pdsfile_module.glob, 'glob', lambda pattern: [])
+
+        with pytest.raises(ValueError, match='No holdings directory'):
+            abspath_for_logical_path('bundles/cassini_iss', Pds4File)
+
     def test_a_path_that_does_not_start_at_a_category_is_rejected(self):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match='Not a logical path'):
             abspath_for_logical_path('COISS_2xxx/COISS_2001', Pds3File)
 
 
@@ -115,8 +132,12 @@ class TestInfoshelfPathAndKey:
         monkeypatch.setattr(Pds3File, 'shelf_path_and_key_for_abspath',
                             _raise(exception))
 
-        with pytest.raises(type(exception)):
+        with pytest.raises(type(exception)) as raised:
             _ = pdsf.infoshelf_path_and_key
+
+        # The interrupt propagates untouched, not a lookalike raised on its way
+        # out of the handler.
+        assert raised.value is exception
 
     def test_a_successful_lookup_is_cached_in_the_object(self, monkeypatch, pds3_cache):
         calls = []

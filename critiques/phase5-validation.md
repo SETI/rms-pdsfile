@@ -64,7 +64,7 @@ returned-values-unchanged claim by measurement instead of asserting it.
 | Full-data suite, both modes | **passed** — set diff empty for every pre-existing id; see §3 |
 | `ruff check src/pdsfile tests scripts` | **passed**; the ratchet **shrank** by three codes (§6) |
 | Clean-install import check | **passed** (throwaway venv, `pip install .`, full module surface imports) |
-| Hosted lint/no-holdings job (`scripts/run-all-checks.sh`) | **passed** with holdings (824/34) and without (58/800); see §4 |
+| Hosted lint/no-holdings job (`scripts/run-all-checks.sh`) | **passed** with holdings (825/34) and without (59/800); see §4 |
 | Adversarial review loop | `critiques/pr-15/round-<k>.md` |
 
 ### 3. Full-data suite
@@ -94,16 +94,16 @@ tests/rules/pds3/ tests/pds4file/ tests/rules/pds4/`.
 
 | Run | Result | Diff vs the `807956a` baseline set |
 |---|---|---|
-| `--mode ns` | **824 passed / 34 skipped** (858 ids) | 34 ids added, 0 removed, 0 changed |
+| `--mode ns` | **825 passed / 34 skipped** (859 ids) | 35 ids added, 0 removed, 0 changed |
 | `--mode s` | **555 passed / 3 skipped** (558 ids) | **empty** — `tests/core/` is not in this invocation |
 
-All 34 added ids are `tests.core.*` and all 34 pass; the count of added ids that
+All 35 added ids are `tests.core.*` and all 35 pass; the count of added ids that
 are **not** under `tests.core` is **0**, computed mechanically rather than read
 off the list. `--mode s` is untouched because the shelves-only pass runs
 `tests/pds3file/ tests/rules/pds3/` only.
 
-**PR-16 and PR-17 compare against the two sets in this sub-section: ns 824
-passed / 34 skipped (858 ids), s 555 passed / 3 skipped (558 ids).**
+**PR-16 and PR-17 compare against the two sets in this sub-section: ns 825
+passed / 34 skipped (859 ids), s 555 passed / 3 skipped (558 ids).**
 
 #### 3c. The prediction, written before any of these runs
 
@@ -139,6 +139,19 @@ The reasoning behind it, also written first:
   `shelf_path_and_key_for_abspath` raises `ValueError`, `KeyError` and
   `AttributeError`, all still caught by `except Exception`.
 
+**One clause of that reasoning is wrong, and is corrected rather than edited
+away.** "Bugs 2, 4, 5 and 6 have no caller anywhere in `src/` or `tests/`" is
+true of bugs 4, 5 and 6 but **not** of bug 2: `get_permanent_values` is called
+from `preload` (`pdsfile.py:945`), unguarded, on the branch taken when
+`cls.MEMCACHE_PORT` is non-zero and every holdings root is already cached. So
+bug 2 is not dead code in production — on a memcached deployment, `preload()`
+raised `TypeError` out of its own `finally` every time it found the cache warm.
+What the next clause said, and what the gate actually rests on, is unaffected:
+the suite never sets `MEMCACHE_PORT`, so it never reaches that branch, which is
+why the prediction of "no movers" held anyway. The plan's framing of bugs 2–7 as
+the "genuinely dead" ones does not hold for bug 2, and the PR description says
+so.
+
 **Outcome: the prediction held.** On the run it was written for — the branch as
 it stood at `a6496f8`, before the review loop — it was exact: predicted 823/34
 and 555/3 with zero movers, measured 823/34 and 555/3 with zero movers;
@@ -164,18 +177,18 @@ Whole `tests/` tree with `PDS3_HOLDINGS_DIR`, `PDS4_HOLDINGS_DIR`,
 
 | | `rewrite` @ `807956a` (PR-14's record) | this branch |
 |---|---|---|
-| passed | 24 | **58** |
+| passed | 24 | **59** |
 | skipped | 800 | **800** |
-| collected | 824 | **858** |
+| collected | 824 | **859** |
 
-`passed + skipped == collected` on both sides. The 34 additions are exactly the
+`passed + skipped == collected` on both sides. The 35 additions are exactly the
 `tests/core/` ids: every module there is marked `holdings_free` because every
 test builds its own inputs. Nothing stopped passing and the skip count is
 unchanged, so no pre-existing test lost its ability to run.
 
 This is a real improvement to the hosted job rather than a bookkeeping one: the
 hosted leg went from 24 of 824 tests actually running (deferred entry 20's
-concern) to 58 of 858.
+concern) to 59 of 859.
 
 ### 5. API freeze
 
@@ -288,7 +301,8 @@ claimed:
   `_priority_of_icon_type` (rounds 1 and 2). Between them they add the 34th test,
   which was confirmed to fail against each preceding version of that helper
   before the version that satisfies it landed. `pytest tests/core` reports
-  **34 passed**.
+  **34 passed**. Round 3 added the 35th test, likewise confirmed to fail against
+  the base tree's hard-coded environment lookup.
 
 Failures at `b646aee`, grouped by the defect each pins:
 
@@ -309,7 +323,7 @@ that `html_path` still equals `html_root_ + logical_path`, that an object absent
 from the cache is still not added to it.
 
 The `tests/core/` modules run identically under `--mode ns` and `--mode s` — all
-34 ids, diffed, zero differing lines — which is why the suite driver runs the
+35 ids, diffed, zero differing lines — which is why the suite driver runs the
 directory in the `ns` pass only, as it already does for
 `tests/holdings_maintenance/`. Nothing there consults a shelf, so
 `use_shelves_only` cannot reach it.
@@ -362,16 +376,30 @@ mean pdsfile had grown a package-level name ground rule 1 forbids.
 
 ### 11. Deferred observations raised by this PR
 
-Entries 23–26 of `critiques/deferred-observations.md`, all under Phase 5: the
-`DictionaryCache(lifetime=0)` trap, the now-near-vacuous `pause` parameter of
-`DictionaryCache.set_multi`, `MemcachedCache.set_multi`'s batch-wide lifetime,
-and `_recache()`'s downgrade of permanent cache entries. Each was found while
-fixing the seven the plan enumerates and each is outside the enumerated list, so
-each is recorded rather than fixed.
+Six new entries in `critiques/deferred-observations.md`, all under Phase 5. Four
+were found while fixing the seven the plan enumerates:
 
-Nothing in the existing entries 1–22 is resolved or invalidated by these fixes;
-entries 10 and 11 are maintenance-tool defects owned by PR-26/PR-28 and were not
-touched.
+| # | Observation |
+|---|---|
+| 23 | `DictionaryCache(lifetime=0)` cannot serve `set()` without an explicit lifetime |
+| 24 | `DictionaryCache.set_multi`'s `pause` parameter no longer suppresses the per-key trim |
+| 25 | `MemcachedCache.set_multi` applies one key's lifetime to the whole batch |
+| 26 | `_recache()` downgrades a permanent cache entry to an expiring one |
+
+Two more came out of the review loop (round 2):
+
+| # | Observation |
+|---|---|
+| 27 | `html_path` raises `IndexError` on an empty merged category — measured at 36 of the 1,910 probed objects, identically before and after this PR |
+| 28 | `iconset_for`'s terminal lookup assumes an `UNKNOWN` icon set exists |
+
+Each is outside the enumerated list, so each is recorded rather than fixed.
+
+No entry in the existing 1–22 is resolved or invalidated by these fixes; entries
+10 and 11 are maintenance-tool defects owned by PR-26/PR-28 and were not
+touched. Two entries cite suite counts that this PR moves — entry 15's "24 the
+hosted job runs" and entry 20's "824 skipped" — and both are annotated in place;
+the observations themselves stand.
 
 ### 12. Review loop
 
@@ -379,9 +407,17 @@ touched.
 |---|---|---|---|
 | 1 | goal met | 0 Major, 3 Minor (all accepted and fixed), 3 Deferred (all already recorded) | `critiques/pr-15/round-1.md` |
 | 2 | goal met | 0 Major, 5 Minor (all accepted and fixed), 2 Deferred (new entries 27–28) | `critiques/pr-15/round-2.md` |
-| 3 | see the record | — | `critiques/pr-15/round-3.md` |
+| 3 | goal met | 0 new Major, 4 Minor (all accepted and fixed), 1 Deferred (accepted and pinned by a test instead) | `critiques/pr-15/round-3.md` |
+| 4 | see the record | — | `critiques/pr-15/round-4.md` |
 
-Both rounds so far produced a `src/pdsfile/` fix, so every run recorded above was
-regenerated at or after commit `4fdadb0` before the next reviewer was spawned
-(§6.6 step 5). Neither round found a Major, and no finding was rebutted — all
-eight Minors were accepted and fixed.
+Round 3 was the scoped re-review §6.6 prescribes: confirm the prior rounds'
+findings are resolved, raise only new Major findings. It confirmed all eight
+earlier findings resolved against the tree and found no Major.
+
+**No round found a Major and no finding was rebutted** — all twelve Minors were
+accepted and fixed. Rounds 1 and 2 each produced a `src/pdsfile/` fix, so every
+run recorded above was regenerated at or after commit `4fdadb0` before the next
+reviewer was spawned (§6.6 step 5). Round 3's fixes touched only `tests/` and
+`critiques/`, which under that same rule does not stale the record; the counts
+were regenerated anyway because the round added a test and therefore changed the
+set.

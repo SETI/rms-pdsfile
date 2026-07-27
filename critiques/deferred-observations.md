@@ -348,12 +348,13 @@ Two further observations, not defects in a single tool:
     blanket skip with a throwaway `tryfirst` plugin that marks every collected
     item `holdings_free`, with all four holdings env vars unset:
     **315 passed / 387 failed / 122 skipped** — i.e. 291 beyond the 24 the
-    hosted job ran at the time of the measurement (58 after PR-15 added
-    `tests/core/`; the surplus shrinks by the same 34, the observation does
-    not change). Grouped by test *function*: 124 functions have every
-    parametrized case passing, 41 are **mixed** (some cases pass, some fail) and
-    126 fail outright. The four modules involved are
-    `tests/pds{3,4}file/test_pds{3,4}file_blackbox.py`,
+    hosted job ran at the time of the measurement. (PR-15 raised that 24 to 58
+    by adding 34 genuinely holdings-free tests in `tests/core/`; a re-run of the
+    forced-marker experiment would collect those same 34 among its passes, so
+    **the surplus stays 291** and the observation is unchanged.) Grouped by test
+    *function*: 124 functions have every parametrized case passing, 41 are
+    **mixed** (some cases pass, some fail) and 126 fail outright. The four
+    modules involved are `tests/pds{3,4}file/test_pds{3,4}file_blackbox.py`,
     `test_pds3file_blackbox_cached.py` and `test_pds3file_whitebox.py`. The
     result is not order-dependent: each module run alone yields the same passing
     set as it does inside the whole-tree run.
