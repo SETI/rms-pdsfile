@@ -135,24 +135,45 @@ def test_a_mixin_defines_only_callables_and_properties():
 ##########################################################################################
 # No mixin module imports the class it is a base of
 ##########################################################################################
+def _modules_named_by(node, package):
+    """The absolute module names one import statement reaches for.
+
+    Both the module a `from X import y` reads out of and each `X.y` it could be
+    naming, because `from . import pdsfile` and `from .pdsfile import PdsFile`
+    are the same back-import written two ways. Relative levels are resolved
+    against the importing module's own package, or the check sees only the
+    absolute spelling.
+    """
+
+    if isinstance(node, ast.Import):
+        return [alias.name for alias in node.names]
+
+    anchor = package
+    for _ in range(max(node.level - 1, 0)):
+        anchor = anchor.rpartition('.')[0]
+    base = f'{anchor}.{node.module}' if node.module else anchor
+    return [base] + [f'{base}.{alias.name}' for alias in node.names]
+
+
 def test_no_mixin_module_imports_pdsfile_at_module_level():
     # pdsfile/pdsfile.py imports the mixin modules to build the class, so a
-    # module-level `from pdsfile.pdsfile import PdsFile` in a mixin is a cycle. A
-    # method needing the class object uses a function-local deferred import
-    # instead. Read from source rather than from the imported module, because an
-    # import that raises is exactly the thing being ruled out.
+    # module-level import of the core module from a mixin is a cycle. A method
+    # needing the class object uses a function-local deferred import instead.
+    #
+    # Half the forms raise ImportError on their own and need no test; the other
+    # half -- the ones that bind the partially-initialized module object rather
+    # than a name out of it -- raise nothing at all, and this is what catches
+    # those. Read from source, because an import that raises is the case being
+    # ruled out.
     offenders = []
     for mixin in _mixins():
-        source = inspect.getsource(inspect.getmodule(mixin))
-        for node in ast.parse(source).body:
-            names = None
-            if isinstance(node, ast.ImportFrom) and node.module == 'pdsfile.pdsfile':
-                names = [alias.name for alias in node.names]
-            elif isinstance(node, ast.Import):
-                names = [alias.name for alias in node.names
-                         if alias.name == 'pdsfile.pdsfile']
-            if names:
-                offenders.append(f'{mixin.__module__}:{node.lineno} {names}')
+        package = mixin.__module__.rpartition('.')[0]
+        for node in ast.parse(inspect.getsource(inspect.getmodule(mixin))).body:
+            if not isinstance(node, (ast.Import, ast.ImportFrom)):
+                continue
+            reached = _modules_named_by(node, package)
+            if 'pdsfile.pdsfile' in reached:
+                offenders.append(f'{mixin.__module__}:{node.lineno} -> pdsfile.pdsfile')
 
     assert not offenders, f'module-level back-imports of the core module: {offenders}'
 

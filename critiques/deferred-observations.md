@@ -679,7 +679,15 @@ owner's to make.
     will write a class statement the test rejects. The illustration is plainly
     illustrative — it lists two mixins that never arrive in the same PR and ends
     in an ellipsis — so nothing is wrong today; the risk is a wasted round later.
-    The fix is one line in the preamble: either reorder the illustration and say
-    the order is alphabetical, or state that the order is fixed by the test and
-    point at it. **Owner:** owner (a plan edit), then PR-18 as the first PR that
-    appends to the list.
+
+    **This is an owner decision, and it has exactly two one-line forms.** Either
+    (a) the alphabetical rule stands: reorder the preamble's illustration and add
+    "listed alphabetically" to it, and the test stays as it is; or (b) the rule is
+    not wanted: delete
+    `test_the_mixin_bases_are_listed_alphabetically` from
+    `tests/api/test_mixin_collisions.py` and the class statement keeps whatever
+    order each PR appends. PR-17 chose (a) because a class statement cannot be
+    written without *some* order, the plan settles none, and an unenforced
+    convention is what produces the wasted round; the choice is behaviorally inert
+    either way — the mixins are disjoint and no name is shadowed, both asserted by
+    the same test file. **Owner:** owner, before PR-18 appends the next mixin.

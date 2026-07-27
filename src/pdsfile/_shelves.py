@@ -42,10 +42,11 @@ def _eval_null_key_record(rec):
     * a line not ending in the trailing comma loses its last character anyway,
       which can turn a valid expression into a SyntaxError or, less visibly, into
       a different valid expression;
-    * a bare name in the expression resolves against this module's globals and
-      then the builtins, and raises NameError if it is in neither. A record the
-      maintenance tools wrote is a tuple of literals and contains no name, so
-      which module's globals are in scope is not observable.
+    * a bare name in the expression resolves against this function's locals
+      (`rec` and `parts`), then this module's globals, then the builtins, and
+      raises NameError if it is in none of them. A record the maintenance tools
+      wrote is a tuple of literals and contains no name, so which namespaces are
+      in scope is not observable.
     """
 
     # Format is "": (bytes, count, date, checksum, (0,0)),
