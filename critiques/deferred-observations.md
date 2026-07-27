@@ -588,3 +588,32 @@ moved byte-for-byte and is outside PR-15's enumerated bug list.
     `found = True` initialization (a path with nothing to repair *is* found), but
     that is a behavior change on a currently-raising input and needs its own test
     and PR. **Owner:** PR-23, or whichever PR next edits this file.
+
+### Added by the PR-16 adversarial review (round 2)
+
+31. **`src/pdsfile/__init__.py:10`'s `from pdsfile import *` binds nothing.** It
+    is a self-import: when it executes, `sys.modules['pdsfile']` is the
+    partially-initialized package, whose namespace holds only dunders and
+    `__version__`, and a star import with no `__all__` skips every underscore
+    name. Reproduced in a throwaway package with the identical shape — the
+    statement contributes zero names. It reads as an intended
+    `from .pdsfile import *`, which would be a very different thing: it would
+    hoist every public name of `pdsfile.pdsfile` (including `repair_case`,
+    `abspath_for_logical_path`, `PATH_EXISTS_CACHE_SIZE` …) onto the package,
+    which is **not** the surface `tests/api/api_manifest.json` records for
+    `pdsfile`. So this cannot simply be "fixed": deleting it and correcting it
+    are both public-surface changes, one shrinking and one growing. It is also
+    why `F403`/`F841` sit in that file's ratchet entry. Untouched by PR-16.
+    **Owner:** PR-24, or whichever PR next revisits `__init__.py` — with an
+    explicit decision about which of the two readings is intended.
+
+32. **A commented-out line of dead code rode along with the move.**
+    `src/pdsfile/_path_utils.py`, inside `_clean_join`:
+    `#     joined = _clean_join(a,b).replace('\\', '/')`. PR-16 moved it
+    byte-for-byte, which is correct — editing it would have been a content change
+    inside a move PR. PR-22's brief is to "remove commented-out dead code
+    (~89 lines) — listed line-by-line in the PR", and its line list was drawn
+    against `pdsfile.py`; this line is no longer in that file. Recorded so the
+    line list is rebuilt against the post-Phase-5 module set rather than the
+    pre-split one. **Owner:** PR-22 (with PR-23 for the extracted modules'
+    style).

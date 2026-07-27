@@ -603,7 +603,7 @@ restyled to dodge an inherited lint violation — that is PR-23's job.
 `pdsfile.pdsfile.X is pdsfile._path_utils.X` for all twelve re-exported names, so
 callers get the same objects, not copies.
 
-`pdsfile.py`: 6,308 → 6,122 lines; `_path_utils.py`: 219 lines.
+`pdsfile.py`: 6,308 → 6,125 lines; `_path_utils.py`: 219 lines.
 
 ### 6. Keeping `pdsfile.pdsfile.X` resolving without touching the ratchet
 
@@ -705,3 +705,25 @@ them owns a symbol it touches.
 
 ### 11. Review loop
 
+| Round | Verdict | Findings | Record |
+|---|---|---|---|
+| 1 | goal **not** met | **1 Major**, 4 Minor, 2 Deferred — all nine accepted and fixed, none rebutted | `critiques/pr-16/round-1.md` |
+| 2 | goal met | 0 Major, 5 Minor (4 accepted and fixed, 1 rebutted), 3 Deferred (2 new entries) | `critiques/pr-16/round-2.md` |
+
+Round 1's Major is the one worth carrying forward: the moved code was
+byte-perfect and every *call site* resolved, but a test **patched** the namespace
+the moved function used to resolve through, so it silently stopped exercising the
+code it was written for while still passing. The §6.2 set diff cannot see that
+class of defect, which is what the adversarial round is for. Deferred entry 29
+turns it into a step for PR-17 onward.
+
+Round 1's fixes touched `src/pdsfile/pdsfile.py`, so the full-data record was
+regenerated before round 2 (§6.6 step 5) — both trees, both modes, after commit
+`37d4246`. Later rounds changed only `plans/` and `critiques/`, which under that
+same rule does not stale the record, so the runs recorded in §3 carry forward
+unchanged.
+
+The one rebuttal is round 2's "the PR does not exist yet": §6.6 runs the loop
+**before** the PR is opened ("Termination — … Then open the PR"), so a reviewer
+cannot see the PR description at review time by construction. It is recorded in
+`critiques/pr-16/round-2.md` rather than actioned.
