@@ -4332,6 +4332,8 @@ class PdsFile(_DerivedPathsMixin, _LocalFsMixin, _ShelfMixin, object):
     # Log path associations
     ############################################################################
 
+    # The methods that build a log path live in _derived_paths.py; they read this
+    # off the class, and set_log_root writes it back there.
     LOG_ROOT_ = None
 
     ############################################################################

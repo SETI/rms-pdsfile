@@ -213,8 +213,10 @@ class _DerivedPathsMixin:
         ".log" extension -- is the same for all three and is done here.
 
         Keyword arguments:
-            target -- the parts naming what is being logged, appended after the
-                      optional subdirectory
+            target -- a callable returning the parts naming what is being logged,
+                      appended after the optional subdirectory. It is called here
+                      rather than evaluated by the caller, so the attributes it
+                      reads are read after the place option has been validated
             suffix -- the suffix of the log file; '' appends nothing, which is what
                       log_path_for_index passes because it takes no suffix
             task   -- part of the log basename; '' appends nothing
@@ -243,7 +245,7 @@ class _DerivedPathsMixin:
         if subdir:
             parts += [subdir.rstrip('/'), '/']
 
-        parts += target
+        parts += target()
 
         if suffix:
             parts += ['_', suffix.lstrip('_')]  # exactly one "_" before suffix
@@ -271,7 +273,7 @@ class _DerivedPathsMixin:
                       override of the default log root (default 'default')
         """
 
-        return self._log_path_for([self.category_, self.bundleset_, self.bundlename],
+        return self._log_path_for(lambda: [self.category_, self.bundleset_, self.bundlename],
                                   suffix, task, dir, place)
 
     def log_path_for_bundleset(self, suffix='', task='', dir='', place='default'):
@@ -287,7 +289,7 @@ class _DerivedPathsMixin:
                       override of the default log root (default 'default')
         """
 
-        return self._log_path_for([self.category_, self.bundleset, self.suffix],
+        return self._log_path_for(lambda: [self.category_, self.bundleset, self.suffix],
                                   suffix, task, dir, place)
 
     def log_path_for_index(self, task='', dir='index', place='default'):
@@ -307,5 +309,5 @@ class _DerivedPathsMixin:
         if not self.is_index:
             raise ValueError('Not an index file: ' + self.logical_path)
 
-        return self._log_path_for([self.logical_path.rpartition('.')[0]],
+        return self._log_path_for(lambda: [self.logical_path.rpartition('.')[0]],
                                   '', task, dir, place)
