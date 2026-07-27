@@ -7,9 +7,9 @@ import bisect
 import datetime
 import fnmatch
 import functools
-# Nothing below references glob or math any more, but both are frozen members of
-# this module's public surface (tests/api/api_manifest.json), so it keeps them
-# bound. The redundant `as` alias is the explicit re-export form.
+# Nothing below references glob or math, but both are frozen members of this
+# module's public surface (tests/api/api_manifest.json), so it keeps them bound.
+# The redundant `as` alias is the explicit re-export form.
 import glob as glob
 import math as math
 import numbers
@@ -39,7 +39,7 @@ from .preload_and_cache import (cache_lifetime_for_class,
                                 pause_caching,
                                 resume_caching)
 
-# Path helpers, extracted to a private module. Importing them here is also what
+# The path helpers live in a private module. Importing them here is also what
 # keeps pdsfile.pdsfile.<name> resolving for callers and for the API freeze.
 from ._path_utils import (_clean_abspath,
                           _clean_glob,
@@ -51,10 +51,13 @@ from ._path_utils import (_clean_abspath,
                           logical_path_from_abspath,
                           repair_case)
 
-# Re-exported for the public surface only; nothing below references them. The
-# redundant `as` alias is the explicit re-export form, so they do not read as
-# unused imports.
+# Re-exported only; nothing below references these. FILE_BYTE_UNITS and
+# selected_path_from_path are frozen members of this module's public surface;
+# _GLOB_CACHE_SIZE is private, and is carried so that no name reachable as
+# pdsfile.pdsfile.<name> is lost. The redundant `as` alias is the explicit
+# re-export form, so they do not read as unused imports.
 from ._path_utils import (FILE_BYTE_UNITS as FILE_BYTE_UNITS,
+                          _GLOB_CACHE_SIZE as _GLOB_CACHE_SIZE,
                           selected_path_from_path as selected_path_from_path)
 
 # Configuration
