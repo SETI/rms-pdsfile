@@ -752,10 +752,12 @@ passed / 34 skipped (859 ids) and `--mode s` 555 passed / 3 skipped (558 ids) �
 than copied from the table. The re-measurement reproduced it exactly.
 **Date:** 2026-07-27
 **Sub-plan:** [`plans/2026-07-27-pr-17-subplan.md`](../plans/2026-07-27-pr-17-subplan.md)
-**Last change under `src/pdsfile/`:** commit `1b0011d` (the `eval()` isolation),
-at 02:44:09. The runs recorded below were generated after it, per §6.6 step 5:
-their `--junitxml` timestamps are 02:49:30 / 02:52:19 (baseline) and 02:54:18 /
-02:57:08 (head).
+**Last change under `src/pdsfile/`:** commit `114a5c1` (the round-1 docstring
+fixes), at 03:25:04. The **head** runs recorded below were regenerated after it,
+per §6.6 step 5: their `--junitxml` timestamps are 03:25:15 and 03:28:04. The
+**baseline** runs (02:49:30 and 02:52:19) stand: they were taken in a detached
+worktree at `2ff83a4` that no round has touched, so re-running them would measure
+the same unchanged tree.
 
 This PR is the first that creates **mixin classes**, so §5's mixin mechanics are
 exercised for real here rather than described. It is also the PR the parent plan
@@ -792,10 +794,10 @@ measured there too.
 | Gate | Result |
 |---|---|
 | API-freeze manifest test | **passed** (14 tests); and the dumped surface is byte-identical to the parent's — §4 |
-| Full-data suite, both modes | **passed** — the only set movement is the 13 ids the new test file adds; §3 |
+| Full-data suite, both modes | **passed** — the only set movement is the 14 ids the new test file adds; §3 |
 | `ruff check src/pdsfile tests scripts` | **passed**; the ratchet gained no code and lost four — §7 |
 | Clean-install import check | **passed** (throwaway venv, `pip install .`, full module surface imports) |
-| Hosted lint/no-holdings job (`scripts/run-all-checks.sh`, no holdings env vars) | **passed**, 72 passed / 800 skipped — the parent's 59/800 plus the same 13 new ids, re-measured on the parent worktree rather than quoted |
+| Hosted lint/no-holdings job (`scripts/run-all-checks.sh`, no holdings env vars) | **passed**, 73 passed / 800 skipped — the parent's 59/800 plus the same 14 new ids, re-measured on the parent worktree rather than quoted |
 | Adversarial review loop | `critiques/pr-17/round-<k>.md` |
 
 ### 3. Full-data suite — the only movement is the new test file
@@ -807,14 +809,14 @@ were diffed with `diff -u`.
 
 | Run | parent `2ff83a4` | `pr-17-shelves-local-fs` | set diff |
 |---|---|---|---|
-| `--mode ns` | 825 passed / 34 skipped (859 ids) | 838 passed / 34 skipped (872 ids) | **13 additions, nothing else** |
+| `--mode ns` | 825 passed / 34 skipped (859 ids) | 839 passed / 34 skipped (873 ids) | **14 additions, nothing else** |
 | `--mode s` | 555 passed / 3 skipped (558 ids) | 555 passed / 3 skipped (558 ids) | **empty** |
 
 The parent numbers reproduce PR-16's recorded set, which is what makes this a
 comparison against PR-16's baseline rather than against a fresh unrelated
 measurement.
 
-The 13 additions are the whole of `tests/api/test_mixin_collisions.py`, every one
+The 14 additions are the whole of `tests/api/test_mixin_collisions.py`, every one
 an `added, passed` line and none of them a change to an existing id:
 
 ```
@@ -825,8 +827,9 @@ an `added, passed` line and none of them a change to an existing id:
 +passed  tests.api.test_mixin_collisions::test_a_mixin_defines_no_construction_or_attribute_hook[__setattr__]
 +passed  tests.api.test_mixin_collisions::test_a_mixin_defines_no_construction_or_attribute_hook[__slots__]
 +passed  tests.api.test_mixin_collisions::test_a_mixin_defines_only_callables_and_properties
-+passed  tests.api.test_mixin_collisions::test_every_public_mixin_name_is_reachable_through_pdsfile
++passed  tests.api.test_mixin_collisions::test_every_mixin_name_is_reachable_through_pdsfile
 +passed  tests.api.test_mixin_collisions::test_no_mixin_is_shadowed_by_pdsfile_itself
++passed  tests.api.test_mixin_collisions::test_no_mixin_module_imports_pdsfile_at_module_level
 +passed  tests.api.test_mixin_collisions::test_no_two_mixins_define_the_same_name
 +passed  tests.api.test_mixin_collisions::test_the_class_statement_stays_in_pdsfile_pdsfile
 +passed  tests.api.test_mixin_collisions::test_the_mixin_bases_are_listed_alphabetically
@@ -837,8 +840,8 @@ Nothing was removed and no existing id changed outcome, in either mode. They
 appear in `--mode ns` only because `tests/api/` is in that pass alone (the
 `--mode s` pass runs `tests/pds3file/` and `tests/rules/pds3/`).
 
-The 13 tests are holdings-free, which is why the no-holdings count in §2 rises by
-the same 13.
+The 14 tests are holdings-free, which is why the no-holdings count in §2 rises by
+the same 14.
 
 ### 4. API freeze — empty diff, as a mixin move requires
 
@@ -923,8 +926,8 @@ them.
 **Byte-for-byte equivalence, measured.** At the extraction commit (`7b581a1`, a
 pure move) each moved definition's exact source segment (decorators included) was
 extracted from the parent commit's `PdsFile` body and from the new mixin's body
-and compared byte by byte: all fourteen methods and `PATH_EXISTS_CACHE_SIZE`
-identical. The contiguous run from the first moved definition to the last also
+and compared byte by byte: **all fourteen methods and `PATH_EXISTS_CACHE_SIZE`
+identical**. The contiguous run from the first moved definition to the last also
 compares identical as a single blob on each side — 11,388 bytes for the shelf
 block, 17,520 for the local-filesystem block — which additionally rules out a
 reordering or a dropped blank line. Nothing moved is still defined in
@@ -932,10 +935,13 @@ reordering or a dropped blank line. Nothing moved is still defined in
 list. No moved body was restyled to dodge an inherited lint violation; that is
 PR-23's job.
 
-The one deliberate exception is §8's `eval()` isolation, which is a **separate
-commit** (`1b0011d`) precisely so that the byte-for-byte claim above is exactly
-checkable at `7b581a1`, and so that no commit mixes a move with a content edit
-(§2 commit granularity).
+At HEAD the same check reports thirteen of the fourteen still identical, the
+exception being `shelf_lookup` and the shelf block that contains it. That is
+§8's `eval()` isolation, which the parent plan requires and which is a
+**separate commit** (`1b0011d`) precisely so that the byte-for-byte claim above
+is exactly checkable at `7b581a1`, and so that no commit mixes a move with a
+content edit (§2 commit granularity). `_LocalFsMixin` is byte-identical at HEAD
+as well as at the extraction commit.
 
 `pdsfile.py`: 6,125 → 5,436 lines; `_shelves.py` 355; `_local_fs.py` 437.
 
@@ -982,15 +988,27 @@ worktree and the module re-run:
 | Mutation | Went red |
 |---|---|
 | bases listed out of alphabetical order | `test_the_mixin_bases_are_listed_alphabetically` |
-| the same method name defined by both mixins | `test_no_two_mixins_define_the_same_name`, `test_every_public_mixin_name_is_reachable_through_pdsfile` |
+| the same method name defined by both mixins | `test_no_two_mixins_define_the_same_name`, `test_every_mixin_name_is_reachable_through_pdsfile` |
 | a mixin carries class-level state (`SHELF_CACHE = {}`) | `test_a_mixin_defines_only_callables_and_properties` + 2 |
 | a mixin defines `__init__` | `test_a_mixin_defines_no_construction_or_attribute_hook[__init__]` + 2 |
-| `PdsFile` redefines a name a mixin supplies | `test_no_mixin_is_shadowed_by_pdsfile_itself`, `test_every_public_mixin_name_is_reachable_through_pdsfile` |
+| `PdsFile` redefines a name a mixin supplies | `test_no_mixin_is_shadowed_by_pdsfile_itself`, `test_every_mixin_name_is_reachable_through_pdsfile` |
 | no mixin bases at all | `test_the_mixins_are_found_and_come_from_private_modules` |
 | a mixin claims a public `__module__` | `test_the_mixins_are_found_and_come_from_private_modules` |
 | the class statement moved out of `pdsfile.pdsfile` | `test_the_class_statement_stays_in_pdsfile_pdsfile` |
+| `import pdsfile.pdsfile` at a mixin module's top level | `test_no_mixin_module_imports_pdsfile_at_module_level` |
 
 Every check in the module is killed by at least one mutation.
+
+The last row is the one worth explaining, and it is why that check exists rather
+than being left to the import machinery. The preamble pins "no module-level
+`from pdsfile.pdsfile import PdsFile` in a mixin module". That *form* cannot
+survive: injecting it into `_shelves.py` makes the whole suite fail to collect
+with `ImportError: cannot import name 'PdsFile' from partially initialized
+module`. But the sibling form, a plain `import pdsfile.pdsfile`, binds a
+partially-initialized module object and raises nothing — measured: with it
+injected, the suite still collects and only the new check goes red. So the import
+machinery guards half the rule and this check guards the other half, for every
+mixin PR-18 onward adds.
 
 ### 7. Ruff ratchet — four codes dropped, none gained
 
@@ -1077,7 +1095,8 @@ boundary is the holdings tree, whose sidecars this package's own maintenance
 tools write. No validation was added.
 
 **The one consequence worth measuring: the `eval` now runs in
-`pdsfile._shelves`'s module namespace rather than `pdsfile.pdsfile`'s.** That is
+`pdsfile._shelves`'s module namespace rather than `pdsfile.pdsfile`'s** (and its
+locals shrink from `shelf_lookup`'s frame to just `rec` and `parts`). That is
 observable only by a record whose expression references a *name*. Measured
 directly rather than argued: the second line of **every one of the 6,753**
 `*_info.py` sidecars under the complete holdings set was parsed with `ast`, and
