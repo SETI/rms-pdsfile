@@ -27,8 +27,12 @@ import pytest
 
 from pdsfile.pdsfile import PdsFile
 
-# Attributes every class body gets from the compiler or from object; they are not
-# what "this mixin defines a name" means.
+# Names the class machinery puts in a class body's namespace rather than the
+# author: the compiler's bookkeeping, plus the __dict__ and __weakref__
+# descriptors, which land on whichever class in a hierarchy first needs them --
+# for PdsFile's instances that is now the first mixin base, not PdsFile. None of
+# them is what "this mixin defines a name" means, and leaving them in would make
+# every pair of mixins collide.
 _STRUCTURAL = {'__module__', '__qualname__', '__doc__', '__dict__', '__weakref__',
                '__firstlineno__', '__static_attributes__', '__annotations__'}
 
