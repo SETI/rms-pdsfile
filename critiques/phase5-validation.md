@@ -1358,12 +1358,13 @@ passed / 34 skipped (880 ids) and `--mode s` 555 passed / 3 skipped (558 ids) �
 than copied from the table. The re-measurement reproduced it exactly.
 **Date:** 2026-07-27
 **Sub-plan:** [`plans/2026-07-27-pr-18-subplan.md`](../plans/2026-07-27-pr-18-subplan.md)
-**Last change under `src/pdsfile/`:** commit `72cbdc5` (round 2's two-word comment
-correction), at **15:41:17**. The **head** runs recorded below postdate it, per
-§6.6 step 5: their `--junitxml` timestamps are **15:41:26 and 15:44:19**. They are
-the second regeneration step 5 required — round 1's fixes and round 2's comment
-fix each touched `src/pdsfile/`. The two superseded head pairs (14:29:04 /
-14:31:56 and 15:15:58 / 15:18:50) produced the same two empty diffs. The
+**Last change under `src/pdsfile/`:** commit `5115c38` (round 3's
+keyword-argument and docstring-heading fixes), at **16:03:09**. The **head** runs
+recorded below postdate it, per §6.6 step 5: their `--junitxml` timestamps are
+**16:03:13 and 16:06:07**. They are the third regeneration step 5 required —
+round 1's fixes, round 2's comment fix and round 3's keyword fix each touched
+`src/pdsfile/`. The three superseded head pairs (14:29:04 / 14:31:56, 15:15:58 /
+15:18:50 and 15:41:26 / 15:44:19) each produced the same two empty diffs. The
 **baseline** runs (14:19:27 and 14:22:21) stand throughout: they were taken in a
 detached `git worktree` at `ca7a43d` that nothing has touched since.
 
@@ -1553,9 +1554,10 @@ on each side — 5,867 bytes for the checksum-and-archive block and 4,909 for th
 log-path block, measured from the first character of the first definition (its
 decorator, where it has one) to the last character of the last definition's last
 line, exclusive of the trailing newline — which additionally rules out a
-reordering or a dropped blank line. Nothing moved is still defined in `pdsfile.py`, and the new module carries
-no definition that was not on the move list. No moved body was restyled to dodge
-an inherited lint violation; that is PR-23's job.
+reordering or a dropped blank line. Nothing moved is still defined in
+`pdsfile.py`, and the new module carries no definition that was not on the move
+list. No moved body was restyled to dodge an inherited lint violation; that is
+PR-23's job.
 
 At HEAD, **eight** of the eleven are still byte-identical: the seven checksum and
 archive definitions and `set_log_root`. The three that are not are
@@ -1567,7 +1569,7 @@ content edit (§2 commit granularity). The mixin also carries one definition tha
 is not on the move list, `_log_path_for` itself; it is the deduplication's helper,
 it is underscore-prefixed, and §6 is its account.
 
-`pdsfile.py`: 5,436 → 5,125 lines; `_derived_paths.py` 313.
+`pdsfile.py`: 5,436 → 5,125 lines; `_derived_paths.py` 314. Both counted at HEAD.
 
 ### 6. The deduplication, and the divergences it had to reproduce
 
@@ -1786,7 +1788,23 @@ that owns the tool tests.
 Every check below is a mutation of the **moved or deduplicated** code, run
 against `tests/pds3file/` with the 61-id selection above (61 passed, unmutated).
 Each must turn tests red; a mutation that changed nothing would mean the tests
-reach some other copy of the code, or nothing at all.
+reach some other copy of the code, or nothing at all. **All figures below were
+re-measured at HEAD** after the last change under `src/pdsfile/`, so no row
+describes an earlier state of the file.
+
+**The harness has a trap in it, and the first attempt fell into it.**
+`pyproject.toml` sets `pythonpath = [".", "src"]`, which pytest resolves against
+**rootdir** and inserts at the front of `sys.path` — **ahead of `PYTHONPATH`**.
+Measured under pytest from the repo root: `sys.path` is `tests/api`, `tests`,
+`<rootdir>`, `<rootdir>/src`, `<rootdir>`, then the `PYTHONPATH` entry. So
+mutating a copy of `src/` and pointing `PYTHONPATH` at it from the repo root
+imports the *unmutated* tree, and all seven controls report green, which reads
+exactly like "the tests do not reach this code" and is in fact "the harness does
+not reach the mutation". Each mutation is therefore written into a **full copy of
+the working tree** and pytest is run from inside it, and a `conftest.py` in that
+copy prints `_derived_paths.__file__` so the run asserts it imported the mutated
+module. The same trap is why §3's runs `cd` into the tree they measure — see
+§1, whose `measured_files()` table is the independent statement that they did.
 
 | Mutation | Result |
 |---|---|
@@ -1795,8 +1813,8 @@ reach some other copy of the code, or nothing at all.
 | `_log_path_for` drops the `subdir` segment | **21 failed** — exactly the cases that pass a `dir` |
 | `_log_path_for` ignores `cls.LOG_ROOT_` (always takes the parallel root) | **5 failed** — exactly the cases with an explicit log root *and* `place='default'`; the other 11 log-root cases are `place='parallel'`, which never reads it |
 | `checksum_path_and_lskip` returns `lskip + 1` | **3 failed** |
-| `archive_path_and_lskip` returns a wrong abspath | **4 failed** |
-| `dirpath_and_prefix_for_archive` returns a wrong parent | **1 failed** |
+| `archive_path_and_lskip` writes `archivesWRONG-` into the abspath | **4 failed** |
+| `dirpath_and_prefix_for_archive` drops `bundleset_` from the parent | **1 failed** |
 
 The `LOG_ROOT_` control is the discriminating one for the class-attribute
 question: it is the measurement that the log root is still read **off the class**
@@ -1805,14 +1823,16 @@ module.
 
 The inherited mixin checks were mutation-tested too, because
 `tests/api/test_mixin_collisions.py` discovers its subjects and a new mixin could
-in principle be discovered and then checked vacuously:
+in principle be discovered and then checked vacuously. Unmutated the module is 13
+passed; each mutation names the tests it turned red, so the row is reproducible
+rather than a count:
 
 | Mutation | Went red |
 |---|---|
-| `_DerivedPathsMixin` listed out of alphabetical order | `test_the_mixin_bases_are_listed_alphabetically` |
-| `_DerivedPathsMixin` carries class-level state (`LOG_ROOT_ = None`) | `test_a_mixin_defines_only_callables_and_properties` + 2 |
-| `_DerivedPathsMixin` defines a name `_ShelfMixin` also defines | `test_no_two_mixins_define_the_same_name` + 2 |
-| `PdsFile` itself redefines `archive_logpath` | `test_no_mixin_is_shadowed_by_pdsfile_itself` + 1 |
+| `_DerivedPathsMixin` and `_LocalFsMixin` swapped in the class statement | `test_the_mixin_bases_are_listed_alphabetically` |
+| `_DerivedPathsMixin` carries class-level state (`LOG_ROOT_ = None`) | `test_a_mixin_defines_only_callables_and_properties`, `test_no_mixin_is_shadowed_by_pdsfile_itself`, `test_the_mixin_bases_are_listed_alphabetically` |
+| `_DerivedPathsMixin` also defines `shelf_path_and_key_for_abspath`, which `_ShelfMixin` defines | `test_no_two_mixins_define_the_same_name`, `test_every_mixin_name_is_reachable_through_pdsfile` |
+| `PdsFile` itself redefines `archive_logpath` | `test_no_mixin_is_shadowed_by_pdsfile_itself`, `test_every_mixin_name_is_reachable_through_pdsfile` |
 
 ### 10. The base order
 
@@ -1974,12 +1994,15 @@ untouched: this PR adds a mixin module and §5 shows it is clean by the same
 parsing check, but it builds no guard. No entry in 1–42 is resolved or
 invalidated here.
 
-Four entries are **added**: 43 (the tool tests run the log-path builders but
+Five entries are **added**: 43 (the tool tests run the log-path builders but
 assert nothing about their output, and in-process coverage cannot see them at all
 — owner Phase 6), 44 (the golden tests' `20..` year prefix — owner PR-24), 45
 (`A002`'s freeze-locked home moves to `_derived_paths.py`, which PR-23's
-enumerated list must follow) and 46, from the round-1 review (the deduplicated
-code has no holdings-free coverage — owner Phase 6, alongside 43).
+enumerated list must follow), 46, from the round-1 review (the deduplicated code
+has no holdings-free coverage — owner Phase 6, alongside 43), and 47, from the
+round-3 review (`log_path_for_index`'s docstring first line describes a bundle;
+it moved verbatim, so editing it here would break the byte-for-byte claim —
+owner Phase 7).
 
 ### 16. Review loop
 
@@ -1988,7 +2011,6 @@ code has no holdings-free coverage — owner Phase 6, alongside 43).
 | 1 | goal met | 0 Major, 4 Minor (all accepted; two fixed in code, two in the records), 2 Deferred (entry 46 added) | `critiques/pr-18/round-1.md` |
 | 2 | goal met | 0 Major, 5 Minor (all accepted and fixed; all five are record or comment accuracy), 3 Deferred (all already recorded) | `critiques/pr-18/round-2.md` |
 | 3 | goal met | **1 Major** (a fabricated row in this table — fixed), 3 Minor (all accepted and fixed), 4 Deferred | `critiques/pr-18/round-3.md` |
-| 4 (scoped) | *see the record* | | `critiques/pr-18/round-4.md` |
 
 **Round 3's Major was in this table.** While fixing round 2's Minor 4 — "the
 review-loop table is empty" — the table was filled in for **three** rounds when
@@ -1997,8 +2019,12 @@ two had been held: it asserted `goal met`, "0 Major, 0 new Minor" and a
 still said "both rounds". That is a manufactured process-compliance claim in the
 one document the §6.2 gate rests on, and it was wrong on the facts as well as in
 principle — round 3 returned a Major. It is deleted, this paragraph replaces the
-one that carried it, and every row below is written only after the round it
-describes has run and its record file exists.
+one that carried it, and every row above is written only after the round it
+describes has run and its record file exists. Round 3's fix left a fourth row as
+an explicit forward reference to `critiques/pr-18/round-4.md` with no verdict
+claimed; that row has since been removed too, because the rule is that a row
+appears when its record does, and a pointer to a file that does not exist is the
+same defect in a weaker form.
 
 Each reviewer re-derived the move fidelity, the API dump, the set diff, the
 ratchet conservation and the runtime class shape with its own scripts rather than
