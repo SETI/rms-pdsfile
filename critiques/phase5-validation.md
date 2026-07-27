@@ -34,7 +34,7 @@ section per PR, in merge order.
 numbers exactly: `--mode ns` 790 passed / 34 skipped, `--mode s` 555 passed /
 3 skipped.
 **Date:** 2026-07-26
-**Last change under `src/pdsfile/`:** commit `21ac769` (the round-1 fix).
+**Last change under `src/pdsfile/`:** commit `4fdadb0` (the round-2 fix).
 Every run recorded below was regenerated after it, per §6.6 step 5.
 
 ### 0. Why this section is longer than the ones that follow
@@ -146,12 +146,13 @@ predicted 57/800 with no holdings, measured 57/800.
 
 The final numbers in §3b and §4 are one higher (824/34, 858 ids; 58/800) for a
 reason that has nothing to do with the prediction: **round 1 of the adversarial
-review added one test**, `test_an_open_only_icon_type_is_still_ranked`, together
-with the `_priority_of_icon_type` fix it pins (see
-`critiques/pr-15/round-1.md`). Diffing the regenerated ns set against the
-pre-round-1 one shows exactly that single added id and nothing else. The claim
-the prediction actually makes — **no pre-existing test moves** — was re-measured
-after the round-1 fix and still holds with an empty diff in both modes (§3a).
+review added one test** for the `_priority_of_icon_type` fix it prompted, and
+round 2 renamed and broadened that same test (see `critiques/pr-15/round-1.md`
+and `round-2.md`). Diffing each regenerated ns set against the previous one
+shows exactly that one id appearing, then being renamed, and nothing else. The
+claim the prediction actually makes — **no pre-existing test moves** — was
+re-measured after each round's source fix and still holds with an empty diff in
+both modes (§3a).
 
 Nothing moved that was not predicted, so there is nothing to escalate under the
 "any unpredicted mover is a hard stop" rule.
@@ -217,9 +218,15 @@ is proved here, not asserted.
 the suite uses, walks breadth-first from every category (4 levels, 12 children
 per node), reads `html_path` and `url` on every object reached, and then dumps
 (a) every returned value keyed by class and logical path and (b) the resulting
-cache contents — for each key, the stored value's type, `logical_path`,
-`abspath`, and whether it carries an expiration. The same script ran against the
-base worktree and against this branch.
+cache contents. **36 of the 1,910 probed objects produce no value:** they are
+category directories that the preload knows about but that are empty in this
+reference root, so `html_path`'s merged-directory branch indexes an empty
+`childnames` and raises `IndexError` (recorded below as deferred entry 27). They
+raise identically on both trees, so the comparison is over the 1,874 objects
+that do return a value, plus 36 that raise the same way on both sides. The dump
+records, for each cache key, the stored value's type, `logical_path`, `abspath`,
+and whether it carries an expiration. The same script ran against the base
+worktree and against this branch.
 
 **Result over 1,910 objects spanning both classes and all categories:**
 
@@ -227,7 +234,7 @@ base worktree and against this branch.
 |---|---|---|
 | objects probed | 1,910 | 1,910 |
 | probed key sets identical | — | **yes** |
-| `html_path`/`url` values that differ | — | **0** |
+| `html_path`/`url` results that differ (values, and which 36 raise) | — | **0** |
 | Pds3File cache entries | 11,242 | 11,242 |
 | Pds4File cache entries | 474 | 474 |
 | cache key sets identical | — | **yes**, both classes |
@@ -277,9 +284,11 @@ claimed:
   is needed so the editable install of the main tree does not shadow it).
 - **`a6496f8`** applies the seven fixes. At that commit the same command reports
   **33 passed**.
-- **`21ac769`** is the round-1 review fix. It adds the 34th test, which was
-  likewise confirmed to fail against the two-key `_priority_of_icon_type` lookup
-  before the third probe was added. `pytest tests/core` reports **34 passed**.
+- **`21ac769`** and **`4fdadb0`** are the review-loop fixes to
+  `_priority_of_icon_type` (rounds 1 and 2). Between them they add the 34th test,
+  which was confirmed to fail against each preceding version of that helper
+  before the version that satisfies it landed. `pytest tests/core` reports
+  **34 passed**.
 
 Failures at `b646aee`, grouped by the defect each pins:
 
@@ -369,8 +378,10 @@ touched.
 | Round | Verdict | Findings | Record |
 |---|---|---|---|
 | 1 | goal met | 0 Major, 3 Minor (all accepted and fixed), 3 Deferred (all already recorded) | `critiques/pr-15/round-1.md` |
-| 2 | see the record | — | `critiques/pr-15/round-2.md` |
+| 2 | goal met | 0 Major, 5 Minor (all accepted and fixed), 2 Deferred (new entries 27–28) | `critiques/pr-15/round-2.md` |
+| 3 | see the record | — | `critiques/pr-15/round-3.md` |
 
-Round 1's third Minor touched `src/pdsfile/`, so every run recorded above was
-regenerated at or after commit `21ac769` before round 2 was spawned (§6.6 step
-5).
+Both rounds so far produced a `src/pdsfile/` fix, so every run recorded above was
+regenerated at or after commit `4fdadb0` before the next reviewer was spawned
+(§6.6 step 5). Neither round found a Major, and no finding was rebutted — all
+eight Minors were accepted and fixed.

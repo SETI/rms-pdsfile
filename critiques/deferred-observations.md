@@ -348,7 +348,9 @@ Two further observations, not defects in a single tool:
     blanket skip with a throwaway `tryfirst` plugin that marks every collected
     item `holdings_free`, with all four holdings env vars unset:
     **315 passed / 387 failed / 122 skipped** — i.e. 291 beyond the 24 the
-    hosted job runs today. Grouped by test *function*: 124 functions have every
+    hosted job ran at the time of the measurement (58 after PR-15 added
+    `tests/core/`; the surplus shrinks by the same 34, the observation does
+    not change). Grouped by test *function*: 124 functions have every
     parametrized case passing, 41 are **mixed** (some cases pass, some fail) and
     126 fail outright. The four modules involved are
     `tests/pds{3,4}file/test_pds{3,4}file_blackbox.py`,
@@ -412,7 +414,8 @@ Two further observations, not defects in a single tool:
     skip", and it does catch the primary regression: a collection error exits
     non-zero. But a regression that skipped *everything* — say the
     `tests/api/conftest.py` path predicate quietly stopping matching — exits 0 and
-    the job stays green, because "0 passed, 824 skipped" is a passing pytest run.
+    the job stays green, because "0 passed, N skipped" is a passing pytest run
+    (N was 824 when this was written and is 858 after PR-15).
     PR-14 hardened the one known way that could happen (both sides of the path
     comparison are resolved), and each PR's §6.2 record pins the expected
     no-holdings counts, so a drop is visible in review — but nothing fails
@@ -448,12 +451,14 @@ Two further observations, not defects in a single tool:
 
 ## From PR-15 (latent core-path bug fixes, Phase 5)
 
-Nothing in entries 1–22 is resolved or invalidated by PR-15. Entries 10 and 11
-are maintenance-tool defects owned by PR-26/PR-28 and were deliberately not
-touched: §5 keeps the tool-bug twins in Phase 6, where those files are already
-being edited. The four items below were found while fixing the seven the plan
-enumerates; §2 permits only the enumerated changes, so each is recorded rather
-than fixed.
+No entry in 1–22 is resolved or invalidated by PR-15. Entries 10 and 11 are
+maintenance-tool defects owned by PR-26/PR-28 and were deliberately not touched:
+§5 keeps the tool-bug twins in Phase 6, where those files are already being
+edited. Two entries cite suite counts that PR-15 moves — entry 15's "24 the
+hosted job runs" and entry 20's "824 skipped" — and both are annotated in place;
+the observations themselves stand unchanged. The items below were found while
+fixing the seven the plan enumerates; §2 permits only the enumerated changes, so
+each is recorded rather than fixed.
 
 23. **`DictionaryCache(lifetime=0)` cannot serve `set()` without an explicit
     lifetime.** The constructor documents `lifetime` as "default lifetime in
@@ -514,3 +519,34 @@ than fixed.
     evict a category entry — previously impossible for a `lifetime=0` entry.
     Whether a long-running process should be able to expire a category entry at
     all is a cache-design question for issue #77 phase "b". **Owner:** phase "b".
+
+### Added by the PR-15 adversarial review (round 2)
+
+27. **`html_path` raises `IndexError` on an empty merged category.**
+    `pdsfile.py`'s `html_path` handles a merged directory (`self.abspath is
+    None`) with `self.child(self.childnames[0]).html_path`, which indexes an
+    empty list whenever a category is present in the preload but has no
+    children. Measured, not hypothesized: **36 of the 1,910 objects** in PR-15's
+    bug-1 probe do exactly this against the limited holdings copy — every
+    category that copy does not populate (`archives-bundles`, `bundles` for
+    Pds3File, `volumes` for Pds4File, the `checksums-archives-*` set, …). The
+    behavior is identical before and after PR-15, which is why the probe's
+    before/after comparison is unaffected. The code's own comment already calls
+    the approach fragile ("Not a great solution but it usually works … This
+    issue will probably never come up"), so this is a known-shaky path rather
+    than a surprise; what is new is the measurement of how often it fires.
+    Fixing it means deciding what a childless merged category's URL *is*, which
+    is a behavior decision outside PR-15's enumerated list. **Owner:** phase "b"
+    or a future `pdsfile.py` PR.
+
+28. **`iconset_for`'s terminal lookup assumes an `UNKNOWN` icon set exists.**
+    `pdsviewable.py`'s `iconset_for` ends with `ICON_SET_BY_TYPE[icon_type,
+    is_open]`. PR-15 made the priority comparison key on the requested open
+    state, so any icon type that *wins* the comparison necessarily has a set
+    under that key and the lookup cannot raise for a winner. The remaining case
+    is the starting value: if `load_icons()` was never called, or was called on a
+    tree with no `document_generic` icon, `('UNKNOWN', is_open)` is absent and
+    the function raises `KeyError` instead of returning anything. That shape is
+    pre-existing — it is only reachable at all now that the function no longer
+    raises `NameError` first — and turning it into a graceful return is a new
+    behavior, not a bug fix. **Owner:** whichever PR next revisits the icon path.
