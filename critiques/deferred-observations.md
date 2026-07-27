@@ -552,3 +552,39 @@ each is recorded rather than fixed.
     pre-existing — it is only reachable at all now that the function no longer
     raises `NameError` first — and turning it into a graceful return is a new
     behavior, not a bug fix. **Owner:** whichever PR next revisits the icon path.
+
+## From PR-16 (extract module-level path helpers, Phase 5)
+
+Both raised by the PR-16 adversarial review. Neither is fixable inside a pure
+move PR: the first is process, the second is a pre-existing defect in code that
+moved byte-for-byte and is outside PR-15's enumerated bug list.
+
+29. **An extraction sweep must ask which module namespaces the tests *patch*, not
+    only which globals the code *reads*.** PR-16's free-variable sweep answered
+    "what must move with the code" correctly and completely. It could not have
+    caught what the review did: `tests/core/test_pdsfile_path_resolution.py`
+    replaced `glob` on `pdsfile.pdsfile`, so after the move the stub sat on a
+    namespace `abspath_for_logical_path` no longer resolves through, and the
+    test's outcome became a property of the machine rather than of the test. It
+    still *passed*, so §6.2's outcome-set diff — which compares pass/fail, not
+    what a test actually exercises — is structurally blind to it. The missing
+    step is a one-line grep for `monkeypatch.setattr` / `setattr(<module>` over
+    `tests/` and `scripts/` naming any module a PR moves code out of. PR-16 fixed
+    its own site by patching the function's `__globals__`, which follows the
+    function; the general step belongs in every later extraction PR's checklist.
+    It matters most for **PR-17**, which moves the `os`-resolving filesystem
+    helpers, where a stale `os` patch would be both likelier and harder to spot.
+    **Owner:** PR-17 onward (a step in each extraction PR's sweep).
+
+30. **`repair_case` raises `UnboundLocalError` on a single-component path.**
+    `_path_utils.py`'s `repair_case` assigns `found` only inside
+    `for k in range(1, len(parts))` but reads it unconditionally after the loop,
+    so any path that splits into one component skips the assignment:
+    `repair_case('/', Pds3File)` raises `UnboundLocalError: cannot access local
+    variable 'found'`. `repair_case('/tmp', Pds3File)` is fine, so only the
+    filesystem root and an empty-ish path reach it. Pre-existing and moved
+    byte-for-byte by PR-16; it is not in PR-15's enumerated bug list, and PR-16
+    is a pure move with no licence to change behavior. The fix is a
+    `found = True` initialization (a path with nothing to repair *is* found), but
+    that is a behavior change on a currently-raising input and needs its own test
+    and PR. **Owner:** PR-23, or whichever PR next edits this file.
