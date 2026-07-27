@@ -984,6 +984,17 @@ PR-22 extend. The rule chosen, and asserted by
 5. `object` stays last, where it is today, so `PdsFile.__bases__[-1] is object` is
    unchanged and the `UP004` count in the ratchet is unchanged with it.
 
+`object` is **not a mixin** and is **not required** — Python 3 derives every class
+from it whether or not it is written down, so `class PdsFile(_LocalFsMixin,
+_ShelfMixin)` would give the identical MRO. It is in the list only because it was
+already in the class statement before this PR, and a move PR changes nothing it
+does not have to. Removing it is an unrelated cleanup for a later PR, most
+naturally PR-23, which owns the core modules' ruff cleanup and already carries
+`UP004` for this exact line; whoever does it should also drop the
+`PdsFile.__bases__[-1] is object` assertion, which stops being meaningful with it.
+`tests/api/test_mixin_collisions.py` discovers mixins by filtering `object` out of
+`__bases__`, so neither the ordering rule nor the collision checks depend on it.
+
 `tests/api/test_mixin_collisions.py` **discovers** the mixins from
 `PdsFile.__bases__` rather than listing them, so PR-18–22 get all of its checks
 the moment they add a base. Beyond the set-intersection check the preamble asks

@@ -162,10 +162,55 @@ def _modules_named_by(node, package):
     return [base] + [f'{base}.{alias.name}' for alias in node.names]
 
 
-def test_no_mixin_module_imports_pdsfile_at_module_level():
-    # pdsfile/pdsfile.py imports the mixin modules to build the class, so a
-    # module-level import of the core module from a mixin is a cycle. A method
-    # needing the class object uses a function-local deferred import instead.
+def _is_type_checking(test):
+    """True for the test of an `if TYPE_CHECKING:` / `if typing.TYPE_CHECKING:`."""
+
+    if isinstance(test, ast.Name):
+        return test.id == 'TYPE_CHECKING'
+    return isinstance(test, ast.Attribute) and test.attr == 'TYPE_CHECKING'
+
+
+def _imports_that_run_at_import_time(tree):
+    """Every import statement in a module that executes when the module is imported.
+
+    Not the same as the top-level body: an import nested in a module-level `try`,
+    `if` or `with` still runs, and `try: import x / except ImportError:` is a
+    pattern this package already uses. Three things are skipped because they do
+    not run at import time, so none of them can build the cycle:
+
+      * function and method bodies -- a deferred import inside a method is the
+        pattern the Phase 5 preamble prescribes, and flagging it would forbid the
+        one spelling that is allowed;
+      * class bodies, which cannot reach the module under construction usefully
+        anyway;
+      * `if TYPE_CHECKING:` blocks, which never execute.
+    """
+
+    def is_deferred(node):
+        return (isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
+                or (isinstance(node, ast.If) and _is_type_checking(node.test)))
+
+    found = []
+
+    def walk(body):
+        for node in body:
+            if isinstance(node, (ast.Import, ast.ImportFrom)):
+                found.append(node)
+            elif not is_deferred(node):
+                for field in ('body', 'orelse', 'finalbody'):
+                    walk(getattr(node, field, None) or [])
+                for handler in getattr(node, 'handlers', []):
+                    walk(handler.body)
+
+    walk(tree.body)
+    return found
+
+
+def test_no_mixin_module_imports_pdsfile_at_import_time():
+    # pdsfile/pdsfile.py imports the mixin modules to build the class, so a mixin
+    # importing the core module back at import time is a cycle. A method needing
+    # the class object uses a function-local deferred import instead, which is why
+    # the search above deliberately does not descend into function bodies.
     #
     # Some spellings raise ImportError on their own, but only when the name being
     # imported is not yet bound on the half-initialized module -- and by the time
@@ -177,14 +222,12 @@ def test_no_mixin_module_imports_pdsfile_at_module_level():
     offenders = []
     for mixin in _mixins():
         package = mixin.__module__.rpartition('.')[0]
-        for node in ast.parse(inspect.getsource(inspect.getmodule(mixin))).body:
-            if not isinstance(node, (ast.Import, ast.ImportFrom)):
-                continue
-            reached = _modules_named_by(node, package)
-            if 'pdsfile.pdsfile' in reached:
+        tree = ast.parse(inspect.getsource(inspect.getmodule(mixin)))
+        for node in _imports_that_run_at_import_time(tree):
+            if 'pdsfile.pdsfile' in _modules_named_by(node, package):
                 offenders.append(f'{mixin.__module__}:{node.lineno} -> pdsfile.pdsfile')
 
-    assert not offenders, f'module-level back-imports of the core module: {offenders}'
+    assert not offenders, f'import-time back-imports of the core module: {offenders}'
 
 
 ##########################################################################################

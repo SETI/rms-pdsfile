@@ -53,6 +53,27 @@ and reasoned in `plans/2026-07-27-pr-17-subplan.md` §4 and
 5. `object` stays last, where it already was, so `PdsFile.__bases__[-1] is object`
    is unchanged.
 
+## What `object` is doing in that list
+
+`object` is **not a mixin**, and it is **not required** — in Python 3 every class
+derives from `object` whether or not it is written down, so
+`class PdsFile(_LocalFsMixin, _ShelfMixin)` would produce the identical MRO.
+
+It is in the list for one reason only: **it was already in the class statement
+before this PR** (`class PdsFile(object):`), and PR-17 is a move PR, which changes
+nothing it does not have to. Nothing about the mixin decomposition needs it, and
+nothing about the alphabetical rule depends on it — `tests/api/test_mixin_collisions.py`
+discovers mixins by filtering `object` out of `PdsFile.__bases__`, so the rule and
+the collision checks read the same either way.
+
+**Removing it is an unrelated cleanup and belongs to a later PR.** `ruff`'s
+`UP004` already flags it and that code sits in `pdsfile.py`'s permanent ratchet
+entry, so PR-23 — which owns the core modules' ruff cleanup — is the natural home.
+Whoever does it should also drop the one line that depends on it:
+`test_the_class_statement_stays_in_pdsfile_pdsfile` asserts
+`PdsFile.__bases__[-1] is object`, which pins that no mixin was appended *after*
+`object` and which stops being meaningful once `object` is gone.
+
 ## Why this needs a decision rather than only a record
 
 `_OpusMixin` sorts **before** `_ShelfMixin`, so the preamble's illustration is in
