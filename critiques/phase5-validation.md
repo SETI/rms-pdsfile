@@ -1358,14 +1358,14 @@ passed / 34 skipped (880 ids) and `--mode s` 555 passed / 3 skipped (558 ids) �
 than copied from the table. The re-measurement reproduced it exactly.
 **Date:** 2026-07-27
 **Sub-plan:** [`plans/2026-07-27-pr-18-subplan.md`](../plans/2026-07-27-pr-18-subplan.md)
-**Last change under `src/pdsfile/`:** commit `10fa308` (the round-1 fix that
-makes the log-path helper's target parts lazy), at **15:15:48**. The **head** runs
-recorded below postdate it, per §6.6 step 5: their `--junitxml` timestamps are
-**15:15:58 and 15:18:50**. They are the regeneration that step 5 requires, because
-round 1's fixes touched `src/pdsfile/`; the pre-fix pair (14:29:04 / 14:31:56)
-produced the same two empty diffs and is superseded. The **baseline** runs
-(14:19:27 and 14:22:21) stand: they were taken in a detached `git worktree` at
-`ca7a43d` that nothing has touched since.
+**Last change under `src/pdsfile/`:** commit `72cbdc5` (round 2's two-word comment
+correction), at **15:41:17**. The **head** runs recorded below postdate it, per
+§6.6 step 5: their `--junitxml` timestamps are **15:41:26 and 15:44:19**. They are
+the second regeneration step 5 required — round 1's fixes and round 2's comment
+fix each touched `src/pdsfile/`. The two superseded head pairs (14:29:04 /
+14:31:56 and 15:15:58 / 15:18:50) produced the same two empty diffs. The
+**baseline** runs (14:19:27 and 14:22:21) stand throughout: they were taken in a
+detached `git worktree` at `ca7a43d` that nothing has touched since.
 
 This PR is the first Phase-5 extraction whose set diff is **empty in both
 modes** — it adds no test file and no test id, so unlike PR-15, PR-16 and PR-17
