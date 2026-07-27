@@ -476,18 +476,29 @@ every extraction PR:
   allowed only with an allowlist entry and owner sign-off, never silently.
 
 **PR-15 (M)** `fix: repair latent bugs in rarely/never-exercised core paths`
-Each fix gets a regression test first. **Note bug #1 is behavior-affecting**
-(it changes cache population for a live property), so unlike the genuinely
-dead bugs below it may legitimately shift the pass/fail set of the
+Each fix gets a regression test first. **Two of these are not dead code.**
+Bug #1 is behavior-affecting (it changes cache population for a live
+property), so it may legitimately shift the pass/fail set of the
 cached-behavior full-data tests — call that out in the PR with a recorded
-explanation (returned *values* are unchanged; only cache state is):
+explanation (returned *values* are unchanged; only cache state is). Bug #2 is
+a live crash on one deployment configuration (see its entry). The remaining
+five are genuinely unreached today, which is why they survived; their
+regression tests must be shown failing against the unfixed code, or they
+demonstrate nothing.
 1. `html_path` property: `self._recache` missing `()` (pdsfile.py:1785) — a
    no-op today, so `html_path` results are never cached; fixing to
    `self._recache()` (as the correct call at :3023 does) restores cache
    writeback for this live, commonly-used property.
 2. `get_permanent_values`: `resume_caching()` called without its `cls`
    argument (:712 — inside `get_permanent_values`, lines 665–714, **not**
-   `preload`, which starts at :840).
+   `preload`, which starts at :840). **This is reached in production, not
+   dead** (established while executing PR-15, 2026-07-27): `preload` calls
+   `get_permanent_values` at :941, on the `if cls.MEMCACHE_PORT:` branch taken
+   when nothing is missing from the cache — so on a **memcached deployment
+   with a warm cache**, `preload()` raises `TypeError` for the missing
+   positional argument. The bad call sits in a `finally:`, so it fires on the
+   success path too. Non-memcached deployments never reach it, which is how it
+   survived.
 3. `abspath_for_logical_path`: hard-coded `PDS3_HOLDINGS_DIR` env lookup in
    shared base breaks Pds4 resolution (:197–198). Fix semantics, exactly: add
    a **private** class attribute `_HOLDINGS_ENV` (`'PDS3_HOLDINGS_DIR'` on
