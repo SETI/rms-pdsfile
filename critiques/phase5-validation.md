@@ -425,3 +425,214 @@ spawned (§6.6 step 5). Rounds 3 and 4 touched only `tests/` and `critiques/`,
 which under that same rule does not stale the record; the counts were
 regenerated after round 3 anyway, because it added a test and therefore changed
 the set.
+
+---
+
+## PR-16 — `refactor: extract module-level path helpers → _path_utils.py`
+
+**Branch:** `pr-16-path-utils`, based on `pr-15-latent-bug-fixes` @ `1a5d85c`
+("docs: reflow two record paragraphs"), opened against that branch, not `rewrite`
+(`plans/2026-07-26-addendum-phase5-stacked-prs.md`).
+**Baseline:** **PR-15's recorded post-fix set** — §3b above, `--mode ns` 825
+passed / 34 skipped (859 ids) and `--mode s` 555 passed / 3 skipped (558 ids) —
+**re-measured locally on the parent tip** with this PR's own command lines rather
+than copied from the table, exactly as PR-15 re-measured `rewrite`'s. The
+re-measurement reproduced §3b exactly.
+**Date:** 2026-07-27
+**Sub-plan:** [`plans/2026-07-27-pr-16-subplan.md`](../plans/2026-07-27-pr-16-subplan.md)
+**Last change under `src/pdsfile/`:** the extraction commit. Every run recorded
+below was generated after it.
+
+This PR is a pure extraction. Unlike PR-15 it has **no licence to move the
+pass/fail set in either direction**, so the gate here is simply "the two set
+diffs are empty", and the section is correspondingly short.
+
+### 1. Environment
+
+| Item | Value |
+|---|---|
+| Interpreter | CPython 3.12.3, repo venv, `pip install -e ".[dev]"` |
+| Holdings | `PDS3_HOLDINGS_DIR` / `PDS4_HOLDINGS_DIR` + `PDSFILE_TEST_HOLDINGS=full`, pointed at the limited testing copy the goldens are tuned to |
+| Baseline tree | `git worktree` at the parent tip `1a5d85c`, same interpreter, same holdings |
+| Command lines | exactly those in `scripts/automated_tests/pdsfile_main_test.sh` (serial, under `coverage`), plus `-rA --junitxml` |
+
+### 2. Active §2 gates
+
+| Gate | Result |
+|---|---|
+| API-freeze manifest test | **passed**; and the dumped surface is byte-identical to the parent's — §4 |
+| Full-data suite, both modes | **passed** — both set diffs empty; §3 |
+| `ruff check src/pdsfile tests scripts` | **passed**; the ratchet gained no code — §5 |
+| Clean-install import check | **passed** (throwaway venv, `pip install .`, full module surface imports) |
+| Hosted lint/no-holdings job (`scripts/run-all-checks.sh`, no holdings env vars) | **passed**, 59 passed / 800 skipped — identical to PR-15's §4 |
+| Adversarial review loop | `critiques/pr-16/round-<k>.md` |
+
+### 3. Full-data suite — both set diffs empty
+
+Both passes were run on the parent tip and on this branch's head with the same
+interpreter and the same holdings. Every `testcase` element of each `--junitxml`
+was reduced to one `outcome<TAB>classname::name` line, sorted, and the two files
+were diffed with `diff -u`.
+
+| Run | parent `1a5d85c` | `pr-16-path-utils` | set diff |
+|---|---|---|---|
+| `--mode ns` | 825 passed / 34 skipped (859 ids) | 825 passed / 34 skipped (859 ids) | **empty** |
+| `--mode s` | 555 passed / 3 skipped (558 ids) | 555 passed / 3 skipped (558 ids) | **empty** |
+
+No test id was added, removed, or changed outcome, in either mode. The parent
+numbers reproduce §3b's recorded set, which is what makes this a comparison
+against PR-15's baseline rather than against a fresh unrelated measurement.
+
+### 4. API freeze — empty diff, as a pure extraction requires
+
+1. `pytest tests/api/` passes. `tests/api/api_manifest.json`,
+   `tests/api/manifest_allowlist.json`, `scripts/dump_public_api.py` and
+   `tests/api/test_api_freeze.py` are untouched by this PR (§6.4); no allowlist
+   entry was added.
+2. `scripts/dump_public_api.py` was run against a worktree at the parent tip and
+   against this branch's head. The two dumps are **byte-identical** (733,876
+   bytes each, `diff` empty).
+
+The manifest records `pdsfile.pdsfile`'s module-level names including imported
+modules, so this gate is stricter here than it looks: dropping the now-unreferenced
+`import glob` / `import math` would have been a manifest break. See §5.
+
+`pdsfile._path_utils` is underscore-prefixed, so the dumper skips it where the
+submodule import binds it onto the `pdsfile` package — which is exactly the
+freeze-invisibility the Phase-5 preamble requires of a new internal name.
+
+### 5. What moved, and the sweep that decided it
+
+Ten module-level symbols, located by name (the plan's ":47–247" window had
+drifted — PR-15 edited this file): `construct_category_list`,
+`logical_path_from_abspath`, `_clean_join`, `_clean_abspath`, `_clean_glob`,
+`_needs_glob`, `repair_case`, `formatted_file_size`, `abspath_for_logical_path`,
+`selected_path_from_path`. `abspath_for_logical_path` moved in its **PR-15 form**
+— it reads `cls._HOLDINGS_ENV`; the pre-PR-15 hard-coded `'PDS3_HOLDINGS_DIR'`
+literal was not resurrected, and `tests/core/test_pdsfile_path_resolution.py`
+(five ids, all still passing) is what says so.
+
+**The sweep was computed, not read.** CPython's `symtable` yields the
+module-global names each moved function's body references; a second AST pass
+covers each definition's decorator expressions and argument defaults, which are
+evaluated in module scope and which `symtable` does not attribute to the
+function. Result:
+
+| Category | Found |
+|---|---|
+| module-level **constants** referenced | `FILE_BYTE_UNITS`, **`_GLOB_CACHE_SIZE`** |
+| module-level **classes** referenced (import-cycle risk) | **none** |
+| module-level **functions** that would stay behind | **none** |
+| unclassified names | **none** |
+| stdlib imports the moved set needs | `fnmatch`, `functools`, `glob`, `math`, `os` |
+
+The second pass is load-bearing, and this is the "record the method so a reviewer
+can check it" case the plan's sweep requirement exists for: `_GLOB_CACHE_SIZE`
+appears **only** in `@functools.lru_cache(maxsize=_GLOB_CACHE_SIZE)`, so a
+body-only sweep reports it as unreferenced and the extracted module raises
+`NameError` at import. The plan's brief names `FILE_BYTE_UNITS` alone; the sweep
+found the second one. `_GLOB_CACHE_SIZE` is private, has no other reference
+anywhere in the tree, and is therefore **not** re-exported; `FILE_BYTE_UNITS` is
+public and is.
+
+`PATH_EXISTS_CACHE_SIZE` was left alone — its consumer is the `lru_cache` on
+`os_path_exists`, which moves with `_local_fs.py` in PR-17.
+
+**No import cycle:** `_path_utils.py`'s module-level imports are `fnmatch`,
+`functools`, `glob`, `math`, `os` and nothing else — verified by parsing the
+module, not by reading it. No moved function needs a `PdsFile` class object, so
+no function-local deferred import was needed.
+
+**Byte-for-byte equivalence, measured.** For each moved definition the exact
+source segment (decorators included) was extracted from the parent commit's
+`pdsfile.py` and from `_path_utils.py` and compared byte by byte: all ten
+functions and both constants identical. The contiguous run from the first moved
+`def` to the last also compares identical as a single 6,562-byte blob, which
+additionally rules out a reordering or a dropped blank line. No moved body was
+restyled to dodge an inherited lint violation — that is PR-23's job.
+
+`pdsfile.pdsfile.X is pdsfile._path_utils.X` for all eleven re-exported names,
+so callers get the same objects, not copies.
+
+`pdsfile.py`: 6,308 → 6,122 lines; `_path_utils.py`: 219 lines.
+
+### 6. Keeping `pdsfile.pdsfile.X` resolving without touching the ratchet
+
+Four names in `pdsfile.py` are now referenced nowhere in it but are frozen
+members of its public surface: `FILE_BYTE_UNITS`, `selected_path_from_path`,
+`glob` and `math`. Measured rather than assumed — rewriting the four statements
+in plain form and re-running `ruff` produces exactly four F401s and no others:
+
+```
+F401 `glob` imported but unused
+F401 `math` imported but unused
+F401 `._path_utils.FILE_BYTE_UNITS` imported but unused
+F401 `._path_utils.selected_path_from_path` imported but unused
+```
+
+`pdsfile.py`'s ratchet entry does not contain F401, and the ratchet header in
+`pyproject.toml` forbids both growing it and adding an inline `noqa`. All four
+therefore use the PEP-484 redundant-alias form (`import glob as glob`,
+`FILE_BYTE_UNITS as FILE_BYTE_UNITS`), which ruff recognises as an explicit
+re-export. `pdsfile.py` now reports **0** F401 with no suppression of any kind.
+
+### 7. Ruff ratchet — no code gained
+
+Procedure: for every code in `pdsfile.py`'s entry, `ruff check --isolated
+--select <code>` was run against both files after the move.
+
+| File | Entry | Note |
+|---|---|---|
+| `src/pdsfile/pdsfile.py` | unchanged | every one of its 23 codes is still triggered by lines that stayed, so none could be dropped |
+| `src/pdsfile/_path_utils.py` | `["E701", "F841"]` | the only two codes the moved lines trigger |
+
+Both new-entry codes are already in `pdsfile.py`'s entry, so this is a **split of
+an existing entry, not a new suppression**: E701 was 16 instances in the parent's
+`pdsfile.py` and is now 14 + 2, F841 was 7 and is now 6 + 1. The count of
+distinct (file, code) suppressions rises by two while the number of suppressed
+violations is unchanged; no code that was not already forgiven for these lines is
+forgiven now. Had `_path_utils.py` needed a code absent from `pdsfile.py`'s
+entry, that would have been a §6.4 hard stop.
+
+### 8. Consumer smoke — outcome unchanged
+
+`critiques/baselines/consumer-smoke-baseline.md` calls out this PR by name: it
+records rms-viewmaster reaching `pdsfile.pdsfile.repair_case` at
+`pdsiterator.py:104` and says "Phase 5 moves module-level functions into private
+modules while `pdsfile/pdsfile.py` keeps re-exporting every name it exports today
+— `repair_case` is one of the names that re-export must preserve, and this
+baseline is where a regression would show up." Both checks were re-run. The gate
+is **same outcome as baseline**, not "passes".
+
+| Check | Baseline | This branch |
+|---|---|---|
+| A — rms-opus import paths | 4/4 resolve, 0 failures | **4/4 resolve, 0 failures** |
+| B — rms-viewmaster startup | 5 ok, 3 pre-existing failures | **5 ok, 3 failures — the same three** |
+
+The three Check-B failures are still `pdsfile.cache_lifetime` (raises),
+`pdsfile.DEFAULT_CACHING` (absent, so viewmaster's assignment stays a silent
+no-op) and the same `cache_lifetime` read inside `get_page_cache()`. None became
+a pass. **`pdsfile.pdsfile.repair_case` still resolves.**
+
+Environment note carried from the baseline: the check ran under the pdsfile
+venv's interpreter with rms-viewmaster's `site-packages` appended to
+`PYTHONPATH`, because that venv lacks pdsfile's declared `range_ex` dependency.
+rms-viewmaster is at `a0d05e2` with the same three untracked entries the baseline
+records.
+
+### 9. Clean install
+
+`scripts/clean_install_check.sh` passes. The new module is picked up by the
+existing `include = ["pdsfile*"]` package glob with no packaging change: the
+built wheel contains `pdsfile/_path_utils.py`, and the gate imports the whole
+manifest module surface — `pdsfile.pdsfile` among them — which cannot succeed if
+`_path_utils.py` is missing from the distribution.
+
+### 10. Deferred observations
+
+**None.** This PR moves code without changing it, so it surfaced no new defect;
+no existing entry in `critiques/deferred-observations.md` is resolved or
+invalidated by it, and none of entries 1–28 owns a symbol it touches.
+
+### 11. Review loop
+
