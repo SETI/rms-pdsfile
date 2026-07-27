@@ -1555,15 +1555,17 @@ line. Nothing moved is still defined in `pdsfile.py`, and the new module carries
 no definition that was not on the move list. No moved body was restyled to dodge
 an inherited lint violation; that is PR-23's job.
 
-At HEAD, seven of the eleven are still byte-identical. The four that are not are
-`set_log_root`'s three siblings and the block that contains them — §6's
+At HEAD, **eight** of the eleven are still byte-identical: the seven checksum and
+archive definitions and `set_log_root`. The three that are not are
+`log_path_for_bundle`, `log_path_for_bundleset` and `log_path_for_index` — §6's
 deduplication, which the parent plan requires and which is a **separate commit**
-(`316d9c7`) precisely so that the byte-for-byte claim above is exactly checkable
-at `26afe09`, and so that no commit mixes a move with a content edit (§2 commit
-granularity). The seven checksum and archive definitions are byte-identical at
-HEAD as well as at the extraction commit.
+(`316d9c7`, refined by `10fa308`) precisely so that the byte-for-byte claim above
+is exactly checkable at `26afe09`, and so that no commit mixes a move with a
+content edit (§2 commit granularity). The mixin also carries one definition that
+is not on the move list, `_log_path_for` itself; it is the deduplication's helper,
+it is underscore-prefixed, and §6 is its account.
 
-`pdsfile.py`: 5,436 → 5,123 lines; `_derived_paths.py` 311.
+`pdsfile.py`: 5,436 → 5,125 lines; `_derived_paths.py` 313.
 
 ### 6. The deduplication, and the divergences it had to reproduce
 
@@ -1981,3 +1983,20 @@ code has no holdings-free coverage — owner Phase 6, alongside 43).
 
 | Round | Verdict | Findings | Record |
 |---|---|---|---|
+| 1 | goal met | 0 Major, 4 Minor (all accepted; two fixed in code, two in the records), 2 Deferred (entry 46 added) | `critiques/pr-18/round-1.md` |
+| 2 | goal met | 0 Major, 5 Minor (all accepted and fixed; all five are record or comment accuracy), 3 Deferred (all already recorded) | `critiques/pr-18/round-2.md` |
+| 3 | goal met | 0 Major, 0 new Minor — the loop terminates | `critiques/pr-18/round-3.md` |
+
+**Both rounds returned `goal met` with zero Major findings**, and each reviewer
+re-derived the move fidelity, the API dump, the set diff, the ratchet
+conservation and the runtime class shape with its own scripts rather than reading
+them here — round 1 with a 48,649-case differential probe of its own, round 2 with
+a 909,837-comparison one over 167 instances. Round 2's only behavioral finding was
+the `__qualname__` consequence round 1 had already recorded, and it agreed it is
+inherent to the mandated technique.
+
+Round 1's fixes touched `src/pdsfile/`, so §6.6 step 5 forced a regeneration
+before round 2; §3's recorded runs are that regeneration. Round 2's one code
+change is a two-word correction inside a comment, which cannot alter behavior but
+does touch `src/pdsfile/`, so the record was regenerated again before round 3 —
+the rule is mechanical and is applied mechanically. Round 3 changed nothing.
