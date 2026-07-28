@@ -2471,8 +2471,13 @@ coverage does not follow. **No `tests/core/` context appears either.**
 | `data_abspath_associated_with_index_row` | 4 | `test_pds3file_blackbox.py`, `test_pds3file_whitebox.py` |
 | `data_pdsfile_for_index_row` | **0** | — |
 | `from_filespec` | 2 | `test_pds3file_blackbox.py`, `test_pds4file_blackbox.py` |
-| `from_opus_id` | 19 | the two blackboxes, `test_pds3file_whitebox.py`, and every `tests/rules/pds3/` and `tests/rules/pds4/` module |
-| `opus_products` | 28 | every `tests/rules/pds3/` and `tests/rules/pds4/` module |
+| `from_opus_id` | 19 | the two blackboxes, `test_pds3file_whitebox.py`, and 15 of the 16 `tests/rules/pds{3,4}/` modules |
+| `opus_products` | 28 | the same 15 |
+
+**15 of 16, not all 16**: `tests/rules/pds4/test_cassini_iss_fring_mosaics_rsfrench2025.py`
+is module-skipped on this holdings copy and so contributes no context at all.
+Round 1 raised the earlier "every … module" wording as Minor 3; the 15 names are
+in the contexts dump and were re-derived from `p19ctx.coverage`.
 
 `data_pdsfile_for_index_row`'s **zero** is the one that matters, and it is not an
 artifact of the subprocess blindness above: no in-process test calls it at all.
@@ -2576,13 +2581,17 @@ modules included, is also empty — that is measured but deliberately **not**
 turned into a test: entry 48 asks for the direct subclasses, and building more
 than the entry asks for is the failure mode PR-17 paid two rounds for.
 
-**One near-miss worth recording.** Every rule module defines a module-level
-`opus_products = translator.TranslatorByRegex([...])` table, which the rule class
-consumes as `OPUS_PRODUCTS = opus_products + …`. It is a *module* global, not a
-class attribute, so it never shadows `_OpusMixin.opus_products` — verified: no
-rule module has an indented `opus_products =`, and the hierarchy intersection
-above is empty. The name is one namespace away from the method the mixin now
-owns, and this is recorded as deferred observation 52.
+**One near-miss worth recording.** **18 of the 34** rule modules define a
+module-level `opus_products = translator.TranslatorByRegex([...])` table, which
+the rule class consumes as `OPUS_PRODUCTS = opus_products + …`. It is a *module*
+global, not a class attribute, so it never shadows `_OpusMixin.opus_products` —
+verified: **zero** rule modules have an indented `opus_products =`, and the
+hierarchy intersection above is empty. The name is one namespace away from the
+method the mixin now owns, and this is recorded as deferred observation 52. (The
+counts are measured: `grep -l '^opus_products\s*=' src/pdsfile/pds{3,4}file/rules/*.py`
+gives 18, `grep -rn '^\s\+opus_products\s*='` over the same tree gives 0, and the
+tree holds 34 rule modules excluding the two `__init__.py` files. Round 1 raised
+an earlier "every rule module" as Minor 2.)
 
 Entry 48 is **resolved** by this PR.
 
@@ -2604,13 +2613,22 @@ resolves.
 **Unlike PR-18, both consumers call methods this PR moves**, which is why the
 smoke is a real check here rather than a formality:
 
-| Name | rms-opus | rms-viewmaster |
+| Name | rms-opus — **call sites** | rms-viewmaster — **call sites** |
 |---|---|---|
-| `from_filespec` | 11 references, e.g. `obs_base_pds3.py:90`, `do_import.py:1480` | — |
-| `from_opus_id` | 3, `do_import.py:687,690` | — |
-| `opus_products` | 3, `do_import.py:1487` | — |
-| `find_selected_row_key` | 2, `do_import.py:1553` | — |
-| `data_pdsfile_for_index_row` | — | 3, `viewmaster.py:873,1449,1580` |
+| `from_filespec` | 3: `obs_base_pds3.py:90`, `obs_base_pds4.py:33`, `do_import.py:1480,1482` (two on adjacent lines) | — |
+| `from_opus_id` | 2: `do_import.py:687,690` | — |
+| `opus_products` | 1: `do_import.py:1487` | — |
+| `find_selected_row_key` | 1: `do_import.py:1553` | — |
+| `data_pdsfile_for_index_row` | — | 3: `viewmaster.py:873,1449,1580` |
+
+These are **call sites**, counted after excluding comments and the unrelated
+local helpers whose names contain the same substring — rms-opus's own
+`_pdsfile_from_filespec` and `get_opus_products_rows_for_filespec` — which an
+earlier draft of this table counted as references. Round 1 raised that as
+Deferred 2; it is corrected here rather than deferred, because a wrong figure in
+this record is the defect class PR-18's round-3 Major was about. The
+rms-viewmaster figure was already call sites (its three `.py` hits; the other
+three matches are in `docs/_build/html/`, generated output).
 
 Every one of them is an attribute access on the class or on an instance
 (`Pds3File.from_filespec(...)`, `pdsf.opus_products()`,
@@ -2713,17 +2731,49 @@ stays open for PR-20 through PR-22. **Entry 48 is resolved** by §11. Entry 42
 and §5 shows both are clean by the same parsing check, but it builds no guard.
 No other entry in 1–48 is resolved or invalidated here.
 
-Four entries are **added**: 49 (the `__bases__` string sniff, which the plan's
-PR-19 section explicitly asks be recorded as a phase-"b" item rather than fixed),
-50 (`data_pdsfile_for_index_row` has zero in-process test coverage while
-rms-viewmaster calls it at three sites), 51 (the four measured coverage gaps
-§10's green controls found), and 52 (the rule modules' module-level
-`opus_products` table, one namespace away from the mixin method).
+Four entries are **added** by the executor's own measurements: 49 (the
+`__bases__` string sniff, which the plan's PR-19 section explicitly asks be
+recorded as a phase-"b" item rather than fixed), 50 (`data_pdsfile_for_index_row`
+has zero in-process test coverage while rms-viewmaster calls it at three sites),
+51 (the four measured coverage gaps §10's green controls found), and 52 (the rule
+modules' module-level `opus_products` table, one namespace away from the mixin
+method). A fifth, 53, comes from the round-1 review: the new subclass check names
+its two subjects rather than discovering them, so a third direct subclass would
+go unchecked — owner PR-20. Round 1's other Deferred item was a wrong figure in
+§12 of this record; it is **corrected there** rather than deferred, because a
+wrong figure in this document is the defect class PR-18's round-3 Major was
+about.
 
 ### 16. Review loop
 
 | Round | Verdict | Findings | Record |
 |---|---|---|---|
+| 1 | goal met | 0 Major, 3 Minor (all accepted; one fixed in `src/`, two in this record), 2 Deferred (entry 53 added; the other corrected in §12 instead) | `critiques/pr-19/round-1.md` |
 
 *(Rows are written only after the round they describe has run and its record file
-exists on disk — the rule PR-18's round-3 Major established.)*
+exists on disk — the rule PR-18's round-3 Major established. No row is written
+for a round that has not run.)*
+
+Round 1's three Minors were all record- or docstring-accuracy defects, and all
+three were **counts asserted rather than measured** — the same failure shape,
+three times. Minor 1: `_IndexRowsMixin`'s class docstring called all nine names
+it lists "lazy properties", when `is_index_row`, `row_dicts` and `column_names`
+are plain instance attributes assigned in `PdsFile.__init__` (`pdsfile.py:333`,
+`:335`, `:337`), and its "read" framing hid that `child_of_index` also *writes*
+`column_names`. Minor 2: "every rule module defines a module-level
+`opus_products` table" — measured, 18 of 34. Minor 3: "every
+`tests/rules/pds{3,4}/` module" contributes a context — measured, 15 of 16;
+`test_cassini_iss_fring_mosaics_rsfrench2025.py` is module-skipped on this
+holdings copy. Each is fixed with the measurement in place of the assertion.
+
+The round-1 reviewer re-derived, with its own scripts rather than reading them
+here: the byte-for-byte segment comparison of all eight definitions, the API
+dumps, the four junit reductions and both set diffs, the `measured_files`
+non-vacuity argument, the ratchet conservation, the `__bases__[0].__name__` and
+`dir()` surface of all 34 classes, the `F821` proof that the deferred import is
+gate-load-bearing, the greenness of the intermediate commit `2d2de4a`, and its
+own `dynamic_context` coverage run, which reproduced §9's table exactly.
+
+**§6.6 step 5 was applied:** Minor 1's fix touches `src/pdsfile/_index_rows.py`,
+so the full-data record was regenerated before round 2 — §3's figures are the
+regenerated ones.

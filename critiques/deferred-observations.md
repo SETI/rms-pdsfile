@@ -1035,16 +1035,16 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     whether the complete holdings set makes those golden cases runnable, so it
     belongs with whoever next revisits the pds3/pds4 cross-product goldens.
 
-52. **Every rule module defines a module-level `opus_products` table, one
+52. **18 of the 34 rule modules define a module-level `opus_products` table, one
     namespace away from the mixin method of the same name.**
-    `src/pdsfile/pds3file/rules/COISS_xxxx.py:263` and the equivalent line in 24
+    `src/pdsfile/pds3file/rules/COISS_xxxx.py:263` and the equivalent line in 17
     other rule modules define `opus_products = translator.TranslatorByRegex([…])`
     at module level, which the rule *class* then consumes as
     `OPUS_PRODUCTS = opus_products + pds3file.Pds3File.OPUS_PRODUCTS` (`:737`).
     Because the table is a module global and the class attribute is spelled in
-    upper case, it never shadows `_OpusMixin.opus_products` — verified: no rule
-    module has an indented `opus_products =`, and the mixin/subclass intersection
-    is empty across the whole 33-class hierarchy
+    upper case, it never shadows `_OpusMixin.opus_products` — verified: **zero**
+    rule modules have an indented `opus_products =`, and the mixin/subclass
+    intersection is empty across the whole 33-class hierarchy
     (`critiques/phase5-validation.md`, PR-19 §11).
 
     Nothing is broken. But the two names differ only in where they are bound, the
@@ -1054,3 +1054,27 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     top of the rules' `OPUS_PRODUCTS` blocks, or a rename of the module-level
     table, would remove the trap. **Owner: PR-24**, which is editing these files
     anyway.
+
+### Added by the PR-19 adversarial review (round 1)
+
+53. **The new subclass shadowing check names its subjects instead of discovering
+    them.** `tests/api/test_mixin_collisions.py`'s
+    `test_no_mixin_is_shadowed_by_a_pdsfile_subclass` is parametrized over the
+    literal list `[Pds3File, Pds4File]`, so a *third* direct subclass of
+    `PdsFile` would silently go unchecked — the same narrowness entry 48
+    described, one step out. Everything else in that module discovers its
+    subjects from `PdsFile.__bases__`, which is why every extraction PR inherits
+    the checks for free.
+
+    PR-19 chose the literal list deliberately and the choice is defensible today:
+    the two subclasses have to be **imported** for `PdsFile.__subclasses__()` to
+    see them at all, so a discovery-based version would need the same two imports
+    and could then pass vacuously if an import were dropped — which is exactly
+    what the test's `assert subclass in PdsFile.__subclasses__()` line exists to
+    prevent. The robust form is to import the two packages for their side effect,
+    parametrize over `PdsFile.__subclasses__()`, and keep a separate assertion
+    that the discovered set is non-empty and contains both. That is a strictly
+    better test and it is a change to a test file, not to `src/`, so it costs
+    nothing behaviorally — but it would add or rename ids, and PR-19's gate is an
+    identical pass/fail set apart from the two ids entry 48 required.
+    **Owner: PR-20**, or whichever Phase-5 PR next edits the mixin harness.
