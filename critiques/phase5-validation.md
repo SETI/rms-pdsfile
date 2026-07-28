@@ -2994,10 +2994,10 @@ the `SHELVES_ONLY` branch, and `associated_abspaths` reaches it through
 through `cls.os_path_isdir`.
 
 **Freshness (§6.6 step 5).** The last change under `src/pdsfile/` is commit
-`752bd12` (round 2's Minor-1 and Minor-6 fixes, two paragraphs of the two class
-docstrings), at **20:43:51**. The head runs recorded above postdate it: their
-`--junitxml` timestamps are **20:46:47 and 20:48:37**. They are the second
-regeneration §6.6 step 5 requires — rounds 1 and 2 each produced a fix under
+`a529d26` (round 3's Minor-3 fix, one paragraph of `_associations.py`'s class
+docstring), at **21:09:41**. The head runs recorded above postdate it: their
+`--junitxml` timestamps are **21:12:38 and 21:14:29**. They are the third
+regeneration §6.6 step 5 requires — rounds 1, 2 and 3 each produced a fix under
 `src/pdsfile/`.
 
 The **superseded** head pairs are recorded rather than dropped, each with the
@@ -3005,11 +3005,12 @@ commit its tree was actually at:
 
 | Head pair | `--junitxml` written | Tree at | Reduced sets |
 |---|---|---|---|
-| 1 | 19:23:02 / 19:24:53 | `48b0605` | identical to pairs 2 and 3 |
-| 2 | 20:14:26 / 20:16:15 | `6350859` | identical to pairs 1 and 3 |
-| **3 (current)** | **20:46:47 / 20:48:37** | **`752bd12`** | **the figures above** |
+| 1 | 19:23:02 / 19:24:53 | `48b0605` | identical to pairs 2, 3 and 4 |
+| 2 | 20:14:26 / 20:16:15 | `6350859` | identical to pairs 1, 3 and 4 |
+| 3 | 20:46:47 / 20:48:37 | `752bd12` | identical to pairs 1, 2 and 4 |
+| **4 (current)** | **21:12:38 / 21:14:29** | **`a529d26`** | **the figures above** |
 
-`diff` between any two of the three pairs is empty in both modes, which is what
+`diff` between any two of the four pairs is empty in both modes, which is what
 docstring-only changes should do and is measured rather than assumed — and is
 also the evidence that every fix in this loop has been a docstring, a comment or a
 record, rather than the claim of it. The provenance check was re-run on each pair:
@@ -3221,13 +3222,13 @@ review round moves every line number in these files.) Nothing moved is still def
 move list. No moved body was restyled to shed an inherited lint violation; that
 is PR-23's job.
 
-`pdsfile.py`: 4,593 → 3,837 lines; `_sorting.py` 525, `_associations.py` 372. All
+`pdsfile.py`: 4,593 → 3,837 lines; `_sorting.py` 525, `_associations.py` 373. All
 counted at HEAD, and re-counted at each round rather than carried forward: the two
-new modules were 522 and 370 at their extraction commits and grew by 3 and 2 lines
-respectively, **entirely in their class docstrings**, which rounds 1 and 2 each
-corrected. The `pdsfile.py` figure is unchanged since the extraction, and no
-executable line in either new module has changed since its extraction commit —
-which the three identical head pairs in §3 measure rather than assert.
+new modules were 522 and 370 at their extraction commits and grew by 3 lines each,
+**entirely in their class docstrings**, which rounds 1, 2 and 3 each corrected.
+The `pdsfile.py` figure is unchanged since the extraction, and no executable line
+in either new module has changed since its extraction commit — which the four
+identical head pairs in §3 measure rather than assert.
 
 ### 6. Cross-block calls — enumerated, and every one an attribute lookup
 
