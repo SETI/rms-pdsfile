@@ -3053,8 +3053,9 @@ for this PR, so a `_transformations.py` would deviate from the stated deliverabl
 and would need an owner-acknowledged addendum. The pairing chosen is also the one
 the code supports: split/sort and the transformations are one domain — bulk
 operations over lists of basenames, logical paths, abspaths and `PdsFile`
-objects, with no I/O of their own — whereas associations are the
-category-crossing lookup layer that walks the holdings tree. The measured call
+objects, none of which reads the filesystem itself (the four that need to probe
+it delegate to `_LocalFsMixin`) — whereas associations are the category-crossing
+lookup layer that walks the holdings tree. The measured call
 graph agrees, and one way: **the associations call the transformations at three
 sites and the transformations never call back** (§6). Because the filename
 `_sorting.py` undersells a module that also holds twelve conversion helpers, its
@@ -3075,9 +3076,9 @@ byte-identical to the parent's.
 
 Taking the `# Associations` banner with its block left `is_logical_path` sitting
 directly under the `# Log path associations` banner, which then described a
-section it is not part of. A **separate three-line commit** (`48b0605`) gives it
-its own banner; it is kept out of the move commit so that commit stays a pure
-move.
+section it is not part of. A **separate four-line commit** (`48b0605` — three comment
+lines and the blank that separates them from the method) gives it its own
+banner; it is kept out of the move commit so that commit stays a pure move.
 
 **No block contains a class-level assignment.** An AST pass over the `PdsFile`
 body reports the three windows as 27 `FunctionDef`s and **zero** `Assign` nodes,
@@ -3185,8 +3186,10 @@ rules out a reordering or a dropped blank line: the split/sort run
 (`split_basename` … `viewable_childnames_by_anchor`) as **14,586 bytes**, the
 transformations run (`abspaths_for_pdsfiles` … `logicals_for_basenames`) as
 **3,424 bytes**, and the associations run (`associated_logical_paths` …
-`associated_parallel`) as **11,906 bytes**. The two in-class banner comments moved
-with their blocks rather than being retyped. Nothing moved is still defined in
+`associated_parallel`) as **11,906 bytes**. The three in-class banner comments moved
+with their blocks rather than being retyped -- `# How to split and sort
+filenames` and `# Transformations` to `_sorting.py:64` and `:419`,
+`# Associations` to `_associations.py:72`. Nothing moved is still defined in
 `pdsfile.py`, and neither new module carries a definition that was not on the
 move list. No moved body was restyled to shed an inherited lint violation; that
 is PR-23's job.
@@ -3205,12 +3208,15 @@ silently. Measured over the AST:
 `associated_abspaths` → `cls.abspaths_for_logicals`.
 **Sorting → associations: none.** The dependency runs one way.
 
-**Within `_sorting.py`, 12 sites**, all `self.`/`cls.` or an attribute on a
-`PdsFile`-valued expression (`parent.sort_basenames` in `sort_sibnames`,
-`pdsf_dict[path].sort_basenames` in `sort_logical_paths`). **Within
-`_associations.py`, 4 sites**, all `self.`.
+**Within `_sorting.py`, 14 sites** — every `Attribute` node in the module whose
+name is one of its own 23, counted individually — all `self.`/`cls.` (12) or an
+attribute on a `PdsFile`-valued expression (`parent.sort_basenames` at `:257` in
+`sort_sibnames`, `pdsf_dict[path].sort_basenames` at `:333` in
+`sort_logical_paths`). **Within `_associations.py`, 5 sites**, all `self.`:
+`associated_abspaths` is called at `:77`, `:82`, `:109` and `:131` — the last two
+are its own two recursions — and `associated_parallel` at `:158`.
 
-**Core → moved, 12 sites**, all `self.`/`cls.`/`parent.`: `_info`
+**Core → moved, 11 sites**, all `self.`/`cls.`/`parent.`: `_info`
 (`basename_is_viewable`), `all_versions` (`pdsfiles_for_abspaths`), `childnames`
 (`sort_basenames`, twice), `is_viewable`, `islabel`, `local_viewset`, `split`,
 and `viewset_lookup` three times — including
@@ -3251,6 +3257,27 @@ is the authority here.
 every existing one, so the first move commit appended its base at the end of the
 list and the second inserted its base at the front; neither commit disturbed what
 the other wrote.
+
+**This PR changes `PdsFile.__bases__[0]`, which is the one thing in the class
+shape that any code actually reads**, so it is measured rather than argued.
+`_index_rows.py:254` sniffs `cls.__bases__[0].__name__ == 'Pds4File'` (deferred
+entry 49), and `tests/api/test_mixin_collisions.py:72` pins only `__bases__[-1]`.
+Dumping `__bases__[0].__name__`, the full `__bases__` tuple, the full MRO and the
+sniff's own verdict for all **34** classes in the hierarchy, on the parent tip
+and at HEAD:
+
+| Property | Classes where parent and HEAD differ |
+|---|---|
+| `__bases__[0].__name__` | **one**: `PdsFile` itself, `_DerivedPathsMixin` → `_AssociationsMixin` |
+| the sniff's verdict (`… == 'Pds4File'`) | **none** — `True` for exactly the same six pds4 rule classes on both sides |
+| `__bases__` tuple | **one**: `PdsFile` itself, which gains the two mixins |
+| MRO | all 34, and only by the insertion of `_AssociationsMixin` and `_SortingMixin` |
+
+`cls` in that sniff is `type(self)`, a *rule* subclass, and no rule subclass's
+first base moves — only `PdsFile`'s does, and `PdsFile` is not one of the six the
+sniff answers `True` for, on either side. The MRO row is why the check had to be
+run rather than reasoned: every MRO changes, and only the property the sniff
+actually reads does not.
 
 The harness **discovers** its subjects from `PdsFile.__bases__`, so it picked up
 both new mixins for free and this PR edits no test file. At HEAD it reports seven

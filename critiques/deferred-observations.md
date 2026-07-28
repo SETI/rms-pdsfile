@@ -1212,8 +1212,8 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     passes. Adding `assert len(res) == len(expected)`, or comparing sorted lists,
     would close it and is a one-line change per test.
 
-    The other four green controls are branch-reachability rather than assertion
-    strength, and are recorded here so a later round does not re-derive them:
+    The other five green controls are branch reachability or a caller that never
+    looks at a length, rather than assertion strength in the method's own test, and are recorded here so a later round does not re-derive them:
     `split_basename`'s three-group `BUNDLENAME_PLUS_REGEX` return needs a bundle
     name whose split rule leaves it unchanged and no golden case supplies one;
     `sort_basenames`' `labels_after=True` sort key is never exercised;

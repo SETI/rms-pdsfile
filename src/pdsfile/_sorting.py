@@ -19,7 +19,8 @@ class _SortingMixin:
 
     Two groups of methods, kept together because they are one domain -- bulk
     operations over lists of basenames, logical paths, abspaths and PdsFile
-    objects, with no I/O of their own:
+    objects. None of them reads the filesystem itself: the four that need to
+    probe it delegate to _LocalFsMixin, as the contract below records.
 
       splitting and sorting   split_basename, basename_is_label,
                               basename_is_viewable, sort_basenames,
