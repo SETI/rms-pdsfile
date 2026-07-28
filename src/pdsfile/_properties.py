@@ -35,9 +35,7 @@ class _PropertiesMixin:
     extension, parent_logical_path, size_bytes, modtime, checksum, width, height,
     alt, icon_type, linked_abspaths, label_abspath, data_abspaths, iconset_open,
     iconset_closed, multipage_view_allowed, continuous_view_allowed,
-    has_neighbor_rule and all_version_abspaths. Eight of them are a single return
-    statement; the rest read a slot another property fills, or a shelf, and shape
-    the result.
+    has_neighbor_rule and all_version_abspaths.
 
     The other four members are not properties: version_info, a staticmethod
     mapping a bundleset suffix to a (rank, message, id) triple; all_versions,

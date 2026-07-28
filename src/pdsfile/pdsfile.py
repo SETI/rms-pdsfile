@@ -18,7 +18,8 @@ mixin bases of PdsFile, the tenth (_path_utils) plain module functions:
                         that stand for rows of an index table
     _local_fs.py        _LocalFsMixin -- the case-repairing, SHELVES_ONLY-aware
                         filesystem layer (os_path_exists, os_path_isdir,
-                        os_listdir, glob_glob) and PATH_EXISTS_CACHE_SIZE
+                        os_listdir, glob_glob and _non_checksum_abspath) and
+                        PATH_EXISTS_CACHE_SIZE
     _opus.py            _OpusMixin -- opus_products, and the two constructors
                         that resolve an OPUS ID (from_opus_id) or a bundle-name
                         file specification (from_filespec)
@@ -33,10 +34,10 @@ mixin bases of PdsFile, the tenth (_path_utils) plain module functions:
                         pause_caching, resume_caching, the four cache-lifetime
                         constants, DICTIONARY_CACHE_LIMIT and HAS_PYLIBMC
     _properties.py      _PropertiesMixin -- the largest group: 64 properties, 40
-                        of them lazy (fill an _X_filled slot, then _recache() so
-                        the cache keeps the filled object) and 24 recomputed on
-                        every access, plus version_info, all_versions,
-                        viewset_lookup and _repair_width_height
+                        of them lazy (fill an _X_filled slot, then -- in 39 of the
+                        40 -- _recache() so the cache keeps the filled object) and
+                        24 recomputed on every access, plus version_info,
+                        all_versions, viewset_lookup and _repair_width_height
     _shelves.py         _ShelfMixin -- opening, caching and reading the shelf
                         files that hold precomputed metadata, with the eval of a
                         .py sidecar isolated in one named function
@@ -60,8 +61,8 @@ What stays here, and why:
     _update_ranks_and_vols and _recache -- the object's own lifecycle, which the
     properties in _properties.py drive through self.
   * The constructors: child, parent, from_abspath, from_logical_path, from_path,
-    from_lid, from_relative_path, new_pdsfile, new_merged_dir,
-    new_index_row_pdsfile, copy, __repr__.
+    from_lid, from_relative_path, _from_absolute_or_logical_path, new_pdsfile,
+    new_merged_dir, new_index_row_pdsfile, copy, __repr__.
   * The bundle and bundleset utilities, the sort-order setters, the
     use_shelves_only / require_shelves / set_logger / set_easylogger class
     configuration, and is_logical_path.
