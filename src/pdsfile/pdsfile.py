@@ -493,6 +493,9 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
         for child_class in subclasses:
              child_class.set_easylogger()
 
+    ############################################################################
+    # Merged directories, index rows, and object utilities
+    ############################################################################
     @classmethod
     def new_merged_dir(cls, basename):
         """Return a merged directory with the given basename. Merged directories contain
