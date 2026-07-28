@@ -1140,6 +1140,16 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     methods do not swamp it. PR-19's scratch harness now does both and verifies
     both docstrings complete in both directions.
 
+    Round 4 added the last piece such a check will need: it must exclude the
+    names the mixin **itself** defines. `_IndexRowsMixin`'s methods call each
+    other -- `child_of_index` calls `find_selected_row_key` and `get_indexshelf`,
+    `data_abspath_associated_with_index_row` calls `child_of_index`,
+    `data_pdsfile_for_index_row` calls it in turn -- so a naive walk reports four
+    `self.X` reads that are not external dependencies at all. PR-19's docstrings
+    exclude them, which is why they list no method the mixin defines; an
+    automated version has to do the same or it will emit four false positives on
+    this module alone.
+
     Round 2 also noted that `_version` appears in `dir(pdsfile)` on this branch
     and not in the manifest. It is a gitignored `setuptools-scm` build artifact
     present in the working tree, identical on the parent branch, and not an

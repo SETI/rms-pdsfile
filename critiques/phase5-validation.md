@@ -2807,6 +2807,26 @@ defect class PR-18's round-3 Major was about.
 | 1 | goal met | 0 Major, 3 Minor (all accepted; one fixed in `src/`, two in this record), 2 Deferred (entry 53 added; the other corrected in §12 instead) | `critiques/pr-19/round-1.md` |
 | 2 | goal met | 0 Major, 5 Minor (all accepted and fixed; one in `src/`, four in this record), 3 Deferred (entry 54 added; one folded into 51, one informational) | `critiques/pr-19/round-2.md` |
 | 3 | goal met | 0 Major, 5 Minor (all accepted and fixed; two in `src/` and `tests/`, three in this record), 2 Deferred (both fold into entries 53 and 54) | `critiques/pr-19/round-3.md` |
+| 4 | goal met | 0 Major, 0 new Minor; all 13 prior findings confirmed resolved; 2 Deferred (one folds into 54, one fixed in place here) | `critiques/pr-19/round-4.md` |
+
+**The loop terminates at round 4**, at §6.6's four-round cap: a fresh reviewer
+returned zero Major and no new un-rebutted Minor. Round 4 is the *scoped*
+re-review the anti-thrash rule prescribes — confirm the prior rounds' findings
+are resolved, raise only new Major — and it confirmed all thirteen by
+re-measuring each rather than reading this record: it re-ran the AST attribute
+walk over both mixin modules and found both docstrings exact in both directions,
+re-ran its own `dynamic_context` coverage pass and reproduced every count *and*
+every corrected attribution in §9, re-derived the byte equivalence, the ratchet
+conservation, the API dump, the four junit reductions and the 34-class shape
+dump, and re-ran the no-holdings job. Its two Deferred items are the last piece
+entry 54's automated check will need — an exclusion for the names a mixin defines
+itself, without which `_IndexRowsMixin`'s four intra-mixin calls read as external
+dependencies — and one wording point in this section, fixed in place above rather
+than deferred.
+
+**Nothing was rebutted in any round.** Every finding in all four rounds was
+accepted and fixed, which is itself worth stating: there was no scope-creep
+finding to push back on, and no disagreement to escalate.
 
 *(Rows are written only after the round they describe has run and its record file
 exists on disk — the rule PR-18's round-3 Major established. No row is written
@@ -2842,9 +2862,13 @@ the very table round 1 had corrected, corrected one short), the ratchet's
 the total is **85**), the `_IndexRowsMixin` docstring again (round 1 fixed what
 it said, round 2 found what it omitted), and a superseded run labelled with a
 commit that postdates it by 16 minutes. All five are fixed above with the
-measurement in place of the assertion, and the two docstrings are now **derived**
-from an AST walk of their own modules rather than written by hand — which is what
-deferred entry 54 asks be automated.
+measurement in place of the assertion, and round 2's fix rewrote both docstrings
+from an AST walk of their own modules rather than by hand. **That walk was itself
+incomplete** — it followed `self.X` and `cls.X` but not an attribute on a
+subscript, so it missed `_opus.py`'s `version_rank`, which round 3 caught. The
+walk was widened to every `Attribute` node and both docstrings now verify
+complete in **both** directions against it; deferred entry 54 asks that the
+widened form move into a test.
 
 The round-2 reviewer independently proved that a module-level back-import in
 `_opus.py` raises a real `ImportError`, mutation-tested the new subclass check
