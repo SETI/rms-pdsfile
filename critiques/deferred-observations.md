@@ -1267,3 +1267,73 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     of the three spots.
     **Owner: the repo owner — surfaced by PR-20 as an item needing a decision;
     whichever PR next touches `plans/archive/` can carry the edit.**
+
+## From PR-21 (extract the preload machinery, Phase 5)
+
+### Added by the PR-21 executor's own measurements (2026-07-27)
+
+58. **`pylibmc` is reachable as `pdsfile.pdsfile.pylibmc` today and as
+    `pdsfile._preload.pylibmc` after PR-21 — and on any machine where it is
+    reachable at all, the API-freeze gate is already red.** PR-21 moved the
+    `try: import pylibmc / HAS_PYLIBMC = True / except ImportError` block out of
+    `pdsfile.py` and into `_preload.py`, because `preload` is its only consumer.
+    `HAS_PYLIBMC` is a frozen member of `pdsfile.pdsfile`, so it is re-exported in
+    the redundant-alias form; `pylibmc` is a *conditionally bound module import*,
+    and re-exporting it would need a new `if HAS_PYLIBMC:` statement in
+    `pdsfile.py` — new logic rather than a move.
+
+    Measured rather than argued:
+
+    - `pylibmc` is not installed in this environment, so `pdsfile.pdsfile.pylibmc`
+      does not exist here on either side of the change.
+    - With a stub `pylibmc.py` on `PYTHONPATH`, `HAS_PYLIBMC` becomes `True`,
+      `'pylibmc' in vars(pdsfile.pdsfile)` becomes `True`, and
+      `scripts/dump_public_api.py` records `"pylibmc": "module"` under
+      `pdsfile.pdsfile`. Diffing that dump against the committed
+      `tests/api/api_manifest.json` reports **exactly one extra name: `pylibmc`**.
+
+    So `pylibmc` is not part of the frozen contract, and a machine that has it
+    already fails the freeze gate before Phase 5 touches anything. Nothing in
+    `src/`, `tests/`, `scripts/`, rms-opus or rms-viewmaster refers to
+    `pdsfile.pdsfile.pylibmc`. What the owner may want to decide separately: the
+    manifest is environment-dependent for optional dependencies, which is a
+    property of the dumper's `vars(module)` walk rather than of any PR, and it
+    means the freeze gate cannot be run on a memcached-capable deployment host.
+    **Owner: unassigned (a freeze/manifest question, not Phase 5).**
+
+59. **Five measured coverage gaps in the preload machinery, none of which PR-21
+    may close.** From a `dynamic_context = test_function` coverage run and 19
+    mutation controls over the moved code:
+
+    - **`cache_lifetime` is never executed.** Only its `def` line is covered. It
+      is passed as `lifetime=cls.cache_lifetime` by the three `pdscache`
+      constructions inside `preload`, and every one of those is on a branch the
+      suite does not take, so the lifetime function actually in use is the
+      module-level `cache_lifetime_for_class` the class bodies hand to their
+      class-level `DictionaryCache`. Mutating `cache_lifetime` to return 0 changes
+      nothing.
+    - **`is_preloading` is never executed and has no caller** anywhere in `src/`,
+      `tests/`, `scripts/`, rms-opus or rms-viewmaster. Ground rule 9 keeps it.
+    - **`cache_category_merged_dirs` can be made a no-op with no effect on the
+      suite**, because `preload` caches the same merged directories itself and the
+      session fixture always preloads. Its import-time call is a safety net for
+      the never-preloaded case, which nothing tests.
+    - **No test asserts a cache lifetime.** `cache_lifetime_for_class` is reached
+      by 116 test functions, but returning "forever" for every argument, or moving
+      `DEFAULT_FILE_CACHE_LIFETIME` from 12 h to 13 h, leaves the suite green.
+    - **No test distinguishes a case-sensitive filesystem from a case-insensitive
+      one.** `preload` computes `FS_IS_CASE_INSENSITIVE`; forcing it to the class
+      default (`True`) instead of the computed `False` leaves the suite green. The
+      flag gates `force_case_sensitive` handling in `_path_utils` and `_local_fs`.
+
+    Separately, **29 of `preload`'s 109 statements and 8 of `get_permanent_values`'
+    20 are never executed** — the whole memcached path, the `clear=True` and
+    `force_reload=True` paths, the already-preloaded early return, and
+    `get_permanent_values`' bundleset/bundle descent. That is not a gap a test in
+    this repo can close (it needs a live memcached), and it is recorded so that a
+    future reader knows what a green full-data run does and does not prove about
+    `preload`.
+
+    PR-21 may not act on any of it — its gate is the pass/fail set, and adding a
+    test id is movement.
+    **Owner: unassigned (a future test PR, not Phase 5).**
