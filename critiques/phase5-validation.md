@@ -2144,10 +2144,15 @@ the `SHELVES_ONLY` branch, and `get_indexshelf` goes through `_get_shelf` while
 all of which branch on it.
 
 **Freshness (§6.6 step 5).** The last change under `src/pdsfile/` is commit
-`174fe7a` ("refactor: extract OPUS support into a mixin"), at **17:00:33**. The
-head runs recorded above postdate it: their `--junitxml` timestamps are
-**17:04:18 and 17:06:10**. The baseline runs (16:52:39 and 16:54:29) were taken
-in a detached `git worktree` at `80cd9ff` that nothing has touched since.
+`cf35a0f` (round 1's Minor-1 docstring fix in `_index_rows.py`), at **17:39:31**.
+The head runs recorded above postdate it: their `--junitxml` timestamps are
+**17:42:28 and 17:44:16**. They are the regeneration §6.6 step 5 requires,
+because round 1's fix touched `src/pdsfile/`. The superseded head pair (17:04:18
+and 17:06:10, taken at `bc5147e`) produced the identical reduced sets — `diff`
+between the two head runs is empty in both modes — which is what a docstring-only
+change should do and is recorded rather than assumed. The **baseline** runs
+(16:52:39 and 16:54:29) stand throughout: they were taken in a detached
+`git worktree` at `80cd9ff` that nothing has touched since.
 
 ### 4. API freeze — empty diff, as a mixin move requires
 
