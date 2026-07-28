@@ -161,6 +161,7 @@ extend-ignore = ["PT011", "SIM105", "SIM108"]
 # split of pdsfile.py's ratchet entry, never an addition to it: each violation moves
 # with the lines that carry it, and pdsfile.py's entry drops any code it no longer
 # needs.
+"src/pdsfile/_associations.py" = ["UP024"]
 "src/pdsfile/_derived_paths.py" = ["A002"]
 "src/pdsfile/_index_rows.py" = ["RUF005", "UP024"]
 "src/pdsfile/_local_fs.py" = ["B007", "B905", "E701", "SIM103", "SIM118", "UP024"]
