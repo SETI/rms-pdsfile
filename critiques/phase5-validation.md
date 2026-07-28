@@ -2144,21 +2144,31 @@ the `SHELVES_ONLY` branch, and `get_indexshelf` goes through `_get_shelf` while
 all of which branch on it.
 
 **Freshness (§6.6 step 5).** The last change under `src/pdsfile/` is commit
-`cf35a0f` (round 1's Minor-1 docstring fix in `_index_rows.py`), at **17:39:31**.
-The head runs recorded above postdate it: their `--junitxml` timestamps are
-**17:42:28 and 17:44:16**. They are the regeneration §6.6 step 5 requires,
-because round 1's fix touched `src/pdsfile/`. The superseded head pair (17:04:18
-and 17:06:10) was taken with the working tree at commit **`b554c77`**, the last
-commit before those runs started; the two later commits that day, `8916229` and
-`bc5147e`, are records written *after* them and touch nothing under
-`src/pdsfile/`, so the `src/` tree those runs measured is the same one `bc5147e`
-carries. (An earlier draft labelled that pair "taken at `bc5147e`", which is
-16 minutes after the XMLs were written; round 2 raised it as Minor 5.) The two
-head pairs produced **identical reduced sets** — `diff` between them is empty in
-both modes — which is what a docstring-only change should do and is recorded
-rather than assumed. The **baseline** runs
-(16:52:39 and 16:54:29) stand throughout: they were taken in a detached
-`git worktree` at `80cd9ff` that nothing has touched since.
+`3ab1738` (round 2's Minor-4 docstring fixes in `_index_rows.py` and
+`_opus.py`), at **18:04:34**. The head runs recorded above postdate it: their
+`--junitxml` timestamps are **18:07:33 and 18:09:29**. They are the second
+regeneration §6.6 step 5 requires — round 1's fix and round 2's fix each touched
+`src/pdsfile/`.
+
+The two **superseded** head pairs are recorded rather than dropped, each with the
+commit its tree was actually at:
+
+| Head pair | `--junitxml` written | Tree at | Reduced sets |
+|---|---|---|---|
+| 1 | 17:04:18 / 17:06:10 | `b554c77` | identical to pairs 2 and 3 |
+| 2 | 17:42:28 / 17:44:16 | `cf35a0f` | identical to pairs 1 and 3 |
+| **3 (current)** | **18:07:33 / 18:09:29** | **`3ab1738`** | **the figures above** |
+
+`b554c77` is the last commit before pair 1 started; the two commits between it
+and pair 2 (`8916229`, `bc5147e`) are records that touch nothing under
+`src/pdsfile/`, so pair 1 measured the same `src/` tree they carry. An earlier
+draft labelled pair 1 "taken at `bc5147e`", 16 minutes after its XMLs were
+written; round 2 raised that as Minor 5. All three pairs produced **identical
+reduced sets** — `diff` between any two of them is empty in both modes — which is
+what docstring-only changes should do, and is measured rather than assumed.
+
+The **baseline** runs (16:52:39 and 16:54:29) stand throughout: they were taken
+in a detached `git worktree` at `80cd9ff` that nothing has touched since.
 
 ### 4. API freeze — empty diff, as a mixin move requires
 
@@ -2821,6 +2831,6 @@ this branch. That third probe is also the method entry 51(a) now records.
 
 **§6.6 step 5 was applied at both boundaries.** Round 1's Minor-1 fix and round
 2's Minor-4 fix each touch `src/pdsfile/`, so the full-data record was
-regenerated after each. §3's figures are the last regeneration, and its
-superseded-pair paragraph records that every head run so far produced the same
-two reduced sets.
+regenerated after each. §3's figures are the second regeneration, and its
+superseded-pair table records that all three head runs produced the same two
+reduced sets.
