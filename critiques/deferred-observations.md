@@ -1516,3 +1516,27 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     in this repo can exercise. Removing them would need an owner decision rather
     than an executor's. **Owner: owner decision, then PR-23 (which is the next PR
     to touch `pdscache.py`).**
+
+### Added by the PR-22 adversarial review (round 2)
+
+65. **The "modules < 1000 lines" waiver names `pdsfile.py` and the rule modules,
+    and Phase 5 has now produced two other files over the line.** §6.6's
+    progressive-compliance schedule reads: `python.mdc` "modules < 1000 lines" —
+    **permanently waived** for `pdsfile.py` and rule modules. At the end of
+    Phase 5, `src/pdsfile/_properties.py` is **1,684** lines and
+    `src/pdsfile/pdscache.py` is **1,044**; `pdsfile.py` itself is 1,939 and stays
+    inside the waiver by name.
+
+    Nothing is broken: no gate enforces the rule (`ruff` has no such check in the
+    project's select set), and `_properties.py`'s size is the direct consequence
+    of settled decision 8.3, which puts the whole lazy-property block in one
+    mixin. So this is a wording question about the schedule rather than a defect,
+    and PR-22 may not answer it — the schedule is part of the plan, and amending
+    the plan needs an addendum the owner acknowledges.
+
+    It becomes actionable at **PR-23**, which is the PR that meets both files
+    ("ruff-clean and format core modules") and whose churn checkpoint is already a
+    mandatory owner decision. Either the waiver is extended to name every core
+    module Phase 5 produced, or the owner wants `_properties.py` split further,
+    which would be phase "b" work rather than PR-23's.
+    **Owner: owner decision, before PR-23's churn checkpoint.**
