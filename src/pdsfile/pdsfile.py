@@ -3,6 +3,80 @@
 # General pdsfile package & PdsFile class
 ##########################################################################################
 
+"""The PdsFile class and the modules its method groups live in.
+
+This module holds the `class PdsFile` statement, everything that is about a
+PdsFile *object* rather than about one subject area, and re-exports every name it
+has ever exported. Ten private modules beside it hold the rest -- nine of them
+mixin bases of PdsFile, the tenth (_path_utils) plain module functions:
+
+    _associations.py    _AssociationsMixin -- the four associated_* methods that
+                        map a file to its counterparts in the other voltypes
+    _derived_paths.py   _DerivedPathsMixin -- checksum, archive and log path
+                        builders, and set_log_root
+    _index_rows.py      _IndexRowsMixin -- index shelves and the pseudo-children
+                        that stand for rows of an index table
+    _local_fs.py        _LocalFsMixin -- the case-repairing, SHELVES_ONLY-aware
+                        filesystem layer (os_path_exists, os_path_isdir,
+                        os_listdir, glob_glob) and PATH_EXISTS_CACHE_SIZE
+    _opus.py            _OpusMixin -- opus_products and the two OPUS-id
+                        constructors
+    _path_utils.py      the path helpers that take no PdsFile object:
+                        repair_case, abspath_for_logical_path,
+                        logical_path_from_abspath, construct_category_list,
+                        formatted_file_size, selected_path_from_path and the
+                        _clean_* primitives, plus FILE_BYTE_UNITS. Not a mixin
+    _preload.py         _PreloadMixin -- preload and the cache it fills, plus the
+                        module-level cache_lifetime_for_class, is_preloading,
+                        pause_caching, resume_caching and the lifetime constants
+    _properties.py      _PropertiesMixin -- the largest group: 64 lazy properties,
+                        each deriving a value on first access, keeping it in an
+                        _X_filled slot and writing the object back to the cache,
+                        plus version_info, all_versions, viewset_lookup and
+                        _repair_width_height
+    _shelves.py         _ShelfMixin -- opening, caching and reading the shelf
+                        files that hold precomputed metadata, with the eval of a
+                        .py sidecar isolated in one named function
+    _sorting.py         _SortingMixin -- the sort rules, the childname selectors,
+                        and the twelve conversions among abspaths, logical paths,
+                        basenames and PdsFile objects
+
+`preload_and_cache.py` is public and stays public; it is now a re-export shim
+over _preload.py.
+
+What stays here, and why:
+
+  * The `class PdsFile` statement. Pickled PdsFile instances -- Viewmaster's
+    memcached cache holds live ones -- record `pdsfile.pdsfile` as the class's
+    module, so moving the statement would invalidate them.
+  * Every class attribute: the configuration tables, the translator registries,
+    the shared CACHE and LOGGER, SHELF_CACHE and friends, LOG_ROOT_,
+    LATEST_VERSION_RANKS. A mixin carries behavior only, so the data a mixin
+    reads is defined here and reached as cls.X at run time.
+  * __init__ and the _X_filled slots it creates, _complete,
+    _update_ranks_and_vols and _recache -- the object's own lifecycle, which the
+    properties in _properties.py drive through self.
+  * The constructors: child, parent, from_abspath, from_logical_path, from_path,
+    from_lid, from_relative_path, new_pdsfile, new_merged_dir,
+    new_index_row_pdsfile, copy, __repr__.
+  * The bundle and bundleset utilities, the sort-order setters, the
+    use_shelves_only / require_shelves / set_logger / set_easylogger class
+    configuration, and is_logical_path.
+
+Mechanics that hold for all nine modules: a mixin defines no __init__ and no new
+state; it never imports pdsfile.pdsfile at module level (pdsfile.py imports the
+mixins, so that would be a cycle -- a method needing the class object uses a
+function-local import instead); and the bases below are listed alphabetically.
+tests/api/test_mixin_collisions.py checks that the mixins are disjoint, that
+nothing shadows them, that they hold no state and that the order is alphabetical;
+tests/api/test_mixin_import_isolation.py checks the no-back-import rule by
+loading each module in a fresh interpreter.
+
+The split is invisible from outside: pdsfile.pdsfile.<name> still resolves for
+every name it resolved for before, and tests/api/api_manifest.json -- which
+records names and kinds, never the defining class -- is unchanged.
+"""
+
 import os
 import re
 
