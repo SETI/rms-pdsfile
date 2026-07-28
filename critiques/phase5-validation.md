@@ -2994,9 +2994,24 @@ the `SHELVES_ONLY` branch, and `associated_abspaths` reaches it through
 through `cls.os_path_isdir`.
 
 **Freshness (§6.6 step 5).** The last change under `src/pdsfile/` is commit
-`48b0605` ("style: give is_logical_path its own banner"), at **19:20:05**. The
-head runs recorded above postdate it: their `--junitxml` timestamps are
-**19:23:02 and 19:24:53**. The baseline runs (19:08:48 and 19:10:39) were taken
+`6350859` (round 1's Minor-8 fix, one paragraph of `_sorting.py`'s class
+docstring), at **20:11:31**. The head runs recorded above postdate it: their
+`--junitxml` timestamps are **20:14:26 and 20:16:15**. They are the regeneration
+§6.6 step 5 requires, because round 1 produced a fix under `src/pdsfile/`.
+
+The **superseded** head pair is recorded rather than dropped:
+
+| Head pair | `--junitxml` written | Tree at | Reduced sets |
+|---|---|---|---|
+| 1 | 19:23:02 / 19:24:53 | `48b0605` | identical to pair 2 |
+| **2 (current)** | **20:14:26 / 20:16:15** | **`6350859`** | **the figures above** |
+
+`diff` between the two pairs is empty in both modes, which is what a
+docstring-only change should do and is measured rather than assumed. The
+provenance check was re-run on pair 2 as well: 70 measured files, **0** of them
+outside the main tree's prefix, 13 directly under `src/pdsfile/`.
+
+The **baseline** runs (19:08:48 and 19:10:39) stand throughout: they were taken
 in a detached `git worktree` at `bf42ae7` that nothing has touched since.
 
 ### 4. API freeze — empty diff, as a mixin move requires
