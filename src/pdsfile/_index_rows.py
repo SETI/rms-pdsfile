@@ -26,7 +26,9 @@ class _IndexRowsMixin:
       selection       is a string that identifies a row, typically via the
                       basename part of a FILE_SPECIFICATION_NAME.
 
-    Every name these methods touch outside their own bodies, and nothing else:
+    Every attribute these methods read or write on a PdsFile object or on a
+    PdsFile class, and nothing else -- str, list and pdstable methods are not in
+    scope:
 
       lazy properties read        childnames, childnames_lc, exists,
                                   filename_keylen, index_pdslabel,

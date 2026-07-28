@@ -106,8 +106,21 @@ def test_no_mixin_is_shadowed_by_a_pdsfile_subclass(subclass):
     # method surface is actually extended -- pdsfile/pds3file/__init__.py defines
     # the volume/volset aliases there -- and they are what the tools, OPUS and the
     # rule modules instantiate. A name a subclass defines wins over every base, so
-    # a collision with a mixin would make the mixin's copy unreachable on the class
-    # callers actually use: the failure this module exists to catch, one level down.
+    # a mixin name a subclass also defines is dead on the class callers use, and
+    # the manifest cannot see that any more than it can see the PdsFile case.
+    #
+    # What this asserts is a name-discipline rule, not a defect a move introduces:
+    # such a name was already shadowed before the extraction, when the copy lived
+    # on PdsFile itself. It is worth pinning because the surfaces are now in
+    # separate files, and because the shadowing would be silent either way.
+    #
+    # The rule is strict, so it can in principle reject a legitimate future move.
+    # It does not today: the 34 (Pds3File) and 35 (Pds4File) names that override a
+    # PdsFile name are class attributes and translator tables, which the Phase 5
+    # mechanics keep on PdsFile, plus __init__, __repr__ and the four
+    # use_shelves_only/require_shelves/set_logger/set_easylogger classmethods,
+    # every one of which is on PR-22's explicit stay-list. None of them can reach
+    # a mixin, so nothing this phase does can trip this check by accident.
     assert subclass in PdsFile.__subclasses__(), (
         f'{subclass.__name__} is not a direct subclass of PdsFile, so this check '
         f'is not looking where it thinks it is')

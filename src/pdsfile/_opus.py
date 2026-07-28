@@ -17,16 +17,19 @@ class _OpusMixin:
 
     A mixin of PdsFile; it holds methods only and defines no state of its own.
 
-    Every name these methods touch outside their own bodies, and nothing else:
+    Every attribute these methods read or write on a PdsFile object or on a
+    PdsFile class, and nothing else -- str, list, dict and translator methods are
+    not in scope:
 
       class attributes and        BUNDLE_DIR_NAME, CROSS_PDS3_PDS4_PRODUCTS,
       translators read            FILESPEC_TO_BUNDLESET, LOCAL_PRELOADED, LOGGER,
                                   OPUS_ID_TO_PRIMARY_LOGICAL_PATH,
                                   OPUS_ID_TO_SUBCLASS, OPUS_PRODUCTS,
-                                  PDS_HOLDINGS, and __base__
+                                  PDS_HOLDINGS, and the two the interpreter
+                                  supplies, __base__ and __subclasses__
       lazy properties read        islabel, label_abspath, linked_abspaths,
                                   opus_type
-      instance attributes read    abspath, logical_path, root_
+      instance attributes read    abspath, logical_path, root_, version_rank
       instance attributes written none
       other methods called        from_abspath, from_logical_path,
                                   pdsfiles_for_abspaths, and the optional
