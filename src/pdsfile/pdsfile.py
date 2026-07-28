@@ -7,9 +7,8 @@ import datetime
 import os
 import PIL
 import re
-import time
 
-# Nothing below references these seven, but all of them are frozen members of
+# Nothing below references these eight, but all of them are frozen members of
 # this module's public surface (tests/api/api_manifest.json), so it keeps them
 # bound. The redundant `as` alias is the explicit re-export form.
 import bisect as bisect
@@ -19,6 +18,7 @@ import glob as glob
 import math as math
 import numbers as numbers
 import pickle as pickle
+import time as time
 
 import pdslogger
 import pdsparser
@@ -27,35 +27,25 @@ import translator
 # pdstable is used by the index-row methods and defaultdict by the OPUS methods,
 # which live in _index_rows.py and _opus.py; both names are frozen members of this
 # module's surface, so they are bound here in the same redundant-alias form as the
-# seven above.
+# eight above.
 import pdstable as pdstable
 
 from collections import defaultdict as defaultdict
 from pdsfile import (pdscache,
                      pdsviewable)
 
-# Import module for memcached if possible, otherwise flag
-try: # pragma: no cover
-    import pylibmc
-    HAS_PYLIBMC = True
-except ImportError: # pragma: no cover
-    HAS_PYLIBMC = False
-
-from ._preload import (cache_lifetime_for_class,
-                       pause_caching,
-                       resume_caching)
+from ._preload import cache_lifetime_for_class
 
 # The path helpers live in a private module. Importing them here is also what
 # keeps pdsfile.pdsfile.<name> resolving for callers and for the API freeze.
-from ._path_utils import (_clean_abspath,
-                          _clean_join,
+from ._path_utils import (_clean_join,
                           abspath_for_logical_path,
                           construct_category_list,
                           formatted_file_size,
                           logical_path_from_abspath,
                           repair_case)
 
-# Seven groups of PdsFile methods live in private modules as mixins, and the class
+# Eight groups of PdsFile methods live in private modules as mixins, and the class
 # statement below takes them as bases. The bases are listed alphabetically: the
 # mixins share no attribute name and none shadows a name PdsFile defines itself
 # (tests/api/test_mixin_collisions.py asserts both), so the order carries no
@@ -65,28 +55,33 @@ from ._derived_paths import _DerivedPathsMixin
 from ._index_rows import _IndexRowsMixin
 from ._local_fs import _LocalFsMixin
 from ._opus import _OpusMixin
+from ._preload import _PreloadMixin
 from ._shelves import _ShelfMixin
 from ._sorting import _SortingMixin
 
-# Re-exported only; nothing below references these. FILE_BYTE_UNITS,
-# PATH_EXISTS_CACHE_SIZE and selected_path_from_path are frozen members of this
-# module's public surface; _GLOB_CACHE_SIZE, _clean_glob and _needs_glob are
-# private, and are carried so that no name reachable as pdsfile.pdsfile.<name> is
-# lost. The redundant `as` alias is the explicit re-export form, so they do not
-# read as unused imports.
+# Re-exported only; nothing below references these. FILE_BYTE_UNITS, HAS_PYLIBMC,
+# PATH_EXISTS_CACHE_SIZE, pause_caching, resume_caching and selected_path_from_path
+# are frozen members of this module's public surface; _GLOB_CACHE_SIZE,
+# _clean_abspath, _clean_glob and _needs_glob are private, and are carried so that
+# no name reachable as pdsfile.pdsfile.<name> is lost. The redundant `as` alias is
+# the explicit re-export form, so they do not read as unused imports.
 from ._local_fs import PATH_EXISTS_CACHE_SIZE as PATH_EXISTS_CACHE_SIZE
 from ._path_utils import (FILE_BYTE_UNITS as FILE_BYTE_UNITS,
                           _GLOB_CACHE_SIZE as _GLOB_CACHE_SIZE,
+                          _clean_abspath as _clean_abspath,
                           _clean_glob as _clean_glob,
                           _needs_glob as _needs_glob,
                           selected_path_from_path as selected_path_from_path)
+from ._preload import (HAS_PYLIBMC as HAS_PYLIBMC,
+                       pause_caching as pause_caching,
+                       resume_caching as resume_caching)
 
 ##########################################################################################
 # PdsFile class
 ##########################################################################################
 
 class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsMixin,
-              _OpusMixin, _ShelfMixin, _SortingMixin, object):
+              _OpusMixin, _PreloadMixin, _ShelfMixin, _SortingMixin, object):
 
     # Configuration
     VOLTYPES = ['volumes', 'calibrated', 'diagrams', 'metadata', 'previews',
@@ -497,426 +492,6 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
         subclasses = cls.__subclasses__()
         for child_class in subclasses:
              child_class.set_easylogger()
-
-    ######################################################################################
-    # Preload management
-    ######################################################################################
-    @classmethod
-    def get_permanent_values(cls, holdings_list, port):
-        """Load the most obvious set of permanent values from the cache to ensure
-        we have current local copies.
-
-        Keyword arguments:
-            holdings_list -- the path of holdings dir that we will preload if the permanent
-                            value from cache is missing
-            port          -- value for the class attribute
-            cls           -- the class calling the method
-        """
-
-        try:
-            pause_caching(cls)
-
-            # For each category...
-            for category in cls.CATEGORY_LIST:
-
-                # Get the cached values
-                _ = cls.CACHE['$RANKS-' + category + '/']
-                _ = cls.CACHE['$VOLS-'  + category + '/']
-                pdsf0 = cls.CACHE[category]
-
-                # Also get the bundleset-level PdsFile inside each category
-                for bundleset in pdsf0.childnames:
-                    if bundleset.endswith('.txt') or bundleset.endswith('.tar.gz'):
-                        continue
-                    # Get the entry keyed by the logical path
-                    pdsf1 = cls.CACHE[category + '/' + bundleset.lower()]
-
-                    # Also get its bundle-level children
-                    for bundlename in pdsf1.childnames:
-                        if bundlename.endswith('.txt') or bundlename.endswith('.tar.gz'):
-                            continue
-
-                        key = (pdsf1.logical_path + '/' + bundlename).lower()
-                        pdsf2 = cls.CACHE[key]
-
-        except KeyError as e:
-            cls.LOGGER.warn('Permanent value %s missing from Memcache; '
-                        'preloading again' % str(e))
-            cls.preload(holdings_list, port, force_reload=True)
-
-        else:
-            cls.LOGGER.info('Permanent values retrieved from Memcache',
-                        str(len(cls.CACHE.permanent_values)))
-
-        finally:
-            resume_caching(cls)
-
-    @classmethod
-    def load_volume_info(cls, holdings):
-        """Load bundle info associated with this holdings directory.
-
-        Each record contains a sequence of values separated by "|":
-            key: bundleset, bundleset/bundlename, category/bundleset, or category/bundleset/bundlename
-            description
-            icon_type or blank for default
-            version ID or a string of dashes "-" if not applicable
-            publication date or a string of dashes "-" if not applicable
-            data set ID (if any) or MD5 checksum if this is in the documents/ tree
-            additional data set IDs (if any)
-
-        This creates and caches a dictionary based on the key identified above. Each
-        entry is a tuple with five elements:
-            description,
-            icon_type or blank for default,
-            version ID or None,
-            publication date or None,
-            list of data set IDs,
-            MD5 checksum or ''
-
-        A value only containing a string of dashes "-" is replaced by None.
-        Blank records and those beginning with "#" are ignored.
-
-        Keyword arguments:
-            holdings -- the path of the holdings directory
-            cls      -- the class calling the method
-        """
-
-        volinfo_path = _clean_join(holdings, '_volinfo')
-
-        volinfo_dict = {}           # the master dictionary of high-level paths vs.
-                                    # (description, icon_type, version ID,
-                                    #  publication date, optional list of data set
-                                    #  IDs, optional checksum)
-
-        keys_without_dsids = []     # internal list of entries without data set IDs
-        dsids_vs_key = {}           # global dictionary of data set IDs for entries
-                                    # that have them
-
-        # For each file in the volinfo subdirectory...
-        children = os.listdir(volinfo_path)
-        for child in children:
-
-            # Ignore these
-            if child.startswith('.'): continue
-            if not child.endswith('.txt'):
-                continue
-
-            # Read the file
-            table_path = _clean_join(volinfo_path, child)
-            with open(table_path, 'r', encoding='utf-8') as f:
-                recs = f.readlines()
-
-            # Interpret each record...
-            for rec in recs:
-                if rec[0] == '#':
-                    continue                        # ignore comments
-
-                parts = rec.split('|')              # split by "|"
-                parts = [p.strip() for p in parts]  # remove extraneous blanks
-                if parts == ['']:
-                    continue                        # ignore blank lines
-
-                # Identify missing info
-                while len(parts) <= 5:
-                    parts.append('')
-
-                if parts[2] == '' or set(parts[2]) == {'-'}:
-                    parts[2] = None
-                if set(parts[3]) == {'-'}:
-                    parts[3] = None
-                if set(parts[4]) == {'-'}:
-                    parts[4] = None
-
-                if (parts[0].startswith('documents/') or
-                    parts[0].rpartition('/')[2] in cls.EXTRA_README_BASENAMES):
-                        md5 = parts[5]
-                        dsids = []
-                else:
-                        md5 = ''
-                        dsids = list(parts[5:])
-
-                # Update either keys_without_dsids or dsids_vs_key. This is used
-                # to fill in data set IDs for voltypes other than "volumes/".
-                if dsids == ['']:
-                    dsids = []
-
-                if dsids:
-                    dsids_vs_key[parts[0]] = dsids
-                else:
-                    keys_without_dsids.append(parts[0])
-
-                # Fill in the master dictionary
-                volinfo = (parts[1], parts[2], parts[3], parts[4], dsids, md5)
-                volinfo_dict[parts[0]] = volinfo
-
-        # Update the list of data set IDs wherever it's missing
-        for key in keys_without_dsids:
-            (category, _, remainder) = key.partition('/')
-            if category in cls.VOLTYPES:
-                (volset_with_suffix, _, remainder) = remainder.partition('/')
-                bundleset = '_'.join(volset_with_suffix.split('_')[:2])
-                alt_keys = (bundleset + '/' + remainder,
-                            'volumes/' + bundleset + '/' + remainder)
-                for alt_key in alt_keys:
-                    if alt_key in dsids_vs_key:
-                        volinfo_dict[key] = (volinfo_dict[key][:4] +
-                                            (dsids_vs_key[alt_key],
-                                            volinfo_dict[key][5]))
-                        break
-
-        # Save the master dictionary in the cache now
-        for key,volinfo in volinfo_dict.items():
-            cls.CACHE.set('$VOLINFO-' + key.lower(), volinfo, lifetime=0)
-
-        cls.LOGGER.info('Volume info loaded', volinfo_path)
-
-    @classmethod
-    def cache_category_merged_dirs(cls):
-        for category in cls.CATEGORY_LIST:
-            if category not in cls.CACHE:
-                cls.CACHE.set(category, cls.new_merged_dir(category), lifetime=0)
-
-    @classmethod
-    def preload(cls, holdings_list, port=0, clear=False, force_reload=False,
-                icon_url=None, icon_color='blue'):
-        """Cache the top-level directories, starting from the given holdings directories.
-
-        Keyword arguments:
-            holdings_list -- a single abslute path to a holdings directory, or else a list
-                             of absolute paths
-            port          -- port to use for memcached; zero to prevent use of memcached
-            clear         -- True to clear the cache before preloading
-            force_reload  -- Re-load the cache regardless of whether the cache appears to
-                             contain the needed holdings
-            icon_url      -- URL root to use for loading icons; defaults to
-                             "/holdings/_icons" or "/holdings<n>/_icons" as needed
-            icon_color    -- color of the icons to load from each holdings directory
-                             (default 'blue')
-        """
-
-        # Convert holdings to a list of absolute paths
-        if not isinstance(holdings_list, (list,tuple)):
-            holdings_list = [holdings_list]
-
-        holdings_list = [_clean_abspath(h) for h in holdings_list]
-
-        # Use cache as requested
-        if (port == 0 and cls.MEMCACHE_PORT == 0) or not HAS_PYLIBMC:
-            if not isinstance(cls.CACHE, pdscache.DictionaryCache):
-                cls.CACHE = pdscache.DictionaryCache(lifetime=cls.cache_lifetime,
-                                                     limit=cls.DICTIONARY_CACHE_LIMIT,
-                                                     logger=cls.LOGGER)
-            cls.LOGGER.info('Using local dictionary cache')
-
-        else:
-            cls.MEMCACHE_PORT = cls.MEMCACHE_PORT or port
-
-            for k in range(cls.PRELOAD_TRIES):
-                try:
-                    cls.CACHE = pdscache.MemcachedCache(cls.MEMCACHE_PORT,
-                                                        lifetime=cls.cache_lifetime,
-                                                        logger=cls.LOGGER)
-                    cls.LOGGER.info('Connecting to PdsFile Memcache [%s]' %
-                                    cls.MEMCACHE_PORT)
-                    break
-
-                except pylibmc.Error:
-                    if k < cls.PRELOAD_TRIES - 1:
-                        cls.LOGGER.warn(('Failed to connect PdsFile Memcache [%s]; ' +
-                                         'trying again in %d sec') %
-                                        (cls.MEMCACHE_PORT, 2**k))
-                        time.sleep(2.**k)       # try then wait 1 sec, then 2 sec
-
-                    else:       # give up after three tries
-                        cls.LOGGER.error(('Failed to connect PdsFile Memcache [%s]; '+
-                                          'using dictionary instead') %
-                                         cls.MEMCACHE_PORT)
-
-                        cls.MEMCACHE_PORT = 0
-                        if not isinstance(cls.CACHE, pdscache.DictionaryCache):
-                            cls.CACHE = pdscache.DictionaryCache(
-                                            lifetime=cls.cache_lifetime,
-                                            limit=cls.DICTIONARY_CACHE_LIMIT,
-                                            logger=cls.LOGGER
-                                        )
-
-        # Define default caching based on whether MemCache is active
-        if cls.MEMCACHE_PORT == 0:
-            cls.DEFAULT_CACHING = 'dir'
-        else:
-            cls.DEFAULT_CACHING = 'all'
-
-        # This suppresses long absolute paths in the logs
-        cls.LOGGER.add_root(holdings_list)
-
-        #### Get the current list of preloaded holdings directories and decide how
-        #### to proceed
-
-        if clear:
-            cls.CACHE.clear(block=True) # For a MemcachedCache, this will pause for any
-                                    # other thread's block, then clear, and retain
-                                    # the block until the preload is finished.
-            cls.LOCAL_PRELOADED = []
-            cls.LOGGER.info('Cache cleared')
-
-        elif force_reload:
-            cls.LOCAL_PRELOADED = []
-            cls.LOGGER.info('Forcing a complete new preload')
-            cls.CACHE.wait_and_block()
-
-        else:
-            while True:
-                cls.LOCAL_PRELOADED = cls.CACHE.get_now('$PRELOADED') or []
-
-                # Report status
-                something_is_missing = False
-                for holdings in holdings_list:
-                    if holdings in cls.LOCAL_PRELOADED:
-                        cls.LOGGER.info('Holdings are already cached', holdings)
-                    else:
-                        something_is_missing = True
-
-                if not something_is_missing:
-                    if cls.MEMCACHE_PORT:
-                        cls.get_permanent_values(holdings_list, cls.MEMCACHE_PORT)
-                        # Note that if any permanently cached values are missing,
-                        # this call will recursively clear the cache and preload
-                        # again. This reduces the chance of a corrupted cache.
-
-                    return
-
-                waited = cls.CACHE.wait_and_block()
-                if not waited:      # A wait suggests the answer might have changed,
-                                    # so try again.
-                    break
-
-                cls.CACHE.unblock()
-
-        # At this point, the cache is blocked.
-
-        # Pause the cache before proceeding--saves I/O
-        cls.CACHE.pause()       # Paused means no local changes will be flushed to the
-                            # external cache until resume() is called.
-
-        ############################################################################
-        # Interior function to recursively preload one physical directory
-        ############################################################################
-
-        def _preload_dir(pdsdir, cls):
-            if not pdsdir.isdir: return
-
-            # Log category directories as info
-            if pdsdir.is_category_dir:
-                cls.LOGGER.info('Pre-loading: ' + pdsdir.abspath)
-
-            # Log bundlesets as debug
-            elif pdsdir.is_bundleset:
-                cls.LOGGER.debug('Pre-loading: ' + pdsdir.abspath)
-
-            # Don't go deeper
-            else:
-                return
-
-            # Preloaded dirs are permanent
-            pdsdir.permanent = True
-
-            # Make recursive calls and cache
-            for basename in list(pdsdir.childnames):
-                try:
-                    child = pdsdir.child(basename, fix_case=False, lifetime=0)
-                    _preload_dir(child, cls)
-                except ValueError:              # Skip out-of-place files
-                    pdsdir._childnames_filled.remove(basename)
-
-        #### Fill CACHE
-
-        try:    # we will undo the pause and block in the "finally" clause below
-
-            # Create and cache permanent, category-level merged directories. These
-            # are roots of the cache tree and their list of children is merged from
-            # multiple physical directories. This makes it possible for our data
-            # sets to exist on multiple physical drives in a way that is invisible
-            # to the user.
-            for category in cls.CATEGORY_LIST:
-                cls.CACHE.set(category, cls.new_merged_dir(category), lifetime=0)
-
-            # Initialize RANKS, VOLS and category list
-            for category in cls.CATEGORY_LIST:
-                category_ = category + '/'
-                key = '$RANKS-' + category_
-                try:
-                    _ = cls.CACHE[key]
-                except KeyError:
-                    cls.CACHE.set(key, {}, lifetime=0)
-
-                key = '$VOLS-'  + category_
-                try:
-                    _ = cls.CACHE[key]
-                except KeyError:
-                    cls.CACHE.set(key, {}, lifetime=0)
-
-            # Cache all of the top-level PdsFile directories
-            for h,holdings in enumerate(holdings_list):
-
-                if holdings in cls.LOCAL_PRELOADED:
-                    cls.LOGGER.info('Pre-load not needed for ' + holdings)
-                    continue
-
-                cls.LOCAL_PRELOADED.append(holdings)
-                cls.LOGGER.info('Pre-loading ' + holdings)
-
-                # Load volume info
-                # PDS4 will ignore _volinfo directory
-                if cls.__name__ != 'Pds4File':
-                    cls.load_volume_info(holdings)
-
-                # Load directories starting from here
-                holdings_ = holdings.rstrip('/') + '/'
-
-                for c in cls.CATEGORY_LIST:
-                    category_abspath = holdings_ + c
-                    if not cls.os_path_exists(category_abspath):
-                        cls.LOGGER.warn('Missing category dir: ' + category_abspath)
-                        continue
-                    if not cls.os_path_isdir(category_abspath):
-                        cls.LOGGER.warn('Not a directory, ignored: ' + category_abspath)
-
-                    # This is a physical PdsFile, but from_abspath also adds its
-                    # childnames to the list of children for the category-level
-                    # merged directory.
-                    pdsdir = cls.from_abspath(category_abspath, fix_case=False,
-                                                caching='all', lifetime=0)
-                    _preload_dir(pdsdir, cls)
-
-                # Load the icons
-                icon_path = _clean_join(holdings, '_icons')
-                if os.path.exists(icon_path):
-                    final_icon_url = icon_url
-                    if final_icon_url is None:
-                        final_icon_url = '/holdings' + (str(h) if h > 0 else '') + '/_icons'
-                    pdsviewable.load_icons(icon_path, final_icon_url, icon_color,
-                                           cls.LOGGER)
-
-        finally:
-            cls.CACHE.set('$PRELOADED', cls.LOCAL_PRELOADED, lifetime=0)
-            cls.CACHE.resume()
-            cls.CACHE.unblock(flush=True)
-
-        cls.LOGGER.info('PdsFile preloading completed')
-
-        # Determine if the file system is case-sensitive
-        # If any physical bundle is case-insensitive, then we treat the whole file
-        # system as case-insensitive.
-        cls.FS_IS_CASE_INSENSITIVE = False
-        for holdings_dir in cls.LOCAL_PRELOADED:
-            testfile = holdings_dir.replace('/holdings', '/HoLdInGs')
-            if os.path.exists(testfile):
-                cls.FS_IS_CASE_INSENSITIVE = True
-                break
-
-    @classmethod
-    def cache_lifetime(cls, arg):
-        return cache_lifetime_for_class(arg, cls)
 
     @classmethod
     def new_merged_dir(cls, basename):
