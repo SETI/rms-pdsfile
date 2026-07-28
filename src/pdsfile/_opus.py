@@ -15,16 +15,33 @@ from ._path_utils import _needs_glob, abspath_for_logical_path
 class _OpusMixin:
     """The methods that serve OPUS.
 
-    A mixin of PdsFile; it holds methods only and defines no state of its own. The
-    class attributes and translators these methods read -- FILESPEC_TO_BUNDLESET,
-    BUNDLE_DIR_NAME, OPUS_ID_TO_SUBCLASS, OPUS_ID_TO_PRIMARY_LOGICAL_PATH,
-    OPUS_PRODUCTS, CROSS_PDS3_PDS4_PRODUCTS, LOCAL_PRELOADED, PDS_HOLDINGS and
-    LOGGER -- are defined on PdsFile and its subclasses, as is the optional
-    opus_prioritizer hook the rule modules supply.
+    A mixin of PdsFile; it holds methods only and defines no state of its own.
 
-    These methods reach _LocalFsMixin's glob_glob and os_path_exists and
-    _ShelfMixin's shelf_lookup. Those calls resolve through the class at run time,
-    so those mixins have to be bases of the same class.
+    Every name these methods touch outside their own bodies, and nothing else:
+
+      class attributes and        BUNDLE_DIR_NAME, CROSS_PDS3_PDS4_PRODUCTS,
+      translators read            FILESPEC_TO_BUNDLESET, LOCAL_PRELOADED, LOGGER,
+                                  OPUS_ID_TO_PRIMARY_LOGICAL_PATH,
+                                  OPUS_ID_TO_SUBCLASS, OPUS_PRODUCTS,
+                                  PDS_HOLDINGS, and __base__
+      lazy properties read        islabel, label_abspath, linked_abspaths,
+                                  opus_type
+      instance attributes read    abspath, logical_path, root_
+      instance attributes written none
+      other methods called        from_abspath, from_logical_path,
+                                  pdsfiles_for_abspaths, and the optional
+                                  opus_prioritizer hook the rule modules supply
+
+    All of them are defined on PdsFile or on its subclasses. Three more come from
+    sibling mixins: glob_glob and os_path_exists from _LocalFsMixin, shelf_lookup
+    from _ShelfMixin. Every one of these is an attribute lookup on self or on a
+    class at run time, not an import, which is what lets the halves live in
+    different modules.
+
+    opus_products is the one method in the package that needs the PdsFile class
+    object itself, to enumerate its direct subclasses. Its import is deferred into
+    the method body: pdsfile.py imports this module to build the class, so a
+    module-level import would be a cycle.
     """
 
     @classmethod

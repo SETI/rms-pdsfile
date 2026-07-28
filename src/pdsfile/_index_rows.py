@@ -26,18 +26,31 @@ class _IndexRowsMixin:
       selection       is a string that identifies a row, typically via the
                       basename part of a FILE_SPECIFICATION_NAME.
 
-    The state these methods touch all lives on PdsFile, in two kinds. The lazy
-    properties they read are is_index, indexshelf_abspath, index_pdslabel,
-    filename_keylen, childnames and childnames_lc. The plain instance attributes
-    assigned in PdsFile.__init__ are is_index_row, row_dicts and column_names;
-    child_of_index also *writes* column_names, filling it from the table's own
-    column info when it is still empty. The constructors these methods call --
-    new_index_row_pdsfile, from_abspath, parent -- are on PdsFile too.
+    Every name these methods touch outside their own bodies, and nothing else:
 
-    get_indexshelf reaches _ShelfMixin's _get_shelf and
+      lazy properties read        childnames, childnames_lc, exists,
+                                  filename_keylen, index_pdslabel,
+                                  indexshelf_abspath, is_index, label_abspath
+      instance attributes read    abspath, basename, column_names, is_index_row,
+                                  logical_path, row_dicts
+      instance attributes WRITTEN column_names, on self, filled from the table's
+                                  own column info when it is still empty; and
+                                  _exists_filled, on each newly built row object
+      class attribute read        CACHE, and __bases__ -- see below
+      other methods called        bundleset_abspath, new_index_row_pdsfile,
+                                  parent, sort_basenames, from_abspath
+
+    All of them are defined on PdsFile. Two more come from sibling mixins:
+    get_indexshelf reaches _ShelfMixin's _get_shelf, and
     data_abspath_associated_with_index_row reaches _LocalFsMixin's
-    os_path_exists; both calls resolve through the class at run time, so those
-    mixins have to be bases of the same class.
+    os_path_exists. Every one of these is an attribute lookup on self or on
+    type(self) at run time, not an import, which is what lets the halves live in
+    different modules.
+
+    data_abspath_associated_with_index_row chooses between the PDS3 and PDS4
+    column-name tables by comparing type(self).__bases__[0].__name__ against the
+    string 'Pds4File'. That reads a rule subclass's direct base, which mixin
+    bases on PdsFile do not change. Its fragility is deferred observation 49.
     """
 
     def get_indexshelf(self):

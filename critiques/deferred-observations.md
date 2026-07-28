@@ -1027,6 +1027,14 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
        versions of one product.
     d. **`data_pdsfile_for_index_row`** — entry 50, listed here for completeness.
 
+    Round 2 of the PR-19 review demonstrated that **(a) is cheap to close**: a
+    synthetic index-row object with `row_dicts` holding a PDS4-style column name
+    exercises the branch with no shelf and no PDS4 bundle present, so the test
+    needs neither the complete holdings set nor the reproj bundles that (b)
+    waits on. Round 2 ran that probe against the parent tip and against PR-19's
+    head and got byte-identical answers, which is also an independent check of
+    the move.
+
     None is a defect in PR-19: all four are properties of the test suite and all
     four are equally true on the parent branch. They are the honest answer to
     "which parts of this extraction would a regression escape", and (b) is the
@@ -1078,3 +1086,37 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     nothing behaviorally — but it would add or rename ids, and PR-19's gate is an
     identical pass/fail set apart from the two ids entry 48 required.
     **Owner: PR-20**, or whichever Phase-5 PR next edits the mixin harness.
+
+### Added by the PR-19 adversarial review (round 2)
+
+54. **The mixins' "state contract" docstrings are hand-written, drift, and are
+    mechanically derivable.** Each Phase-5 mixin opens with a paragraph naming
+    the PdsFile attributes, properties and sibling-mixin methods its bodies
+    reach. That paragraph is the only place a reader can learn what a mixin
+    depends on, and it is the only part of a mixin module that is *not* checked
+    by anything: PR-19's rounds 1 and 2 each found the `_IndexRowsMixin` version
+    wrong or incomplete — round 1 that three names it called lazy properties are
+    plain instance attributes, round 2 that it omitted two properties, one class
+    attribute and one write. Both were fixed by deriving the list from the AST
+    instead of writing it; the derivation is about twenty lines.
+
+    `tests/api/test_mixin_collisions.py` cannot catch this: it checks what a
+    mixin *defines*, never what it *reads*. A read-side check — walk each mixin
+    module's AST for `self.X` / `cls.X`, and assert every name resolves on
+    `PdsFile` or on a sibling mixin — would catch both the drifting docstring and
+    a genuinely stranded attribute, which is the failure mode the whole "class
+    attributes stay on `PdsFile`" rule exists to prevent and which nothing
+    currently verifies.
+
+    PR-19 did not build it: the mixin harness is a test file it touches only for
+    entry 48, and a new check is a new test id, which its gate forbids beyond the
+    two entry 48 required. Building a check the plan did not ask for is also the
+    failure mode PR-17 paid two rounds for. **Owner: PR-22**, which adds the last
+    and largest mixin (`_PropertiesMixin`) and is where a stranded attribute is
+    most likely.
+
+    Round 2 also noted that `_version` appears in `dir(pdsfile)` on this branch
+    and not in the manifest. It is a gitignored `setuptools-scm` build artifact
+    present in the working tree, identical on the parent branch, and not an
+    effect of any Phase-5 PR. Recorded here so a later round does not re-derive
+    it; no owner, no action.

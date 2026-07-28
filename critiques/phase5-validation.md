@@ -2148,9 +2148,15 @@ all of which branch on it.
 The head runs recorded above postdate it: their `--junitxml` timestamps are
 **17:42:28 and 17:44:16**. They are the regeneration §6.6 step 5 requires,
 because round 1's fix touched `src/pdsfile/`. The superseded head pair (17:04:18
-and 17:06:10, taken at `bc5147e`) produced the identical reduced sets — `diff`
-between the two head runs is empty in both modes — which is what a docstring-only
-change should do and is recorded rather than assumed. The **baseline** runs
+and 17:06:10) was taken with the working tree at commit **`b554c77`**, the last
+commit before those runs started; the two later commits that day, `8916229` and
+`bc5147e`, are records written *after* them and touch nothing under
+`src/pdsfile/`, so the `src/` tree those runs measured is the same one `bc5147e`
+carries. (An earlier draft labelled that pair "taken at `bc5147e`", which is
+16 minutes after the XMLs were written; round 2 raised it as Minor 5.) The two
+head pairs produced **identical reduced sets** — `diff` between them is empty in
+both modes — which is what a docstring-only change should do and is recorded
+rather than assumed. The **baseline** runs
 (16:52:39 and 16:54:29) stand throughout: they were taken in a detached
 `git worktree` at `80cd9ff` that nothing has touched since.
 
@@ -2308,8 +2314,11 @@ same as a 2,795-byte blob. Nothing moved is still defined in `pdsfile.py`, and
 neither new module carries a definition that was not on the move list. No moved
 body was restyled to dodge an inherited lint violation; that is PR-23's job.
 
-`pdsfile.py`: 5,125 → 4,593 lines; `_index_rows.py` 308, `_opus.py` 284. All
-counted at HEAD.
+`pdsfile.py`: 5,125 → 4,593 lines; `_index_rows.py` 326, `_opus.py` 301. All
+counted at HEAD, and re-counted at each round rather than carried forward: the
+two new modules grew after the extraction commits, by 18 and 17 lines
+respectively, entirely in their class docstrings, which rounds 1 and 2 corrected.
+The `pdsfile.py` figures are unchanged since the extraction.
 
 ### 6. The one line that is not a pure move, and why it is in the move commit
 
@@ -2450,10 +2459,14 @@ Resulting entries:
 | `src/pdsfile/_index_rows.py` | `["RUF005", "UP024"]` | exactly the codes its moved lines trigger |
 | `src/pdsfile/_opus.py` | `["RUF005", "UP024"]` | exactly the codes its moved lines trigger |
 
-The distinct (file, code) pairs move 18 → 18 + 2 + 2, and the number of
-suppressed violations is unchanged at 21 across the three files. Neither new
-module needs `I001`: both import blocks are already isort-clean, which is why
-that row conserves rather than growing.
+The distinct (file, code) pairs move 18 → 18 + 2 + 2, and the **total number of
+suppressed violations is unchanged at 85**: 85 on the parent's `pdsfile.py`, and
+85 summed over this branch's `pdsfile.py`, `_index_rows.py` and `_opus.py`. (The
+two codes that actually move account for 21 of those 85 — 8 `RUF005` plus 13
+`UP024` — which an earlier draft of this paragraph reported as the whole; round 2
+raised it as Minor 3. Both figures come from the same per-code counting loop as
+the table above.) Neither new module needs `I001`: both import blocks are already
+isort-clean, which is why that row conserves rather than growing.
 
 Unlike PR-18, `pdsfile.py`'s entry does not shrink here — every one of its 18
 codes still occurs in what remains — so there is no PR-23 note to add.
@@ -2620,7 +2633,7 @@ smoke is a real check here rather than a formality:
 
 | Name | rms-opus — **call sites** | rms-viewmaster — **call sites** |
 |---|---|---|
-| `from_filespec` | 3: `obs_base_pds3.py:90`, `obs_base_pds4.py:33`, `do_import.py:1480,1482` (two on adjacent lines) | — |
+| `from_filespec` | 4: `obs_base_pds3.py:90`, `obs_base_pds4.py:33`, `do_import.py:1480`, `do_import.py:1482` | — |
 | `from_opus_id` | 2: `do_import.py:687,690` | — |
 | `opus_products` | 1: `do_import.py:1487` | — |
 | `find_selected_row_key` | 1: `do_import.py:1553` | — |
@@ -2744,16 +2757,22 @@ has zero in-process test coverage while rms-viewmaster calls it at three sites),
 modules' module-level `opus_products` table, one namespace away from the mixin
 method). A fifth, 53, comes from the round-1 review: the new subclass check names
 its two subjects rather than discovering them, so a third direct subclass would
-go unchecked — owner PR-20. Round 1's other Deferred item was a wrong figure in
-§12 of this record; it is **corrected there** rather than deferred, because a
-wrong figure in this document is the defect class PR-18's round-3 Major was
-about.
+go unchecked — owner PR-20. A sixth, 54, comes from the round-2 review: the
+mixins' hand-written "state contract" docstrings drift and are mechanically
+derivable, and a read-side AST check would catch both that and a genuinely
+stranded attribute — owner PR-22. Round 2's second Deferred item is folded into
+entry 51 rather than given a number, because it is a method for closing 51(a)
+cheaply; its third was informational and is noted at the end of 54. Round 1's
+other Deferred item was a wrong figure in §12 of this record; it is **corrected
+there** rather than deferred, because a wrong figure in this document is the
+defect class PR-18's round-3 Major was about.
 
 ### 16. Review loop
 
 | Round | Verdict | Findings | Record |
 |---|---|---|---|
 | 1 | goal met | 0 Major, 3 Minor (all accepted; one fixed in `src/`, two in this record), 2 Deferred (entry 53 added; the other corrected in §12 instead) | `critiques/pr-19/round-1.md` |
+| 2 | goal met | 0 Major, 5 Minor (all accepted and fixed; one in `src/`, four in this record), 3 Deferred (entry 54 added; one folded into 51, one informational) | `critiques/pr-19/round-2.md` |
 
 *(Rows are written only after the round they describe has run and its record file
 exists on disk — the rule PR-18's round-3 Major established. No row is written
@@ -2779,6 +2798,29 @@ non-vacuity argument, the ratchet conservation, the `__bases__[0].__name__` and
 gate-load-bearing, the greenness of the intermediate commit `2d2de4a`, and its
 own `dynamic_context` coverage run, which reproduced §9's table exactly.
 
-**§6.6 step 5 was applied:** Minor 1's fix touches `src/pdsfile/_index_rows.py`,
-so the full-data record was regenerated before round 2 — §3's figures are the
-regenerated ones.
+Round 2 found five more of the same shape and no Major, which is the useful
+signal: **every finding in both rounds so far has been a number in this document
+that was stated rather than measured**, and none has been in the extracted code.
+Round 2's were the `_index_rows.py` line count (308 → 326, stale after round 1's
+own fix), the `from_filespec` consumer count (given as 3 above a row listing 4 —
+the very table round 1 had corrected, corrected one short), the ratchet's
+"suppressed violations unchanged at 21" (the subtotal of the two moving codes;
+the total is **85**), the `_IndexRowsMixin` docstring again (round 1 fixed what
+it said, round 2 found what it omitted), and a superseded run labelled with a
+commit that postdates it by 16 minutes. All five are fixed above with the
+measurement in place of the assertion, and the two docstrings are now **derived**
+from an AST walk of their own modules rather than written by hand — which is what
+deferred entry 54 asks be automated.
+
+The round-2 reviewer independently proved that a module-level back-import in
+`_opus.py` raises a real `ImportError`, mutation-tested the new subclass check
+(it catches the collision and nothing else fires), and ran three real-holdings
+behavior probes — normal mode, `SHELVES_ONLY` mode, and a synthetic object that
+forces the sniff's PDS4 branch — all byte-identical between the parent tip and
+this branch. That third probe is also the method entry 51(a) now records.
+
+**§6.6 step 5 was applied at both boundaries.** Round 1's Minor-1 fix and round
+2's Minor-4 fix each touch `src/pdsfile/`, so the full-data record was
+regenerated after each. §3's figures are the last regeneration, and its
+superseded-pair paragraph records that every head run so far produced the same
+two reduced sets.
