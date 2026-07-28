@@ -673,6 +673,12 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
             return ('PdsFile.' + type(self).__name__ + '("' +
                     self.abspath + '")')
 
+    ############################################################################
+    # Version ranks
+    ############################################################################
+
+    # The ranks that mean "not superseded". The version methods live in
+    # _properties.py; the alternative constructors below read this off the class.
     LATEST_VERSION_RANKS = [990100, 990200, 990300, 990400, 999999]
 
     ############################################################################
