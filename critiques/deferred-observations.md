@@ -1237,25 +1237,33 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     "The limited copy's location is machine-local and confidential (appears in no
     checked-in file)."
 
-    Three measurements that bound it, all made without reproducing the strings:
+    Measurements that bound it, all made without reproducing the strings:
 
-    - **Neither token is the current limited testing copy's root** — compared
-      against `PDS3_HOLDINGS_DIR` and `PDS4_HOLDINGS_DIR` on this machine, no
-      match. They are historical, from the operator machine the v1 plan was
-      written on. Every *other* holdings path in that file is under
-      `/data/pdsdata`, which §3.4 names in the open as the complete set and which
-      is not confidential.
+    - **Both tokens are the immediate parent directory of both current roots.**
+      Neither is byte-equal to `PDS3_HOLDINGS_DIR` or to `PDS4_HOLDINGS_DIR`, but
+      `os.path.dirname()` of each of those roots **equals** the committed token,
+      and each root is the token plus **one** further component. So appending the
+      obvious component to what is committed yields the location §3.4 calls
+      confidential — for both roots. **This is a disclosure, not stale history.**
+      (PR-20's first draft of this entry said "neither token is the current
+      root … a stale-history hygiene item rather than a live leak", which was
+      true only under literal string equality and would have steered the owner
+      wrong. Round 3 of PR-20's review caught it; the correction is the
+      measurement above.)
+    - Every *other* holdings path in that file is under `/data/pdsdata`, which
+      §3.4 names in the open as the complete set and which is not confidential.
     - **It is entirely pre-existing.** The same three occurrences are present at
       `bf42ae7` (PR-20's parent) and on `origin/rewrite`; the file does not exist
       on `origin/main`. No Phase-5 PR introduced it.
-    - **A sweep of every tracked file for the current limited copy's root returns
-      zero hits**, so the confidentiality rule holds for the location that is
-      actually sensitive today.
+    - **No tracked file contains either current root verbatim** — a sweep of every
+      file `git ls-files` reports returns zero hits — so this archived plan is the
+      only exposure, and it is one component short of exact.
 
-    So this is a stale-history hygiene item rather than a live leak, which is why
-    PR-20 left it alone: it is outside PR-20's diff, and rewriting an archived
-    plan to scrub a path is a change the owner should authorize rather than an
-    extraction PR should make in passing. The fix is a one-line substitution to
-    the env-var placeholder in each of the three spots.
-    **Owner: unassigned — surfaced to the owner by PR-20; whichever PR next
-    touches `plans/archive/` can carry it.**
+    PR-20 left it alone because it is outside PR-20's diff and pre-existing, and
+    because rewriting an archived plan to scrub a path is a change the owner
+    should authorize rather than one an extraction PR makes in passing — but it
+    should be treated as an actual confidentiality fix rather than filed as
+    hygiene. The fix is a one-line substitution to the env-var placeholder in each
+    of the three spots.
+    **Owner: the repo owner — surfaced by PR-20 as an item needing a decision;
+    whichever PR next touches `plans/archive/` can carry the edit.**

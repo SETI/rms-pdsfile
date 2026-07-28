@@ -3242,11 +3242,15 @@ silently. Measured over the AST:
 
 **Within `_sorting.py`, 14 sites** — every `Attribute` node in the module whose
 name is one of its own 23, counted individually — all `self.`/`cls.` (12) or an
-attribute on a `PdsFile`-valued expression (`parent.sort_basenames` at `:257` in
-`sort_sibnames`, `pdsf_dict[path].sort_basenames` at `:333` in
-`sort_logical_paths`). **Within `_associations.py`, 5 sites**, all `self.`:
-`associated_abspaths` is called at `:77`, `:82`, `:109` and `:131` — the last two
-are its own two recursions — and `associated_parallel` at `:158`.
+attribute on a `PdsFile`-valued expression (the other two: `parent.sort_basenames`
+in `sort_sibnames`, `pdsf_dict[path].sort_basenames` in `sort_logical_paths`).
+**Within `_associations.py`, 5 sites**, all `self.`: `associated_abspaths` is
+called by `associated_logical_paths`, by `associated_pdsfiles` and twice by
+itself, and `associated_parallel` once by `associated_abspaths`.
+
+(No line numbers are given for any of these, for the reason §5 gives: a docstring
+fix in a later review round moves every line number in these two files, and one
+did.)
 
 **Core → moved, 11 sites**, all `self.`/`cls.`/`parent.`: `_info`
 (`basename_is_viewable`), `all_versions` (`pdsfiles_for_abspaths`), `childnames`
@@ -3724,6 +3728,8 @@ the six other measured coverage gaps §10's green controls found).
 | Round | Verdict | Findings | Record |
 |---|---|---|---|
 | 1 | goal met | 0 Major, 8 Minor (all accepted; one fixed in `src/`, seven in this record and the sub-plan), 0 new Deferred | `critiques/pr-20/round-1.md` |
+| 2 | goal met | 0 Major, 7 Minor (all accepted; two fixed in `src/`, five in this record and the sub-plan), 1 Deferred (entry 57 added) | `critiques/pr-20/round-2.md` |
+| 3 | goal met | 0 Major, 4 Minor (all accepted; one fixed in `src/`, three in this record and the deferred-observations file), 3 Deferred (two are confirmations; the third folds into entry 57) | `critiques/pr-20/round-3.md` |
 
 *(Rows are written only after the round they describe has run and its record file
 exists on disk — the rule PR-18's round-3 Major established. No row is written
@@ -3754,3 +3760,53 @@ diffs, the `measured_files` non-vacuity argument, the ratchet conservation and i
 converse check, the whole of §9's per-test-context table, the consumer call-site
 counts, both docstring contracts in both directions, and the mixin/subclass
 intersections.
+
+**Round 2 found seven more and still no Major**, and the useful signal is that
+**the two that were in `src/` were both prose about runtime behavior that had been
+written rather than executed**. `_SortingMixin`'s closing paragraph said
+`split_basename` and `basename_is_label` are the methods that need a subclass
+instance. Measured by AST the readers are `split_basename`
+(`BUNDLENAME_PLUS_REGEX`, `BUNDLESET_PLUS_REGEX`), `basename_is_label` (`LBL_EXT`)
+and **`sort_basenames`** (`BUNDLESET_PLUS_REGEX_I`); executed on a bare `PdsFile`,
+the two that raise are `basename_is_label` and `sort_basenames`, and
+`split_basename` returns cleanly because `SPLIT_RULES` is `None` there and it
+returns before either regex. So the sentence named a method that does not fail and
+omitted the one that does. The second was the contract's exhaustive out-of-scope
+list, which omitted `set` and `os.path` — the only two receiver categories a
+receiver-type sweep finds that the prose did not name.
+
+Round 2's other five were record accuracy: a line count stale by one after round
+1's own fix; §16 empty while `round-1.md` was already committed; the sub-plan's
+promised "as executed" delta missing; "zero string literals naming any of the
+three" falsified by four docstrings; and three banner citations under two
+conventions. That last one was fixed by **removing** the line numbers rather than
+correcting them, on the rule PR-19's round 3 established.
+
+Its one Deferred is entry 57, and it is the only finding in this loop that reaches
+outside the PR: an archived plan carries a home-rooted holdings path.
+
+**Round 3 found four more, no Major, and one of them is the most consequential
+finding of the loop** — and it is not in the extracted code either. Entry 57's
+bounding measurement said "neither token is the current limited testing copy's
+root … stale history rather than a live leak". That holds only under literal
+string equality. Measured properly: `os.path.dirname()` of **both**
+`PDS3_HOLDINGS_DIR` and `PDS4_HOLDINGS_DIR` **equals** the committed token, and
+each root is that token plus exactly **one** further component. So the archived
+plan does disclose the location §3.4 calls confidential, and the entry as first
+written would have steered the owner wrong. It is corrected, its owner is now the
+repo owner rather than "unassigned", and it is surfaced as an item needing a
+decision. It is still not fixed here: it is pre-existing, identical on `rewrite`,
+and outside this PR's diff.
+
+Round 3's other three: seven stale line numbers in §6 — the same defect round 2's
+own Minor 7 had just stripped out of §5, one section up, so §6 now names its
+callers and gives no line numbers either; §16 missing the round-2 row while
+`round-2.md` was already committed, the second time that section lagged its own
+rule; and `_AssociationsMixin`'s round-2-corrected paragraph still saying "the line
+above" for a read thirteen lines away and "neither method … they" with one method
+named. The third is the only round-3 fix under `src/`.
+
+**Every finding in all three rounds has been a statement in a record, a sub-plan
+or a docstring, and not one has been in the extracted code** — which is the same
+result PR-19's four rounds produced, and is the strongest evidence available that
+the extraction itself is clean.
