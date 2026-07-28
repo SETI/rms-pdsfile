@@ -1229,7 +1229,24 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
 
 ### Added by the PR-20 adversarial review (round 2)
 
-57. **An archived plan carries a home-rooted holdings path, which §3.4 says no
+57. **WITHDRAWN — owner decision, 2026-07-27: absolute holdings paths in plan and
+    critique files are not confidential.** The owner's ruling, verbatim: "I don't
+    care about absolute paths in plan or critique files. They aren't
+    confidential." So **this entry needs no action**: no scrub of
+    `plans/archive/2026-07-17-modernization-plan.md` is required, and a reviewer
+    should not re-raise it. The measurement below stands as an accurate record of
+    what was found and why it looked like a problem at the time; it is simply no
+    longer one.
+
+    What the ruling does **not** change: code, tests and CI still resolve holdings
+    roots through `PDS3_HOLDINGS_DIR` / `PDS4_HOLDINGS_DIR` rather than hardcoding
+    them. That requirement stands on portability grounds — a hardcoded root breaks
+    on any other machine — and is independent of confidentiality. Nothing under
+    `src/`, `tests/` or `.github/` may carry a literal holdings path.
+
+    *The original entry, as written by PR-20, follows.*
+
+    **An archived plan carries a home-rooted holdings path, which §3.4 says no
     checked-in file should.** `plans/archive/2026-07-17-modernization-plan.md`
     contains **two distinct `~`-rooted path tokens, three occurrences in all**,
     naming a machine-local holdings tree. §3.4 is categorical: "No absolute
@@ -1265,8 +1282,10 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     should be treated as an actual confidentiality fix rather than filed as
     hygiene. The fix is a one-line substitution to the env-var placeholder in each
     of the three spots.
-    **Owner: the repo owner — surfaced by PR-20 as an item needing a decision;
-    whichever PR next touches `plans/archive/` can carry the edit.**
+
+    **Resolution: the owner ruled on 2026-07-27 that these paths are not
+    confidential, so no edit is made and the entry is closed.** It was surfaced by
+    PR-20 as an item needing a decision, and the decision is recorded above.
 
 ## From PR-21 (extract the preload machinery, Phase 5)
 
@@ -1353,13 +1372,23 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
 
 60. **In-class banner rule-line widths in `pdsfile.py` are mixed, and the split
     propagates them into the extracted modules.** Measured over indented
-    `#`-only lines: `src/pdsfile/pdsfile.py` has **20 banner rule lines at 80
-    columns and 2 at 90**; the two 90-column ones are
-    `# Set parameters for both Pds3File and Pds4File` and — until PR-21 —
-    `# Preload management`, which moved with its block, so `_preload.py` now
-    carries the 90-column pair while the banner PR-21 adds at
-    `src/pdsfile/pdsfile.py:495` is 80, matching the file's majority and the
-    banner PR-20 added.
+    `#`-only lines — each banner contributes **two** of them, one above its text
+    and one below:
+
+    | tree | 80 cols | 84 cols | 90 cols |
+    |---|---|---|---|
+    | `2df25ab:src/pdsfile/pdsfile.py` | 18 | 2 | 4 |
+    | HEAD `src/pdsfile/pdsfile.py` | 20 | 0 | 2 |
+    | HEAD `src/pdsfile/_preload.py` | 0 | 2 | 2 |
+
+    At HEAD the two 90-column rule lines are the single banner
+    `# Set parameters for both Pds3File and Pds4File`. The parent's other
+    90-column banner, `# Preload management`, moved into `_preload.py` with its
+    block, which is also where the 84-column pair went — the interior
+    `# Interior function to recursively preload one physical directory` banner
+    inside `preload`, indented eight spaces rather than four. The banner PR-21
+    adds at `src/pdsfile/pdsfile.py:496–498` is 80 columns, matching the file's
+    majority and the banner PR-20 added.
 
     Nothing in force flags this: every line is under `line-length = 100`, and
     `python.mdc`'s formatting rules do not bind before PR-23 (§6.6's progressive

@@ -4659,11 +4659,18 @@ only `self.X`/`cls.X`, scope the claim to the receivers that hold a `PdsFile`
 object or the `PdsFile` class, and **exclude the names the mixin itself defines**.
 
 The receiver list is printed in full so the scoping is checkable rather than
-asserted: `_PreloadMixin`'s PdsFile-side receivers are `cls`, `pdsdir`, `pdsf0`
-and `pdsf1`, against 30 others that are strings, lists, dicts, files, `os`,
-`os.path`, `pdscache`, `pdsviewable`, `pylibmc`, `time`, the logger, and
-`cls.CACHE` / `cls.LOGGER` / `cls.LOCAL_PRELOADED`, whose own methods are cache,
-logger and list methods rather than PdsFile surface.
+asserted. Scoped to the mixin's five methods, which is what the contract covers:
+`_PreloadMixin`'s PdsFile-side receivers are `cls`, `pdsdir`, `pdsf0` and
+`pdsf1` — **4 of its 31 distinct receiver expressions** — against **27** others
+that are strings, lists, dicts, files, `os`, `os.path`, `pdscache`,
+`pdsviewable`, `pylibmc`, `time`, the logger, and `cls.CACHE` / `cls.LOGGER` /
+`cls.LOCAL_PRELOADED`, whose own methods are cache, logger and list methods
+rather than PdsFile surface. (A walk over the *whole module* rather than the
+mixin finds 34 receivers, the three extra being `arg`, `arg.interior` and
+`arg.interior.lower()` inside the module-level `cache_lifetime_for_class` —
+where `arg` **is** a PdsFile object. It is out of the contract because the
+contract is the mixin's, not the module's, and the figure is given so the two
+scopings cannot be confused.)
 
 **Direction 1 — every PdsFile-side name the code reaches appears in the docstring:
 25 of 25, nothing missing.** Direction 2's residue is prose only: `DictionaryCache`,
@@ -4703,6 +4710,7 @@ a case-sensitive filesystem from a case-insensitive one).
 | Round | Verdict | Findings | Record |
 |---|---|---|---|
 | 1 | goal met | 0 Major, 5 Minor (all accepted and fixed; **none in `src/`** — all five in this record, the sub-plan or the deferred-observations file), 2 Deferred (one folded into entry 58, one added as entry 60) | `critiques/pr-21/round-1.md` |
+| 2 | goal met | 0 Major, 3 Minor (all accepted and fixed; **none in `src/`** — all three in this record or the deferred-observations file), **0 new Deferred** | `critiques/pr-21/round-2.md` |
 
 *(Rows are written only after the round they describe has run and its record file
 exists on disk — the rule PR-18's round-3 Major established. No row is written for
@@ -4733,3 +4741,40 @@ meet; and an 83-for-82 line count.
 
 **No round-1 fix touched `src/pdsfile/`**, so by §6.6 step 5 the full-data record
 carries forward unregenerated.
+
+**Round 2 found no Major and three more Minor, and all three are record wording
+again.** Entry 60 cited the blank line before the banner PR-21 adds rather than
+the banner (`:495` for `:496–498`); entry 60's banner-width figures were HEAD's
+while the clause identifying them described the parent's, and each banner
+contributes *two* rule lines, so a two-banner list could not describe two rule
+lines — the entry now carries a three-tree table and names the 84-column interior
+pair `_preload.py` also inherited; and §15's "30 others" was a whole-module
+receiver count inside a sentence scoped to the mixin, where the figure is **27**,
+the three extra being `cache_lifetime_for_class`'s `arg`, which is itself a
+PdsFile object rather than one of the "strings, lists, dicts, files" the sentence
+characterised them as.
+
+The round-2 reviewer re-derived, with its own scripts: both moved blocks
+byte-for-byte, all five byte totals, all nine stay-list counts, the `vars()` and
+`dir()` and MRO comparisons, the API dump, the whole §8 ratchet table cell by
+cell, the `symtable` sweep, §7's 34-class figures, §11's 20 patch sites, §15's
+contract in both directions (25 of 25, zero residue), and every `file:line`
+citation. It **ran** the clean-install gate and the no-holdings job (82 / 800 on
+both sides), imported eight modules first-in-a-fresh-interpreter, and checked all
+three code commits for importability, ruff cleanliness and a green `tests/api`.
+Two of its checks this record had not made: it recomputed the **minimal** ruff
+code set per file with per-file-ignores disabled, confirming `_preload.py` needs
+exactly its six and `pdsfile.py` exactly its seventeen; and it located each of
+`_preload.py`'s eight suppressed violations by line and confirmed **all eight are
+on moved lines**, none in the new header or docstring.
+
+**Deferred entry 57 is withdrawn in this round**, not as a review finding but on
+an owner ruling of 2026-07-27 delivered while the round was running: absolute
+holdings paths in `plans/` and `critiques/` are not confidential. The entry is
+kept and marked closed, with the measurement it recorded left intact and a note
+that code, tests and CI still resolve holdings roots through the environment
+variables on portability grounds. Both rounds' reviewers checked §3.4 and neither
+found anything to report, so no finding in this loop changes.
+
+**No round-2 fix touched `src/pdsfile/`** either, so the full-data record carries
+forward unregenerated a second time.
