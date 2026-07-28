@@ -4166,13 +4166,20 @@ Measured rather than argued:
   `'pylibmc' in vars(pdsfile.pdsfile)` becomes `True`, and
   `scripts/dump_public_api.py` records `"pylibmc": "module"` under
   `pdsfile.pdsfile`. Diffing that dump against the committed manifest reports
-  **exactly one extra name: `pylibmc`**.
+  **two extra names, both spelled `pylibmc`: one under `pdsfile.pdsfile` and one
+  under `pdsfile.pdscache`.**
+- **Only the first is this PR's.** `pdscache.py:7` has its own optional
+  `import pylibmc` behind a `try`, `pdsfile.pdscache` is also one of the dumper's
+  seven fixed modules, and Phase 5 does not touch it. Re-running the same stub
+  against **HEAD** confirms it: the diff is down to **one** extra name, under
+  `pdsfile.pdscache`.
 
 So on any machine where the name exists at all, the API-freeze gate is **already
-red today**, and `pylibmc` is not part of the frozen contract. After this PR it
-resolves as `pdsfile._preload.pylibmc`. Nothing in `src/`, `tests/`, `scripts/`,
-rms-opus or rms-viewmaster refers to `pdsfile.pdsfile.pylibmc`. Recorded as
-deferred observation 58, not changed here.
+red today**, and it stays red at HEAD for the `pdscache` half, which no Phase-5 PR
+removes. `pylibmc` is not part of the frozen contract on either side. After this
+PR the `pdsfile.pdsfile` occurrence resolves as `pdsfile._preload.pylibmc` instead.
+Nothing in `src/`, `tests/`, `scripts/`, rms-opus or rms-viewmaster refers to
+`pdsfile.pdsfile.pylibmc`. Recorded as deferred observation 58, not changed here.
 
 ### 6. `preload_and_cache.py` is a shim, and its surface is measured on both sides
 
@@ -4335,8 +4342,9 @@ starts a line with the file path.
 | **I001** | **2** | **1** | **0** | **1** |
 | B904, C405, E713, E721, N806, RUF012, SIM102, SIM114, SIM118, UP004, UP024 | 3, 3, 1, 1, 2, 16, 1, 2, 1, 1, 9 | unchanged | 0 | = parent |
 
-Sixteen codes conserve exactly and one code — **UP015** — leaves `pdsfile.py`
-entirely, so **`pdsfile.py`'s entry drops it**. Its single occurrence was
+Seventeen codes conserve exactly; one of those seventeen — **UP015** — conserves
+by leaving `pdsfile.py` entirely, so **`pdsfile.py`'s entry drops it**. Its single
+occurrence was
 `open(table_path, 'r', encoding='utf-8')` inside `load_volume_info`, now
 `_preload.py:261`.
 
@@ -4389,9 +4397,22 @@ running when it executed, and `preload`, `load_volume_info` and
 `cache_category_merged_dirs` run at **session-fixture and module-import time**,
 before any test function starts — so they get zero contexts while being heavily
 exercised. Statement coverage from the same full-data run says so: `preload` runs
-**80 of its 109 statements**, `load_volume_info` **52 of 53**, and
+**83 of its 113 statements**, `load_volume_info` **52 of 53**, and
 `cache_category_merged_dirs` **4 of 4**. The negative controls in §10 are the
 independent confirmation: mutating `preload` turns up to 57 tests red.
+
+**The convention behind every statement figure in this section and in §12**, so
+they can be reproduced rather than approached: the statement set is **coverage's
+own**, from `coverage.Coverage(data_file=…).analysis2(path)` against the head
+full-data run's `.coverage`, not an AST statement count — an AST walk counts
+`try:` and a few other headers that CPython emits no line event for, which is how
+this record's first draft reached 109 for `preload` and 20 for
+`get_permanent_values`. A definition's statements are those of coverage's set
+falling inside its AST span, **`def` line included, decorators excluded**; the
+`def` line is executed at import, so a definition whose body never runs still
+shows one hit. `preload`'s 113 include the 14 of its nested `_preload_dir`, all
+14 of them hit. The file as a whole is 226 statements, 43 missing, and 5 excluded
+— the `pragma: no cover` lines of the `pylibmc` try/except.
 
 The two genuine zeros are `cache_lifetime` (**1 of 2** statements — only its `def`
 line) and `is_preloading` (**1 of 2**, likewise). Neither body is executed by
@@ -4555,8 +4576,9 @@ a re-export shim is.
 
 `preload` is the single most consequential method in the package, and its most
 important branch is dark here. Measured from the head full-data run's statement
-coverage of the delivered `_preload.py`, **29 of `preload`'s 109 statements are
-never executed**, and they are not a random 29:
+coverage of the delivered `_preload.py` — coverage's own statement set, §9's
+convention — **30 of `preload`'s 113 statements are never executed**, and they are
+not a random 30:
 
 - **the whole memcached path** — `MemcachedCache` construction, the
   `PRELOAD_TRIES` retry loop, `time.sleep(2.**k)`, `pylibmc.Error`, the
@@ -4572,7 +4594,7 @@ never executed**, and they are not a random 29:
   already a `DictionaryCache` when the session fixture preloads;
 - two logging branches (`Pre-load not needed for …`, `Not a directory, ignored: …`).
 
-`get_permanent_values` is the same story: **8 of its 20 statements** never run,
+`get_permanent_values` is the same story: **8 of its 21 statements** never run,
 namely the entire bundleset/bundle descent, because the only tests that reach it
 hand it a stub whose categories have no children. And `cache_lifetime_for_class`
 never returns `DEFAULT_FILE_CACHE_LIFETIME` from its `isinstance(arg, str)` branch
@@ -4677,3 +4699,37 @@ preload follows, the lifetime values are never asserted, and no test distinguish
 a case-sensitive filesystem from a case-insensitive one).
 
 ### 17. Review loop
+
+| Round | Verdict | Findings | Record |
+|---|---|---|---|
+| 1 | goal met | 0 Major, 5 Minor (all accepted and fixed; **none in `src/`** — all five in this record, the sub-plan or the deferred-observations file), 2 Deferred (one folded into entry 58, one added as entry 60) | `critiques/pr-21/round-1.md` |
+
+*(Rows are written only after the round they describe has run and its record file
+exists on disk — the rule PR-18's round-3 Major established. No row is written for
+a round that has not run.)*
+
+**Round 1 found no Major and five Minor, and the one that mattered was not
+arithmetic.** §5.4 and deferred entry 58 said a stub `pylibmc` makes the manifest
+dump gain "exactly one extra name". Re-measured: it gains **two**, because
+`pdscache.py:7` has its own optional import of the same module and
+`pdsfile.pdscache` is also one of the dumper's seven fixed modules. The half this
+PR moves is the smaller one, so **the freeze gate stays red on a memcached-capable
+host after this PR**, which the entry as first written would have hidden from the
+owner. The correction is in §5.4, in the sub-plan and in entry 58, which now says
+any fix has to cover `pdscache` too.
+
+The second was §9's and §12's statement-coverage totals, derived from an AST
+statement count rather than from coverage's own statement set — an AST walk counts
+`try:` and other headers CPython emits no line event for. `preload` is **113
+statements, 83 hit, 30 missing**, not 109/80/29, and `get_permanent_values` is 21,
+not 20. The convention is now stated in §9 so the figures can be reproduced, and
+§12's conclusion is unchanged: the same 30 lines, enumerated the same way.
+
+The other three were record and sub-plan accuracy: §8's body saying "sixteen"
+where its own heading and the commit message say seventeen; the sub-plan's
+"as executed" section left empty although four things had diverged, one of them
+the ratchet criterion §7 states ("each code must conserve") that I001 does not
+meet; and an 83-for-82 line count.
+
+**No round-1 fix touched `src/pdsfile/`**, so by §6.6 step 5 the full-data record
+carries forward unregenerated.

@@ -1290,15 +1290,25 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
       `'pylibmc' in vars(pdsfile.pdsfile)` becomes `True`, and
       `scripts/dump_public_api.py` records `"pylibmc": "module"` under
       `pdsfile.pdsfile`. Diffing that dump against the committed
-      `tests/api/api_manifest.json` reports **exactly one extra name: `pylibmc`**.
+      `tests/api/api_manifest.json` reports **two extra names, both spelled
+      `pylibmc`: one under `pdsfile.pdsfile` and one under `pdsfile.pdscache`.**
+    - **Only the first is PR-21's, and it is the smaller half.**
+      `src/pdsfile/pdscache.py:7` has its own optional `import pylibmc` behind a
+      `try`, and `pdsfile.pdscache` is also one of the dumper's seven fixed
+      modules (`scripts/dump_public_api.py:37`). Phase 5 does not touch it, and
+      re-running the same stub against PR-21's HEAD leaves the diff at **one**
+      extra name, under `pdsfile.pdscache`.
 
-    So `pylibmc` is not part of the frozen contract, and a machine that has it
-    already fails the freeze gate before Phase 5 touches anything. Nothing in
-    `src/`, `tests/`, `scripts/`, rms-opus or rms-viewmaster refers to
-    `pdsfile.pdsfile.pylibmc`. What the owner may want to decide separately: the
-    manifest is environment-dependent for optional dependencies, which is a
-    property of the dumper's `vars(module)` walk rather than of any PR, and it
-    means the freeze gate cannot be run on a memcached-capable deployment host.
+    So `pylibmc` is not part of the frozen contract; a machine that has it already
+    fails the freeze gate before Phase 5 touches anything, and **still fails it
+    after PR-21**, via `pdscache`. Nothing in `src/`, `tests/`, `scripts/`,
+    rms-opus or rms-viewmaster refers to `pdsfile.pdsfile.pylibmc`. What the owner
+    may want to decide separately: the manifest is environment-dependent for
+    optional dependencies — a property of the dumper's `vars(module)` walk rather
+    than of any PR — and it means the freeze gate cannot be run on a
+    memcached-capable deployment host, whatever Phase 5 does. Any fix has to cover
+    `pdscache` as well as `pdsfile.pdsfile`, and editing the dumper or the
+    manifest is a §6.4 prohibition for the executor, so this is an owner decision.
     **Owner: unassigned (a freeze/manifest question, not Phase 5).**
 
 59. **Five measured coverage gaps in the preload machinery, none of which PR-21
@@ -1326,8 +1336,9 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
       default (`True`) instead of the computed `False` leaves the suite green. The
       flag gates `force_case_sensitive` handling in `_path_utils` and `_local_fs`.
 
-    Separately, **29 of `preload`'s 109 statements and 8 of `get_permanent_values`'
-    20 are never executed** — the whole memcached path, the `clear=True` and
+    Separately, **30 of `preload`'s 113 statements and 8 of `get_permanent_values`'
+    21 are never executed** (coverage's own statement set, `def` line included) —
+    the whole memcached path, the `clear=True` and
     `force_reload=True` paths, the already-preloaded early return, and
     `get_permanent_values`' bundleset/bundle descent. That is not a gap a test in
     this repo can close (it needs a live memcached), and it is recorded so that a
@@ -1337,3 +1348,23 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     PR-21 may not act on any of it — its gate is the pass/fail set, and adding a
     test id is movement.
     **Owner: unassigned (a future test PR, not Phase 5).**
+
+### Added by the PR-21 adversarial review (round 1)
+
+60. **In-class banner rule-line widths in `pdsfile.py` are mixed, and the split
+    propagates them into the extracted modules.** Measured over indented
+    `#`-only lines: `src/pdsfile/pdsfile.py` has **20 banner rule lines at 80
+    columns and 2 at 90**; the two 90-column ones are
+    `# Set parameters for both Pds3File and Pds4File` and — until PR-21 —
+    `# Preload management`, which moved with its block, so `_preload.py` now
+    carries the 90-column pair while the banner PR-21 adds at
+    `src/pdsfile/pdsfile.py:495` is 80, matching the file's majority and the
+    banner PR-20 added.
+
+    Nothing in force flags this: every line is under `line-length = 100`, and
+    `python.mdc`'s formatting rules do not bind before PR-23 (§6.6's progressive
+    compliance schedule). A moved banner may not be reflowed either — that would
+    be a content edit inside a move commit. Normalizing the widths across the core
+    modules is squarely PR-23's "ruff-clean and format core modules" scope, where
+    the churn checkpoint puts it in front of the owner along with everything else.
+    **Owner: PR-23.**
