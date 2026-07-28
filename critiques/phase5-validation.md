@@ -4118,7 +4118,7 @@ and resolving by `__name__` rather than by importing the class is exactly what t
 Phase-5 preamble prescribes — the same shape as `_index_rows.py`'s
 `__bases__[0].__name__` sniff.
 
-#### 5.3 Six names are stranded in `pdsfile.py`, and every one of them stays bound
+#### 5.3 Six names are stranded in `pdsfile.py`; five stay bound and the sixth is §5.4
 
 Counted over the AST at the parent tip: total `Name` loads of each module-global,
 how many fall inside the five moved bodies, how many are left.

@@ -106,8 +106,9 @@ class _PreloadMixin:
     A mixin of PdsFile; it holds methods only and defines no state of its own.
 
     preload is the entry point: given one or more holdings directories it picks
-    the cache implementation -- a DictionaryCache, or a MemcachedCache when a
-    non-zero port is supplied and pylibmc imported -- then walks each holdings
+    the cache implementation -- a DictionaryCache, or a MemcachedCache when
+    pylibmc is importable and either the port argument or the class's
+    MEMCACHE_PORT is non-zero -- then walks each holdings
     tree down through its category directories and bundlesets, constructing and
     caching their children as it goes, and records which holdings it has loaded.
     load_volume_info reads the "|"-separated _volinfo tables that describe each
@@ -119,8 +120,8 @@ class _PreloadMixin:
     delegates to the module-level cache_lifetime_for_class above.
 
     Every attribute these methods read or write on a PdsFile object or on a
-    PdsFile class, and nothing else -- str, list, dict, set, os.path, pdscache,
-    pdsviewable and logger methods are not in scope:
+    PdsFile class, and nothing else -- str, list, dict, file, os, os.path,
+    pdscache, pdsviewable, pylibmc, time and logger methods are not in scope:
 
       class attributes read       CATEGORY_LIST, DICTIONARY_CACHE_LIMIT,
                                   EXTRA_README_BASENAMES, LOGGER, PRELOAD_TRIES,
@@ -146,11 +147,14 @@ class _PreloadMixin:
     'Pds4File' -- the name, not the class object, the same way _index_rows.py
     reads __bases__[0].__name__ -- so nothing here has to import pdsfile.pdsfile.
 
-    The memcached half of preload runs only when a non-zero port is supplied and
-    pylibmc is importable. Neither holds in this repo's test environment, so
-    MemcachedCache, the PRELOAD_TRIES retry loop, pylibmc.Error and
-    DEFAULT_CACHING = 'all' are reached by no test here; they are live in
-    deployment, where Viewmaster passes port=.
+    The memcached half of preload runs only when pylibmc is importable and either
+    the port argument or the class's MEMCACHE_PORT is non-zero -- the second
+    disjunct matters, because preload writes the port it was given back onto the
+    class, so a later argumentless call still takes the memcached path. Neither
+    condition holds in this repo's test environment, so MemcachedCache, the
+    PRELOAD_TRIES retry loop, pylibmc.Error and DEFAULT_CACHING = 'all' are
+    reached by no test here; they are live in deployment, where Viewmaster passes
+    port=.
     """
 
     ######################################################################################
