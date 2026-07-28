@@ -3207,6 +3207,13 @@ PR-19's four-line deferred import:
 | `_sorting.py` | 23 | 17,886 | all identical |
 | `_associations.py` | 4 | 11,900 | all identical |
 
+Every byte figure in this section is the source segment **without** its trailing
+newline — the definition's first line through its last, joined by `\n` — because
+that is what `ast`'s line span gives. A reader who joins with `keepends=True`
+gets one byte more per definition and one more per blob, which is the same
+comparison; the convention is stated so the numbers can be reproduced rather than
+approached.
+
 Each contiguous run also compares identical as a single blob, which additionally
 rules out a reordering or a dropped blank line: the split/sort run
 (`split_basename` … `viewable_childnames_by_anchor`) as **14,586 bytes**, the
@@ -3682,10 +3689,12 @@ dicts, regex match objects, translators, the logger or `os.path`;
 
 **Direction 1 — every PdsFile-side name the code reaches appears in the
 docstring: 22 of 22 for `_SortingMixin`, 34 of 34 for `_AssociationsMixin`,
-nothing missing on either side.** Direction 2's residue is prose only — the five
+nothing missing on either side.** Direction 2's residue is prose only, and it is
+re-derived at every round rather than described once: at HEAD it is the five
 sibling-mixin class names, the four sort-config setters the docstring says
-explicitly do *not* move, the `<plural>_for_<plural>` naming pattern, and the
-words "I/O" and "WRITTEN".
+explicitly do *not* move, the `<plural>_for_<plural>` naming pattern, the two
+exception names `AttributeError` and `TypeError`, the label `WRITTEN`, and the
+words `None`, `So` and `Either`.
 
 One claim in `_SortingMixin`'s first draft was written rather than measured and
 was wrong before it was committed: it said `sort_basenames` *and* `sort_sibnames`
@@ -3731,6 +3740,7 @@ the six other measured coverage gaps §10's green controls found).
 | 1 | goal met | 0 Major, 8 Minor (all accepted; one fixed in `src/`, seven in this record and the sub-plan), 0 new Deferred | `critiques/pr-20/round-1.md` |
 | 2 | goal met | 0 Major, 7 Minor (all accepted; two fixed in `src/`, five in this record and the sub-plan), 1 Deferred (entry 57 added) | `critiques/pr-20/round-2.md` |
 | 3 | goal met | 0 Major, 4 Minor (all accepted; one fixed in `src/`, three in this record and the deferred-observations file), 3 Deferred (two are confirmations; the third folds into entry 57) | `critiques/pr-20/round-3.md` |
+| 4 | goal met | **0 Major, 0 new Minor**; all 20 prior findings confirmed resolved by re-measurement; 4 Deferred (three fixed in place here, one declined) | `critiques/pr-20/round-4.md` |
 
 *(Rows are written only after the round they describe has run and its record file
 exists on disk — the rule PR-18's round-3 Major established. No row is written
@@ -3811,3 +3821,38 @@ named. The third is the only round-3 fix under `src/`.
 or a docstring, and not one has been in the extracted code** — which is the same
 result PR-19's four rounds produced, and is the strongest evidence available that
 the extraction itself is clean.
+
+**The loop terminates at round 4**, at §6.6's four-round cap: a fresh reviewer
+returned zero Major and no new un-rebutted Minor. Round 4 is the *scoped*
+re-review the anti-thrash rule prescribes — confirm the prior rounds' findings are
+resolved, raise only new Major — and it confirmed all twenty by re-measuring each
+rather than reading this record: it re-ran the 34-class shape dump, **executed**
+the docstrings' runtime claims on a bare `PdsFile` in both modules, re-derived the
+byte equivalence for the 27 moved **and the 110 that stayed**, the API dump, the
+ratchet conservation, **all ten junit reductions** (matching the committed `.set`
+files in every case), the provenance counts, the `symtable` sweep, both docstring
+contracts, the consumer call-site table, and the no-holdings job — and it swept
+for line numbers into the two new modules to confirm none had gone stale a second
+time.
+
+**It also checked four mixin-move hazards nothing else in this PR had checked**,
+and all four are clean: no `super()`, no `__class__`, no `__`-name-mangled
+attribute and no `getattr`/`hasattr`-by-string reference to any of the 27 anywhere
+in `src/`. Those are the four ways moving a body into a different defining class
+can change its meaning; their absence is a stronger statement than byte
+equivalence alone, and it is recorded here because it is the check this PR would
+otherwise have shipped without.
+
+Its four Deferred items are all corrections to text this PR itself wrote, and
+three are fixed in place rather than carried forward: §14's residue list named a
+phrase round 1 had already deleted and omitted two rounds 2 and 3 had added;
+`_AssociationsMixin`'s out-of-scope receiver list omitted `os.path`, the same
+defect round 2 fixed in `_SortingMixin`'s twin sentence and did not carry across;
+and §5's byte convention (segment without its trailing newline) was uniform but
+unstated. The fourth — that §5 cites parent-tip line numbers and §10 a HEAD one —
+is left as it is: §5 documents the parent-tip windows and renumbering half of it
+would make it disagree with what it exists to record.
+
+**Nothing was rebutted in any round.** All 19 Minor findings across rounds 1–3
+were accepted and fixed, which is worth stating: there was no scope-creep finding
+to push back on and no disagreement to escalate.

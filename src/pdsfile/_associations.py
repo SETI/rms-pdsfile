@@ -30,8 +30,8 @@ class _AssociationsMixin:
     own, and these methods read them off the class.
 
     Every attribute these methods read or write on a PdsFile object or on a
-    PdsFile class, and nothing else -- str, list, dict and translator methods are
-    not in scope:
+    PdsFile class, and nothing else -- str, list, dict, translator and os.path
+    methods are not in scope:
 
       lazy properties read        all_version_abspaths, data_abspaths, exists,
                                   is_category_dir, isdir, label_basename
