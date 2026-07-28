@@ -5011,30 +5011,31 @@ the `SHELVES_ONLY` branch, and the moved properties reach it — `exists`, `isdi
 branch lives.
 
 **Freshness (§6.6 step 5).** The last change under `src/pdsfile/` is commit
-`1490fdb` ("docs: correct three more docstring statements the round-2 review
-measured wrong") at **01:37:56**. The head runs recorded above postdate it: their
-`--junitxml` files were written at **01:40:56** (`ns`) and **01:42:44** (`s`), and
-the no-holdings `--junitxml` at **01:43:09**. They are the second of the two
-regenerations §6.6 step 5 has required in this loop, one per round; both rounds'
-fixes touched `src/pdsfile/`.
+`11ddf91` ("docs: correct three docstring statements the round-3 review measured
+wrong") at **02:12:25**. The head runs recorded above postdate it: their
+`--junitxml` files were written at **02:15:26** (`ns`) and **02:17:15** (`s`), and
+the no-holdings `--junitxml` at **02:17:53**. They are the third of the three
+regenerations §6.6 step 5 has required in this loop, one per round; all three
+rounds' fixes touched `src/pdsfile/`, every one of them a docstring.
 
 The **superseded** head triples are recorded rather than dropped, each with the
 commit its tree was actually at:
 
 | Head triple | `--junitxml` written (ns / s / no-holdings) | Tree at | Reduced sets |
 |---|---|---|---|
-| 1 | 00:32:43 / 00:34:32 / 00:35:30 | `57134ac` | identical to triple 3 |
-| 2 | 01:15:19 / 01:17:08 / 01:17:44 | `0a2925c` (round 1's fixes) | identical to triple 3 |
-| **3 (current)** | **01:40:56 / 01:42:44 / 01:43:09** | **`1490fdb`** (round 2's fixes) | **the figures above** |
+| 1 | 00:32:43 / 00:34:32 / 00:35:30 | `57134ac` | identical to triple 4 |
+| 2 | 01:15:19 / 01:17:08 / 01:17:44 | `0a2925c` (round 1's fixes) | identical to triple 4 |
+| 3 | 01:40:56 / 01:42:44 / 01:43:09 | `1490fdb` (round 2's fixes) | identical to triple 4 |
+| **4 (current)** | **02:15:26 / 02:17:15 / 02:17:53** | **`11ddf91`** (round 3's fixes) | **the figures above** |
 
 `diff` between consecutive triples is **empty in all three runs** — 0 lines for
-`ns`, 0 for `s`, 0 for no-holdings, twice — which is what a docstring-only change
-should do and is measured rather than assumed. The provenance check was re-run on
-each: **72** measured files, **0** of them outside the main tree's prefix, **15**
-directly under `src/pdsfile/`, `_properties` in exactly **1** path. So were §10's
-coverage figures: `_properties.py` still 844 statements / 71 missing / 89% on all
-three, which is what a docstring change should leave alone and is checked rather
-than assumed.
+`ns`, 0 for `s`, 0 for no-holdings, three times over — which is what a
+docstring-only change should do and is measured rather than assumed. The
+provenance check was re-run on each: **72** measured files, **0** of them outside
+the main tree's prefix, **15** directly under `src/pdsfile/`, `_properties` in
+exactly **1** path. So were §10's coverage figures: `_properties.py` still 844
+statements / 71 missing / 89% on all four, which is what a docstring change should
+leave alone and is checked rather than assumed.
 
 The baseline runs (00:08:41, 00:10:32 and the no-holdings pass) were taken in a
 detached `git worktree` at `f286dda` that nothing has touched since.
@@ -5811,6 +5812,7 @@ lines on `rewrite`, not 89).
 |---|---|---|---|
 | 1 | goal met | 0 Major, 8 Minor (all accepted and fixed; **four in `src/pdsfile/` docstrings, three in this record, one a missing subprocess timeout in the new test** — none in the extracted code), 3 Deferred (added as entries 62, 63 and 64) | `critiques/pr-22/round-1.md` |
 | 2 | goal met | 0 Major, 8 Minor (all accepted and fixed; **three in `src/pdsfile/` docstrings, five in this record and the sub-plan** — none in the extracted code), 1 Deferred (added as entry 65) | `critiques/pr-22/round-2.md` |
+| 3 | goal met | 0 Major, 7 Minor (all accepted and fixed; **three in `_properties.py`'s docstring, four in this record and the sub-plan** — none in the extracted code), **0 new Deferred** | `critiques/pr-22/round-3.md` |
 
 *(Rows are written only after the round they describe has run and its record file
 exists on disk — the rule PR-18's round-3 Major established. No row is written for
@@ -5867,8 +5869,49 @@ by row; the sub-plan's §2.4 still carrying the 46 that round 1 corrected to 47 
 the final HEAD rather than carried forward.
 
 **Round 2's fixes also touched `src/pdsfile/`, so the record was regenerated a
-second time.** All three of §3's runs are identical across all three head triples.
+second time.** All three of §3's runs are identical across all four head triples.
 Two entries in the executor's own sub-plan were corrected in the same pass without
 a reviewer raising them: §2.4's "15 sibling-mixin methods" (17 under the widened
 walk) and §2.6's "all nine modules this phase created" (ten — `_path_utils.py` is
 private and has its own ratchet entry, but is not a mixin).
+
+**Round 3 found no Major and seven more Minor, every one of them a consequence of
+rounds 1 and 2's own fixes rather than of the move.** Three were in
+`_properties.py`'s docstring: the contract row headed "core lazy properties read"
+lists four core properties that hold no slot and so are not lazy under the
+definition the same docstring gives four paragraphs earlier; "viewset_lookup reads
+through child" named the wrong method (`child` is `all_viewsets`' receiver, and it
+contributes nothing the widened walk needs); and the file's two-line banner still
+carried the pre-round-1 claim that the lazy properties fill a slot *and* write
+back to the cache. Four were figures here and in the sub-plan: §5.1(c)'s 1,775
+lines is 1,774 — the figure counted a `split('\n')` list whose last element is the
+empty string a trailing newline produces, and the MD5 quoted beside it is the
+digest of exactly that 1,774-line region, so the digest was right and the count was
+not; §15's "six genuine non-`self`/`cls` receivers" is five, the sixth being the
+`os.path` false positive the same sentence names; §15's "three names a `self.`-only
+walk would have missed" is two names missed outright plus one *write*
+mis-classified as a read; and the sub-plan's +82 dead-code term subtracts
+`pdsfile.py`'s seven from ~89, not the eight-line whole-module-set count.
+
+Round 3 raised **no new Deferred item** — it confirmed entries 61–65 already cover
+everything it found that is out of scope, and verified entry 63's parenthetical by
+running the probe against `_path_utils.py` itself.
+
+It also went one step further than rounds 1 and 2 on the entry-42 check, and the
+extra step is worth recording: besides the head-placed and tail-placed imports it
+broke the check with a module-level
+`importlib.import_module('pdsfile.pdsfile')` — **a spelling no AST walk over
+import statements can see at all**, and exactly the case entry 42's design note
+gives as the reason not to write a third AST walk. It also confirmed the two
+controls the design needs: a *function-local* deferred import leaves the check
+green, and the naive probe without the stub package is red for all ten private
+modules, so the stub construction is necessary rather than decorative.
+
+**Round 3's fixes touched `src/pdsfile/` too, so the record was regenerated a third
+time.** One finding was not fixed in place: the move commit `a9a6053`'s message
+says "64 lazy properties" where 40 are lazy and 24 recompute. Amending it means
+rewriting eight commits, and this record, three round records and five commit
+messages cite the current hashes — a rebase would invalidate every one of those
+citations to fix one adjective. The reviewer's own suggestion, to state it
+correctly in the PR description, is what was done; `critiques/pr-22/round-3.md`
+records the decision.
