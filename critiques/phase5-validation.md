@@ -2056,3 +2056,674 @@ fix each touched `src/pdsfile/`, so the full-data record was regenerated three
 times. §3's figures are the last of them. **Round 4's fix touches `critiques/`
 only, so the record carries forward unchanged** — which is the other half of the
 same rule, and is why the last change under `src/pdsfile/` is still `5115c38`.
+
+## PR-19 — `refactor: extract OPUS and index-row support → _opus.py, _index_rows.py`
+
+**Branch:** `pr-19-opus-index-rows`, based on `pr-18-derived-paths` @ `80cd9ff`
+("docs: record round 4 and close the review loop"), opened against that branch,
+not `rewrite` (`plans/2026-07-27-addendum-phase5-stack-extension.md`).
+**Baseline:** **PR-18's recorded post-move set** — its §3 above, `--mode ns` 846
+passed / 34 skipped (880 ids) and `--mode s` 555 passed / 3 skipped (558 ids) —
+**re-measured locally on the parent tip** with this PR's own command lines rather
+than copied from the table. The re-measurement reproduced it exactly.
+**Date:** 2026-07-27
+**Sub-plan:** [`plans/2026-07-27-pr-19-subplan.md`](../plans/2026-07-27-pr-19-subplan.md)
+
+This is the first Phase-5 extraction since PR-17 whose set diff is **not** empty,
+and the movement is **two test ids and nothing else**: the widened mixin
+shadowing check that deferred entry 48 assigns to this PR. Both are enumerated in
+§3 and shown to be the whole difference.
+
+### 1. Environment
+
+| Item | Value |
+|---|---|
+| Interpreter | CPython 3.12.3, repo venv, `pip install -e ".[dev]"` |
+| Holdings | `PDS3_HOLDINGS_DIR` / `PDS4_HOLDINGS_DIR` + `PDSFILE_TEST_HOLDINGS=full`, pointed at the limited testing copy the goldens are tuned to |
+| Baseline tree | a `git worktree` detached at the parent tip `80cd9ff`, same interpreter, same holdings; `pytest` reports that directory as `rootdir` |
+| Command lines | exactly those in `scripts/automated_tests/pdsfile_main_test.sh` (serial, under `coverage`), plus `-rA --junitxml` |
+
+**Which source each run actually imported, proved rather than assumed.** The
+interpreter is the main tree's venv, whose editable install appends
+`<main tree>/src` to `sys.path`, and there are now five stacked branches sharing
+it, so a worktree run could silently measure the wrong tree and make the whole
+comparison vacuous. Each run wrote its own `COVERAGE_FILE`, and
+`coverage.CoverageData.measured_files()` was read afterwards for its **absolute**
+paths:
+
+| Run | pdsfile modules measured |
+|---|---|
+| baseline | `<worktree>/src/pdsfile/{pdsfile,_path_utils,_shelves,_local_fs,_derived_paths}.py` — and **no** `_index_rows.py` or `_opus.py`, because neither exists at `80cd9ff` |
+| this branch | `<main tree>/src/pdsfile/{pdsfile,_path_utils,_shelves,_local_fs,_derived_paths,_index_rows,_opus}.py` |
+
+The absence of the two new modules on the baseline side is the decisive bit: had
+the worktree run leaked into the main tree's install, they would have been
+measured there too. The lists are otherwise identical, module for module. The
+one baseline-side path that matches the text `_opus` is
+`src/pdsfile/tools/show_opus_products.py`, a pre-existing tool module that both
+runs measure.
+
+### 2. Active §2 gates
+
+| Gate | Result |
+|---|---|
+| API-freeze manifest test | **passed** — and the dumped surface is byte-identical to the parent's, 733,876 bytes each; §4 |
+| Full-data suite, both modes | **passed** — `--mode ns` moves by exactly the two ids §5 adds, `--mode s` diff is empty; §3 |
+| `ruff check src/pdsfile tests scripts` | **passed**; the ratchet gained no code — §8 |
+| Clean-install import check | **passed** (throwaway venv, `pip install .`, full module surface imports) |
+| Hosted lint/no-holdings job (`scripts/run-all-checks.sh`, no holdings env vars) | **passed**, **82 passed / 800 skipped** — the parent's 80 plus this PR's two ids |
+| Adversarial review loop | `critiques/pr-19/round-<k>.md` |
+
+### 3. Full-data suite — two added ids in `--mode ns`, an empty diff in `--mode s`
+
+Both passes were run on the parent tip and on this branch's head with the same
+interpreter and the same holdings. Every `testcase` element of each `--junitxml`
+was reduced to one `outcome<TAB>classname::name` line, sorted, and the two files
+were diffed with `diff -u`.
+
+| Run | parent `80cd9ff` | `pr-19-opus-index-rows` | set diff |
+|---|---|---|---|
+| `--mode ns` | 846 passed / 34 skipped (880 ids) | 848 passed / 34 skipped (882 ids) | **+2, both new** |
+| `--mode s` | 555 passed / 3 skipped (558 ids) | 555 passed / 3 skipped (558 ids) | **empty** |
+
+The whole `--mode ns` diff, verbatim — two added lines, no removals and no
+outcome changes:
+
+```
++passed	tests.api.test_mixin_collisions::test_no_mixin_is_shadowed_by_a_pdsfile_subclass[Pds3File]
++passed	tests.api.test_mixin_collisions::test_no_mixin_is_shadowed_by_a_pdsfile_subclass[Pds4File]
+```
+
+`diff -u` produced **zero output lines** for `--mode s`. The parent numbers
+reproduce PR-18's recorded set, which is what makes this a comparison against
+PR-18's baseline rather than against a fresh unrelated measurement.
+
+Both modes matter and both were run: `--mode s` is the only thing that exercises
+the `SHELVES_ONLY` branch, and `get_indexshelf` goes through `_get_shelf` while
+`from_opus_id` and `opus_products` go through `glob_glob` and `os_path_exists`,
+all of which branch on it.
+
+**Freshness (§6.6 step 5).** The last change under `src/pdsfile/` is commit
+`174fe7a` ("refactor: extract OPUS support into a mixin"), at **17:00:33**. The
+head runs recorded above postdate it: their `--junitxml` timestamps are
+**17:04:18 and 17:06:10**. The baseline runs (16:52:39 and 16:54:29) were taken
+in a detached `git worktree` at `80cd9ff` that nothing has touched since.
+
+### 4. API freeze — empty diff, as a mixin move requires
+
+1. `pytest tests/api/` passes — 16 ids, the freeze test plus the 15 that
+   `tests/api/test_mixin_collisions.py` now contributes (13 on the parent, plus
+   this PR's two). `tests/api/api_manifest.json`,
+   `tests/api/manifest_allowlist.json`, `scripts/dump_public_api.py` and
+   `tests/api/test_api_freeze.py` are untouched by this PR (§6.4) — verified with
+   `git diff --stat 80cd9ff..HEAD` over those four paths, which is empty. No
+   allowlist entry was added.
+2. `scripts/dump_public_api.py` was run against a worktree at the parent tip and
+   against this branch's head. The two dumps are **byte-identical** (733,876
+   bytes each, `diff` empty, both stderr streams empty).
+
+That is the expected result and the plan says so: the dumper expands a class's
+members with `dir(cls)`, which is MRO-wide, and records names, kinds and
+signatures — never the defining class. So moving `PdsFile.opus_products` into
+`_OpusMixin` cannot show up here, and any diff would have meant a mistake.
+
+`pdsfile._index_rows` and `pdsfile._opus` are underscore-prefixed, so the dumper
+skips them where the submodule import binds them onto the `pdsfile` package; the
+same applies to `_IndexRowsMixin` and `_OpusMixin` inside `pdsfile.pdsfile`. That
+is the freeze-invisibility the Phase-5 preamble requires of new internal names.
+This PR introduces **no** new non-underscore name anywhere.
+
+**The three signatures the consumers depend on are frozen and unchanged**, which
+the byte-identical dump also asserts: `from_filespec(cls, filespec,
+fix_case=False)`, `from_opus_id(cls, opus_id)` and `opus_products(self)`.
+
+The `__qualname__` consequence PR-18 §4 records applies here too and for the same
+reason — `PdsFile.opus_products.__qualname__` is now `_OpusMixin.opus_products`.
+It is a phase-wide consequence of the mandated mixin technique, already true of
+the three mixins on the parent branch, and the dumper records `kind` and
+`signature`, never a qualname. Measured again for this PR's eight names: nothing
+in `src/`, `tests/`, `scripts/`, rms-opus or rms-viewmaster matches on that text.
+
+### 5. What moved, and the sweep that decided it
+
+Eight definitions, located by name. The plan's ":4642–4896" and ":4358–4640"
+windows are against the 6,304-line original; PR-15 through PR-18 have all edited
+this file, which is 5,125 lines at the parent tip. On that tip the targets are
+exactly two consecutive banner blocks, `pdsfile.py:3779–4318`.
+
+| New module | Mixin class | Definitions |
+|---|---|---|
+| `src/pdsfile/_index_rows.py` | `_IndexRowsMixin` | `get_indexshelf`, `find_selected_row_key`, `child_of_index`, `data_abspath_associated_with_index_row`, `data_pdsfile_for_index_row` |
+| `src/pdsfile/_opus.py` | `_OpusMixin` | `from_filespec` (classmethod), `from_opus_id` (classmethod), `opus_products` |
+
+**`from_filespec` is an alternative constructor and is in `_opus.py` anyway**,
+which a reviewer will ask about. Two independent authorities put it there: the
+parent plan's PR-19 window contains it, and the file's own `# OPUS support
+methods` banner contains it. The banner boundary is the boundary, in both
+directions — which is also why the index-related *properties*
+(`indexshelf_abspath`, `is_index`, `index_pdslabel`, `filename_keylen`) do **not**
+move: they are in the `# Properties` block and belong to PR-22.
+
+**Neither block contains a class-level assignment.** An AST pass over both
+windows finds eight `FunctionDef`s and **zero** `Assign` nodes, so the "class
+attributes stay on `PdsFile`" rule has nothing to catch here. That is different
+from PR-17 (six shelf attributes) and PR-18 (`LOG_ROOT_`), and it is recorded as
+a measurement rather than an absence noticed by eye.
+
+**The sweep was computed, not read.** CPython's `symtable` yields the
+module-global names each moved definition's body references; a second AST pass
+covers each definition's decorator expressions and argument defaults, which are
+evaluated in module scope and which `symtable` does not attribute to the method.
+Result:
+
+| Category | `_IndexRowsMixin` | `_OpusMixin` |
+|---|---|---|
+| module-level **imports** referenced | `numbers`, `pdstable` | `defaultdict` |
+| module-level **functions** referenced (from `_path_utils`) | `_clean_join` | `_needs_glob`, `abspath_for_logical_path` |
+| module-level **constants** referenced | **none** | **none** |
+| module-level **classes** referenced (import-cycle risk) | **none** | **`PdsFile`** |
+| unclassified names | **none** | **none** |
+| seen **only** in a decorator or an argument default | **none** | **none** |
+
+The second pass found nothing this time, which is itself the result worth
+recording: PR-16's `_GLOB_CACHE_SIZE` and PR-17's `PATH_EXISTS_CACHE_SIZE` were
+both invisible to a body-only sweep, so the pass is run whether or not it is
+expected to fire, and its "none" is measured rather than assumed.
+
+Per-definition, so the aggregate can be checked rather than trusted:
+`get_indexshelf`, `find_selected_row_key` and `data_pdsfile_for_index_row`
+reference **no** module global at all; `child_of_index` references
+`_clean_join`, `numbers` and `pdstable`; `data_abspath_associated_with_index_row`
+references `pdstable`; `from_filespec` references none; `from_opus_id`
+references `_needs_glob` and `abspath_for_logical_path`; `opus_products`
+references `defaultdict` and `PdsFile`.
+
+**Three module-level names are stranded in `pdsfile.py`, and all three stay.**
+This is the difference from PR-18, which stranded none. After the move `numbers`,
+`pdstable` and `defaultdict` have **zero** remaining references in `pdsfile.py`
+— counted over the AST, not eyeballed — and all three are **frozen manifest
+members** of `pdsfile.pdsfile` (`numbers` and `pdstable` `"kind": "module"`,
+`defaultdict` `"kind": "class"`). Deleting them would be a manifest break, an
+inline `noqa` and a ratchet grow are both forbidden, so they move into the
+PEP-484 redundant-alias re-export form the header already used for six modules:
+
+```python
+import numbers as numbers
+import pdstable as pdstable
+from collections import defaultdict as defaultdict
+```
+
+`_clean_join` (10 remaining references), `abspath_for_logical_path` (4) and
+`_needs_glob` (1) keep live callers in `pdsfile.py` and so keep their plain
+import form. Every one of those counts is measured.
+
+**No import cycle.** Parsing both new modules reports their module-level imports
+as `numbers`, `pdstable`, `from ._path_utils import _clean_join` and
+`from collections import defaultdict`,
+`from ._path_utils import _needs_glob, abspath_for_logical_path` — all at column
+0, none of them a `from pdsfile.pdsfile import` of any spelling. §6 is the
+account of the one import that is not at module level.
+
+**How the two new modules reach the other mixins.** Only through `cls.` /
+`self.` — `get_indexshelf` calls `cls._get_shelf` (`_ShelfMixin`),
+`data_abspath_associated_with_index_row` calls `cls.os_path_exists`
+(`_LocalFsMixin`), and `from_opus_id` and `opus_products` call `cls.glob_glob`,
+`cls.os_path_exists` and `pdsf.shelf_lookup`. Those are runtime MRO lookups, not
+imports. None of the five mixin modules imports another. The two blocks are also
+independent of **each other**: an attribute-name scan over both windows finds no
+call from an index-row method to an OPUS method or the reverse, which is why
+they could be moved in two separate commits with the tree green in between.
+
+**Zero names lost, measured.** `sorted(vars(pdsfile.pdsfile))` was compared
+between the parent worktree and this branch: **48 names before, 50 after, none
+lost.** The two gained are `_IndexRowsMixin` and `_OpusMixin`, which the
+`class PdsFile` statement needs; both are underscore names, so the manifest does
+not see them.
+
+**Byte-for-byte equivalence, measured.** At each extraction commit each moved
+definition's exact source segment (decorators included) was extracted from the
+parent commit's `PdsFile` body and from the new mixin's body and compared byte by
+byte:
+
+| Definition | Bytes | At its extraction commit | At HEAD |
+|---|---|---|---|
+| `get_indexshelf` | 657 | identical | identical |
+| `find_selected_row_key` | 3,842 | identical | identical |
+| `child_of_index` | 2,231 | identical | identical |
+| `data_abspath_associated_with_index_row` | 3,111 | identical | identical |
+| `data_pdsfile_for_index_row` | 386 | identical | identical |
+| `from_filespec` | 774 | identical | identical |
+| `from_opus_id` | 2,015 | identical | identical |
+| `opus_products` | 8,199 → 8,385 | **+4 lines** — §6 | same |
+
+The five index-row definitions also compare identical as a **single 10,251-byte
+blob** on each side, first definition to last, which additionally rules out a
+reordering or a dropped blank line; `from_filespec` and `from_opus_id` do the
+same as a 2,795-byte blob. Nothing moved is still defined in `pdsfile.py`, and
+neither new module carries a definition that was not on the move list. No moved
+body was restyled to dodge an inherited lint violation; that is PR-23's job.
+
+`pdsfile.py`: 5,125 → 4,593 lines; `_index_rows.py` 308, `_opus.py` 284. All
+counted at HEAD.
+
+### 6. The one line that is not a pure move, and why it is in the move commit
+
+`opus_products` reads the **class object** `PdsFile`, to enumerate its direct
+subclasses. The Phase-5 preamble names this as the only bare class-object
+reference in the whole phase and pins the pattern: a function-local deferred
+import, never a module-level one, because `pdsfile.py` imports `_opus` to build
+the class. The whole difference between the moved body and the original is
+therefore these four lines:
+
+```python
++        # Deferred: pdsfile.py imports this module to build PdsFile, so importing
++        # the class at module level here would be a cycle.
++        from pdsfile.pdsfile import PdsFile
++
+         direct_pds_subclasses = PdsFile.__subclasses__()
+```
+
+**Why it is not a separate commit.** §2's commit-granularity rule sends keep-green
+edits — "CI paths, **imports**, packaging, ignore globs" — to their own
+content-edit commit, and the sub-plan said that is what would happen. It could
+not be: without the import, `ruff check` reports `F821 Undefined name PdsFile` on
+`_opus.py:162` under the project's own configuration, so a pure-move commit
+would be **red on an active gate**, and making it green would mean putting `F821`
+into the ratchet entry — a widen, which §6.4 forbids absolutely. §2's PR-discipline
+paragraph resolves it the other way for exactly this case: a move commit may
+carry "the minimal edits required to keep the package importable **and every
+active gate green** … each itemized explicitly in the PR description". This is
+that edit, it is the only one, and it is itemized here, in the commit message and
+in the PR. The other seven definitions are byte-identical, so the claim the
+separation exists to protect is still exactly checkable.
+
+**The deferred import is load-bearing, measured.** Deleting those lines from a
+full copy of the tree and running `tests/pds3file/ tests/pds4file/
+tests/rules/pds3/ tests/rules/pds4/ tests/core/` gives **39 failed** — every
+`opus_products` and cross-PDS id — where the unmutated copy gives 721 passed.
+
+**The bare-class-reference sweep, and its "nothing else" line.** Both new modules
+were parsed for every `Name` node spelling `PdsFile`, `Pds3File` or `Pds4File`.
+`_opus.py` has **exactly one**, at line 166, inside `opus_products`, bound by the
+deferred import at line 164. `_index_rows.py` has **none**. So the preamble's
+2026-07-17 claim that this is the only bare class-object reference in any
+extraction seam holds for these two modules as well.
+
+### 7. The `__bases__` sniff — moved byte-for-byte, and its premise verified
+
+`data_abspath_associated_with_index_row`'s nested `get_keys` contains
+
+```python
+            if cls.__bases__[0].__name__ == 'Pds4File':
+```
+
+The plan is explicit that this stays behaviorally unchanged and that replacing it
+with `issubclass`, an inherited class flag or anything else would **not** be
+behavior-identical. It moved byte-for-byte inside its 3,111-byte definition. It
+is the one place in either new module where a class is named, and the name is a
+**string literal** resolved by `__name__` — the parse in §6 reports it as the
+only such literal — so nothing had to be imported across a module boundary for
+it.
+
+**The plan's premise is verified rather than repeated.** For all **34** classes
+in the `PdsFile` hierarchy, `__bases__[0].__name__`, the full `__bases__` tuple,
+the full MRO and the sniff's own verdict were dumped on the parent tip and at
+HEAD:
+
+| Property | Classes where parent and HEAD differ |
+|---|---|
+| `__bases__[0].__name__` | **none** — all 34 identical |
+| the sniff's verdict (`… == 'Pds4File'`) | **none** — `True` for exactly the same six pds4 rule classes on both sides |
+| `__bases__` tuple | **one**: `PdsFile` itself, which gains the two mixins |
+| MRO | all 34, and only by the insertion of `_IndexRowsMixin` and `_OpusMixin` |
+
+That is the claim precisely: the sniff reads a rule subclass's *direct base*, and
+adding mixin bases to `PdsFile` moves the MRO without moving any subclass's
+`__bases__[0]`. The MRO row is the reason the check had to be run rather than
+argued — every MRO does change, and only the property the sniff actually reads
+does not.
+
+**Both directions of the sniff were mutation-tested**, and they do not answer the
+same way:
+
+| Mutation | Result |
+|---|---|
+| sniff forced **on** (always take the PDS4 branch) | **1 failed** — `TestPds3FileBlackBox::test_data_abspath_associated_with_index_row` |
+| sniff forced **off** (never take the PDS4 branch) | **721 passed** — nothing notices |
+
+So the PDS3 side of the branch is pinned by the golden tests and the PDS4 side is
+not, on the limited testing copy. That is a property of the tests, not of this
+PR, and it is recorded as a deferred observation rather than acted on: this PR's
+gate is the set diff, and adding a test id is movement.
+
+The string-sniff fragility itself is now recorded as a phase-"b" item in
+`critiques/deferred-observations.md` (entry 49), which the plan's PR-19 section
+asks for in place of a fix. It was checked against entries 1–48 first: it was not
+there.
+
+### 8. Ruff ratchet — two codes split three ways, none gained
+
+Procedure: for every code in `pdsfile.py`'s entry, the following was run against
+the parent's `pdsfile.py`, this branch's `pdsfile.py`, `_index_rows.py` and
+`_opus.py` —
+
+```
+ruff check --no-cache --isolated --output-format concise --select <code> \
+           --line-length 100 --target-version py310 <file>
+```
+
+`--isolated` drops `pyproject.toml`'s `line-length = 100` and would otherwise
+report an E501 at 88 columns that the project config does not, so the two
+settings are restored explicitly (PR-16 §7, PR-17 §7 and PR-18 §7 record the same
+trap), and `--output-format concise` is required because ruff 0.15's default
+output no longer starts a line with the file path.
+
+**Every one of the 18 codes conserves exactly** — parent count = the three
+post-move counts summed — which is the mechanical statement of "this is a split
+of an existing entry, not a new suppression". Only the two rows that move are
+non-trivial:
+
+| Code | parent `pdsfile.py` | → `pdsfile.py` | `_index_rows.py` | `_opus.py` |
+|---|---|---|---|---|
+| RUF005 | 8 | **6** | 1 | 1 |
+| UP024 | 13 | **10** | 2 | 1 |
+| B904, C405, E501, E701, E713, E721, F841, I001, N806, RUF012, SIM102, SIM114, SIM118, UP004, UP015, UP031 | 3, 3, 5, 11, 1, 1, 5, 2, 2, 16, 1, 2, 1, 1, 1, 9 | unchanged | 0 | 0 |
+
+The **converse** check matters as much and is easy to skip: running the project's
+whole select set (`E,F,W,I,UP,B,SIM,C4,A,N,PT,RUF` minus the three project-wide
+ignores) against each new module with **no** per-file entry reports exactly the
+codes its entry lists, and nothing else — `RUF005` + `UP024` for `_index_rows.py`,
+and `RUF005` + `UP024` for `_opus.py` once the deferred import is in place. So
+neither module needs a code that was not already forgiven for these same lines;
+had either needed one, the sub-plan makes that a §6.4 hard stop.
+
+Resulting entries:
+
+| File | Entry | Note |
+|---|---|---|
+| `src/pdsfile/pdsfile.py` | 18 codes | unchanged — it still triggers every one of them |
+| `src/pdsfile/_index_rows.py` | `["RUF005", "UP024"]` | exactly the codes its moved lines trigger |
+| `src/pdsfile/_opus.py` | `["RUF005", "UP024"]` | exactly the codes its moved lines trigger |
+
+The distinct (file, code) pairs move 18 → 18 + 2 + 2, and the number of
+suppressed violations is unchanged at 21 across the three files. Neither new
+module needs `I001`: both import blocks are already isort-clean, which is why
+that row conserves rather than growing.
+
+Unlike PR-18, `pdsfile.py`'s entry does not shrink here — every one of its 18
+codes still occurs in what remains — so there is no PR-23 note to add.
+
+### 9. The tests that pin this code — measured, not assumed
+
+A coverage run of `tests/pds3file/`, `tests/pds4file/`, `tests/rules/`,
+`tests/core/` and `tests/holdings_maintenance/` with
+`dynamic_context = test_function` attributes **50 distinct test contexts** to the
+two new modules, from `tests/pds3file/`, `tests/pds4file/` and `tests/rules/`
+only. **No `tests/holdings_maintenance/` context appears**, for the reason PR-18
+established: PR-13's harness runs each tool as a subprocess that in-process
+coverage does not follow. **No `tests/core/` context appears either.**
+
+| Method | Contexts | Where |
+|---|---|---|
+| `get_indexshelf` | 9 | `test_pds3file_blackbox.py`, `test_pds3file_blackbox_cached.py`, `test_pds3file_whitebox.py` |
+| `find_selected_row_key` | 12 | same three |
+| `child_of_index` | 9 | same three |
+| `data_abspath_associated_with_index_row` | 4 | `test_pds3file_blackbox.py`, `test_pds3file_whitebox.py` |
+| `data_pdsfile_for_index_row` | **0** | — |
+| `from_filespec` | 2 | `test_pds3file_blackbox.py`, `test_pds4file_blackbox.py` |
+| `from_opus_id` | 19 | the two blackboxes, `test_pds3file_whitebox.py`, and every `tests/rules/pds3/` and `tests/rules/pds4/` module |
+| `opus_products` | 28 | every `tests/rules/pds3/` and `tests/rules/pds4/` module |
+
+`data_pdsfile_for_index_row`'s **zero** is the one that matters, and it is not an
+artifact of the subprocess blindness above: no in-process test calls it at all.
+rms-viewmaster calls it at three sites. It is recorded as a deferred observation
+(entry 50), not fixed here.
+
+### 10. Negative controls — which parts of the moved code the net actually pins
+
+Every check below is a mutation of the **moved** code, run against
+`tests/pds3file/ tests/pds4file/ tests/rules/pds3/ tests/rules/pds4/
+tests/core/` in `--mode ns`, which is **721 passed / 34 skipped** unmutated.
+
+**The harness has a trap in it, and it is avoided by construction.**
+`pyproject.toml` sets `pythonpath = [".", "src"]`, which pytest resolves against
+**rootdir** and inserts at the front of `sys.path` — **ahead of `PYTHONPATH`**.
+So mutating a copy of `src/` and pointing `PYTHONPATH` at it from the repo root
+imports the *unmutated* tree, and every control reports green, which reads
+exactly like "the tests do not reach this code" and is in fact "the harness does
+not reach the mutation". PR-18 fell into this and re-ran all seven of its
+controls. Each mutation here is therefore written into a **full copy of the
+working tree**, pytest is run **from inside that copy**, and an extra
+`conftest.py` there prints `pdsfile.pdsfile.__file__`,
+`pdsfile._index_rows.__file__` and `pdsfile._opus.__file__`, which the harness
+asserts all point into the mutated copy. **Every row below carries that
+assertion, and every row passed it.**
+
+| Mutation | Result |
+|---|---|
+| `get_indexshelf` returns a stub dict instead of the shelf | **21 failed**, 11 test functions |
+| `find_selected_row_key` corrupts the exact-match answer | **14 failed**, 4 test functions |
+| `child_of_index` builds its row PdsFile with empty `row_dicts` | **5 failed**, 4 test functions |
+| `data_abspath_associated_with_index_row` corrupts the filespec segment | **1 failed** |
+| `from_filespec` corrupts the bundleset segment | **5 failed**, both the pds3 and pds4 ids |
+| `from_opus_id` corrupts the single-match return | **32 failed**, 3 test functions |
+| `opus_products` truncates each glob to one path | **32 failed**, 3 test functions |
+| `opus_products` loses its deferred import | **39 failed**, 3 test functions |
+| the `__bases__` sniff forced **on** | **1 failed** |
+
+**Four mutations changed nothing, and they are reported rather than dropped.**
+A control that comes back green is a measurement too:
+
+| Mutation | Result | What it means |
+|---|---|---|
+| `child_of_index` corrupts the CACHE lookup key | 721 passed | the corrupted key simply misses the cache and the object is rebuilt; the mutation is close to a no-op, so this row measures the mutation and not the tests |
+| `data_pdsfile_for_index_row` always returns `None` | 721 passed | matches §9's zero contexts — nothing calls it |
+| the `__bases__` sniff forced **off** | 721 passed | the PDS4 side of the branch is not exercised on the limited testing copy |
+| `opus_products` sorts versions ascending instead of descending | 721 passed | no golden case has two versions of one product |
+| `opus_products` sees no sibling subclass (`__subclasses__()` → `[]`) | 721 passed | the cross-PDS product path is not pinned on this holdings copy — but the *import* that feeds it is, as the 39-failure row above shows |
+
+These are properties of the test suite, not of this PR, and this PR may not fix
+them: its gate is the pass/fail set and a new test id is movement. They are
+recorded as deferred observation 51.
+
+The inherited and new mixin checks were mutation-tested too, because
+`tests/api/test_mixin_collisions.py` discovers its subjects and a new mixin could
+in principle be discovered and then checked vacuously. Unmutated the module is 15
+passed; each mutation names the tests it turned red:
+
+| Mutation | Went red |
+|---|---|
+| `_OpusMixin` moved to the front of the class statement | `test_the_mixin_bases_are_listed_alphabetically` |
+| `_OpusMixin` also defines `get_indexshelf`, which `_IndexRowsMixin` defines | `test_no_two_mixins_define_the_same_name`, `test_every_mixin_name_is_reachable_through_pdsfile` |
+| `Pds3File` itself defines `opus_products` | **`test_no_mixin_is_shadowed_by_a_pdsfile_subclass[Pds3File]`** — the check this PR adds, and nothing else |
+
+The last row is the point of §11: on the parent branch that mutation turns
+**nothing** red.
+
+### 11. Deferred entry 48 — the shadowing check now covers the subclasses
+
+Entry 48, raised by PR-18's round 4 and owned by PR-19:
+`test_no_mixin_is_shadowed_by_pdsfile_itself` intersects each mixin's names with
+`PdsFile`'s own and stops there, but the subclasses are where `PdsFile`'s method
+surface is actually extended and are what the tools, OPUS and the rule modules
+instantiate. A name a subclass defines wins over every base, so a collision with
+a mixin would make the mixin's copy unreachable on the class callers actually
+use.
+
+It is taken up here rather than deferred again because **this PR is the case the
+entry is about**: `_OpusMixin` carries `opus_products` and `from_opus_id`, and
+OPUS support is where the rule subclasses override most. That puts it inside this
+PR's deliverables rather than in the volunteered-Deferred category the common
+brief warns about.
+
+`test_no_mixin_is_shadowed_by_a_pdsfile_subclass` is a **new** test parametrized
+over `Pds3File` and `Pds4File`, not a re-parametrization of the existing one, so
+no existing id changes and §3's diff is additions only. It asserts first that
+each subject really is in `PdsFile.__subclasses__()`, so it cannot pass by
+looking at the wrong classes.
+
+**The intersection was re-measured with the two new mixins included before the
+test was written**, because a non-empty result is a hard stop rather than
+something to resolve in the PR:
+
+| | `_DerivedPathsMixin` | `_IndexRowsMixin` | `_LocalFsMixin` | `_OpusMixin` | `_ShelfMixin` |
+|---|---|---|---|---|---|
+| `Pds3File` (76 own names) | empty | empty | empty | empty | empty |
+| `Pds4File` (50 own names) | empty | empty | empty | empty | empty |
+
+The same intersection over the **whole 33-class subclass hierarchy**, rule
+modules included, is also empty — that is measured but deliberately **not**
+turned into a test: entry 48 asks for the direct subclasses, and building more
+than the entry asks for is the failure mode PR-17 paid two rounds for.
+
+**One near-miss worth recording.** Every rule module defines a module-level
+`opus_products = translator.TranslatorByRegex([...])` table, which the rule class
+consumes as `OPUS_PRODUCTS = opus_products + …`. It is a *module* global, not a
+class attribute, so it never shadows `_OpusMixin.opus_products` — verified: no
+rule module has an indented `opus_products =`, and the hierarchy intersection
+above is empty. The name is one namespace away from the method the mixin now
+owns, and this is recorded as deferred observation 52.
+
+Entry 48 is **resolved** by this PR.
+
+### 12. Consumer smoke — outcome unchanged, and it matters more here than for PR-18
+
+The gate is **same outcome as baseline**, not "passes"
+(`critiques/baselines/consumer-smoke-baseline.md`).
+
+| Check | Baseline | This branch |
+|---|---|---|
+| A — rms-opus import paths | 4/4 resolve, 0 failures | **4/4 resolve, 0 failures** |
+| B — rms-viewmaster startup | 5 ok, 3 pre-existing failures | **5 ok, 3 failures — the same three** |
+
+The three Check-B failures are still `pdsfile.cache_lifetime` (raises),
+`pdsfile.DEFAULT_CACHING` (absent) and the same `cache_lifetime` read inside
+`get_page_cache()`. None became a pass. `pdsfile.pdsfile.repair_case` still
+resolves.
+
+**Unlike PR-18, both consumers call methods this PR moves**, which is why the
+smoke is a real check here rather than a formality:
+
+| Name | rms-opus | rms-viewmaster |
+|---|---|---|
+| `from_filespec` | 11 references, e.g. `obs_base_pds3.py:90`, `do_import.py:1480` | — |
+| `from_opus_id` | 3, `do_import.py:687,690` | — |
+| `opus_products` | 3, `do_import.py:1487` | — |
+| `find_selected_row_key` | 2, `do_import.py:1553` | — |
+| `data_pdsfile_for_index_row` | — | 3, `viewmaster.py:873,1449,1580` |
+
+Every one of them is an attribute access on the class or on an instance
+(`Pds3File.from_filespec(...)`, `pdsf.opus_products()`,
+`query_pdsfile.data_pdsfile_for_index_row()`), so each resolves through the MRO
+and the mixin move is invisible to it — which is what the byte-identical API dump
+in §4 is the formal statement of, and what Check A and Check B confirm at run
+time.
+
+Environment note carried from the baseline: the check ran under the pdsfile
+venv's interpreter with rms-viewmaster's `site-packages` appended to
+`PYTHONPATH`, because that venv lacks pdsfile's declared `range_ex` dependency.
+rms-viewmaster is at `a0d05e2`; rms-opus is at `73cb6de7`.
+
+### 13. Clean install
+
+`scripts/clean_install_check.sh` passes inside `run-all-checks.sh`. Both new
+modules are picked up by the existing `include = ["pdsfile*"]` package glob with
+no packaging change, and the gate imports the whole manifest module surface —
+`pdsfile.pdsfile` among them — which cannot succeed if either is missing from the
+distribution.
+
+### 14. The monkeypatch audit — the check the set diff cannot perform
+
+Deferred entry 29 (opened by PR-16's round-1 Major, owned by "PR-17 onward") says
+an extraction sweep must also ask **which namespaces the tests patch**, not only
+which globals the code reads. A test whose patch lands on a module the moved code
+no longer resolves through keeps passing while exercising nothing, and §6.2's
+outcome-set diff compares pass/fail — so it is *structurally blind* to this class
+of defect. **This PR's set diff would have reported "two ids added and nothing
+else" in every one of the cases below, including a broken one.**
+
+**Enumeration.** Every `monkeypatch.setattr` / `setitem` / `delattr` / `setenv` /
+`delenv`, `mock.patch`, `patch(`, `patch.object` and bare `setattr(` in `tests/`
+and `scripts/` — 20 sites, all `monkeypatch`; the tree still uses no
+`unittest.mock` at all:
+
+| Target | Sites | Names a symbol **this PR** moves? | Does this PR's moved code read it? |
+|---|---|---|---|
+| `Pds3File.CACHE` (`tests/core/conftest.py:28`, `test_pdsfile_caching.py:112,126`) | 3 | no — a class attribute that stays on the class | **yes** — `child_of_index` reads `cls.CACHE` |
+| `Pds3File.preload` (`test_pdsfile_caching.py:127`) | 1 | no — PR-21's symbol | no |
+| `Pds3File`/`Pds4File.LOCAL_PRELOADED`, `.LOCAL_HOLDINGS_DIRS` (`test_pdsfile_path_resolution.py:58,59,71,72,85,86`) | 6 | no — class attributes that stay on the classes | **yes** — `opus_products` reads `sub_cls.LOCAL_PRELOADED` |
+| `Pds3File.shelf_path_and_key_for_abspath` (`test_pdsfile_path_resolution.py:120,129,137,155`) | 4 | no — PR-17's symbol, audited there | no |
+| `abspath_for_logical_path.__globals__['glob']` (`test_pdsfile_path_resolution.py:92`) | 1 | no — PR-16's fix site, on `_path_utils`'s globals | **indirectly** — `from_opus_id` calls that same function object |
+| `pdsviewable.ICON_SET_BY_TYPE` (`test_pdsviewable_iconset_for.py:47`) | 1 | no — different module | no |
+| `monkeypatch.setenv` / `delenv` (`test_pdsfile_path_resolution.py:54,70,83,84`) | 4 | no — environment, not a namespace | no |
+
+**No patch site names any of the eight methods.** A regex over `tests/`,
+`scripts/` and `src/` for *direct assignment* to any of the eight — the form that
+is not a `monkeypatch` and is easy to miss — returns hits only in the rule
+modules' module-level `opus_products` translator tables (§11), and none at all
+for the other seven names. No test assigns to any attribute of
+`pdsfile.pdsfile`.
+
+**Three targets survive the move because they are read through the class, and
+that is proved, not argued.** The first two rows above are the ones this PR's
+code actually reads; the fifth is a function it calls. Each was forced to answer
+wrongly in a full-tree copy, and each turned its own test red:
+
+| Forced-wrong control | Went red |
+|---|---|
+| the `Pds3File.CACHE` patch removed | `TestGetPermanentValues::test_caching_is_resumed_after_the_values_are_read` |
+| the `Pds3File.preload` patch removed | `TestGetPermanentValues::test_caching_is_resumed_after_a_missing_value_triggers_a_reload` |
+| `LOCAL_PRELOADED` stubbed to a non-empty list | `TestHoldingsEnvironmentVariable::test_a_class_does_not_borrow_another_class_holdings_root` |
+| the `glob` stub in `abspath_for_logical_path.__globals__` answers non-empty | the same id |
+| `shelf_path_and_key_for_abspath` returns instead of raising | 4 ids across `TestInfoshelfPathAndKey` |
+| the `pdsviewable.ICON_SET_BY_TYPE` patch removed | 9 ids across `TestIconsetFor` |
+
+Six controls cover all 20 sites, because sites sharing a target share a
+mechanism. Every one asserted the file it imported, as §10 describes.
+
+**PR-16's fix shape is confirmed move-proof by this PR.**
+`test_pdsfile_path_resolution.py:92` patches `abspath_for_logical_path.__globals__`
+— the function's *own* namespace, whichever module that is — rather than
+`pdsfile.pdsfile.glob`. `from_opus_id` now lives in `_opus.py` and still calls
+the same function object, so the patch reaches exactly what it reached before.
+Had the test patched `pdsfile.pdsfile.glob`, PR-16's move would already have
+silenced it. This is the concrete second data point for entry 29's preferred fix.
+
+**Entry 29's second half — rebinding re-exported *data*.** The same asymmetry one
+level down, measured on both sides:
+
+| | parent `80cd9ff` | this branch |
+|---|---|---|
+| namespace the eight methods resolve through | `pdsfile.pdsfile` | `pdsfile._index_rows` / `pdsfile._opus` |
+| namespace `pdstable`, `numbers`, `defaultdict` resolve in, for the moved code | `pdsfile.pdsfile` | the new modules |
+| rebinding `pdsfile.pdsfile.pdstable` reaches `child_of_index` | **yes** | **no** |
+| `pdsfile.pdsfile.pdstable` / `.numbers` / `.defaultdict` still bound | yes | yes |
+
+Nothing in `src/`, `tests/`, `scripts/`, rms-opus or rms-viewmaster rebinds any
+of those three module attributes — greped, zero hits — so nothing is broken
+today. The general observation stands for PR-20 onward and stays in
+`critiques/deferred-observations.md` as entry 29.
+
+### 15. Deferred observations
+
+Entry 29 is the one this PR was told to act on every time, and §14 is the action.
+It is **not** resolved — it is a per-PR step, owned by "PR-17 onward" — so it
+stays open for PR-20 through PR-22. **Entry 48 is resolved** by §11. Entry 42
+(the back-import guard, owner PR-22) is untouched: this PR adds two mixin modules
+and §5 shows both are clean by the same parsing check, but it builds no guard.
+No other entry in 1–48 is resolved or invalidated here.
+
+Four entries are **added**: 49 (the `__bases__` string sniff, which the plan's
+PR-19 section explicitly asks be recorded as a phase-"b" item rather than fixed),
+50 (`data_pdsfile_for_index_row` has zero in-process test coverage while
+rms-viewmaster calls it at three sites), 51 (the four measured coverage gaps
+§10's green controls found), and 52 (the rule modules' module-level
+`opus_products` table, one namespace away from the mixin method).
+
+### 16. Review loop
+
+| Round | Verdict | Findings | Record |
+|---|---|---|---|
+
+*(Rows are written only after the round they describe has run and its record file
+exists on disk — the rule PR-18's round-3 Major established.)*

@@ -948,3 +948,109 @@ files PR-18 does not touch, and the third is a note that PR-23 must carry.
     in a test PR-18 does not otherwise touch. **Owner: PR-19**, or whichever
     Phase-5 PR next edits the mixin harness — the extension is one more
     intersection per subclass in the same test.
+
+## From PR-19 (extract the OPUS and index-row support, Phase 5)
+
+**Entry 48 is resolved by this PR** — `tests/api/test_mixin_collisions.py` now
+carries `test_no_mixin_is_shadowed_by_a_pdsfile_subclass`, parametrized over
+`Pds3File` and `Pds4File`, and the intersection is measured empty for both
+against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
+
+49. **The `cls.__bases__[0].__name__ == 'Pds4File'` string sniff is fragile, and
+    the plan asks for it to be recorded rather than fixed.**
+    `src/pdsfile/_index_rows.py`, inside
+    `data_abspath_associated_with_index_row`'s nested `get_keys`, chooses between
+    the PDS3 and PDS4 column-name tables by comparing the *name* of a class's
+    first direct base against a string literal. It is fragile in three separate
+    ways: it breaks for any class whose `__bases__[0]` is not exactly
+    `Pds3File`/`Pds4File` (a deeper subclass, or a class that lists a mixin
+    first); it silently takes the PDS3 branch for `Pds4File` itself, whose
+    `__bases__[0]` is `PdsFile`; and it is invisible to every static tool,
+    because the class is named only in a string.
+
+    The plan's PR-19 section is explicit that it must **not** be changed here:
+    "an inherited boolean would not be behavior-identical (it would differ for
+    `Pds4File` itself and for deeper subclasses), so replacing it here would
+    violate the freeze's spirit — record the string-sniff fragility as a
+    phase-'b' item instead and move on." PR-19 moved it byte-for-byte and
+    verified the premise the plan rests on: `__bases__[0].__name__` is identical
+    for all 34 classes in the hierarchy before and after the move, and the
+    sniff's verdict is `True` for exactly the same six pds4 rule classes on both
+    sides (`critiques/phase5-validation.md`, PR-19 §7).
+
+    The phase-"b" fix is an inherited class attribute (e.g. a private
+    `_IS_PDS4` set on `Pds3File`/`Pds4File`) read as `cls._IS_PDS4`, which is
+    correct for every class in the hierarchy rather than only for the direct rule
+    subclasses. It is an observable behavior change for `Pds4File` itself and for
+    any deeper subclass, which is exactly why it is not a phase-"a" change.
+    **Owner: phase "b" of issue #77.**
+
+50. **`data_pdsfile_for_index_row` has no in-process test coverage at all, and
+    rms-viewmaster calls it three times.** A per-test-context coverage run over
+    `tests/pds3file/`, `tests/pds4file/`, `tests/rules/`, `tests/core/` and
+    `tests/holdings_maintenance/` attributes **50** distinct test contexts to the
+    two modules PR-19 creates and **zero** of them to
+    `data_pdsfile_for_index_row` (`critiques/phase5-validation.md`, PR-19 §9).
+    Independently: mutating it to always return `None` leaves the suite at 721
+    passed, exactly as unmutated (§10). Unlike PR-18's entry 43, this is not the
+    subprocess blindness — nothing calls it in-process either.
+
+    It is not dead code. `viewmaster/viewmaster.py:873`, `:1449` and `:1580` call
+    it on every index-row page. So the one method in this extraction with no test
+    is also one of the two that a live consumer depends on. The method is four
+    lines over `data_abspath_associated_with_index_row` (which *is* covered) plus
+    `from_abspath`, so a test costs almost nothing.
+
+    PR-19 may not add it: its gate is an identical pass/fail set apart from the
+    two ids entry 48 required, and a further new test id is movement.
+    **Owner: Phase 6**, alongside entries 43 and 46, which are the same shape.
+
+51. **Four parts of the moved OPUS and index-row code are not pinned by the
+    golden tests — measured by mutation, not guessed.** PR-19 ran nine mutations
+    that turn tests red and, deliberately, recorded the ones that do not
+    (`critiques/phase5-validation.md`, PR-19 §10). Each is 721 passed / 34
+    skipped, identical to unmutated, in a full-tree copy that asserted it had
+    imported the mutation:
+
+    a. **The `__bases__` sniff's PDS4 branch.** Forced *on*, one test fails;
+       forced *off*, nothing does. So the PDS3 side is pinned and the PDS4 side
+       is not, on the limited testing copy the goldens are tuned to.
+    b. **`opus_products`' cross-PDS sibling discovery.** Replacing
+       `PdsFile.__subclasses__()` with `[]` — which drops every cross-PDS3/PDS4
+       product — changes no outcome. (The *import* that feeds it is pinned:
+       deleting the deferred import gives 39 failures. It is the value that is
+       not.) `tests/rules/pds3/test_coiss_xxxx.py:54` skips the golden cases that
+       would cover this when the pds4 reproj bundles are absent, which is the
+       likely cause.
+    c. **`opus_products`' version ordering.** `new_sublists.sort(...,
+       reverse=True)` → ascending changes no outcome, so no golden case has two
+       versions of one product.
+    d. **`data_pdsfile_for_index_row`** — entry 50, listed here for completeness.
+
+    None is a defect in PR-19: all four are properties of the test suite and all
+    four are equally true on the parent branch. They are the honest answer to
+    "which parts of this extraction would a regression escape", and (b) is the
+    one worth acting on first, because cross-PDS product assembly is what OPUS
+    imports. **Owner: Phase 6** for (a), (c) and (d); (b) additionally depends on
+    whether the complete holdings set makes those golden cases runnable, so it
+    belongs with whoever next revisits the pds3/pds4 cross-product goldens.
+
+52. **Every rule module defines a module-level `opus_products` table, one
+    namespace away from the mixin method of the same name.**
+    `src/pdsfile/pds3file/rules/COISS_xxxx.py:263` and the equivalent line in 24
+    other rule modules define `opus_products = translator.TranslatorByRegex([…])`
+    at module level, which the rule *class* then consumes as
+    `OPUS_PRODUCTS = opus_products + pds3file.Pds3File.OPUS_PRODUCTS` (`:737`).
+    Because the table is a module global and the class attribute is spelled in
+    upper case, it never shadows `_OpusMixin.opus_products` — verified: no rule
+    module has an indented `opus_products =`, and the mixin/subclass intersection
+    is empty across the whole 33-class hierarchy
+    (`critiques/phase5-validation.md`, PR-19 §11).
+
+    Nothing is broken. But the two names differ only in where they are bound, the
+    method is now defined in a different file from the class that inherits it,
+    and PR-24 already has to do delicate `F811` work in `COVIMS_0xxx.py` for the
+    same table-versus-method confusion one level down. A one-line comment at the
+    top of the rules' `OPUS_PRODUCTS` blocks, or a rename of the module-level
+    table, would remove the trap. **Owner: PR-24**, which is editing these files
+    anyway.
