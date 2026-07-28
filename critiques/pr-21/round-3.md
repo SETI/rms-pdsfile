@@ -67,7 +67,7 @@ expressions — the list was wrong in both directions:
 | | |
 |---|---|
 | named but never a receiver | `set` — `set(parts[2])` is a constructor call, not an attribute access |
-| a receiver but not named | `os` itself (`os.listdir`, `:251`), file objects (`f.readlines`, `:262`), `pylibmc` (`pylibmc.Error`, `:378`), `time` (`time.sleep`, `:383`) |
+| a receiver but not named | `os` itself (`os.listdir`), file objects (`f.readlines`), `pylibmc` (`pylibmc.Error`), `time` (`time.sleep`) — at HEAD `_preload.py:255`, `:266`, `:382` and `:387`; the fix that closed this finding added four lines above them, so the pre-fix numbers were four lower |
 
 The validation record's own §15 already listed the measured families correctly, so
 the docstring and the record disagreed and the docstring was the one that was

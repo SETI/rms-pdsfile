@@ -4019,7 +4019,12 @@ the parent tip.
 | `preload_and_cache.py` | 47–82 | `cache_lifetime_for_class`, `is_preloading`, `pause_caching`, `resume_caching` — **4** functions |
 
 `pdsfile.py`: 3,837 → 3,415 lines. `preload_and_cache.py`: 82 → 16.
-`_preload.py`: 574. All counted at HEAD.
+`_preload.py`: **578**. All counted at HEAD, and **re-counted at each round rather
+than carried forward** — the convention PR-19 §5 and PR-20 §5 adopted after PR-20's
+round 2 found a stale one. `_preload.py` was 574 at its extraction commit and grew
+by 4 lines, entirely in the class docstring, which round 3 corrected. No executable
+line in it has changed since the extraction, which the two identical head pairs in
+§3 measure rather than assert.
 
 **`_preload_dir` is a nested local function inside `preload`**, not a class
 method, and it moved inside `preload`'s body — it is not a separate definition in
@@ -4366,7 +4371,7 @@ Seventeen codes conserve exactly; one of those seventeen — **UP015** — conse
 by leaving `pdsfile.py` entirely, so **`pdsfile.py`'s entry drops it**. Its single
 occurrence was
 `open(table_path, 'r', encoding='utf-8')` inside `load_volume_info`, now
-`_preload.py:261`.
+`_preload.py:265`.
 
 **I001 goes 2 → 1, and that is a genuine shrink rather than a leak.** The parent's
 `pdsfile.py` had two unsorted import blocks, at `:6` and at `:44`; removing the
@@ -4610,7 +4615,7 @@ not a random 30:
 - **the already-preloaded early return**, including the
   `if cls.MEMCACHE_PORT: cls.get_permanent_values(...)` call — the recursion PR-15's
   bug 2 lived in;
-- the `DictionaryCache` re-creation at `:361`, because the class-level `CACHE` is
+- the `DictionaryCache` re-creation at `:365`, because the class-level `CACHE` is
   already a `DictionaryCache` when the session fixture preloads;
 - two logging branches (`Pre-load not needed for …`, `Not a directory, ignored: …`).
 
@@ -4713,9 +4718,13 @@ Entry 29 is the one this PR was told to act on, and §11 is the action. It is
 for PR-22. Entries 53 and 54 are deliberately not taken up, per the coordinator's
 standing direction that neither is this PR's to build (common brief §5.1). Entry
 42 (the back-import guard, owner PR-22) is untouched: §5.2 shows `_preload.py` is
-clean by the same parsing check, but this PR builds no guard. Entry 57 (the
-home-rooted holdings path in an archived plan) is unchanged and still with the
-owner. No other entry in 1–57 is resolved or invalidated here.
+clean by the same parsing check, but this PR builds no guard. **Entry 57 (the
+home-rooted holdings path in an archived plan) was withdrawn during this loop**, on
+the owner's ruling of 2026-07-27 that absolute holdings paths in `plans/` and
+`critiques/` are not confidential; round 2 applied it and
+`critiques/pr-21/round-2.md` records it. The entry is kept and marked closed rather
+than deleted, because its measurement is still an accurate record of what was
+found. No other entry in 1–57 is resolved or invalidated here.
 
 Two entries are **added** by the executor's own measurements: **58** (`pylibmc`
 resolves as `pdsfile._preload.pylibmc` rather than `pdsfile.pdsfile.pylibmc` where
@@ -4732,6 +4741,7 @@ a case-sensitive filesystem from a case-insensitive one).
 | 1 | goal met | 0 Major, 5 Minor (all accepted and fixed; **none in `src/`** — all five in this record, the sub-plan or the deferred-observations file), 2 Deferred (one folded into entry 58, one added as entry 60) | `critiques/pr-21/round-1.md` |
 | 2 | goal met | 0 Major, 3 Minor (all accepted and fixed; **none in `src/`** — all three in this record or the deferred-observations file), **0 new Deferred** | `critiques/pr-21/round-2.md` |
 | 3 | goal met | 0 Major, 3 Minor (all accepted and fixed; **two in `src/`** — the mixin docstring — and one a heading in this record and the sub-plan), **0 new Deferred** | `critiques/pr-21/round-3.md` |
+| 4 | goal met | **0 Major, 0 new Minor**; all 11 prior findings confirmed resolved by re-measurement; 5 Deferred (all five fixed in place here) | `critiques/pr-21/round-4.md` |
 
 *(Rows are written only after the round they describe has run and its record file
 exists on disk — the rule PR-18's round-3 Major established. No row is written for
@@ -4834,3 +4844,48 @@ annotate the `pylibmc` exception inside `pdsfile.py`'s re-export comment — was
 clause is a purpose statement scoped to the four private names it introduces, none
 of which is `pylibmc`, and it is inherited wording that PR-16 wrote and PR-17,
 PR-20 and PR-21 have only added names to.
+
+**The loop terminates at round 4**, at §6.6's four-round cap: a fresh reviewer
+returned zero Major and no new un-rebutted Minor. Round 4 is the *scoped*
+re-review the anti-thrash rule prescribes — confirm the prior rounds' findings are
+resolved, raise only new Major — and it confirmed all eleven by re-measuring each
+rather than reading this record. Two of those re-measurements went further than
+the fix required, and they are why the round was worth running:
+
+- it **executed** the docstring's receiver enumeration rather than reading it,
+  confirming `set` is gone and that all eleven named families do occur with an
+  instance of each; re-derived the contract to 25 of 25 with empty residue both
+  ways; and then checked the *write* classification this record had only asserted
+  — measured `Store` on `cls` is exactly the five the docstring marks WRITTEN,
+  measured `Store` on the instance receivers is exactly `permanent`, and
+  `_childnames_filled` is never a `Store`, which is what "mutated in place" means;
+- it **executed** the corrected memcached condition across the full truth table of
+  `(port, MEMCACHE_PORT, HAS_PYLIBMC)` with `pdscache`'s two cache classes patched
+  to raising sentinels — **8 of 8 match**, including `port=0,
+  MEMCACHE_PORT=11211, HAS_PYLIBMC=True → memcached`, the case round 3's fix was
+  about.
+
+It also re-derived the two moved spans as single blobs (18,197 and 2,821 bytes,
+`# pragma: no cover` markers included), `getattr_static` over `dir()` of all three
+classes (257 / 299 / 272 names, zero lost, zero gained, **zero kind changes**),
+eleven first-import orders, and the ratchet's converse check with per-file-ignores
+off — which located all eight of `_preload.py`'s suppressed violations **inside
+moved bodies**, none in the new header or docstring.
+
+Its five Deferred items are all corrections to text this PR itself wrote, and all
+five are **fixed in place** here rather than carried forward. Four are line
+citations and a count that round 3's four-line docstring fix moved. The fifth is
+the one worth naming: `_preload.py`'s line count was carried forward from its
+extraction commit rather than re-counted, which is **the same defect PR-20's round
+2 found in `_sorting.py`** — and the "counted at HEAD, and re-counted at each round
+rather than carried forward" sentence PR-19 §5 and PR-20 §5 adopted in response is
+the sentence §5 of this section had dropped. It is restored.
+
+**Nothing was rebutted in any round.** All eleven Minor findings across rounds 1–3
+were accepted and fixed, and the one out-of-band suggestion that was declined
+(round 3's, to annotate the `pylibmc` exception in `pdsfile.py`'s comment) was
+recorded in deferred entry 58 with its reasoning rather than argued. Of the
+sixteen findings this loop produced across four rounds, **fourteen were figures or
+phrases in records and sub-plans and two were prose in the mixin docstring; not
+one was in the extracted code** — the same result PR-19 and PR-20 each produced,
+and the strongest evidence available that the extraction itself is clean.
