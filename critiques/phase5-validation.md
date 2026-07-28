@@ -2994,23 +2994,26 @@ the `SHELVES_ONLY` branch, and `associated_abspaths` reaches it through
 through `cls.os_path_isdir`.
 
 **Freshness (§6.6 step 5).** The last change under `src/pdsfile/` is commit
-`a529d26` (round 3's Minor-3 fix, one paragraph of `_associations.py`'s class
-docstring), at **21:09:41**. The head runs recorded above postdate it: their
-`--junitxml` timestamps are **21:12:38 and 21:14:29**. They are the third
-regeneration §6.6 step 5 requires — rounds 1, 2 and 3 each produced a fix under
-`src/pdsfile/`.
+`9684c33` (round 4's deferred fix (b), one line of `_associations.py`'s class
+docstring), at **21:33:16**. The head runs recorded above postdate it: their
+`--junitxml` timestamps are **21:36:12 and 21:38:03**. They are the fourth
+regeneration §6.6 step 5 requires — every one of the four rounds produced a fix
+under `src/pdsfile/`, and the last one did so after the loop had already
+terminated, which the rule covers just the same: a record predating the last
+`src/` change is stale whether or not another reviewer follows.
 
 The **superseded** head pairs are recorded rather than dropped, each with the
 commit its tree was actually at:
 
 | Head pair | `--junitxml` written | Tree at | Reduced sets |
 |---|---|---|---|
-| 1 | 19:23:02 / 19:24:53 | `48b0605` | identical to pairs 2, 3 and 4 |
-| 2 | 20:14:26 / 20:16:15 | `6350859` | identical to pairs 1, 3 and 4 |
-| 3 | 20:46:47 / 20:48:37 | `752bd12` | identical to pairs 1, 2 and 4 |
-| **4 (current)** | **21:12:38 / 21:14:29** | **`a529d26`** | **the figures above** |
+| 1 | 19:23:02 / 19:24:53 | `48b0605` | identical to pairs 2, 3, 4 and 5 |
+| 2 | 20:14:26 / 20:16:15 | `6350859` | identical to pairs 1, 3, 4 and 5 |
+| 3 | 20:46:47 / 20:48:37 | `752bd12` | identical to pairs 1, 2, 4 and 5 |
+| 4 | 21:12:38 / 21:14:29 | `a529d26` | identical to pairs 1, 2, 3 and 5 |
+| **5 (current)** | **21:36:12 / 21:38:03** | **`9684c33`** | **the figures above** |
 
-`diff` between any two of the four pairs is empty in both modes, which is what
+`diff` between any two of the five pairs is empty in both modes, which is what
 docstring-only changes should do and is measured rather than assumed — and is
 also the evidence that every fix in this loop has been a docstring, a comment or a
 record, rather than the claim of it. The provenance check was re-run on each pair:
@@ -3232,9 +3235,9 @@ is PR-23's job.
 `pdsfile.py`: 4,593 → 3,837 lines; `_sorting.py` 525, `_associations.py` 373. All
 counted at HEAD, and re-counted at each round rather than carried forward: the two
 new modules were 522 and 370 at their extraction commits and grew by 3 lines each,
-**entirely in their class docstrings**, which rounds 1, 2 and 3 each corrected.
+**entirely in their class docstrings**, which all four rounds corrected.
 The `pdsfile.py` figure is unchanged since the extraction, and no executable line
-in either new module has changed since its extraction commit — which the four
+in either new module has changed since its extraction commit — which the five
 identical head pairs in §3 measure rather than assert.
 
 ### 6. Cross-block calls — enumerated, and every one an attribute lookup
