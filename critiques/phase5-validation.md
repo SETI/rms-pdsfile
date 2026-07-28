@@ -2909,3 +2909,759 @@ that no executable line changed after the extraction commits. **Round 4's fixes
 touch `critiques/` only, so the record carries forward unchanged** — the other
 half of the same rule, and the reason the last change under `src/pdsfile/` is
 still `b6bda4a`.
+
+## PR-20 — `refactor: extract associations, split/sort, transformations → _associations.py, _sorting.py`
+
+**Branch:** `pr-20-associations-sorting`, based on `pr-19-opus-index-rows` @ `bf42ae7`
+("docs: note that round 4's fixes leave the full-data record valid"), opened
+against that branch, not `rewrite`
+(`plans/2026-07-27-addendum-phase5-stack-extension.md`).
+**Baseline:** **PR-19's recorded post-move set** — its §3 above, `--mode ns` 848
+passed / 34 skipped (882 ids) and `--mode s` 555 passed / 3 skipped (558 ids) —
+**re-measured locally on the parent tip** with this PR's own command lines rather
+than copied from the table. The re-measurement reproduced it exactly.
+**Date:** 2026-07-27
+**Sub-plan:** [`plans/2026-07-27-pr-20-subplan.md`](../plans/2026-07-27-pr-20-subplan.md)
+
+This is the largest extraction in the phase — **27 definitions, 761 source lines
+across three banner blocks, into two modules** — and its set diff is **empty in
+both modes**. It touches no test file, so unlike PR-19 it adds no test id.
+
+### 1. Environment
+
+| Item | Value |
+|---|---|
+| Interpreter | CPython 3.12.3, repo venv, `pip install -e ".[dev]"` |
+| Holdings | `PDS3_HOLDINGS_DIR` / `PDS4_HOLDINGS_DIR` + `PDSFILE_TEST_HOLDINGS=full`, pointed at the limited testing copy the goldens are tuned to |
+| Baseline tree | a `git worktree` detached at the parent tip `bf42ae7`, same interpreter, same holdings; `pytest` reports that directory as `rootdir` |
+| Command lines | exactly those in `scripts/automated_tests/pdsfile_main_test.sh` (serial, under `coverage`), plus `-rA --junitxml` |
+
+**Which source each run actually imported, proved rather than assumed.** The
+interpreter is the main tree's venv, whose editable install appends
+`<main tree>/src` to `sys.path`, and there are now **six** stacked branches
+sharing it, so a worktree run could silently measure the wrong tree and make the
+whole comparison vacuous. Each run wrote its own `COVERAGE_FILE`, and
+`coverage.CoverageData.measured_files()` was read afterwards for its **absolute**
+paths:
+
+| Run | top-level `pdsfile` modules measured | count |
+|---|---|---|
+| baseline | `<worktree>/src/pdsfile/` — `__init__`, `_derived_paths`, `_index_rows`, `_local_fs`, `_opus`, `_path_utils`, `_shelves`, `pdscache`, `pdsfile`, `pdsviewable`, `preload_and_cache` | **11** |
+| this branch | `<main tree>/src/pdsfile/` — the same eleven, plus **`_associations`** and **`_sorting`** | **13** |
+
+Those are the modules directly under `src/pdsfile/`; both runs additionally
+measure the same `holdings_maintenance/`, `pds3file/`, `pds4file/` and `tools/`
+subpackages, each under its own tree's prefix — 68 measured files on the baseline
+side and 70 on this branch, the difference being exactly the two new modules.
+
+The presence of exactly two extra modules on this branch and **zero** of them on
+the baseline side is the decisive bit: had the worktree run leaked into the main
+tree's install, they would have been measured there too. Counted mechanically:
+**0** baseline paths fall outside the worktree prefix, **0** head paths fall
+outside the main tree's, and the text `_sorting` or `_associations` appears in
+**0** baseline paths and **2** head paths.
+
+### 2. Active §2 gates
+
+| Gate | Result |
+|---|---|
+| API-freeze manifest test | **passed** — and the dumped surface is byte-identical to the parent's, 733,876 bytes each, same MD5; §4 |
+| Full-data suite, both modes | **passed** — **empty set diff in both modes**; §3 |
+| `ruff check src/pdsfile tests scripts` | **passed**; the ratchet gained no code — §8 |
+| Clean-install import check | **passed** (throwaway venv, `pip install .`, full module surface imports) |
+| Hosted lint/no-holdings job (`scripts/run-all-checks.sh`, no holdings env vars) | **passed**, **82 passed / 800 skipped** — the parent's figure, unchanged, and re-measured on the parent tip in the same session to confirm it |
+| Adversarial review loop | `critiques/pr-20/round-<k>.md` |
+
+### 3. Full-data suite — an empty diff in both modes
+
+Both passes were run on the parent tip and on this branch's head with the same
+interpreter and the same holdings. Every `testcase` element of each `--junitxml`
+was reduced to one `outcome<TAB>classname::name` line, sorted, and the two files
+were diffed with `diff -u`.
+
+| Run | parent `bf42ae7` | `pr-20-associations-sorting` | set diff |
+|---|---|---|---|
+| `--mode ns` | 848 passed / 34 skipped (882 ids) | 848 passed / 34 skipped (882 ids) | **empty** |
+| `--mode s` | 555 passed / 3 skipped (558 ids) | 555 passed / 3 skipped (558 ids) | **empty** |
+
+`diff -u` produced **zero output lines** for both modes. The parent numbers
+reproduce PR-19's recorded set, which is what makes this a comparison against
+PR-19's baseline rather than against a fresh unrelated measurement.
+
+Both modes matter and both were run: `--mode s` is the only thing that exercises
+the `SHELVES_ONLY` branch, and `associated_abspaths` reaches it through
+`cls.glob_glob` and `cls.os_path_exists` while `sort_basenames` reaches it
+through `cls.os_path_isdir`.
+
+**Freshness (§6.6 step 5).** The last change under `src/pdsfile/` is commit
+`48b0605` ("style: give is_logical_path its own banner"), at **19:20:05**. The
+head runs recorded above postdate it: their `--junitxml` timestamps are
+**19:23:02 and 19:24:53**. The baseline runs (19:08:48 and 19:10:39) were taken
+in a detached `git worktree` at `bf42ae7` that nothing has touched since.
+
+### 4. API freeze — empty diff, as a mixin move requires
+
+1. `pytest tests/api/` passes — 16 ids, unchanged from the parent: the freeze
+   test plus the 15 that `tests/api/test_mixin_collisions.py` contributes. This
+   PR adds no id there and edits no test file.
+   `tests/api/api_manifest.json`, `tests/api/manifest_allowlist.json`,
+   `scripts/dump_public_api.py` and `tests/api/test_api_freeze.py` are untouched
+   (§6.4) — verified with `git diff --stat bf42ae7..HEAD` over those four paths,
+   which is empty. No allowlist entry was added.
+2. `scripts/dump_public_api.py` was run against a worktree at the parent tip and
+   against this branch's head. The two dumps are **byte-identical** (733,876
+   bytes each, identical MD5 `442428da…`, `diff` empty, both stderr streams
+   empty).
+
+That is the expected result and the plan says so: the dumper expands a class's
+members with `dir(cls)`, which is MRO-wide, and records names, kinds and
+signatures — never the defining class. So moving `PdsFile.associated_parallel`
+into `_AssociationsMixin` cannot show up here, and any diff would have meant a
+mistake.
+
+`pdsfile._associations` and `pdsfile._sorting` are underscore-prefixed, so the
+dumper skips them where the submodule import binds them onto the `pdsfile`
+package; the same applies to `_AssociationsMixin` and `_SortingMixin` inside
+`pdsfile.pdsfile`. That is the freeze-invisibility the Phase-5 preamble requires
+of new internal names. **This PR introduces no new non-underscore name
+anywhere.**
+
+The `__qualname__` consequence PR-18 §4 records applies here too and for the same
+reason — `PdsFile.sort_basenames.__qualname__` is now
+`_SortingMixin.sort_basenames`. It is a phase-wide consequence of the mandated
+mixin technique, already true of the five mixins on the parent branch, and the
+dumper records `kind` and `signature`, never a qualname. Measured again for this
+PR's 27 names: nothing in `src/`, `tests/`, `scripts/`, rms-opus or
+rms-viewmaster matches on that text.
+
+### 5. What moved, and the 3-blocks-into-2-modules mapping
+
+27 definitions, located by name. The plan's `:5979–6289`, `:5518–5871` and
+`:5873–5977` windows are against the 6,304-line original; PR-15 through PR-19
+have all edited this file, which is **4,593 lines at the parent tip**. On that
+tip the targets are the last three banner blocks of the class body, and they are
+consecutive: `pdsfile.py:3807–4567`.
+
+| Banner | Lines at `bf42ae7` | New module | Definitions |
+|---|---|---|---|
+| `# How to split and sort filenames` | 3807–4160 | `src/pdsfile/_sorting.py` (`_SortingMixin`) | `split_basename`, `basename_is_label`, `basename_is_viewable`, `sort_basenames`, `sort_sibnames`, `sort_siblings`, `sort_logical_paths`, `sort_childnames`, `viewable_childnames`, `childnames_by_anchor`, `viewable_childnames_by_anchor` — **11** |
+| `# Transformations` | 4162–4266 | the same module | `abspaths_for_pdsfiles`, `logicals_for_pdsfiles`, `basenames_for_pdsfiles`, `pdsfiles_for_abspaths`, `logicals_for_abspaths`, `basenames_for_abspaths`, `pdsfiles_for_logicals`, `abspaths_for_logicals`, `basenames_for_logicals`, `pdsfiles_for_basenames`, `abspaths_for_basenames`, `logicals_for_basenames` — **12** |
+| `# Associations` | 4268–**4567** | `src/pdsfile/_associations.py` (`_AssociationsMixin`) | `associated_logical_paths`, `associated_pdsfiles`, `associated_abspaths`, `associated_parallel` — **4** |
+
+**Why two modules and not three.** The parent plan names exactly two module files
+for this PR, so a `_transformations.py` would deviate from the stated deliverable
+and would need an owner-acknowledged addendum. The pairing chosen is also the one
+the code supports: split/sort and the transformations are one domain — bulk
+operations over lists of basenames, logical paths, abspaths and `PdsFile`
+objects, with no I/O of their own — whereas associations are the
+category-crossing lookup layer that walks the holdings tree. The measured call
+graph agrees, and one way: **the associations call the transformations at three
+sites and the transformations never call back** (§6). Because the filename
+`_sorting.py` undersells a module that also holds twelve conversion helpers, its
+module header and class docstring say what it actually holds.
+
+**The associations window ends at `associated_parallel`, not at the end of its
+banner block.** `is_logical_path` (`:4569–4578` on the parent tip) falls inside
+the plan's association line window but is a generic path predicate, and it is a
+frozen public `PdsFile` classmethod, so the plan says leave it in core and
+PR-22's stay-list names it again. It and the module-level tail below the class
+(`PdsFile.SUBCLASSES['default'] = PdsFile`, `PdsFile.cache_category_merged_dirs()`)
+stay put. This is the one window boundary in the PR that does not follow a
+banner, which is exactly what a mechanical block-move gets wrong, so it is
+checked rather than asserted: at HEAD `is_logical_path` is still in
+`vars(PdsFile)`, `inspect.getattr_static(PdsFile, 'is_logical_path')` still
+resolves to `PdsFile`'s own function object, and its source segment is
+byte-identical to the parent's.
+
+Taking the `# Associations` banner with its block left `is_logical_path` sitting
+directly under the `# Log path associations` banner, which then described a
+section it is not part of. A **separate three-line commit** (`48b0605`) gives it
+its own banner; it is kept out of the move commit so that commit stays a pure
+move.
+
+**No block contains a class-level assignment.** An AST pass over the `PdsFile`
+body reports the three windows as 27 `FunctionDef`s and **zero** `Assign` nodes,
+so the "class attributes stay on `PdsFile`" rule has nothing to catch here. That
+is the same result PR-19 measured and different from PR-17 (six shelf attributes)
+and PR-18 (`LOG_ROOT_`), and it is recorded as a measurement rather than an
+absence noticed by eye. In particular the sort configuration — `SORT_ORDER`
+(`:244`), `SORT_KEY` (`:212`) and the four setters `sort_labels_after` /
+`sort_dirs_first` / `sort_dirs_last` / `sort_info_first` (`:253–299`), all under
+the `# DEFAULT FILE SORT ORDER` banner — and the association registries
+`ASSOCIATIONS`, `NEIGHBORS`, `SIBLINGS`, `VERSIONS` (`:207–211`) stay on
+`PdsFile`, where the moved methods read them off the class and where PR-22's
+stay-list expects them.
+
+**The sweep was computed, not read.** CPython's `symtable` yields the
+module-global names each moved definition's body references — a name bound in an
+enclosing *function* scope is FREE, not GLOBAL, so `is_global()` is exactly the
+module-global question — and a second AST pass covers each definition's decorator
+expressions and argument defaults, which are evaluated in module scope and which
+`symtable` does not attribute to the method. Result:
+
+| Category | `_SortingMixin` | `_AssociationsMixin` |
+|---|---|---|
+| module-level **imports** referenced | `os` | `os` |
+| module-level **functions** referenced (from `_path_utils`) | `_clean_join`, `abspath_for_logical_path`, `logical_path_from_abspath` | `_clean_join`, `_needs_glob` |
+| module-level **constants** referenced | **none** | **none** |
+| module-level **classes** referenced (import-cycle risk) | **none** | **none** |
+| unclassified names | **none** | **none** |
+| seen **only** in a decorator or an argument default | **none** | **none** |
+
+The second pass found nothing again, which is itself the result worth recording:
+PR-16's `_GLOB_CACHE_SIZE` and PR-17's `PATH_EXISTS_CACHE_SIZE` were both
+invisible to a body-only sweep, so the pass is run whether or not it is expected
+to fire, and its "none" is measured rather than assumed.
+
+**No class object is referenced by either module, so neither needs a
+function-local deferred import.** That is the difference from PR-19, whose
+`_opus.py` needed one for `PdsFile.__subclasses__()`; both PR-20 move commits are
+therefore pure moves plus their header imports. Confirmed by parsing both modules
+for every `Name` node spelling `PdsFile`, `Pds3File` or `Pds4File`: **zero in
+each**, and zero string literals naming any of the three as well.
+
+Per-definition, so the aggregate can be checked rather than trusted: of the 23
+`_SortingMixin` definitions, 16 reference **no** module global at all;
+`sort_basenames`, `abspaths_for_basenames` and `logicals_for_basenames`
+reference `_clean_join`; `basenames_for_abspaths` and `basenames_for_logicals`
+reference `os`; `abspaths_for_logicals` references `abspath_for_logical_path`;
+`logicals_for_abspaths` references `logical_path_from_abspath`. Of the four
+`_AssociationsMixin` definitions, three reference nothing and
+`associated_abspaths` references `_clean_join`, `_needs_glob` and `os`.
+
+**One module-level name is stranded in `pdsfile.py`, and it stays.** Counted over
+the AST, not eyeballed:
+
+| Name | total refs before | inside moved bodies | left in `pdsfile.py` |
+|---|---|---|---|
+| `os` | 18 | 3 | 15 |
+| `_clean_join` | 10 | 4 | 6 |
+| `abspath_for_logical_path` | 4 | 1 | 3 |
+| `logical_path_from_abspath` | 2 | 1 | 1 |
+| **`_needs_glob`** | **1** | **1** | **0 — stranded** |
+
+`_needs_glob` is private, so it is not a frozen manifest member — but it is
+reachable today as `pdsfile.pdsfile._needs_glob`, and the header's re-export block
+exists for exactly that reason ("carried so that no name reachable as
+`pdsfile.pdsfile.<name>` is lost"), where `_GLOB_CACHE_SIZE` and `_clean_glob`
+already sit. Deleting it would break the no-name-lost invariant every Phase-5 PR
+has measured; an inline `noqa` and a ratchet grow are both forbidden. So its
+import moved into that block in the PEP-484 redundant-alias form:
+
+```python
+from ._path_utils import (FILE_BYTE_UNITS as FILE_BYTE_UNITS,
+                          _GLOB_CACHE_SIZE as _GLOB_CACHE_SIZE,
+                          _clean_glob as _clean_glob,
+                          _needs_glob as _needs_glob,
+                          selected_path_from_path as selected_path_from_path)
+```
+
+**No import cycle.** Parsing both new modules reports their module-level imports
+as `import os` and `from ._path_utils import …`, both at column 0, and **no
+import statement anywhere in either file mentions `pdsfile`** in any spelling.
+`_path_utils` imports only `fnmatch`, `functools`, `glob`, `math` and `os`, so
+neither import can close a cycle back to `pdsfile.pdsfile`; that is read out of
+the file rather than assumed.
+
+**Zero names lost, measured.** `sorted(vars(pdsfile.pdsfile))` was compared
+between the parent worktree and this branch, each run printing the `__file__` it
+had imported: **50 names before, 52 after, none lost.** The two gained are
+`_AssociationsMixin` and `_SortingMixin`, which the `class PdsFile` statement
+needs; both are underscore names, so the manifest does not see them.
+
+**Byte-for-byte equivalence, measured.** At each extraction commit each moved
+definition's exact source segment (decorators included) was extracted from the
+parent commit's `PdsFile` body and from the new mixin's body and compared byte by
+byte. **All 27 are identical, with no exception** — this PR has no counterpart to
+PR-19's four-line deferred import:
+
+| Module | Definitions | Total bytes | Result |
+|---|---|---|---|
+| `_sorting.py` | 23 | 17,886 | all identical |
+| `_associations.py` | 4 | 11,900 | all identical |
+
+Each contiguous run also compares identical as a single blob, which additionally
+rules out a reordering or a dropped blank line: the split/sort run
+(`split_basename` … `viewable_childnames_by_anchor`) as **14,586 bytes**, the
+transformations run (`abspaths_for_pdsfiles` … `logicals_for_basenames`) as
+**3,424 bytes**, and the associations run (`associated_logical_paths` …
+`associated_parallel`) as **11,906 bytes**. The two in-class banner comments moved
+with their blocks rather than being retyped. Nothing moved is still defined in
+`pdsfile.py`, and neither new module carries a definition that was not on the
+move list. No moved body was restyled to shed an inherited lint violation; that
+is PR-23's job.
+
+`pdsfile.py`: 4,593 → 3,837 lines; `_sorting.py` 522, `_associations.py` 370. All
+counted at HEAD.
+
+### 6. Cross-block calls — enumerated, and every one an attribute lookup
+
+A call that went through a **module-level name** rather than through
+`self.`/`cls.` would break at the split, and it is the one way this move fails
+silently. Measured over the AST:
+
+**Associations → sorting, 3 sites, all `cls.`:** `associated_logical_paths` →
+`cls.logicals_for_abspaths`; `associated_pdsfiles` → `cls.pdsfiles_for_abspaths`;
+`associated_abspaths` → `cls.abspaths_for_logicals`.
+**Sorting → associations: none.** The dependency runs one way.
+
+**Within `_sorting.py`, 12 sites**, all `self.`/`cls.` or an attribute on a
+`PdsFile`-valued expression (`parent.sort_basenames` in `sort_sibnames`,
+`pdsf_dict[path].sort_basenames` in `sort_logical_paths`). **Within
+`_associations.py`, 4 sites**, all `self.`.
+
+**Core → moved, 12 sites**, all `self.`/`cls.`/`parent.`: `_info`
+(`basename_is_viewable`), `all_versions` (`pdsfiles_for_abspaths`), `childnames`
+(`sort_basenames`, twice), `is_viewable`, `islabel`, `local_viewset`, `split`,
+and `viewset_lookup` three times — including
+`parent.viewable_childnames_by_anchor` and `parent.pdsfiles_for_basenames`,
+the two the brief flags.
+
+**Sibling mixins → moved, 3 sites**: `_index_rows.py:163` `self.sort_basenames`;
+`_opus.py:105` `cls.pdsfiles_for_abspaths` and `:244`
+`pds_class.pdsfiles_for_abspaths`. **Maintenance tools → moved, 2 sites**:
+`pdsindexshelf.py:466` and `pds4indexshelf.py:452`, both
+`pdsfile.Pds3File`/`Pds4File.pdsfiles_for_abspaths` — attribute access on a class
+object.
+
+**Bare module-level references to a moved name: zero**, inside the moved bodies
+and in module-level code outside the class alike. Every reference to any of the
+27 names, anywhere in `src/`, is an attribute access, so all of them are runtime
+MRO lookups and the split is transparent to them. None of the seven mixin modules
+imports another.
+
+### 7. Base order and the mixin harness
+
+```python
+class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsMixin,
+              _OpusMixin, _ShelfMixin, _SortingMixin, object):
+```
+
+Alphabetical by mixin class name with `object` last, per
+`plans/2026-07-27-addendum-phase5-mixin-base-order.md` (owner, 2026-07-27) and
+enforced by
+`tests/api/test_mixin_collisions.py::test_the_mixin_bases_are_listed_alphabetically`,
+which was run first, before anything else, and at every commit. The Phase-5
+preamble's illustration on this branch shows a different order; it was corrected
+by PR #110, which merged to `rewrite` **after** this stack branched, so merging
+`rewrite` forward to obtain it would drag #110's diff into this PR. The addendum
+is the authority here.
+
+`_AssociationsMixin` sorts before every existing mixin and `_SortingMixin` after
+every existing one, so the first move commit appended its base at the end of the
+list and the second inserted its base at the front; neither commit disturbed what
+the other wrote.
+
+The harness **discovers** its subjects from `PdsFile.__bases__`, so it picked up
+both new mixins for free and this PR edits no test file. At HEAD it reports seven
+mixins defining 4, 12, 5, 5, 3, 9 and 23 names respectively.
+
+**The mixin/subclass intersection was re-measured before a line was written,
+because a non-empty result is a hard stop rather than something to resolve in the
+PR** (§4.1 of the brief; deferred entry 48's check is strict). Using the test's
+own `_defined_names` helper, which drops the eight structural names:
+
+| | 27 moved names |
+|---|---|
+| `Pds3File` (76 own names) | **empty** |
+| `Pds4File` (50 own names) | **empty** |
+| all 33 classes in the subclass hierarchy, rule modules included | **empty** |
+| `PdsFile`'s own body | **empty** |
+
+Re-measured at HEAD after the move: still empty on every row.
+
+### 8. Ruff ratchet — 18 codes, every one conserving, none gained
+
+Procedure: for every code in `pdsfile.py`'s entry, the following was run against
+the parent's `pdsfile.py`, this branch's `pdsfile.py`, `_sorting.py` and
+`_associations.py` —
+
+```
+ruff check --no-cache --isolated --output-format concise --select <code> \
+           --line-length 100 --target-version py310 <file>
+```
+
+`--isolated` drops `pyproject.toml`'s `line-length = 100` and would otherwise
+report an E501 at 88 columns that the project config does not, so the two
+settings are restored explicitly (PR-16 §7 through PR-19 §8 record the same
+trap), and `--output-format concise` is required because ruff 0.15's default
+output no longer starts a line with the file path.
+
+**Every one of the 18 codes conserves exactly** — parent count = the three
+post-move counts summed. Only the two rows that move are non-trivial:
+
+| Code | parent `pdsfile.py` | → `pdsfile.py` | `_sorting.py` | `_associations.py` |
+|---|---|---|---|---|
+| E701 | 11 | **10** | 1 | 0 |
+| RUF005 | 6 | **2** | 4 | 0 |
+| UP024 | 10 | **9** | 0 | 1 |
+| B904, C405, E501, E713, E721, F841, I001, N806, RUF012, SIM102, SIM114, SIM118, UP004, UP015, UP031 | 3, 3, 5, 1, 1, 5, 2, 2, 16, 1, 2, 1, 1, 1, 9 | unchanged | 0 | 0 |
+
+The **total number of suppressed violations is unchanged at 80**: 80 on the
+parent's `pdsfile.py`, and 80 summed over this branch's `pdsfile.py`,
+`_sorting.py` and `_associations.py`. The distinct (file, code) pairs move
+18 → 18 + 2 + 1.
+
+The **converse** check matters as much and is easy to skip: running the project's
+whole select set (`E,F,W,I,UP,B,SIM,C4,A,N,PT,RUF` minus the three project-wide
+ignores) against each new module with **no** per-file entry reports exactly the
+codes its entry lists and nothing else — `E701` + `RUF005` for `_sorting.py`,
+`UP024` for `_associations.py`. So neither module needs a code that was not
+already forgiven for these same lines; had either needed one, the sub-plan makes
+that a §6.4 hard stop.
+
+Resulting entries:
+
+| File | Entry | Note |
+|---|---|---|
+| `src/pdsfile/pdsfile.py` | 18 codes | unchanged — it still triggers every one of them |
+| `src/pdsfile/_sorting.py` | `["E701", "RUF005"]` | exactly the codes its moved lines trigger |
+| `src/pdsfile/_associations.py` | `["UP024"]` | exactly the code its moved lines trigger |
+
+**`pdsfile.py`'s entry does not shrink, and that is a measurement, not an
+oversight.** This is the largest block the phase moves, so the sub-plan expected
+some code to leave; none did. All 18 still occur among the 3,837 lines that
+remain — the closest calls are `RUF005`, down from 6 to 2, and `E713`, `E721`,
+`SIM102`, `SIM118`, `UP004` and `UP015`, which sat at 1 before the move and still
+sit at 1. So there is no PR-23 note to add.
+
+**Neither new module needs `I001`.** `_sorting.py`'s three-name `from
+._path_utils import …` was first written in the parenthesized multi-line form the
+old header used, which ruff's isort reports as unformatted; it was written on the
+single line ruff wants instead — a choice about *new* code in the module header,
+not a restyle of a moved body — so the entry is one code smaller than it would
+otherwise have been.
+
+### 9. The tests that pin this code — measured, not assumed
+
+A coverage run of `tests/pds3file/`, `tests/pds4file/`, `tests/rules/`,
+`tests/core/` and `tests/holdings_maintenance/` with
+`dynamic_context = test_function` attributes **224 distinct test functions** to
+the two new modules, from **20 test modules**: 4 under `tests/pds3file/`, 1 under
+`tests/pds4file/`, 15 under `tests/rules/`. **No `tests/holdings_maintenance/`
+context appears**, for the reason PR-18 established: PR-13's harness runs each
+tool as a subprocess that in-process coverage does not follow, which is also why
+`pdsindexshelf.py`'s and `pds4indexshelf.py`'s calls to `pdsfiles_for_abspaths`
+are invisible here. **No `tests/core/` context appears either.**
+
+| Method | Contexts | Test modules |
+|---|---|---|
+| `split_basename` | 208 | 20 — every module that reaches either mixin |
+| `basename_is_label` | 62 | 18 |
+| `basename_is_viewable` | 20 | 15 |
+| `sort_basenames` | 22 | 5 |
+| `sort_sibnames` | **0** | — |
+| `sort_siblings` | **0** | — |
+| `sort_logical_paths` | 1 | `pds3file.test_pds3file_blackbox` |
+| `sort_childnames` | 1 | the same |
+| `viewable_childnames` | 1 | the same |
+| `childnames_by_anchor` | 4 | 3 |
+| `viewable_childnames_by_anchor` | 4 | 3 |
+| `abspaths_for_pdsfiles` | 2 | 2 |
+| `logicals_for_pdsfiles` | 17 | 17 |
+| `basenames_for_pdsfiles` | 3 | 2 |
+| `pdsfiles_for_abspaths` | 36 | 16 |
+| `logicals_for_abspaths` | 16 | 16 |
+| `basenames_for_abspaths` | 2 | 2 |
+| `pdsfiles_for_logicals` | 3 | 2 |
+| `abspaths_for_logicals` | 31 | 16 |
+| `basenames_for_logicals` | 2 | 2 |
+| `pdsfiles_for_basenames` | 6 | 3 |
+| `abspaths_for_basenames` | 2 | 2 |
+| `logicals_for_basenames` | 2 | 2 |
+| `associated_logical_paths` | **0** | — |
+| `associated_pdsfiles` | **0** | — |
+| `associated_abspaths` | 26 | 15 |
+| `associated_parallel` | 14 | 10 |
+
+**Four methods have zero in-process coverage**, and none of the four is an
+artifact of the subprocess blindness above — nothing in the suite calls them at
+all, which a grep of `tests/` for each name independently confirms (zero call
+sites for all four). All four are live consumer API: rms-viewmaster calls
+`associated_pdsfiles` at 7 sites and `sort_siblings` at 1, and `sort_siblings`
+is the only caller of `sort_sibnames`. Recorded as deferred observation 55, not
+fixed here: this PR's gate is the pass/fail set and a new test id is movement.
+
+### 10. Negative controls — which parts of the moved code the net actually pins
+
+Every check below is a mutation of the **moved** code, run against
+`tests/pds3file/ tests/pds4file/ tests/rules/pds3/ tests/rules/pds4/
+tests/core/` in `--mode ns`, which is **721 passed / 34 skipped** unmutated.
+
+**The harness has a trap in it, and it is avoided by construction.**
+`pyproject.toml` sets `pythonpath = [".", "src"]`, which pytest resolves against
+**rootdir** and inserts at the front of `sys.path` — **ahead of `PYTHONPATH`**.
+So mutating a copy of `src/` and pointing `PYTHONPATH` at it from the repo root
+imports the *unmutated* tree, and every control reports green, which reads
+exactly like "the tests do not reach this code" and is in fact "the harness does
+not reach the mutation". PR-18 fell into this and re-ran all seven of its
+controls. Each mutation here is therefore written into a **full copy of the
+working tree**, pytest is run **from inside that copy**, and an extra
+`conftest.py` there prints `pdsfile.pdsfile.__file__`,
+`pdsfile._sorting.__file__` and `pdsfile._associations.__file__`, which the
+harness asserts all point into the mutated copy. **All 41 controls -- the 35 in this section and the six in §11 -- carry that
+assertion, and every one of them passed it.**
+
+**Of the 35 controls in this section, 23 turned tests red** -- 19 mutations of
+moved code and four of the mixin harness:
+
+| Mutation | Result |
+|---|---|
+| `basename_is_label` always returns False | **16 failed**, 15 test functions |
+| `basename_is_viewable` always returns False | **12 failed**, 7 test functions |
+| `sort_basenames` sorts in reverse | **8 failed**, 8 test functions |
+| `sort_logical_paths` sorts each directory plainly instead of by `sort_basenames` | **1 failed** |
+| `sort_childnames` reverses its answer | **1 failed** |
+| `viewable_childnames` returns `[]` | **1 failed** |
+| `childnames_by_anchor` matches a corrupted anchor | **5 failed**, 4 test functions |
+| `logicals_for_pdsfiles` corrupts each path | **27 failed**, 16 test functions |
+| `basenames_for_pdsfiles` corrupts each basename | **2 failed** |
+| `pdsfiles_for_abspaths` truncates to one | **9 failed**, 5 test functions |
+| `logicals_for_abspaths` corrupts each path | **30 failed**, 16 test functions |
+| `basenames_for_abspaths` corrupts each basename | **2 failed** |
+| `abspaths_for_logicals` corrupts each path | **26 failed**, 17 test functions |
+| `basenames_for_logicals` corrupts each basename | **1 failed** |
+| `abspaths_for_basenames` corrupts each path | **1 failed** |
+| `logicals_for_basenames` corrupts each path | **1 failed** |
+| `associated_abspaths` truncates the de-duplicated answer to one | **25 failed**, 13 test functions |
+| `associated_abspaths` truncates its `glob_glob` result to one | **8 failed**, 5 test functions |
+| `associated_parallel` never takes its `rank is None` branch | **5 failed**, 3 test functions |
+| the base order is no longer alphabetical | **1 failed** — `test_the_mixin_bases_are_listed_alphabetically`, and nothing else |
+| `_AssociationsMixin` also defines `viewable_childnames_by_anchor` | **2 failed** — `test_no_two_mixins_define_the_same_name` and `test_every_mixin_name_is_reachable_through_pdsfile` |
+| `Pds3File` itself defines `associated_parallel` | **1 failed** — `test_no_mixin_is_shadowed_by_a_pdsfile_subclass[Pds3File]`, and nothing else |
+| `PdsFile`'s own body redefines `sort_basenames` | **2 failed** — `test_no_mixin_is_shadowed_by_pdsfile_itself` and `test_every_mixin_name_is_reachable_through_pdsfile` |
+
+A twenty-fourth harness mutation is worth its own line because it does not
+produce failures: making `_AssociationsMixin` define `sort_basenames` — a name
+`PdsFile.childnames` calls during fixture setup — turns the whole module into
+**15 errors** with `TypeError: _AssociationsMixin.sort_basenames() got an
+unexpected keyword argument 'labels_after'` at `pdsfile.py:1367`. That is the
+collision being caught by the interpreter before the check can report it, so the
+quieter variant above is the one that demonstrates the check itself.
+
+**Eleven mutations changed nothing, and they are reported rather than dropped.**
+A control that comes back green is a measurement too, and they fall into two
+distinct classes:
+
+*(a) nothing calls the method — matches §9's zero-context rows exactly:*
+
+| Mutation | Result |
+|---|---|
+| `sort_sibnames` reverses the list it hands to `parent.sort_basenames` | 721 passed |
+| `sort_siblings` truncates the basenames it sorts | 721 passed |
+| `associated_logical_paths` truncates its answer to one | 721 passed |
+| `associated_pdsfiles` truncates its answer to one | 721 passed |
+
+*(b) the method is covered, but no assertion catches the change:*
+
+| Mutation | Result | Why |
+|---|---|---|
+| `split_basename` corrupts the three-group `BUNDLENAME_PLUS_REGEX` return | 721 passed | that branch needs a bundle name whose split rule leaves it unchanged; 208 contexts reach the method and none reaches this return |
+| `sort_basenames` inverts the `labels_after` sort key | 721 passed | the `labels_after=True` branch is not reached by any golden case |
+| `viewable_childnames_by_anchor` truncates to one | 721 passed | its 4 contexts all come through `viewset_lookup`, which never checks the length |
+| `abspaths_for_pdsfiles` truncates its `must_exist=False` branch | 721 passed | the two tests assert `for path in res: assert path in expected` — a subset, never a length |
+| `pdsfiles_for_logicals` truncates to one | 721 passed | same subset-assertion shape, in both of its tests |
+| `pdsfiles_for_basenames` truncates to one | 721 passed | its 6 contexts all arrive through `viewset_lookup` |
+| `associated_parallel` returns a path from its `# This should never happen` line | 721 passed | that line is, as its comment says, not reached |
+
+Class (b) is one finding stated seven ways: **several of these tests assert that
+every value returned is expected, and never that everything expected was
+returned**, so a truncation is invisible to them. That is a property of the test
+suite, not of this PR, and this PR may not fix it — its gate is the pass/fail set
+and strengthening an assertion is out of scope (common brief §5.1). Recorded as
+deferred observation 56.
+
+### 11. The monkeypatch audit — the check the set diff cannot perform
+
+Deferred entry 29 (opened by PR-16's round-1 Major, owned by "PR-17 onward") says
+an extraction sweep must also ask **which namespaces the tests patch**, not only
+which globals the code reads. A test whose patch lands on a module the moved code
+no longer resolves through keeps passing while exercising nothing, and §6.2's
+outcome-set diff compares pass/fail — so it is *structurally blind* to this class
+of defect. **This PR's set diff is empty, and it would have been empty in every
+one of the cases below, including a broken one.**
+
+**Enumeration.** Every `monkeypatch.setattr` / `setitem` / `delattr` / `setenv` /
+`delenv`, `mock.patch`, `patch(`, `patch.object` and bare `setattr(` in `tests/`
+and `scripts/` — 20 sites, all `monkeypatch`; the tree still uses no
+`unittest.mock` at all:
+
+| Target | Sites | Names a symbol **this PR** moves? | Does this PR's moved code reach it? |
+|---|---|---|---|
+| `Pds3File.CACHE` (`tests/core/conftest.py:28`, `test_pdsfile_caching.py:112,126`) | 3 | no — a class attribute that stays on the class | not directly; `associated_parallel` reaches the cache through `self._recache()`, which stays in core |
+| `Pds3File.preload` (`test_pdsfile_caching.py:127`) | 1 | no — PR-21's symbol | no |
+| `Pds3File`/`Pds4File.LOCAL_PRELOADED`, `.LOCAL_HOLDINGS_DIRS` (`test_pdsfile_path_resolution.py:58,59,71,72,85,86`) | 6 | no — class attributes that stay on the classes | **indirectly** — `abspaths_for_logicals` calls `abspath_for_logical_path`, which reads them |
+| `Pds3File.shelf_path_and_key_for_abspath` (`test_pdsfile_path_resolution.py:120,129,137,155`) | 4 | no — PR-17's symbol, audited there | no |
+| `abspath_for_logical_path.__globals__['glob']` (`test_pdsfile_path_resolution.py:92`) | 1 | no — PR-16's fix site, on `_path_utils`'s globals | **yes** — `abspaths_for_logicals` calls that same function object |
+| `pdsviewable.ICON_SET_BY_TYPE` (`test_pdsviewable_iconset_for.py:47`) | 1 | no — different module | no |
+| `monkeypatch.setenv` / `delenv` (`test_pdsfile_path_resolution.py:54,70,83,84`) | 4 | no — environment, not a namespace | no |
+
+**No patch site names any of the 27 methods.** A regex over `tests/`, `scripts/`
+and `src/` for *direct assignment* to any of the 27 — the form that is not a
+`monkeypatch` and is easy to miss — returns **zero** hits for all 27 names, and
+no test assigns to any attribute of `pdsfile.pdsfile`.
+
+**Every one of the six patch mechanisms was forced to answer wrongly in a
+full-tree copy, and each turned its own test red:**
+
+| Forced-wrong control | Went red |
+|---|---|
+| the `glob` stub in `abspath_for_logical_path.__globals__` answers non-empty | `TestHoldingsEnvironmentVariable::test_a_class_does_not_borrow_another_class_holdings_root` |
+| `LOCAL_PRELOADED` stubbed to a non-empty list | the same id |
+| `shelf_path_and_key_for_abspath` returns instead of raising | **4 failed**, 3 ids across `TestInfoshelfPathAndKey` |
+| the `Pds3File.CACHE` patch removed | `TestGetPermanentValues::test_caching_is_resumed_after_the_values_are_read` |
+| the `Pds3File.preload` patch removed | `TestGetPermanentValues::test_caching_is_resumed_after_a_missing_value_triggers_a_reload` |
+| the `pdsviewable.ICON_SET_BY_TYPE` patch removed | **9 failed**, 6 ids across `TestIconsetFor` |
+
+Six controls cover all 20 sites, because sites sharing a target share a
+mechanism. Every one asserted the file it imported, as §10 describes.
+
+**PR-16's fix shape is confirmed move-proof a second time.**
+`test_pdsfile_path_resolution.py:92` patches `abspath_for_logical_path.__globals__`
+— the function's *own* namespace, whichever module that is — rather than
+`pdsfile.pdsfile.glob`. `abspaths_for_logicals` now lives in `_sorting.py` and
+still calls the same function object, so the patch reaches exactly what it
+reached before. Had the test patched `pdsfile.pdsfile.glob`, PR-16's move would
+already have silenced it.
+
+**Entry 29's second half — rebinding re-exported *data*.** The same asymmetry one
+level down, measured on both sides:
+
+| | parent `bf42ae7` | this branch |
+|---|---|---|
+| namespace the 27 methods resolve through | `pdsfile.pdsfile` | `pdsfile._sorting` / `pdsfile._associations` |
+| namespace `os`, `_clean_join`, `_needs_glob`, `abspath_for_logical_path`, `logical_path_from_abspath` resolve in, for the moved code | `pdsfile.pdsfile` | the new modules |
+| rebinding `pdsfile.pdsfile.os` reaches `basenames_for_abspaths` | **yes** | **no** |
+| `pdsfile.pdsfile.os` / `._clean_join` / `._needs_glob` / … still bound | yes | yes |
+
+Nothing in `src/`, `tests/`, `scripts/`, rms-opus or rms-viewmaster rebinds any of
+those five module attributes — greped, zero hits — so nothing is broken today.
+The general observation stands for PR-21 and PR-22 and stays in
+`critiques/deferred-observations.md` as entry 29.
+
+### 12. Consumer smoke — outcome unchanged, and this is the PR where it matters most
+
+The gate is **same outcome as baseline**, not "passes"
+(`critiques/baselines/consumer-smoke-baseline.md`).
+
+| Check | Baseline | This branch |
+|---|---|---|
+| A — rms-opus import paths | 4/4 resolve, 0 failures | **4/4 resolve, 0 failures** |
+| B — rms-viewmaster startup | 5 ok, 3 pre-existing failures | **5 ok, 3 failures — the same three** |
+
+The three Check-B failures are still `pdsfile.cache_lifetime` (raises),
+`pdsfile.DEFAULT_CACHING` (absent) and the same `cache_lifetime` read inside
+`get_page_cache()`. None became a pass. `pdsfile.pdsfile.repair_case` still
+resolves.
+
+**rms-viewmaster uses this PR's surface more heavily than any other Phase-5
+PR's** — 37 call sites across twelve of the 27 moved names, counted after
+excluding comments and generated `docs/_build/` output:
+
+| Name | rms-viewmaster — call sites | rms-opus — call sites |
+|---|---|---|
+| `sort_basenames` | 9: `pdsgroup.py:314,368,586,591`, `pdsgrouptable.py:362`, `pdsiterator.py:277,284,415,474` | — |
+| `associated_pdsfiles` | 7: `viewmaster.py:844,1039,1047,1258,1433,1444,1547` | — |
+| `associated_parallel` | 3: `viewmaster.py:841,849,861` | — |
+| `logicals_for_pdsfiles` | 3: `viewmaster.py:1043,1251,1436` | — |
+| `pdsfiles_for_basenames` | 3: `pdsgroup.py:597`, `viewmaster.py:1334,1454` | — |
+| `logicals_for_basenames` | 3: `pdsiterator.py:286,417`, `viewmaster.py:1029` | — |
+| `basename_is_label` | 2: `pdsgroup.py:324,378` | — |
+| `sort_logical_paths` | 2: `pdsiterator.py:117,130` | — |
+| `childnames_by_anchor` | 2: `viewmaster.py:1320,1453` | — |
+| `split_basename` | 1: `pdsgroup.py:577` | — |
+| `sort_siblings` | 1: `viewmaster.py:1407` | — |
+| `logicals_for_abspaths` | 1: `pdsiterator.py:107` | — |
+| `associated_abspaths` | — | 1: `do_import.py:596` |
+
+Every one of them is an attribute access on the class or on an instance
+(`pdsf.sort_basenames(...)`, `query_pdsfile.associated_pdsfiles(...)`,
+`Pds3File.logicals_for_pdsfiles(...)`), so each resolves through the MRO and the
+mixin move is invisible to it — which is what the byte-identical API dump in §4
+is the formal statement of, and what Check A and Check B confirm at run time.
+Two of these names — `associated_pdsfiles` and `sort_siblings` — are among §9's
+zero-coverage four, so for them the consumer smoke is the only thing that
+exercised them at all in this PR.
+
+Environment note carried from the baseline: the check ran under the pdsfile
+venv's interpreter with rms-viewmaster's `site-packages` appended to
+`PYTHONPATH`, because that venv lacks pdsfile's declared `range_ex` dependency,
+and with the holdings environment variables set — without them `create_app()`
+exits and the run reports 3 ok / 5 failures, which is a harness artifact and not
+a result. rms-viewmaster is at `a0d05e2`; rms-opus is at `73cb6de7`.
+
+### 13. Clean install
+
+`scripts/clean_install_check.sh` passes inside `run-all-checks.sh`. Both new
+modules are picked up by the existing `include = ["pdsfile*"]` package glob with
+no packaging change, and the gate imports the whole manifest module surface —
+`pdsfile.pdsfile` among them — which cannot succeed if either is missing from the
+distribution.
+
+### 14. The two class docstrings are derived, and verified in both directions
+
+Deferred entry 54 records that the mixins' "state contract" docstrings are
+hand-written, drift, and are mechanically derivable; PR-19's rounds 1, 2 and 3
+each found one wrong. The entry asks for the derivation to become a *test* and
+assigns that to PR-22. This PR does not build the test — it is not in its
+deliverables — but it applies the method by hand, in the widened form PR-19's
+rounds 3 and 4 settled: walk **every** `ast.Attribute` node rather than only
+`self.X`/`cls.X`, scope the claim to the receivers that hold a `PdsFile` object
+or the `PdsFile` class, and **exclude the names the mixin itself defines**.
+
+The receiver list is printed in full so the scoping is checkable rather than
+asserted: `_SortingMixin`'s PdsFile-side receivers are `self`, `cls`, `parent`,
+`p`, `pdsf` and `pdsf_dict[path]`, against 26 others that are strings, lists,
+dicts, regex match objects, translators, the logger or `os.path`;
+`_AssociationsMixin`'s are `self`, `cls`, `parent`, `pdsf`, `new_root` and
+`old_root`, against 12 others.
+
+**Direction 1 — every PdsFile-side name the code reaches appears in the
+docstring: 22 of 22 for `_SortingMixin`, 34 of 34 for `_AssociationsMixin`,
+nothing missing on either side.** Direction 2's residue is prose only — the five
+sibling-mixin class names, the four sort-config setters the docstring says
+explicitly do *not* move, the `<plural>_for_<plural>` naming pattern, and the
+words "I/O" and "WRITTEN".
+
+One claim in `_SortingMixin`'s first draft was written rather than measured and
+was wrong before it was committed: it said `sort_basenames` *and* `sort_sibnames`
+reach `os_path_isdir` and that `pdsfiles_for_basenames` reaches `os_path_exists`.
+Measured, `sort_basenames` alone reaches `os_path_isdir`, and
+`logicals_for_abspaths`, `basenames_for_abspaths` and `abspaths_for_logicals`
+reach `os_path_exists`. The docstring says the measured thing.
+
+Both docstrings also record something the derivation surfaced and the phase had
+not previously written down: **four class attributes `_SortingMixin` reads
+(`BUNDLENAME_PLUS_REGEX`, `BUNDLESET_PLUS_REGEX`, `BUNDLESET_PLUS_REGEX_I`,
+`LBL_EXT`) and one `_AssociationsMixin` reads (`IDX_EXT`) are defined only on
+`Pds3File` and `Pds4File`, not on `PdsFile`.** So those methods work on a
+subclass instance and not on a bare `PdsFile`. That is pre-existing behavior —
+the same lookup failed the same way before the move — and it is recorded rather
+than changed.
+
+### 15. Deferred observations
+
+Entry 29 is the one this PR was told to act on, and §11 is the action. It is
+**not** resolved — it is a per-PR step, owned by "PR-17 onward" — so it stays open
+for PR-21 and PR-22. **Entries 53 and 54 are deliberately not taken up**, even
+though 53's text names PR-20 as its owner: the coordinator directed that both stay
+open and that this PR build no new check, which is the common brief §5.1 rule
+written after PR-17 spent two rounds on a voluntarily adopted Deferred item. This
+PR touches no test file at all, which is also what makes its set diff empty.
+Entry 53 is annotated with that direction so the next reader does not think it was
+overlooked. Entry 42 (the back-import guard, owner PR-22) is untouched: this PR
+adds two mixin modules and §5 shows both are clean by the same parsing check, but
+it builds no guard. No other entry in 1–54 is resolved or invalidated here.
+
+Two entries are **added** by the executor's own measurements: **55** (four moved
+methods — `sort_sibnames`, `sort_siblings`, `associated_logical_paths`,
+`associated_pdsfiles` — have zero in-process test coverage while rms-viewmaster
+calls two of them at eight sites) and **56** (the subset-shaped assertions in the
+`tests/pds3file/` transformation tests, which cannot see a truncated answer, and
+the six other measured coverage gaps §10's green controls found).
+
+### 16. Review loop
+
+*(Rows are written only after the round they describe has run and its record file
+exists on disk — the rule PR-18's round-3 Major established. No row is written
+for a round that has not run.)*
