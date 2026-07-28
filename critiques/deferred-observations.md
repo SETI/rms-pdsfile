@@ -1085,6 +1085,21 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     better test and it is a change to a test file, not to `src/`, so it costs
     nothing behaviorally — but it would add or rename ids, and PR-19's gate is an
     identical pass/fail set apart from the two ids entry 48 required.
+
+    Round 3 of the PR-19 review added a second half to this entry. The check is
+    **strict**: it forbids any name a mixin and a subclass both define, and a
+    future PR that moved into a mixin one of the names `Pds3File`/`Pds4File`
+    already override would trip it *legitimately*, because that name was shadowed
+    before the move too. That cannot happen in the rest of Phase 5 — measured, the
+    34 (`Pds3File`) and 35 (`Pds4File`) such names are class attributes and
+    translator tables, which the Phase-5 mechanics keep on `PdsFile`, plus
+    `__init__`, `__repr__` and the four
+    `use_shelves_only`/`require_shelves`/`set_logger`/`set_easylogger`
+    classmethods, all of which are on PR-22's explicit stay-list — and the
+    measurement is recorded in the test's own comment. But whoever generalizes the
+    check should express the invariant rather than the intersection: what is
+    actually wrong is a mixin name that is unreachable on the class callers use
+    *and* was reachable before.
     **Owner: PR-20**, or whichever Phase-5 PR next edits the mixin harness.
 
 ### Added by the PR-19 adversarial review (round 2)
@@ -1114,6 +1129,16 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     failure mode PR-17 paid two rounds for. **Owner: PR-22**, which adds the last
     and largest mixin (`_PropertiesMixin`) and is where a stranded attribute is
     most likely.
+
+    **Round 3 of the same review found a third instance**, which is the argument
+    for treating this as due rather than optional: `_OpusMixin`'s list omitted
+    `version_rank`, read as `li[0].version_rank`, because the AST walk that
+    produced the list followed `self.X` and `cls.X` but not an attribute on a
+    *subscript*. A derivation that runs in a test would have to walk every
+    `Attribute` node and resolve the root of its value expression, and would have
+    to scope the claim to PdsFile-side names so `str`, `list` and translator
+    methods do not swamp it. PR-19's scratch harness now does both and verifies
+    both docstrings complete in both directions.
 
     Round 2 also noted that `_version` appears in `dir(pdsfile)` on this branch
     and not in the manifest. It is a gitignored `setuptools-scm` build artifact

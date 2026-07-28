@@ -2091,15 +2091,22 @@ comparison vacuous. Each run wrote its own `COVERAGE_FILE`, and
 `coverage.CoverageData.measured_files()` was read afterwards for its **absolute**
 paths:
 
-| Run | pdsfile modules measured |
-|---|---|
-| baseline | `<worktree>/src/pdsfile/{pdsfile,_path_utils,_shelves,_local_fs,_derived_paths}.py` — and **no** `_index_rows.py` or `_opus.py`, because neither exists at `80cd9ff` |
-| this branch | `<main tree>/src/pdsfile/{pdsfile,_path_utils,_shelves,_local_fs,_derived_paths,_index_rows,_opus}.py` |
+| Run | top-level `pdsfile` modules measured | count |
+|---|---|---|
+| baseline | `<worktree>/src/pdsfile/` — `__init__`, `_derived_paths`, `_local_fs`, `_path_utils`, `_shelves`, `pdscache`, `pdsfile`, `pdsviewable`, `preload_and_cache` | **9** |
+| this branch | `<main tree>/src/pdsfile/` — the same nine, plus **`_index_rows`** and **`_opus`** | **11** |
 
-The absence of the two new modules on the baseline side is the decisive bit: had
-the worktree run leaked into the main tree's install, they would have been
-measured there too. The lists are otherwise identical, module for module. The
-one baseline-side path that matches the text `_opus` is
+Those are the modules directly under `src/pdsfile/`; both runs additionally
+measure the same `holdings_maintenance/`, `pds3file/`, `pds4file/` and `tools/`
+subpackages, each under its own tree's prefix. Round 3 raised the earlier
+five-name set notation as Minor 4; the enumeration above is the full one.
+
+The presence of exactly two extra modules on this branch and **zero** of them on
+the baseline side is the decisive bit: had the worktree run leaked into the main
+tree's install, they would have been measured there too. Every path in the
+baseline list begins with the worktree prefix and every path in the head list
+with the main tree's; no path appears under the other tree's prefix in either
+run. The one baseline-side path that matches the text `_opus` is
 `src/pdsfile/tools/show_opus_products.py`, a pre-existing tool module that both
 runs measure.
 
@@ -2144,28 +2151,32 @@ the `SHELVES_ONLY` branch, and `get_indexshelf` goes through `_get_shelf` while
 all of which branch on it.
 
 **Freshness (§6.6 step 5).** The last change under `src/pdsfile/` is commit
-`3ab1738` (round 2's Minor-4 docstring fixes in `_index_rows.py` and
-`_opus.py`), at **18:04:34**. The head runs recorded above postdate it: their
-`--junitxml` timestamps are **18:07:33 and 18:09:29**. They are the second
-regeneration §6.6 step 5 requires — round 1's fix and round 2's fix each touched
-`src/pdsfile/`.
+`b6bda4a` (round 3's Minor-1 and Minor-5 fixes in `_index_rows.py`, `_opus.py`
+and `tests/api/test_mixin_collisions.py`), at **18:33:45**. The head runs
+recorded above postdate it: their `--junitxml` timestamps are **18:36:54 and
+18:38:43**. They are the third regeneration §6.6 step 5 requires — rounds 1, 2
+and 3 each produced a fix under `src/pdsfile/`.
 
-The two **superseded** head pairs are recorded rather than dropped, each with the
-commit its tree was actually at:
+The three **superseded** head pairs are recorded rather than dropped, each with
+the commit its tree was actually at:
 
 | Head pair | `--junitxml` written | Tree at | Reduced sets |
 |---|---|---|---|
-| 1 | 17:04:18 / 17:06:10 | `b554c77` | identical to pairs 2 and 3 |
-| 2 | 17:42:28 / 17:44:16 | `cf35a0f` | identical to pairs 1 and 3 |
-| **3 (current)** | **18:07:33 / 18:09:29** | **`3ab1738`** | **the figures above** |
+| 1 | 17:04:18 / 17:06:10 | `b554c77` | identical to pairs 2, 3 and 4 |
+| 2 | 17:42:28 / 17:44:16 | `cf35a0f` | identical to pairs 1, 3 and 4 |
+| 3 | 18:07:33 / 18:09:29 | `3ab1738` | identical to pairs 1, 2 and 4 |
+| **4 (current)** | **18:36:54 / 18:38:43** | **`b6bda4a`** | **the figures above** |
 
 `b554c77` is the last commit before pair 1 started; the two commits between it
 and pair 2 (`8916229`, `bc5147e`) are records that touch nothing under
 `src/pdsfile/`, so pair 1 measured the same `src/` tree they carry. An earlier
 draft labelled pair 1 "taken at `bc5147e`", 16 minutes after its XMLs were
-written; round 2 raised that as Minor 5. All three pairs produced **identical
+written; round 2 raised that as Minor 5. All four pairs produced **identical
 reduced sets** — `diff` between any two of them is empty in both modes — which is
-what docstring-only changes should do, and is measured rather than assumed.
+what docstring- and comment-only changes should do, and is measured rather than
+assumed. Every fix in all three rounds was a docstring, a comment or a record;
+none touched an executable line, and the four identical pairs are the evidence
+for that rather than the claim of it.
 
 The **baseline** runs (16:52:39 and 16:54:29) stand throughout: they were taken
 in a detached `git worktree` at `80cd9ff` that nothing has touched since.
@@ -2324,11 +2335,12 @@ same as a 2,795-byte blob. Nothing moved is still defined in `pdsfile.py`, and
 neither new module carries a definition that was not on the move list. No moved
 body was restyled to dodge an inherited lint violation; that is PR-23's job.
 
-`pdsfile.py`: 5,125 → 4,593 lines; `_index_rows.py` 326, `_opus.py` 301. All
+`pdsfile.py`: 5,125 → 4,593 lines; `_index_rows.py` 328, `_opus.py` 304. All
 counted at HEAD, and re-counted at each round rather than carried forward: the
-two new modules grew after the extraction commits, by 18 and 17 lines
-respectively, entirely in their class docstrings, which rounds 1 and 2 corrected.
-The `pdsfile.py` figures are unchanged since the extraction.
+two new modules grew after the extraction commits, by 20 and 20 lines
+respectively, **entirely in their class docstrings**, which rounds 1, 2 and 3
+each corrected. The `pdsfile.py` figures are unchanged since the extraction, and
+no executable line in either new module has changed since its extraction commit.
 
 ### 6. The one line that is not a pure move, and why it is in the move commit
 
@@ -2350,8 +2362,9 @@ therefore these four lines:
 **Why it is not a separate commit.** §2's commit-granularity rule sends keep-green
 edits — "CI paths, **imports**, packaging, ignore globs" — to their own
 content-edit commit, and the sub-plan said that is what would happen. It could
-not be: without the import, `ruff check` reports `F821 Undefined name PdsFile` on
-`_opus.py:162` under the project's own configuration, so a pure-move commit
+not be: without the import, `ruff check` reports `F821 Undefined name PdsFile`
+against `_opus.py`, inside `opus_products`, under the project's own
+configuration, so a pure-move commit
 would be **red on an active gate**, and making it green would mean putting `F821`
 into the ratchet entry — a widen, which §6.4 forbids absolutely. §2's PR-discipline
 paragraph resolves it the other way for exactly this case: a move commit may
@@ -2368,8 +2381,9 @@ tests/rules/pds3/ tests/rules/pds4/ tests/core/` gives **39 failed** — every
 
 **The bare-class-reference sweep, and its "nothing else" line.** Both new modules
 were parsed for every `Name` node spelling `PdsFile`, `Pds3File` or `Pds4File`.
-`_opus.py` has **exactly one**, at line 166, inside `opus_products`, bound by the
-deferred import at line 164. `_index_rows.py` has **none**. So the preamble's
+`_opus.py` has **exactly one**, inside `opus_products`, on the line immediately
+below the deferred import that binds it. `_index_rows.py` has **none**. So the
+preamble's
 2026-07-17 claim that this is the only bare class-object reference in any
 extraction seam holds for these two modules as well.
 
@@ -2491,21 +2505,30 @@ only. **No `tests/holdings_maintenance/` context appears**, for the reason PR-18
 established: PR-13's harness runs each tool as a subprocess that in-process
 coverage does not follow. **No `tests/core/` context appears either.**
 
-| Method | Contexts | Where |
+| Method | Contexts | Which test modules |
 |---|---|---|
-| `get_indexshelf` | 9 | `test_pds3file_blackbox.py`, `test_pds3file_blackbox_cached.py`, `test_pds3file_whitebox.py` |
-| `find_selected_row_key` | 12 | same three |
-| `child_of_index` | 9 | same three |
+| `get_indexshelf` | 9 | `test_pds3file_blackbox.py`, `test_pds3file_blackbox_cached.py`, `test_pds3file_whitebox.py`, `rules/pds3/test_corss_8xxx.py` |
+| `find_selected_row_key` | 12 | the same four |
+| `child_of_index` | 9 | the same four |
 | `data_abspath_associated_with_index_row` | 4 | `test_pds3file_blackbox.py`, `test_pds3file_whitebox.py` |
 | `data_pdsfile_for_index_row` | **0** | — |
 | `from_filespec` | 2 | `test_pds3file_blackbox.py`, `test_pds4file_blackbox.py` |
-| `from_opus_id` | 19 | the two blackboxes, `test_pds3file_whitebox.py`, and 15 of the 16 `tests/rules/pds{3,4}/` modules |
-| `opus_products` | 28 | the same 15 |
+| `from_opus_id` | 19 | `test_pds3file_blackbox.py`, `test_pds3file_whitebox.py`, and 15 `tests/rules/` modules |
+| `opus_products` | 28 | the same 15 `tests/rules/` modules |
 
-**15 of 16, not all 16**: `tests/rules/pds4/test_cassini_iss_fring_mosaics_rsfrench2025.py`
-is module-skipped on this holdings copy and so contributes no context at all.
-Round 1 raised the earlier "every … module" wording as Minor 3; the 15 names are
-in the contexts dump and were re-derived from `p19ctx.coverage`.
+Three details the round-3 review corrected in this table, all in the "which
+modules" column and none in the counts, which it re-derived and reproduced
+exactly. **(a)** The three index-row methods also get a context from
+`tests/rules/pds3/test_corss_8xxx.py::test_associations`, which reaches them
+through an association that crosses an index. **(b)** `from_opus_id`'s modules
+are the *pds3* blackbox and whitebox — the pds4 blackbox contributes only to
+`from_filespec`. **(c)** The 15 `tests/rules/` modules are 13 of the 13 under
+`pds3/` and 2 of the 3 under `pds4/`:
+`tests/rules/pds4/test_cassini_iss_fring_mosaics_rsfrench2025.py` is
+module-skipped on this holdings copy and contributes no context at all. Round 1
+raised an earlier "every … module" here as its Minor 3 and this table's first
+correction was itself incomplete; the names above are read out of the coverage
+data rather than described.
 
 `data_pdsfile_for_index_row`'s **zero** is the one that matters, and it is not an
 artifact of the subprocess blindness above: no in-process test calls it at all.
@@ -2783,6 +2806,7 @@ defect class PR-18's round-3 Major was about.
 |---|---|---|---|
 | 1 | goal met | 0 Major, 3 Minor (all accepted; one fixed in `src/`, two in this record), 2 Deferred (entry 53 added; the other corrected in §12 instead) | `critiques/pr-19/round-1.md` |
 | 2 | goal met | 0 Major, 5 Minor (all accepted and fixed; one in `src/`, four in this record), 3 Deferred (entry 54 added; one folded into 51, one informational) | `critiques/pr-19/round-2.md` |
+| 3 | goal met | 0 Major, 5 Minor (all accepted and fixed; two in `src/` and `tests/`, three in this record), 2 Deferred (both fold into entries 53 and 54) | `critiques/pr-19/round-3.md` |
 
 *(Rows are written only after the round they describe has run and its record file
 exists on disk — the rule PR-18's round-3 Major established. No row is written
@@ -2829,8 +2853,32 @@ behavior probes — normal mode, `SHELVES_ONLY` mode, and a synthetic object tha
 forces the sniff's PDS4 branch — all byte-identical between the parent tip and
 this branch. That third probe is also the method entry 51(a) now records.
 
-**§6.6 step 5 was applied at both boundaries.** Round 1's Minor-1 fix and round
-2's Minor-4 fix each touch `src/pdsfile/`, so the full-data record was
-regenerated after each. §3's figures are the second regeneration, and its
-superseded-pair table records that all three head runs produced the same two
-reduced sets.
+**Round 3 found the same shape a third time and still no Major**, which is the
+most useful thing this loop has produced. Its five: `_OpusMixin`'s "and nothing
+else" contract omitted `version_rank`, read as `li[0].version_rank` — a shape the
+AST walk that generated the list did not follow, so round 2's "derived from an
+AST walk" was itself the assertion that failed; §9's *which modules* column was
+wrong in three ways while every count in it was right; three `_opus.py` line
+numbers in §6 were stale by exactly the 17 lines §5 itself records the docstrings
+adding; §1's non-vacuity table used set notation naming five modules where nine
+and eleven were measured; and the new subclass check's comment claimed to catch a
+failure the move introduces, which it does not.
+
+That last one is the only round-3 finding that is not a number. It is right: a
+name a subclass and a mixin both define was already shadowed before the
+extraction, when the copy lived on `PdsFile`. The comment now states the
+invariant the check really pins and carries the measurement that makes its
+strictness safe for the rest of the phase — every name `Pds3File` and `Pds4File`
+override is a class attribute, which stays on `PdsFile`, or is on PR-22's
+stay-list. The generalization is deferred entry 53.
+
+The §6 line numbers are not re-stated with corrected values: the project's own
+rule is to locate by symbol, and a line number in a record that the next round's
+docstring fix will move is a defect generator. They now name `opus_products`.
+
+**§6.6 step 5 was applied at all three boundaries.** Rounds 1, 2 and 3 each
+produced a fix under `src/pdsfile/`, so the full-data record was regenerated
+after each. §3's figures are the third regeneration, and its superseded-pair
+table records that all four head runs produced the same two reduced sets — which
+is also the evidence that every fix in this loop was a docstring, a comment or a
+record, and that no executable line changed after the extraction commits.
