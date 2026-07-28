@@ -743,13 +743,11 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
     def is_bundle_dir(self):
         """Return True if this is the root level directory of a bundle."""
         return bool(self.bundlename_ and not self.interior) # Note that a bundle set will return an empty string '' rather than False
-        #return (self.bundlename_ and not self.interior or False) # MJTM: 'or False' account for bundle sets
 
     @property
     def is_bundle_file(self):
         """Return True if this is a bundle-level checksum or archive file."""
         return bool(self.bundlename and not self.bundlename_) # Note that a bundle set will return an empty string '' rather than False
-        #return (self.bundlename and not self.bundlename_ or False) # MJTM: 'or False' account for bundle sets
 
     @property
     def is_bundle(self):
@@ -900,7 +898,6 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
 
         # Do not cache nonexistent objects
         if not self.exists: return self
-        # if not self.exists and not self.category_.startswith('checksums-archives-'): return self
 
         # Otherwise, cache if necessary
         if caching == 'default':
@@ -1344,7 +1341,6 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
         try:
             # Fill in this.disk_, the absolute path to the directory containing
             # subdirectory "holdings"
-            # this = PdsFile()
             this = cls()
             this.disk_ = drive_spec + '/'.join(parts[:PDS_HOLDINGS_index]) + '/'
             this.root_ = this.disk_ + cls.PDS_HOLDINGS + '/'
@@ -1490,7 +1486,6 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
             path = path.partition('/')[2]   # remove up to the next slash
 
         # Interpret leading parts
-        # this = PdsFile()
         this = cls()
 
         # Fix versions in the path like '/v1' or '/v1.2' to '_v1' or '_v1.2'
@@ -1624,7 +1619,6 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
                 this.bundlename = matchobj.group(1).upper()
 
                 # If there is a matched extension
-                # if matchobj.group(2) and matchobj.group(3):
                 if len(matchobj.groups()) > 2 and matchobj.group(3):
                     this.basename = matchobj.group(0).replace('.targz', '.tar.gz')
                     extension = (matchobj.group(2) + matchobj.group(3)).lower()
@@ -1663,7 +1657,6 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
         # If the voltype is missing, it must be "volumes" (for PDS3). For PDS4, it's
         # "bundles"
         if this.bundletype_ == '':
-            # this.bundletype_ = 'volumes/'
             this.bundletype_ = cls.BUNDLE_DIR_NAME + '/'
 
         this.category_ = this.checksums_ + this.archives_ + this.bundletype_
