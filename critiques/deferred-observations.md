@@ -631,6 +631,12 @@ touch.
     pre-split one. **Owner:** PR-22 (with PR-23 for the extracted modules'
     style).
 
+    **RESOLVED by PR-22**, which removed the line and rebuilt the inventory
+    against `pdsfile.py` plus all ten modules this phase created. The real
+    inventory is **eight** lines, not ~89; the same eight are present on
+    `rewrite`, so PR-15 through PR-21 neither added nor removed one. Listed
+    line by line in `critiques/phase5-validation.md` §7 of the PR-22 section.
+
 ### Added by the PR-16 adversarial review (round 4)
 
 33. **`scripts/gen_ruff_ratchet.py` cannot be exercised against the current
@@ -823,6 +829,23 @@ A pure move has no licence to change any of them.
     that declares it complete; and adding a shared check mid-phase is precisely
     what went wrong here — PR-18–PR-21 would inherit and trust an implementation
     they never reviewed.
+
+    **RESOLVED by PR-22** — `tests/api/test_mixin_import_isolation.py`, 10 ids,
+    holdings-free, behavioral exactly as the design note requires. One obstacle
+    the note does not anticipate had to be solved and is recorded so nobody
+    re-derives it: `src/pdsfile/__init__.py` does `from .pds3file import *`, so
+    importing *any* `pdsfile.*` submodule executes the package `__init__` and
+    pulls `pdsfile.pdsfile` into `sys.modules` — the naive probe is red for all
+    ten private modules, always. The check installs a stub `pdsfile` package (a
+    real `ModuleSpec` with `submodule_search_locations`, no `__init__` executed)
+    so relative and in-package absolute imports still resolve while the package
+    `__init__`'s star-imports do not. One subprocess per module, subjects
+    discovered from `PdsFile.__bases__`. Seen red twice, both with the *silent*
+    spelling this entry names: a head-placed `from pdsfile.pdsfile import
+    repair_case` in `_associations.py` (caught by the subprocess exit code) and a
+    tail-placed one in `_properties.py` that raises nothing anywhere and is caught
+    **only** by the `sys.modules` assertion. `critiques/phase5-validation.md`
+    §16 of the PR-22 section has both.
 
 ## From PR-18 (extract the checksum, archive and log path builders, Phase 5)
 
@@ -1410,3 +1433,32 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     modules is squarely PR-23's "ruff-clean and format core modules" scope, where
     the churn checkpoint puts it in front of the owner along with everything else.
     **Owner: PR-23.**
+
+## From PR-22 (finalize the core, Phase 5)
+
+### Added by the PR-22 executor's own measurements (2026-07-28)
+
+61. **One of the suite's twenty monkeypatch sites is a portability guard whose
+    removal is invisible on Linux, so "remove the patch" is not a valid
+    forced-wrong control for it.** `tests/core/test_pdsfile_path_resolution.py:92`
+    stubs `glob` inside `abspath_for_logical_path.__globals__` so that
+    `glob.glob('/Library/WebServer/Documents/holdings*')` — the last-resort MacOS
+    website-install branch — returns `[]`. On this machine the real call returns
+    `[]` too, so **deleting the stub outright leaves the whole of `tests/core/`
+    and `tests/pds3file/` green (531 passed)**, which reads exactly like "this
+    patch is dead" and is not what it means. Forcing the stub to answer *wrongly*
+    — a non-empty list — does turn
+    `TestHoldingsEnvironmentVariable::test_a_class_does_not_borrow_another_class_holdings_root`
+    red, which is the control the Phase-5 briefs actually ask for.
+
+    Two consequences worth recording. The mechanical form of the monkeypatch
+    audit that PR-17 through PR-21 used — remove the patch, watch the test go
+    red — is sound for a patch that supplies a value the code needs, and unsound
+    for a patch that *suppresses* a platform-specific value; both forms exist in
+    this tree and only this one is of the second kind. And the branch the stub
+    guards has **no coverage at all on Linux**: nothing in the suite reaches the
+    non-empty-glob path of `abspath_for_logical_path`, on any machine that is not
+    a MacOS Viewmaster host. PR-22 may not act on either — its gate is the
+    pass/fail set, and adding a test id is movement beyond the ten the entry-42
+    check required.
+    **Owner: unassigned (a future test PR, not Phase 5).**
