@@ -5102,7 +5102,7 @@ attribute sweep in §6 finds no reference). It is left exactly where it was and
 given a `# Version ranks` banner, the convention PR-17 established for
 `SHELF_CACHE` and PR-18 for `LOG_ROOT_`.
 
-`pdsfile.py`: 3,415 → **1,939** lines. `_properties.py`: **1,684**.
+`pdsfile.py`: 3,415 → **1,939** lines. `_properties.py`: **1,686**.
 `_path_utils.py`: 220 → 219 (one dead comment line, §7). All counted at HEAD and
 **re-counted at each round rather than carried forward** — the convention PR-19
 adopted after PR-20's round 2 found a stale count.
@@ -5111,10 +5111,12 @@ adopted after PR-20's round 2 found a stale count.
 
 **(a) The moved text is the exact concatenation of two line ranges of the
 parent's file.** `672–2034` and `2037–2230` — 1,363 + 194 = **1,557 lines** —
-compare byte-identical to `_properties.py`'s lines **128–1684**, MD5
+compare byte-identical to `_properties.py`'s lines **130–1686**, MD5
 `a49cd66334d4952bd82c6b9b518ce246` on both sides — the offset re-measured at
-HEAD, after rounds 1 and 2 rewrote the class docstring above it, rather than
-carried forward from the extraction commit. Line 2035 is the blank before
+HEAD, after rounds 1, 2 and 3 each rewrote part of the class docstring above it,
+rather than carried forward from the extraction commit. Round 4 found this offset
+stale for a third time, so it is now measured by searching every line range for
+the digest rather than by adding up the docstring's growth. Line 2035 is the blank before
 `LATEST_VERSION_RANKS`; dropping it rather than 2037 is what leaves exactly one
 blank line at the join. This whole-blob comparison rules out reordering and a
 dropped blank line, which a per-definition comparison alone would not.
@@ -5187,7 +5189,8 @@ get wrong: a plain word-boundary grep of the block's text against **all 45**
 module-level names of the parent's `pdsfile.py` returns those seven plus
 `PdsFile`, `pickle` and `time` — and all three of those are docstring, comment or
 string-literal matches with no code site (`PdsFile` in four docstrings, `pickle`
-in two `.replace('...', '.pickle')` string literals, `time` in three comments).
+in two `.replace('...', '.pickle')` string literals, `time` in two comments and
+one docstring).
 So the block references **no** module-level name the seven imports do not supply,
 and — separately — **no reference to the `PdsFile` class object at all**, which
 is why this mixin needs no function-local deferred import.
@@ -5745,9 +5748,9 @@ this PR's dead-code scope). None of the three was taken up here.
 | PR-21 `pr-21-preload` | 3,415 | −422 | `_preload.py` (+ `preload_and_cache.py` → shim) |
 | **PR-22 `pr-22-core-finalize`** | **1,939** | **−1,476** | **`_properties.py`** |
 
-Ten private modules, 5,118 lines of them (`_associations` 373, `_derived_paths`
+Ten private modules, 5,120 lines of them (`_associations` 373, `_derived_paths`
 314, `_index_rows` 328, `_local_fs` 437, `_opus` 304, `_path_utils` 219,
-`_preload` 578, `_properties` 1,684, `_shelves` 356, `_sorting` 525), plus a
+`_preload` 578, `_properties` 1,686, `_shelves` 356, `_sorting` 525), plus a
 16-line `preload_and_cache.py` shim.
 
 **The pass/fail set across the whole phase**, against the `rewrite` @ `807956a`
@@ -5813,6 +5816,7 @@ lines on `rewrite`, not 89).
 | 1 | goal met | 0 Major, 8 Minor (all accepted and fixed; **four in `src/pdsfile/` docstrings, three in this record, one a missing subprocess timeout in the new test** — none in the extracted code), 3 Deferred (added as entries 62, 63 and 64) | `critiques/pr-22/round-1.md` |
 | 2 | goal met | 0 Major, 8 Minor (all accepted and fixed; **three in `src/pdsfile/` docstrings, five in this record and the sub-plan** — none in the extracted code), 1 Deferred (added as entry 65) | `critiques/pr-22/round-2.md` |
 | 3 | goal met | 0 Major, 7 Minor (all accepted and fixed; **three in `_properties.py`'s docstring, four in this record and the sub-plan** — none in the extracted code), **0 new Deferred** | `critiques/pr-22/round-3.md` |
+| 4 (scoped) | goal met | **0 Major, 3 Minor** (all accepted and fixed; **all three in this record, the sub-plan and the deferred-observations file — none under `src/`**), **0 new Deferred**; 21 of the 23 prior findings confirmed resolved by re-measurement, the other 2 regressed by two lines and re-fixed | `critiques/pr-22/round-4.md` |
 
 *(Rows are written only after the round they describe has run and its record file
 exists on disk — the rule PR-18's round-3 Major established. No row is written for
@@ -5915,3 +5919,29 @@ messages cite the current hashes — a rebase would invalidate every one of thos
 citations to fix one adjective. The reviewer's own suggestion, to state it
 correctly in the PR description, is what was done; `critiques/pr-22/round-3.md`
 records the decision.
+
+**Round 4 is §6.6's scoped fourth round** — "confirm the prior round's findings
+are resolved; raise only new Major findings" — and it returned **zero Major**. It
+re-measured all 23 prior Minor fixes and found 21 correct in the tree and **2
+regressed by two lines**: round 1's Minor 3 and round 2's Minor 8 are the same
+figure, `_properties.py`'s size and the moved blob's offset inside it, and round
+3's own docstring fix moved them again after the round-3 recording commit had set
+them. The byte-equivalence conclusion was never in doubt; only the coordinates
+were. The fix is not only the number — §5.1(a) now obtains the offset by searching
+every line range for the digest instead of by adding up the docstring's growth,
+which is the method that cannot go stale. The other two findings were the
+sub-plan's round summary, which still described two rounds, and one clause here
+that called `time`'s three textual matches three comments when one of them is a
+docstring.
+
+**None of round 4's three findings touches `src/pdsfile/`**, so §6.6 step 5's
+regeneration rule does not apply and the full-data record in §3 carries forward.
+§6.6's hard cap is four rounds and this was the fourth, so **no fifth reviewer was
+run**; the three Minors were fixed in place after it, which is what the cap allows
+and what this executor's brief directs.
+
+**The loop's arithmetic across four rounds: 26 findings, 0 Major.** Ten were
+statements in docstrings under `src/pdsfile/`, fifteen were figures or labels in
+this record and the sub-plan, and one was a missing subprocess timeout in the new
+test. **Not one was in the extracted code** — the same result PR-19, PR-20 and
+PR-21 each produced, here on the largest single move of the phase.

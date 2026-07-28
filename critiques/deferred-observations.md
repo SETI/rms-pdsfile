@@ -1523,7 +1523,7 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     and Phase 5 has now produced two other files over the line.** §6.6's
     progressive-compliance schedule reads: `python.mdc` "modules < 1000 lines" —
     **permanently waived** for `pdsfile.py` and rule modules. At the end of
-    Phase 5, `src/pdsfile/_properties.py` is **1,684** lines and
+    Phase 5, `src/pdsfile/_properties.py` is **1,686** lines and
     `src/pdsfile/pdscache.py` is **1,044**; `pdsfile.py` itself is 1,939 and stays
     inside the waiver by name.
 
