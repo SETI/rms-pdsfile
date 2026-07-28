@@ -3806,6 +3806,10 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
     # off the class, and set_log_root writes it back onto the class.
     LOG_ROOT_ = None
 
+    ############################################################################
+    # Logical path test
+    ############################################################################
+
     @classmethod
     def is_logical_path(cls, path):
         """Return True if the given path appears to be a logical path; False
