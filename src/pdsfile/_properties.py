@@ -1,7 +1,7 @@
 ##########################################################################################
 # pdsfile/_properties.py
-# The lazy properties of a PdsFile: values derived on first access, held in the
-# object's _X_filled slots, and written back to the shared cache
+# The derived values of a PdsFile: the lazy properties, which fill an _X_filled slot
+# and write the object back to the shared cache, and the ones recomputed on each access
 ##########################################################################################
 
 import datetime
@@ -23,17 +23,27 @@ class _PropertiesMixin:
 
     A mixin of PdsFile; it holds methods only and defines no state of its own.
 
-    Sixty-four of the sixty-eight members are lazy properties with the same
-    shape: return the already-filled _X_filled slot if there is one, otherwise
+    Sixty-four of the sixty-eight members are properties, and 40 of those are
+    lazy: return the already-filled _X_filled slot if there is one, otherwise
     derive the value, store it in that slot, and call self._recache() so the
     shared cache keeps the filled object. The slots are created by
     PdsFile.__init__ and _recache lives in PdsFile, both of which stay in core,
-    which is what makes the split transparent. The other four are not
-    properties: version_info, a staticmethod mapping a bundleset suffix to a
-    (rank, message, id) triple; all_versions, which collects the same file across
-    version ranks; viewset_lookup, which picks a named PdsViewSet; and
-    _repair_width_height, which reopens an image whose shelf-recorded dimensions
-    are missing.
+    which is what makes the split transparent. (39 of the 40 do both halves;
+    filename_keylen fills its slot without the _recache() call.) The remaining 24
+    properties hold no slot of their own and derive their value on every access:
+    is_documents, filespec, absolute_or_logical_path, is_label, url, anchor,
+    extension, parent_logical_path, size_bytes, modtime, checksum, width, height,
+    alt, icon_type, linked_abspaths, label_abspath, data_abspaths, iconset_open,
+    iconset_closed, multipage_view_allowed, continuous_view_allowed,
+    has_neighbor_rule and all_version_abspaths. Eight of them are a single return
+    statement; the rest read a slot another property fills, or a shelf, and shape
+    the result.
+
+    The other four members are not properties: version_info, a staticmethod
+    mapping a bundleset suffix to a (rank, message, id) triple; all_versions,
+    which collects the same file across version ranks; viewset_lookup, which
+    picks a named PdsViewSet; and _repair_width_height, which reopens an image
+    whose shelf-recorded dimensions are missing.
 
     Every attribute these bodies read or write on a PdsFile object or on a
     PdsFile class, and nothing else -- str, list, dict, file, os, os.path,

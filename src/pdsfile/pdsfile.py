@@ -19,21 +19,24 @@ mixin bases of PdsFile, the tenth (_path_utils) plain module functions:
     _local_fs.py        _LocalFsMixin -- the case-repairing, SHELVES_ONLY-aware
                         filesystem layer (os_path_exists, os_path_isdir,
                         os_listdir, glob_glob) and PATH_EXISTS_CACHE_SIZE
-    _opus.py            _OpusMixin -- opus_products and the two OPUS-id
-                        constructors
+    _opus.py            _OpusMixin -- opus_products, and the two constructors
+                        that resolve an OPUS ID (from_opus_id) or a bundle-name
+                        file specification (from_filespec)
     _path_utils.py      the path helpers that take no PdsFile object:
                         repair_case, abspath_for_logical_path,
                         logical_path_from_abspath, construct_category_list,
-                        formatted_file_size, selected_path_from_path and the
-                        _clean_* primitives, plus FILE_BYTE_UNITS. Not a mixin
+                        formatted_file_size, selected_path_from_path, the
+                        _clean_* primitives and _needs_glob, plus
+                        FILE_BYTE_UNITS and _GLOB_CACHE_SIZE. Not a mixin
     _preload.py         _PreloadMixin -- preload and the cache it fills, plus the
                         module-level cache_lifetime_for_class, is_preloading,
-                        pause_caching, resume_caching and the lifetime constants
-    _properties.py      _PropertiesMixin -- the largest group: 64 lazy properties,
-                        each deriving a value on first access, keeping it in an
-                        _X_filled slot and writing the object back to the cache,
-                        plus version_info, all_versions, viewset_lookup and
-                        _repair_width_height
+                        pause_caching, resume_caching, the four cache-lifetime
+                        constants, DICTIONARY_CACHE_LIMIT and HAS_PYLIBMC
+    _properties.py      _PropertiesMixin -- the largest group: 64 properties, 40
+                        of them lazy (fill an _X_filled slot, then _recache() so
+                        the cache keeps the filled object) and 24 recomputed on
+                        every access, plus version_info, all_versions,
+                        viewset_lookup and _repair_width_height
     _shelves.py         _ShelfMixin -- opening, caching and reading the shelf
                         files that hold precomputed metadata, with the eval of a
                         .py sidecar isolated in one named function
@@ -80,7 +83,7 @@ records names and kinds, never the defining class -- is unchanged.
 import os
 import re
 
-# Nothing below references these eleven, but all of them are frozen members of
+# Nothing below references these ten, but all of them are frozen members of
 # this module's public surface (tests/api/api_manifest.json), so it keeps them
 # bound. The redundant `as` alias is the explicit re-export form.
 import bisect as bisect
@@ -100,7 +103,7 @@ import translator
 # pdstable is used by the index-row methods, defaultdict by the OPUS methods and
 # pdsparser by the lazy properties, which live in _index_rows.py, _opus.py and
 # _properties.py; all three names are frozen members of this module's surface, so
-# they are bound here in the same redundant-alias form as the eleven above.
+# they are bound here in the same redundant-alias form as the ten above.
 import pdsparser as pdsparser
 import pdstable as pdstable
 

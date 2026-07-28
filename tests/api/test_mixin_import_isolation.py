@@ -94,9 +94,12 @@ def test_a_mixin_module_does_not_import_pdsfile_pdsfile(module_name, module_file
     # of them in turn would let the first module's back-import hide every later
     # module's, and would let module A importing module B mask B's own violation.
     # A process that has loaded exactly one of them can do neither.
+    # The timeout keeps a module that blocks at import time -- a lock, a socket,
+    # a read from stdin -- a failure rather than a hang, in a job that has no
+    # other watchdog.
     pkg_dir = os.path.dirname(module_file)
     completed = subprocess.run([sys.executable, '-c', _PROBE, pkg_dir, module_name],
-                               capture_output=True, text=True)
+                               capture_output=True, text=True, timeout=60)
 
     assert completed.returncode == 0, (
         f'importing {module_name} on its own failed, which is what a module-level '
