@@ -64,8 +64,10 @@ class _AssociationsMixin:
     module.
 
     One more class attribute, IDX_EXT, is defined only on Pds3File and Pds4File,
-    not on PdsFile, so associated_abspaths works on a subclass instance and not
-    on a bare PdsFile. That is how it has always behaved.
+    not on PdsFile; associated_abspaths reads it. A bare PdsFile never gets that
+    far -- ASSOCIATIONS is None on it, so the same method raises TypeError on the
+    line above -- but neither method works on anything but a subclass instance.
+    That is how they have always behaved.
     """
 
     ############################################################################

@@ -1226,3 +1226,36 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     strengthening an assertion in a test the PR does not otherwise touch is the
     volunteered-scope failure mode the common brief §5.1 forbids.
     **Owner: unassigned (a future test PR, not Phase 5).**
+
+### Added by the PR-20 adversarial review (round 2)
+
+57. **An archived plan carries a home-rooted holdings path, which §3.4 says no
+    checked-in file should.** `plans/archive/2026-07-17-modernization-plan.md`
+    contains **two distinct `~`-rooted path tokens, three occurrences in all**,
+    naming a machine-local holdings tree. §3.4 is categorical: "No absolute
+    holdings path may be hardcoded in committed code, tests, docs, or CI" and
+    "The limited copy's location is machine-local and confidential (appears in no
+    checked-in file)."
+
+    Three measurements that bound it, all made without reproducing the strings:
+
+    - **Neither token is the current limited testing copy's root** — compared
+      against `PDS3_HOLDINGS_DIR` and `PDS4_HOLDINGS_DIR` on this machine, no
+      match. They are historical, from the operator machine the v1 plan was
+      written on. Every *other* holdings path in that file is under
+      `/data/pdsdata`, which §3.4 names in the open as the complete set and which
+      is not confidential.
+    - **It is entirely pre-existing.** The same three occurrences are present at
+      `bf42ae7` (PR-20's parent) and on `origin/rewrite`; the file does not exist
+      on `origin/main`. No Phase-5 PR introduced it.
+    - **A sweep of every tracked file for the current limited copy's root returns
+      zero hits**, so the confidentiality rule holds for the location that is
+      actually sensitive today.
+
+    So this is a stale-history hygiene item rather than a live leak, which is why
+    PR-20 left it alone: it is outside PR-20's diff, and rewriting an archived
+    plan to scrub a path is a change the owner should authorize rather than an
+    extraction PR should make in passing. The fix is a one-line substitution to
+    the env-var placeholder in each of the three spots.
+    **Owner: unassigned — surfaced to the owner by PR-20; whichever PR next
+    touches `plans/archive/` can carry it.**

@@ -36,8 +36,8 @@ class _SortingMixin:
     setters stay on PdsFile, which is what these methods read them off.
 
     Every attribute these methods read or write on a PdsFile object or on a
-    PdsFile class, and nothing else -- str, list, dict, regex, translator and
-    logger methods are not in scope:
+    PdsFile class, and nothing else -- str, list, set, dict, regex, translator,
+    os.path and logger methods are not in scope:
 
       lazy properties read        childnames, exists, info_basename
       instance attributes read    abspath, basename, logical_path
@@ -54,10 +54,12 @@ class _SortingMixin:
     or on type(self) at run time, not an import, which is what lets the halves
     live in different modules.
 
-    Four more class attributes -- BUNDLENAME_PLUS_REGEX, BUNDLESET_PLUS_REGEX,
-    BUNDLESET_PLUS_REGEX_I and LBL_EXT -- are defined only on Pds3File and
-    Pds4File, not on PdsFile, so split_basename and basename_is_label work on a
-    subclass instance and not on a bare PdsFile. That is how they have always
+    Four more class attributes are defined only on Pds3File and Pds4File, not on
+    PdsFile: split_basename reads BUNDLENAME_PLUS_REGEX and BUNDLESET_PLUS_REGEX,
+    sort_basenames reads BUNDLESET_PLUS_REGEX_I, and basename_is_label reads
+    LBL_EXT. So basename_is_label and sort_basenames raise AttributeError on a
+    bare PdsFile; split_basename does not, because SPLIT_RULES is None there and
+    it returns before reaching either regex. That is how they have always
     behaved.
     """
 

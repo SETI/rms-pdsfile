@@ -3134,7 +3134,12 @@ function-local deferred import.** That is the difference from PR-19, whose
 `_opus.py` needed one for `PdsFile.__subclasses__()`; both PR-20 move commits are
 therefore pure moves plus their header imports. Confirmed by parsing both modules
 for every `Name` node spelling `PdsFile`, `Pds3File` or `Pds4File`: **zero in
-each**, and zero string literals naming any of the three as well.
+each**. **No string literal is used to resolve a class by name either** — the parse finds
+four string constants containing one of those three words, **one in `_sorting.py`
+and three in `_associations.py`, and all four are docstrings**, which the parse
+classifies as such rather than the eye. (Contrast `_index_rows.py`, where
+PR-19's `__bases__[0].__name__ == 'Pds4File'` sniff really does resolve a class
+by a string literal in executable code.)
 
 Per-definition, so the aggregate can be checked rather than trusted: of the 23
 `_SortingMixin` definitions, 16 reference **no** module global at all;
@@ -3202,15 +3207,21 @@ rules out a reordering or a dropped blank line: the split/sort run
 transformations run (`abspaths_for_pdsfiles` … `logicals_for_basenames`) as
 **3,424 bytes**, and the associations run (`associated_logical_paths` …
 `associated_parallel`) as **11,906 bytes**. The three in-class banner comments moved
-with their blocks rather than being retyped -- `# How to split and sort
-filenames` and `# Transformations` to `_sorting.py:64` and `:419`,
-`# Associations` to `_associations.py:72`. Nothing moved is still defined in
+with their blocks rather than being retyped: `# How to split and sort filenames`
+and `# Transformations` head the two halves of `_sorting.py`'s class body, and
+`# Associations` heads `_associations.py`'s. (No line number is given for them:
+the project's own rule is to locate by symbol, and a docstring fix in the next
+review round moves every line number in these files.) Nothing moved is still defined in
 `pdsfile.py`, and neither new module carries a definition that was not on the
 move list. No moved body was restyled to shed an inherited lint violation; that
 is PR-23's job.
 
-`pdsfile.py`: 4,593 → 3,837 lines; `_sorting.py` 522, `_associations.py` 370. All
-counted at HEAD.
+`pdsfile.py`: 4,593 → 3,837 lines; `_sorting.py` 525, `_associations.py` 372. All
+counted at HEAD, and re-counted at each round rather than carried forward: the
+two new modules were 522 and 370 at their extraction commits and grew by 3 and 2
+lines respectively, **entirely in their class docstrings**, which rounds 1 and 2
+each corrected. The `pdsfile.py` figure is unchanged since the extraction, and no
+executable line in either new module has changed since its extraction commit.
 
 ### 6. Cross-block calls — enumerated, and every one an attribute lookup
 
@@ -3704,6 +3715,36 @@ the six other measured coverage gaps §10's green controls found).
 
 ### 16. Review loop
 
+| Round | Verdict | Findings | Record |
+|---|---|---|---|
+| 1 | goal met | 0 Major, 8 Minor (all accepted; one fixed in `src/`, seven in this record and the sub-plan), 0 new Deferred | `critiques/pr-20/round-1.md` |
+
 *(Rows are written only after the round they describe has run and its record file
 exists on disk — the rule PR-18's round-3 Major established. No row is written
 for a round that has not run.)*
+
+**Round 1 found no Major and eight Minor, and six of the eight were counts stated
+rather than measured** — the same failure shape PR-19's four rounds produced
+thirteen times. They were: core call sites given as 12 (measured 11); the two
+within-module counts computed under two different rules in one sentence (measured
+14 and 5); sibling-mixin sites given as 2 in the sub-plan while the record already
+said 3; "the two in-class banner comments" when three moved; "a three-line commit"
+for a four-line one; and deferred entry 56's "other four" green controls when the
+clause itself named five. Each was re-measured by the executor before being fixed,
+and each measurement reproduced the finding.
+
+The seventh added the measurement §7 was missing, and it is the one that mattered:
+**this PR changes `PdsFile.__bases__[0]`**, which `_index_rows.py`'s `Pds4File`
+sniff reads and which `tests/api/test_mixin_collisions.py` does not pin (it
+asserts `__bases__[-1]`). The 34-class shape dump now stands in §7. The eighth was
+the only fix under `src/`: `_SortingMixin`'s docstring called the module's methods
+free of I/O twenty-seven lines above a paragraph naming the four that reach
+`_LocalFsMixin`.
+
+The round-1 reviewer re-derived, with its own scripts rather than reading them
+here: the byte-for-byte segment comparison of all 27 definitions **and of all 110
+definitions that stayed**, the API dumps, the four junit reductions and both set
+diffs, the `measured_files` non-vacuity argument, the ratchet conservation and its
+converse check, the whole of §9's per-test-context table, the consumer call-site
+counts, both docstring contracts in both directions, and the mixin/subclass
+intersections.
