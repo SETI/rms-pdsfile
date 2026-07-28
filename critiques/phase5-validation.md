@@ -5126,7 +5126,7 @@ body), and `_PropertiesMixin` carries **no** definition that was not on the move
 list.
 
 **(c) The remainder of core.** Everything in `pdsfile.py` after the `class
-PdsFile(...)` statement — 1,775 lines — is byte-identical to the parent's with
+PdsFile(...)` statement — 1,774 lines — is byte-identical to the parent's with
 those two ranges deleted and `LATEST_VERSION_RANKS` plus one blank line spliced
 in, MD5 `e2be29a1d491692e7281339c7e1db27c` on both sides, **as of the move
 commit**. Every edit `pdsfile.py` receives from the move is therefore in its
@@ -5623,12 +5623,14 @@ PdsFile-surface attribute: `self`, `cls`, `child`, `parent`, `pdsf`,
 positive**, matched only because `os.path.basename` shares a name with the
 instance attribute `basename`. It is named rather than filtered out, because a
 derivation that silently drops what it cannot classify is exactly the failure
-entry 54 is about. The six genuine non-`self`/`cls` receivers are the reason the
-walk cannot be restricted to `self.X` and `cls.X`: `all_versions` writes
-`pdsf._all_version_abspaths` and calls `pdsf._recache()`, and `viewset_lookup`
-reaches `pdsfiles_for_basenames` and `viewable_childnames_by_anchor` through
-`parent` — three names a `self.`-only walk would have missed, one of them a
-*write*.
+entry 54 is about. The **five** genuine non-`self`/`cls` receivers — `child`,
+`parent`, `pdsf`, `self.parent()` and `version_dict[key]` — are the reason the
+walk cannot be restricted to `self.X` and `cls.X`: `viewset_lookup` reaches
+`pdsfiles_for_basenames` and `viewable_childnames_by_anchor` through `parent`,
+which a `self.`-only walk would have missed outright, and `all_versions` writes
+`pdsf._all_version_abspaths`, a name such a walk *would* have found — it is read
+through `self` in `all_version_abspaths` — but would have classified as read-only.
+So: two names missed and one write mis-classified.
 
 **Direction 1 — every derived name appears in the docstring: 114 of 114, nothing
 missing.** Direction 2's residue is prose only: `A`, `PIL`, `WRITTEN`, `X`,

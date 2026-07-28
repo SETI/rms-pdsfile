@@ -1,7 +1,8 @@
 ##########################################################################################
 # pdsfile/_properties.py
 # The derived values of a PdsFile: the lazy properties, which fill an _X_filled slot
-# and write the object back to the shared cache, and the ones recomputed on each access
+# and (in all but one case) write the object back to the shared cache, and the ones
+# recomputed on each access
 ##########################################################################################
 
 import datetime
@@ -94,8 +95,9 @@ class _PropertiesMixin:
                                   _all_version_abspaths is the exception, written
                                   by all_versions onto each sibling PdsFile it
                                   builds, alongside that sibling's _recache()
-      core lazy properties read   is_bundle, is_bundle_dir, is_bundleset,
-                                  is_bundleset_dir
+      core properties read        is_bundle, is_bundle_dir, is_bundleset,
+                                  is_bundleset_dir -- none of them lazy in the
+                                  sense above; they hold no slot
       other core methods called   _recache, bundle_abspath, bundle_pdsfile,
                                   bundleset_abspath, bundleset_pdsfile, child,
                                   from_abspath, parent
@@ -112,11 +114,11 @@ class _PropertiesMixin:
     different modules; nothing here needs the PdsFile class object, so this
     module makes no deferred import either.
 
-    The receivers are not all self and cls: all_versions writes through a
-    sibling pdsf, viewset_lookup reads through child and through the parent it
-    fetches, and internal_link_info reads through self.parent(). They are why the
-    lists above are derived by walking every attribute node rather than only
-    self.X and cls.X.
+    The receivers are not all self and cls: all_versions writes through a sibling
+    pdsf, viewset_lookup reads through a pdsf and through the parent it fetches,
+    all_viewsets reads through a child, and internal_link_info reads through
+    self.parent(). They are why the lists above are derived by walking every
+    attribute node rather than only self.X and cls.X.
 
     Two names are read off cls but defined only on Pds3File and Pds4File, not on
     PdsFile: IDX_EXT, read by index_pdslabel, indexshelf_abspath and is_index,
