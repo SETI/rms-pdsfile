@@ -5011,11 +5011,30 @@ the `SHELVES_ONLY` branch, and the moved properties reach it — `exists`, `isdi
 branch lives.
 
 **Freshness (§6.6 step 5).** The last change under `src/pdsfile/` is commit
-`57134ac` ("docs: map the decomposition in pdsfile.py's module docstring") at
-**00:29:38**. The head runs postdate it: their `--junitxml` files were written at
-**00:32:43** (`ns`) and **00:34:32** (`s`), and the no-holdings `--junitxml` at
-**00:35:30**. The baseline runs (00:08:41 and 00:10:32) were taken in a detached
-`git worktree` at `f286dda` that nothing has touched since.
+`0a2925c` ("docs: correct four docstring statements the round-1 review measured
+wrong") at **01:12:16** — round 1's four docstring fixes. The head runs recorded
+above postdate it: their `--junitxml` files were written at **01:15:19** (`ns`)
+and **01:17:08** (`s`), and the no-holdings `--junitxml` at **01:17:44**. They are
+the regeneration §6.6 step 5 requires, and the only one this loop has needed.
+
+The **superseded** head triple is recorded rather than dropped, with the commit
+its tree was actually at:
+
+| Head triple | `--junitxml` written (ns / s / no-holdings) | Tree at | Reduced sets |
+|---|---|---|---|
+| 1 | 00:32:43 / 00:34:32 / 00:35:30 | `57134ac` | identical to triple 2 |
+| **2 (current)** | **01:15:19 / 01:17:08 / 01:17:44** | **`0a2925c`** | **the figures above** |
+
+`diff` between the two triples is **empty in all three runs** — 0 lines for `ns`,
+0 for `s`, 0 for no-holdings — which is what a docstring-only change should do and
+is measured rather than assumed. The provenance check was re-run on the second
+triple: **72** measured files, **0** of them outside the main tree's prefix, **15**
+directly under `src/pdsfile/`, `_properties` in exactly **1** path. So were §10's
+coverage figures: `_properties.py` still 844 statements / 71 missing / 89%, which
+is what a docstring change should leave alone and is checked rather than assumed.
+
+The baseline runs (00:08:41, 00:10:32 and the no-holdings pass) were taken in a
+detached `git worktree` at `f286dda` that nothing has touched since.
 
 ### 4. API freeze — an empty diff, as a mixin move requires
 
@@ -5058,9 +5077,9 @@ the `# Properties` banner region, **672–2230**, 1,559 lines.
 | From | Lines at `f286dda` | Content |
 |---|---|---|
 | `pdsfile.py` | 672–674 | the `# Properties` in-class banner |
-| `pdsfile.py` | 675–2034 | 64 lazy properties from `exists` to `infoshelf_path_and_key`, plus `_repair_width_height` |
+| `pdsfile.py` | 675–2034 | **63** properties from `exists` to `infoshelf_path_and_key`, plus `_repair_width_height` — 64 statements |
 | `pdsfile.py` | **2036** | **`LATEST_VERSION_RANKS` — does NOT move** |
-| `pdsfile.py` | 2037–2230 | `version_info` (staticmethod), `all_versions`, `all_version_abspaths`, `viewset_lookup` |
+| `pdsfile.py` | 2037–2230 | `version_info` (staticmethod), `all_versions`, the 64th property `all_version_abspaths`, `viewset_lookup` — 4 statements |
 
 **68 of the block's 69 top-level statements move**: 64 `@property`, one
 `@staticmethod` (`version_info`) and three plain methods (`_repair_width_height`,
@@ -5079,7 +5098,7 @@ attribute sweep in §6 finds no reference). It is left exactly where it was and
 given a `# Version ranks` banner, the convention PR-17 established for
 `SHELF_CACHE` and PR-18 for `LOG_ROOT_`.
 
-`pdsfile.py`: 3,415 → **1,935** lines. `_properties.py`: **1,676**.
+`pdsfile.py`: 3,415 → **1,938** lines. `_properties.py`: **1,686**.
 `_path_utils.py`: 220 → 219 (one dead comment line, §7). All counted at HEAD and
 **re-counted at each round rather than carried forward** — the convention PR-19
 adopted after PR-20's round 2 found a stale count.
@@ -5088,8 +5107,10 @@ adopted after PR-20's round 2 found a stale count.
 
 **(a) The moved text is the exact concatenation of two line ranges of the
 parent's file.** `672–2034` and `2037–2230` — 1,363 + 194 = **1,557 lines** —
-compare byte-identical to `_properties.py`'s lines 110–1666, MD5
-`a49cd66334d4952bd82c6b9b518ce246` on both sides. Line 2035 is the blank before
+compare byte-identical to `_properties.py`'s lines **130–1686**, MD5
+`a49cd66334d4952bd82c6b9b518ce246` on both sides — the offset re-measured at
+HEAD, after round 1 rewrote the class docstring above it, rather than carried
+forward from the extraction commit. Line 2035 is the blank before
 `LATEST_VERSION_RANKS`; dropping it rather than 2037 is what leaves exactly one
 blank line at the join. This whole-blob comparison rules out reordering and a
 dropped blank line, which a per-definition comparison alone would not.
@@ -5111,9 +5132,12 @@ header (imports) and in the class statement itself.
 Two later commits change the class body deliberately, and the difference is
 enumerated rather than waved at: of the **37** definitions left in `PdsFile`'s
 own body, **34 are byte-identical** to the parent's, and the three that are not —
-`_complete`, `from_abspath`, `from_path` — differ **only** by the five
-commented-out lines §7 removes. The `diff` is five `-` lines and zero `+` lines
-across the three.
+`_complete`, `from_abspath`, `from_path` — differ **only** by five of the seven
+commented-out lines §7 removes from this file. The `diff` is five `-` lines and
+zero `+` lines across the three. The other two of the seven trail the `return`
+statement in `is_bundle_dir` and `is_bundle_file`, so they fall outside every
+definition's AST span and a definition-level comparison cannot see them; they are
+covered by the whole-file `diff` in §7 instead.
 
 #### 5.2 No class-level assignment moves, and no new state is created
 
@@ -5131,9 +5155,10 @@ sibling PdsFile it constructs, alongside that sibling's `_recache()`. That is on
 of the reasons the contract in §15 is derived by walking every attribute node
 rather than only `self.X` and `cls.X`.
 
-`_recache` and `_complete` stay in core. `_recache` is read at **46** sites in
-the moved block, always through `self.` or through a sibling PdsFile object,
-never through a module-level name — which is what makes the split transparent.
+`_recache` and `_complete` stay in core. `_recache` is read at **47** sites in
+the moved block — 46 through `self.` and one through a sibling PdsFile object
+(`pdsf._recache()` in `all_versions`) — never through a module-level name, which
+is what makes the split transparent.
 
 #### 5.3 The free-variable sweep was computed, and its "nothing else" is measured
 
@@ -5372,7 +5397,7 @@ therefore where conservation is the question:
 **All seventeen conserve exactly.** One of them — **RUF005** — conserves by
 leaving `pdsfile.py` entirely, so **`pdsfile.py`'s entry drops it**, 17 codes to
 16. Its single occurrence is `self._info[:4] + (shape,)` inside
-`_repair_width_height`, now `_properties.py:598`.
+`_repair_width_height`, now `_properties.py:608`.
 
 **Two more violations disappear at the dead-code commit `59a6405`, and they are a
 shrink rather than a leak.** `pdsfile.py`'s E501 count goes **4 → 2** there,
@@ -5689,9 +5714,14 @@ against the post-Phase-5 module set, which is what the entry asked for. Entry 45
 (`A002`'s home) and entry 49 (the `__bases__[0]` sniff) are re-measured here and
 unchanged. No other entry in 1–60 is resolved or invalidated.
 
-One entry is **added** by the executor's own measurements: **61** (the `glob`
+Four entries are **added**: **61** by the executor's own measurements (the `glob`
 stub in `test_pdsfile_path_resolution.py` is a portability guard whose removal is
-invisible on Linux).
+invisible on Linux, so "delete the patch and watch it go red" is not a valid
+control for it), and **62**, **63** and **64** by the round-1 review
+(`filename_keylen` fills its slot without calling `_recache()`; the back-import
+guard covers the nine mixin modules and not `_path_utils.py`; six lines of
+commented-out `MemcachedCache.get_multi` code remain in `pdscache.py`, outside
+this PR's dead-code scope). None of the three was taken up here.
 
 ### 18. Phase closing — Phase 5 in one table
 
@@ -5707,11 +5737,11 @@ invisible on Linux).
 | PR-19 `pr-19-opus-index-rows` | 4,593 | −532 | `_opus.py`, `_index_rows.py` |
 | PR-20 `pr-20-associations-sorting` | 3,837 | −756 | `_associations.py`, `_sorting.py` |
 | PR-21 `pr-21-preload` | 3,415 | −422 | `_preload.py` (+ `preload_and_cache.py` → shim) |
-| **PR-22 `pr-22-core-finalize`** | **1,935** | **−1,480** | **`_properties.py`** |
+| **PR-22 `pr-22-core-finalize`** | **1,938** | **−1,477** | **`_properties.py`** |
 
-Ten private modules, 5,110 lines of them (`_associations` 373, `_derived_paths`
+Ten private modules, 5,120 lines of them (`_associations` 373, `_derived_paths`
 314, `_index_rows` 328, `_local_fs` 437, `_opus` 304, `_path_utils` 219,
-`_preload` 578, `_properties` 1,676, `_shelves` 356, `_sorting` 525), plus a
+`_preload` 578, `_properties` 1,686, `_shelves` 356, `_sorting` 525), plus a
 16-line `preload_and_cache.py` shim.
 
 **The pass/fail set across the whole phase**, against the `rewrite` @ `807956a`
@@ -5739,20 +5769,20 @@ the `ns` column because every id added in the phase is holdings-free.
 ### 19. The ~1,750-line target, and why HEAD is 1,935
 
 The plan's arithmetic is 6,304 − ~2,930 (PR-16–21) − ~1,550 (the property block) −
-~89 (dead code) = ~1,735, stated as "~1,750". HEAD is **1,935**, +185 against the
-stated target and +200 against the arithmetic. Decomposed, every term measured:
+~89 (dead code) = ~1,735, stated as "~1,750". HEAD is **1,938**, +188 against the
+stated target and +203 against the arithmetic. Decomposed, every term measured:
 
 | Term | Plan | Actual | Δ |
 |---|---|---|---|
 | leaves in PR-16–21 (net of the header lines each added) | ~2,930 | 2,889 | **+41** |
 | the property block, net of this PR's header rework | ~1,550 | 1,553 | −3 |
 | commented-out dead code in `pdsfile.py` | ~89 | 7 | **+82** |
-| the module docstring the plan also asks for | not budgeted | 74 | **+74** |
+| the module docstring the plan also asks for | not budgeted | 74 + 3 | **+77** |
 | the `# Version ranks` banner for the class attribute left behind | not budgeted | 6 | **+6** |
-| | | | **= +200** |
+| | | | **= +203** |
 
 Per commit: 3,415 → 1,862 (the move) → 1,868 (the banner) → 1,861 (dead code) →
-1,935 (the docstring).
+1,935 (the docstring) → 1,938 (round 1's four docstring corrections).
 
 **The delta is explained rather than chased**, per the brief: the target is a
 check on over- and under-extraction, and on that question it is satisfied — §6
@@ -5766,7 +5796,36 @@ lines on `rewrite`, not 89).
 
 | Round | Verdict | Findings | Record |
 |---|---|---|---|
+| 1 | goal met | 0 Major, 8 Minor (all accepted and fixed; **four in `src/pdsfile/` docstrings, three in this record, one a missing subprocess timeout in the new test** — none in the extracted code), 3 Deferred (added as entries 62, 63 and 64) | `critiques/pr-22/round-1.md` |
 
 *(Rows are written only after the round they describe has run and its record file
 exists on disk — the rule PR-18's round-3 Major established. No row is written for
 a round that has not run.)*
+
+**Round 1 found no Major, and the one Minor that mattered was a claim about
+control flow that the name-coverage derivation in §15 structurally could not
+check.** Both docstrings said the 64 properties share one shape — fill an
+`_X_filled` slot, then `_recache()`. Measured: **40** fill a slot, **39** of those
+`_recache()`, and **24** hold no slot at all and recompute on every access. §15's
+derivation verifies that every *name* the code reaches appears in the docstring,
+in both directions; it says nothing about a sentence describing what the bodies
+*do*. Both docstrings now give the measured split and name all 24. A first attempt
+at the fix added a second unmeasured claim ("most of which are one-line
+compositions"), which was measured before committing and is false — 8 of the 24
+are a single `return` — and the committed text says so.
+
+Three more were figures in this record: the moved blob's destination range
+(measured on an earlier draft and not re-measured after the class docstring was
+rewritten), an off-by-one that made §5's two table rows sum to 69 statements
+rather than 68, and `_recache`'s site count, which counted `self._recache` and
+omitted the one call through a sibling object that the same subsection discusses
+two paragraphs earlier. Two were inventory slips in the module docstring's module
+map (`from_filespec` is not an OPUS-id constructor; two `_path_utils` names and
+two `_preload` constants were missing), one was a stale word ("eleven" for a block
+of ten imports), and one was a genuine robustness gap in the new test — the probe
+subprocess had no timeout, so a module that blocked at import time would have hung
+the gate rather than failed it.
+
+**Round 1's fixes touched `src/pdsfile/`, so §6.6 step 5's regeneration rule
+applies and the full-data record above is the regenerated one.** The superseded
+triple and the empty diff between them are in §3.

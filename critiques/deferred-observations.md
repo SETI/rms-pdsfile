@@ -1462,3 +1462,57 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     pass/fail set, and adding a test id is movement beyond the ten the entry-42
     check required.
     **Owner: unassigned (a future test PR, not Phase 5).**
+
+### Added by the PR-22 adversarial review (round 1)
+
+62. **`filename_keylen` is the only slot-filling lazy property that never writes
+    its filled object back to the cache.** `src/pdsfile/_properties.py` — 40 of
+    the mixin's 64 properties fill an `_X_filled` slot, and 39 of those then call
+    `self._recache()` so the shared cache keeps the filled object.
+    `filename_keylen` assigns `self._filename_keylen_filled` and returns. The
+    consequence is the same one PR-15's bug 1 had for `html_path`: every object
+    re-fetched from the cache recomputes the value, because the fill never
+    reaches the cached copy.
+
+    It is **not** the same defect — `html_path`'s was `self._recache` written
+    without its parentheses, a call that silently did nothing, whereas here there
+    is no call at all, which may well be deliberate for a value this cheap
+    (`FILENAME_KEYLEN.first(self.basename)`, a translator lookup). Deciding that
+    needs the same treatment PR-15's bugs got: a regression test pinning the
+    intended behavior first, then the change. PR-22 may not act on it — the code
+    is byte-identical through the move, its gate is the pass/fail set, and adding
+    a test id is movement beyond the ten the entry-42 check required.
+    **Owner: unassigned (a future bug-fix PR, with a regression test).**
+
+63. **The back-import guard covers the nine mixin modules and not `_path_utils.py`.**
+    `tests/api/test_mixin_import_isolation.py` discovers its subjects from
+    `PdsFile.__bases__`, which is what makes it pick up a future mixin for free —
+    and which also means the one private module that is not a mixin is never
+    probed. `pdsfile.py` imports `_path_utils` at module level exactly as it
+    imports the mixins, so a module-level `from pdsfile.pdsfile import <name>`
+    there is the same cycle and is unchecked. (Measured: `_path_utils.py` is clean
+    today — the same probe run by hand reports `pdsfile.pdsfile` absent.)
+
+    Entry 42's wording is "a mixin module must not import `pdsfile.pdsfile` at
+    import time", so covering `_path_utils` is a **widening** of what was asked
+    for rather than a gap in what was delivered, and PR-22 did not take it up for
+    the same reason it did not take up entries 53 and 54. The robust form is to
+    discover every `pdsfile._*.py` module that `pdsfile.py` imports, rather than
+    every mixin base. **Owner: whichever PR next edits the mixin harness (with
+    entry 53).**
+
+64. **Six lines of commented-out code remain under `src/pdsfile/`, all in
+    `pdscache.py`.** `src/pdsfile/pdscache.py:699` and `:1009–1013`, both in
+    `MemcachedCache`, are the `self.mc.get_multi(...)` calls that the live
+    one-key-at-a-time loops replaced, each under the comment
+    `# Memcached->get_multi hangs on long lists; individual requests work fine`.
+    PR-22's dead-code scope is `pdsfile.py` plus the ten modules Phase 5 created,
+    and `pdscache.py` is neither, so they are out of scope there.
+
+    They are also the one case where "commented-out code" and "a comment that
+    documents behavior" are hard to separate: the commented-out call is the
+    evidence for the workaround the comment describes, and it sits inside the
+    `MemcachedCache`/pylibmc support that ground rule 9 protects and that no test
+    in this repo can exercise. Removing them would need an owner decision rather
+    than an executor's. **Owner: owner decision, then PR-23 (which is the next PR
+    to touch `pdscache.py`).**
