@@ -2900,9 +2900,12 @@ The §6 line numbers are not re-stated with corrected values: the project's own
 rule is to locate by symbol, and a line number in a record that the next round's
 docstring fix will move is a defect generator. They now name `opus_products`.
 
-**§6.6 step 5 was applied at all three boundaries.** Rounds 1, 2 and 3 each
-produced a fix under `src/pdsfile/`, so the full-data record was regenerated
-after each. §3's figures are the third regeneration, and its superseded-pair
-table records that all four head runs produced the same two reduced sets — which
-is also the evidence that every fix in this loop was a docstring, a comment or a
-record, and that no executable line changed after the extraction commits.
+**§6.6 step 5 was applied at every boundary.** Rounds 1, 2 and 3 each produced a
+fix under `src/pdsfile/`, so the full-data record was regenerated after each.
+§3's figures are the third regeneration, and its superseded-pair table records
+that all four head runs produced the same two reduced sets — which is also the
+evidence that every fix in this loop was a docstring, a comment or a record, and
+that no executable line changed after the extraction commits. **Round 4's fixes
+touch `critiques/` only, so the record carries forward unchanged** — the other
+half of the same rule, and the reason the last change under `src/pdsfile/` is
+still `b6bda4a`.
