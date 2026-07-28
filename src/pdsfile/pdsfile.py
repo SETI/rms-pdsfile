@@ -41,9 +41,9 @@ try: # pragma: no cover
 except ImportError: # pragma: no cover
     HAS_PYLIBMC = False
 
-from .preload_and_cache import (cache_lifetime_for_class,
-                                pause_caching,
-                                resume_caching)
+from ._preload import (cache_lifetime_for_class,
+                       pause_caching,
+                       resume_caching)
 
 # The path helpers live in a private module. Importing them here is also what
 # keeps pdsfile.pdsfile.<name> resolving for callers and for the API freeze.
