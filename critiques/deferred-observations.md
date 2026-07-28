@@ -1328,6 +1328,19 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     memcached-capable deployment host, whatever Phase 5 does. Any fix has to cover
     `pdscache` as well as `pdsfile.pdsfile`, and editing the dumper or the
     manifest is a §6.4 prohibition for the executor, so this is an owner decision.
+
+    **A third reviewer suggested annotating the exception in the code**, at
+    `src/pdsfile/pdsfile.py`'s re-export block, whose comment says the private
+    names there "are carried so that no name reachable as `pdsfile.pdsfile.<name>`
+    is lost". PR-21 declined, for two reasons worth recording so the next reader
+    does not re-derive them. The clause is a *purpose* statement scoped to the
+    four private names the sentence introduces (`_GLOB_CACHE_SIZE`,
+    `_clean_abspath`, `_clean_glob`, `_needs_glob`), not a global invariant over
+    the module — none of the four is `pylibmc`. And the sentence is inherited
+    wording, written by PR-16 and extended by PR-17, PR-20 and PR-21 only by
+    adding names to its lists, so rewording its claim is a change to another PR's
+    prose. If the owner wants the exception visible in the source rather than
+    here, that is a one-line edit for whichever PR next touches that block.
     **Owner: unassigned (a freeze/manifest question, not Phase 5).**
 
 59. **Five measured coverage gaps in the preload machinery, none of which PR-21

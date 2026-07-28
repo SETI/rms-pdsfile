@@ -3944,11 +3944,31 @@ the `SHELVES_ONLY` branch, and `preload` reaches it through `cls.os_path_exists`
 and `cls.os_path_isdir` on every category directory of every holdings root.
 
 **Freshness (§6.6 step 5).** The last change under `src/pdsfile/` is commit
-`a8f4cb3` ("style: give the merged-directory constructors their own banner") at
-**22:05:51**. The head runs recorded above postdate it: their `--junitxml`
-timestamps are **22:08:52 and 22:10:41**. The baseline runs (21:52:34 and
-21:54:25) were taken in a detached `git worktree` at `2df25ab` that nothing has
-touched since.
+`dd75796` ("docs: correct the mixin docstring's out-of-scope list and memcached
+condition"), round 3's two-paragraph fix to `_PreloadMixin`'s docstring, at
+**23:34:23**. The head runs recorded above postdate it: their `--junitxml`
+timestamps are **23:37:21 and 23:39:10**. They are the regeneration §6.6 step 5
+requires, and the only one this loop has needed — rounds 1 and 2 changed nothing
+under `src/pdsfile/`, so their records carried forward.
+
+The **superseded** head pair is recorded rather than dropped, with the commit its
+tree was actually at:
+
+| Head pair | `--junitxml` written | Tree at | Reduced sets |
+|---|---|---|---|
+| 1 | 22:08:52 / 22:10:41 | `a8f4cb3` | identical to pair 2 |
+| **2 (current)** | **23:37:21 / 23:39:10** | **`dd75796`** | **the figures above** |
+
+`diff` between the two pairs is empty in both modes, which is what a
+docstring-only change should do and is measured rather than assumed. The
+provenance check was re-run on the second pair: **71** measured files, **0** of
+them outside the main tree's prefix, **14** directly under `src/pdsfile/`. So were
+§9's and §12's statement figures: 226 statements / 43 missing / 5 excluded for the
+file, and `preload` still 113 / 83 / 30 — the docstring is not a statement, and
+that is checked rather than assumed.
+
+The baseline runs (21:52:34 and 21:54:25) stand throughout: they were taken in a
+detached `git worktree` at `2df25ab` that nothing has touched since.
 
 ### 4. API freeze — empty diff, as a mixin move plus a shim requires
 
@@ -4711,6 +4731,7 @@ a case-sensitive filesystem from a case-insensitive one).
 |---|---|---|---|
 | 1 | goal met | 0 Major, 5 Minor (all accepted and fixed; **none in `src/`** — all five in this record, the sub-plan or the deferred-observations file), 2 Deferred (one folded into entry 58, one added as entry 60) | `critiques/pr-21/round-1.md` |
 | 2 | goal met | 0 Major, 3 Minor (all accepted and fixed; **none in `src/`** — all three in this record or the deferred-observations file), **0 new Deferred** | `critiques/pr-21/round-2.md` |
+| 3 | goal met | 0 Major, 3 Minor (all accepted and fixed; **two in `src/`** — the mixin docstring — and one a heading in this record and the sub-plan), **0 new Deferred** | `critiques/pr-21/round-3.md` |
 
 *(Rows are written only after the round they describe has run and its record file
 exists on disk — the rule PR-18's round-3 Major established. No row is written for
@@ -4778,3 +4799,38 @@ found anything to report, so no finding in this loop changes.
 
 **No round-2 fix touched `src/pdsfile/`** either, so the full-data record carries
 forward unregenerated a second time.
+
+**Round 3 found no Major and three more Minor, and two of them are the first
+findings in this loop that land in `src/`** — both in `_PreloadMixin`'s docstring,
+both prose about runtime behavior that had been written rather than executed. Its
+"and nothing else" enumeration named `set`, which is never a receiver in these
+five methods (`set(parts[2])` is a constructor call), and omitted four families
+that are: `os` itself, file objects, `pylibmc` and `time`. And it said the
+memcached half runs "only when a non-zero port is supplied", which excludes the
+path deployment takes: the condition is
+`(port == 0 and cls.MEMCACHE_PORT == 0) or not HAS_PYLIBMC`, and `preload` writes
+the port it was given back onto the class, so a later argumentless call still
+takes it — the docstring's own contract table lists `MEMCACHE_PORT` as written two
+paragraphs above. Both now say the measured thing, and the name list below the
+colon is unchanged: 25 of 25 in both directions, re-run after the edit.
+
+The third was a heading in this record's §5.3 and the sub-plan's §5.2 — "six names
+are stranded **and every one of them stays bound**" — sitting directly above a
+table whose sixth row is `pylibmc`, which does not, and directly above a §5.4
+headed "the one name this PR does **not** carry back". Measured: `'pylibmc' in
+vars(pdsfile.pdsfile)` is `True` at the parent with a stub on `PYTHONPATH` and
+`False` at HEAD. Both headings now say five.
+
+**Round 3's fixes did touch `src/pdsfile/`, so the full-data record was
+regenerated** before the round was recorded — the pair at 23:37:21 / 23:39:10 in
+§3, empty against the baseline and against the superseded pair in both modes.
+
+The round-3 reviewer also measured the §8 ratchet table **with per-file-ignores
+disabled**, so it checked the *minimal* code set for each file rather than the
+configured one, and it set out to raise the `pylibmc` name loss as a Major and
+recorded that it could not sustain it. Its one suggestion outside the findings —
+annotate the `pylibmc` exception inside `pdsfile.py`'s re-export comment — was
+**declined**, with the reasoning recorded in deferred entry 58: that comment's
+clause is a purpose statement scoped to the four private names it introduces, none
+of which is `pylibmc`, and it is inherited wording that PR-16 wrote and PR-17,
+PR-20 and PR-21 have only added names to.
