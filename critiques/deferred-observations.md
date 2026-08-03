@@ -1573,3 +1573,84 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     Phase-6 question, answerable once PR-25 has established how much of each file
     is duplication.
     **Owner: Phase 6 (PR-25 onward).**
+
+## From PR-23 (ruff-clean the core modules, Phase 5)
+
+### Resolutions PR-23 owed
+
+- **Entry 33 — resolved as documented, not as fixed.** `gen_ruff_ratchet.py` still
+  cannot be exercised against a tree whose committed ignores suppress everything,
+  so PR-23 derived the core block by hand: `ruff check` with the template select
+  set and **no** `per-file-ignores`. The ratchet's header comment in
+  `pyproject.toml` now says this, so the next executor does not discover it again.
+  The script itself is untouched. **Still open** as a tooling gap, for whichever PR
+  wants to teach it a `--no-ignores` mode.
+- **Entry 45 — RESOLVED.** `A002`'s permanent home is `src/pdsfile/_derived_paths.py`,
+  and the ratchet and `pdsfile_overrides.mdc` deviation (4) both now say so with the
+  three sites (`:263`, `:280`, `:296`) named.
+- **Entry 60 — RESOLVED.** The six outlying indented banner rule lines
+  (`_preload.py` ×4, `pdsfile.py` ×2, at 90 and 84 columns) are now 80 columns like
+  the other 34. Verified as comment-only by tokenizing all fifteen modules before
+  and after and comparing the token streams with `COMMENT`/`NL` dropped: 15 files
+  compared, 0 differing.
+- **Entry 31 — still open, unchanged.** PR-23 fixed `__init__.py`'s `F841` and
+  `I001` but did **not** touch the three star imports. `F403` stays in that file's
+  ratchet entry. Both readings of `from pdsfile import *` (delete it, or correct it
+  to `from .pdsfile import *`) change the frozen public surface, one shrinking and
+  one growing, so the owner decision entry 31 asks for is still owed.
+  **Owner: owner decision, then PR-24.**
+- **Entry 37 — half resolved.** The `F841` half is fixed: `_get_shelf`'s
+  `except Exception as e` no longer binds a name it never uses. The `B904` half is
+  **not**, and is now a permanent ratchet entry: `raise ... from e` sets
+  `__cause__` and `__suppress_context__` and `raise ... from None` suppresses the
+  original traceback, so both change what a consumer sees, which §2 forbids in this
+  PR. A future PR that adds `from e` — which is the right eventual change — must
+  re-bind the name; that is one line. **Owner: phase "b" of issue #77.**
+- **Entry 64 — untouched, and deliberately so.** The six commented-out
+  `MemcachedCache.get_multi` lines in `pdscache.py` still need an owner decision
+  that has not been given, and PR-23 did not remove them. The entry stays open.
+  **Owner: owner decision.**
+
+### Added by the PR-23 executor's own measurements (2026-08-03)
+
+67. **`PdsFile.child()` looks a cache entry up and throws it away.**
+    `src/pdsfile/pdsfile.py`, in `child()`: the comment reads "Create the logical
+    path and return from cache if available", and the code is a `cls.CACHE[...]`
+    subscript inside `try/except KeyError: pass` with **no `return`**. The looked-up
+    object is discarded, so every `child()` call rebuilds an object the cache
+    already holds. PR-23 could only remove the unused binding, not the defect: the
+    subscript has an effect (a `DictionaryCache` lookup updates that key's
+    bookkeeping) and adding the missing `return` is a behavior change — objects
+    would start coming back from the cache instead of being reconstructed — which
+    needs its own regression test and its own PR. The subscript is kept as an
+    expression statement and the comment now says the result is discarded.
+    **Owner: phase "b" of issue #77.**
+
+68. **`version_ranks` returns `None` for a file that does not exist.**
+    `src/pdsfile/_properties.py`, in the `version_ranks` property: the
+    `if not self.exists:` branch assigned a **local** `version_ranks_filled = []`
+    where every sibling branch assigns `self._version_ranks_filled`, so the
+    instance slot stayed `None` and the property returned `None` rather than the
+    empty list the docstring promises ("a list of the numeric version ranks"). This
+    is the `F841` that `_properties.py`'s ratchet entry carried. PR-23 deleted the
+    dead local — behavior-identical, since nothing ever read it — and left a comment
+    at the site; it did **not** write the instance attribute, because that changes
+    what the property returns on an existing input. Same shape as entry 30
+    (`repair_case`'s `found`). **Owner: phase "b" of issue #77.**
+
+69. **`_local_fs.py`'s `values` list and its `zip` are now visibly dead weight.**
+    In `glob_glob`'s `SHELVES_ONLY` branch, `values = list(shelf.values())` feeds a
+    `zip(interior_paths[...], values[...])` whose second element the loop body never
+    uses — which is why PR-23 renamed the loop variable to `_value` and added
+    `strict=False` rather than deleting anything. Iterating `interior_paths` alone
+    would be equivalent (the two lists come from the same dict and cannot differ in
+    length) and would drop one full materialization of every shelf value per call,
+    but it is a code change rather than a style fix and belongs where the shelf
+    read paths are being looked at anyway. **Owner: phase "b" of issue #77.**
+
+70. **`src/pdsfile/tools/show_opus_products.py` still carries an `I001` ratchet
+    entry and belongs to no PR.** PR-23's scope is the files directly under
+    `src/pdsfile/`, so the `tools/` subpackage is out; PR-24's stated scope is the
+    rule modules, the `pds{3,4}file/__init__.py` pair, `re_validate.py` and the
+    other `holdings_maintenance/` tools, and does not name `tools/` either. One
+    entry, one code. **Owner: PR-24, as the last ruff PR.**
