@@ -624,7 +624,7 @@ Two moves in this PR:
 Add a module docstring mapping the decomposition (feeds the dev guide). Remove
 commented-out dead code (~89 lines) — listed line-by-line in the PR.
 
-**PR-23 (L, mechanical)** `style: ruff-clean and format core modules`
+**PR-23 (L, mechanical)** `style: ruff-clean core modules`
 Clean `src/pdsfile/*.py` (core: `pdsfile.py` + extracted `_*.py` modules,
 `pdscache.py`, `pdsviewable.py`; not rules). **Do not assume a fixed violation
 list — derive it:** run `ruff check` with the template select set and classify
