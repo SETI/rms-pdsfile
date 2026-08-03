@@ -1113,7 +1113,7 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
             # critiques/deferred-observations.md.
             child_logical_path = _clean_join(self.logical_path, basename)
             try:
-                cls.CACHE[child_logical_path.lower()]
+                _ = cls.CACHE[child_logical_path.lower()]
             except KeyError:
                 pass
 

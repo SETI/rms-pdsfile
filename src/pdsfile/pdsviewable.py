@@ -2,11 +2,11 @@
 # pdsviewable.py
 ################################################################################
 
-# Nothing below references pdslogger, but pdsfile.pdsviewable.pdslogger is a
-# frozen member of this module's public surface (tests/api/api_manifest.json),
-# so it stays bound. The redundant `as` alias is the explicit re-export form.
 import os
 
+# Nothing below references `pdslogger`, but pdsfile.pdsviewable.pdslogger is a
+# frozen member of this module's public surface (tests/api/api_manifest.json),
+# so it stays bound. The redundant `as` alias is the explicit re-export form.
 import pdslogger as pdslogger
 from PIL import Image
 
