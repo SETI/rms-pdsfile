@@ -5990,13 +5990,75 @@ ns: 892 vs 892 ids; only-in-baseline 0, only-in-head 0, outcome changed 0
  s: 558 vs 558 ids; only-in-baseline 0, only-in-head 0, outcome changed 0
 ```
 
-**Non-vacuity.** `coverage.CoverageData.measured_files()` for the head run lists
-**15 of the 15** modules directly under `src/pdsfile/` — `__init__.py`,
-`_associations.py`, `_derived_paths.py`, `_index_rows.py`, `_local_fs.py`,
-`_opus.py`, `_path_utils.py`, `_preload.py`, `_properties.py`, `_shelves.py`,
-`_sorting.py`, `pdscache.py`, `pdsfile.py`, `pdsviewable.py` and
-`preload_and_cache.py`. Every file this PR edits was executed by the run that
-proves the set did not move.
+**Non-vacuity, at file level.** `coverage.CoverageData.measured_files()` for the
+head run lists **15 of the 15** modules directly under `src/pdsfile/` —
+`__init__.py`, `_associations.py`, `_derived_paths.py`, `_index_rows.py`,
+`_local_fs.py`, `_opus.py`, `_path_utils.py`, `_preload.py`, `_properties.py`,
+`_shelves.py`, `_sorting.py`, `pdscache.py`, `pdsfile.py`, `pdsviewable.py` and
+`preload_and_cache.py`.
+
+**Non-vacuity, at line level — the number that actually bounds the risk.** Of the
+**143 executable lines this PR changed** (`git diff -U0 origin/rewrite...HEAD`
+intersected with `coverage`'s own statement set), the run executed **81** and did
+not reach **62**:
+
+| File | changed executable | executed |
+|---|---|---|
+| `pdscache.py` | 24 | 5 |
+| `pdsfile.py` | 41 | 25 |
+| `pdsviewable.py` | 16 | 7 |
+| `_properties.py` | 15 | 11 |
+| `_local_fs.py` | 13 | 12 |
+| `_preload.py` | 9 | 7 |
+| `_shelves.py` | 7 | 5 |
+| `_sorting.py` | 6 | 5 |
+| `_path_utils.py` | 5 | 1 |
+| `_index_rows.py` | 3 | 2 |
+| `_opus.py`, `_associations.py`, `__init__.py` | 4 | 1 |
+| **total** | **143** | **81** |
+
+The unreached lines are the ones a reader should know about: **every**
+`MemcachedCache` edit (`unblock`'s two collapsed conditionals, `__contains__`,
+the `get_multi`/`set_multi` `tuple`→`pair` renames, five `F541` fragments, and
+the `type(port) is str` comparison), `PdsFile.__repr__`'s `type(self) is
+PdsFile`, all three `next(iter(...))` sites and `PdsViewSet.append`'s `B020`
+rename, `_get_shelf`'s failure path, and `repair_case`'s not-found path. An
+identical pass/fail set does not speak for any of them.
+
+**So they were exercised directly instead.** A differential probe — 39 labelled
+values, no holdings tree — was run under the **baseline** tree and under the
+**head** tree and the two outputs diffed. It covers all three `E721` sites
+(including a `str` subclass, a `list` subclass and an anonymous `PdsFile`
+subclass, i.e. exactly the inputs `isinstance` would have mis-dispatched), all
+three `RUF015` sites plus their empty-guard paths, the `B020` rename, both
+`F401` re-exports, the three MROs, and a `DictionaryCache`
+`set`/`get_multi`/`set_multi`/`__contains__`/`__len__` round trip through the two
+`A001`-renamed loops. **All 39 values identical, over three independent
+base/head run pairs.** Sample:
+
+```
+repr(PdsFile abspath)          = 'PdsFile("/a/b")'
+repr(Pds3File abspath)         = 'Pds3File("/a/b")'
+repr(anon subclass abspath)    = 'PdsFile._PdsFileSubclass("/a/b")'
+iconset_for(list SUBCLASS)     !! AttributeError: '_ListSubclass' object has no attribute 'icon_type'
+for_width on empty             !! OSError: No viewables have been defined
+named-only for_width(25) size  = (25, 25)
+pdsfile.pdscache.sys is sys    = True
+```
+
+The `repr` lines are the point of `E721`: had `isinstance` been used, the
+`Pds3File` line would read `PdsFile("/a/b")` and the subclass line would lose its
+class name. The `iconset_for(list SUBCLASS)` line is the other one: `isinstance`
+would have stopped wrapping the subclass, so the error would have come from a
+different place.
+
+The probe also **caught something**, which is why it is worth reporting rather
+than merely claiming: one value differed on the first pair, and it turned out to
+differ between two runs of the **same** tree. `PdsViewSet.append`'s recursive
+branch keeps an arbitrary member of the nested set and `PdsViewable` is hashed by
+identity, so which one survives is not a function of the input. Recorded as
+deferred observation 73, with five-run evidence on unmodified `rewrite`; the
+probe now asserts the invariant rather than the member.
 
 ### 3. The violation set was derived, not assumed
 
@@ -6012,7 +6074,7 @@ coordinator's scoping run reported 155; the one-violation difference is not
 reconciled and is not load-bearing — every disposition below is keyed to a
 `file:line`, not to a total.
 
-**154 → 35. 119 fixed, 35 permanent.** By code:
+**154 → 33. 121 fixed, 33 permanent.** By code:
 
 | Code | n | Fixed | Frozen |
 |---|---|---|---|
@@ -6034,10 +6096,10 @@ reconciled and is not load-bearing — every disposition below is keyed to a
 | `E721` | 3 | 3 | — |
 | `F403` | 3 | — | 3 |
 | `SIM102` | 3 | 3 | — |
-| `SIM103` | 3 | 1 | 2 |
+| `SIM103` | 3 | 3 | — |
 | `A001`, `B007`, `B905`, `F401`, `N806`, `RUF059`, `SIM114`, `SIM118` | 2 each | 16 | — |
 | `B020`, `E713`, `UP015` | 1 each | 3 | — |
-| **Total** | **154** | **119** | **35** |
+| **Total** | **154** | **121** | **33** |
 
 ### 4. The behavior-equivalence proofs, per risky code
 
@@ -6098,15 +6160,20 @@ the same order and the same subset. SIM114 merges two branches with identical
 bodies into `if A or B`, which likewise evaluates `B` only when `A` is falsy,
 exactly as the `elif` did.
 
-**`SIM103` — one fix, two refusals.** `_shelves.py`'s
-`if self.bundlename: return True / … return False` becomes
-`return bool(self.bundlename)`, exact because `bundlename` is a `str`.
-`_local_fs.py`'s two sites are `elif cls.os_path_exists(p): return True / else:
-return False`, and collapsing them returns whatever `os_path_exists` returns
-rather than the `True`/`False` singleton. That method has a
-`return (pdsf.exists and pdsf.child_of_index(...).exists)` path, so it is not
-proven `bool`-returning, and the equivalence would rest on a reachability argument
-about which of its branches a shelf path takes. Frozen.
+**`SIM103` — all three fixed, as `return bool(...)`.** The *bare* collapse would
+change the returned object from the `True`/`False` singleton to the condition's
+raw value, and `_local_fs.py`'s condition is a call
+(`cls.os_path_exists(shelf_abspath)`) that is not proven `bool`-returning — it has
+a `return (pdsf.exists and pdsf.child_of_index(...).exists)` path. Wrapping in
+`bool(...)`, which is the form ruff's own message names, removes the question
+entirely: `bool(x)` invokes exactly the `__bool__`/`__len__` that `if x:` invoked
+and returns exactly the singleton the branch returned, so the callee's return type
+never reaches the caller. `_shelves.py`'s `bool(self.bundlename)` is the same
+argument on a `str`. **This is a round-1 correction**: the two `_local_fs.py`
+sites were first classified freeze-locked on the strength of the bare rewrite
+alone, and the reviewer showed that the `bool(...)` form — which this PR was
+already using at `_shelves.py:337` — makes them provable locally. See
+`critiques/pr-23/round-1.md` M1.
 
 **`UP031` — thirteen fixes, one refusal.** For every fixed site the argument is a
 `str`, an explicit tuple literal matching the placeholder count, or `len(...)`;
@@ -6158,7 +6225,7 @@ which is the form `pdsfile.py` already uses for ten unused stdlib modules and
 which ruff honours (that file reports no `F401`). The names stay bound; the
 manifest is unchanged.
 
-### 5. The ratchet — 14 entries and 78 code slots become 8 and 11
+### 5. The ratchet — 14 entries and 78 code slots become 7 and 10
 
 | File | Before | After |
 |---|---|---|
@@ -6166,7 +6233,7 @@ manifest is unchanged.
 | `_associations.py` | `UP024` | **removed** |
 | `_derived_paths.py` | `A002` | `A002` |
 | `_index_rows.py` | `RUF005, UP024` | **removed** |
-| `_local_fs.py` | `B007, B905, E701, SIM103, SIM118, UP024` | `SIM103` |
+| `_local_fs.py` | `B007, B905, E701, SIM103, SIM118, UP024` | **removed** |
 | `_opus.py` | `RUF005, UP024` | **removed** |
 | `_path_utils.py` | `E701, F841` | **removed** |
 | `_preload.py` | `E501, E701, F841, RUF005, UP015, UP031` | **removed** |
@@ -6177,16 +6244,21 @@ manifest is unchanged.
 | `pdsfile.py` | `B904, C405, E501, E701, E713, E721, F841, I001, N806, RUF012, SIM102, SIM114, SIM118, UP004, UP024, UP031` | `B904, I001, RUF012` |
 | `pdsviewable.py` | `B006, B007, B020, C405, E701, E721, F401, I001, RUF015, RUF059, UP004, UP024` | `B006` |
 
-Each of the 11 surviving codes is a real, present violation: the no-ignores run
-over the same fifteen files after the fixes reports **exactly 35**, and they map
-one-for-one onto the 11 slots. `pdsviewable.py`'s `RUF059` was **already dead** in
+Each of the 10 surviving codes is a real, present violation: the no-ignores run
+over the same fifteen files after the fixes reports **exactly 33**, and they map
+one-for-one onto the 10 slots. (Point ruff at `src/pdsfile/*.py` in a tree where
+an install has regenerated the gitignored `_version.py` and the answer is 34, the
+extra one being that file's `RUF022` — deferred observation 71.) `pdsviewable.py`'s `RUF059` was **already dead** in
 the committed table — the derived set has no `RUF059` in that file — so it leaves
 as a stale-entry removal rather than as a fix, and that is stated rather than
 counted as work.
 
-**Nothing was added.** `git diff origin/rewrite...HEAD | grep -c '^+.*noqa'` → `0`.
-No entry gained a code, no entry gained a file, and no inline `noqa` exists
-anywhere in the diff.
+**Nothing was added.** No entry gained a code, no entry gained a file, and no
+inline `noqa` exists in any source file: `grep -rn noqa src/pdsfile/*.py` → no
+matches, at head. (A naive `git diff … | grep -c '^+.*noqa'` returns 6, all of
+them prose — this paragraph, two sub-plan lines, the `pyproject.toml` and
+`pdsfile_overrides.mdc` sentences that say `noqa` is never added. The grep worth
+recording is the one that answers the question.)
 
 `.cursor/rules/pdsfile_overrides.mdc` deviation (4) records the same set as a
 per-file table with the same reasons, as the plan requires. Its non-core lines
@@ -6284,13 +6356,18 @@ and still needs the owner decision it asks for. Entry **64** is untouched **on
 purpose**: it asks for an owner decision that has not been given, and PR-23 did
 not remove the six commented-out `MemcachedCache.get_multi` lines.
 
-Four new entries — **67** (`child()` discards the cache entry it looks up),
-**68** (`version_ranks` returns `None` for a nonexistent file), **69**
-(`_local_fs.py`'s now-visibly-dead `values`/`zip` pair) and **70**
-(`tools/show_opus_products.py`'s orphan `I001` ratchet entry) — are recorded in
-`critiques/deferred-observations.md`. The first three are latent defects this PR
-uncovered while removing the unused bindings that concealed them, and repairing
-any of them is a behavior change §2 forbids here.
+Seven new entries are recorded in `critiques/deferred-observations.md`:
+**67** (`child()` discards the cache entry it looks up), **68** (`version_ranks`
+returns `None` for a nonexistent file), **69** (`_local_fs.py`'s now-visibly-dead
+`values`/`zip` pair), **70** (`tools/show_opus_products.py`'s orphan `I001`
+ratchet entry), **71** (the gitignored `_version.py` carries a real `RUF022` no
+gate can see), **72** (`MemcachedCache` has no gate at all — 24 of the 24 lines
+this PR changed in it are unreachable by any test here and by both consumer
+smokes) and **73** (`PdsViewSet.append` keeps a nondeterministic member of a
+nested viewset). 67, 68, 69 and 73 are latent defects this PR uncovered — the
+first three while removing the unused bindings that concealed them, the last by
+diffing the differential probe — and repairing any of them is a behavior change
+§2 forbids here.
 
 ### 11. Review loop
 
