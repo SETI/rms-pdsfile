@@ -6054,8 +6054,8 @@ Per file, "reached by neither": `pdsfile.py` 15, `_path_utils.py` 4,
 one of: a `UP024` alias substitution (`IOError` **is** `OSError`), an f-string
 whose text was compared byte for byte by hand, an `E701` split that cannot change
 semantics, a local rename `ruff`/`pyflakes` proves complete, or an `F841` binding
-removal whose right-hand side is preserved (`_path_utils.py:136`,
-`_preload.py:201`, `_shelves.py:171`). **The other three are named rather than
+removal whose right-hand side is preserved or absent (`_path_utils.py:136`,
+`_preload.py:201`, `_shelves.py:171`, `__init__.py:7`). **The other three are named rather than
 folded in**: `pdscache.py:322`'s `E721` and the `F541` fragments at `:600` and
 `:1043`, all of which need `pylibmc` to reach (deferred observation 72). No
 `SIM`, `RUF005`, `RUF015`, `B020`, `SIM118`, `C405`, `E713` or `F401` fix is among
@@ -6196,7 +6196,8 @@ on `parts`, a list literal built in the same function; `_opus.py`'s two operands
 are assigned seven lines above and are both lists; `_preload.py`'s
 `volinfo_dict[key]` has exactly one assignment in the same function and it is a
 tuple literal; `_index_rows.py`'s `self.childnames` is a list on **every** one of
-its six assignments in the package (`pdsfile.py:429/633/689`,
+its six assignments in the package (`pdsfile.py:428` — to `None`, before the
+property's own `[]` — and `:632`/`:688`,
 `_properties.py:398/403/413`, where `sort_basenames` ends
 `basenames = list(basenames); basenames.sort(...); return basenames`).
 
@@ -6435,6 +6436,7 @@ Every round's record exists on disk before its row is written here.
 | [1](pr-23/round-1.md) | **1** | 9 | 2 | `goal not met` | regenerated after the fixes (`runs/pr23-r2`) |
 | [2](pr-23/round-2.md) | 0 | 6 | 2 | `goal met`, but new Minors → loop continues | regenerated after the fixes (`runs/pr23-r3`) |
 | [3](pr-23/round-3.md) | 0 | 6 | 2 | `goal met`, but new Minors → loop continues | regenerated after the fixes (`runs/pr23-r4`) |
+| [4](pr-23/round-4.md), **scoped** | **0** | — | — | **`goal met`** — loop terminates | `runs/pr23-r4` carries forward: the round's four record fixes touch no source |
 
 **Round 1's Major is the one finding that changed the deliverable.** `SIM103` ×2
 in `_local_fs.py` had been classified freeze-locked on the strength of ruff's
@@ -6467,10 +6469,21 @@ differential probe** in a scratch copy, which showed that reverting each of the
 `E721`, `SIM102` and `B020` fixes changes a probe value, i.e. the probe is not
 passing vacuously.
 
-**Findings by kind, across the three rounds: 1 Major and 21 Minor.** **Four
+**Round 4 is §6.6's scoped fourth round** — "confirm the prior round's findings
+are resolved; raise only new Major findings" — and the hard cap. It confirmed
+all six of round 3's Minors and both Deferred items resolved, and returned
+**zero Major**, so the loop terminates. It also ran one check no earlier round
+did: it cross-validated `setdiff.py` against the raw junit XML
+(`failures="0" errors="0"` in all four files) so that no failure could be masked
+by the script's last-child-wins outcome rule. Its four would-be-Minors — which a
+scoped round may not raise — were all one-line record corrections, and were made
+rather than carried; since they touch no source, `runs/pr23-r4` carries forward.
+
+**Findings by kind, across the four rounds: 1 Major and 21 Minor.** **Four
 Minors were in the code** — a tautological assertion, two one-character idiom
 mismatches, and one comment placed above the wrong import. The other seventeen
 and the Major were figures, claims or classifications in this record, the
 sub-plan, `pdsfile_overrides.mdc` and one plan addendum. That is the same
 distribution PR-19 through PR-22 reported: the defects are in what the executor
-*says*, not in what it changed.
+*says*, not in what it changed. **No round found a defect in the behavior of the
+code this PR changed.**
