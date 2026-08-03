@@ -45,7 +45,6 @@ def logical_path_from_abspath(abspath, cls):
     raise ValueError('Not compatible with a logical path: ', abspath)
 
 def _clean_join(a, b):
-#     joined = _clean_join(a,b).replace('\\', '/')
     if a:
         return a + '/' + b
     else:

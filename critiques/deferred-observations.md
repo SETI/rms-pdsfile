@@ -631,6 +631,12 @@ touch.
     pre-split one. **Owner:** PR-22 (with PR-23 for the extracted modules'
     style).
 
+    **RESOLVED by PR-22**, which removed the line and rebuilt the inventory
+    against `pdsfile.py` plus all ten modules this phase created. The real
+    inventory is **eight** lines, not ~89; the same eight are present on
+    `rewrite`, so PR-15 through PR-21 neither added nor removed one. Listed
+    line by line in `critiques/phase5-validation.md` §7 of the PR-22 section.
+
 ### Added by the PR-16 adversarial review (round 4)
 
 33. **`scripts/gen_ruff_ratchet.py` cannot be exercised against the current
@@ -823,6 +829,23 @@ A pure move has no licence to change any of them.
     that declares it complete; and adding a shared check mid-phase is precisely
     what went wrong here — PR-18–PR-21 would inherit and trust an implementation
     they never reviewed.
+
+    **RESOLVED by PR-22** — `tests/api/test_mixin_import_isolation.py`, 10 ids,
+    holdings-free, behavioral exactly as the design note requires. One obstacle
+    the note does not anticipate had to be solved and is recorded so nobody
+    re-derives it: `src/pdsfile/__init__.py` does `from .pds3file import *`, so
+    importing *any* `pdsfile.*` submodule executes the package `__init__` and
+    pulls `pdsfile.pdsfile` into `sys.modules` — the naive probe is red for all
+    ten private modules, always. The check installs a stub `pdsfile` package (a
+    real `ModuleSpec` with `submodule_search_locations`, no `__init__` executed)
+    so relative and in-package absolute imports still resolve while the package
+    `__init__`'s star-imports do not. One subprocess per module, subjects
+    discovered from `PdsFile.__bases__`. Seen red twice, both with the *silent*
+    spelling this entry names: a head-placed `from pdsfile.pdsfile import
+    repair_case` in `_associations.py` (caught by the subprocess exit code) and a
+    tail-placed one in `_properties.py` that raises nothing anywhere and is caught
+    **only** by the `sys.modules` assertion. `critiques/phase5-validation.md`
+    §16 of the PR-22 section has both.
 
 ## From PR-18 (extract the checksum, archive and log path builders, Phase 5)
 
@@ -1410,3 +1433,110 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     modules is squarely PR-23's "ruff-clean and format core modules" scope, where
     the churn checkpoint puts it in front of the owner along with everything else.
     **Owner: PR-23.**
+
+## From PR-22 (finalize the core, Phase 5)
+
+### Added by the PR-22 executor's own measurements (2026-07-28)
+
+61. **One of the suite's twenty monkeypatch sites is a portability guard whose
+    removal is invisible on Linux, so "remove the patch" is not a valid
+    forced-wrong control for it.** `tests/core/test_pdsfile_path_resolution.py:92`
+    stubs `glob` inside `abspath_for_logical_path.__globals__` so that
+    `glob.glob('/Library/WebServer/Documents/holdings*')` — the last-resort MacOS
+    website-install branch — returns `[]`. On this machine the real call returns
+    `[]` too, so **deleting the stub outright leaves the whole of `tests/core/`
+    and `tests/pds3file/` green (531 passed)**, which reads exactly like "this
+    patch is dead" and is not what it means. Forcing the stub to answer *wrongly*
+    — a non-empty list — does turn
+    `TestHoldingsEnvironmentVariable::test_a_class_does_not_borrow_another_class_holdings_root`
+    red, which is the control the Phase-5 briefs actually ask for.
+
+    Two consequences worth recording. The mechanical form of the monkeypatch
+    audit that PR-17 through PR-21 used — remove the patch, watch the test go
+    red — is sound for a patch that supplies a value the code needs, and unsound
+    for a patch that *suppresses* a platform-specific value; both forms exist in
+    this tree and only this one is of the second kind. And the branch the stub
+    guards has **no coverage at all on Linux**: nothing in the suite reaches the
+    non-empty-glob path of `abspath_for_logical_path`, on any machine that is not
+    a MacOS Viewmaster host. PR-22 may not act on either — its gate is the
+    pass/fail set, and adding a test id is movement beyond the ten the entry-42
+    check required.
+    **Owner: unassigned (a future test PR, not Phase 5).**
+
+### Added by the PR-22 adversarial review (round 1)
+
+62. **`filename_keylen` is the only slot-filling lazy property that never writes
+    its filled object back to the cache.** `src/pdsfile/_properties.py` — 40 of
+    the mixin's 64 properties fill an `_X_filled` slot, and 39 of those then call
+    `self._recache()` so the shared cache keeps the filled object.
+    `filename_keylen` assigns `self._filename_keylen_filled` and returns. The
+    consequence is the same one PR-15's bug 1 had for `html_path`: every object
+    re-fetched from the cache recomputes the value, because the fill never
+    reaches the cached copy.
+
+    It is **not** the same defect — `html_path`'s was `self._recache` written
+    without its parentheses, a call that silently did nothing, whereas here there
+    is no call at all, which may well be deliberate for a value this cheap
+    (`FILENAME_KEYLEN.first(self.basename)`, a translator lookup). Deciding that
+    needs the same treatment PR-15's bugs got: a regression test pinning the
+    intended behavior first, then the change. PR-22 may not act on it — the code
+    is byte-identical through the move, its gate is the pass/fail set, and adding
+    a test id is movement beyond the ten the entry-42 check required.
+    **Owner: unassigned (a future bug-fix PR, with a regression test).**
+
+63. **The back-import guard covers the nine mixin modules and not `_path_utils.py`.**
+    `tests/api/test_mixin_import_isolation.py` discovers its subjects from
+    `PdsFile.__bases__`, which is what makes it pick up a future mixin for free —
+    and which also means the one private module that is not a mixin is never
+    probed. `pdsfile.py` imports `_path_utils` at module level exactly as it
+    imports the mixins, so a module-level `from pdsfile.pdsfile import <name>`
+    there is the same cycle and is unchecked. (Measured: `_path_utils.py` is clean
+    today — the same probe run by hand reports `pdsfile.pdsfile` absent.)
+
+    Entry 42's wording is "a mixin module must not import `pdsfile.pdsfile` at
+    import time", so covering `_path_utils` is a **widening** of what was asked
+    for rather than a gap in what was delivered, and PR-22 did not take it up for
+    the same reason it did not take up entries 53 and 54. The robust form is to
+    discover every `pdsfile._*.py` module that `pdsfile.py` imports, rather than
+    every mixin base. **Owner: whichever PR next edits the mixin harness (with
+    entry 53).**
+
+64. **Six lines of commented-out code remain under `src/pdsfile/`, all in
+    `pdscache.py`.** `src/pdsfile/pdscache.py:699` and `:1009–1013`, both in
+    `MemcachedCache`, are the `self.mc.get_multi(...)` calls that the live
+    one-key-at-a-time loops replaced, each under the comment
+    `# Memcached->get_multi hangs on long lists; individual requests work fine`.
+    PR-22's dead-code scope is `pdsfile.py` plus the ten modules Phase 5 created,
+    and `pdscache.py` is neither, so they are out of scope there.
+
+    They are also the one case where "commented-out code" and "a comment that
+    documents behavior" are hard to separate: the commented-out call is the
+    evidence for the workaround the comment describes, and it sits inside the
+    `MemcachedCache`/pylibmc support that ground rule 9 protects and that no test
+    in this repo can exercise. Removing them would need an owner decision rather
+    than an executor's. **Owner: owner decision, then PR-23 (which is the next PR
+    to touch `pdscache.py`).**
+
+### Added by the PR-22 adversarial review (round 2)
+
+65. **The "modules < 1000 lines" waiver names `pdsfile.py` and the rule modules,
+    and Phase 5 has now produced two other files over the line.** §6.6's
+    progressive-compliance schedule reads: `python.mdc` "modules < 1000 lines" —
+    **permanently waived** for `pdsfile.py` and rule modules. At the end of
+    Phase 5, `src/pdsfile/_properties.py` is **1,686** lines and
+    `src/pdsfile/pdscache.py` is **1,044**; `pdsfile.py` itself is 1,939 and stays
+    inside the waiver by name.
+
+    Nothing is broken: no gate enforces the rule (`ruff` has no such check in the
+    project's select set), and `_properties.py`'s size is the direct consequence
+    of settled decision 8.3, which puts the whole lazy-property block in one
+    mixin. So this is a wording question about the schedule rather than a defect,
+    and PR-22 may not answer it — the schedule is part of the plan, and amending
+    the plan needs an addendum the owner acknowledges.
+
+    It becomes actionable at **PR-23**, which is the PR that meets both files
+    ("ruff-clean and format core modules") and whose churn checkpoint is already a
+    mandatory owner decision. Either the waiver is extended to name every core
+    module Phase 5 produced, or the owner wants `_properties.py` split further,
+    which would be phase "b" work rather than PR-23's.
+    **Owner: owner decision, before PR-23's churn checkpoint.**
