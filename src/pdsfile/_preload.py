@@ -198,7 +198,7 @@ class _PreloadMixin:
                         key = (pdsf1.logical_path + '/' + bundlename).lower()
                         # The value is not needed; the lookup is a presence
                         # probe whose KeyError triggers the reload below.
-                        cls.CACHE[key]
+                        _ = cls.CACHE[key]
 
         except KeyError as e:
             cls.LOGGER.warn(f'Permanent value {e} missing from Memcache; '

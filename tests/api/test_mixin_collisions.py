@@ -73,7 +73,11 @@ def test_the_class_statement_stays_in_pdsfile_pdsfile():
     # is gone; in Python 3 it is implicit, and the MRO is the same with or without
     # it (plans/2026-07-27-addendum-phase5-mixin-base-order.md).
     assert object not in PdsFile.__bases__
-    assert PdsFile.__mro__[-1] is object
+    assert all(base.__module__.startswith('pdsfile._')
+               for base in PdsFile.__bases__), (
+        f'PdsFile bases are '
+        f'{[(b.__module__, b.__name__) for b in PdsFile.__bases__]}; the base '
+        f'list carries Phase-5 mixins and nothing else')
 
 
 ##########################################################################################
