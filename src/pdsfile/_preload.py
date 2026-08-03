@@ -157,9 +157,9 @@ class _PreloadMixin:
     port=.
     """
 
-    ######################################################################################
+    ############################################################################
     # Preload management
-    ######################################################################################
+    ############################################################################
     @classmethod
     def get_permanent_values(cls, holdings_list, port):
         """Load the most obvious set of permanent values from the cache to ensure
@@ -461,9 +461,9 @@ class _PreloadMixin:
         cls.CACHE.pause()       # Paused means no local changes will be flushed to the
                             # external cache until resume() is called.
 
-        ############################################################################
+        ########################################################################
         # Interior function to recursively preload one physical directory
-        ############################################################################
+        ########################################################################
 
         def _preload_dir(pdsdir, cls):
             if not pdsdir.isdir:

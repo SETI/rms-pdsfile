@@ -515,9 +515,9 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
 
         return this
 
-    ######################################################################################
+    ############################################################################
     # Set parameters for both Pds3File and Pds4File
-    ######################################################################################
+    ############################################################################
     @classmethod
     def use_shelves_only(cls, status=True):
         """Set SHELVES_ONLY for both Pds3File and Pds4File
