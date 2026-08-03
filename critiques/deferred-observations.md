@@ -660,3 +660,166 @@ touch.
     make a reasonable addition to `run-all-checks.sh` if the owner wants the rule
     enforced rather than observed. **Owner:** owner decision, then PR-24 (records
     and the archived plan) and PR-36 (the test module, via the critique pass).
+
+## From PR-17 (extract the shelf and local-filesystem subsystems, Phase 5)
+
+One entry, raised by the PR-17 adversarial review in round 1. It is not fixable
+inside PR-17: it asks for a change to the parent plan's own text, which is the
+owner's to make.
+
+35. **The plan's Phase-5 preamble illustrates a base order that the mixin
+    convention PR-17 established now rejects.** The preamble writes the technique
+    as `class PdsFile(_ShelfMixin, _OpusMixin, …)`. PR-17 fixed the ordering rule
+    as **alphabetical by mixin class name, with `object` last** — recorded in
+    `plans/2026-07-27-pr-17-subplan.md` §4 and `critiques/phase5-validation.md`'s
+    PR-17 §6, and asserted by
+    `tests/api/test_mixin_collisions.py::test_the_mixin_bases_are_listed_alphabetically`.
+    `_OpusMixin` sorts before `_ShelfMixin`, so the preamble's illustration is in
+    the opposite order, and an executor of PR-18–PR-22 who reads only the plan
+    will write a class statement the test rejects. The illustration is plainly
+    illustrative — it lists two mixins that never arrive in the same PR and ends
+    in an ellipsis — so nothing is wrong today; the risk is a wasted round later.
+
+    **This is an owner decision, and it has exactly two one-line forms.** Either
+    (a) the alphabetical rule stands: reorder the preamble's illustration and add
+    "listed alphabetically" to it, and the test stays as it is; or (b) the rule is
+    not wanted: delete
+    `test_the_mixin_bases_are_listed_alphabetically` from
+    `tests/api/test_mixin_collisions.py` and the class statement keeps whatever
+    order each PR appends. PR-17 chose (a) because a class statement cannot be
+    written without *some* order, the plan settles none, and an unenforced
+    convention is what produces the wasted round; the choice is behaviorally inert
+    either way — the mixins are disjoint and no name is shadowed, both asserted by
+    the same test file. The decision, with both forms spelled out, is written up
+    as a §6.4 addendum:
+    `plans/2026-07-27-addendum-phase5-mixin-base-order.md`, which PR-17 cannot
+    merge without. **Owner:** owner, before PR-17 merges and PR-18 appends the
+    next mixin.
+
+### Added by the PR-17 adversarial review (round 2)
+
+Three entries, all pre-existing conditions of code PR-17 moved byte-for-byte.
+A pure move has no licence to change any of them.
+
+36. **`os_path_exists`'s `lru_cache` survives a `SHELVES_ONLY` toggle.** The
+    decorator on `_local_fs.py`'s `os_path_exists` keys the cache on
+    `(cls, abspath, force_case_sensitive)` only, while `PdsFile.use_shelves_only`
+    mutates `SHELVES_ONLY` on the subclasses. An entry computed in one mode is
+    returned in the other, and nothing clears the cache on the toggle. The
+    suite's two passes each set the mode once at session start, so it does not
+    bite there; a long-running consumer that toggles would see it. Pre-existing
+    and bit-identical across the move — the decorator line is one of the
+    byte-for-byte segments. **Owner:** phase "b" of issue #77, or whichever PR
+    next changes cache behavior.
+
+37. **`_get_shelf` discards the exception it is reporting.** `_shelves.py`'s
+    `_get_shelf` binds `except Exception as e` and raises
+    `IOError('Unable to open pickle file: %s' % shelf_path)` without `from e`, so
+    the underlying `UnpicklingError`/`EOFError` is lost and `e` is unused. This
+    is the F841 and one of the B904s that `_shelves.py`'s ratchet entry now
+    carries, inherited from `pdsfile.py`'s. **Owner:** PR-23, which owns the core
+    modules' ruff cleanup.
+
+38. **The two shelf-tree fallbacks are written asymmetrically.** In
+    `_local_fs.py`, `os_path_exists`'s "maybe it's in the infoshelf tree" block
+    probes with `cls.os_path_exists(...)` — the cached, shelf-aware method —
+    while the parallel block in `os_path_isdir` probes with bare
+    `os.path.exists(...)`. Both paths are reached only under `SHELVES_ONLY`. The
+    difference is at least a missed cache and possibly a behavior difference on a
+    path the shelves know about but the file system does not; deciding which is
+    correct requires a behavior change, which a move PR may not make. Recorded as
+    an observation, not a diagnosis. **Owner:** phase "b" of issue #77.
+
+### Added by the PR-17 adversarial review (round 3)
+
+39. **The `__dict__` and `__weakref__` descriptors have moved off `PdsFile` onto
+    its first mixin base.** Measured: on the parent both are in
+    `vars(PdsFile)`; on this branch both are in `vars(_LocalFsMixin)` and
+    `vars(_ShelfMixin)` and neither is in `vars(PdsFile)`. That is ordinary
+    CPython behavior — the descriptors are created for the first class in a
+    hierarchy whose instances need them — and nothing observable changes:
+    `dir(PdsFile)`, the API manifest, instance `__dict__`, weak references and
+    pickling were each checked and are identical. The consequence worth recording
+    is that as Phase 5 adds mixins, the descriptors keep migrating to whichever
+    base sorts first, so any introspection of the form `'__dict__' in
+    vars(PdsFile)` is unstable across the phase's PRs. Nothing in `src/`,
+    `tests/`, `scripts/` or either consumer does that today.
+    `tests/api/test_mixin_collisions.py` excludes both names from what counts as
+    "defined by a mixin", which is why its collision check does not fire on them.
+    **Owner:** phase "b" of issue #77.
+
+40. **`test_no_mixin_module_imports_pdsfile_at_module_level` reads literal import
+    statements only.** It parses `ast.Import` / `ast.ImportFrom`, so all six
+    spellings of a module-level back-import are covered (two of which raise on
+    their own anyway), but a dynamic
+    `importlib.import_module('pdsfile.pdsfile')` at module level would pass. No
+    mixin module has a dynamic import today and none is expected to; tightening
+    the check is worth doing only if one grows one. **Owner:** whichever Phase-5
+    PR first adds a dynamic import to a mixin module, if any does.
+
+41. **`shelf_lookup`'s sidecar shortcut is dark in the reference holdings root.**
+    An info shelf is a `<bundlename>_info.pickle` plus a readable
+    `<bundlename>_info.py` sidecar, and `shelf_lookup` reads the sidecar's second
+    line for a bundle rather than unpickling the shelf. The limited testing copy
+    the goldens are tuned to carries the `.pickle` half only, so that branch is
+    never executed by either local pass and only the complete-set nightly reaches
+    it. PR-17 compensates for the parse itself with
+    `tests/core/test_shelf_sidecar_record.py` (holdings-free) plus a direct run
+    against the complete set, but the branch in `shelf_lookup` that *chooses* the
+    shortcut remains uncovered locally. Fixing it means either a test that builds
+    a whole shelf pair under `tmp_path` or a change to which root CI uses.
+    **Owner:** PR-37 (Phase 8), where CI root selection and coverage targets are
+    settled.
+
+### Added by the PR-17 adversarial review (round 5) — and by its removal
+
+42. **A mixin module must not import `pdsfile.pdsfile` at import time, and nothing
+    checks it.** The Phase-5 preamble pins this ("a mixin module must **not** do a
+    module-level `from pdsfile.pdsfile import PdsFile` … any extracted method that
+    needs a *class object* uses a **function-local deferred import**"), and PR-17
+    is where the rule first has modules to apply to. PR-17 shipped **no** check for
+    it: one was written and then removed. That history is the entry's substance,
+    so it is recorded plainly rather than summarised away.
+
+    The check was a **voluntary addition** — the plan asks
+    `tests/api/test_mixin_collisions.py` for a set-intersection collision check,
+    and nothing more. It entered as a *Deferred* item in the PR-17 review's round
+    1, which this executor chose to take up rather than defer. It then produced a
+    **Major in round 4** (it missed every absolute `from pdsfile.pdsfile import X`,
+    a regression introduced while closing a relative-import hole — a silent
+    coverage *trade*) and, after that was fixed, another **Major in round 5** (it
+    missed an import in a `class` body, plus the `else` branch of
+    `if TYPE_CHECKING:` and `match`/`case`). Round 5 measured 56 of 252
+    spelling × nesting cells missing. Rounds 4 and 5 were the only rounds of five
+    to return a Major, and both were this check. **Removing it is what makes
+    §6.6's four-round cap actionable**: the cap exists to surface a mis-scope, and
+    the mis-scope was a guard the plan never asked for consuming two rounds.
+
+    **Design note for whoever takes this up — do not patch the AST walk a third
+    time.** Both Majors have the same root cause: the AST approach is a *syntactic
+    approximation of a runtime fact*, so its case matrix only ever grows. It has
+    so far had to learn about relative vs absolute spellings, aliased forms,
+    `from . import pdsfile` vs `from .pdsfile import X`, imports nested in
+    module-level `try`/`if`/`with`, class bodies (which **do** execute at import
+    time), the `else` branch of `if TYPE_CHECKING:`, and `match`/`case` — with
+    `__import__`, `importlib.import_module` and star-imports still ahead of it.
+    **The robust implementation is behavioral, not syntactic:** import each mixin
+    module in a **fresh interpreter, before `pdsfile.pdsfile` is imported**, and
+    assert `pdsfile.pdsfile` did not land in `sys.modules`. That cannot be fooled
+    by nesting or by spelling, it tests the property the preamble actually cares
+    about rather than a proxy for it, and it is shorter than the AST version.
+
+    Note what still catches the loudest cases in the meantime: the two spellings
+    that import `PdsFile` *itself* (`from pdsfile.pdsfile import PdsFile` and
+    `from .pdsfile import PdsFile`) raise `ImportError … circular import` and fail
+    the whole suite at collection, so an executor who writes the obvious wrong
+    thing finds out immediately. Only an import of some *other* already-bound name
+    out of the core module is silent.
+
+    **Owner: PR-22.** It is the last Phase-5 PR, so the behavioral check would run
+    over the **complete** mixin set at the moment that set is finished, which is
+    when it means the most; PR-22 already owns "add a module docstring mapping the
+    decomposition", and a coherence check on that decomposition belongs with the PR
+    that declares it complete; and adding a shared check mid-phase is precisely
+    what went wrong here — PR-18–PR-21 would inherit and trust an implementation
+    they never reviewed.
