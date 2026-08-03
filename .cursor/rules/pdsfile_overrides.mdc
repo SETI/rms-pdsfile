@@ -20,15 +20,25 @@ conflicts with a rule below, follow the rule below. See
    `tests/api/api_manifest.json` and enforced by `tests/api/test_api_freeze.py`.
    Never edit the manifest, the allowlist, `scripts/dump_public_api.py`, or the
    freeze test to make a diff vanish.
-3. **Module-length limits are waived** for `pdsfile.py` and the per-dataset rule
-   files. This overrides `python.mdc`'s "modules < 1000 lines".
-4. **Rule modules and specific files carry permanent `ruff` exemptions.** Rule
-   modules are excluded from `ruff format` (they contain vertically aligned
-   `TranslatorByRegex` tables) **and** carry permanent `ruff check`
-   per-file-ignores. Core files and the subpackage `__init__`s carry a smaller
-   frozen set. The freeze-/table-/typing-locked sets (derived from an actual
-   `ruff check`, re-derived when the one-time reformat lands, not hardcoded on
-   faith) are, as of 2026-07-17:
+3. **Module-length limits are waived** for an explicit list of files, which
+   overrides `python.mdc`'s "modules < 1000 lines". The list is enumerated rather
+   than described as a class, so that adding a file to it is a visible decision:
+   - `src/pdsfile/pdsfile.py`
+   - `src/pdsfile/_properties.py` — the whole lazy-property block lives in one
+     mixin by owner decision (plan §8, settled decision 3)
+   - `src/pdsfile/pdscache.py` — over the line before this effort began; no phase
+     has splitting it as a deliverable
+   - the per-dataset rule files, `src/pdsfile/pds{3,4}file/rules/*.py`
+
+   Modules not on this list are held to the 1000-line limit. The maintenance
+   tools under `src/pdsfile/holdings_maintenance/` are **not** waived; Phase 6
+   consolidates them, so their sizes are expected to change.
+4. **Rule modules and specific files carry permanent `ruff check` exemptions.**
+   Rule modules carry permanent per-file-ignores; core files and the subpackage
+   `__init__`s carry a smaller frozen set. (`ruff format` does not run at all —
+   see (11) — so the rule modules' former format-exclusion is moot.) The
+   freeze-/table-/typing-locked sets (derived from an actual `ruff check`, not
+   hardcoded on faith) are, as of 2026-07-17:
    - `pds3file/rules/*.py`, `pds4file/rules/*.py` → `E501,W191,N801,N999,N802,N805,RUF012`
    - `pds3file/__init__.py`, `pds4file/__init__.py` → `F401,A002,RUF012`
    - core (`pdsfile.py`, `pdscache.py`, `pdsviewable.py`) → `B006,A002,RUF012`
@@ -76,3 +86,15 @@ conflicts with a rule below, follow the rule below. See
    `print()`-driven `shelf_consistency_check`) is frozen behavior.
 10. **The Python floor is 3.10** (matching the template's `requires-python`),
     overriding `python.mdc`'s "minimum 3.11".
+11. **`ruff format` is not enforced anywhere in this repository** (owner
+    decision, 2026-08-03;
+    `plans/2026-08-03-addendum-pr23-24-owner-decisions.md`). The one-time
+    reformat the plan made conditional on an owner churn checkpoint was measured
+    — 14 of 15 core files, ~2,310 changed lines — and dropped. The change is a
+    house-style conflict rather than a cleanup: this codebase aligns continuation
+    lines under the opening parenthesis, and `ruff format` rewrites them as one
+    element per line with a trailing comma, which would churn the multi-line
+    signatures inside the nine modules Phase 5 established as byte-for-byte
+    unchanged. Consequences: `ENABLE_RUFF_FORMAT` stays `false`, no CI job runs
+    `ruff format --check`, and `# fmt: off` guards are unnecessary and should not
+    be added. `[tool.ruff.format]`'s settings are inert but harmless.
