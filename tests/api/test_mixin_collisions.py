@@ -69,7 +69,11 @@ def test_the_class_statement_stays_in_pdsfile_pdsfile():
     # Pickled PdsFile instances -- the memcached cache holds live ones -- record
     # this module path, so the class statement may not move into a mixin module.
     assert PdsFile.__module__ == 'pdsfile.pdsfile'
-    assert PdsFile.__bases__[-1] is object
+    # The base list carries mixins only. A trailing `object` predated Phase 5 and
+    # is gone; in Python 3 it is implicit, and the MRO is the same with or without
+    # it (plans/2026-07-27-addendum-phase5-mixin-base-order.md).
+    assert object not in PdsFile.__bases__
+    assert PdsFile.__mro__[-1] is object
 
 
 ##########################################################################################
