@@ -2,16 +2,19 @@
 # pdsviewable.py
 ################################################################################
 
+# Nothing below references pdslogger, but pdsfile.pdsviewable.pdslogger is a
+# frozen member of this module's public surface (tests/api/api_manifest.json),
+# so it stays bound. The redundant `as` alias is the explicit re-export form.
 import os
-from PIL import Image
 
-import pdslogger
+import pdslogger as pdslogger
+from PIL import Image
 
 ################################################################################
 # Class definitions
 ################################################################################
 
-class PdsViewable(object):
+class PdsViewable:
     """Contains the minimum information needed to show an image in HTML."""
 
     def __init__(self, abspath, url, width, height, bytecount, alt='',
@@ -105,7 +108,7 @@ class PdsViewable(object):
 ################################################################################
 ################################################################################
 
-class PdsViewSet(object):
+class PdsViewSet:
     """Viewables selectable by size or name."""
 
     def __init__(self, viewables=[], priority=0, include_named_in_sizes=False):
@@ -134,7 +137,7 @@ class PdsViewSet(object):
         if self.widths:
             selected = self.by_width[self.widths[-1]]
         else:
-            selected = list(self.viewables)[0]
+            selected = next(iter(self.viewables))
 
         count = len(self.viewables)
         if count == 1:
@@ -160,8 +163,8 @@ class PdsViewSet(object):
 
         # Allow a recursive call
         if isinstance(viewable, PdsViewSet):
-            for viewable in viewable.viewables:
-                self.append(viewable)
+            for sub_viewable in viewable.viewables:
+                self.append(sub_viewable)
                 return
 
         self.viewables.add(viewable)
@@ -260,7 +263,7 @@ class PdsViewSet(object):
         """The PdsViewable for the specified width."""
 
         if not self.viewables:
-            raise IOError('No viewables have been defined')
+            raise OSError('No viewables have been defined')
 
         if self.widths:
             pdsview = self.by_width[self.widths[-1]]
@@ -271,7 +274,7 @@ class PdsViewSet(object):
         elif 'full' in self.by_name:
             pdsview = self.by_name['full']
         else:
-            pdsview = list(self.viewables)[0]
+            pdsview = next(iter(self.viewables))
 
         result = pdsview.copy()
         result.height = max(1, int(pdsview.height_over_width * size + 0.5))
@@ -282,7 +285,7 @@ class PdsViewSet(object):
         """The PdsViewable for the specified height."""
 
         if not self.viewables:
-            raise IOError('No viewables have been defined')
+            raise OSError('No viewables have been defined')
 
         if self.heights:
             pdsview = self.by_height[self.heights[-1]]
@@ -293,7 +296,7 @@ class PdsViewSet(object):
         elif 'full' in self.by_name:
             pdsview = self.by_name['full']
         else:
-            pdsview = list(self.viewables)[0]
+            pdsview = next(iter(self.viewables))
 
         result = pdsview.copy()
         result.width = max(1, int(pdsview.width_over_height * size + 0.5))
@@ -331,7 +334,8 @@ class PdsViewSet(object):
             try:
                 viewable = PdsViewable.from_pdsfile(pdsf, name=name)
             except ValueError:
-                if validate: raise
+                if validate:
+                    raise
             else:
                 if name == 'full':
                     full_viewable = viewable
@@ -419,7 +423,7 @@ REQUIRED_ICONS = {      # basename: (icon name, priority)
     'document_pdsinfo'   : ('PDSINFO'  , 46),
 }
 
-REQUIRED_SIZES = set([50, 100, 200])
+REQUIRED_SIZES = {50, 100, 200}
 
 # Create a dictionary of PdsViewSets keyed by:
 #   [icon_type]
@@ -455,7 +459,7 @@ def load_icons(path, url, color='blue', logger=None):
 
     # Read all image files in this directory tree; organize by basename and size
     viewables = {}
-    for root, dirs, basenames in os.walk(icon_path_):
+    for root, _dirs, basenames in os.walk(icon_path_):
 
         # Guess the nominal size from the directory path, if possible
         parts = root.rpartition('/png-')
@@ -565,7 +569,7 @@ def iconset_for(pdsfiles, is_open=False):
     """Select the icon set for a list of PdsFiles. Use the icon_type highest in
     priority."""
 
-    if type(pdsfiles) != list:
+    if type(pdsfiles) is not list:
         pdsfiles = [pdsfiles]
 
     icon_type = 'UNKNOWN'
