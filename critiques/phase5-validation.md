@@ -3859,3 +3859,1033 @@ would make it disagree with what it exists to record.
 **Nothing was rebutted in any round.** All 19 Minor findings across rounds 1–3
 were accepted and fixed, which is worth stating: there was no scope-creep finding
 to push back on and no disagreement to escalate.
+
+## PR-21 — `refactor: extract preload machinery → _preload.py`
+
+**Branch:** `pr-21-preload`, based on `pr-20-associations-sorting` @ `2df25ab`
+("docs: note that round 4's fix leaves the full-data record fresh"), opened
+against that branch, not `rewrite`
+(`plans/2026-07-27-addendum-phase5-stack-extension.md`).
+**Baseline:** **PR-20's recorded post-move set** — its §3 above, `--mode ns` 848
+passed / 34 skipped (882 ids) and `--mode s` 555 passed / 3 skipped (558 ids),
+no-holdings 82 passed / 800 skipped — **re-measured locally on the parent tip**
+with this PR's own command lines rather than copied from the table. The
+re-measurement reproduced it exactly.
+**Date:** 2026-07-27
+**Sub-plan:** [`plans/2026-07-27-pr-21-subplan.md`](../plans/2026-07-27-pr-21-subplan.md)
+
+This PR has two coupled deliverables, and only the first is the mixin extraction
+the four PRs before it did. The second turns an existing **public** module,
+`preload_and_cache.py`, into a re-export shim. Its set diff is **empty in both
+modes**; it touches no test file and adds no test id.
+
+### 1. Environment
+
+| Item | Value |
+|---|---|
+| Interpreter | CPython 3.12.3, repo venv, `pip install -e ".[dev]"` |
+| Holdings | `PDS3_HOLDINGS_DIR` / `PDS4_HOLDINGS_DIR` + `PDSFILE_TEST_HOLDINGS=full`, pointed at the limited testing copy the goldens are tuned to |
+| Baseline tree | a `git worktree` detached at the parent tip `2df25ab`, same interpreter, same holdings; `pytest` reports that directory as `rootdir` |
+| Command lines | exactly those in `scripts/automated_tests/pdsfile_main_test.sh` (serial, under `coverage`), plus `-rA --junitxml`; the holdings variables come from the same `source ~/pdsfile_runner_secrets` that script uses, so no root is written anywhere |
+
+**Which source each run actually imported, proved rather than assumed.** The
+interpreter is the main tree's venv, whose editable install appends
+`<main tree>/src` to `sys.path`, and there are now **seven** stacked branches
+sharing it, so a worktree run could silently measure the wrong tree and make the
+whole comparison vacuous. Each run wrote its own `COVERAGE_FILE`, and
+`coverage.CoverageData.measured_files()` was read afterwards for its **absolute**
+paths:
+
+| Run | top-level `pdsfile` modules measured | count |
+|---|---|---|
+| baseline | `<worktree>/src/pdsfile/` — `__init__`, `_associations`, `_derived_paths`, `_index_rows`, `_local_fs`, `_opus`, `_path_utils`, `_shelves`, `_sorting`, `pdscache`, `pdsfile`, `pdsviewable`, `preload_and_cache` | **13** |
+| this branch | `<main tree>/src/pdsfile/` — the same thirteen, plus **`_preload`** | **14** |
+
+Those are the modules directly under `src/pdsfile/`; both runs additionally
+measure the same `holdings_maintenance/`, `pds3file/`, `pds4file/` and `tools/`
+subpackages, each under its own tree's prefix — **70** measured files on the
+baseline side and **71** on this branch, the difference being exactly the one new
+module.
+
+Counted mechanically: **0** baseline paths fall outside the worktree prefix, **0**
+head paths fall outside the main tree's, and the text `_preload` appears in **0**
+baseline paths and **1** head path. Had the worktree run leaked into the main
+tree's editable install, `_preload.py` would have been measured there too.
+
+### 2. Active §2 gates
+
+| Gate | Result |
+|---|---|
+| API-freeze manifest test | **passed** — and the dumped surface is byte-identical to the parent's, 733,876 bytes each, same MD5 `442428da…`; §4 |
+| Full-data suite, both modes | **passed** — **empty set diff in both modes**; §3 |
+| `ruff check src/pdsfile tests scripts` | **passed**; the ratchet **shrank** by one code and gained none — §8 |
+| Clean-install import check | **passed** (throwaway venv, `pip install .`, full module surface imports, `pdsfile.preload_and_cache` among them) |
+| Hosted lint/no-holdings job (`scripts/run-all-checks.sh`, no holdings env vars) | **passed**, **82 passed / 800 skipped** — the parent's figure, unchanged, and re-measured on the parent tip in the same session to confirm it |
+| Adversarial review loop | `critiques/pr-21/round-<k>.md` |
+
+### 3. Full-data suite — an empty diff in both modes
+
+Both passes were run on the parent tip and on this branch's head with the same
+interpreter and the same holdings. Every `testcase` element of each `--junitxml`
+was reduced to one `outcome<TAB>classname::name` line, sorted, and the two files
+were diffed with `diff -u`.
+
+| Run | parent `2df25ab` | `pr-21-preload` | set diff |
+|---|---|---|---|
+| `--mode ns` | 848 passed / 34 skipped (882 ids) | 848 passed / 34 skipped (882 ids) | **empty** |
+| `--mode s` | 555 passed / 3 skipped (558 ids) | 555 passed / 3 skipped (558 ids) | **empty** |
+
+`diff -u` produced **zero output lines** for both modes. The parent numbers
+reproduce PR-20's recorded set, which is what makes this a comparison against
+PR-20's baseline rather than against a fresh unrelated measurement.
+
+Both modes matter and both were run: `--mode s` is the only thing that exercises
+the `SHELVES_ONLY` branch, and `preload` reaches it through `cls.os_path_exists`
+and `cls.os_path_isdir` on every category directory of every holdings root.
+
+**Freshness (§6.6 step 5).** The last change under `src/pdsfile/` is commit
+`dd75796` ("docs: correct the mixin docstring's out-of-scope list and memcached
+condition"), round 3's two-paragraph fix to `_PreloadMixin`'s docstring, at
+**23:34:23**. The head runs recorded above postdate it: their `--junitxml`
+timestamps are **23:37:21 and 23:39:10**. They are the regeneration §6.6 step 5
+requires, and the only one this loop has needed — rounds 1 and 2 changed nothing
+under `src/pdsfile/`, so their records carried forward.
+
+The **superseded** head pair is recorded rather than dropped, with the commit its
+tree was actually at:
+
+| Head pair | `--junitxml` written | Tree at | Reduced sets |
+|---|---|---|---|
+| 1 | 22:08:52 / 22:10:41 | `a8f4cb3` | identical to pair 2 |
+| **2 (current)** | **23:37:21 / 23:39:10** | **`dd75796`** | **the figures above** |
+
+`diff` between the two pairs is empty in both modes, which is what a
+docstring-only change should do and is measured rather than assumed. The
+provenance check was re-run on the second pair: **71** measured files, **0** of
+them outside the main tree's prefix, **14** directly under `src/pdsfile/`. So were
+§9's and §12's statement figures: 226 statements / 43 missing / 5 excluded for the
+file, and `preload` still 113 / 83 / 30 — the docstring is not a statement, and
+that is checked rather than assumed.
+
+The baseline runs (21:52:34 and 21:54:25) stand throughout: they were taken in a
+detached `git worktree` at `2df25ab` that nothing has touched since.
+
+### 4. API freeze — empty diff, as a mixin move plus a shim requires
+
+1. `pytest tests/api/` passes — 16 ids, unchanged from the parent: the freeze test
+   plus the 15 that `tests/api/test_mixin_collisions.py` contributes. This PR adds
+   no id there and edits no test file.
+   `tests/api/api_manifest.json`, `tests/api/manifest_allowlist.json`,
+   `scripts/dump_public_api.py` and `tests/api/test_api_freeze.py` are untouched
+   (§6.4) — verified with `git diff --stat 2df25ab..HEAD` over those four paths,
+   which is empty. No allowlist entry was added.
+2. `scripts/dump_public_api.py` was run against a worktree at the parent tip and
+   against this branch's head. The two dumps are **byte-identical** (733,876 bytes
+   each, identical MD5 `442428da…`, `diff` empty, both stderr streams empty).
+
+That is the expected result for the mixin half and the plan says so: the dumper
+expands a class's members with `dir(cls)`, which is MRO-wide, and records names,
+kinds and signatures — never the defining class. It is **not** automatic for the
+shim half: `preload_and_cache` is one of the seven fixed modules in the dumper's
+`_TOP_MODULES`, and its record is built from `vars(module)`, so a name that
+stopped being bound there would show up immediately. §6 measures that directly
+rather than inferring it from the dump.
+
+`pdsfile._preload` is underscore-prefixed, so the dumper skips it where the
+submodule import binds it onto the `pdsfile` package; the same applies to
+`_PreloadMixin` inside `pdsfile.pdsfile`. That is the freeze-invisibility the
+Phase-5 preamble requires of new internal names. **This PR introduces no new
+non-underscore name anywhere.**
+
+The `__qualname__` consequence PR-18 §4 records applies here too and for the same
+reason — `PdsFile.preload.__qualname__` is now `_PreloadMixin.preload`. It is a
+phase-wide consequence of the mandated mixin technique, already true of the seven
+mixins on the parent branch, and the dumper records `kind` and `signature`, never
+a qualname.
+
+### 5. What moved
+
+Two source files feed one new module. Located by symbol; the plan's `:662–1079`
+window is against the 6,304-line original, and `pdsfile.py` is **3,837 lines** at
+the parent tip.
+
+| From | Lines at `2df25ab` | Content |
+|---|---|---|
+| `pdsfile.py` | 501–503 | the `# Preload management` in-class banner |
+| `pdsfile.py` | 504–919 | `get_permanent_values`, `load_volume_info`, `cache_category_merged_dirs`, `preload`, `cache_lifetime` — **5** classmethods, 419 lines with the banner |
+| `preload_and_cache.py` | 6–8 | the `# Memcached and other cache support` banner |
+| `preload_and_cache.py` | 10–39 | the `CACHE[...]` key-scheme documentation |
+| `preload_and_cache.py` | 41–45 | `DEFAULT_FILE_CACHE_LIFETIME`, `LONG_FILE_CACHE_LIFETIME`, `SHORT_FILE_CACHE_LIFETIME`, `FOEVER_FILE_CACHE_LIFETIME`, `DICTIONARY_CACHE_LIMIT` — **5** constants |
+| `preload_and_cache.py` | 47–82 | `cache_lifetime_for_class`, `is_preloading`, `pause_caching`, `resume_caching` — **4** functions |
+
+`pdsfile.py`: 3,837 → 3,415 lines. `preload_and_cache.py`: 82 → 16.
+`_preload.py`: **578**. All counted at HEAD, and **re-counted at each round rather
+than carried forward** — the convention PR-19 §5 and PR-20 §5 adopted after PR-20's
+round 2 found a stale one. `_preload.py` was 574 at its extraction commit and grew
+by 4 lines, entirely in the class docstring, which round 3 corrected. No executable
+line in it has changed since the extraction, which the two identical head pairs in
+§3 measure rather than assert.
+
+**`_preload_dir` is a nested local function inside `preload`**, not a class
+method, and it moved inside `preload`'s body — it is not a separate definition in
+`_PreloadMixin`, which holds exactly five.
+
+**The block ends at `cache_lifetime`, not at the end of its banner region.**
+`new_merged_dir`, `new_index_row_pdsfile`, `copy` and `__repr__` sit under the
+same `# Preload management` banner and are on PR-22's explicit stay-list, so the
+extraction boundary here is a *symbol* boundary. This is exactly what a mechanical
+block-move gets wrong, so it is checked rather than asserted: at HEAD all four are
+still members of `PdsFile`'s own body and their source segments are byte-identical
+to the parent's (§5.1). So are `use_shelves_only`, `require_shelves`, `set_logger`,
+`set_easylogger` and `is_logical_path`, the other stay-list names near the seam.
+
+**The module tail stays where it is and still runs.** `pdsfile.py` still ends with
+`PdsFile.SUBCLASSES['default'] = PdsFile` and `PdsFile.cache_category_merged_dirs()`,
+and `pds3file/__init__.py:300` and `pds4file/__init__.py:237` make the same call
+for their own classes. That call is an import-time side effect whose position
+matters. Measured at HEAD rather than assumed: immediately after `import pdsfile`,
+**25 of 25** categories are in `PdsFile.CACHE`, `Pds3File.CACHE` and
+`Pds4File.CACHE` alike, and `inspect.getattr_static(PdsFile, 'cache_category_merged_dirs')`
+now resolves to `_PreloadMixin.cache_category_merged_dirs` in `pdsfile._preload`
+while `'cache_category_merged_dirs' in vars(PdsFile)` is `False`. The side effect
+runs at the same point, through the mixin.
+
+**No class-level assignment moves.** An AST pass over the `PdsFile` body reports
+the window `504–919` as **5 `FunctionDef`s and 0 `Assign` nodes**. `CACHE`,
+`MEMCACHE_PORT`, `DEFAULT_CACHING`, `LOCAL_PRELOADED`, `PRELOAD_TRIES`,
+`DICTIONARY_CACHE_LIMIT`, `CATEGORY_LIST`, `VOLTYPES`, `EXTRA_README_BASENAMES`,
+`FS_IS_CASE_INSENSITIVE` and `LOGGER` all stay on `PdsFile` (and, for `CACHE`,
+`LOCAL_PRELOADED` and `DICTIONARY_CACHE_LIMIT`, on `Pds3File`/`Pds4File` where
+those classes define their own). Every one of them is reached through `cls.` —
+§5.2's contract lists all eleven and the AST walk that produced it found no
+module-level name among them.
+
+**Byte-for-byte equivalence, measured.** Each moved definition's exact source
+segment (decorators included) was extracted from the parent commit and from
+`_preload.py` at HEAD and compared byte by byte:
+
+| Group | Definitions | Total bytes | Result |
+|---|---|---|---|
+| the five classmethods | 5 | 17,982 | all identical |
+| the four module functions | 4 | 1,148 | all identical |
+
+Each contiguous run also compares identical as a single blob, which additionally
+rules out a reordering or a dropped blank line: the classmethods as **17,990
+bytes** and the functions as **1,154 bytes**. The in-class `# Preload management`
+banner compares identical as **206 bytes**, so it moved rather than being retyped.
+Every byte figure is the source segment **without** its trailing newline — the
+definition's first line through its last, joined by `\n` — because that is what
+`ast`'s line span gives.
+
+Nothing moved is still defined in `pdsfile.py` (`0` of the five names remain in
+`vars(PdsFile)`), and `_PreloadMixin` carries **no** definition that was not on
+the move list.
+
+#### 5.1 The stay-list, byte-checked
+
+| Definition | bytes | result |
+|---|---|---|
+| `new_merged_dir` | 3,087 | identical |
+| `new_index_row_pdsfile` | 3,016 | identical |
+| `copy` | 188 | identical |
+| `__repr__` | 328 | identical |
+| `is_logical_path` | 281 | identical |
+| `use_shelves_only` | 412 | identical |
+| `require_shelves` | 423 | identical |
+| `set_logger` | 462 | identical |
+| `set_easylogger` | 332 | identical |
+
+#### 5.2 The sweep was computed, not read
+
+CPython's `symtable` yields the module-global names each moved definition's body
+references — a name bound in an enclosing *function* scope is FREE, not GLOBAL, so
+`is_global()` is exactly the module-global question — and a second AST pass covers
+each definition's decorator expressions and argument defaults, which are evaluated
+in module scope and which `symtable` does not attribute to the method.
+
+| Definition | module-globals its body references (builtins removed) |
+|---|---|
+| `get_permanent_values` | `pause_caching`, `resume_caching` |
+| `load_volume_info` | `_clean_join`, `os` |
+| `cache_category_merged_dirs` | **none** |
+| `preload` | `HAS_PYLIBMC`, `_clean_abspath`, `_clean_join`, `os`, `pdscache`, `pdsviewable`, `pylibmc`, `time` |
+| `cache_lifetime` | `cache_lifetime_for_class` |
+| `cache_lifetime_for_class` | the four lifetime constants |
+| `is_preloading`, `pause_caching`, `resume_caching` | **none** |
+
+Every one of the five classmethods carries the single decorator `classmethod` and
+no non-literal argument default, so pass 2 reports **names seen only in a
+decorator or a default: none**. The pass is run whether or not it is expected to
+fire, and its "none" is recorded as a measurement — it is what caught PR-16's
+`_GLOB_CACHE_SIZE` and PR-17's `PATH_EXISTS_CACHE_SIZE`.
+
+Re-run against the **delivered** `_preload.py`, the same sweep reports
+**referenced but not bound here: none**, and **bound but not referenced by any
+body: `DICTIONARY_CACHE_LIMIT` and `is_preloading`** — the two names the module
+carries purely as public surface, which is what ground rule 9 requires of them.
+
+**No class object is referenced, so `_preload.py` needs no function-local deferred
+import.** Parsing the module for every `Name` node spelling `PdsFile`, `Pds3File`
+or `Pds4File` finds **zero**. Its module-level imports are `import os`, `import
+time`, `from pdsfile import pdscache, pdsviewable` and `from ._path_utils import
+_clean_abspath, _clean_join`, plus the nested `import pylibmc` inside the
+try/except; **no import statement in the file mentions `pdsfile.pdsfile`** in any
+spelling. `_path_utils` imports only `fnmatch`, `functools`, `glob`, `math` and
+`os`, so that edge cannot close a cycle either.
+
+**One string literal does resolve a class by name, and it is meant to.**
+`preload` reads `if cls.__name__ != 'Pds4File':` before looking for `_volinfo`.
+Parsing for string constants containing a class name finds five: this one, three
+log-message templates ('Connecting to PdsFile Memcache…', two 'Failed to connect
+PdsFile Memcache…') and one log line ('PdsFile preloading completed'), plus the
+class docstring's opening sentence. Only the first is executable class resolution,
+and resolving by `__name__` rather than by importing the class is exactly what the
+Phase-5 preamble prescribes — the same shape as `_index_rows.py`'s
+`__bases__[0].__name__` sniff.
+
+#### 5.3 Six names are stranded in `pdsfile.py`; five stay bound and the sixth is §5.4
+
+Counted over the AST at the parent tip: total `Name` loads of each module-global,
+how many fall inside the five moved bodies, how many are left.
+
+| Name | total | inside moved bodies | left | what was done |
+|---|---|---|---|---|
+| `os` | 15 | 3 | 12 | plain import, unchanged |
+| `_clean_join` | 6 | 3 | 3 | plain import, unchanged |
+| `pdscache` | 6 | 5 | 1 | plain import, unchanged |
+| `pdsviewable` | 7 | 1 | 6 | plain import, unchanged |
+| `cache_lifetime_for_class` | 2 | 1 | 1 | plain import, retargeted to `._preload` |
+| **`time`** | 1 | 1 | **0** | frozen member → `import time as time` |
+| **`HAS_PYLIBMC`** | 1 | 1 | **0** | frozen member → `from ._preload import HAS_PYLIBMC as HAS_PYLIBMC` |
+| **`pause_caching`** | 1 | 1 | **0** | frozen member → redundant-alias re-export |
+| **`resume_caching`** | 1 | 1 | **0** | frozen member → redundant-alias re-export |
+| **`_clean_abspath`** | 1 | 1 | **0** | private but reachable as `pdsfile.pdsfile._clean_abspath` → redundant-alias re-export |
+| **`pylibmc`** | 1 | 1 | **0** | see §5.4 |
+
+`time`, `HAS_PYLIBMC`, `pause_caching` and `resume_caching` are frozen members of
+`pdsfile.pdsfile` in `tests/api/api_manifest.json`; deleting any of them is a
+manifest break. `_clean_abspath` is PR-20's `_needs_glob` case: private, so not
+frozen, but reachable today and covered by the no-name-lost invariant every
+Phase-5 PR has measured. An inline `noqa` and a ratchet grow are both forbidden,
+so all five use the PEP-484 redundant-alias form. `import time as time` joins the
+stdlib re-export block, whose comment now says "these eight" rather than "these
+seven"; the block below it, which called that block "the seven above", says
+"the eight above".
+
+#### 5.4 `pylibmc` — the one name this PR does not carry back, and the measurement that settles it
+
+`preload`'s `except pylibmc.Error` and the `HAS_PYLIBMC` flag come from one
+try/except block whose only purpose is `preload`, so it moved with its consumer —
+the rule the Phase-5 preamble states and PR-16 (`FILE_BYTE_UNITS`) and PR-17
+(`PATH_EXISTS_CACHE_SIZE`) already applied. `HAS_PYLIBMC` is re-exported.
+`pylibmc` itself is a *conditionally bound module import*: re-exporting it would
+need a new `if HAS_PYLIBMC:` statement in `pdsfile.py`, which is new logic rather
+than a move.
+
+Measured rather than argued:
+
+- `pylibmc` **is not installed in this environment**, so
+  `pdsfile.pdsfile.pylibmc` does not exist here on either side and §6's name
+  comparison cannot see it either way.
+- With a stub `pylibmc.py` on `PYTHONPATH`, `HAS_PYLIBMC` becomes `True`,
+  `'pylibmc' in vars(pdsfile.pdsfile)` becomes `True`, and
+  `scripts/dump_public_api.py` records `"pylibmc": "module"` under
+  `pdsfile.pdsfile`. Diffing that dump against the committed manifest reports
+  **two extra names, both spelled `pylibmc`: one under `pdsfile.pdsfile` and one
+  under `pdsfile.pdscache`.**
+- **Only the first is this PR's.** `pdscache.py:7` has its own optional
+  `import pylibmc` behind a `try`, `pdsfile.pdscache` is also one of the dumper's
+  seven fixed modules, and Phase 5 does not touch it. Re-running the same stub
+  against **HEAD** confirms it: the diff is down to **one** extra name, under
+  `pdsfile.pdscache`.
+
+So on any machine where the name exists at all, the API-freeze gate is **already
+red today**, and it stays red at HEAD for the `pdscache` half, which no Phase-5 PR
+removes. `pylibmc` is not part of the frozen contract on either side. After this
+PR the `pdsfile.pdsfile` occurrence resolves as `pdsfile._preload.pylibmc` instead.
+Nothing in `src/`, `tests/`, `scripts/`, rms-opus or rms-viewmaster refers to
+`pdsfile.pdsfile.pylibmc`. Recorded as deferred observation 58, not changed here.
+
+### 6. `preload_and_cache.py` is a shim, and its surface is measured on both sides
+
+The public surface was dumped before the change and after it and diffed, rather
+than reasoned about. `vars(pdsfile.preload_and_cache)` holds **17 names, 9 of them
+public**, on both sides:
+
+```
+DEFAULT_FILE_CACHE_LIFETIME  DICTIONARY_CACHE_LIMIT  FOEVER_FILE_CACHE_LIFETIME
+LONG_FILE_CACHE_LIFETIME     SHORT_FILE_CACHE_LIFETIME
+cache_lifetime_for_class     is_preloading   pause_caching   resume_caching
+```
+
+which is exactly the manifest's record for that module. The dump printed each
+name with its kind and, for data, its value; **the before and after files are
+identical, `diff` empty**, including `__file__` (still `preload_and_cache.py`),
+the five integer values, and the four functions' kinds.
+
+**No name is lost anywhere in the package**, measured module by module on the
+parent tip and at HEAD, each run printing the `__file__` it imported:
+
+| module | parent | head | lost | gained |
+|---|---|---|---|---|
+| `pdsfile` | 63 | 64 | **none** | `_preload` |
+| `pdsfile.pdsfile` | 52 | 53 | **none** | `_PreloadMixin` |
+| `pdsfile.preload_and_cache` | 17 | 17 | **none** | none |
+| `pdsfile.pdscache` | 17 | 17 | **none** | none |
+| `pdsfile.pdsviewable` | 19 | 19 | **none** | none |
+| `pdsfile.pds3file` | 41 | 41 | **none** | none |
+| `pdsfile.pds4file` | 22 | 22 | **none** | none |
+
+Both gained names are underscore names, so the manifest does not see them.
+
+**Which import path `pdsfile.py` uses, and why.** `_preload` is canonical, so
+`pdsfile.py` imports `cache_lifetime_for_class` (still used at class level, for
+`CACHE = pdscache.DictionaryCache(lifetime=cache_lifetime_for_class, …)`) and
+re-exports `HAS_PYLIBMC`, `pause_caching` and `resume_caching` from `._preload`,
+not from the shim. Three reasons: the shim is compatibility surface for external
+callers, and pointing internal code at it would make it load-bearing rather than
+compatibility; a direct import keeps the import graph acyclic by construction; and
+it keeps `pdsfile.py`'s header honest about where the code lives.
+`pds3file/__init__.py:12` and `pds4file/__init__.py:12` are **left alone** — their
+`from pdsfile.preload_and_cache import cache_lifetime_for_class` keeps working
+through the shim and keeps the shim exercised at package-import time in-tree,
+which is a stronger check than any external caller would give it.
+
+**The shim needs no ratchet entry, and that shaped its form.** ruff's isort runs
+with `combine-as-imports = false` (the default), so the nine re-exports as one
+parenthesized tuple report `I001`; one `from ._preload import X as X` line per
+name is clean. Measured both ways; `preload_and_cache.py` had no per-file-ignores
+entry before and has none now.
+
+**The import graph, and both import orders executed.** The graph is:
+
+```
+   stdlib:  os   time   (pylibmc, optional)
+                 │
+                 ▼
+        pdsfile/_path_utils.py
+                 │
+                 ▼
+        pdsfile/_preload.py  ◄────  from pdsfile import pdscache, pdsviewable
+             ▲        ▲
+             │        └────────  pdsfile/preload_and_cache.py   (9 re-export lines)
+             │                            ▲            ▲
+        pdsfile/pdsfile.py            pds3file/    pds4file/
+             ▲                        __init__.py  __init__.py
+             └────────────────────────────┴────────────┘
+```
+
+`_preload.py`'s `from pdsfile import pdscache, pdsviewable` imports the package
+from inside the package while the package's own `__init__.py` is mid-execution.
+That is the same form `pdsfile.py` and `pds3file/__init__.py` already use, but
+reasoning is not evidence, so **four fresh interpreters** each imported one module
+of the graph first — `pdsfile.pdsfile`, `pdsfile.preload_and_cache`, `pdsfile`,
+`pdsfile._preload` — and then checked eleven identities. All four orders: no
+exception, all six modules resolved to this tree, and in every order
+`preload_and_cache.pause_caching`, `.resume_caching`, `.is_preloading` and
+`.cache_lifetime_for_class` **are** the `_preload` objects,
+`pdsfile.pdsfile.cache_lifetime_for_class`, `.pause_caching` and `.HAS_PYLIBMC`
+**are** the `_preload` objects, `pds3file`/`pds4file`'s
+`cache_lifetime_for_class` **is** the same object, `PdsFile.preload` resolves to
+`_PreloadMixin.preload` with nothing in `vars(PdsFile)` shadowing it, and the five
+constants compare equal through both modules. **0 failures in each of the four
+orders.**
+
+### 7. Base order, the class shape, and the mixin harness
+
+```python
+class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsMixin,
+              _OpusMixin, _PreloadMixin, _ShelfMixin, _SortingMixin, object):
+```
+
+Alphabetical by mixin class name with `object` last, per
+`plans/2026-07-27-addendum-phase5-mixin-base-order.md` (owner, 2026-07-27) and
+enforced by
+`tests/api/test_mixin_collisions.py::test_the_mixin_bases_are_listed_alphabetically`,
+which was run first, before anything else, and at every commit. The Phase-5
+preamble's illustration on this branch shows a different order; it was corrected
+by PR #110, which merged to `rewrite` **after** this stack branched, so merging
+`rewrite` forward to obtain it would drag #110's diff into this PR. The addendum
+is the authority here.
+
+`_PreloadMixin` sorts between `_OpusMixin` and `_ShelfMixin`, so unlike PR-20 this
+PR does **not** move `PdsFile.__bases__[0]`. That is measured rather than argued
+from the alphabet, because `_index_rows.py:254` sniffs
+`cls.__bases__[0].__name__ == 'Pds4File'` (deferred entry 49) and
+`tests/api/test_mixin_collisions.py:72` pins only `__bases__[-1]`. Dumping
+`__bases__[0].__name__`, the full `__bases__` tuple, the full MRO and the sniff's
+verdict for all **34** classes in the hierarchy, on the parent tip and at HEAD:
+
+| Property | Classes where parent and HEAD differ |
+|---|---|
+| `__bases__[0].__name__` | **none** |
+| the sniff's verdict (`… == 'Pds4File'`) | **none** — `True` for exactly the same six pds4 rule classes on both sides |
+| `__bases__` tuple | **one**: `PdsFile` itself, which gains `_PreloadMixin` |
+| MRO | all 34 — and every one of them **only** by the insertion of `_PreloadMixin`, each gaining exactly one entry, checked by deleting `_PreloadMixin` from the head MRO and comparing to the parent's |
+
+The harness **discovers** its subjects from `PdsFile.__bases__`, so it picked up
+`_PreloadMixin` for free and this PR edits no test file. At HEAD it reports eight
+mixins defining 4, 12, 5, 5, 3, 5, 9 and 23 names respectively.
+
+**The mixin/subclass intersection was re-measured before a line was written,
+because a non-empty result is a hard stop rather than something to resolve in the
+PR.** Using the test's own `_defined_names` helper, which drops the eight
+structural names:
+
+| | the 5 moved names |
+|---|---|
+| `Pds3File` (76 own names) | **empty** |
+| `Pds4File` (50 own names) | **empty** |
+| all 33 classes in the subclass hierarchy, rule modules included | **empty** |
+| each of the 7 pre-existing mixins | **empty** |
+| `PdsFile`'s own body at HEAD | **empty** |
+
+### 8. Ruff ratchet — 17 codes conserve exactly, one shrinks, none is gained
+
+Procedure: for every code in `pdsfile.py`'s entry, the following was run against
+the parent's `pdsfile.py`, this branch's `pdsfile.py` and `_preload.py` —
+
+```
+ruff check --no-cache --isolated --output-format concise --select <code> \
+           --line-length 100 --target-version py310 <file>
+```
+
+`--isolated` drops `pyproject.toml`'s `line-length = 100` and would otherwise
+report an E501 at 88 columns that the project config does not, so the two settings
+are restored explicitly (PR-16 §7 through PR-20 §8 record the same trap), and
+`--output-format concise` is required because ruff 0.15's default output no longer
+starts a line with the file path.
+
+| Code | parent `pdsfile.py` | → `pdsfile.py` | `_preload.py` | sum |
+|---|---|---|---|---|
+| E501 | 5 | 4 | 1 | 5 |
+| E701 | 10 | 8 | 2 | 10 |
+| F841 | 5 | 4 | 1 | 5 |
+| RUF005 | 2 | 1 | 1 | 2 |
+| **UP015** | **1** | **0** | **1** | **1** |
+| UP031 | 9 | 7 | 2 | 9 |
+| **I001** | **2** | **1** | **0** | **1** |
+| B904, C405, E713, E721, N806, RUF012, SIM102, SIM114, SIM118, UP004, UP024 | 3, 3, 1, 1, 2, 16, 1, 2, 1, 1, 9 | unchanged | 0 | = parent |
+
+Seventeen codes conserve exactly; one of those seventeen — **UP015** — conserves
+by leaving `pdsfile.py` entirely, so **`pdsfile.py`'s entry drops it**. Its single
+occurrence was
+`open(table_path, 'r', encoding='utf-8')` inside `load_volume_info`, now
+`_preload.py:265`.
+
+**I001 goes 2 → 1, and that is a genuine shrink rather than a leak.** The parent's
+`pdsfile.py` had two unsorted import blocks, at `:6` and at `:44`; removing the
+`pylibmc` try/except from between them merged the two into one, which ruff reports
+once. `_preload.py` reports **zero** I001, because its own header was written in
+the single-line `from X import a, b` form ruff's isort wants rather than the
+parenthesized form the old header used — a choice about *new* code in a module
+header, not a restyle of a moved body. So the total suppressed-violation count
+goes **74 → 73**, one lower, never higher.
+
+The **converse** check, which is easy to skip: running the project's whole select
+set (`E,F,W,I,UP,B,SIM,C4,A,N,PT,RUF` minus the three project-wide ignores)
+against `_preload.py` with **no** per-file entry reports exactly the codes its
+entry lists and nothing else — `E501` 1, `E701` 2, `F841` 1, `RUF005` 1, `UP015`
+1, `UP031` 2. Against `preload_and_cache.py` it reports **nothing**, on the parent
+tip and at HEAD alike, which is why the shim needs no entry.
+
+Resulting entries:
+
+| File | Entry | Note |
+|---|---|---|
+| `src/pdsfile/pdsfile.py` | 17 codes | **UP015 removed**; it still triggers the other seventeen |
+| `src/pdsfile/_preload.py` | `["E501", "E701", "F841", "RUF005", "UP015", "UP031"]` | exactly the codes its moved lines trigger, every one already in `pdsfile.py`'s entry |
+| `src/pdsfile/preload_and_cache.py` | *(no entry, before or after)* | the shim triggers nothing |
+
+### 9. The tests that pin this code — measured, and the measurement needs reading carefully
+
+A coverage run of `tests/api/`, `tests/pds3file/`, `tests/pds4file/`,
+`tests/rules/`, `tests/core/` and `tests/holdings_maintenance/` with
+`dynamic_context = test_function` attributes **118 distinct test functions** to
+`_preload.py`, from **19 test modules**.
+
+| Definition | Contexts | Test modules |
+|---|---|---|
+| `cache_lifetime_for_class` | 116 | 18 |
+| `get_permanent_values` | 2 | 1 — `tests/core/test_pdsfile_caching.py` |
+| `pause_caching` | 2 | the same |
+| `resume_caching` | 2 | the same |
+| `preload` | **0** | — |
+| `load_volume_info` | **0** | — |
+| `cache_category_merged_dirs` | **0** | — |
+| `cache_lifetime` | **0** | — |
+| `is_preloading` | **0** | — |
+
+**Four of those five zeros do not mean what the same figure meant in PR-20.**
+`dynamic_context = test_function` attributes a line to the test function that was
+running when it executed, and `preload`, `load_volume_info` and
+`cache_category_merged_dirs` run at **session-fixture and module-import time**,
+before any test function starts — so they get zero contexts while being heavily
+exercised. Statement coverage from the same full-data run says so: `preload` runs
+**83 of its 113 statements**, `load_volume_info` **52 of 53**, and
+`cache_category_merged_dirs` **4 of 4**. The negative controls in §10 are the
+independent confirmation: mutating `preload` turns up to 57 tests red.
+
+**The convention behind every statement figure in this section and in §12**, so
+they can be reproduced rather than approached: the statement set is **coverage's
+own**, from `coverage.Coverage(data_file=…).analysis2(path)` against the head
+full-data run's `.coverage`, not an AST statement count — an AST walk counts
+`try:` and a few other headers that CPython emits no line event for, which is how
+this record's first draft reached 109 for `preload` and 20 for
+`get_permanent_values`. A definition's statements are those of coverage's set
+falling inside its AST span, **`def` line included, decorators excluded**; the
+`def` line is executed at import, so a definition whose body never runs still
+shows one hit. `preload`'s 113 include the 14 of its nested `_preload_dir`, all
+14 of them hit. The file as a whole is 226 statements, 43 missing, and 5 excluded
+— the `pragma: no cover` lines of the `pylibmc` try/except.
+
+The two genuine zeros are `cache_lifetime` (**1 of 2** statements — only its `def`
+line) and `is_preloading` (**1 of 2**, likewise). Neither body is executed by
+anything in the suite. `is_preloading` has no caller anywhere in `src/`, `tests/`,
+`scripts/`, rms-opus or rms-viewmaster; `cache_lifetime` is passed as
+`lifetime=cls.cache_lifetime` only by the three `pdscache` constructions **inside**
+`preload`, and every one of those is on a branch the suite does not take (§11), so
+the lifetime function actually in use is the module-level `cache_lifetime_for_class`
+that `pdsfile.py:180`, `pds3file/__init__.py:60` and `pds4file/__init__.py:49`
+hand to their class-level `DictionaryCache`. Both are live API — ground rule 9
+keeps them — and both are recorded as deferred observation 59 rather than fixed:
+this PR's gate is the pass/fail set and a new test id is movement.
+
+### 10. Negative controls — 19 mutations, 13 red, 6 green, every one guard-checked
+
+Every control below is a mutation of the **moved** code (or of the harness, or of
+a patch site), run against `tests/api/ tests/core/ tests/pds3file/ tests/pds4file/
+tests/rules/pds3/ tests/rules/pds4/` in `--mode ns`, which is **737 passed / 34
+skipped** unmutated.
+
+**The harness has a trap in it, and it is avoided by construction.**
+`pyproject.toml` sets `pythonpath = [".", "src"]`, which pytest resolves against
+**rootdir** and inserts at the front of `sys.path` — **ahead of `PYTHONPATH`**. So
+mutating a copy of `src/` and pointing `PYTHONPATH` at it from the repo root
+imports the *unmutated* tree, and every control reports green, which reads exactly
+like "the tests do not reach this code" and is in fact "the harness does not reach
+the mutation". PR-18 fell into this and re-ran all seven of its controls. Each
+mutation here is therefore written into a **full copy of the working tree**,
+pytest is run **from inside that copy**, and an appended block in that copy's
+`tests/conftest.py` asserts that `pdsfile.pdsfile`, `pdsfile._preload` and
+`pdsfile.preload_and_cache` all resolve inside the copy and writes their
+`__file__`s to a marker file the harness then reads. **All 19 controls carried
+that assertion and every one of them passed it.**
+
+(The guard runs at conftest *import* time rather than in a `pytest_configure`
+hook. A second `def pytest_configure` in the same module shadows the repo's own,
+which sets `config._pdsfile_holdings`, and every run dies in an `INTERNALERROR`
+before collecting anything — which the first attempt at this harness did, 19 times
+in a row, with the guard reporting success each time. Worth writing down: a guard
+that passes while the run it guards never happens is the same failure class as a
+vacuous gate.)
+
+**Thirteen mutations turned tests red:**
+
+| Mutation | Result |
+|---|---|
+| `preload` does not recurse into a directory's children | **6 failed**, 2 test functions |
+| `preload` skips `load_volume_info` | **57 failed**, 14 test functions |
+| `preload` never appends to `LOCAL_PRELOADED` | **57 failed**, 17 test functions |
+| `load_volume_info` corrupts every description | **7 failed**, 3 test functions |
+| `get_permanent_values` never calls `resume_caching` (PR-15's bug 2, reintroduced) | **2 failed** — both `TestGetPermanentValues` ids |
+| `get_permanent_values` never re-preloads on a missing key | **1 failed** — `test_caching_is_resumed_after_a_missing_value_triggers_a_reload` |
+| `pause_caching` is a no-op | **2 failed** — both `TestGetPermanentValues` ids |
+| `resume_caching` is a no-op | **2 failed** — both `TestGetPermanentValues` ids |
+| the base order is no longer alphabetical | **1 failed** — `test_the_mixin_bases_are_listed_alphabetically`, and nothing else |
+| `_PreloadMixin` also defines `os_path_isdir` | **2 failed** — `test_no_two_mixins_define_the_same_name` and `test_every_mixin_name_is_reachable_through_pdsfile` |
+| `Pds3File` itself defines `preload` | **88 failed**, 24 test functions — including `test_no_mixin_is_shadowed_by_a_pdsfile_subclass` |
+| the `Pds3File.CACHE` patch removed from `test_pdsfile_caching.py` | **34 failed**, 6 test functions |
+| the `Pds3File.preload` patch removed from `test_pdsfile_caching.py` | **56 failed**, 33 test functions |
+
+The last two are §11's forced-wrong controls; they are listed here because they
+share the harness. The `Pds3File`-shadows-`preload` control is loud for the same
+reason PR-20's `sort_basenames` collision was: the shadowing method breaks the
+session preload before the harness check can report, so the check's own id fails
+alongside 23 others rather than alone.
+
+**Six mutations changed nothing, and they are reported rather than dropped.** A
+control that comes back green is a measurement too:
+
+| Mutation | Result | Why |
+|---|---|---|
+| `cache_lifetime` always returns 0 | 737 passed | its body is never executed (§9); nothing takes the branch that would pass it to a cache |
+| `is_preloading` always returns True | 737 passed | no caller anywhere |
+| `cache_category_merged_dirs` iterates nothing | 737 passed | `preload` caches the same merged directories itself, and the session fixture always preloads, so the import-time seeding is redundant whenever a preload follows |
+| `cache_lifetime_for_class` returns "forever" for everything | 737 passed | it is called 116 times (§9), but the value only sets a `DictionaryCache` eviction deadline and no test asserts one |
+| `DEFAULT_FILE_CACHE_LIFETIME` changed from 12 h to 13 h | 737 passed | same reason, one level down |
+| `preload` leaves `FS_IS_CASE_INSENSITIVE` at its class default instead of computing it | 737 passed | the class default is `True` and `preload` normally computes `False` here; the flag only gates `force_case_sensitive` handling in `_path_utils`/`_local_fs`, which no golden case reaches |
+
+The last of those is the one worth a second look: it is not "nothing calls this"
+but "the suite never distinguishes a case-sensitive filesystem from a
+case-insensitive one". Recorded with the other coverage gaps as deferred
+observation 59.
+
+### 11. The monkeypatch audit — the check the set diff cannot perform
+
+Deferred entry 29 (opened by PR-16's round-1 Major, owned by "PR-17 onward") says
+an extraction sweep must also ask **which namespaces the tests patch**, not only
+which globals the code reads. A test whose patch lands on a module the moved code
+no longer resolves through keeps passing while exercising nothing, and §6.2's
+outcome-set diff compares pass/fail — so it is *structurally blind* to this class
+of defect. **This PR's set diff is empty, and it would have been empty in every
+one of the cases below, including a broken one.**
+
+**Enumeration.** Every `monkeypatch.setattr` / `setitem` / `delattr` / `setenv` /
+`delenv`, `mock.patch`, `patch(`, `patch.object` and bare `setattr(` in `tests/`
+and `scripts/` — 20 sites, all `monkeypatch`; the tree still uses no
+`unittest.mock` at all:
+
+| Target | Sites | Names a symbol **this PR** moves? | Does this PR's moved code reach it? |
+|---|---|---|---|
+| **`Pds3File.preload`** (`test_pdsfile_caching.py:127`) | 1 | **yes — `preload` is one of the five** | **yes** — `get_permanent_values` calls `cls.preload(...)` on its `KeyError` path |
+| **`Pds3File.CACHE`** (`tests/core/conftest.py:28`, `test_pdsfile_caching.py:112,126`) | 3 | no — a class attribute that stays on the class | **yes** — `get_permanent_values`, `pause_caching` and `resume_caching` all read `cls.CACHE` |
+| `Pds3File`/`Pds4File.LOCAL_PRELOADED`, `.LOCAL_HOLDINGS_DIRS` (`test_pdsfile_path_resolution.py:58,59,71,72,85,86`) | 6 | no — class attributes that stay on the classes | not in these tests; `preload` writes `LOCAL_PRELOADED` elsewhere |
+| `Pds3File.shelf_path_and_key_for_abspath` (`test_pdsfile_path_resolution.py:120,129,137,155`) | 4 | no — PR-17's symbol, audited there | no |
+| `abspath_for_logical_path.__globals__['glob']` (`test_pdsfile_path_resolution.py:92`) | 1 | no — PR-16's fix site, on `_path_utils`'s globals | no |
+| `pdsviewable.ICON_SET_BY_TYPE` (`test_pdsviewable_iconset_for.py:47`) | 1 | no — different module | no |
+| `monkeypatch.setenv` / `delenv` (`test_pdsfile_path_resolution.py:54,70,83,84`) | 4 | no — environment, not a namespace | no |
+
+**`Pds3File.preload` is the first patch site in this phase that names a symbol the
+PR is moving**, so it gets the closest look. `monkeypatch.setattr(Pds3File,
+'preload', …)` resolves the *old* value with `getattr` and, because `'preload'` is
+not in `vars(Pds3File)`, records `notset` so undo does `delattr` — which is true
+before this PR (`preload` was inherited from `PdsFile`) and equally true after it
+(inherited from `_PreloadMixin` through `PdsFile`). The patch writes onto
+`Pds3File` either way, and `get_permanent_values` reaches it through `cls.preload`
+where `cls is Pds3File`, so the site reaches exactly what it reached before. Both
+halves are measured, not reasoned: `'preload' in vars(Pds3File)` is `False` at
+HEAD, and forcing the patch away turns the test red (below).
+
+**No patch site names any of the other thirteen moved names**, and a regex over
+`tests/`, `scripts/` and `src/` for *direct assignment* to any of the fourteen —
+the form that is not a `monkeypatch` and is easy to miss — returns **zero** hits
+for all fourteen, and no test assigns to any attribute of `pdsfile.pdsfile` or of
+`pdsfile.preload_and_cache`.
+
+**Every patch mechanism that this PR's code reaches was forced to answer wrongly,
+and each turned its own test red:**
+
+| Forced-wrong control | Went red |
+|---|---|
+| the `Pds3File.preload` patch removed | `TestGetPermanentValues::test_caching_is_resumed_after_a_missing_value_triggers_a_reload` (plus 55 collateral ids — with `preload` unpatched, the stub cache's `KeyError` sends the real `preload` through the session's cache) |
+| the `Pds3File.CACHE` patch removed | `TestGetPermanentValues::test_caching_is_resumed_after_the_values_are_read` (plus 33 collateral) |
+
+The four mechanisms this PR's code does **not** reach — the `glob` stub in
+`abspath_for_logical_path.__globals__`, the `LOCAL_PRELOADED` stub, the
+`shelf_path_and_key_for_abspath` stub and the `pdsviewable.ICON_SET_BY_TYPE`
+stub — were each forced wrong by PR-17 and PR-20 and each went red there; nothing
+in this PR changes what they resolve through, and the enumeration above says why
+for each.
+
+**Entry 29's second half — rebinding re-exported *data*.** The same asymmetry one
+level down, measured on both sides:
+
+| | parent `2df25ab` | this branch |
+|---|---|---|
+| namespace the 5 methods resolve through | `pdsfile.pdsfile` | `pdsfile._preload` |
+| namespace `os`, `time`, `pdscache`, `pdsviewable`, `_clean_join`, `_clean_abspath`, `HAS_PYLIBMC`, `pause_caching`, `resume_caching`, `cache_lifetime_for_class` resolve in, **for the moved code** | `pdsfile.pdsfile` (and, for the last four, `pdsfile.preload_and_cache`) | `pdsfile._preload` |
+| rebinding `pdsfile.pdsfile.time` reaches `preload`'s retry sleep | **yes** | **no** |
+| rebinding `pdsfile.preload_and_cache.pause_caching` reaches `get_permanent_values` | **yes** | **no** |
+| all ten still bound on `pdsfile.pdsfile` / `preload_and_cache` | yes | yes |
+
+Nothing in `src/`, `tests/`, `scripts/`, rms-opus or rms-viewmaster rebinds any of
+those module attributes — greped, zero hits — so nothing is broken today. The
+general observation stands for PR-22 and stays in
+`critiques/deferred-observations.md` as entry 29. The shim makes it slightly
+sharper than before: a caller who rebinds `pdsfile.preload_and_cache.X` now
+rebinds only the shim's own name and not the definition, which is inherent to what
+a re-export shim is.
+
+### 12. What the green set does **not** prove
+
+`preload` is the single most consequential method in the package, and its most
+important branch is dark here. Measured from the head full-data run's statement
+coverage of the delivered `_preload.py` — coverage's own statement set, §9's
+convention — **30 of `preload`'s 113 statements are never executed**, and they are
+not a random 30:
+
+- **the whole memcached path** — `MemcachedCache` construction, the
+  `PRELOAD_TRIES` retry loop, `time.sleep(2.**k)`, `pylibmc.Error`, the
+  give-up-and-fall-back-to-`DictionaryCache` branch, and
+  `cls.DEFAULT_CACHING = 'all'`. It needs `HAS_PYLIBMC` true *and* a non-zero
+  port; `pylibmc` is not installed here and no test passes `port=`;
+- **`clear=True` and `force_reload=True`** — `CACHE.clear(block=True)`,
+  `wait_and_block()`, `unblock()`, and both `LOCAL_PRELOADED = []` resets;
+- **the already-preloaded early return**, including the
+  `if cls.MEMCACHE_PORT: cls.get_permanent_values(...)` call — the recursion PR-15's
+  bug 2 lived in;
+- the `DictionaryCache` re-creation at `:365`, because the class-level `CACHE` is
+  already a `DictionaryCache` when the session fixture preloads;
+- two logging branches (`Pre-load not needed for …`, `Not a directory, ignored: …`).
+
+`get_permanent_values` is the same story: **8 of its 21 statements** never run,
+namely the entire bundleset/bundle descent, because the only tests that reach it
+hand it a stub whose categories have no children. And `cache_lifetime_for_class`
+never returns `DEFAULT_FILE_CACHE_LIFETIME` from its `isinstance(arg, str)` branch
+or `FOEVER_FILE_CACHE_LIFETIME` from its `not isinstance(arg, cls)` branch.
+
+rms-viewmaster passes `port=` in deployment (ground rule 9 names it), so this code
+is live. **That is precisely why the only defensible approach here is a
+byte-for-byte move with no cleanup of any kind**, and why §5's byte comparison,
+not the suite, is the load-bearing check of this PR. §13's Check B is the only
+thing in this record that runs the moved `preload` against a *different* holdings
+tree, and it runs the `DictionaryCache` path there too.
+
+### 13. Consumer smoke — outcome unchanged
+
+The gate is **same outcome as baseline**, not "passes"
+(`critiques/baselines/consumer-smoke-baseline.md`).
+
+| Check | Baseline | This branch |
+|---|---|---|
+| A — rms-opus import paths | 4/4 resolve, 0 failures | **4/4 resolve, 0 failures** |
+| B — rms-viewmaster startup | 5 ok, 3 pre-existing failures | **5 ok, 3 failures — the same three** |
+
+The three Check-B failures are still `pdsfile.cache_lifetime` (raises),
+`pdsfile.DEFAULT_CACHING` (absent) and the same `cache_lifetime` read inside
+`get_page_cache()`. None became a pass. `pdsfile.pdsfile.repair_case` still
+resolves.
+
+**Check B is load-bearing for this PR in a way it was not for the others.**
+`create_app()` → `init_once()` calls `Pds3File.preload(...)` and `Pds4File.preload(...)`
+on rms-viewmaster's own holdings configuration, so the stage that reports `ok`
+is the moved `preload` running end to end outside this repo's test harness: the
+run's log shows `Pre-loading:` lines for the category directories, the
+`Missing category dir:` warnings for the ones absent there, and
+`PdsFile preloading completed`. rms-viewmaster also reads `DEFAULT_CACHING` and
+`cache_lifetime` at package level, and both are ground-rule-1 failures that must
+stay failures — they did.
+
+Environment note carried from the baseline: the check ran under the pdsfile venv's
+interpreter with rms-viewmaster's `site-packages` appended to `PYTHONPATH`,
+because that venv lacks pdsfile's declared `range_ex` dependency, and with the
+holdings environment variables set. rms-viewmaster is at `a0d05e2`; rms-opus is at
+`73cb6de7`.
+
+### 14. Clean install
+
+`scripts/clean_install_check.sh` passes inside `run-all-checks.sh`. `_preload.py`
+is picked up by the existing `include = ["pdsfile*"]` package glob with no
+packaging change, and the gate imports the whole manifest module surface —
+`pdsfile.preload_and_cache` is in `scripts/check_runtime_imports.py`'s list and
+`pdsfile.pdsfile` is too, neither of which can import if `_preload.py` is missing
+from the distribution.
+
+### 15. The class docstring is derived, and verified in both directions
+
+Deferred entry 54 records that the mixins' "state contract" docstrings are
+hand-written, drift, and are mechanically derivable; PR-19's rounds 1, 2 and 3 and
+PR-20's rounds 2 and 3 each found one wrong. The entry asks for the derivation to
+become a *test* and assigns that to PR-22. This PR does not build the test — it is
+not in its deliverables — but it applies the method by hand, in the widened form
+PR-19's rounds 3 and 4 settled: walk **every** `ast.Attribute` node rather than
+only `self.X`/`cls.X`, scope the claim to the receivers that hold a `PdsFile`
+object or the `PdsFile` class, and **exclude the names the mixin itself defines**.
+
+The receiver list is printed in full so the scoping is checkable rather than
+asserted. Scoped to the mixin's five methods, which is what the contract covers:
+`_PreloadMixin`'s PdsFile-side receivers are `cls`, `pdsdir`, `pdsf0` and
+`pdsf1` — **4 of its 31 distinct receiver expressions** — against **27** others
+that are strings, lists, dicts, files, `os`, `os.path`, `pdscache`,
+`pdsviewable`, `pylibmc`, `time`, the logger, and `cls.CACHE` / `cls.LOGGER` /
+`cls.LOCAL_PRELOADED`, whose own methods are cache, logger and list methods
+rather than PdsFile surface. (A walk over the *whole module* rather than the
+mixin finds 34 receivers, the three extra being `arg`, `arg.interior` and
+`arg.interior.lower()` inside the module-level `cache_lifetime_for_class` —
+where `arg` **is** a PdsFile object. It is out of the contract because the
+contract is the mixin's, not the module's, and the figure is given so the two
+scopings cannot be confused.)
+
+**Direction 1 — every PdsFile-side name the code reaches appears in the docstring:
+25 of 25, nothing missing.** Direction 2's residue is prose only: `DictionaryCache`,
+`MemcachedCache` and `Error` (the three `pdscache`/`pylibmc` names the text
+mentions), `_LocalFsMixin` and `_index_rows` and `__bases__` (the sibling
+references), `_volinfo` (a directory name), `cache_lifetime_for_class` (reached as
+a module global rather than as an attribute, so the attribute walk does not see
+it), the label `WRITTEN`, and the words `Filling`, `Neither` and `Viewmaster`.
+
+Unlike `_SortingMixin` and `_AssociationsMixin`, **every** class attribute this
+mixin reads is defined on `PdsFile` itself and not only on `Pds3File`/`Pds4File`
+— which is what makes `PdsFile.cache_category_merged_dirs()` at the bottom of
+`pdsfile.py` work on the bare class at import time, and that is executed at every
+import rather than asserted here.
+
+### 16. Deferred observations
+
+Entry 29 is the one this PR was told to act on, and §11 is the action. It is
+**not** resolved — it is a per-PR step, owned by "PR-17 onward" — so it stays open
+for PR-22. Entries 53 and 54 are deliberately not taken up, per the coordinator's
+standing direction that neither is this PR's to build (common brief §5.1). Entry
+42 (the back-import guard, owner PR-22) is untouched: §5.2 shows `_preload.py` is
+clean by the same parsing check, but this PR builds no guard. **Entry 57 (the
+home-rooted holdings path in an archived plan) was withdrawn during this loop**, on
+the owner's ruling of 2026-07-27 that absolute holdings paths in `plans/` and
+`critiques/` are not confidential; round 2 applied it and
+`critiques/pr-21/round-2.md` records it. The entry is kept and marked closed rather
+than deleted, because its measurement is still an accurate record of what was
+found. No other entry in 1–57 is resolved or invalidated here.
+
+Two entries are **added** by the executor's own measurements: **58** (`pylibmc`
+resolves as `pdsfile._preload.pylibmc` rather than `pdsfile.pdsfile.pylibmc` where
+it is installed at all, and where it is installed the freeze gate is already red)
+and **59** (the five measured coverage gaps: `cache_lifetime` and `is_preloading`
+have no executed body at all, `cache_category_merged_dirs` is redundant whenever a
+preload follows, the lifetime values are never asserted, and no test distinguishes
+a case-sensitive filesystem from a case-insensitive one).
+
+### 17. Review loop
+
+| Round | Verdict | Findings | Record |
+|---|---|---|---|
+| 1 | goal met | 0 Major, 5 Minor (all accepted and fixed; **none in `src/`** — all five in this record, the sub-plan or the deferred-observations file), 2 Deferred (one folded into entry 58, one added as entry 60) | `critiques/pr-21/round-1.md` |
+| 2 | goal met | 0 Major, 3 Minor (all accepted and fixed; **none in `src/`** — all three in this record or the deferred-observations file), **0 new Deferred** | `critiques/pr-21/round-2.md` |
+| 3 | goal met | 0 Major, 3 Minor (all accepted and fixed; **two in `src/`** — the mixin docstring — and one a heading in this record and the sub-plan), **0 new Deferred** | `critiques/pr-21/round-3.md` |
+| 4 | goal met | **0 Major, 0 new Minor**; all 11 prior findings confirmed resolved by re-measurement; 5 Deferred (all five fixed in place here) | `critiques/pr-21/round-4.md` |
+
+*(Rows are written only after the round they describe has run and its record file
+exists on disk — the rule PR-18's round-3 Major established. No row is written for
+a round that has not run.)*
+
+**Round 1 found no Major and five Minor, and the one that mattered was not
+arithmetic.** §5.4 and deferred entry 58 said a stub `pylibmc` makes the manifest
+dump gain "exactly one extra name". Re-measured: it gains **two**, because
+`pdscache.py:7` has its own optional import of the same module and
+`pdsfile.pdscache` is also one of the dumper's seven fixed modules. The half this
+PR moves is the smaller one, so **the freeze gate stays red on a memcached-capable
+host after this PR**, which the entry as first written would have hidden from the
+owner. The correction is in §5.4, in the sub-plan and in entry 58, which now says
+any fix has to cover `pdscache` too.
+
+The second was §9's and §12's statement-coverage totals, derived from an AST
+statement count rather than from coverage's own statement set — an AST walk counts
+`try:` and other headers CPython emits no line event for. `preload` is **113
+statements, 83 hit, 30 missing**, not 109/80/29, and `get_permanent_values` is 21,
+not 20. The convention is now stated in §9 so the figures can be reproduced, and
+§12's conclusion is unchanged: the same 30 lines, enumerated the same way.
+
+The other three were record and sub-plan accuracy: §8's body saying "sixteen"
+where its own heading and the commit message say seventeen; the sub-plan's
+"as executed" section left empty although four things had diverged, one of them
+the ratchet criterion §7 states ("each code must conserve") that I001 does not
+meet; and an 83-for-82 line count.
+
+**No round-1 fix touched `src/pdsfile/`**, so by §6.6 step 5 the full-data record
+carries forward unregenerated.
+
+**Round 2 found no Major and three more Minor, and all three are record wording
+again.** Entry 60 cited the blank line before the banner PR-21 adds rather than
+the banner (`:495` for `:496–498`); entry 60's banner-width figures were HEAD's
+while the clause identifying them described the parent's, and each banner
+contributes *two* rule lines, so a two-banner list could not describe two rule
+lines — the entry now carries a three-tree table and names the 84-column interior
+pair `_preload.py` also inherited; and §15's "30 others" was a whole-module
+receiver count inside a sentence scoped to the mixin, where the figure is **27**,
+the three extra being `cache_lifetime_for_class`'s `arg`, which is itself a
+PdsFile object rather than one of the "strings, lists, dicts, files" the sentence
+characterised them as.
+
+The round-2 reviewer re-derived, with its own scripts: both moved blocks
+byte-for-byte, all five byte totals, all nine stay-list counts, the `vars()` and
+`dir()` and MRO comparisons, the API dump, the whole §8 ratchet table cell by
+cell, the `symtable` sweep, §7's 34-class figures, §11's 20 patch sites, §15's
+contract in both directions (25 of 25, zero residue), and every `file:line`
+citation. It **ran** the clean-install gate and the no-holdings job (82 / 800 on
+both sides), imported eight modules first-in-a-fresh-interpreter, and checked all
+three code commits for importability, ruff cleanliness and a green `tests/api`.
+Two of its checks this record had not made: it recomputed the **minimal** ruff
+code set per file with per-file-ignores disabled, confirming `_preload.py` needs
+exactly its six and `pdsfile.py` exactly its seventeen; and it located each of
+`_preload.py`'s eight suppressed violations by line and confirmed **all eight are
+on moved lines**, none in the new header or docstring.
+
+**Deferred entry 57 is withdrawn in this round**, not as a review finding but on
+an owner ruling of 2026-07-27 delivered while the round was running: absolute
+holdings paths in `plans/` and `critiques/` are not confidential. The entry is
+kept and marked closed, with the measurement it recorded left intact and a note
+that code, tests and CI still resolve holdings roots through the environment
+variables on portability grounds. Both rounds' reviewers checked §3.4 and neither
+found anything to report, so no finding in this loop changes.
+
+**No round-2 fix touched `src/pdsfile/`** either, so the full-data record carries
+forward unregenerated a second time.
+
+**Round 3 found no Major and three more Minor, and two of them are the first
+findings in this loop that land in `src/`** — both in `_PreloadMixin`'s docstring,
+both prose about runtime behavior that had been written rather than executed. Its
+"and nothing else" enumeration named `set`, which is never a receiver in these
+five methods (`set(parts[2])` is a constructor call), and omitted four families
+that are: `os` itself, file objects, `pylibmc` and `time`. And it said the
+memcached half runs "only when a non-zero port is supplied", which excludes the
+path deployment takes: the condition is
+`(port == 0 and cls.MEMCACHE_PORT == 0) or not HAS_PYLIBMC`, and `preload` writes
+the port it was given back onto the class, so a later argumentless call still
+takes it — the docstring's own contract table lists `MEMCACHE_PORT` as written two
+paragraphs above. Both now say the measured thing, and the name list below the
+colon is unchanged: 25 of 25 in both directions, re-run after the edit.
+
+The third was a heading in this record's §5.3 and the sub-plan's §5.2 — "six names
+are stranded **and every one of them stays bound**" — sitting directly above a
+table whose sixth row is `pylibmc`, which does not, and directly above a §5.4
+headed "the one name this PR does **not** carry back". Measured: `'pylibmc' in
+vars(pdsfile.pdsfile)` is `True` at the parent with a stub on `PYTHONPATH` and
+`False` at HEAD. Both headings now say five.
+
+**Round 3's fixes did touch `src/pdsfile/`, so the full-data record was
+regenerated** before the round was recorded — the pair at 23:37:21 / 23:39:10 in
+§3, empty against the baseline and against the superseded pair in both modes.
+
+The round-3 reviewer also measured the §8 ratchet table **with per-file-ignores
+disabled**, so it checked the *minimal* code set for each file rather than the
+configured one, and it set out to raise the `pylibmc` name loss as a Major and
+recorded that it could not sustain it. Its one suggestion outside the findings —
+annotate the `pylibmc` exception inside `pdsfile.py`'s re-export comment — was
+**declined**, with the reasoning recorded in deferred entry 58: that comment's
+clause is a purpose statement scoped to the four private names it introduces, none
+of which is `pylibmc`, and it is inherited wording that PR-16 wrote and PR-17,
+PR-20 and PR-21 have only added names to.
+
+**The loop terminates at round 4**, at §6.6's four-round cap: a fresh reviewer
+returned zero Major and no new un-rebutted Minor. Round 4 is the *scoped*
+re-review the anti-thrash rule prescribes — confirm the prior rounds' findings are
+resolved, raise only new Major — and it confirmed all eleven by re-measuring each
+rather than reading this record. Two of those re-measurements went further than
+the fix required, and they are why the round was worth running:
+
+- it **executed** the docstring's receiver enumeration rather than reading it,
+  confirming `set` is gone and that all eleven named families do occur with an
+  instance of each; re-derived the contract to 25 of 25 with empty residue both
+  ways; and then checked the *write* classification this record had only asserted
+  — measured `Store` on `cls` is exactly the five the docstring marks WRITTEN,
+  measured `Store` on the instance receivers is exactly `permanent`, and
+  `_childnames_filled` is never a `Store`, which is what "mutated in place" means;
+- it **executed** the corrected memcached condition across the full truth table of
+  `(port, MEMCACHE_PORT, HAS_PYLIBMC)` with `pdscache`'s two cache classes patched
+  to raising sentinels — **8 of 8 match**, including `port=0,
+  MEMCACHE_PORT=11211, HAS_PYLIBMC=True → memcached`, the case round 3's fix was
+  about.
+
+It also re-derived the two moved spans as single blobs (18,197 and 2,821 bytes,
+`# pragma: no cover` markers included), `getattr_static` over `dir()` of all three
+classes (257 / 299 / 272 names, zero lost, zero gained, **zero kind changes**),
+eleven first-import orders, and the ratchet's converse check with per-file-ignores
+off — which located all eight of `_preload.py`'s suppressed violations **inside
+moved bodies**, none in the new header or docstring.
+
+Its five Deferred items are all corrections to text this PR itself wrote, and all
+five are **fixed in place** here rather than carried forward. Four are line
+citations and a count that round 3's four-line docstring fix moved. The fifth is
+the one worth naming: `_preload.py`'s line count was carried forward from its
+extraction commit rather than re-counted, which is **the same defect PR-20's round
+2 found in `_sorting.py`** — and the "counted at HEAD, and re-counted at each round
+rather than carried forward" sentence PR-19 §5 and PR-20 §5 adopted in response is
+the sentence §5 of this section had dropped. It is restored.
+
+**Nothing was rebutted in any round.** All eleven Minor findings across rounds 1–3
+were accepted and fixed, and the one out-of-band suggestion that was declined
+(round 3's, to annotate the `pylibmc` exception in `pdsfile.py`'s comment) was
+recorded in deferred entry 58 with its reasoning rather than argued. Of the
+sixteen findings this loop produced across four rounds, **fourteen were figures or
+phrases in records and sub-plans and two were prose in the mixin docstring; not
+one was in the extracted code** — the same result PR-19 and PR-20 each produced,
+and the strongest evidence available that the extraction itself is clean.

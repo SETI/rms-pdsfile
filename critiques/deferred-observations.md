@@ -1229,7 +1229,24 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
 
 ### Added by the PR-20 adversarial review (round 2)
 
-57. **An archived plan carries a home-rooted holdings path, which §3.4 says no
+57. **WITHDRAWN — owner decision, 2026-07-27: absolute holdings paths in plan and
+    critique files are not confidential.** The owner's ruling, verbatim: "I don't
+    care about absolute paths in plan or critique files. They aren't
+    confidential." So **this entry needs no action**: no scrub of
+    `plans/archive/2026-07-17-modernization-plan.md` is required, and a reviewer
+    should not re-raise it. The measurement below stands as an accurate record of
+    what was found and why it looked like a problem at the time; it is simply no
+    longer one.
+
+    What the ruling does **not** change: code, tests and CI still resolve holdings
+    roots through `PDS3_HOLDINGS_DIR` / `PDS4_HOLDINGS_DIR` rather than hardcoding
+    them. That requirement stands on portability grounds — a hardcoded root breaks
+    on any other machine — and is independent of confidentiality. Nothing under
+    `src/`, `tests/` or `.github/` may carry a literal holdings path.
+
+    *The original entry, as written by PR-20, follows.*
+
+    **An archived plan carries a home-rooted holdings path, which §3.4 says no
     checked-in file should.** `plans/archive/2026-07-17-modernization-plan.md`
     contains **two distinct `~`-rooted path tokens, three occurrences in all**,
     naming a machine-local holdings tree. §3.4 is categorical: "No absolute
@@ -1265,5 +1282,131 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     should be treated as an actual confidentiality fix rather than filed as
     hygiene. The fix is a one-line substitution to the env-var placeholder in each
     of the three spots.
-    **Owner: the repo owner — surfaced by PR-20 as an item needing a decision;
-    whichever PR next touches `plans/archive/` can carry the edit.**
+
+    **Resolution: the owner ruled on 2026-07-27 that these paths are not
+    confidential, so no edit is made and the entry is closed.** It was surfaced by
+    PR-20 as an item needing a decision, and the decision is recorded above.
+
+## From PR-21 (extract the preload machinery, Phase 5)
+
+### Added by the PR-21 executor's own measurements (2026-07-27)
+
+58. **`pylibmc` is reachable as `pdsfile.pdsfile.pylibmc` today and as
+    `pdsfile._preload.pylibmc` after PR-21 — and on any machine where it is
+    reachable at all, the API-freeze gate is already red.** PR-21 moved the
+    `try: import pylibmc / HAS_PYLIBMC = True / except ImportError` block out of
+    `pdsfile.py` and into `_preload.py`, because `preload` is its only consumer.
+    `HAS_PYLIBMC` is a frozen member of `pdsfile.pdsfile`, so it is re-exported in
+    the redundant-alias form; `pylibmc` is a *conditionally bound module import*,
+    and re-exporting it would need a new `if HAS_PYLIBMC:` statement in
+    `pdsfile.py` — new logic rather than a move.
+
+    Measured rather than argued:
+
+    - `pylibmc` is not installed in this environment, so `pdsfile.pdsfile.pylibmc`
+      does not exist here on either side of the change.
+    - With a stub `pylibmc.py` on `PYTHONPATH`, `HAS_PYLIBMC` becomes `True`,
+      `'pylibmc' in vars(pdsfile.pdsfile)` becomes `True`, and
+      `scripts/dump_public_api.py` records `"pylibmc": "module"` under
+      `pdsfile.pdsfile`. Diffing that dump against the committed
+      `tests/api/api_manifest.json` reports **two extra names, both spelled
+      `pylibmc`: one under `pdsfile.pdsfile` and one under `pdsfile.pdscache`.**
+    - **Only the first is PR-21's, and it is the smaller half.**
+      `src/pdsfile/pdscache.py:7` has its own optional `import pylibmc` behind a
+      `try`, and `pdsfile.pdscache` is also one of the dumper's seven fixed
+      modules (`scripts/dump_public_api.py:37`). Phase 5 does not touch it, and
+      re-running the same stub against PR-21's HEAD leaves the diff at **one**
+      extra name, under `pdsfile.pdscache`.
+
+    So `pylibmc` is not part of the frozen contract; a machine that has it already
+    fails the freeze gate before Phase 5 touches anything, and **still fails it
+    after PR-21**, via `pdscache`. Nothing in `src/`, `tests/`, `scripts/`,
+    rms-opus or rms-viewmaster refers to `pdsfile.pdsfile.pylibmc`. What the owner
+    may want to decide separately: the manifest is environment-dependent for
+    optional dependencies — a property of the dumper's `vars(module)` walk rather
+    than of any PR — and it means the freeze gate cannot be run on a
+    memcached-capable deployment host, whatever Phase 5 does. Any fix has to cover
+    `pdscache` as well as `pdsfile.pdsfile`, and editing the dumper or the
+    manifest is a §6.4 prohibition for the executor, so this is an owner decision.
+
+    **A third reviewer suggested annotating the exception in the code**, at
+    `src/pdsfile/pdsfile.py`'s re-export block, whose comment says the private
+    names there "are carried so that no name reachable as `pdsfile.pdsfile.<name>`
+    is lost". PR-21 declined, for two reasons worth recording so the next reader
+    does not re-derive them. The clause is a *purpose* statement scoped to the
+    four private names the sentence introduces (`_GLOB_CACHE_SIZE`,
+    `_clean_abspath`, `_clean_glob`, `_needs_glob`), not a global invariant over
+    the module — none of the four is `pylibmc`. And the sentence is inherited
+    wording, written by PR-16 and extended by PR-17, PR-20 and PR-21 only by
+    adding names to its lists, so rewording its claim is a change to another PR's
+    prose. If the owner wants the exception visible in the source rather than
+    here, that is a one-line edit for whichever PR next touches that block.
+    **Owner: unassigned (a freeze/manifest question, not Phase 5).**
+
+59. **Five measured coverage gaps in the preload machinery, none of which PR-21
+    may close.** From a `dynamic_context = test_function` coverage run and 19
+    mutation controls over the moved code:
+
+    - **`cache_lifetime` is never executed.** Only its `def` line is covered. It
+      is passed as `lifetime=cls.cache_lifetime` by the three `pdscache`
+      constructions inside `preload`, and every one of those is on a branch the
+      suite does not take, so the lifetime function actually in use is the
+      module-level `cache_lifetime_for_class` the class bodies hand to their
+      class-level `DictionaryCache`. Mutating `cache_lifetime` to return 0 changes
+      nothing.
+    - **`is_preloading` is never executed and has no caller** anywhere in `src/`,
+      `tests/`, `scripts/`, rms-opus or rms-viewmaster. Ground rule 9 keeps it.
+    - **`cache_category_merged_dirs` can be made a no-op with no effect on the
+      suite**, because `preload` caches the same merged directories itself and the
+      session fixture always preloads. Its import-time call is a safety net for
+      the never-preloaded case, which nothing tests.
+    - **No test asserts a cache lifetime.** `cache_lifetime_for_class` is reached
+      by 116 test functions, but returning "forever" for every argument, or moving
+      `DEFAULT_FILE_CACHE_LIFETIME` from 12 h to 13 h, leaves the suite green.
+    - **No test distinguishes a case-sensitive filesystem from a case-insensitive
+      one.** `preload` computes `FS_IS_CASE_INSENSITIVE`; forcing it to the class
+      default (`True`) instead of the computed `False` leaves the suite green. The
+      flag gates `force_case_sensitive` handling in `_path_utils` and `_local_fs`.
+
+    Separately, **30 of `preload`'s 113 statements and 8 of `get_permanent_values`'
+    21 are never executed** (coverage's own statement set, `def` line included) —
+    the whole memcached path, the `clear=True` and
+    `force_reload=True` paths, the already-preloaded early return, and
+    `get_permanent_values`' bundleset/bundle descent. That is not a gap a test in
+    this repo can close (it needs a live memcached), and it is recorded so that a
+    future reader knows what a green full-data run does and does not prove about
+    `preload`.
+
+    PR-21 may not act on any of it — its gate is the pass/fail set, and adding a
+    test id is movement.
+    **Owner: unassigned (a future test PR, not Phase 5).**
+
+### Added by the PR-21 adversarial review (round 1)
+
+60. **In-class banner rule-line widths in `pdsfile.py` are mixed, and the split
+    propagates them into the extracted modules.** Measured over indented
+    `#`-only lines — each banner contributes **two** of them, one above its text
+    and one below:
+
+    | tree | 80 cols | 84 cols | 90 cols |
+    |---|---|---|---|
+    | `2df25ab:src/pdsfile/pdsfile.py` | 18 | 2 | 4 |
+    | HEAD `src/pdsfile/pdsfile.py` | 20 | 0 | 2 |
+    | HEAD `src/pdsfile/_preload.py` | 0 | 2 | 2 |
+
+    At HEAD the two 90-column rule lines are the single banner
+    `# Set parameters for both Pds3File and Pds4File`. The parent's other
+    90-column banner, `# Preload management`, moved into `_preload.py` with its
+    block, which is also where the 84-column pair went — the interior
+    `# Interior function to recursively preload one physical directory` banner
+    inside `preload`, indented eight spaces rather than four. The banner PR-21
+    adds at `src/pdsfile/pdsfile.py:496–498` is 80 columns, matching the file's
+    majority and the banner PR-20 added.
+
+    Nothing in force flags this: every line is under `line-length = 100`, and
+    `python.mdc`'s formatting rules do not bind before PR-23 (§6.6's progressive
+    compliance schedule). A moved banner may not be reflowed either — that would
+    be a content edit inside a move commit. Normalizing the widths across the core
+    modules is squarely PR-23's "ruff-clean and format core modules" scope, where
+    the churn checkpoint puts it in front of the owner along with everything else.
+    **Owner: PR-23.**
