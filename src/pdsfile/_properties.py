@@ -1337,11 +1337,9 @@ class _PropertiesMixin:
 
         cls = type(self)
 
-        if not self.exists:
-            # _version_ranks_filled is deliberately left as None here; see
-            # critiques/deferred-observations.md.
-            pass
-        else:
+        # When the file does not exist, _version_ranks_filled is left as None
+        # rather than set to []; see critiques/deferred-observations.md.
+        if self.exists:
             try:
                 ranks = cls.CACHE['$RANKS-' + self.category_]
 

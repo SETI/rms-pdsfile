@@ -159,18 +159,17 @@ extend-ignore = ["PT011", "SIM105", "SIM108"]
 # later PRs (never grow, never gain inline noqa). Entries are alphabetical by path.
 "scripts/check_runtime_imports.py" = ["RUF100"]
 "scripts/dump_public_api.py" = ["RUF100"]
-# CORE (PR-23) -- the eight entries below plus pdscache.py, pdsfile.py and
+# CORE (PR-23) -- the four entries below plus pdscache.py, pdsfile.py and
 # pdsviewable.py further down, which sort after the rule modules. The fifteen
 # modules directly under src/pdsfile/ were re-derived with the template select set
 # and no per-file-ignores at all (154 violations) and every one classified fixable
-# or freeze-locked; 119 were fixed. The 35 that remain are permanent, and each is
+# or freeze-locked; 121 were fixed. The 33 that remain are permanent, and each is
 # enumerated with its sites and its reason in plans/2026-08-03-pr-23-subplan.md
 # section 5 and in .cursor/rules/pdsfile_overrides.mdc deviation (4).
-# _associations.py, _index_rows.py, _opus.py, _path_utils.py, _preload.py,
-# _sorting.py, preload_and_cache.py and _version.py need no entry at all.
+# _associations.py, _index_rows.py, _local_fs.py, _opus.py, _path_utils.py,
+# _preload.py, _sorting.py and preload_and_cache.py need no entry at all.
 "src/pdsfile/__init__.py" = ["F403"]           # x3: the star imports bind the frozen surface
 "src/pdsfile/_derived_paths.py" = ["A002"]     # x3: the frozen dir= parameter the tools pass by keyword
-"src/pdsfile/_local_fs.py" = ["SIM103"]        # x2: os_path_exists is not proven bool-returning
 "src/pdsfile/_properties.py" = ["RUF005"]      # x1: _info_filled is a list on two construction paths
 "src/pdsfile/_shelves.py" = ["B904"]           # x1: from err / from None both change the traceback
 "src/pdsfile/holdings_maintenance/pds3/crlf.py" = ["PT028"]

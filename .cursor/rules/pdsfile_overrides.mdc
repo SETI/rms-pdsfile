@@ -42,21 +42,21 @@ conflicts with a rule below, follow the rule below. See
 
    **Core — the fifteen modules directly under `src/pdsfile/` (PR-23, 2026-08-03).**
    Re-derived with the template select set and *no* per-file-ignores: 154
-   violations, of which 119 were fixed and **35 are permanent**. Six modules
-   (`_associations.py`, `_index_rows.py`, `_opus.py`, `_path_utils.py`,
-   `_preload.py`, `_sorting.py`) plus `preload_and_cache.py` and the generated
-   `_version.py` need no entry at all. The permanent set, by file, code and count:
+   violations, of which 121 were fixed and **33 are permanent**. Seven modules
+   (`_associations.py`, `_index_rows.py`, `_local_fs.py`, `_opus.py`,
+   `_path_utils.py`, `_preload.py`, `_sorting.py`) plus `preload_and_cache.py` need
+   no entry at all. The permanent set, by file, code, count and site (line numbers
+   are at the merge commit):
 
    | File | Codes | Why it can never be fixed |
    |---|---|---|
-   | `__init__.py` | `F403` ×3 | the three star imports are what bind `Pds3File`, `Pds4File` and the rule modules onto the package; removing them shrinks the frozen surface and "correcting" the self-import grows it |
-   | `_derived_paths.py` | `A002` ×3 | the frozen `dir=` parameter of `log_path_for_*`, passed by keyword from the maintenance tools. PR-18 moved these methods, so this — not `pdsfile.py` — is `A002`'s home |
-   | `_local_fs.py` | `SIM103` ×2 | collapsing `elif f(): return True / else: return False` returns `f()`'s raw value instead of the `True`/`False` singleton, and `os_path_exists` is not proven `bool`-returning |
-   | `_properties.py` | `RUF005` ×1 | `self._info[:4] + (shape,)`; `_info_filled` is a **list** on two construction paths, where `list + tuple` raises today and `(*…, shape)` would silently succeed |
-   | `_shelves.py` | `B904` ×1 | `from err` and `from None` both change `__cause__`/`__suppress_context__`, and so the traceback |
-   | `pdscache.py` | `RUF015` ×1, `UP031` ×1 | `list(d)[0]` raises `IndexError` where `next(iter(d))` raises `StopIteration`; `'%d' % port` truncates a non-int where an f-string does not. Both sit inside `MemcachedCache`, which ground rule 9 protects and no test here exercises |
-   | `pdsfile.py` | `B904` ×3, `I001` ×1, `RUF012` ×16 | tracebacks as above; ruff's isort rejects this repo's aligned-under-the-paren import style outright and rewrites it one name per line with a trailing comma, which is the layout change dropped by (11); `ClassVar` is forbidden by (1) |
-   | `pdsviewable.py` | `B006` ×3 | frozen public signatures — `PdsViewable.to_dict(exclude=[])`, `PdsViewSet.__init__(viewables=[])`, `PdsViewSet.to_dict(exclude=['abspath','alt'])`. "Fixing" `B006` here is a manifest break |
+   | `__init__.py` `:10,:12,:13` | `F403` ×3 | the three star imports are what bind `Pds3File`, `Pds4File` and the rule modules onto the package; removing them shrinks the frozen surface and "correcting" the self-import grows it |
+   | `_derived_paths.py` `:263,:280,:296` | `A002` ×3 | the frozen `dir=` parameter of `log_path_for_*`, passed by keyword from the maintenance tools. PR-18 moved these methods, so this — not `pdsfile.py` — is `A002`'s home |
+   | `_properties.py` `:609` | `RUF005` ×1 | `self._info[:4] + (shape,)`; `_info_filled` is a **list** on two construction paths, where `list + tuple` raises today and `(*…, shape)` would silently succeed |
+   | `_shelves.py` `:172` | `B904` ×1 | `from err` and `from None` both change `__cause__`/`__suppress_context__`, and so the traceback |
+   | `pdscache.py` `:623`, `:325` | `RUF015` ×1, `UP031` ×1 | `list(d)[0]` raises `IndexError` where `next(iter(d))` raises `StopIteration`; `'%d' % port` truncates a non-int where an f-string does not. Both sit inside `MemcachedCache`, which ground rule 9 protects and no test here exercises |
+   | `pdsfile.py` `:1418,:1824,:1874`, `:84`, class body | `B904` ×3, `I001` ×1, `RUF012` ×16 | tracebacks as above; ruff's isort rejects this repo's aligned-under-the-paren import style outright and rewrites it one name per line with a trailing comma, which is the layout change dropped by (11); `ClassVar` is forbidden by (1) |
+   | `pdsviewable.py` `:52,:114,:205` | `B006` ×3 | frozen public signatures — `PdsViewable.to_dict(exclude=[])`, `PdsViewSet.__init__(viewables=[])`, `PdsViewSet.to_dict(exclude=['abspath','alt'])`. "Fixing" `B006` here is a manifest break |
 
    **Everything else — as of 2026-07-17, to be re-derived by PR-24:**
    - `pds3file/rules/*.py`, `pds4file/rules/*.py` → `E501,W191,N801,N999,N802,N805,RUF012`

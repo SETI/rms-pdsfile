@@ -1,8 +1,9 @@
-# Nothing below references sys, but pdsfile.pdscache.sys is a frozen member of
-# this module's public surface (tests/api/api_manifest.json), so it stays bound.
-# The redundant `as` alias is the explicit re-export form.
 import os
 import random
+
+# Nothing below references `sys`, but pdsfile.pdscache.sys is a frozen member
+# of this module's public surface (tests/api/api_manifest.json), so it stays
+# bound. The redundant `as` alias is the explicit re-export form.
 import sys as sys
 import time
 
@@ -71,7 +72,7 @@ class DictionaryCache(PdsCache):
 
             if self.logger:
                 self.logger.debug(f'{len(pairs)} items trimmed from '
-                                  f'DictionaryCache')
+                                  'DictionaryCache')
 
     def _trim_if_necessary(self):
         if self.pauses == 0:

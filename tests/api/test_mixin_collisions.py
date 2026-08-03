@@ -182,7 +182,9 @@ def test_a_mixin_defines_only_callables_and_properties():
 def test_the_mixin_bases_are_listed_alphabetically():
     # The mixins are disjoint (above), so the MRO order changes nothing and the
     # ordering rule is free to be the one that stays checkable as Phase 5 adds
-    # more of them: alphabetical by class name, object last.
+    # more of them: alphabetical by class name. (The rule was written as
+    # "alphabetical, object last"; the trailing object base is gone, and the
+    # bases are mixins only.)
     names = [mixin.__name__ for mixin in _mixins()]
 
     assert names == sorted(names), (

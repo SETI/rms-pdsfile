@@ -84,7 +84,7 @@ def _needs_glob(pattern):
 
 def repair_case(abspath, cls):
     """Return a file's absolute path with capitalization exactly as it appears
-    in the file system. Raises IOError if the file is not found.
+    in the file system. Raises OSError if the file is not found.
 
     Keyword arguments:
         abspath -- an absolute path of a file
@@ -109,7 +109,7 @@ def repair_case(abspath, cls):
         part_lower = parts[k].lower()
 
         # Construct the name of the parent directory and list its contents.
-        # This will raise an IOError if the file does not exist or is not a
+        # This will raise an OSError if the file does not exist or is not a
         # directory.
         if k == 1:
             basenames = os.listdir('/')
@@ -131,7 +131,7 @@ def repair_case(abspath, cls):
         parts.append('')
     abspath = '/'.join(parts)
 
-    # Raise an IOError if last field was not found
+    # Raise an OSError if last field was not found
     if not found:
         with open(abspath, 'rb'):
             pass

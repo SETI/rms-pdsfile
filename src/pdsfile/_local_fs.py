@@ -95,12 +95,9 @@ class _LocalFsMixin:
                     shelf = cls._get_shelf(shelf_abspath,
                                                log_missing_file=False)
                     return (key in shelf)
-                elif cls.os_path_exists(shelf_abspath):
-                    return True     # Every shelf file has an entry with an
-                                    # empty key, so this avoids an unnecessary
-                                    # open of the file.
-                else:
-                    return False
+                # Every shelf file has an entry with an empty key, so
+                # this avoids an unnecessary open of the file.
+                return bool(cls.os_path_exists(shelf_abspath))
             except (ValueError, IndexError, OSError):
                 pass
 
@@ -153,12 +150,9 @@ class _LocalFsMixin:
                                                log_missing_file=False)
                     (_, _, _, checksum, _) = shelf[key]
                     return (checksum == '')
-                elif cls.os_path_exists(shelf_abspath):
-                    return True     # Every shelf file has an entry with an
-                                    # empty key, so this avoids an unnecessary
-                                    # open of the file.
-                else:
-                    return False
+                # Every shelf file has an entry with an empty key, so
+                # this avoids an unnecessary open of the file.
+                return bool(cls.os_path_exists(shelf_abspath))
             except (ValueError, IndexError, OSError):
                 pass
 
