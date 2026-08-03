@@ -552,3 +552,111 @@ each is recorded rather than fixed.
     pre-existing — it is only reachable at all now that the function no longer
     raises `NameError` first — and turning it into a graceful return is a new
     behavior, not a bug fix. **Owner:** whichever PR next revisits the icon path.
+
+## From PR-16 (extract module-level path helpers, Phase 5)
+
+Six entries, all raised by the PR-16 adversarial review; 29 and 30 in round 1,
+31 and 32 in round 2, 33 and 34 in round 4. None is fixable inside a pure move
+PR: 29 is process, 30 is a pre-existing defect in code that moved byte-for-byte
+and is outside PR-15's enumerated bug list, 31 would change the public surface in
+whichever direction it were resolved, 32 belongs to the PR that owns dead-code
+removal, and 33 and 34 are pre-existing conditions of files PR-16 does not
+touch.
+
+29. **An extraction sweep must ask which module namespaces the tests *patch*, not
+    only which globals the code *reads*.** PR-16's free-variable sweep answered
+    "what must move with the code" correctly and completely. It could not have
+    caught what the review did: `tests/core/test_pdsfile_path_resolution.py`
+    replaced `glob` on `pdsfile.pdsfile`, so after the move the stub sat on a
+    namespace `abspath_for_logical_path` no longer resolves through, and the
+    test's outcome became a property of the machine rather than of the test. It
+    still *passed*, so §6.2's outcome-set diff — which compares pass/fail, not
+    what a test actually exercises — is structurally blind to it. The missing
+    step is a one-line grep for `monkeypatch.setattr` / `setattr(<module>` over
+    `tests/` and `scripts/` naming any module a PR moves code out of. PR-16 fixed
+    its own site by patching the function's `__globals__`, which follows the
+    function; the general step belongs in every later extraction PR's checklist.
+    It matters most for **PR-17**, which moves the `os`-resolving filesystem
+    helpers, where a stale `os` patch would be both likelier and harder to spot.
+
+    **Extended by the PR-16 round-3 review:** the same asymmetry exists one level
+    down, for module-level *data* rather than modules. `FILE_BYTE_UNITS` is
+    re-exported by `pdsfile.pdsfile` but read by `formatted_file_size` through
+    `_path_utils`'s globals, so mutating the list in place still works while
+    *rebinding* `pdsfile.pdsfile.FILE_BYTE_UNITS` is now silently inert. Measured:
+    no consumer anywhere does either, so nothing is broken today. PR-17 moves
+    `PATH_EXISTS_CACHE_SIZE` and hits the same shape, so the sweep step should
+    cover rebinding of re-exported data, not only of modules.
+    **Owner:** PR-17 onward (a step in each extraction PR's sweep).
+
+30. **`repair_case` raises `UnboundLocalError` on a single-component path.**
+    `_path_utils.py`'s `repair_case` assigns `found` only inside
+    `for k in range(1, len(parts))` but reads it unconditionally after the loop,
+    so any path that splits into one component skips the assignment:
+    `repair_case('/', Pds3File)` raises `UnboundLocalError: cannot access local
+    variable 'found'`. `repair_case('/tmp', Pds3File)` is fine, so only the
+    filesystem root and an empty-ish path reach it. Pre-existing and moved
+    byte-for-byte by PR-16; it is not in PR-15's enumerated bug list, and PR-16
+    is a pure move with no licence to change behavior. The fix is a
+    `found = True` initialization (a path with nothing to repair *is* found), but
+    that is a behavior change on a currently-raising input and needs its own test
+    and PR. **Owner:** PR-23, or whichever PR next edits this file.
+
+### Added by the PR-16 adversarial review (round 2)
+
+31. **`src/pdsfile/__init__.py:10`'s `from pdsfile import *` binds nothing.** It
+    is a self-import: when it executes, `sys.modules['pdsfile']` is the
+    partially-initialized package, whose namespace holds only dunders and
+    `__version__`, and a star import with no `__all__` skips every underscore
+    name. Reproduced in a throwaway package with the identical shape — the
+    statement contributes zero names. It reads as an intended
+    `from .pdsfile import *`, which would be a very different thing: it would
+    hoist every public name of `pdsfile.pdsfile` (including `repair_case`,
+    `abspath_for_logical_path`, `PATH_EXISTS_CACHE_SIZE` …) onto the package,
+    which is **not** the surface `tests/api/api_manifest.json` records for
+    `pdsfile`. So this cannot simply be "fixed": deleting it and correcting it
+    are both public-surface changes, one shrinking and one growing. It is also
+    why `F403`/`F841` sit in that file's ratchet entry. Untouched by PR-16.
+    **Owner:** PR-24, or whichever PR next revisits `__init__.py` — with an
+    explicit decision about which of the two readings is intended.
+
+32. **A commented-out line of dead code rode along with the move.**
+    `src/pdsfile/_path_utils.py`, inside `_clean_join`:
+    `#     joined = _clean_join(a,b).replace('\\', '/')`. PR-16 moved it
+    byte-for-byte, which is correct — editing it would have been a content change
+    inside a move PR. PR-22's brief is to "remove commented-out dead code
+    (~89 lines) — listed line-by-line in the PR", and its line list was drawn
+    against `pdsfile.py`; this line is no longer in that file. Recorded so the
+    line list is rebuilt against the post-Phase-5 module set rather than the
+    pre-split one. **Owner:** PR-22 (with PR-23 for the extracted modules'
+    style).
+
+### Added by the PR-16 adversarial review (round 4)
+
+33. **`scripts/gen_ruff_ratchet.py` cannot be exercised against the current
+    tree.** Its docstring workflow is "re-run this after a shrink and confirm the
+    diff only removes codes", but it runs `ruff check` with the project config,
+    whose committed `per-file-ignores` already suppress every violation, so it
+    emits an empty block. Reproducing a ratchet regeneration therefore requires
+    clearing the table first, which the script does not do and does not document.
+    Pre-existing and not touched by PR-16; noted because the ratchet is a
+    standing §2 gate and PR-23/PR-24 both lean on exactly that workflow when they
+    shrink the entries to their enumerated freeze-locked sets. **Owner:** PR-23.
+
+34. **Six pre-existing tracked files carry multi-component fragments of the real
+    holdings roots.** §3.4 requires that no absolute holdings path appear in
+    committed code, tests, docs, CI or `critiques/` records. Measured by scanning
+    every tracked file for any run of two or more consecutive components of
+    either root: `tests/pds3file/test_pds3file_whitebox.py`,
+    `plans/archive/2026-07-17-modernization-plan.md`,
+    `critiques/2026-07-21-unified-mini-holdings-analysis.md`,
+    `critiques/pr-02/validation.md`, `critiques/pr-14/round-1.md` and
+    `critiques/pr-14/validation.md`. No complete root appears in any of them; the
+    longest run is 29 characters, in the archived v1 plan. PR-16 does not touch
+    any of these files and cleaning them is outside a pure move PR's goal, so
+    they are recorded rather than fixed — but one of them is a **test module**,
+    which is the one category where a fragment could also become a portability
+    problem rather than only a disclosure one. The scan is a few lines and would
+    make a reasonable addition to `run-all-checks.sh` if the owner wants the rule
+    enforced rather than observed. **Owner:** owner decision, then PR-24 (records
+    and the archived plan) and PR-36 (the test module, via the critique pass).

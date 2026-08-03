@@ -18,7 +18,6 @@ from types import SimpleNamespace
 import pytest
 
 from pdsfile import Pds3File, Pds4File
-from pdsfile import pdsfile as pdsfile_module
 from pdsfile.pdsfile import PdsFile, abspath_for_logical_path
 from tests.core.support import blank_pds3file
 
@@ -85,10 +84,12 @@ class TestHoldingsEnvironmentVariable:
         monkeypatch.delenv('PDS4_HOLDINGS_DIR', raising=False)
         monkeypatch.setattr(Pds4File, 'LOCAL_PRELOADED', [])
         monkeypatch.setattr(Pds4File, 'LOCAL_HOLDINGS_DIRS', None)
-        # The last-resort branch globs a MacOS website install. Replace the glob
-        # module the code resolves through rather than an attribute of the
-        # standard library's own module, so the stub reaches nothing else.
-        monkeypatch.setattr(pdsfile_module, 'glob',
+        # The last-resort branch globs a MacOS website install. Replace glob in
+        # the namespace the function itself resolves through -- its __globals__,
+        # whichever module that is -- rather than an attribute of the standard
+        # library's own module, so the stub reaches nothing else and stays
+        # attached if the function is moved again.
+        monkeypatch.setitem(abspath_for_logical_path.__globals__, 'glob',
                             SimpleNamespace(glob=lambda pattern: []))
 
         with pytest.raises(ValueError, match='No holdings directory'):
