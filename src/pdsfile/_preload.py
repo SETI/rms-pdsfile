@@ -196,11 +196,13 @@ class _PreloadMixin:
                             continue
 
                         key = (pdsf1.logical_path + '/' + bundlename).lower()
-                        pdsf2 = cls.CACHE[key]
+                        # The value is not needed; the lookup is a presence
+                        # probe whose KeyError triggers the reload below.
+                        cls.CACHE[key]
 
         except KeyError as e:
-            cls.LOGGER.warn('Permanent value %s missing from Memcache; '
-                        'preloading again' % str(e))
+            cls.LOGGER.warn(f'Permanent value {e} missing from Memcache; '
+                            'preloading again')
             cls.preload(holdings_list, port, force_reload=True)
 
         else:
@@ -215,7 +217,8 @@ class _PreloadMixin:
         """Load bundle info associated with this holdings directory.
 
         Each record contains a sequence of values separated by "|":
-            key: bundleset, bundleset/bundlename, category/bundleset, or category/bundleset/bundlename
+            key: bundleset, bundleset/bundlename, category/bundleset, or
+                 category/bundleset/bundlename
             description
             icon_type or blank for default
             version ID or a string of dashes "-" if not applicable
@@ -256,13 +259,14 @@ class _PreloadMixin:
         for child in children:
 
             # Ignore these
-            if child.startswith('.'): continue
+            if child.startswith('.'):
+                continue
             if not child.endswith('.txt'):
                 continue
 
             # Read the file
             table_path = _clean_join(volinfo_path, child)
-            with open(table_path, 'r', encoding='utf-8') as f:
+            with open(table_path, encoding='utf-8') as f:
                 recs = f.readlines()
 
             # Interpret each record...
@@ -318,9 +322,9 @@ class _PreloadMixin:
                             'volumes/' + bundleset + '/' + remainder)
                 for alt_key in alt_keys:
                     if alt_key in dsids_vs_key:
-                        volinfo_dict[key] = (volinfo_dict[key][:4] +
-                                            (dsids_vs_key[alt_key],
-                                            volinfo_dict[key][5]))
+                        volinfo_dict[key] = (*volinfo_dict[key][:4],
+                                             dsids_vs_key[alt_key],
+                                             volinfo_dict[key][5])
                         break
 
         # Save the master dictionary in the cache now
@@ -375,8 +379,8 @@ class _PreloadMixin:
                     cls.CACHE = pdscache.MemcachedCache(cls.MEMCACHE_PORT,
                                                         lifetime=cls.cache_lifetime,
                                                         logger=cls.LOGGER)
-                    cls.LOGGER.info('Connecting to PdsFile Memcache [%s]' %
-                                    cls.MEMCACHE_PORT)
+                    cls.LOGGER.info('Connecting to PdsFile Memcache '
+                                    f'[{cls.MEMCACHE_PORT}]')
                     break
 
                 except pylibmc.Error:
@@ -462,7 +466,8 @@ class _PreloadMixin:
         ############################################################################
 
         def _preload_dir(pdsdir, cls):
-            if not pdsdir.isdir: return
+            if not pdsdir.isdir:
+                return
 
             # Log category directories as info
             if pdsdir.is_category_dir:

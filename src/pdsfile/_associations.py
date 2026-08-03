@@ -187,7 +187,7 @@ class _AssociationsMixin:
                             parent = cls.from_abspath(abspath)
                             pdsf = parent.child_of_index(suffix)
                             filtered_abspaths.append(pdsf.abspath)
-                        except (KeyError, IOError):
+                        except (OSError, KeyError):
                             pass
 
                     test_abspaths = filtered_abspaths

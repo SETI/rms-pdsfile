@@ -136,7 +136,8 @@ class _SortingMixin:
             basename = self.basename
 
         parts = basename.rpartition('.')
-        if parts[1] != '.': return False
+        if parts[1] != '.':
+            return False
 
         return (parts[2].lower() in cls.VIEWABLE_EXTS)
 
@@ -184,7 +185,7 @@ class _SortingMixin:
             if labels_after:
                 # Replace (_, _, _, '.LBL') with (_, _, _, True, '.LBL')
                 # Replace anything else with (_, _, _, False, _)
-                parts[3:] = [self.basename_is_label(basename)] + parts[3:]
+                parts[3:] = [self.basename_is_label(basename), *parts[3:]]
 
             if dirs_first or dirs_last:
                 isdir = cls.os_path_isdir(_clean_join(self.abspath,
@@ -192,16 +193,16 @@ class _SortingMixin:
                 if dirs_first:
                     # If this is a directory, put False in front of the sort key
                     # Otherwise, put True in front
-                    parts = [not isdir] + parts
+                    parts = [not isdir, *parts]
                 else:
                     # If this is a directory, put True in front of the sort key
                     # Otherwise, put False in front
-                    parts = [isdir] + parts
+                    parts = [isdir, *parts]
 
             if apply_info_first:
                 # If this is an info file, put False in front of the sort key
                 # Otherwise, put True in front
-                parts = [self.info_basename != basename] + parts
+                parts = [self.info_basename != basename, *parts]
 
             return tuple(parts)
 

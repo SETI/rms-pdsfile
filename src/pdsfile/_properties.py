@@ -244,7 +244,7 @@ class _PropertiesMixin:
             try:
                 with open(self.abspath, encoding='latin-1') as f:
                     self._html_path_filled = f.read().strip()
-            except IOError:
+            except OSError:
                 self._html_path_filled = self.html_root_ + self.logical_path
         else:
             self._html_path_filled = self.html_root_ + self.logical_path
@@ -460,7 +460,7 @@ class _PropertiesMixin:
             try:
                 (file_bytes, child_count,
                  timestring, checksum, size) = self.shelf_lookup('info')
-            except (IOError, KeyError, ValueError):
+            except (OSError, KeyError, ValueError):
                 cls.LOGGER.warn('Missing info shelf', self.abspath)
                 if cls.SHELVES_REQUIRED:
                     raise
@@ -524,14 +524,15 @@ class _PropertiesMixin:
                 try:
                     (file_bytes, _,
                      timestring, _, _) = self.shelf_lookup('info', bundlename)
-                except IOError:     # Shelf file for bundlename is missing--maybe
+                except OSError:     # Shelf file for bundlename is missing--maybe
                                     # it's not a bundle name after all
                     file_bytes = os.path.getsize(self.abspath)
                     timestamp = os.path.getmtime(self.abspath)
                     modtime = datetime.datetime.fromtimestamp(timestamp)
                 else:
                     # Without this check, we get an error for empty directories
-                    if timestring == '' or file_bytes == 0: continue
+                    if timestring == '' or file_bytes == 0:
+                        continue
 
                     # Convert formatted time to datetime
                     yr = int(timestring[ 0: 4])
@@ -968,11 +969,10 @@ class _PropertiesMixin:
 
         cls = type(self)
 
-        # Some file types never have links
-        if self.isdir or self.checksums_ or self.archives_:
-            self._internal_links_filled = []
-
-        elif self.bundletype_ not in ('volumes/', 'calibrated/', 'metadata/'):
+        # Some file types never have links, and neither do bundle types other
+        # than volumes, calibrated and metadata
+        if (self.isdir or self.checksums_ or self.archives_ or
+            self.bundletype_ not in ('volumes/', 'calibrated/', 'metadata/')):
             self._internal_links_filled = []
 
         # Otherwise, look up the info in the shelf file
@@ -981,7 +981,7 @@ class _PropertiesMixin:
                 values = self.shelf_lookup('link')
 
             # Shelf file failure
-            except (IOError, KeyError, ValueError) as e:
+            except (OSError, KeyError, ValueError):
 
                 # This can happen for bundleset-level AAREADME files.
                 # Otherwise, it's an error
@@ -1138,7 +1138,8 @@ class _PropertiesMixin:
     def data_abspaths(self):
         """Return a list of the targets of a label file; otherwise []."""
 
-        if not self.islabel: return []
+        if not self.islabel:
+            return []
         cls = type(self)
         # We know this is the target of a link if it is linked by this label and
         # also target's label is this file. It's complicated.
@@ -1337,7 +1338,9 @@ class _PropertiesMixin:
         cls = type(self)
 
         if not self.exists:
-            version_ranks_filled = []
+            # _version_ranks_filled is deliberately left as None here; see
+            # critiques/deferred-observations.md.
+            pass
         else:
             try:
                 ranks = cls.CACHE['$RANKS-' + self.category_]
@@ -1537,7 +1540,7 @@ class _PropertiesMixin:
                 version_id += '.' + str(subparts[2])
 
         else:
-            raise ValueError('Unrecognized volume set suffix "%s"' % suffix)
+            raise ValueError(f'Unrecognized volume set suffix "{suffix}"')
 
         return (version_rank, version_message, version_id)
 
@@ -1615,7 +1618,8 @@ class _PropertiesMixin:
 
         cls = type(self)
 
-        if not self.exists: return None
+        if not self.exists:
+            return None
 
         if (self._all_viewsets_filled is not None and
             name in self._all_viewsets_filled):
@@ -1661,7 +1665,8 @@ class _PropertiesMixin:
 
             for basename in basenames:
                 pdsf = self.child(basename)
-                if pdsf.isdir: continue
+                if pdsf.isdir:
+                    continue
 
                 viewset = pdsf.viewset_lookup(name)
                 if viewset:

@@ -127,12 +127,13 @@ def repair_case(abspath, cls):
                 break
 
     # Reconstruct the full path
-    if trailing_slash: parts.append('')
+    if trailing_slash:
+        parts.append('')
     abspath = '/'.join(parts)
 
     # Raise an IOError if last field was not found
     if not found:
-        with open(abspath, 'rb') as f:
+        with open(abspath, 'rb'):
             pass
 
     return abspath
@@ -187,7 +188,8 @@ def abspath_for_logical_path(path, cls):
     for root in holdings_list:
         abspath = _clean_join(root, path)
         matches = cls.glob_glob(abspath)
-        if matches: return matches[0]
+        if matches:
+            return matches[0]
 
     # File doesn't exist. Just pick one.
     if holdings_list:

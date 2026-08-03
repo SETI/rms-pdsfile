@@ -101,7 +101,7 @@ class _LocalFsMixin:
                                     # open of the file.
                 else:
                     return False
-            except (ValueError, IndexError, IOError, OSError):
+            except (ValueError, IndexError, OSError):
                 pass
 
             # Maybe it's associated with something else in the infoshelf tree
@@ -159,7 +159,7 @@ class _LocalFsMixin:
                                     # open of the file.
                 else:
                     return False
-            except (ValueError, IndexError, IOError, OSError):
+            except (ValueError, IndexError, OSError):
                 pass
 
             # Maybe it's associated with something else in the infoshelf tree
@@ -204,7 +204,7 @@ class _LocalFsMixin:
 
                 shelf = cls._get_shelf(shelf_abspath,
                                            log_missing_file=False)
-            except (ValueError, IndexError, IOError, OSError):
+            except (ValueError, IndexError, OSError):
                 pass
             else:
                 # Look for paths that begin the same and do not have an
@@ -212,9 +212,11 @@ class _LocalFsMixin:
                 prefix = key + '/' if key else ''
                 lprefix = len(prefix)
                 basenames = []
-                for key in shelf.keys():
-                    if not key.startswith(prefix): continue
-                    if key == '': continue
+                for key in shelf:
+                    if not key.startswith(prefix):
+                        continue
+                    if key == '':
+                        continue
                     basename = key[lprefix:]
                     if '/' not in basename:
                         basenames.append(basename)
@@ -305,7 +307,8 @@ class _LocalFsMixin:
                 filtered = []
                 for result in results:
                     parts = result.split('_info.')
-                    if len(parts) == 1: continue
+                    if len(parts) == 1:
+                        continue
 
                     bundlename = parts[0]
                     if bundlename not in filtered:
@@ -411,9 +414,9 @@ class _LocalFsMixin:
                 values = list(shelf.values())
                 starting_pos = bisect.bisect_left(interior_paths, key_prefix)
                 num_key_slashes = len(key.split('/'))
-                for (interior_path, value) in zip(
+                for (interior_path, _value) in zip(
                                 interior_paths[starting_pos:],
-                                values[starting_pos:]):
+                                values[starting_pos:], strict=False):
                     # If the key prefix doesn't match the interior_path prefix,
                     # then we're done since the filenames are in alphabetical
                     # order.

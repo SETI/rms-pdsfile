@@ -69,7 +69,7 @@ class _IndexRowsMixin:
 
         # Interpret the error
         if not self.exists:
-            raise IOError('Index file does not exist: ' + self.logical_path)
+            raise OSError('Index file does not exist: ' + self.logical_path)
 
         if not self.is_index:
             raise ValueError('Not supported as an index file: ' +
@@ -152,14 +152,14 @@ class _IndexRowsMixin:
             # We disallow multiple matches because this can occur when a key is
             # incomplete
             if len(child_keys) > 1:
-                raise IOError('Index selection is ambiguous: ' +
+                raise OSError('Index selection is ambiguous: ' +
                               self.logical_path + '/' + selection)
 
         if flag == '=':
             raise KeyError('Index selection not found: ' +
                            self.logical_path + '/' + selection)
 
-        childnames = self.childnames + [selection]
+        childnames = [*self.childnames, selection]
         childnames = self.sort_basenames(childnames)
         k = childnames.index(selection)
 
