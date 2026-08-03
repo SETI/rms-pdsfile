@@ -58,7 +58,8 @@
 #   ENABLE_* are true (RUN_* from CLI or defaults below; ENABLE_* from env; see
 #   pdsfile_overrides.mdc for which checks are permanently off):
 #     ENABLE_RUFF_CHECK   (default: true)
-#     ENABLE_RUFF_FORMAT  (default: false — not enforced yet)
+#     ENABLE_RUFF_FORMAT  (default: false — never; owner dropped the one-time
+#                          reformat 2026-08-03, see pdsfile_overrides.mdc (11))
 #     ENABLE_MYPY         (default: false — never; no inline typing)
 #     ENABLE_PYTEST       (default: true)
 #     ENABLE_PYROMA       (default: true)

@@ -1519,7 +1519,17 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
 
 ### Added by the PR-22 adversarial review (round 2)
 
-65. **The "modules < 1000 lines" waiver names `pdsfile.py` and the rule modules,
+65. **RESOLVED — owner decision, 2026-08-03**
+    (`plans/2026-08-03-addendum-pr23-24-owner-decisions.md`): the waiver becomes
+    an **explicit list of modules** — `pdsfile.py`, `_properties.py`,
+    `pdscache.py`, and the rule modules — enumerated rather than described as a
+    class, so that adding a file to it is a visible decision. `pdscache.py` stays
+    at its current size, waived. Splitting `_properties.py` was rejected because
+    it would reopen §8 settled decision 3. Recorded in
+    `.cursor/rules/pdsfile_overrides.mdc` (3) and in §6.6's schedule. The
+    original entry follows, unaltered.
+
+    **The "modules < 1000 lines" waiver names `pdsfile.py` and the rule modules,
     and Phase 5 has now produced two other files over the line.** §6.6's
     progressive-compliance schedule reads: `python.mdc` "modules < 1000 lines" —
     **permanently waived** for `pdsfile.py` and rule modules. At the end of
@@ -1540,3 +1550,26 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     module Phase 5 produced, or the owner wants `_properties.py` split further,
     which would be phase "b" work rather than PR-23's.
     **Owner: owner decision, before PR-23's churn checkpoint.**
+
+### Added by the PR-23/PR-24 owner decisions (2026-08-03)
+
+66. **Three maintenance-tool modules are over 1000 lines and are deliberately
+    not waived.** Measuring the explicit waiver list for entry 65 turned up files
+    the decision was not asked about:
+    `src/pdsfile/holdings_maintenance/pds3/pdslinkshelf.py` (**1,779**),
+    `src/pdsfile/holdings_maintenance/pds4/pds4linkshelf.py` (**1,274**) and
+    `src/pdsfile/holdings_maintenance/pds3/pdsdependency.py` (**1,166**).
+    (`src/pdsfile/pds3file/rules/VG_28xx.py` at 1,017 is already covered by the
+    rule-module entry.)
+
+    They were left off the waiver on purpose rather than by oversight. **Phase 6
+    (PR-25 onward) consolidates the duplicated pds3/pds4 tool logic into
+    `_common.py`**, so these sizes are expected to change; waiving them now would
+    pre-empt that work with a statement about to stop being true. Nothing is
+    broken in the meantime — no gate enforces module length (`ruff`'s select set
+    has no such check), so this is a documentation question, not a failing check.
+
+    Whether they end up waived, split, or shrunk by the consolidation is a
+    Phase-6 question, answerable once PR-25 has established how much of each file
+    is duplication.
+    **Owner: Phase 6 (PR-25 onward).**

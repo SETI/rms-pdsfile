@@ -189,7 +189,7 @@ for re-interpretation by the executor:
 | Full-data suite (self-hosted CI on every PR; also run locally) | **Active** (Phase 0) | No behavior change against real holdings; per-test pass/fail set identical to the recorded baseline (§6.2); additionally run locally after every Phase 5/6 PR and at each phase boundary |
 | `ruff check` (ratcheted) | **Active** (PR-03) | Style; per-file-ignores may only shrink |
 | Clean-install import check | **Active** (PR-08) | `pip install .` with no extras; `import pdsfile` + every manifest module imports (runtime-dep leak guard) |
-| `ruff format --check` | PR-23 (core) / PR-24 (rest) — **conditional on the owner churn checkpoints in those PRs**; scope may be reduced or the gate dropped entirely | Formatting; not gated before the one-time reformat lands |
+| `ruff format --check` | **Never enabled** — the churn checkpoint ran on 2026-08-03 and the owner dropped the reformat entirely (`plans/2026-08-03-addendum-pr23-24-owner-decisions.md`) | — |
 | Hosted lint/no-holdings CI job | **Active** (PR-14) | ruff + pyroma + API-freeze + clean-install + the holdings-free test subset on stock GitHub runners (it runs `run-all-checks.sh`, so it is whatever that enables) |
 | sphinx -W -n build | PR-31 | Docs build clean |
 | Adversarial pre-PR review loop | **Active** (every PR) | A fresh, no-context reviewer cannot prove the PR misses its stated goal — zero Major and no new un-rebutted Minor findings (§6.6) |
@@ -642,25 +642,20 @@ defaults like `SUBCLASSES = {}`, `SHELF_CACHE = {}`, `VOLTYPES = [...]` — the
 only ruff fix is a `ClassVar` annotation, forbidden by ground rule 5). The
 ratchet shrinks to **only** this enumerated freeze-locked set for these files,
 not to zero.
-**Formatting — mandatory owner checkpoint (hard stop) before committing any
-reformat:**
-1. First run `ruff format --diff` over the target file set and measure the
-   churn (files touched, lines changed, and a skim of *what kind* of change
-   dominates). Before measuring, protect deliberately aligned code: any block
-   that is vertically aligned to look good (aligned assignment columns,
-   hand-shaped tables or literals) gets `# fmt: off` / `# fmt: on` guards so
-   the formatter leaves it alone.
-2. **Stop and present the churn numbers and diff samples to the owner.** The
-   owner decides: proceed as scoped, reduce the scope (more exclusions / more
-   `fmt: off` guards), or **drop the reformat entirely**. Do not commit any
-   reformatting before this decision.
-3. Only on an explicit go: run the one-time `ruff format` over the approved
-   set and enable the `ruff format --check` gate (CI lint + run-all-checks)
-   scoped to it. If the owner drops or reduces formatting, the gate matches
-   the reduced scope (or is never enabled) and the decision is recorded in
-   `pdsfile_overrides.mdc`.
+**Formatting — settled, no checkpoint remains.** The churn checkpoint this
+section used to require **ran on 2026-08-03 against merged `rewrite`** (14 of 15
+files, ~2,310 changed lines) and the owner **dropped the reformat entirely**
+(`plans/2026-08-03-addendum-pr23-24-owner-decisions.md`). So: do **not** run
+`ruff format`, do **not** enable the `ruff format --check` gate, and do **not**
+add `# fmt: off` / `# fmt: on` guards — they exist only to protect aligned blocks
+from a formatter that will not run. `ENABLE_RUFF_FORMAT` stays `false`. PR-23 is
+a **`ruff check` PR only**.
 No behavior change; full-data run to prove it. Record the freeze-locked set in
 `pdsfile_overrides.mdc`.
+
+**Branch and base:** PR-23 and PR-24 are **not stacked** (owner, 2026-08-03).
+Each branches from `rewrite`, opens against `rewrite`, and merges before the next
+begins; PR-24's §6.2 baseline is `rewrite` after PR-23 lands.
 
 **PR-24 (L, mechanical)** `style: ruff-clean and format rules and remaining files`
 Rules files + pds3file/pds4file `__init__` (including deduplicating the
@@ -701,16 +696,15 @@ the method (deleting the method would change behavior and the manifest kind).
   `__all__` for `support.py`); any residue is enumerated like the other
   permanent ignores. **Record the full per-file-class freeze-locked set in
   `pdsfile_overrides.mdc` deviation (4).**
-- Formatting: **same mandatory owner checkpoint as PR-23** — `ruff format
-  --diff` first, churn numbers and samples to the owner, no reformat
-  committed before an explicit go/reduce/drop decision. Scope: everything
-  remaining **except the rule modules and `re_validate.py`** (both in
-  `[tool.ruff.format] exclude`; the rule modules for the hand-aligned tables,
-  `re_validate.py` because ground rule 7 / deviation (6) freeze it).
-  Additionally, **vertically aligned code is never reformatted**: the aligned
-  `pytest.mark.parametrize` tables in the test tree and any other block lined
-  up for readability get `# fmt: off` / `# fmt: on` guards before the churn
-  measurement.
+- Formatting: **none — dropped by the owner on 2026-08-03 along with PR-23's**
+  (`plans/2026-08-03-addendum-pr23-24-owner-decisions.md`). No `ruff format`, no
+  `ruff format --check` gate, no `# fmt: off` guards. PR-24 is a **`ruff check`
+  PR only**. The aligned `pytest.mark.parametrize` tables in the test tree and
+  the rule modules' `TranslatorByRegex` tables need no protection, because
+  nothing will reformat them.
+- **Branch and base:** PR-24 branches from `rewrite` **after PR-23 has merged**
+  and opens against `rewrite`; the two are not stacked (owner, 2026-08-03). Its
+  §6.2 baseline is `rewrite` at that point.
 - **`re_validate.py` also gets a permanent `ruff check` per-file-ignore set**
   (its full derived violation set — UP031, E402, RUF059, E701, I001, B007,
   RUF005, C405, RUF051, E721, UP034 as of 2026-07-17), for the same freeze
@@ -973,8 +967,10 @@ line-by-line human review at its boundary.
   categories (§6.1).
 - Any full-data run whose pass/fail set differs from the baseline without a
   cause the executor can prove is the intended, documented change of that PR.
-- **The PR-23 and PR-24 formatting churn checkpoints** (mandatory owner
-  decision — go / reduce scope / drop — before committing any reformat).
+- ~~The PR-23 and PR-24 formatting churn checkpoints.~~ **Discharged
+  2026-08-03**: the checkpoint ran and the owner dropped the reformat entirely
+  (`plans/2026-08-03-addendum-pr23-24-owner-decisions.md`). Running `ruff format`
+  is now itself the hard stop.
 - Any situation where following the plan would require changing behavior,
   file formats, CLI flags, log formats, or exit codes not explicitly listed
   as changing.
@@ -1094,9 +1090,9 @@ Then open the PR.
   | `dependency_management.mdc` (pyproject single source) | **Active** (PR-03) |
   | `environment.mdc` (`run-all-checks.sh` = CI source of truth) | **Active** (PR-04), tightened at PR-14 |
   | `python.mdc` style/naming/line-length (`ruff check`) | ratcheted since PR-03; from PR-23 (core) / PR-24 (rest) reduced to the enumerated freeze-/table-locked permanent ignore sets |
-  | `python.mdc` `ruff format` | PR-23/PR-24 — only to the extent the owner approves at those PRs' churn checkpoints |
+  | `python.mdc` `ruff format` | **never enforced** (owner, 2026-08-03 — the churn checkpoint ran and the reformat was dropped) |
   | `python.mdc` type annotations / mypy | **permanently waived** (ground rule 5); `.pyi` stubs at PR-35 only |
-  | `python.mdc` "modules < 1000 lines" | **permanently waived** for `pdsfile.py` and rule modules |
+  | `python.mdc` "modules < 1000 lines" | **permanently waived** for the explicit list in `pdsfile_overrides.mdc` (3): `pdsfile.py`, `_properties.py`, `pdscache.py`, and the rule modules. Everything else is held to the limit |
   | `python_testing.mdc` (pytest/markers/coverage) | Phase 3–4 (PR-08–PR-14); the hermetic aspects are out of scope (see the scope note) |
   | `doc_python.mdc` docstrings; `doc_readme`/`doc_dev_guide`/`doc_user_guide` | Phase 7 (PR-29–PR-34) |
   | `logging.mdc` (PdsLogger) | already followed; enforced only where a PR edits logging; waived for the tools' frozen `print()` output |
