@@ -6017,40 +6017,87 @@ not reach **62**:
 | `_opus.py`, `_associations.py`, `__init__.py` | 4 | 1 |
 | **total** | **143** | **81** |
 
-The unreached lines are the ones a reader should know about: **every**
-`MemcachedCache` edit (`unblock`'s two collapsed conditionals, `__contains__`,
-the `get_multi`/`set_multi` `tuple`→`pair` renames, five `F541` fragments, and
-the `type(port) is str` comparison), `PdsFile.__repr__`'s `type(self) is
-PdsFile`, all three `next(iter(...))` sites and `PdsViewSet.append`'s `B020`
-rename, `_get_shelf`'s failure path, and `repair_case`'s not-found path. An
-identical pass/fail set does not speak for any of them.
+The unreached lines are the ones a reader should know about: 19 of the 24 in
+`pdscache.py`, almost all inside `MemcachedCache` (`unblock`'s two collapsed
+conditionals, `__contains__`, `get_multi`'s `tuple`→`pair` rename, `get_now`'s
+`RUF059` rename, three `F541` fragments and the `type(port) is str` comparison);
+`PdsFile.__repr__`'s `type(self) is PdsFile`; all three `next(iter(...))` sites
+and `PdsViewSet.append`'s `B020` rename; `_get_shelf`'s failure path;
+`repair_case`'s not-found path; and the `N806` rename in `from_abspath`'s
+multi-holdings branch. An identical pass/fail set does not speak for any of them.
 
-**So they were exercised directly instead.** A differential probe — 39 labelled
-values, no holdings tree — was run under the **baseline** tree and under the
-**head** tree and the two outputs diffed. It covers all three `E721` sites
-(including a `str` subclass, a `list` subclass and an anonymous `PdsFile`
-subclass, i.e. exactly the inputs `isinstance` would have mis-dispatched), all
-three `RUF015` sites plus their empty-guard paths, the `B020` rename, both
-`F401` re-exports, the three MROs, and a `DictionaryCache`
-`set`/`get_multi`/`set_multi`/`__contains__`/`__len__` round trip through the two
-`A001`-renamed loops. **All 39 values identical, over three independent
-base/head run pairs.** Sample:
+One `MemcachedCache` region **is** covered by the suite, and it is worth naming
+because it is the only one: `set_multi`'s `tuple`→`pair` rename runs under
+`tests/core/test_pdscache_set_multi.py`, which builds a `MemcachedCache` with
+`__new__` and a stub client because `pylibmc` is not installed.
+
+**So the rest were exercised directly instead.** A differential probe — **55
+labelled values, no holdings tree, no committed test id** — was run under the
+**baseline** tree and under the **head** tree and the two outputs diffed. It
+borrows `test_pdscache_set_multi.py`'s `__new__`-plus-stub-client technique to
+drive the `MemcachedCache` methods the suite cannot reach. Measured under
+`coverage`, the probe reaches **36** of the 143 changed executable lines, **24 of
+which the suite does not**, so the union is **105 of 143** and **38** remain
+unreached by anything.
+
+| Reached by | changed executable lines |
+|---|---|
+| the full-data suite | 81 |
+| the differential probe | 36 |
+| **either** | **105** |
+| neither | 38 |
+
+Per file, "reached by neither": `pdsfile.py` 15, `_path_utils.py` 4,
+`_properties.py` 4, `pdscache.py` 3, `_shelves.py` 2, `_preload.py` 2,
+`pdsviewable.py` 2, and one each in `__init__.py`, `_associations.py`,
+`_index_rows.py`, `_local_fs.py`, `_opus.py`, `_sorting.py`. Every one of the 38
+is an `except`/`raise` line on an error path, an `E701` split, or a local rename
+— i.e. a `UP024` alias substitution (`IOError` **is** `OSError`), an f-string
+whose text was compared byte for byte by hand, a statement split that cannot
+change semantics, or a rename `ruff`/`pyflakes` proves complete. None of them is
+a `SIM`, `RUF005`, `E721`, `RUF015`, `B020` or `F401` fix; all of those are
+covered by the suite, the probe, or both.
+
+What the probe covers, by code: **`E721`** — two of the three sites called for
+real (`PdsFile.__repr__` on `PdsFile`, `Pds3File`, `Pds4File` and an anonymous
+subclass; `iconset_for` on a bare object, a plain `list` and a `list` **subclass**
+— exactly the inputs `isinstance` would have mis-dispatched); the third,
+`MemcachedCache.__init__`, cannot be constructed without `pylibmc`, so the probe
+evaluates the predicate on a `str`, a `str` **subclass**, an `int` and a `bool`
+instead. **`RUF015`** — all three sites plus their empty-guard paths.
+**`B020`** — `append` with a nested viewset, and with an empty one.
+**`SIM102`** — `unblock` on all five logger/pid combinations.
+**`F541`** — `DictionaryCache._trim`'s message and `unblock`'s two.
+**`A001`** — `get_multi`'s renamed loop. **`RUF059`** — `get_now`.
+**`F401`** — both re-exports. **`UP004`** — the three MROs.
+
+**All 55 values identical, over three independent base/head run pairs.** Sample:
 
 ```
-repr(PdsFile abspath)          = 'PdsFile("/a/b")'
-repr(Pds3File abspath)         = 'Pds3File("/a/b")'
-repr(anon subclass abspath)    = 'PdsFile._PdsFileSubclass("/a/b")'
-iconset_for(list SUBCLASS)     !! AttributeError: '_ListSubclass' object has no attribute 'icon_type'
-for_width on empty             !! OSError: No viewables have been defined
-named-only for_width(25) size  = (25, 25)
-pdsfile.pdscache.sys is sys    = True
+repr(PdsFile abspath)                    = 'PdsFile("/a/b")'
+repr(Pds3File abspath)                   = 'Pds3File("/a/b")'
+repr(anon subclass abspath)              = 'PdsFile._PdsFileSubclass("/a/b")'
+iconset_for(list SUBCLASS)               !! AttributeError: '_ListSubclass' object has no attribute 'icon_type'
+for_width on empty                       !! OSError: No viewables have been defined
+MemcachedCache.__contains__('perm')      = True
+MemcachedCache.get_multi                 = [('a', 'A'), ('b', 'B')]
+MemcachedCache.unblock otherpid/logger   = (None, [], [('error', 'Process 4242 is unable to unblock MemcachedCache [11211]; Cache is blocked by process 99')])
+DictionaryCache._trim log                = [('debug', '21 items trimmed from DictionaryCache'), ...]
 ```
 
 The `repr` lines are the point of `E721`: had `isinstance` been used, the
 `Pds3File` line would read `PdsFile("/a/b")` and the subclass line would lose its
 class name. The `iconset_for(list SUBCLASS)` line is the other one: `isinstance`
 would have stopped wrapping the subclass, so the error would have come from a
-different place.
+different place. The `unblock` lines are `SIM102`, and they also show the
+collapse preserving the fall-through when `self.logger` is falsy — the two
+`no-logger` cases still reach `self.mc.set('$OK_PID', 0, time=0)`, which is the
+behavior the nested form had.
+
+The three lines nothing reaches in `pdscache.py` are `type(port) is str` in
+`MemcachedCache.__init__` and the two `F541` fragments inside
+`except pylibmc.TooBig` handlers; all three need `pylibmc`, which is not a
+declared dependency. Recorded as deferred observation 72.
 
 The probe also **caught something**, which is why it is worth reporting rather
 than merely claiming: one value differed on the first pair, and it turned out to
@@ -6200,8 +6247,8 @@ PR-23. Verified in both trees:
 | | Baseline `96e5960` | PR-23 head |
 |---|---|---|
 | `PdsFile.__mro__` | 11 entries, `PdsFile` → 9 mixins → `object` | **identical, entry for entry** |
-| `Pds3File.__mro__` | 13 entries | **identical** |
-| `Pds4File.__mro__` | 13 entries | **identical** |
+| `Pds3File.__mro__` | 12 entries | **identical** |
+| `Pds4File.__mro__` | 12 entries | **identical** |
 | `PdsFile.__bases__` | 9 mixins + `object` | 9 mixins |
 
 The one line that depended on it is `test_the_class_statement_stays_in_pdsfile_pdsfile`'s
@@ -6361,9 +6408,9 @@ Seven new entries are recorded in `critiques/deferred-observations.md`:
 returns `None` for a nonexistent file), **69** (`_local_fs.py`'s now-visibly-dead
 `values`/`zip` pair), **70** (`tools/show_opus_products.py`'s orphan `I001`
 ratchet entry), **71** (the gitignored `_version.py` carries a real `RUF022` no
-gate can see), **72** (`MemcachedCache` has no gate at all — 24 of the 24 lines
-this PR changed in it are unreachable by any test here and by both consumer
-smokes) and **73** (`PdsViewSet.append` keeps a nondeterministic member of a
+gate can see), **72** (only one `MemcachedCache` method is reachable by any test
+here: 28 of the 37 lines this PR changed in `pdscache.py` are inside that class,
+and `set_multi` is the only one the suite executes) and **73** (`PdsViewSet.append` keeps a nondeterministic member of a
 nested viewset). 67, 68, 69 and 73 are latent defects this PR uncovered — the
 first three while removing the unused bindings that concealed them, the last by
 diffing the differential probe — and repairing any of them is a behavior change
@@ -6371,4 +6418,37 @@ diffing the differential probe — and repairing any of them is a behavior chang
 
 ### 11. Review loop
 
-*(filled in as rounds run; see `critiques/pr-23/round-<k>.md`)*
+Every round's record exists on disk before its row is written here.
+
+| Round | Major | Minor | Deferred | Verdict | Full-data record |
+|---|---|---|---|---|---|
+| [1](pr-23/round-1.md) | **1** | 9 | 2 | `goal not met` | regenerated after the fixes (`runs/pr23-r2`) |
+| [2](pr-23/round-2.md) | 0 | 6 | 2 | `goal met`, but new Minors → loop continues | regenerated after the fixes (`runs/pr23-r3`) |
+
+**Round 1's Major is the one finding that changed the deliverable.** `SIM103` ×2
+in `_local_fs.py` had been classified freeze-locked on the strength of ruff's
+*bare* rewrite; the reviewer showed that `return bool(<condition>)` — the form
+ruff's own message names, and the form this PR was already using at
+`_shelves.py:337` — is provable locally, so the classification was internally
+inconsistent and `pdsfile_overrides.mdc` was about to record a false claim
+permanently. Fixed; 35 → 33 permanent, ratchet 8/11 → 7/10.
+
+**Round 2 found no Major and confirmed every gate by independent measurement**,
+including the one that is hardest to check from a diff: `ruff format --check`
+reports the *same* 13 unformatted files at base and at head, which is direct
+evidence that owner decision 3 was honoured.
+
+**Round 2's m1 is the most useful Minor of the two rounds.** The record claimed
+the differential probe covered `pdscache.py`; it covered none of it — the
+`DictionaryCache` round trip went through `DictionaryCache`'s own methods, which
+this PR never touched. That claim is now replaced by a measurement, and the probe
+was extended to drive `MemcachedCache` through the `__new__`-plus-stub-client
+technique `tests/core/test_pdscache_set_multi.py` already uses. It is why §2's
+numbers are 55 values and 105 of 143 lines rather than 39 and 81.
+
+**Findings by kind, across both rounds:** 1 Major and 15 Minor. **Two Minors were
+in the code** (a tautological assertion, a one-character idiom mismatch); the
+other thirteen and the Major were figures, claims or classifications in this
+record, the sub-plan and `pdsfile_overrides.mdc`. That is the same distribution
+PR-19 through PR-22 reported — the defects are in what the executor *says*, not
+in what it changed.

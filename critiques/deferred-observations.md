@@ -1671,18 +1671,30 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     in a fresh checkout, which is a trap for the next executor.
     **Owner: whoever owns packaging/CI hardening (Phase 8).**
 
-72. **`MemcachedCache` has no gate at all.** Measured during PR-23: **28 of the 33**
-    lines that PR changed in `pdscache.py` are inside `MemcachedCache` and are
-    unreachable by any test in this repo *and* by both consumer smoke checks —
-    `unblock()`'s two collapsed conditionals, `__contains__`, the `get_multi` /
-    `set_multi` loop-variable renames, five `F541` fragments and the
-    `type(port) is str` comparison. Ground rule 9 protects the class
-    (Viewmaster passes `port=` to `preload`), so it cannot be deleted, and nothing
-    in this repo can exercise it, so every change to it is unverified by
-    construction. That is also why PR-23 freeze-locked the two violations that
-    live there rather than fixing them. A future PR that touches `MemcachedCache`
-    is flying blind unless something stands up a memcached instance first.
-    Broader than, and related to, entries 33 and 64.
+72. **One `MemcachedCache` method has a test; the rest of the class has no gate.**
+    Measured during PR-23: **28 of the 37** lines that PR changed in `pdscache.py`
+    are inside `MemcachedCache`, and the full-data suite executes exactly one of
+    its methods — `set_multi`, because `tests/core/test_pdscache_set_multi.py`
+    builds an instance with `__new__` and a stub client rather than a connection.
+    Everything else in the class (`unblock`, `__contains__`, `get_multi`,
+    `get_now`, `flush`, `clear`, `block`, …) is executed by no test here and by
+    neither consumer smoke check. Ground rule 9 protects the class (Viewmaster
+    passes `port=` to `preload`), so it cannot be deleted.
+
+    PR-23 closed most of that gap for its own changes with a scratch differential
+    probe that reuses the same `__new__`-plus-stub technique (see
+    `critiques/phase5-validation.md`, PR-23 §2), and three changed lines remain
+    reachable by nothing — `type(port) is str` in `__init__` and the two `F541`
+    fragments inside `except pylibmc.TooBig` handlers, all of which need
+    `pylibmc`, which is not a declared dependency. That the probe was easy to
+    write is the point: **the stub-client technique already in
+    `tests/core/` generalizes**, and a small `tests/core/test_pdscache_memcached.py`
+    would give the class a real gate. PR-23 may not add it — its own gate is an
+    identical test-id set, and a new test id is movement.
+
+    It is also why PR-23 freeze-locked the two violations that live there
+    (`UP031`, `RUF015`) rather than fixing them. Broader than, and related to,
+    entries 33 and 64.
     **Owner: phase "b" of issue #77, or whoever revisits the cache layer.**
 
 ### Added by PR-23's differential probe of the untested fixes (2026-08-03)
@@ -1719,3 +1731,25 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     *viewset* to a set of viewables, and then raises `AttributeError:
     'PdsViewSet' object has no attribute 'name'` — identically in both trees.
     **Owner: phase "b" of issue #77.**
+
+### Added by the PR-23 adversarial review (round 2)
+
+74. **`MemcachedCache.flush`'s error path calls `.sort()` on `dict_keys`.**
+    `src/pdsfile/pdscache.py`, inside `flush`'s `except pylibmc.Error` handler:
+    `keys = mydict.keys()` followed by `keys.sort()` raises
+    `AttributeError: 'dict_keys' object has no attribute 'sort'`, so the handler
+    fails with a second, unrelated error before it logs anything about the first —
+    and `failures += keys` after it never runs either. PR-23 edited the two log
+    lines that bracket it (the `F541` fixes) and could not repair it: the fix
+    changes behavior, which §2 forbids here, and no gate can reach it (entry 72).
+    The fix is `keys = sorted(mydict.keys())` plus dropping the separate `.sort()`.
+    **Owner: phase "b" of issue #77.**
+
+75. **`_opus.py` now spells the same concatenation two ways.**
+    `src/pdsfile/_opus.py:246` is `[pdsf, *fmt_pdsfiles]` after PR-23's `RUF005`
+    fix; `:271` is still `sublist = [pdsf] + label_pdsfiles[pdsf.label_abspath]`,
+    which is the same shape. ruff does not flag `:271` — `RUF005` fires on
+    `iterable + [literal]`, not on `[literal] + name` where the right operand is a
+    subscript — so PR-23 correctly left it alone rather than making an unforced
+    edit. Cosmetic; a reader will see the file disagreeing with itself.
+    **Owner: PR-24, or Phase 6.**
