@@ -162,7 +162,9 @@ extend-ignore = ["PT011", "SIM105", "SIM108"]
 # with the lines that carry it, and pdsfile.py's entry drops any code it no longer
 # needs.
 "src/pdsfile/_derived_paths.py" = ["A002"]
+"src/pdsfile/_index_rows.py" = ["RUF005", "UP024"]
 "src/pdsfile/_local_fs.py" = ["B007", "B905", "E701", "SIM103", "SIM118", "UP024"]
+"src/pdsfile/_opus.py" = ["RUF005", "UP024"]
 "src/pdsfile/_path_utils.py" = ["E701", "F841"]
 "src/pdsfile/_shelves.py" = ["B904", "B905", "F841", "RUF059", "SIM103", "UP024", "UP031"]
 "src/pdsfile/holdings_maintenance/pds3/crlf.py" = ["PT028"]
