@@ -6050,13 +6050,19 @@ unreached by anything.
 Per file, "reached by neither": `pdsfile.py` 15, `_path_utils.py` 4,
 `_properties.py` 4, `pdscache.py` 3, `_shelves.py` 2, `_preload.py` 2,
 `pdsviewable.py` 2, and one each in `__init__.py`, `_associations.py`,
-`_index_rows.py`, `_local_fs.py`, `_opus.py`, `_sorting.py`. Every one of the 38
-is an `except`/`raise` line on an error path, an `E701` split, or a local rename
-— i.e. a `UP024` alias substitution (`IOError` **is** `OSError`), an f-string
-whose text was compared byte for byte by hand, a statement split that cannot
-change semantics, or a rename `ruff`/`pyflakes` proves complete. None of them is
-a `SIM`, `RUF005`, `E721`, `RUF015`, `B020` or `F401` fix; all of those are
-covered by the suite, the probe, or both.
+`_index_rows.py`, `_local_fs.py`, `_opus.py`, `_sorting.py`. **35 of the 38** are
+one of: a `UP024` alias substitution (`IOError` **is** `OSError`), an f-string
+whose text was compared byte for byte by hand, an `E701` split that cannot change
+semantics, a local rename `ruff`/`pyflakes` proves complete, or an `F841` binding
+removal whose right-hand side is preserved (`_path_utils.py:136`,
+`_preload.py:201`, `_shelves.py:171`). **The other three are named rather than
+folded in**: `pdscache.py:322`'s `E721` and the `F541` fragments at `:600` and
+`:1043`, all of which need `pylibmc` to reach (deferred observation 72). No
+`SIM`, `RUF005`, `RUF015`, `B020`, `SIM118`, `C405`, `E713` or `F401` fix is among
+the 38; every one of those is covered by the suite, the probe, or both. The one
+unreached `E721` is discharged by the metaclass argument in §4 and by the probe's
+direct evaluation of `type(x) is str` on a `str`, a `str` subclass, an `int` and a
+`bool`.
 
 What the probe covers, by code: **`E721`** — two of the three sites called for
 real (`PdsFile.__repr__` on `PdsFile`, `Pds3File`, `Pds4File` and an anonymous
@@ -6168,10 +6174,11 @@ overrides `__eq__`; every class reachable here has metaclass `type`.
 
 **`F841` — two of the nine right-hand sides have effects, and both are kept.**
 `_preload.py`'s `pdsf2 = cls.CACHE[key]` and `pdsfile.py`'s
-`pdsf = cls.CACHE[child_logical_path.lower()]` become bare subscript expression
-statements: the lookup still happens, still updates cache bookkeeping, and still
-raises the `KeyError` the enclosing handler is there to catch. Only the
-`STORE_FAST` goes. The other seven are `except … as e` bindings never read, a
+`pdsf = cls.CACHE[child_logical_path.lower()]` both become `_ = cls.CACHE[…]` —
+the spelling `_preload.get_permanent_values` already used for the same idiom two
+lines earlier: the lookup still happens, still updates cache bookkeeping, and
+still raises the `KeyError` the enclosing handler is there to catch. Only the
+named binding goes. The other seven are `except … as e` bindings never read, a
 `with open(...) as f: pass` whose `open()` is the entire point (`as f` dropped,
 `open()` kept), and two dead assignments whose right-hand sides are a constant and
 a plain list index. Both dead assignments turned out to mark latent defects, which
@@ -6194,7 +6201,7 @@ its six assignments in the package (`pdsfile.py:429/633/689`,
 `basenames = list(basenames); basenames.sort(...); return basenames`).
 
 `_properties.py`'s `self._info[:4] + (shape,)` is **frozen**: `_info_filled` is a
-**list** at `pdsfile.py:635` and `:691` (`new_merged_dir` and
+**list** at `pdsfile.py:634` and `:690` (`new_merged_dir` and
 `new_index_row_pdsfile`). On those objects `list + tuple` raises `TypeError`
 today, while `(*self._info[:4], shape)` would silently succeed. The site is
 unreachable with a list only via a whole-program argument about
@@ -6215,11 +6222,11 @@ a `return (pdsf.exists and pdsf.child_of_index(...).exists)` path. Wrapping in
 `bool(...)`, which is the form ruff's own message names, removes the question
 entirely: `bool(x)` invokes exactly the `__bool__`/`__len__` that `if x:` invoked
 and returns exactly the singleton the branch returned, so the callee's return type
-never reaches the caller. `_shelves.py`'s `bool(self.bundlename)` is the same
+never reaches the caller. `_shelves.py:338`'s `bool(self.bundlename)` is the same
 argument on a `str`. **This is a round-1 correction**: the two `_local_fs.py`
 sites were first classified freeze-locked on the strength of the bare rewrite
 alone, and the reviewer showed that the `bool(...)` form — which this PR was
-already using at `_shelves.py:337` — makes them provable locally. See
+already using at `_shelves.py:338` — makes them provable locally. See
 `critiques/pr-23/round-1.md` M1.
 
 **`UP031` — thirteen fixes, one refusal.** For every fixed site the argument is a
@@ -6253,9 +6260,12 @@ PR-23. Verified in both trees:
 
 The one line that depended on it is `test_the_class_statement_stays_in_pdsfile_pdsfile`'s
 `assert PdsFile.__bases__[-1] is object`, which the addendum names explicitly
-("stops being meaningful once `object` is gone"). It is replaced by the two
-assertions that still are meaningful — `object not in PdsFile.__bases__` and
-`PdsFile.__mro__[-1] is object`. **The test id set is unchanged**; the module's
+("stops being meaningful once `object` is gone"). It is replaced by two
+assertions that have teeth — `object not in PdsFile.__bases__`, and a check that
+every base's `__module__` starts with `pdsfile._`, which fails both if `object`
+returns to the base list and if any non-mixin base is added. (An earlier draft
+used `PdsFile.__mro__[-1] is object`; round 2 removed it as a tautology — it
+cannot fail for any Python 3 class.) **The test id set is unchanged**; the module's
 mixin discovery (`[base for base in PdsFile.__bases__ if base is not object]`)
 reads the same either way, and `tests/api/` is 26 passed before and after.
 
@@ -6424,12 +6434,13 @@ Every round's record exists on disk before its row is written here.
 |---|---|---|---|---|---|
 | [1](pr-23/round-1.md) | **1** | 9 | 2 | `goal not met` | regenerated after the fixes (`runs/pr23-r2`) |
 | [2](pr-23/round-2.md) | 0 | 6 | 2 | `goal met`, but new Minors → loop continues | regenerated after the fixes (`runs/pr23-r3`) |
+| [3](pr-23/round-3.md) | 0 | 6 | 2 | `goal met`, but new Minors → loop continues | regenerated after the fixes (`runs/pr23-r4`) |
 
 **Round 1's Major is the one finding that changed the deliverable.** `SIM103` ×2
 in `_local_fs.py` had been classified freeze-locked on the strength of ruff's
 *bare* rewrite; the reviewer showed that `return bool(<condition>)` — the form
 ruff's own message names, and the form this PR was already using at
-`_shelves.py:337` — is provable locally, so the classification was internally
+`_shelves.py:338` — is provable locally, so the classification was internally
 inconsistent and `pdsfile_overrides.mdc` was about to record a false claim
 permanently. Fixed; 35 → 33 permanent, ratchet 8/11 → 7/10.
 
@@ -6446,9 +6457,20 @@ was extended to drive `MemcachedCache` through the `__new__`-plus-stub-client
 technique `tests/core/test_pdscache_set_multi.py` already uses. It is why §2's
 numbers are 55 values and 105 of 143 lines rather than 39 and 81.
 
-**Findings by kind, across both rounds:** 1 Major and 15 Minor. **Two Minors were
-in the code** (a tautological assertion, a one-character idiom mismatch); the
-other thirteen and the Major were figures, claims or classifications in this
-record, the sub-plan and `pdsfile_overrides.mdc`. That is the same distribution
-PR-19 through PR-22 reported — the defects are in what the executor *says*, not
-in what it changed.
+**Round 3 invented the two strongest checks in this record**, neither of which
+the executor had run: an **AST control-flow skeleton diff** of all thirteen
+changed source files base-vs-head, whose only differences are the two `SIM102`,
+three `SIM103` and two `SIM114` collapses, the `version_ranks` inversion, and
+index shifts — direct mechanical evidence that none of the 20 `E701` splits
+moved a statement into or out of a block; and **mutation-testing the
+differential probe** in a scratch copy, which showed that reverting each of the
+`E721`, `SIM102` and `B020` fixes changes a probe value, i.e. the probe is not
+passing vacuously.
+
+**Findings by kind, across the three rounds: 1 Major and 21 Minor.** **Four
+Minors were in the code** — a tautological assertion, two one-character idiom
+mismatches, and one comment placed above the wrong import. The other seventeen
+and the Major were figures, claims or classifications in this record, the
+sub-plan, `pdsfile_overrides.mdc` and one plan addendum. That is the same
+distribution PR-19 through PR-22 reported: the defects are in what the executor
+*says*, not in what it changed.

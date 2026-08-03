@@ -94,8 +94,9 @@ as "What `object` is doing in that list" above directs, so the rule now reads
 trailing `, object` no longer describe the tree, and
 `test_the_class_statement_stays_in_pdsfile_pdsfile`'s
 `assert PdsFile.__bases__[-1] is object` — the line this file names as the one to
-drop with it — is replaced by `object not in PdsFile.__bases__` plus
-`PdsFile.__mro__[-1] is object`. `PdsFile.__mro__`, `Pds3File.__mro__` and
+drop with it — is replaced by `object not in PdsFile.__bases__` plus a check that
+every base's `__module__` starts with `pdsfile._`, which fails both if `object`
+returns to the base list and if any non-mixin base is added. `PdsFile.__mro__`, `Pds3File.__mro__` and
 `Pds4File.__mro__` were dumped before and after and are identical entry for
 entry. The alphabetical rule and the collision checks are unaffected: the mixin
 discovery already filtered `object` out of `__bases__`.

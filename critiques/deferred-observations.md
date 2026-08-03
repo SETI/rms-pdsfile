@@ -1753,3 +1753,33 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     subscript — so PR-23 correctly left it alone rather than making an unforced
     edit. Cosmetic; a reader will see the file disagreeing with itself.
     **Owner: PR-24, or Phase 6.**
+
+### Added by the PR-23 adversarial review (round 3)
+
+76. **`pdscache.py`'s `flush` carries 6-space and 22-space indentation that no gate
+    can see.** `src/pdsfile/pdscache.py`, inside `flush`'s `except pylibmc.TooBig`
+    and `except pylibmc.Error` handlers, two blocks are indented off the 4-space
+    grid. `python.mdc` forbids it, but ruff's `E1xx` indentation rules
+    (`E111`/`E117`) are **preview-gated**, so they are not in the enforced `E` set
+    and `ruff check` is silent. PR-23 edited the log lines at both sites (the
+    `F541` fixes) and deliberately did not re-indent them, because re-indentation
+    is not a violation the ratchet records and would enlarge a diff whose warrant
+    is that it changes nothing.
+
+    Recorded because the new ratchet header says the core modules are ruff-clean,
+    and a reader may reasonably infer that `python.mdc`'s indentation rule is now
+    in force for them. It is not, and enabling `--preview` `E1` anywhere is an
+    owner-level decision about the whole tree, not a PR-23 one.
+    **Owner: PR-24, or whoever proposes enabling preview rules.**
+
+77. **Whether prose may follow a mechanical fix is not written down anywhere.**
+    Round 1's m8 had PR-23 change three `IOError` references to `OSError` in
+    `_path_utils.py` comments and docstrings — accurate (`IOError` **is**
+    `OSError`), manifest-invisible (`scripts/dump_public_api.py` records names and
+    kinds, never docstrings), and a strictly better match for the code after
+    `UP024`. But no ruff rule required them, and PR-23's stated scope is
+    "`ruff check` only", so an equally reasonable executor would have left them and
+    an equally reasonable reviewer could call them scope creep. PR-24 faces the
+    same question at much larger scale (the rule modules' docstrings). One line in
+    its sub-plan would settle it.
+    **Owner: PR-24.**
