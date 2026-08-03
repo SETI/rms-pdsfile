@@ -1783,3 +1783,47 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     same question at much larger scale (the rule modules' docstrings). One line in
     its sub-plan would settle it.
     **Owner: PR-24.**
+
+### Added by the CodeRabbit review of PR #118 (2026-08-03)
+
+78. **`MemcachedCache.unblock` releases a lock it does not own when no logger is
+    configured.** `src/pdsfile/pdscache.py`, in `unblock`: both guard clauses put
+    their `return` **inside** the `if self.logger:` block rather than beside it.
+    On `rewrite` @ `96e5960`, with the original indentation shown by column:
+
+    ```
+    466:        if not test_pid:            # 8
+    467:            if self.logger:         # 12
+    468:                self.logger.error(…)# 16
+    471:                return              # 16  <- inside the logger guard
+    ```
+
+    So when `self.logger` is `None`, neither guard returns. Both fall through to
+    `self.mc.set('$OK_PID', 0, time=0)`, which clears the block — including when
+    `test_pid` names **another live process**. A caller that constructed its cache
+    without a logger can therefore release another process's lock and let cache
+    operations overlap. The second guard (`test_pid != self.pid`) is the dangerous
+    one; the first merely double-unblocks an already-unblocked cache.
+
+    **This is pre-existing and PR-23 did not introduce it.** PR-23's `SIM102`
+    collapse rewrote the pair as `if not test_pid and self.logger: … return`, which
+    is **exactly equivalent** to the original for all four combinations of the two
+    conditions, precisely because the `return` was already inside the inner guard.
+    The collapse is correct and should stay.
+
+    Surfaced by CodeRabbit on PR #118, which reported it as a Critical defect
+    *introduced by* the collapse. That reading is wrong — but the hazard it
+    describes is real, and its suggested patch (move each `return` out to the outer
+    level, keep only the `logger.error` call guarded) is the correct fix. Applying
+    it changes observable behavior, which §2 permits only in the enumerated PRs, so
+    PR-23 cannot carry it: `pdscache.py` bug fixes were PR-15's licence (bugs 4 and
+    5) and that PR has merged.
+
+    Not covered by any test: `pylibmc` is not installed in this environment, so the
+    whole of `MemcachedCache` is dark locally — the same reason PR-15's two
+    `pdscache` defects survived to be found by reading. This is a third defect of
+    that family.
+
+    **Owner: a PR licensed to change behavior — Phase 6's PR-28 (`errors` fix) is
+    the nearest, or a dedicated follow-up. It must add a regression test first, per
+    §2.**
