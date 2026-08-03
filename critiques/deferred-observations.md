@@ -1102,6 +1102,15 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     *and* was reachable before.
     **Owner: PR-20**, or whichever Phase-5 PR next edits the mixin harness.
 
+    **PR-20 was directed not to take this up** and did not: the Phase-5
+    coordinator ruled that entries 53 and 54 stay open and that PR-20 build no
+    new check, which is the scope rule written after PR-17 spent two review
+    rounds on a voluntarily adopted Deferred item. PR-20 touches no test file at
+    all. It did re-measure the intersection this entry is about, with its two new
+    mixins included: empty for `Pds3File`, for `Pds4File` and for all 33 classes
+    in the hierarchy. **Owner: unchanged — the next Phase-5 PR that edits the
+    mixin harness.**
+
 ### Added by the PR-19 adversarial review (round 2)
 
 54. **The mixins' "state contract" docstrings are hand-written, drift, and are
@@ -1155,3 +1164,106 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     present in the working tree, identical on the parent branch, and not an
     effect of any Phase-5 PR. Recorded here so a later round does not re-derive
     it; no owner, no action.
+
+### Added by the PR-20 executor's own measurements (2026-07-27)
+
+55. **Four methods PR-20 moved have zero in-process test coverage, and
+    rms-viewmaster calls two of them.** A `dynamic_context = test_function`
+    coverage run over `tests/pds3file/`, `tests/pds4file/`, `tests/rules/`,
+    `tests/core/` and `tests/holdings_maintenance/` attributes 224 distinct test
+    functions to `src/pdsfile/_sorting.py` and `src/pdsfile/_associations.py`,
+    and **zero** to `sort_sibnames`, `sort_siblings`, `associated_logical_paths`
+    and `associated_pdsfiles`. A grep of `tests/` confirms it independently: none
+    of the four has a single call site there. Mutating each of them — reversing
+    the list `sort_sibnames` hands to `sort_basenames`, truncating what
+    `sort_siblings` sorts, truncating either association method's answer — leaves
+    the suite at 721 passed.
+
+    Unlike PR-19's entry 50, this is not a "nothing calls it anywhere" finding:
+    rms-viewmaster calls `associated_pdsfiles` at seven sites
+    (`viewmaster.py:844,1039,1047,1258,1433,1444,1547`) and `sort_siblings` at
+    one (`viewmaster.py:1407`), and `sort_siblings` is the only caller of
+    `sort_sibnames`. `associated_logical_paths` has no consumer call site in
+    either repo but is a frozen public method. So four live pieces of the public
+    surface are pinned by nothing but the API manifest, which records a signature
+    and not a behavior.
+
+    PR-20 did not fix it: its gate is an identical pass/fail set and any new test
+    is a new id. The natural owner is whoever next adds tests to
+    `tests/pds3file/` — the four are cheap to cover, since `sort_siblings` and
+    `associated_pdsfiles` are thin wrappers over `sort_sibnames` and
+    `associated_abspaths`, both of which are heavily golden-tested.
+    **Owner: unassigned (a future test PR, not Phase 5).**
+
+56. **Several transformation tests assert a subset, never a length, so a
+    truncated answer is invisible to them.** PR-20's negative controls turned up
+    seven mutations of *covered* code that changed no outcome. The dominant shape
+    is `test_abspaths_for_pdsfiles`, `test_pdsfiles_for_logicals` and their
+    whitebox twins, which do
+
+    ```python
+    res = pds3file.Pds3File.abspaths_for_pdsfiles(pdsfiles=pdsfiles, must_exist=True)
+    for path in res:
+        assert path in expected
+    ```
+
+    — every returned value must be expected, but nothing asserts that everything
+    expected was returned, so replacing the body's return with `[...][:1]` still
+    passes. Adding `assert len(res) == len(expected)`, or comparing sorted lists,
+    would close it and is a one-line change per test.
+
+    The other five green controls are branch reachability or a caller that never
+    looks at a length, rather than assertion strength in the method's own test, and are recorded here so a later round does not re-derive them:
+    `split_basename`'s three-group `BUNDLENAME_PLUS_REGEX` return needs a bundle
+    name whose split rule leaves it unchanged and no golden case supplies one;
+    `sort_basenames`' `labels_after=True` sort key is never exercised;
+    `viewable_childnames_by_anchor` and `pdsfiles_for_basenames` are reached only
+    through `viewset_lookup`, which never checks a length; and
+    `associated_parallel`'s `# This should never happen` return is, as its comment
+    says, not reached.
+
+    PR-20 may not act on any of it — its gate is the pass/fail set — and
+    strengthening an assertion in a test the PR does not otherwise touch is the
+    volunteered-scope failure mode the common brief §5.1 forbids.
+    **Owner: unassigned (a future test PR, not Phase 5).**
+
+### Added by the PR-20 adversarial review (round 2)
+
+57. **An archived plan carries a home-rooted holdings path, which §3.4 says no
+    checked-in file should.** `plans/archive/2026-07-17-modernization-plan.md`
+    contains **two distinct `~`-rooted path tokens, three occurrences in all**,
+    naming a machine-local holdings tree. §3.4 is categorical: "No absolute
+    holdings path may be hardcoded in committed code, tests, docs, or CI" and
+    "The limited copy's location is machine-local and confidential (appears in no
+    checked-in file)."
+
+    Measurements that bound it, all made without reproducing the strings:
+
+    - **Both tokens are the immediate parent directory of both current roots.**
+      Neither is byte-equal to `PDS3_HOLDINGS_DIR` or to `PDS4_HOLDINGS_DIR`, but
+      `os.path.dirname()` of each of those roots **equals** the committed token,
+      and each root is the token plus **one** further component. So appending the
+      obvious component to what is committed yields the location §3.4 calls
+      confidential — for both roots. **This is a disclosure, not stale history.**
+      (PR-20's first draft of this entry said "neither token is the current
+      root … a stale-history hygiene item rather than a live leak", which was
+      true only under literal string equality and would have steered the owner
+      wrong. Round 3 of PR-20's review caught it; the correction is the
+      measurement above.)
+    - Every *other* holdings path in that file is under `/data/pdsdata`, which
+      §3.4 names in the open as the complete set and which is not confidential.
+    - **It is entirely pre-existing.** The same three occurrences are present at
+      `bf42ae7` (PR-20's parent) and on `origin/rewrite`; the file does not exist
+      on `origin/main`. No Phase-5 PR introduced it.
+    - **No tracked file contains either current root verbatim** — a sweep of every
+      file `git ls-files` reports returns zero hits — so this archived plan is the
+      only exposure, and it is one component short of exact.
+
+    PR-20 left it alone because it is outside PR-20's diff and pre-existing, and
+    because rewriting an archived plan to scrub a path is a change the owner
+    should authorize rather than one an extraction PR makes in passing — but it
+    should be treated as an actual confidentiality fix rather than filed as
+    hygiene. The fix is a one-line substitution to the env-var placeholder in each
+    of the three spots.
+    **Owner: the repo owner — surfaced by PR-20 as an item needing a decision;
+    whichever PR next touches `plans/archive/` can carry the edit.**
