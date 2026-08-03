@@ -15,6 +15,7 @@ class Pds4File(PdsFile):
 
     PDS_HOLDINGS = 'pds4-holdings'
     BUNDLE_DIR_NAME = 'bundles'
+    _HOLDINGS_ENV = 'PDS4_HOLDINGS_DIR'
 
     BUNDLESET_REGEX = re.compile(r'^(uranus_occs_earthbased|' +
                                  r'cassini_uvis_solarocc_beckerjarmak2023|' +

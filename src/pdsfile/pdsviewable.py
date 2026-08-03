@@ -544,6 +544,23 @@ def load_icons(path, url, color='blue', logger=None):
 # Method to select among multiple icons
 ################################################################################
 
+def _priority_of_icon_type(icon_type, is_open):
+    """Return the priority of the icon set for this icon type and open state.
+
+    load_icons() copies the priority out of REQUIRED_ICONS into every PdsViewSet
+    it creates, so the loaded icon sets are the authority on priority. The lookup
+    is keyed on the open state that is actually being requested, so an icon type
+    can only win a comparison if the set that would then be returned exists.
+    A type with no icon set for this open state has no priority and gets zero,
+    the same value as the least descriptive icon.
+    """
+
+    viewset = ICON_SET_BY_TYPE.get((icon_type, is_open))
+    if viewset is None:
+        return 0
+
+    return viewset.priority
+
 def iconset_for(pdsfiles, is_open=False):
     """Select the icon set for a list of PdsFiles. Use the icon_type highest in
     priority."""
@@ -552,11 +569,11 @@ def iconset_for(pdsfiles, is_open=False):
         pdsfiles = [pdsfiles]
 
     icon_type = 'UNKNOWN'
-    (priority, template) = ICON_FILENAME_VS_TYPE[icon_type]
+    priority = _priority_of_icon_type(icon_type, is_open)
 
     for pdsf in pdsfiles:
         test_type = pdsf.icon_type
-        (new_priority, _) = ICON_FILENAME_VS_TYPE[test_type]
+        new_priority = _priority_of_icon_type(test_type, is_open)
         if new_priority > priority:
             priority = new_priority
             icon_type = test_type

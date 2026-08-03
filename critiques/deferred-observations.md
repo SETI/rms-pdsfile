@@ -348,10 +348,13 @@ Two further observations, not defects in a single tool:
     blanket skip with a throwaway `tryfirst` plugin that marks every collected
     item `holdings_free`, with all four holdings env vars unset:
     **315 passed / 387 failed / 122 skipped** — i.e. 291 beyond the 24 the
-    hosted job runs today. Grouped by test *function*: 124 functions have every
-    parametrized case passing, 41 are **mixed** (some cases pass, some fail) and
-    126 fail outright. The four modules involved are
-    `tests/pds{3,4}file/test_pds{3,4}file_blackbox.py`,
+    hosted job ran at the time of the measurement. (PR-15 raised that 24 to 59
+    by adding 35 genuinely holdings-free tests in `tests/core/`; a re-run of the
+    forced-marker experiment would collect those same 35 among its passes, so
+    **the surplus stays 291** and the observation is unchanged.) Grouped by test
+    *function*: 124 functions have every parametrized case passing, 41 are
+    **mixed** (some cases pass, some fail) and 126 fail outright. The four
+    modules involved are `tests/pds{3,4}file/test_pds{3,4}file_blackbox.py`,
     `test_pds3file_blackbox_cached.py` and `test_pds3file_whitebox.py`. The
     result is not order-dependent: each module run alone yields the same passing
     set as it does inside the whole-tree run.
@@ -412,7 +415,8 @@ Two further observations, not defects in a single tool:
     skip", and it does catch the primary regression: a collection error exits
     non-zero. But a regression that skipped *everything* — say the
     `tests/api/conftest.py` path predicate quietly stopping matching — exits 0 and
-    the job stays green, because "0 passed, 824 skipped" is a passing pytest run.
+    the job stays green, because "0 passed, N skipped" is a passing pytest run
+    (N was 824 when this was written and is 859 after PR-15).
     PR-14 hardened the one known way that could happen (both sides of the path
     comparison are resolved), and each PR's §6.2 record pins the expected
     no-holdings counts, so a drop is visible in review — but nothing fails
@@ -445,3 +449,106 @@ Two further observations, not defects in a single tool:
     of the lint job's. The same applies to `run-tests-and-opus.yml`, which is
     likewise untouched here. **Owner:** a CI-hardening pass, or PR-37's
     finalization sweep.
+
+## From PR-15 (latent core-path bug fixes, Phase 5)
+
+No entry in 1–22 is resolved or invalidated by PR-15. Entries 10 and 11 are
+maintenance-tool defects owned by PR-26/PR-28 and were deliberately not touched:
+§5 keeps the tool-bug twins in Phase 6, where those files are already being
+edited. Two entries cite suite counts that PR-15 moves — entry 15's "24 the
+hosted job runs" and entry 20's "824 skipped" — and both are annotated in place;
+the observations themselves stand unchanged. The items below were found while
+fixing the seven the plan enumerates; §2 permits only the enumerated changes, so
+each is recorded rather than fixed.
+
+23. **`DictionaryCache(lifetime=0)` cannot serve `set()` without an explicit
+    lifetime.** The constructor documents `lifetime` as "default lifetime in
+    seconds; 0 for no expiration", and `set()` documents `lifetime=None` as "use
+    the default lifetime". But `set()` tests the default for truthiness
+    (`pdscache.py:196`, `if self.lifetime:`), so a default of `0` falls through
+    to `self.lifetime_func(value)`, which is `None` when the cache was built
+    with a constant — `TypeError: 'NoneType' object is not callable`. Every
+    caller in this repo passes a lifetime function or a non-zero constant, so
+    nothing hits it today; it is a trap for the next caller who takes the
+    docstring at its word. The fix is a `self.lifetime is not None` test, which
+    is a behavior change to a public class and therefore outside PR-15's
+    enumerated list. Found because a test fixture built its throwaway cache with
+    `lifetime=0`. **Owner:** a future pdscache PR, or phase "b".
+
+24. **`DictionaryCache.set_multi`'s `pause` parameter has never suppressed the
+    per-key trim, and still does not.** The broken call PR-15 repaired passed
+    `pause=True` down to `set()`, plainly intending to defer trimming until the
+    batch finished. `set()`
+    has no such parameter and never did, so the intent was never expressible;
+    PR-15 dropped the keyword, which is the literal fix for "passes an
+    unsupported kwarg". The consequence is that `pause` now governs only the
+    final explicit `_trim_if_necessary()` call, while each `set()` inside the
+    loop still trims if the cache is not paused. Honoring the original intent
+    means either bypassing `resume()`'s trim or giving `set()` a real `pause`
+    parameter — both are new semantics for a public method, which §6.4 makes an
+    owner decision rather than an executor's. No caller exists in this repo.
+    **Owner:** a future pdscache PR, with the owner's read on the intended
+    semantics.
+
+25. **`MemcachedCache.set_multi` applies one key's lifetime to the whole batch.**
+    The lifetime-lookup loop assigns to a single `lifetime` local
+    (`pdscache.py:798-800`), so after it runs, `lifetime` holds whichever key
+    memcached happened to yield last. The store loop then passes that one value
+    to `set_local()` for **every** key, overwriting the correct per-key lifetimes
+    the lookup loop had just written into `local_lifetime_by_key`, and applying
+    it to keys that were already local as well. PR-15 fixed only the enumerated
+    defect on the same lines — iterating the dictionary as pairs — because until
+    that was fixed the method raised before reaching the store loop, and because
+    correcting the lifetime plumbing is a second, larger behavior change. The
+    regression test added for the enumerated fix uses a single key, so it does
+    not pin the batch behavior either way. **Owner:** a future pdscache PR.
+
+26. **`_recache()` silently downgrades a permanent cache entry to an expiring
+    one.** `preload` stores the top-level category entries with `lifetime=0`, so
+    they never expire. Any lazy property that fills in and then calls
+    `self._recache()` re-stores the object with `lifetime=None`, which
+    `DictionaryCache.set()` resolves through `cache_lifetime_for_class` to a
+    finite value — 7 days for a category object. Measured on `rewrite` @
+    `807956a`, i.e. *before* PR-15: reading `description` or `iconset_closed` on
+    the `volumes` object already flips its cache entry from permanent to
+    expiring. PR-15's `html_path` fix adds `html_path` to that set (14 entries in
+    a full walk of the limited holdings copy), which is why this is recorded
+    here rather than earlier — it is pre-existing behavior of the property
+    pattern, not something the fix introduced, and `MemcachedCache` is unaffected
+    because its `set()` preserves a previously-defined lifetime. One further
+    consequence: a downgraded entry also joins `DictionaryCache.keys`, the
+    trimmable set, so a process that ever exceeds `limit + slop` (220,000) could
+    evict a category entry — previously impossible for a `lifetime=0` entry.
+    Whether a long-running process should be able to expire a category entry at
+    all is a cache-design question for issue #77 phase "b". **Owner:** phase "b".
+
+### Added by the PR-15 adversarial review (round 2)
+
+27. **`html_path` raises `IndexError` on an empty merged category.**
+    `pdsfile.py`'s `html_path` handles a merged directory (`self.abspath is
+    None`) with `self.child(self.childnames[0]).html_path`, which indexes an
+    empty list whenever a category is present in the preload but has no
+    children. Measured, not hypothesized: **36 of the 1,910 objects** in PR-15's
+    bug-1 probe do exactly this against the limited holdings copy — every
+    category that copy does not populate (`archives-bundles`, `bundles` for
+    Pds3File, `volumes` for Pds4File, the `checksums-archives-*` set, …). The
+    behavior is identical before and after PR-15, which is why the probe's
+    before/after comparison is unaffected. The code's own comment already calls
+    the approach fragile ("Not a great solution but it usually works … This
+    issue will probably never come up"), so this is a known-shaky path rather
+    than a surprise; what is new is the measurement of how often it fires.
+    Fixing it means deciding what a childless merged category's URL *is*, which
+    is a behavior decision outside PR-15's enumerated list. **Owner:** phase "b"
+    or a future `pdsfile.py` PR.
+
+28. **`iconset_for`'s terminal lookup assumes an `UNKNOWN` icon set exists.**
+    `pdsviewable.py`'s `iconset_for` ends with `ICON_SET_BY_TYPE[icon_type,
+    is_open]`. PR-15 made the priority comparison key on the requested open
+    state, so any icon type that *wins* the comparison necessarily has a set
+    under that key and the lookup cannot raise for a winner. The remaining case
+    is the starting value: if `load_icons()` was never called, or was called on a
+    tree with no `document_generic` icon, `('UNKNOWN', is_open)` is absent and
+    the function raises `KeyError` instead of returning anything. That shape is
+    pre-existing — it is only reachable at all now that the function no longer
+    raises `NameError` first — and turning it into a graceful return is a new
+    behavior, not a bug fix. **Owner:** whichever PR next revisits the icon path.
