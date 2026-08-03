@@ -823,3 +823,128 @@ A pure move has no licence to change any of them.
     that declares it complete; and adding a shared check mid-phase is precisely
     what went wrong here — PR-18–PR-21 would inherit and trust an implementation
     they never reviewed.
+
+## From PR-18 (extract the checksum, archive and log path builders, Phase 5)
+
+Three entries, all raised by the executor's own measurements rather than by a
+review round. None is fixable inside PR-18: the first two ask for changes to test
+files PR-18 does not touch, and the third is a note that PR-23 must carry.
+
+43. **The tool tests exercise the log-path builders but do not pin their value,
+    and coverage cannot see them at all.** The parent plan describes PR-18's
+    deduplication as "behavior-identical, golden-tested via the tool tests from
+    PR-13". Measured three ways
+    (`critiques/phase5-validation.md`, PR-18 §8): a per-test-context coverage run
+    attributes **no** `tests/holdings_maintenance/` context to any line of
+    `_derived_paths.py`, because PR-13's harness runs each tool as a subprocess
+    (`tests/holdings_maintenance/support.py:297`) that in-process coverage does
+    not follow; the tools nevertheless do call `log_path_for_volume` /
+    `log_path_for_volset` / `log_path_for_index` unconditionally in `main()`'s
+    loop, which the log files left in each test tree prove; but **no test in
+    `tests/holdings_maintenance/` asserts anything about a log filename**, so with
+    `_log_path_for` deliberately emitting `.LOGWRONG` and a wrong target segment,
+    four tool-test modules still report 31 passed, exactly as unmutated.
+
+    The real regression net is `tests/pds3file/test_pds3file_blackbox.py`'s 41
+    log-path ids, and PR-18 shows by mutation that it is a live one. Two things
+    are worth carrying forward anyway. **(a)** A tool test could cheaply assert
+    the *shape* of the log file it produces — the tools already write it into a
+    temporary tree the test owns, so the assertion is a `glob` and a regex, and it
+    would make the tools' own use of the log-path builders a value net rather than
+    a liveness net. **(b)** More generally, **any future claim of the form "the
+    tool tests cover X" cannot be checked with in-process coverage**; it needs
+    either `COVERAGE_PROCESS_START` plumbed into `ToolTree.env` or an assertion on
+    an artifact. PR-18 chose the artifact, once; a standing answer belongs with the
+    tests. **Owner: Phase 6**, which is where those tool files are being edited.
+
+44. **The log-path golden tests stop matching in the year 2100.**
+    `tests/pds3file/test_pds3file_blackbox.py`'s 41 log-path cases match the
+    embedded time tag with the literal regex `20..-..-..T..-..-..`, so they assert
+    the format and the position of the tag rather than its value — which is what
+    lets them run without pinning the clock, and PR-18's §9 controls show they are
+    sensitive to everything around it. The leading `20` is the only part that is
+    not a wildcard, and it is a date assumption in a test rather than in the code:
+    `LOGFILE_TIME_FMT` is `'%Y-%m-%dT%H-%M-%S'` and has no such limit. Replacing
+    `20..` with `\d{4}` costs nothing and is behavior-neutral, but it is an edit to
+    a test file PR-18 does not otherwise touch, and PR-18's gate is an identical
+    pass/fail set. **Owner: PR-24**, which already edits the test tree's style.
+
+45. **`A002`'s permanent freeze-locked home is now `_derived_paths.py`, not
+    `pdsfile.py`.** The plan's PR-23 section enumerates the freeze-locked
+    per-file-ignores core keeps forever and names `A002` as
+    "`log_path_for_*(…, dir='')` in `pdsfile.py`, called by keyword `dir='…'` from
+    the tools — frozen param name". PR-18 moves those three methods, so all three
+    `A002` occurrences move with them: `pdsfile.py`'s entry drops the code and
+    `src/pdsfile/_derived_paths.py = ["A002"]` gains it
+    (`critiques/phase5-validation.md`, PR-18 §7). Nothing is wrong today — the
+    ratchet is a strict split and the union is unchanged — but PR-23 must
+    enumerate `A002` against the new file, and an executor working from the plan's
+    text alone would look for it in the wrong place and could conclude the
+    suppression had been dropped. The same will be true of any other freeze-locked
+    code the remaining Phase-5 PRs relocate. **Owner: PR-23.**
+
+### Added by the PR-18 adversarial review (round 1)
+
+46. **The one piece of code PR-18 changes has no holdings-free coverage at all.**
+    The hosted lint/no-holdings job runs 80 of the 880 ids and none of them
+    reaches `_log_path_for`; the whole regression net for the deduplication is
+    `tests/pds3file/test_pds3file_blackbox.py`'s 41 log-path ids, which need
+    `PDS3_HOLDINGS_DIR`. So a machine without holdings — which is every stock
+    GitHub runner, and every contributor the plan's risk table is about — cannot
+    catch a regression in this code, and the gate that runs there would stay green
+    through one.
+
+    This is a property of the tests rather than of PR-18: `log_path_for_*` is pure
+    string assembly over `self.disk_`, `self.category_`, `self.bundleset_`,
+    `self.bundlename`, `self.logical_path` and `cls.LOG_ROOT_`, so it is one of
+    the easiest things in the package to test without a holdings tree — an
+    instance built by hand with those six attributes set exercises every branch,
+    including both `place` values and the `is_index` guard. PR-18 may not add it:
+    its gate is an identical pass/fail set, and a new test id is movement.
+
+    **Owner: Phase 6**, alongside entry 43, which concerns the same surface from
+    the other direction — the tool tests run this code but assert nothing about
+    its output. A single holdings-free test module for the log-path builders would
+    close both.
+
+### Added by the PR-18 adversarial review (round 3)
+
+47. **`log_path_for_index`'s docstring first line describes a bundle.**
+    `src/pdsfile/_derived_paths.py` opens it with "Return a complete log file path
+    for this bundle."; it returns an *index* log path, as its own second line and
+    its `is_index` guard both say. The sibling `log_path_for_bundleset` says
+    "for this bundle set", so the line is a copy that was never updated. PR-18
+    moved the definition byte-for-byte and deliberately did not touch it: a commit
+    that edited the text would break the byte-for-byte claim that makes the move
+    checkable, and the wording is not a behavior. **Owner: Phase 7** (PR-29–PR-34),
+    where `doc_python.mdc` comes into force and the docstrings are revised anyway.
+
+    The PR-18 round-4 review found a second docstring in the same module with the
+    same defect, and it belongs to this entry rather than to a new one:
+    `dirpath_and_prefix_for_archive` says "Return the absolute path to the
+    directory associated with this archive path." and returns the 2-tuple
+    `(dirpath, parent)`. Its sibling `dirpath_and_prefix_for_checksum` gets this
+    right — "Return tuple (…)". Also moved verbatim, also correctly untouched
+    here. The Phase-7 docstring pass should treat `_derived_paths.py` as a file
+    with more than one of these, not as a single fix.
+
+### Added by the PR-18 adversarial review (round 4)
+
+48. **The mixin shadowing check looks at `PdsFile` only, not at `Pds3File` /
+    `Pds4File`.** `tests/api/test_mixin_collisions.py:89`
+    (`test_no_mixin_is_shadowed_by_pdsfile_itself`) intersects each mixin's names
+    with `_defined_names(PdsFile)` and stops there. But the subclasses are exactly
+    where `PdsFile`'s method surface is extended — `src/pdsfile/pds3file/__init__.py`
+    defines `log_path_for_volume` and `log_path_for_volset` as aliases — and they
+    are what the maintenance tools instantiate. A name added to a subclass that a
+    mixin also defines would silently make the mixin's copy unreachable on the
+    class callers actually use: the failure the test exists to catch, one level
+    down, where the test cannot see it.
+
+    Measured at PR-18's head: the intersection is **empty** for both subclasses
+    against all three mixins, so nothing is broken today and no PR is blocked. The
+    test file is PR-17's and is outside PR-18's diff, and PR-18's gate is an
+    identical pass/fail set, so strengthening the check would be a new assertion
+    in a test PR-18 does not otherwise touch. **Owner: PR-19**, or whichever
+    Phase-5 PR next edits the mixin harness — the extension is one more
+    intersection per subclass in the same test.
