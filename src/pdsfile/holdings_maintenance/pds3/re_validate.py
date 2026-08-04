@@ -8,22 +8,24 @@
 # Enter the --help option to see more information.
 ################################################################################
 
-import sys
-import os
-import glob
 import argparse
 import datetime
+import glob
+import os
 import socket
+import sys
 from smtplib import SMTP
 
 import pdslogger
-import pdsfile
 
-from pdsfile.holdings_maintenance.pds3 import pdschecksums
-from pdsfile.holdings_maintenance.pds3 import pdsarchives
-from pdsfile.holdings_maintenance.pds3 import pdsinfoshelf
-from pdsfile.holdings_maintenance.pds3 import pdslinkshelf
-from pdsfile.holdings_maintenance.pds3 import pdsdependency
+import pdsfile
+from pdsfile.holdings_maintenance.pds3 import (
+    pdsarchives,
+    pdschecksums,
+    pdsdependency,
+    pdsinfoshelf,
+    pdslinkshelf,
+)
 
 LOGNAME = 'pds.validation'
 LOGROOT_ENV = 'PDS_LOG_ROOT'
@@ -53,11 +55,11 @@ def validate_one_volume(pdsdir, voltypes, tests, args, logger):
     tests_performed = 0
 
     # Open logger for this volume
-    logfiles = set([pdsdir.log_path_for_volume('_re-validate',
-                                               dir='re-validate'),
-                    pdsdir.log_path_for_volume('_re-validate',
-                                               dir='re-validate',
-                                               place='parallel')])
+    logfiles = {pdsdir.log_path_for_volume('_re-validate',
+                                           dir='re-validate'),
+                pdsdir.log_path_for_volume('_re-validate',
+                                           dir='re-validate',
+                                           place='parallel')}
 
     local_handlers = []
     for logfile in logfiles:
@@ -199,7 +201,7 @@ def validate_one_volume(pdsdir, voltypes, tests, args, logger):
         else:
             logger.info('%d re-validation tests performed' % tests_performed,
                         pdsdir.abspath, force=True)
-        (fatal, errors, warnings, tests) = logger.close()
+        (fatal, errors, _warnings, tests) = logger.close()
 
     return (logfile, fatal, errors)
 
@@ -295,7 +297,7 @@ def get_all_log_info(logroot):
     # Create a dictionary keyed by volset/bundlename that returns the chronological
     # list of all associated log paths
     logs_for_volset_volume = {}
-    for (root, dirs, files) in os.walk(logroot):
+    for (root, _dirs, files) in os.walk(logroot):
         files = list(files)
         files.sort()
         for file in files:
@@ -356,7 +358,7 @@ def find_modified_volumes(holdings_info, log_info):
     log_dict = {}
     log_modtimes = set()
     for info in log_info:
-        (start, elapsed, modtime, abspath, had_error, had_fatal) = info
+        (_start, _elapsed, modtime, abspath, _had_error, _had_fatal) = info
         key = key_from_volume_abspath(abspath)
         log_dict[key] = info
         log_modtimes.add((modtime, key))
@@ -382,8 +384,7 @@ def find_modified_volumes(holdings_info, log_info):
 
     # Delete these keys from the log info dictionary
     for (_, key) in modified_holdings:
-        if key in log_dict:
-            del log_dict[key]
+        log_dict.pop(key, None)
 
     # Identify previously logged volumes not found in holdings
     # Delete these from the log dictionary
@@ -413,7 +414,7 @@ def send_email(to_addr, subject, message):
     smtp.connect(SERVER, 25)
     date = datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
 
-    if type(to_addr) == str:
+    if type(to_addr) is str:
         to_addr = [to_addr]
 
     to_addr_in_msg = ','.join(to_addr)
@@ -566,8 +567,8 @@ if args.full or not (checksums or archives or infoshelves or linkshelves or
     dependencies = True
 
 dependencies &= ('volumes' in voltypes)
-linkshelves  &= (('volumes' in voltypes or 'metadata' in voltypes or
-                                           'calibrated' in voltypes))
+linkshelves  &= ('volumes' in voltypes or 'metadata' in voltypes or
+                                           'calibrated' in voltypes)
 
 args.checksums    = checksums
 args.archives     = archives
@@ -576,11 +577,16 @@ args.linkshelves  = linkshelves
 args.dependencies = dependencies
 
 tests = []
-if checksums   : tests.append('checksums')
-if archives    : tests.append('archives')
-if infoshelves : tests.append('infoshelves')
-if linkshelves : tests.append('linkshelves')
-if dependencies: tests.append('dependencies')
+if checksums:
+    tests.append('checksums')
+if archives:
+    tests.append('archives')
+if infoshelves:
+    tests.append('infoshelves')
+if linkshelves:
+    tests.append('linkshelves')
+if dependencies:
+    tests.append('dependencies')
 
 args.timeless = args.timeless and args.dependencies
 
@@ -760,7 +766,7 @@ else:
     try:
 
         # For each volume...
-        for (abspath, mod_date, prev_validation, had_errors) in info:
+        for (abspath, mod_date, prev_validation, _had_errors) in info:
             pdsdir = pdsfile.Pds3File.from_abspath(abspath)
             if prev_validation is None:
                 ps = 'not previously validated'

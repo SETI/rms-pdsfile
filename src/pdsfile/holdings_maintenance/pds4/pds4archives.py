@@ -8,14 +8,15 @@
 # Enter the --help option to see more information.
 ################################################################################
 
-import sys
+import argparse
 import os
 import re
+import sys
 import tarfile
 import zlib
-import argparse
 
 import pdslogger
+
 import pdsfile
 
 LOGNAME = 'pds.validation.archives'
@@ -83,10 +84,10 @@ def load_directory_info(pdsdir, *, logger=None, limits=None):
                 tuples.append((abspath, abspath[lskip:], nbytes, modtime))
 
             # Load directories
-            for dir in dirs:
-                abspath = os.path.join(path, dir)
+            for dirname in dirs:
+                abspath = os.path.join(path, dirname)
 
-                if dir.startswith('._'):       # skip dot-underscore files
+                if dirname.startswith('._'):       # skip dot-underscore files
                     logger.dot_underscore('._* directory skipped', abspath)
                     continue
 
@@ -521,13 +522,13 @@ def main():
         for pdsdir in pdsdirs:
 
             # Save logs in up to two places
-            logfiles = set([pdsdir.log_path_for_bundle('_archives',
-                                                       task=args.task,
-                                                       dir='pdsarchives'),
-                            pdsdir.log_path_for_bundle('_archives',
-                                                       task=args.task,
-                                                       dir='pdsarchives',
-                                                       place='parallel')])
+            logfiles = {pdsdir.log_path_for_bundle('_archives',
+                                                   task=args.task,
+                                                   dir='pdsarchives'),
+                        pdsdir.log_path_for_bundle('_archives',
+                                                   task=args.task,
+                                                   dir='pdsarchives',
+                                                   place='parallel')}
 
             # Create all the handlers for this level in the logger
             local_handlers = []

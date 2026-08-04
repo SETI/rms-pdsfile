@@ -12,15 +12,15 @@ import argparse
 import datetime
 import glob
 import os
-import re
 import pickle
+import re
 import shutil
 import sys
-from PIL import Image
 
 import pdslogger
-import pdsfile
+from PIL import Image
 
+import pdsfile
 from pdsfile.holdings_maintenance.pds4 import pds4checksums
 
 # Holds log file directories temporarily, used by move_old_info()
@@ -176,7 +176,7 @@ def generate_infodict(pdsdir, selection, old_infodict=None, *, logger=None,
             merged[root] = infodict[root]
 
         else:
-            for (key, value) in infodict.items():
+            for (key, _value) in infodict.items():
                 if key not in merged:
                     info = infodict[key]
                     merged[key] = info
@@ -307,7 +307,7 @@ def write_infodict(pdsdir, infodict, *, logger=None, limits=None):
     try:
         # Determine the maximum length of the file path
         len_path = 0
-        for (abspath, values) in infodict.items():
+        for (abspath, _values) in infodict.items():
             len_path = max(len_path, len(abspath))
 
         len_path -= lskip
@@ -771,17 +771,17 @@ def main():
             pdsf = pdsfile.Pds4File.from_abspath(path, must_exist=True)
             abspaths.append(pdsf.abspath)
 
-        except (ValueError, IOError):
+        except (OSError, ValueError):
             # Allow a bundle name to stand in for a .tar.gz archive
-            (dir, basename) = os.path.split(path)
-            pdsdir = pdsfile.Pds4File.from_abspath(dir)
+            (dirname, basename) = os.path.split(path)
+            pdsdir = pdsfile.Pds4File.from_abspath(dirname)
             if pdsdir.archives_ and '.' not in basename:
                 if pdsdir.bundletype_ == 'bundles/':
                     basename += '.tar.gz'
                 else:
                     basename += '_%s.tar.gz' % pdsdir.bundletype_[:-1]
 
-                newpaths = glob.glob(os.path.join(dir, basename))
+                newpaths = glob.glob(os.path.join(dirname, basename))
                 if len(newpaths) == 0:
                     raise
 

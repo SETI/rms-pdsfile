@@ -18,8 +18,9 @@ import shutil
 import sys
 
 import pdslogger
-import pdsfile
 import translator
+
+import pdsfile
 
 LOGNAME = 'pds.validation.links'
 LOGROOT_ENV = 'PDS_LOG_ROOT'
@@ -637,11 +638,11 @@ TARGET_REGEX2 = re.compile(r'^ *,? *' + PATTERN, re.I)
 LINK_REGEX = re.compile(r'(?:|.*?[^/@\w\.])/?(?:\.\./)*(([A-Z0-9][-\w]+/)*' +
                         r'(makefile\.?|[A-Z0-9][\w-]*(\.[\w-]+)+))', re.I)
 
-EXTS_WO_LABELS = set(['.LBL', '.CAT', '.TXT', '.FMT', '.SFD'])
+EXTS_WO_LABELS = {'.LBL', '.CAT', '.TXT', '.FMT', '.SFD'}
 
 ################################################################################
 
-class LinkInfo(object):
+class LinkInfo:
     """Used internally to describe a link within a specified record of a file.
     """
 
@@ -712,7 +713,7 @@ def generate_links(dirpath, old_links=None, *, logger=None, limits=None):
       latest_mtime = 0.
 
       # Walk the directory tree, one subdirectory "root" at a time...
-      for (root, dirs, files) in os.walk(dirpath):
+      for (root, _dirs, files) in os.walk(dirpath):
 
         local_basenames = []            # Tracks the basenames in this directory
         local_basenames_uc = []         # Same as above, but upper case
@@ -1019,7 +1020,7 @@ def read_links(abspath, logger=None):
     file.
     """
 
-    with open(abspath, 'r', encoding='latin-1') as f:
+    with open(abspath, encoding='latin-1') as f:
         recs = f.readlines()
 
     links = []
@@ -1148,12 +1149,12 @@ def load_links(dirpath, *, logger=None, limits=None):
     logger.open('Reading link shelf file for', dirpath, limits=merged_limits)
 
     try:
-        (link_path, lskip) = pdsdir.shelf_path_and_lskip('link')
+        (link_path, _lskip) = pdsdir.shelf_path_and_lskip('link')
 
         logger.info('Link shelf file', link_path)
 
         if not os.path.exists(link_path):
-            raise IOError('File not found: ' + link_path)
+            raise OSError('File not found: ' + link_path)
 
         # Read the shelf file and convert to a dictionary
         with open(link_path, 'rb') as f:
@@ -1267,7 +1268,7 @@ def write_linkdict(dirpath, link_dict, *, logger=None, limits=None):
             len_key = max(len_key, len(key))
             if isinstance(value, list):
                 tuples = value
-                for (recno, basename, interior_path) in tuples:
+                for (_recno, basename, _interior_path) in tuples:
                     len_base = max(len_base, len(basename))
 
         len_key = min(len_key, 60)
@@ -1284,7 +1285,8 @@ def write_linkdict(dirpath, link_dict, *, logger=None, limits=None):
             f.write(name + ' = {\n')
             for valtype in (list, str):
               for key in keys:
-                if not isinstance(interior_dict[key], valtype): continue
+                if not isinstance(interior_dict[key], valtype):
+                    continue
 
                 f.write('  "%s"' % key)
                 if len(key) < len_key:
@@ -1344,10 +1346,10 @@ def validate_links(dirpath, dirdict, shelfdict, *, logger=None, limits=None):
                 dirinfo = dirdict[key]
                 shelfinfo = shelfdict[key]
 
-                if type(dirinfo) == list:
+                if type(dirinfo) is list:
                     dirinfo.sort()
 
-                if type(shelfinfo) == list:
+                if type(shelfinfo) is list:
                     shelfinfo.sort()
 
                 if dirinfo != shelfinfo:
@@ -1378,7 +1380,8 @@ def validate_links(dirpath, dirdict, shelfdict, *, logger=None, limits=None):
 def move_old_links(shelf_file, logger=None):
     """Move a file to the /logs/ directory tree and append a time tag."""
 
-    if not os.path.exists(shelf_file): return
+    if not os.path.exists(shelf_file):
+        return
 
     shelf_basename = os.path.basename(shelf_file)
     (shelf_prefix, shelf_ext) = os.path.splitext(shelf_basename)
@@ -1549,7 +1552,7 @@ def repair(pdsdir, *, logger=None, limits=None):
             logger.info('!!! Time tag on link shelf files set to',
                         dt.strftime('%Y-%m-%dT%H-%M-%S'), force=True)
         else:
-            logger.info(f'!!! Link shelf file is up to date; repair canceled',
+            logger.info('!!! Link shelf file is up to date; repair canceled',
                         link_path, force=True)
         return
 
@@ -1577,7 +1580,7 @@ def update(pdsdir, *, logger=None, limits=None):
 
     # Generate link dict
     (dir_linkdict,
-     latest_mtime) = generate_links(pdsdir.abspath, shelf_linkdict,
+     _latest_mtime) = generate_links(pdsdir.abspath, shelf_linkdict,
                                     logger=logger, limits=limits)
 
     # Compare
@@ -1711,13 +1714,13 @@ def main():
                 continue
 
             # Save logs in up to two places
-            logfiles = set([pdsdir.log_path_for_volume('_links',
-                                                       task=args.task,
-                                                       dir='pdslinkshelf'),
-                            pdsdir.log_path_for_volume('_links',
-                                                       task=args.task,
-                                                       dir='pdslinkshelf',
-                                                       place='parallel')])
+            logfiles = {pdsdir.log_path_for_volume('_links',
+                                                   task=args.task,
+                                                   dir='pdslinkshelf'),
+                        pdsdir.log_path_for_volume('_links',
+                                                   task=args.task,
+                                                   dir='pdslinkshelf',
+                                                   place='parallel')}
 
             # Create all the handlers for this level in the logger
             local_handlers = []
@@ -1770,8 +1773,9 @@ def main():
         raise
 
     finally:
-        (fatal, errors, warnings, tests) = logger.close()
-        if fatal or errors: status = 1
+        (fatal, errors, _warnings, _tests) = logger.close()
+        if fatal or errors:
+            status = 1
 
     sys.exit(status)
 

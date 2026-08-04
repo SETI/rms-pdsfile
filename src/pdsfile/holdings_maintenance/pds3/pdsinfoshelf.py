@@ -16,11 +16,11 @@ import pickle
 import re
 import shutil
 import sys
-from PIL import Image
 
 import pdslogger
-import pdsfile
+from PIL import Image
 
+import pdsfile
 from pdsfile.holdings_maintenance.pds3 import pdschecksums
 
 # Holds log file directories temporarily, used by move_old_info()
@@ -29,8 +29,8 @@ LOGDIRS = []
 LOGNAME = 'pds.validation.fileinfo'
 LOGROOT_ENV = 'PDS_LOG_ROOT'
 
-PREVIEW_EXTS = set(['.jpg', '.png', '.gif', '.tif', '.tiff',
-                    '.jpeg', '.jpeg_small'])
+PREVIEW_EXTS = {'.jpg', '.png', '.gif', '.tif', '.tiff',
+                '.jpeg', '.jpeg_small'}
 
 # Default limits
 GENERATE_INFODICT_LIMITS = {}
@@ -173,7 +173,7 @@ def generate_infodict(pdsdir, selection, old_infodict={}, *, logger=None,
             merged[root] = infodict[root]
 
         else:
-            for (key, value) in infodict.items():
+            for (key, _value) in infodict.items():
                 if key not in merged:
                     info = infodict[key]
                     merged[key] = info
@@ -304,7 +304,7 @@ def write_infodict(pdsdir, infodict, *, logger=None, limits=None):
     try:
         # Determine the maximum length of the file path
         len_path = 0
-        for (abspath, values) in infodict.items():
+        for (abspath, _values) in infodict.items():
             len_path = max(len_path, len(abspath))
 
         len_path -= lskip
@@ -370,7 +370,7 @@ def validate_infodict(pdsdir, dirdict, shelfdict, selection, *, logger=None,
                 shelfinfo = shelfdict[key]
 
                 (bytes1, count1, modtime1, checksum1, size1) = dirinfo
-                (bytes2, count2, modtime2, checksum2, size2) = shelfinfo
+                (bytes2, count2, modtime2, _checksum2, size2) = shelfinfo
 
                 # Truncate modtimes to seconds
                 modtime1 = modtime1.rpartition('.')[0]
@@ -428,7 +428,8 @@ def validate_infodict(pdsdir, dirdict, shelfdict, selection, *, logger=None,
 def move_old_info(shelf_file, logger=None):
     """Move a file to the /logs/ directory tree and append a time tag."""
 
-    if not os.path.exists(shelf_file): return
+    if not os.path.exists(shelf_file):
+        return
 
     shelf_basename = os.path.basename(shelf_file)
     (shelf_prefix, shelf_ext) = os.path.splitext(shelf_basename)
@@ -789,17 +790,17 @@ def main():
             pdsf = pdsfile.Pds3File.from_abspath(path, must_exist=True)
             abspaths.append(pdsf.abspath)
 
-        except (ValueError, IOError):
+        except (OSError, ValueError):
             # Allow a volume name to stand in for a .tar.gz archive
-            (dir, basename) = os.path.split(path)
-            pdsdir = pdsfile.Pds3File.from_abspath(dir)
+            (dirname, basename) = os.path.split(path)
+            pdsdir = pdsfile.Pds3File.from_abspath(dirname)
             if pdsdir.archives_ and '.' not in basename:
                 if pdsdir.voltype_ == 'volumes/':
                     basename += '.tar.gz'
                 else:
                     basename += '_%s.tar.gz' % pdsdir.voltype_[:-1]
 
-                newpaths = glob.glob(os.path.join(dir, basename))
+                newpaths = glob.glob(os.path.join(dirname, basename))
                 if len(newpaths) == 0:
                     raise
 
@@ -856,21 +857,21 @@ def main():
 
             # Save logs in up to two places
             if pdsf.volname:
-                logfiles = set([pdsf.log_path_for_volume('_info',
-                                                         task=args.task,
-                                                         dir='pdsinfoshelf'),
-                                pdsf.log_path_for_volume('_info',
-                                                         task=args.task,
-                                                         dir='pdsinfoshelf',
-                                                         place='parallel')])
+                logfiles = {pdsf.log_path_for_volume('_info',
+                                                     task=args.task,
+                                                     dir='pdsinfoshelf'),
+                            pdsf.log_path_for_volume('_info',
+                                                     task=args.task,
+                                                     dir='pdsinfoshelf',
+                                                     place='parallel')}
             else:
-                logfiles = set([pdsf.log_path_for_volset('_info',
-                                                         task=args.task,
-                                                         dir='pdsinfoshelf'),
-                                pdsf.log_path_for_volset('_info',
-                                                         task=args.task,
-                                                         dir='pdsinfoshelf',
-                                                         place='parallel')])
+                logfiles = {pdsf.log_path_for_volset('_info',
+                                                     task=args.task,
+                                                     dir='pdsinfoshelf'),
+                            pdsf.log_path_for_volset('_info',
+                                                     task=args.task,
+                                                     dir='pdsinfoshelf',
+                                                     place='parallel')}
 
             # Create all the handlers for this level in the logger
             local_handlers = []
@@ -931,7 +932,7 @@ def main():
         raise
 
     finally:
-        (fatal, errors, warnings, tests) = logger.close()
+        (fatal, errors, _warnings, _tests) = logger.close()
         if fatal or errors:
             status = 1
 

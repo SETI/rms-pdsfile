@@ -19,6 +19,7 @@ import subprocess
 import sys
 
 import pdslogger
+
 import pdsfile
 
 # Holds log file directories temporarily, used by move_old_checksums()
@@ -86,11 +87,11 @@ def generate_checksums(pdsdir, selection=None, oldpairs=None, *, regardless=True
     latest_mtime = 0.
     try:
         md5_dict = {}
-        for (abspath, hex) in (oldpairs or []):
-            md5_dict[abspath] = hex
+        for (abspath, old_md5) in (oldpairs or []):
+            md5_dict[abspath] = old_md5
 
         newtuples = []
-        for (path, dirs, files) in os.walk(dirpath):
+        for (path, _dirs, files) in os.walk(dirpath):
             for file in files:
                 abspath = os.path.join(path, file)
                 latest_mtime = max(latest_mtime, os.path.getmtime(abspath))
@@ -149,7 +150,7 @@ def generate_checksums(pdsdir, selection=None, oldpairs=None, *, regardless=True
             newpairs.append((key, md5_dict[key]))
             del md5_dict[key]
 
-        for (key, new_md5, new_file) in newtuples:
+        for (key, _new_md5, _new_file) in newtuples:
             if key in md5_dict:     # if not already copied to list of pairs
                 newpairs.append((key, md5_dict[key]))
 
@@ -199,7 +200,7 @@ def read_checksums(check_path, selection=None, *, logger=None, limits=None):
 
         # Read the pairs
         abspairs = []
-        with open(check_path, 'r') as f:
+        with open(check_path) as f:
             for rec in f:
                 hexval = rec[:32]
                 filepath = rec[34:].rstrip()
@@ -287,7 +288,7 @@ def write_checksums(check_path, abspairs, *, logger=None, limits=None):
         # Write file
         with open(check_path, 'w') as f:
             for pair in abspairs:
-                (abspath, hex) = pair
+                (abspath, md5) = pair
 
                 if abspath.endswith('/.DS_Store'):      # skip .DS_Store files
                     logger.ds_store('.DS_Store skipped', abspath)
@@ -300,7 +301,7 @@ def write_checksums(check_path, abspairs, *, logger=None, limits=None):
                 if '/.' in abspath:                     # flag invisible files
                     logger.invisible('Invisible file', abspath)
 
-                f.write('%s  %s\n' % (hex, abspath[lskip:]))
+                f.write('%s  %s\n' % (md5, abspath[lskip:]))
                 logger.debug('Written', abspath)
 
     except (Exception, KeyboardInterrupt) as e:
@@ -330,10 +331,10 @@ def validate_pairs(pairs1, pairs2, selection=None, *, logger=None,
     success = True
     try:
         md5_dict = {}
-        for (abspath, hex) in pairs2:
-            md5_dict[abspath] = hex
+        for (abspath, md5) in pairs2:
+            md5_dict[abspath] = md5
 
-        for (abspath, hex) in pairs1:
+        for (abspath, md5) in pairs1:
             if selection and selection != os.path.basename(abspath):
                 continue
 
@@ -341,7 +342,7 @@ def validate_pairs(pairs1, pairs2, selection=None, *, logger=None,
                 logger.error('Missing checksum', abspath)
                 success = False
 
-            elif hex != md5_dict[abspath]:
+            elif md5 != md5_dict[abspath]:
                 del md5_dict[abspath]
                 logger.error('Checksum mismatch', abspath)
                 success = False
@@ -372,7 +373,8 @@ def move_old_checksums(check_path, logger=None):
     """Appends a version number to an existing checksum file and moves it to
     the associated log directory."""
 
-    if not os.path.exists(check_path): return
+    if not os.path.exists(check_path):
+        return
 
     check_basename = os.path.basename(check_path)
     (check_prefix, check_ext) = os.path.splitext(check_basename)
@@ -580,7 +582,7 @@ def update(pdsdir, selection=None, logger=None):
 
     # Generate new checksums if necessary
     (dirpairs,
-     latest_mtime) = generate_checksums(pdsdir, selection, md5pairs,
+     _latest_mtime) = generate_checksums(pdsdir, selection, md5pairs,
                                         regardless=False, logger=logger)
     if not dirpairs:
         return False
@@ -735,17 +737,17 @@ def main():
             pdsf = pdsfile.Pds4File.from_abspath(path, must_exist=True)
             abspaths.append(pdsf.abspath)
 
-        except (ValueError, IOError):
+        except (OSError, ValueError):
             # Allow a bundle name to stand in for a .tar.gz archive
-            (dir, basename) = os.path.split(path)
-            pdsdir = pdsfile.Pds4File.from_abspath(dir)
+            (dirname, basename) = os.path.split(path)
+            pdsdir = pdsfile.Pds4File.from_abspath(dirname)
             if pdsdir.archives_ and '.' not in basename:
                 if pdsdir.bundletype_ == 'bundles/':
                     basename += '.tar.gz'
                 else:
                     basename += '_%s.tar.gz' % pdsdir.bundletype_[:-1]
 
-                newpaths = glob.glob(os.path.join(dir, basename))
+                newpaths = glob.glob(os.path.join(dirname, basename))
                 if len(newpaths) == 0:
                     raise
 
@@ -803,21 +805,21 @@ def main():
 
             # Save logs in up to two places
             if pdsf.bundlename:
-                logfiles = set([pdsf.log_path_for_bundle('_md5',
-                                                         task=args.task,
-                                                         dir='pdschecksums'),
-                                pdsf.log_path_for_bundle('_md5',
-                                                         task=args.task,
-                                                         dir='pdschecksums',
-                                                         place='parallel')])
+                logfiles = {pdsf.log_path_for_bundle('_md5',
+                                                     task=args.task,
+                                                     dir='pdschecksums'),
+                            pdsf.log_path_for_bundle('_md5',
+                                                     task=args.task,
+                                                     dir='pdschecksums',
+                                                     place='parallel')}
             else:
-                logfiles = set([pdsf.log_path_for_bundleset('_md5',
-                                                            task=args.task,
-                                                            dir='pdschecksums'),
-                                pdsf.log_path_for_bundleset('_md5',
-                                                            task=args.task,
-                                                            dir='pdschecksums',
-                                                            place='parallel')])
+                logfiles = {pdsf.log_path_for_bundleset('_md5',
+                                                        task=args.task,
+                                                        dir='pdschecksums'),
+                            pdsf.log_path_for_bundleset('_md5',
+                                                        task=args.task,
+                                                        dir='pdschecksums',
+                                                        place='parallel')}
 
             # Create all the handlers for this level in the logger
             local_handlers = []
@@ -880,7 +882,7 @@ def main():
         raise
 
     finally:
-        (fatal, errors, warnings, tests) = logger.close()
+        (fatal, errors, _warnings, _tests) = logger.close()
         if fatal or errors:
             proceed = False
 

@@ -4,11 +4,12 @@
 #
 # Syntax:
 #   shelf-consistency-check.py [--verbose] shelf_root [shelf_root ...]
-# 
+#
 # Confirm that every info shelf file has a corresponding directory in holdings/.
 ################################################################################
 
-import os, sys
+import os
+import sys
 
 paths = sys.argv[1:]
 
@@ -23,11 +24,13 @@ else:
 errors = 0
 tests = 0
 for path in paths:
-  for root, dirs, files in os.walk(path):
+  for root, _dirs, files in os.walk(path):
 
     # Ignore anything not inside a shelves directory
-    if 'shelves' not in root: continue
-    if root.endswith('shelves'): continue
+    if 'shelves' not in root:
+        continue
+    if root.endswith('shelves'):
+        continue
 
     # Confirm it is one of the expected subdirectories
     tail = root.partition('shelves/')[-1]
@@ -78,8 +81,8 @@ for path in paths:
                 print(holdings_path)
 
 # Summarize
-print('Tests performed: %d' % tests)
-print('Errors found: %d' % errors)
+print(f'Tests performed: {tests}')
+print(f'Errors found: {errors}')
 
 if errors:
     sys.exit(1)
