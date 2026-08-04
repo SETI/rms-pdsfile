@@ -2,11 +2,13 @@
 # pds3file/rules/COVIMS_0xxx.py
 ##########################################################################################
 
+import os
+import re
+
+import translator
+
 import pdsfile.pds3file as pds3file
 from pdsfile.pdsfile import abspath_for_logical_path
-import os
-import translator
-import re
 
 ##########################################################################################
 # DESCRIPTION_AND_ICON
@@ -285,7 +287,6 @@ class COVIMS_0xxx(pds3file.Pds3File):
     OPUS_FORMAT = opus_format + pds3file.Pds3File.OPUS_FORMAT
     OPUS_PRODUCTS = opus_products + pds3file.Pds3File.OPUS_PRODUCTS
     OPUS_ID = opus_id
-    OPUS_ID_TO_PRIMARY_LOGICAL_PATH = opus_id_to_primary_logical_path
 
     VIEWABLES = {'default': default_viewables}
 

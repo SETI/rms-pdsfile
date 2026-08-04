@@ -2,9 +2,11 @@
 # pds3file/rules/VG_0xxx.py
 ##########################################################################################
 
-import pdsfile.pds3file as pds3file
-import translator
 import re
+
+import translator
+
+import pdsfile.pds3file as pds3file
 
 ##########################################################################################
 # DESCRIPTION_AND_ICON

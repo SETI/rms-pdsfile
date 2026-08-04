@@ -2,9 +2,11 @@
 # pds4file/rules/uranus_occs_earthbased.py
 ##########################################################################################
 
-import pdsfile.pds4file as pds4file
-import translator
 import re
+
+import translator
+
+import pdsfile.pds4file as pds4file
 
 from .uranus_occs_earthbased_primary_filespec import PRIMARY_FILESPEC_LIST as PRIMARY_FILESPEC_LIST
 

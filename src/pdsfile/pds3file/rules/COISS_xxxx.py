@@ -2,11 +2,12 @@
 # pds3file/rules/COISS_xxxx.py
 ##########################################################################################
 
-import pdsfile.pds3file as pds3file
-import translator
 import re
 
+import translator
 from range_ex import range_regex
+
+import pdsfile.pds3file as pds3file
 
 ##########################################################################################
 # DESCRIPTION_AND_ICON

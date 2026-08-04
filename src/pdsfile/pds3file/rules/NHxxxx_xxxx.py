@@ -2,9 +2,11 @@
 # pds3file/rules/NHxxxx_xxxx.py
 ##########################################################################################
 
-import pdsfile.pds3file as pds3file
-import translator
 import re
+
+import translator
+
+import pdsfile.pds3file as pds3file
 
 ##########################################################################################
 # Special procedure to define and prioritize OPUS_TYPES

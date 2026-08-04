@@ -2,9 +2,11 @@
 # pds3file/rules/GO_0xxx.py
 ##########################################################################################
 
-import pdsfile.pds3file as pds3file
-import translator
 import re
+
+import translator
+
+import pdsfile.pds3file as pds3file
 
 # This is a complete list of all images that appear under REDO/REPAIRED/TIRETRACK, along with the images they supersede:
 # GO_0006/REDO/C0018062639R.IMG             GO_0002/VENUS/C0018062639R.IMG
@@ -792,9 +794,12 @@ class GO_0xxx(pds3file.Pds3File):
                 for sublist in rank_dict[rank]:
                     abspath = sublist[0].abspath
                     prio = 1
-                    if 'TIRETRACK' in abspath: prio = 0
-                    if 'REPAIRED' in abspath: prio = 0
-                    if 'REDO' in abspath: prio = 0
+                    if 'TIRETRACK' in abspath:
+                        prio = 0
+                    if 'REPAIRED' in abspath:
+                        prio = 0
+                    if 'REDO' in abspath:
+                        prio = 0
 
                     prioritizer.append((prio, sublist))
 

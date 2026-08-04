@@ -2,9 +2,11 @@
 # pds4file/rules/cassini_iss_spokes_hedman_hamilton_2024.py
 ##########################################################################################
 
-import pdsfile.pds4file as pds4file
-import translator
 import re
+
+import translator
+
+import pdsfile.pds4file as pds4file
 
 ##########################################################################################
 # DESCRIPTION_AND_ICON
