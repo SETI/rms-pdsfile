@@ -6894,7 +6894,7 @@ member), and `N805`/`N802` on the frozen uppercase methods.
 |---|---|
 | no holdings — `scripts/run-all-checks.sh`, all holdings vars unset | **92 passed / 800 skipped**; ruff, pytest, pyroma, API-freeze and clean-install all green |
 | `ruff check src/pdsfile tests scripts` with the project config | clean, over **139 files** (26 pds3 rule modules, 10 pds4, 17 maintenance modules, 2 tools, 2 subpackage initializers, 64 test modules, 3 scripts, 15 PR-23 core) |
-| no-ignores re-derivation over the in-scope files | reports exactly the 2,259 permanent violations and nothing else |
+| no-ignores re-derivation over the in-scope files | reports exactly the 2,277 permanent violations and nothing else |
 | clean install | `scripts/clean_install_check.sh`, via `run-all-checks.sh` — passed |
 | `__mro__` for the three `UP004` classes | identical at base and HEAD |
 | inline `noqa` | **none added**; the only `noqa` strings in the diff are prose in the sub-plan and this file |
@@ -6986,9 +6986,19 @@ corrected it.
 | Round | Findings | Record |
 |---|---|---|
 | 1 | **1 Major**, 9 Minor, 3 Deferred — verdict `goal not met` | `critiques/pr-24/round-1.md` |
+| 2 | **0 Major**, 4 Minor, 1 Deferred — verdict `goal not met` | `critiques/pr-24/round-2.md` |
 
-Round 1's Major is the `re_validate.py` freeze violation; all nine Minors were
-accepted and fixed, none rebutted. Because the round changed `src/pdsfile/`, the
-full-data run, the tool-coverage run and the API dump were **all regenerated**
-before the next reviewer, per §6.6 step 5. The figures in §2–§8 above are the
-regenerated ones.
+Round 1's Major is the `re_validate.py` freeze violation; all nine of its Minors
+were accepted and fixed, none rebutted. Because that round changed
+`src/pdsfile/`, the full-data run, the tool-coverage run and the API dump were
+**all regenerated** before the next reviewer, per §6.6 step 5. The figures in
+§2–§8 above are the regenerated ones.
+
+Round 2 found no Major. Its four Minors were all arithmetic or citation slips in
+these records — a superseded 2,259 left in the gate table, a "fifteen" that named
+eleven, `A002` cited at a line this PR deletes, and a `UP031` composition that
+double-counted one site and filed twelve unaligned `%` expressions under
+"hand-aligned blocks". All four were accepted and fixed; none was rebutted. That
+round changed **only** `plans/`, `critiques/` and `pdsfile_overrides.mdc`, so
+under §6.6 step 5 the full-data record carries forward rather than being
+regenerated.

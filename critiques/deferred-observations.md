@@ -2044,3 +2044,23 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     merged under one heading. Moving code is not a `ruff check` fix, so it
     correctly stayed out of PR-24.
     **Owner: Phase 7 (PR-29–PR-34), which owns docstrings and module structure.**
+
+### Added by the PR-24 adversarial review (round 2)
+
+88. **The pds3 and pds4 tool twins have already diverged on their mutable
+    defaults, so two of the nine permanent `B006`s are a divergence rather than a
+    shared-skeleton property.** `pdschecksums.py:55` takes `oldpairs=[]` while
+    `pds4checksums.py:56` takes `oldpairs=None` and writes `(oldpairs or [])`;
+    `pdsinfoshelf.py:45` takes `old_infodict={}` while `pds4infoshelf.py:46`
+    takes `old_infodict=None`. The pds4 side has already adopted the
+    None-sentinel form that `B006` asks for.
+
+    PR-24's exclusion still holds at the two pds3 sites — passing `None`
+    explicitly raises `TypeError` today and would stop doing so, which is a
+    behavior change — but the reason given, that the rewrite changes the
+    signature a frozen tool reports, is one the pds4 twin already contradicts.
+
+    This matters because **PR-25 consolidates exactly these two function pairs
+    into `_common.py`** and will have to choose one signature for each. Choosing
+    the pds4 form is the `B006` fix and removes two of the nine.
+    **Owner: PR-25 (Phase 6).**
