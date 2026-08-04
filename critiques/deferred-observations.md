@@ -1835,3 +1835,53 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     **Owner: a PR licensed to change behavior — Phase 6's PR-28 (`errors` fix) is
     the nearest, or a dedicated follow-up. It must add a regression test first, per
     §2.**
+
+### Added by the owner's PR-23 revision corrections (2026-08-03)
+
+79. **Logging calls across `src/pdsfile/` build their message eagerly instead of
+    passing lazy `%`-style arguments.** The owner's rule, given on 2026-08-03, is
+    that a logging call passes a `%`-style format string and the values as
+    *arguments* — `logger.warn('Message: %s', the_message)` — and that f-strings
+    belong in exception messages, not in logging calls. PR-23 converted the four
+    calls it had itself turned into f-strings (`_preload.py` ×2, `_shelves.py`,
+    `pdscache.py`) and swept the rest of the package. It did **not** convert them:
+    they are pre-existing and outside a `ruff check` PR's warrant, and `ruff`
+    has no rule that reports them (`G004`/`flake8-logging-format` is not in the
+    selected set, and would not catch the `+` form anyway).
+
+    Measured with an AST sweep over `src/pdsfile/**/*.py` (excluding the generated
+    `_version.py`), counting calls whose **first** argument is an f-string, a `+`
+    concatenation, an eager `%`, or a `.format()`:
+
+    | Area | Sites | `+` concat | f-string | eager `%` |
+    |---|---|---|---|---|
+    | core, `src/pdsfile/*.py` | **34** | 30 | 2 | 2 |
+    | subpackages, `src/pdsfile/**/` | **96** | 33 | 7 | 56 |
+    | **total** | **130** | 63 | 9 | 58 |
+
+    Core, by file: `pdscache.py` 20, `_preload.py` 8, `_sorting.py` 2, `_opus.py`
+    1, `_properties.py` 1, `pdsfile.py` 1, `pdsviewable.py` 1. Most of
+    `pdscache.py`'s are `+`-joined f-string fragments inside `MemcachedCache`,
+    which no test here executes (entry 72). The subpackage total is dominated by
+    the maintenance tools, which Phase 6 consolidates.
+
+    Two things make this more than a style sweep, and are why it needs a decision
+    rather than a mechanical pass:
+
+    - **The messages must keep their `%` pattern.** `pdslogger`'s `log()` reads
+      "if there are no substitution patterns (indicated by `%` or `{`) inside the
+      message string, a single argument is interpreted as the `filepath`", so a
+      conversion that drops the pattern silently turns its value into a path
+      suffix instead of raising.
+    - **Many of these calls already pass a real second argument that *is* a
+      filepath** (`_opus.py:114`, `_properties.py:1582`, `pdscache.py:600`/`:611`,
+      and most of the maintenance tools' `logger.error(..., abspath)` calls). A
+      conversion has to distinguish a filepath argument from a value argument at
+      every site. `pdsviewable.py:529` shows the failure mode already present:
+      `logger.warn(f'Missing sizes for icon {icon_name} ({key})', str(missing)[1:-1])`
+      has no `%` in the message, so the size list is being rendered through the
+      filepath path rather than as a value.
+
+    **Owner: owner decision on scope, then a dedicated style PR — the count is too
+    large and too spread out for PR-24, whose warrant is `ruff check` on the
+    subpackages.**

@@ -71,8 +71,8 @@ class DictionaryCache(PdsCache):
                 self.keys.remove(key)
 
             if self.logger:
-                self.logger.debug(f'{len(pairs)} items trimmed from '
-                                  'DictionaryCache')
+                self.logger.debug('%d items trimmed from DictionaryCache',
+                                  len(pairs))
 
     def _trim_if_necessary(self):
         if self.pauses == 0:

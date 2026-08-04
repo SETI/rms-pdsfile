@@ -255,7 +255,7 @@ class _ShelfMixin:
             # to open every info shelf file during preload.
             if shelf_type == 'info':
                 py_path = shelf_path.replace('.pickle', '.py')
-                cls.LOGGER.debug(f'Retrieving key "{py_path}"')
+                cls.LOGGER.debug('Retrieving key "%s"', py_path)
 
                 with open(py_path) as f:
                     rec = f.readline()

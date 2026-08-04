@@ -201,8 +201,8 @@ class _PreloadMixin:
                         _ = cls.CACHE[key]
 
         except KeyError as e:
-            cls.LOGGER.warn(f'Permanent value {e} missing from Memcache; '
-                            'preloading again')
+            cls.LOGGER.warn('Permanent value %s missing from Memcache; '
+                            'preloading again', str(e))
             cls.preload(holdings_list, port, force_reload=True)
 
         else:
@@ -379,8 +379,8 @@ class _PreloadMixin:
                     cls.CACHE = pdscache.MemcachedCache(cls.MEMCACHE_PORT,
                                                         lifetime=cls.cache_lifetime,
                                                         logger=cls.LOGGER)
-                    cls.LOGGER.info('Connecting to PdsFile Memcache '
-                                    f'[{cls.MEMCACHE_PORT}]')
+                    cls.LOGGER.info('Connecting to PdsFile Memcache [%s]',
+                                    cls.MEMCACHE_PORT)
                     break
 
                 except pylibmc.Error:
