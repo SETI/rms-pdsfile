@@ -657,7 +657,7 @@ No behavior change; full-data run to prove it. Record the freeze-locked set in
 Each branches from `rewrite`, opens against `rewrite`, and merges before the next
 begins; PR-24's §6.2 baseline is `rewrite` after PR-23 lands.
 
-**PR-24 (L, mechanical)** `style: ruff-clean and format rules and remaining files`
+**PR-24 (L, mechanical)** `style: ruff-clean rules and remaining files`
 Rules files + pds3file/pds4file `__init__` (including deduplicating the
 twice-defined Pds3File alias properties — semantically identical bodies, one
 positional/one keyword form; manifest unchanged). `__init__.py` star imports
