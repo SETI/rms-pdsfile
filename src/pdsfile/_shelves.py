@@ -132,7 +132,7 @@ class _ShelfMixin:
                           which can be used if this is a bundleset (default '')
         """
 
-        (abspath, lskip) = self.shelf_path_and_lskip(shelf_id, bundlename)
+        (abspath, _lskip) = self.shelf_path_and_lskip(shelf_id, bundlename)
         if bundlename:
             return (abspath, '')
         else:
@@ -163,18 +163,18 @@ class _ShelfMixin:
             cls.LOGGER.debug('Opening pickle file', shelf_path)
 
         if not os.path.exists(shelf_path):
-            raise IOError('Pickle file not found: %s' % shelf_path)
+            raise OSError(f'Pickle file not found: {shelf_path}')
 
         try:
             with open(shelf_path, 'rb') as f:
                 shelf = pickle.load(f)
-        except Exception as e:
-            raise IOError('Unable to open pickle file: %s' % shelf_path)
+        except Exception:
+            raise OSError(f'Unable to open pickle file: {shelf_path}')
 
         # The pickle files do not produce dictionaries that are in
         # alphabetical order, so we sort them here in case we want to
         # do a binary search later.
-        keys_vals = list(zip(shelf.keys(), shelf.values()))
+        keys_vals = list(zip(shelf.keys(), shelf.values(), strict=False))
         keys_vals.sort(key=lambda x: x[0])
         shelf = dict(keys_vals)
 
@@ -255,7 +255,7 @@ class _ShelfMixin:
             # to open every info shelf file during preload.
             if shelf_type == 'info':
                 py_path = shelf_path.replace('.pickle', '.py')
-                cls.LOGGER.debug('Retrieving key "%s"' % py_path)
+                cls.LOGGER.debug('Retrieving key "%s"', py_path)
 
                 with open(py_path) as f:
                     rec = f.readline()
@@ -333,12 +333,9 @@ class _ShelfMixin:
         if self.archives_:
             return True
 
-        # Other files have shelves from the bundlename level on down
-        if self.bundlename:
-            return True
-
-        # This leaves bundleset-level files and their AAREADMEs
-        return False
+        # Other files have shelves from the bundlename level on down. That
+        # leaves bundleset-level files and their AAREADMEs, which have none.
+        return bool(self.bundlename)
 
     def shelf_exists_if_expected(self):
         """Return True if shelf exists for a pdsfile instance expected to have the shelf

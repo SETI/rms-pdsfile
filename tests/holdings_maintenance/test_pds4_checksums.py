@@ -5,8 +5,10 @@
 # --initialize -> golden -> --validate clean -> corrupt -> --validate reports it ->
 # --repair -> --validate clean -> --update after a new file.
 #
-# Like its pds3 twin, pds4checksums reports failure in the log, not the exit code;
-# see entry 5 under "From PR-13" in critiques/deferred-observations.md.
+# Like its pds3 twin, pds4checksums reports failure in the log, not the exit code:
+# main() computes a failure flag and never passes it to sys.exit. The tests below
+# pin that as current behavior rather than assert the exit code the other tools use
+# (support.TOOLS_WITHOUT_EXIT_STATUS).
 #
 # Every test rebuilds the tree first, so each one is independent and order-agnostic.
 ##########################################################################################

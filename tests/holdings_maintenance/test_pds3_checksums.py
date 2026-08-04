@@ -8,8 +8,10 @@
 # Every test rebuilds the tree first (the `fresh_tree` fixture), so each one is
 # independent and order-agnostic.
 #
-# pdschecksums reports failure in the log, not the exit code; see entry 5 under
-# "From PR-13" in critiques/deferred-observations.md.
+# pdschecksums reports failure in the log, not the exit code: main() computes a
+# failure flag and never passes it to sys.exit. The tests below pin that as current
+# behavior rather than assert the exit code the other tools use
+# (support.TOOLS_WITHOUT_EXIT_STATUS).
 ##########################################################################################
 
 from collections import namedtuple

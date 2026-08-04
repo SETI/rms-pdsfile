@@ -8,9 +8,9 @@
 # They are NOT an argparse mutually exclusive group, so passing two of them is
 # accepted and the LAST one on the command line wins, silently.
 #
-# The Phase 6 consolidation factors this parser into a shared module and is
-# forbidden from introducing add_mutually_exclusive_group(), which would turn
-# today's silent last-wins into a hard argparse error -- an observable CLI change.
+# Factoring this parser into a module shared by the pds3 and pds4 tools must not
+# introduce add_mutually_exclusive_group(), which would turn today's silent
+# last-wins into a hard argparse error -- an observable CLI change.
 # These tests are what makes that regression visible.
 #
 # Only the resolution of the task flags is under test; each case asserts which task

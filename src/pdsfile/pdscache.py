@@ -1,7 +1,10 @@
 import os
-import sys
-import time
 import random
+
+# `sys` is not referenced below; it is re-exported for callers that reach it as
+# pdsfile.pdscache.sys. The redundant `as` alias is the explicit re-export form.
+import sys as sys
+import time
 
 try:
     import pylibmc
@@ -13,7 +16,7 @@ except ImportError:
 ################################################################################
 ################################################################################
 
-class PdsCache(object):
+class PdsCache:
 
         pass
 
@@ -67,7 +70,7 @@ class DictionaryCache(PdsCache):
                 self.keys.remove(key)
 
             if self.logger:
-                self.logger.debug('%d items trimmed from DictionaryCache' %
+                self.logger.debug('%d items trimmed from DictionaryCache',
                                   len(pairs))
 
     def _trim_if_necessary(self):
@@ -315,7 +318,7 @@ class MemcachedCache(PdsCache):
 
         self.port = port
 
-        if type(port) == str:
+        if type(port) is str:
             self.mc = pylibmc.Client([port], binary=True)
         else:
             self.mc = pylibmc.Client(['127.0.0.1:%d' % port], binary=True)
@@ -391,7 +394,6 @@ class MemcachedCache(PdsCache):
         """Pause until another process stops blocking, or until timeout."""
 
         was_blocked = False
-        broken_block = False
         while True:
             blocking_pid = self.mc.get('$OK_PID')
             if blocking_pid in (0, self.pid):
@@ -457,25 +459,23 @@ class MemcachedCache(PdsCache):
                 return was_blocked
 
             self.logger.warn(f'Process {self.pid} was outraced by {test_pid} ' +
-                             f'while waiting to block')
+                             'while waiting to block')
 
     def unblock(self, flush=True):
         """Remove block preventing processes from touching the cache."""
 
         test_pid = self.mc.get('$OK_PID')
-        if not test_pid:
-            if self.logger:
-                self.logger.error(f'Process {self.pid} is unable to unblock ' +
-                                  f'MemcachedCache [{self.port}]; ' +
-                                  f'Cache is already unblocked')
-                return
+        if not test_pid and self.logger:
+            self.logger.error(f'Process {self.pid} is unable to unblock ' +
+                              f'MemcachedCache [{self.port}]; ' +
+                              'Cache is already unblocked')
+            return
 
-        if test_pid != self.pid:
-            if self.logger:
-                self.logger.error(f'Process {self.pid} is unable to unblock ' +
-                                  f'MemcachedCache [{self.port}]; ' +
-                                  f'Cache is blocked by process {test_pid}')
-                return
+        if test_pid != self.pid and self.logger:
+            self.logger.error(f'Process {self.pid} is unable to unblock ' +
+                              f'MemcachedCache [{self.port}]; ' +
+                              f'Cache is blocked by process {test_pid}')
+            return
 
         self.mc.set('$OK_PID', 0, time=0)
         if self.logger:
@@ -530,9 +530,12 @@ class MemcachedCache(PdsCache):
     def __contains__(self, key):
         """Enable the "in" operator."""
 
-        if key in self.toobig_dict: return True
-        if key in self.local_value_by_key: return True
-        if key in self.permanent_values: return True
+        if key in self.toobig_dict:
+            return True
+        if key in self.local_value_by_key:
+            return True
+        if key in self.permanent_values:
+            return True
         return key in self.mc
 
     def __len__(self):
@@ -593,9 +596,9 @@ class MemcachedCache(PdsCache):
                     failures.append(k)
                     self.toobig_dict[k] = v[0]
                     if self.logger:
-                      self.logger.warn(f'TooBig error in process ' +
+                      self.logger.warn('TooBig error in process ' +
                                        f'{self.pid}; ' +
-                                       f'saved to internal cache', k)
+                                       'saved to internal cache', k)
             except pylibmc.Error as e:
                 if self.logger:
                     self.logger.exception(e)
@@ -605,7 +608,7 @@ class MemcachedCache(PdsCache):
                     keys.sort()
                     for key in keys:
                       self.logger.error(f'Process {self.pid} has failed ' +
-                                        f'to flush; deleted', key)
+                                        'to flush; deleted', key)
 
                 failures += keys
 
@@ -703,8 +706,8 @@ class MemcachedCache(PdsCache):
                 if pair:
                     mydict[key] = pair
 
-            for (key, tuple) in mydict.items():
-                (value, lifetime) = tuple
+            for (key, pair) in mydict.items():
+                (value, lifetime) = pair
                 mydict[key] = value
 
                 # Update the local copy of any permanent values
@@ -748,7 +751,7 @@ class MemcachedCache(PdsCache):
         if result is None:
             return None
 
-        (value, lifetime) = result
+        (value, _lifetime) = result
         return value
 
     ######## Set methods
@@ -795,8 +798,8 @@ class MemcachedCache(PdsCache):
         # Retrieve lifetimes from cache if necessary
         if lifetime is None and nonlocal_keys:
             nonlocal_dict = self.mc.get_multi(nonlocal_keys)
-            for (key, tuple) in nonlocal_dict.items():
-                lifetime = tuple[1]
+            for (key, pair) in nonlocal_dict.items():
+                lifetime = pair[1]
                 self.local_lifetime_by_key[key] = lifetime
 
         # Save or update values in local cache
@@ -952,7 +955,7 @@ class MemcachedCache(PdsCache):
             if self.logger:
                 self.logger.info(f'Process {self.pid} has completed clear() ' +
                                  f'of MemcacheCache [{self.port}] ' +
-                                 f'but continues to block')
+                                 'but continues to block')
         else:
             self.unblock()
 
@@ -1036,7 +1039,7 @@ class MemcachedCache(PdsCache):
                 try:
                     self.mc.set(k, v, time=0)
                 except pylibmc.TooBig:
-                    self.logger.warn(f'Permanent object is TooBig in process ' +
+                    self.logger.warn('Permanent object is TooBig in process ' +
                                      f'{self.pid}; ' +
                                      'removed from permanent list and saved ' +
                                      'to internal cache', k)

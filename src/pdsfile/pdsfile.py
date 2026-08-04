@@ -76,17 +76,17 @@ nothing shadows them, that they hold no state and that the order is alphabetical
 tests/api/test_mixin_import_isolation.py checks the no-back-import rule by
 loading each module in a fresh interpreter.
 
-The split is invisible from outside: pdsfile.pdsfile.<name> still resolves for
-every name it resolved for before, and tests/api/api_manifest.json -- which
-records names and kinds, never the defining class -- is unchanged.
+The split is invisible to a caller's code: pdsfile.pdsfile.<name> still resolves
+for every name it resolved for before, and nothing a caller imports or calls has
+moved or been renamed. It does show in __module__, __qualname__ and __mro__.
 """
 
 import os
 import re
 
-# Nothing below references these ten, but all of them are frozen members of
-# this module's public surface (tests/api/api_manifest.json), so it keeps them
-# bound. The redundant `as` alias is the explicit re-export form.
+# None of these ten is referenced below; they are re-exported for callers that
+# reach them as pdsfile.pdsfile.<name>. The redundant `as` alias is the explicit
+# re-export form.
 import bisect as bisect
 import datetime as datetime
 import fnmatch as fnmatch
@@ -103,8 +103,8 @@ import translator
 
 # pdstable is used by the index-row methods, defaultdict by the OPUS methods and
 # pdsparser by the lazy properties, which live in _index_rows.py, _opus.py and
-# _properties.py; all three names are frozen members of this module's surface, so
-# they are bound here in the same redundant-alias form as the ten above.
+# _properties.py; all three are also reachable as pdsfile.pdsfile.<name>, so they
+# are bound here in the same redundant-alias form as the ten above.
 import pdsparser as pdsparser
 import pdstable as pdstable
 
@@ -114,7 +114,7 @@ from pdsfile import pdscache
 from ._preload import cache_lifetime_for_class
 
 # The path helpers live in a private module. Importing them here is also what
-# keeps pdsfile.pdsfile.<name> resolving for callers and for the API freeze.
+# keeps pdsfile.pdsfile.<name> resolving for callers.
 from ._path_utils import (_clean_join,
                           abspath_for_logical_path,
                           construct_category_list,
@@ -138,11 +138,11 @@ from ._sorting import _SortingMixin
 
 # Re-exported only; nothing below references these. FILE_BYTE_UNITS,
 # formatted_file_size, HAS_PYLIBMC, PATH_EXISTS_CACHE_SIZE, pause_caching,
-# pdsviewable, resume_caching and selected_path_from_path are frozen members of
-# this module's public surface; _GLOB_CACHE_SIZE, _clean_abspath, _clean_glob and
-# _needs_glob are private, and are carried so that no name reachable as
-# pdsfile.pdsfile.<name> is lost. The redundant `as` alias is the explicit
-# re-export form, so they do not read as unused imports.
+# pdsviewable, resume_caching and selected_path_from_path are public;
+# _GLOB_CACHE_SIZE, _clean_abspath, _clean_glob and _needs_glob are private. All
+# are carried so that no name reachable as pdsfile.pdsfile.<name> is lost. The
+# redundant `as` alias is the explicit re-export form, so they do not read as
+# unused imports.
 from pdsfile import pdsviewable as pdsviewable
 
 from ._local_fs import PATH_EXISTS_CACHE_SIZE as PATH_EXISTS_CACHE_SIZE
@@ -162,16 +162,15 @@ from ._preload import (HAS_PYLIBMC as HAS_PYLIBMC,
 ##########################################################################################
 
 class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsMixin,
-              _OpusMixin, _PreloadMixin, _PropertiesMixin, _ShelfMixin, _SortingMixin,
-              object):
+              _OpusMixin, _PreloadMixin, _PropertiesMixin, _ShelfMixin, _SortingMixin):
 
     # Configuration
     VOLTYPES = ['volumes', 'calibrated', 'diagrams', 'metadata', 'previews',
                 'documents', 'bundles']
     VIEWABLE_VOLTYPES = ['previews', 'diagrams']
 
-    VIEWABLE_EXTS = set(['jpg', 'png', 'gif', 'tif', 'tiff', 'jpeg', 'jpeg_small'])
-    DATAFILE_EXTS = set(['dat', 'img', 'cub', 'qub', 'fit', 'fits'])
+    VIEWABLE_EXTS = {'jpg', 'png', 'gif', 'tif', 'tiff', 'jpeg', 'jpeg_small'}
+    DATAFILE_EXTS = {'dat', 'img', 'cub', 'qub', 'fit', 'fits'}
 
     CATEGORY_REGEX      = re.compile(r'^(|checksums\-)(|archives\-)(\w+)$')
     CATEGORY_REGEX_I    = re.compile(CATEGORY_REGEX.pattern, re.I)
@@ -181,9 +180,9 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
 
     LOGFILE_TIME_FMT = '%Y-%m-%dT%H-%M-%S'
 
-    PLAIN_TEXT_EXTS = set(['lbl', 'txt', 'asc', 'tab', 'cat', 'fmt', 'f', 'c',
-                        'cpp', 'pro', 'for', 'f77', 'py', 'inc', 'h', 'sh',
-                        'idl', 'csh', 'tf', 'ti', 'tls', 'lsk', 'tsc'])
+    PLAIN_TEXT_EXTS = {'lbl', 'txt', 'asc', 'tab', 'cat', 'fmt', 'f', 'c',
+                       'cpp', 'pro', 'for', 'f77', 'py', 'inc', 'h', 'sh',
+                       'idl', 'csh', 'tf', 'ti', 'tls', 'lsk', 'tsc'}
 
     MIME_TYPES_VS_EXT = {
         'fit'       : 'image/fits',
@@ -516,9 +515,9 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
 
         return this
 
-    ######################################################################################
+    ############################################################################
     # Set parameters for both Pds3File and Pds4File
-    ######################################################################################
+    ############################################################################
     @classmethod
     def use_shelves_only(cls, status=True):
         """Set SHELVES_ONLY for both Pds3File and Pds4File
@@ -745,7 +744,7 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
     def __repr__(self):
         if self.abspath is None:
             return 'PdsFile-logical("' + self.logical_path + '")'
-        elif type(self) == PdsFile:
+        elif type(self) is PdsFile:
             return 'PdsFile("' + self.abspath + '")'
         else:
             return ('PdsFile.' + type(self).__name__ + '("' +
@@ -820,12 +819,16 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
     @property
     def is_bundle_dir(self):
         """Return True if this is the root level directory of a bundle."""
-        return bool(self.bundlename_ and not self.interior) # Note that a bundle set will return an empty string '' rather than False
+        # The bool() matters: without it a bundle set would yield the empty string
+        # the `and` produces, not False.
+        return bool(self.bundlename_ and not self.interior)
 
     @property
     def is_bundle_file(self):
         """Return True if this is a bundle-level checksum or archive file."""
-        return bool(self.bundlename and not self.bundlename_) # Note that a bundle set will return an empty string '' rather than False
+        # The bool() matters: without it a bundle set would yield the empty string
+        # the `and` produces, not False.
+        return bool(self.bundlename and not self.bundlename_)
 
     @property
     def is_bundle(self):
@@ -955,7 +958,7 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
 
         # Confirm existence
         if must_exist and not self.exists:
-            raise IOError('File not found', self.abspath)
+            raise OSError('File not found', self.abspath)
 
         if self.basename.strip() == '':     # Shouldn't happen, but just in case
             return self.parent()
@@ -972,10 +975,12 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
             pass
 
         # Do not cache above the category level
-        if not self.category_: return self
+        if not self.category_:
+            return self
 
         # Do not cache nonexistent objects
-        if not self.exists: return self
+        if not self.exists:
+            return self
 
         # Otherwise, cache if necessary
         if caching == 'default':
@@ -1024,9 +1029,8 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
 
         if self.bundleset and not self.bundlename:
             key = self.bundleset
-        elif self.bundlename and not self.bundlename_:
-            key = self.bundlename
-        elif self.bundlename_ and not self.interior:
+        elif ((self.bundlename and not self.bundlename_) or
+              (self.bundlename_ and not self.interior)):
             key = self.bundlename
         else:
             return
@@ -1098,26 +1102,27 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
         cls.CACHE.pause()
         try:
             # Fix the case if necessary
-            if fix_case:
-                if basename not in self.childnames:
-                    try:
-                        k = self.childnames_lc.index(basename.lower())
-                    except ValueError:
-                        pass
-                    else:
-                        basename = self.childnames[k]
+            if fix_case and basename not in self.childnames:
+                try:
+                    k = self.childnames_lc.index(basename.lower())
+                except ValueError:
+                    pass
+                else:
+                    basename = self.childnames[k]
 
-            # Create the logical path and return from cache if available
+            # Create the logical path and touch the cache entry if there is
+            # one. The looked-up object is discarded, not returned, so the
+            # child is rebuilt below either way.
             child_logical_path = _clean_join(self.logical_path, basename)
             try:
-                pdsf = cls.CACHE[child_logical_path.lower()]
+                _ = cls.CACHE[child_logical_path.lower()]
             except KeyError:
                 pass
 
             # Confirm existence if necessary
             basename_lc = basename.lower()
-            if must_exist and not basename_lc in self.childnames_lc:
-                raise IOError('File not found: ' + child_logical_path)
+            if must_exist and basename_lc not in self.childnames_lc:
+                raise OSError('File not found: ' + child_logical_path)
 
             # Fill in the absolute path if possible. This will fail for children
             # of category-level directories; we address that case later
@@ -1132,8 +1137,8 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
             elif self.category_:
                 matchobj = cls.BUNDLESET_PLUS_REGEX_I.match(basename)
                 if matchobj is None:
-                    raise ValueError('Illegal bundle set directory "%s": %s' %
-                                     (basename, self.logical_path))
+                    raise ValueError('Illegal bundle set directory '
+                                     f'"{basename}": {self.logical_path}')
                 class_key = matchobj.group(1)
             else:
                 class_key = 'default'
@@ -1184,8 +1189,8 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
                 # Handle bundle set and suffix
                 matchobj = cls.BUNDLESET_PLUS_REGEX_I.match(basename)
                 if matchobj is None:
-                    raise ValueError('Illegal bundle set directory "%s": %s' %
-                                     (basename, this.logical_path))
+                    raise ValueError('Illegal bundle set directory '
+                                     f'"{basename}": {this.logical_path}')
 
                 this.bundleset_ = basename + '/'
                 this.bundleset  = matchobj.group(1)
@@ -1226,8 +1231,8 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
                 this.category_ = basename + '/'
                 matchobj = cls.CATEGORY_REGEX_I.match(basename)
                 if matchobj is None:
-                    raise ValueError('Invalid category "%s": %s' %
-                                     (basename, this.logical_path))
+                    raise ValueError(f'Invalid category "{basename}": '
+                                     f'{this.logical_path}')
 
                 if fix_case:
                     this.checksums_ = matchobj.group(1).lower()
@@ -1288,10 +1293,9 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
 
         lid_component = lid_str.split(':')
         if len(lid_component) != 4:
-            raise ValueError('%s is not a valid LID.' % lid_str)
+            raise ValueError(f'{lid_str} is not a valid LID.')
 
         data_set_id = lid_component[0]
-        volume_id = lid_component[1]
         logical_path_wo_volset = 'volumes/' + '/'.join(lid_component[1:])
 
         pdsf = cls.from_path(logical_path_wo_volset)
@@ -1411,7 +1415,7 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
         parts_lc = [p.lower() for p in parts]
         try:
             # Change variable name to distinguish from PDS3
-            PDS_HOLDINGS_index = parts_lc.index(cls.PDS_HOLDINGS)
+            pds_holdings_index = parts_lc.index(cls.PDS_HOLDINGS)
         except ValueError:
             raise ValueError(f'"{cls.PDS_HOLDINGS}" directory not found in: {abspath}')
         ### Pause the cache
@@ -1420,7 +1424,7 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
             # Fill in this.disk_, the absolute path to the directory containing
             # subdirectory "holdings"
             this = cls()
-            this.disk_ = drive_spec + '/'.join(parts[:PDS_HOLDINGS_index]) + '/'
+            this.disk_ = drive_spec + '/'.join(parts[:pds_holdings_index]) + '/'
             this.root_ = this.disk_ + cls.PDS_HOLDINGS + '/'
 
             # Get case right if necessary
@@ -1428,8 +1432,9 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
                 try:
                     this.disk_ = repair_case(this.disk_[:-1], cls) + '/'
                     this.root_ = repair_case(this.root_[:-1], cls) + '/'
-                except IOError:
-                    if must_exist: raise
+                except OSError:
+                    if must_exist:
+                        raise
 
             # Fill in the HTML root. This is the text between "http://domain/"
             # and the logical path to appear in a URL that points to the file.
@@ -1439,11 +1444,11 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
             if len(cls.LOCAL_PRELOADED) <= 1:   # There's only one holdings dir
                 this.html_root_ = '/' + cls.PDS_HOLDINGS +'/'
             else:                       # Find this holdings dir among preloaded
-                PDS_HOLDINGS_abspath = this.disk_ + cls.PDS_HOLDINGS
+                pds_holdings_abspath = this.disk_ + cls.PDS_HOLDINGS
                 try:
-                    k = cls.LOCAL_PRELOADED.index(PDS_HOLDINGS_abspath)
+                    k = cls.LOCAL_PRELOADED.index(pds_holdings_abspath)
                 except ValueError:
-                    cls.LOGGER.warn('No URL: ' + PDS_HOLDINGS_abspath)
+                    cls.LOGGER.warn('No URL: ' + pds_holdings_abspath)
                     this.html_root_ = '/'
 
                 else:       # "holdings", "holdings1", ... "holdings9"
@@ -1456,12 +1461,12 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
             this.abspath = this.disk_ + cls.PDS_HOLDINGS
             this.basename = cls.PDS_HOLDINGS
             # Handle the rest of the tree using child()
-            for part in parts[PDS_HOLDINGS_index + 1:]:
+            for part in parts[pds_holdings_index + 1:]:
                 this = this.child(part, fix_case=fix_case, must_exist=must_exist,
                                   caching=caching, lifetime=lifetime)
 
             if must_exist and not this.exists:
-                raise IOError('File not found', this.abspath)
+                raise OSError('File not found', this.abspath)
 
         ### Resume the cache no matter what
         finally:
@@ -1542,13 +1547,14 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
         """
 
         if not cls.LOCAL_PRELOADED:
-            raise IOError('from_path is not supported without a preload')
+            raise OSError('from_path is not supported without a preload')
 
         path = str(path)    # make sure it's a string
         path = path.rstrip('/')
         # if there is .targz, treat it as .tar.gz
         path = path.replace('.targz', '.tar.gz')
-        if path == '': path = 'volumes'     # prevents an error below
+        if path == '':
+            path = 'volumes'    # prevents an error below
 
         # Make a quick return if possible
         path_lc = path.lower()
@@ -1756,7 +1762,7 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
                     # bundlename.
                     prefix, _, _ = bundlename.partition('_')
                     idx = bundlename.index('_') + 1
-                    for bundleset in cls.CACHE['$RANKS-' + this.category_].keys():
+                    for bundleset in cls.CACHE['$RANKS-' + this.category_]:
                         bundleset_prefix, _, _ = bundleset.partition('_')
                         if len(bundleset_prefix) != len(prefix):
                             continue
@@ -1817,8 +1823,8 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
                     continue
 
                 if not this_abspath:
-                    raise ValueError('Suffix "%s" not found: %s' %
-                                     (this.suffix, path))
+                    raise ValueError(f'Suffix "{this.suffix}" not found: '
+                                     f'{path}')
 
             if this.basename and not this_abspath.endswith(this.basename):
                 this_abspath += f'/{this.basename}'
@@ -1867,8 +1873,8 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
                     continue
 
                 if not this_abspath:
-                    raise ValueError('Suffix "%s" not found: %s' %
-                                     (this.suffix, path))
+                    raise ValueError(f'Suffix "{this.suffix}" not found: '
+                                     f'{path}')
 
             # This is the PdsFile object down to the bundleset
             this = cls.from_abspath(this_abspath, must_exist=must_exist)

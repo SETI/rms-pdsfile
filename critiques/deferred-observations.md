@@ -424,7 +424,15 @@ Two further observations, not defects in a single tool:
     require specific node ids to have run) belongs with whatever PR next touches
     the hosted job. **Owner:** PR-37's finalization sweep, or any earlier PR that
     edits the lint job.
-21. **Two §6.4-frozen files cite the archived v1 plan.**
+21. **CLOSED — owner decision, 2026-08-04: leave them.** Asked directly, in the
+    context of a sweep that removed every other plan and critique citation from
+    `src/` and `tests/`, the owner ruled that `tests/api/test_api_freeze.py`'s
+    docstring stays as it is. The two frozen files keep their references to the
+    archived v1 plan; no owner-blessed touch-up is wanted. They are now the only
+    plan citations left in any `.py` file in the repository, which is the
+    intended end state, not an oversight. The original entry follows.
+
+    **Two §6.4-frozen files cite the archived v1 plan.**
     `scripts/dump_public_api.py` and `tests/api/test_api_freeze.py` both point at
     `plans/2026-07-17-modernization-plan.md`, which moved to `plans/archive/`.
     Both files are under the absolute prohibition on editing, so PR-14 left them
@@ -1573,3 +1581,363 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     Phase-6 question, answerable once PR-25 has established how much of each file
     is duplication.
     **Owner: Phase 6 (PR-25 onward).**
+
+## From PR-23 (ruff-clean the core modules, Phase 5)
+
+### Resolutions PR-23 owed
+
+- **Entry 33 — resolved as documented, not as fixed.** `gen_ruff_ratchet.py` still
+  cannot be exercised against a tree whose committed ignores suppress everything,
+  so PR-23 derived the core block by hand: `ruff check` with the template select
+  set and **no** `per-file-ignores`. The ratchet's header comment in
+  `pyproject.toml` now says this, so the next executor does not discover it again.
+  The script itself is untouched. **Still open** as a tooling gap, for whichever PR
+  wants to teach it a `--no-ignores` mode.
+- **Entry 45 — RESOLVED.** `A002`'s permanent home is `src/pdsfile/_derived_paths.py`,
+  and the ratchet and `pdsfile_overrides.mdc` deviation (4) both now say so with the
+  three sites (`:263`, `:280`, `:296`) named.
+- **Entry 60 — RESOLVED.** The six outlying indented banner rule lines
+  (`_preload.py` ×4, `pdsfile.py` ×2, at 90 and 84 columns) are now 80 columns like
+  the other 34. Verified as comment-only by tokenizing all fifteen modules before
+  and after and comparing the token streams with `COMMENT`/`NL` dropped: 15 files
+  compared, 0 differing.
+- **Entry 31 — still open, unchanged.** PR-23 fixed `__init__.py`'s `F841` and
+  `I001` but did **not** touch the three star imports. `F403` stays in that file's
+  ratchet entry. Both readings of `from pdsfile import *` (delete it, or correct it
+  to `from .pdsfile import *`) change the frozen public surface, one shrinking and
+  one growing, so the owner decision entry 31 asks for is still owed.
+  **Owner: owner decision, then PR-24.**
+- **Entry 37 — half resolved.** The `F841` half is fixed: `_get_shelf`'s
+  `except Exception as e` no longer binds a name it never uses. The `B904` half is
+  **not**, and is now a permanent ratchet entry: `raise ... from e` sets
+  `__cause__` and `__suppress_context__` and `raise ... from None` suppresses the
+  original traceback, so both change what a consumer sees, which §2 forbids in this
+  PR. A future PR that adds `from e` — which is the right eventual change — must
+  re-bind the name; that is one line. **Owner: phase "b" of issue #77.**
+- **Entry 64 — untouched, and deliberately so.** The six commented-out
+  `MemcachedCache.get_multi` lines in `pdscache.py` still need an owner decision
+  that has not been given, and PR-23 did not remove them. The entry stays open.
+  **Owner: owner decision.**
+
+### Added by the PR-23 executor's own measurements (2026-08-03)
+
+67. **`PdsFile.child()` looks a cache entry up and throws it away.**
+    `src/pdsfile/pdsfile.py`, in `child()`: the comment reads "Create the logical
+    path and return from cache if available", and the code is a `cls.CACHE[...]`
+    subscript inside `try/except KeyError: pass` with **no `return`**. The looked-up
+    object is discarded, so every `child()` call rebuilds an object the cache
+    already holds. PR-23 could only remove the unused binding, not the defect: the
+    subscript has an effect (a `DictionaryCache` lookup updates that key's
+    bookkeeping) and adding the missing `return` is a behavior change — objects
+    would start coming back from the cache instead of being reconstructed — which
+    needs its own regression test and its own PR. The subscript is kept as an
+    expression statement and the comment now says the result is discarded.
+    **Owner: phase "b" of issue #77.**
+
+68. **`version_ranks` returns `None` for a file that does not exist.**
+    `src/pdsfile/_properties.py`, in the `version_ranks` property: the
+    `if not self.exists:` branch assigned a **local** `version_ranks_filled = []`
+    where every sibling branch assigns `self._version_ranks_filled`, so the
+    instance slot stayed `None` and the property returned `None` rather than the
+    empty list the docstring promises ("a list of the numeric version ranks"). This
+    is the `F841` that `_properties.py`'s ratchet entry carried. PR-23 deleted the
+    dead local — behavior-identical, since nothing ever read it — and left a comment
+    at the site; it did **not** write the instance attribute, because that changes
+    what the property returns on an existing input. Same shape as entry 30
+    (`repair_case`'s `found`). **Owner: phase "b" of issue #77.**
+
+69. **`_local_fs.py`'s `values` list and its `zip` are now visibly dead weight.**
+    In `glob_glob`'s `SHELVES_ONLY` branch, `values = list(shelf.values())` feeds a
+    `zip(interior_paths[...], values[...])` whose second element the loop body never
+    uses — which is why PR-23 renamed the loop variable to `_value` and added
+    `strict=False` rather than deleting anything. Iterating `interior_paths` alone
+    would be equivalent (the two lists come from the same dict and cannot differ in
+    length) and would drop one full materialization of every shelf value per call,
+    but it is a code change rather than a style fix and belongs where the shelf
+    read paths are being looked at anyway. **Owner: phase "b" of issue #77.**
+
+70. **`src/pdsfile/tools/show_opus_products.py` still carries an `I001` ratchet
+    entry and belongs to no PR.** PR-23's scope is the files directly under
+    `src/pdsfile/`, so the `tools/` subpackage is out; PR-24's stated scope is the
+    rule modules, the `pds{3,4}file/__init__.py` pair, `re_validate.py` and the
+    other `holdings_maintenance/` tools, and does not name `tools/` either. One
+    entry, one code. **Owner: PR-24, as the last ruff PR.**
+
+### Added by the PR-23 adversarial review (round 1)
+
+71. **`src/pdsfile/_version.py` carries a real `RUF022` and no gate can see it.**
+    The generated file's `__all__` is not sorted, which `ruff check` would report —
+    but the file is matched by `.gitignore`'s `**/_version.py`, and ruff respects
+    `.gitignore` by default, so `ruff check src/pdsfile tests scripts` never looks
+    at it. A lint run over an unpacked sdist, or one passing
+    `--no-respect-gitignore`, would fail. PR-23 correctly excluded the file from
+    its scope (generated by setuptools-scm's `write_to`, absent from a fresh
+    checkout, and not a legitimate ratchet entry), so this is not a PR-23 defect;
+    it is a gap between what the gate lints and what a consumer receives. Note that
+    a violation count derived by pointing ruff at `src/pdsfile/*.py` in a tree
+    where an install has regenerated the file will be one higher than one derived
+    in a fresh checkout, which is a trap for the next executor.
+    **Owner: whoever owns packaging/CI hardening (Phase 8).**
+
+72. **One `MemcachedCache` method has a test; the rest of the class has no gate.**
+    Measured during PR-23: **28 of the 37** lines that PR changed in `pdscache.py`
+    are inside `MemcachedCache`, and the full-data suite executes exactly one of
+    its methods — `set_multi`, because `tests/core/test_pdscache_set_multi.py`
+    builds an instance with `__new__` and a stub client rather than a connection.
+    Everything else in the class (`unblock`, `__contains__`, `get_multi`,
+    `get_now`, `flush`, `clear`, `block`, …) is executed by no test here and by
+    neither consumer smoke check. Ground rule 9 protects the class (Viewmaster
+    passes `port=` to `preload`), so it cannot be deleted.
+
+    PR-23 closed most of that gap for its own changes with a scratch differential
+    probe that reuses the same `__new__`-plus-stub technique (see
+    `critiques/phase5-validation.md`, PR-23 §2), and three changed lines remain
+    reachable by nothing — `type(port) is str` in `__init__` and the two `F541`
+    fragments inside `except pylibmc.TooBig` handlers, all of which need
+    `pylibmc`, which is not a declared dependency. That the probe was easy to
+    write is the point: **the stub-client technique already in
+    `tests/core/` generalizes**, and a small `tests/core/test_pdscache_memcached.py`
+    would give the class a real gate. PR-23 may not add it — its own gate is an
+    identical test-id set, and a new test id is movement.
+
+    It is also why PR-23 freeze-locked the two violations that live there
+    (`UP031`, `RUF015`) rather than fixing them. Broader than, and related to,
+    entries 33 and 64.
+    **Owner: phase "b" of issue #77, or whoever revisits the cache layer.**
+
+### Added by PR-23's differential probe of the untested fixes (2026-08-03)
+
+73. **`PdsViewSet.append`'s recursive branch keeps an arbitrary one of the nested
+    set's members, and which one is not deterministic.**
+    `src/pdsfile/pdsviewable.py`, in `append`:
+
+    ```python
+    if isinstance(viewable, PdsViewSet):
+        for sub_viewable in viewable.viewables:
+            self.append(sub_viewable)
+            return
+    ```
+
+    The `return` is **inside** the loop, so exactly one member of
+    `viewable.viewables` is appended and the rest are dropped. `viewables` is a
+    `set` and `PdsViewable` defines neither `__hash__` nor `__eq__`, so it is
+    hashed by identity and the set's iteration order depends on where the objects
+    landed in memory — it varies from one interpreter run to the next. Measured:
+    appending a two-member `PdsViewSet` and reading back the surviving name gives
+    `['a']` or `['b']` at random, **five runs on unmodified `rewrite` @ `96e5960`
+    produced a-b-a-a-b**, and five on the PR-23 branch produced b-b-a-b-a. The
+    behavior is identical in both trees; it is simply not a function of the input.
+
+    PR-23 found this only because it renamed the loop variable (`B020`: the loop
+    variable shadowed the iterable it walks) and then diffed the two trees'
+    outputs. The rename is behavior-preserving; the defect is older. Dedenting the
+    `return` — which is almost certainly the intent — changes what the method does
+    and needs its own test.
+
+    Also worth noting for whoever fixes it: an **empty** nested `PdsViewSet` falls
+    through the loop and reaches `self.viewables.add(viewable)`, adding the
+    *viewset* to a set of viewables, and then raises `AttributeError:
+    'PdsViewSet' object has no attribute 'name'` — identically in both trees.
+    **Owner: phase "b" of issue #77.**
+
+### Added by the PR-23 adversarial review (round 2)
+
+74. **`MemcachedCache.flush`'s error path calls `.sort()` on `dict_keys`.**
+    `src/pdsfile/pdscache.py`, inside `flush`'s `except pylibmc.Error` handler:
+    `keys = mydict.keys()` followed by `keys.sort()` raises
+    `AttributeError: 'dict_keys' object has no attribute 'sort'`, so the handler
+    fails with a second, unrelated error before it logs anything about the first —
+    and `failures += keys` after it never runs either. PR-23 edited the two log
+    lines that bracket it (the `F541` fixes) and could not repair it: the fix
+    changes behavior, which §2 forbids here, and no gate can reach it (entry 72).
+    The fix is `keys = sorted(mydict.keys())` plus dropping the separate `.sort()`.
+    **Owner: phase "b" of issue #77.**
+
+75. **`_opus.py` now spells the same concatenation two ways. — RESOLVED
+    (2026-08-03), by reverting the fix that caused it.**
+    As recorded in round 2: `src/pdsfile/_opus.py:246` had become
+    `[pdsf, *fmt_pdsfiles]` after PR-23's `RUF005` fix while `:268` stayed
+    `sublist = [pdsf] + label_pdsfiles[pdsf.label_abspath]`, which is the same
+    shape. ruff does not flag `:268` — `RUF005` fires on `iterable + [literal]`,
+    not on `[literal] + name` where the right operand is a subscript — so the file
+    disagreed with itself. (The second site is `:268`, not `:271` as round 2's
+    record and this entry's first draft said; re-measured 2026-08-03, and it is
+    `:268` in `rewrite` @ `96e5960` as well.)
+
+    The owner has since ruled that `RUF005`'s rewrite is not wanted at all
+    (2026-08-03). All seven of PR-23's `RUF005` conversions were reverted to their
+    `rewrite` spelling and `RUF005` became a permanent, owner-chosen exclusion in
+    the ratchet and in `pdsfile_overrides.mdc` deviation (4). `:246` and `:268` now
+    read alike again, and no PR will diverge them.
+
+### Added by the PR-23 adversarial review (round 3)
+
+76. **`pdscache.py`'s `flush` carries 6-space and 22-space indentation that no gate
+    can see.** `src/pdsfile/pdscache.py`, inside `flush`'s `except pylibmc.TooBig`
+    and `except pylibmc.Error` handlers, two blocks are indented off the 4-space
+    grid. `python.mdc` forbids it, but ruff's `E1xx` indentation rules
+    (`E111`/`E117`) are **preview-gated**, so they are not in the enforced `E` set
+    and `ruff check` is silent. PR-23 edited the log lines at both sites (the
+    `F541` fixes) and deliberately did not re-indent them, because re-indentation
+    is not a violation the ratchet records and would enlarge a diff whose warrant
+    is that it changes nothing.
+
+    Recorded because the new ratchet header says the core modules are ruff-clean,
+    and a reader may reasonably infer that `python.mdc`'s indentation rule is now
+    in force for them. It is not, and enabling `--preview` `E1` anywhere is an
+    owner-level decision about the whole tree, not a PR-23 one.
+    **Owner: PR-24, or whoever proposes enabling preview rules.**
+
+77. **Whether prose may follow a mechanical fix is not written down anywhere.**
+    Round 1's m8 had PR-23 change three `IOError` references to `OSError` in
+    `_path_utils.py` comments and docstrings — accurate (`IOError` **is**
+    `OSError`), manifest-invisible (`scripts/dump_public_api.py` records names and
+    kinds, never docstrings), and a strictly better match for the code after
+    `UP024`. But no ruff rule required them, and PR-23's stated scope is
+    "`ruff check` only", so an equally reasonable executor would have left them and
+    an equally reasonable reviewer could call them scope creep. PR-24 faces the
+    same question at much larger scale (the rule modules' docstrings). One line in
+    its sub-plan would settle it.
+    **Owner: PR-24.**
+
+### Added by the CodeRabbit review of PR #118 (2026-08-03)
+
+78. **`MemcachedCache.unblock` releases a lock it does not own when no logger is
+    configured.** `src/pdsfile/pdscache.py`, in `unblock`: both guard clauses put
+    their `return` **inside** the `if self.logger:` block rather than beside it.
+    On `rewrite` @ `96e5960`, with the original indentation shown by column:
+
+    ```
+    466:        if not test_pid:            # 8
+    467:            if self.logger:         # 12
+    468:                self.logger.error(…)# 16
+    471:                return              # 16  <- inside the logger guard
+    ```
+
+    So when `self.logger` is `None`, neither guard returns. Both fall through to
+    `self.mc.set('$OK_PID', 0, time=0)`, which clears the block — including when
+    `test_pid` names **another live process**. A caller that constructed its cache
+    without a logger can therefore release another process's lock and let cache
+    operations overlap. The second guard (`test_pid != self.pid`) is the dangerous
+    one; the first merely double-unblocks an already-unblocked cache.
+
+    **This is pre-existing and PR-23 did not introduce it.** PR-23's `SIM102`
+    collapse rewrote the pair as `if not test_pid and self.logger: … return`, which
+    is **exactly equivalent** to the original for all four combinations of the two
+    conditions, precisely because the `return` was already inside the inner guard.
+    The collapse is correct and should stay.
+
+    Surfaced by CodeRabbit on PR #118, which reported it as a Critical defect
+    *introduced by* the collapse. That reading is wrong — but the hazard it
+    describes is real, and its suggested patch (move each `return` out to the outer
+    level, keep only the `logger.error` call guarded) is the correct fix. Applying
+    it changes observable behavior, which §2 permits only in the enumerated PRs, so
+    PR-23 cannot carry it: `pdscache.py` bug fixes were PR-15's licence (bugs 4 and
+    5) and that PR has merged.
+
+    Not covered by any test: `pylibmc` is not installed in this environment, so the
+    whole of `MemcachedCache` is dark locally — the same reason PR-15's two
+    `pdscache` defects survived to be found by reading. This is a third defect of
+    that family.
+
+    **Owner: a PR licensed to change behavior — Phase 6's PR-28 (`errors` fix) is
+    the nearest, or a dedicated follow-up. It must add a regression test first, per
+    §2.**
+
+### Added by the owner's PR-23 revision corrections (2026-08-03)
+
+79. **Logging calls across `src/pdsfile/` build their message eagerly instead of
+    passing lazy `%`-style arguments.** The owner's rule, given on 2026-08-03, is
+    that a logging call passes a `%`-style format string and the values as
+    *arguments* — `logger.warn('Message: %s', the_message)` — and that f-strings
+    belong in exception messages, not in logging calls. PR-23 converted the four
+    calls it had itself turned into f-strings (`_preload.py` ×2, `_shelves.py`,
+    `pdscache.py`) and swept the rest of the package. It did **not** convert them:
+    they are pre-existing and outside a `ruff check` PR's warrant, and `ruff`
+    has no rule that reports them (`G004`/`flake8-logging-format` is not in the
+    selected set, and would not catch the `+` form anyway).
+
+    Measured with an AST sweep over `src/pdsfile/**/*.py`, excluding the
+    generated `_version.py`. The predicate, stated exactly so the count is
+    reproducible: an `ast.Call` whose `func` is an `ast.Attribute` with `attr` in
+    `{debug, info, warn, warning, error, critical, exception, log, fatal, open,
+    close}` and whose receiver, as `ast.unparse`d text, contains `logger`
+    (case-insensitive), counted once if its **first** argument is an
+    `ast.JoinedStr`, an `ast.BinOp` with `Add` or `Mod`, or a `.format()` call.
+    The core figure is stable under three variants of the predicate (first
+    argument only, any argument, and dropping `open`/`close` from the method
+    set); an independent sweep during review reported **98** rather than 96 for
+    the subpackages, and the two extra sites were not identified, so treat the
+    subpackage figure as ±2. Nothing in the decision this entry asks for turns on
+    it.
+
+    | Area | Sites | `+` concat | f-string | eager `%` |
+    |---|---|---|---|---|
+    | core, `src/pdsfile/*.py` | **34** | 30 | 2 | 2 |
+    | subpackages, `src/pdsfile/**/` | **96** | 33 | 7 | 56 |
+    | **total** | **130** | 63 | 9 | 58 |
+
+    Core, by file: `pdscache.py` 20, `_preload.py` 8, `_sorting.py` 2, `_opus.py`
+    1, `_properties.py` 1, `pdsfile.py` 1, `pdsviewable.py` 1. Most of
+    `pdscache.py`'s are `+`-joined f-string fragments inside `MemcachedCache`,
+    which no test here executes (entry 72). The subpackage total is dominated by
+    the maintenance tools, which Phase 6 consolidates.
+
+    Two things make this more than a style sweep, and are why it needs a decision
+    rather than a mechanical pass:
+
+    - **The messages must keep their `%` pattern.** `pdslogger`'s `log()` reads
+      "if there are no substitution patterns (indicated by `%` or `{`) inside the
+      message string, a single argument is interpreted as the `filepath`", so a
+      conversion that drops the pattern silently turns its value into a path
+      suffix instead of raising.
+    - **Many of these calls already pass a real second argument that *is* a
+      filepath** (`_opus.py:114`, `_properties.py:1582`, `pdscache.py:599`/`:610`,
+      and most of the maintenance tools' `logger.error(..., abspath)` calls). A
+      conversion has to distinguish a filepath argument from a value argument at
+      every site. `pdsviewable.py:529` shows the failure mode already present:
+      `logger.warn(f'Missing sizes for icon {icon_name} ({key})', str(missing)[1:-1])`
+      has no `%` in the message, so the size list is being rendered through the
+      filepath path rather than as a value.
+
+    **Owner: owner decision on scope, then a dedicated style PR — the count is too
+    large and too spread out for PR-24, whose warrant is `ruff check` on the
+    subpackages.**
+
+### Added by the owner, 2026-08-04
+
+80. **Module-level comments and docstrings still narrate the port instead of
+    describing the code.** The rule is the same one that governs every other
+    comment: say what the code *is*, not how it got that way. The module headers
+    were written during the decomposition and read accordingly.
+
+    `src/pdsfile/pdsfile.py`'s module docstring is the main one. Its concrete
+    tells, measured rather than characterised:
+
+    - "re-exports every name it **has ever exported**" (:10) — a claim about the
+      past. It re-exports the names it exports; that is all a reader needs.
+    - "`preload_and_cache.py` … is **now** a re-export shim over `_preload.py`"
+      (:47) — "now" is only meaningful against a previous state.
+    - The whole closing paragraph (:80–82): "The split is invisible to a caller's
+      code: `pdsfile.pdsfile.<name>` still resolves for every name it resolved
+      for **before**, and nothing a caller imports or calls has **moved or been
+      renamed**." This is a statement about a migration, not about the module.
+    - "**What stays here, and why**" (:51) frames the contents as a residue of an
+      extraction rather than as the module's subject matter.
+
+    Elsewhere: `src/pdsfile/preload_and_cache.py:4` ("every name this module has
+    **always** exported still resolves here"), and the same "stays"/"still"
+    framing in the re-export blocks of `pdsfile.py`, `pdscache.py` and
+    `pdsviewable.py`.
+
+    The information in these headers is worth keeping — the module map, the
+    mixin mechanics, the reason the `class PdsFile` statement cannot move, the
+    reason an unreferenced import must not be deleted. **Only the framing
+    changes:** written as description rather than as change history, every one of
+    these facts still has a natural form. Rewrite them; do not delete them.
+
+    Deliberately not done inside PR-23: it is a prose pass over fifteen module
+    headers, wanted by the owner as its own piece of work rather than folded into
+    a `ruff check` PR whose warrant is that it changes nothing. It also overlaps
+    Phase 7, which owns docstrings.
+    **Owner: owner-directed; Phase 7 (PR-29–PR-34) is the natural home.**

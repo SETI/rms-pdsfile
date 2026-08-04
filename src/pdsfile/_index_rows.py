@@ -52,7 +52,9 @@ class _IndexRowsMixin:
     data_abspath_associated_with_index_row chooses between the PDS3 and PDS4
     column-name tables by comparing type(self).__bases__[0].__name__ against the
     string 'Pds4File'. That reads a rule subclass's direct base, which mixin
-    bases on PdsFile do not change. Its fragility is deferred observation 49.
+    bases on PdsFile do not change. It is fragile all the same: a subclass one
+    level deeper, or one whose first base is not the PDS3/PDS4 class, silently
+    gets the PDS3 table.
     """
 
     def get_indexshelf(self):
@@ -69,7 +71,7 @@ class _IndexRowsMixin:
 
         # Interpret the error
         if not self.exists:
-            raise IOError('Index file does not exist: ' + self.logical_path)
+            raise OSError('Index file does not exist: ' + self.logical_path)
 
         if not self.is_index:
             raise ValueError('Not supported as an index file: ' +
@@ -152,7 +154,7 @@ class _IndexRowsMixin:
             # We disallow multiple matches because this can occur when a key is
             # incomplete
             if len(child_keys) > 1:
-                raise IOError('Index selection is ambiguous: ' +
+                raise OSError('Index selection is ambiguous: ' +
                               self.logical_path + '/' + selection)
 
         if flag == '=':

@@ -88,6 +88,19 @@ rejects, and the round is wasted discovering why.
 **The rule stands** (owner, 2026-07-27), and the assertion stays in
 `tests/api/test_mixin_collisions.py`.
 
+**Superseded in part, 2026-08-03 by PR-23.** The `object` base is gone, exactly
+as "What `object` is doing in that list" above directs, so the rule now reads
+**alphabetical by mixin class name**, full stop: item 5 and the illustration's
+trailing `, object` no longer describe the tree, and
+`test_the_class_statement_stays_in_pdsfile_pdsfile`'s
+`assert PdsFile.__bases__[-1] is object` — the line this file names as the one to
+drop with it — is replaced by `object not in PdsFile.__bases__` plus a check that
+every base's `__module__` starts with `pdsfile._`, which fails both if `object`
+returns to the base list and if any non-mixin base is added. `PdsFile.__mro__`, `Pds3File.__mro__` and
+`Pds4File.__mro__` were dumped before and after and are identical entry for
+entry. The alphabetical rule and the collision checks are unaffected: the mixin
+discovery already filtered `object` out of `__bases__`.
+
 **The preamble's illustration is being corrected separately, in PR #110**, which
 targets `rewrite` directly. `plans/2026-07-25-modernization-plan.md` is therefore
 **not** edited on the `pr-17-shelves-local-fs` branch — doing so would conflict

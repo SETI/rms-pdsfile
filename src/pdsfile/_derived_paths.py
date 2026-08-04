@@ -222,7 +222,8 @@ class _DerivedPathsMixin:
             task   -- part of the log basename; '' appends nothing
             subdir -- the directory of the log file; '' appends nothing. This is the
                       log_path_for_* methods' "dir" argument under a name that does
-                      not shadow the builtin; theirs is frozen by the public API
+                      not shadow the builtin; theirs stays "dir" because callers
+                      pass it by that keyword
             place  -- 'default' or 'parallel', the option provides for a temporary
                       override of the default log root
         """

@@ -268,7 +268,7 @@ class _OpusMixin:
                     sublist = [pdsf] + label_pdsfiles[pdsf.label_abspath]
                 else:
                     sublist = [pdsf]
-            except (IOError, KeyError, ValueError):
+            except (OSError, KeyError, ValueError):
                 sublist = [pdsf]
 
             pdsfile_dict[key].append(sublist)

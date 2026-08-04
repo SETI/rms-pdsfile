@@ -136,7 +136,8 @@ class _SortingMixin:
             basename = self.basename
 
         parts = basename.rpartition('.')
-        if parts[1] != '.': return False
+        if parts[1] != '.':
+            return False
 
         return (parts[2].lower() in cls.VIEWABLE_EXTS)
 

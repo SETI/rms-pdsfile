@@ -1,16 +1,16 @@
 ##########################################################################################
 # tests/api/test_mixin_collisions.py
 #
-# Phase 5 breaks PdsFile up by moving groups of methods into mixin classes in
-# private modules, leaving the `class PdsFile` statement itself in
-# pdsfile/pdsfile.py. That is only safe while the mixins stay disjoint: two mixins
+# PdsFile is built from groups of methods held in mixin classes in private
+# modules, with the `class PdsFile` statement itself in pdsfile/pdsfile.py.
+# That is only safe while the mixins stay disjoint: two mixins
 # defining the same name, or a mixin defining a name PdsFile or one of its direct
 # subclasses also defines, would silently leave one copy dead, and the API-freeze
 # manifest could not see it -- it records the names and signatures a class
 # exposes, not which base supplies them.
 #
-# So these checks are the freeze's blind spot, in their own file: section 6.4 of
-# plans/2026-07-25-modernization-plan.md forbids editing tests/api/test_api_freeze.py.
+# So these checks cover that blind spot from their own file, because
+# tests/api/test_api_freeze.py must not be edited.
 #
 # The mixins are discovered from PdsFile's bases rather than listed, so every
 # later extraction PR is covered the moment it adds one.
@@ -60,8 +60,8 @@ def test_the_mixins_are_found_and_come_from_private_modules():
                     'would pass without examining anything')
     for mixin in mixins:
         assert mixin.__module__.startswith('pdsfile._'), (
-            f'{mixin.__name__} is defined in {mixin.__module__}; Phase 5 mixins '
-            f'live in private pdsfile modules')
+            f'{mixin.__name__} is defined in {mixin.__module__}; mixins live '
+            f'in private pdsfile modules')
         assert _defined_names(mixin), f'{mixin.__name__} defines nothing'
 
 
@@ -69,7 +69,14 @@ def test_the_class_statement_stays_in_pdsfile_pdsfile():
     # Pickled PdsFile instances -- the memcached cache holds live ones -- record
     # this module path, so the class statement may not move into a mixin module.
     assert PdsFile.__module__ == 'pdsfile.pdsfile'
-    assert PdsFile.__bases__[-1] is object
+    # The base list carries mixins only. There is no trailing `object`: in
+    # Python 3 it is implicit, and the MRO is the same with or without it.
+    assert object not in PdsFile.__bases__
+    assert all(base.__module__.startswith('pdsfile._')
+               for base in PdsFile.__bases__), (
+        f'PdsFile bases are '
+        f'{[(b.__module__, b.__name__) for b in PdsFile.__bases__]}; the base '
+        f'list carries mixins and nothing else')
 
 
 ##########################################################################################
@@ -116,11 +123,11 @@ def test_no_mixin_is_shadowed_by_a_pdsfile_subclass(subclass):
     #
     # The rule is strict, so it can in principle reject a legitimate future move.
     # It does not today: the 34 (Pds3File) and 35 (Pds4File) names that override a
-    # PdsFile name are class attributes and translator tables, which the Phase 5
-    # mechanics keep on PdsFile, plus __init__, __repr__ and the four
+    # PdsFile name are class attributes and translator tables, which stay on
+    # PdsFile, plus __init__, __repr__ and the four
     # use_shelves_only/require_shelves/set_logger/set_easylogger classmethods,
-    # every one of which is on PR-22's explicit stay-list. None of them can reach
-    # a mixin, so nothing this phase does can trip this check by accident.
+    # every one of which is likewise excluded from extraction. None of them can
+    # reach a mixin, so no further extraction can trip this check by accident.
     assert subclass in PdsFile.__subclasses__(), (
         f'{subclass.__name__} is not a direct subclass of PdsFile, so this check '
         f'is not looking where it thinks it is')
@@ -152,8 +159,8 @@ def test_every_mixin_name_is_reachable_through_pdsfile():
                                        '__init_subclass__', '__getattr__',
                                        '__setattr__'])
 def test_a_mixin_defines_no_construction_or_attribute_hook(forbidden):
-    # The Phase 5 rule is that mixins add no state and do not participate in
-    # construction; PdsFile's own __init__ and _X_filled slots stay in core.
+    # Mixins add no state and do not participate in construction; PdsFile's own
+    # __init__ and _X_filled slots stay in core.
     offenders = [m.__name__ for m in _mixins() if forbidden in vars(m)]
 
     assert not offenders, f'{forbidden} defined by {offenders}'
@@ -177,8 +184,10 @@ def test_a_mixin_defines_only_callables_and_properties():
 ##########################################################################################
 def test_the_mixin_bases_are_listed_alphabetically():
     # The mixins are disjoint (above), so the MRO order changes nothing and the
-    # ordering rule is free to be the one that stays checkable as Phase 5 adds
-    # more of them: alphabetical by class name, object last.
+    # ordering rule is free to be the one that stays checkable as more of them
+    # are added: alphabetical by class name. (The rule was written as
+    # "alphabetical, object last"; the trailing object base is gone, and the
+    # bases are mixins only.)
     names = [mixin.__name__ for mixin in _mixins()]
 
     assert names == sorted(names), (

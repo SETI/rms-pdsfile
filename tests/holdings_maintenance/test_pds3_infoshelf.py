@@ -6,9 +6,12 @@
 # dogfoods pdschecksums first (the `tree` fixture).
 #
 # Two of the scenarios below pin corruptions that pdsinfoshelf --validate does NOT
-# report today, and one pins a wrong log message; see entry 10 of "From PR-13" in
-# critiques/deferred-observations.md. Its pds4 twin compares correctly, which is
-# why test_pds4_infoshelf.py expects the opposite outcome.
+# report today, and one pins a wrong log message. All three come from the same
+# defective comparison: it tests `checksum1 != checksum1`, it tests
+# `abs(modtime1 != modtime2) > 1`, and its child-count message formats
+# `(count1, count1)`. They are pinned here rather than fixed. Its pds4 twin
+# compares correctly, which is why test_pds4_infoshelf.py expects the opposite
+# outcome.
 #
 # Every test rebuilds the tree first, so each one is independent and order-agnostic.
 ##########################################################################################
@@ -171,9 +174,10 @@ def test_corruption_is_detected_and_repaired(shelved_tree, corruption):
 def test_known_undetected_corruption(shelved_tree, corruption):
     """These corruptions pass --validate today; the comparison is defective.
 
-    See entry 10 of "From PR-13" in critiques/deferred-observations.md. When the
-    comparison is fixed these assertions must be inverted -- that is the point of
-    pinning them.
+    A content change goes unreported because the checksum test compares a value
+    to itself, and modification-time drift goes unreported because abs() of a
+    bool is 0 or 1 and never greater than 1. When the comparison is fixed these
+    assertions must be inverted -- that is the point of pinning them.
     """
 
     corruption.damage(shelved_tree.path(corruption.target))
@@ -230,8 +234,8 @@ def test_update_picks_up_a_new_file(shelved_tree):
                for line in run.error_lines), run.describe()
     assert not any('N4BI01L4Q_EXTRA.TXT' in line for line in run.error_lines), \
         run.describe()
-    # The child-count message reports the on-disk count twice instead of on-disk
-    # versus shelved (6); see entry 10 of "From PR-13" in the deferred observations.
+    # The message formats (count1, count1), so it reports the on-disk count (7)
+    # twice instead of on-disk versus shelved (6). Pinned as current behaviour.
     assert any('Child count mismatch 7 7' in line for line in run.error_lines), \
         run.describe()
 

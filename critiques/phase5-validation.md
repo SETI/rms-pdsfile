@@ -5945,3 +5945,811 @@ statements in docstrings under `src/pdsfile/`, fifteen were figures or labels in
 this record and the sub-plan, and one was a missing subprocess timeout in the new
 test. **Not one was in the extracted code** — the same result PR-19, PR-20 and
 PR-21 each produced, here on the largest single move of the phase.
+
+---
+
+## PR-23 — `style: ruff-clean core modules`
+
+**Branch:** `pr-23-ruff-core`, based on and opened against `rewrite` @ `96e5960`.
+PR-23 is **not stacked** (owner, 2026-08-03,
+`plans/2026-08-03-addendum-pr23-24-owner-decisions.md` decision 4), so its
+baseline is `rewrite` itself and its reviewer diff is `git diff origin/rewrite...HEAD`.
+
+**Sub-plan:** `plans/2026-08-03-pr-23-subplan.md`.
+**Deliverable:** `ruff check` only. No `ruff format`, no `ruff format --check`
+gate, no `# fmt: off` guards — the churn checkpoint ran on 2026-08-03 and the
+owner dropped the reformat entirely. No test is added and no golden is touched,
+so the §6.2 gate is an **identical** per-test set in both modes.
+
+### 1. Environment
+
+| Item | Value |
+|---|---|
+| Python | 3.12.3 |
+| ruff | 0.15.22 |
+| Suite driver | the command lines of `scripts/automated_tests/pdsfile_main_test.sh` — serial, under `coverage run`, plus `-rA --junitxml` |
+| Holdings | `PDS3_HOLDINGS_DIR` / `PDS4_HOLDINGS_DIR` at the limited testing copy the goldens are tuned to |
+| Baseline tree | a detached worktree at `96e5960`, measured today rather than copied from a record |
+
+### 2. Full-data suite — an identical set in both modes
+
+Both runs were regenerated after the last change under `src/pdsfile/`.
+
+| Mode | Baseline @ `96e5960` | PR-23 head | ids | Diff |
+|---|---|---|---|---|
+| `--mode ns` | 858 passed / 34 skipped | **858 passed / 34 skipped** | 892 both | **empty** |
+| `--mode s` | 555 passed / 3 skipped | **555 passed / 3 skipped** | 558 both | **empty** |
+
+The comparison is id-by-id from the two `junitxml` files, not a count check:
+every `testcase` is reduced to `classname::name -> outcome` and the two maps are
+compared three ways — ids only in the baseline, ids only in the head, and ids
+whose outcome changed.
+
+```
+ns: 892 vs 892 ids; only-in-baseline 0, only-in-head 0, outcome changed 0
+ s: 558 vs 558 ids; only-in-baseline 0, only-in-head 0, outcome changed 0
+```
+
+**Non-vacuity, at file level.** `coverage.CoverageData.measured_files()` for the
+head run lists **15 of the 15** modules directly under `src/pdsfile/` —
+`__init__.py`, `_associations.py`, `_derived_paths.py`, `_index_rows.py`,
+`_local_fs.py`, `_opus.py`, `_path_utils.py`, `_preload.py`, `_properties.py`,
+`_shelves.py`, `_sorting.py`, `pdscache.py`, `pdsfile.py`, `pdsviewable.py` and
+`preload_and_cache.py`.
+
+**Non-vacuity, at line level — the number that actually bounds the risk.** Of the
+**143 executable lines this PR changed** (`git diff -U0 origin/rewrite...HEAD`
+intersected with `coverage`'s own statement set), the run executed **81** and did
+not reach **62**:
+
+| File | changed executable | executed |
+|---|---|---|
+| `pdscache.py` | 24 | 5 |
+| `pdsfile.py` | 41 | 25 |
+| `pdsviewable.py` | 16 | 7 |
+| `_properties.py` | 15 | 11 |
+| `_local_fs.py` | 13 | 12 |
+| `_preload.py` | 9 | 7 |
+| `_shelves.py` | 7 | 5 |
+| `_sorting.py` | 6 | 5 |
+| `_path_utils.py` | 5 | 1 |
+| `_index_rows.py` | 3 | 2 |
+| `_opus.py`, `_associations.py`, `__init__.py` | 4 | 1 |
+| **total** | **143** | **81** |
+
+The unreached lines are the ones a reader should know about: 19 of the 24 in
+`pdscache.py`, almost all inside `MemcachedCache` (`unblock`'s two collapsed
+conditionals, `__contains__`, `get_multi`'s `tuple`→`pair` rename, `get_now`'s
+`RUF059` rename, three `F541` fragments and the `type(port) is str` comparison);
+`PdsFile.__repr__`'s `type(self) is PdsFile`; all three `next(iter(...))` sites
+and `PdsViewSet.append`'s `B020` rename; `_get_shelf`'s failure path;
+`repair_case`'s not-found path; and the `N806` rename in `from_abspath`'s
+multi-holdings branch. An identical pass/fail set does not speak for any of them.
+
+One `MemcachedCache` region **is** covered by the suite, and it is worth naming
+because it is the only one: `set_multi`'s `tuple`→`pair` rename runs under
+`tests/core/test_pdscache_set_multi.py`, which builds a `MemcachedCache` with
+`__new__` and a stub client because `pylibmc` is not installed.
+
+**So the rest were exercised directly instead.** A differential probe — **55
+labelled values, no holdings tree, no committed test id** — was run under the
+**baseline** tree and under the **head** tree and the two outputs diffed. It
+borrows `test_pdscache_set_multi.py`'s `__new__`-plus-stub-client technique to
+drive the `MemcachedCache` methods the suite cannot reach. Measured under
+`coverage`, the probe reaches **36** of the 143 changed executable lines, **24 of
+which the suite does not**, so the union is **105 of 143** and **38** remain
+unreached by anything.
+
+| Reached by | changed executable lines |
+|---|---|
+| the full-data suite | 81 |
+| the differential probe | 36 |
+| **either** | **105** |
+| neither | 38 |
+
+Per file, "reached by neither": `pdsfile.py` 15, `_path_utils.py` 4,
+`_properties.py` 4, `pdscache.py` 3, `_shelves.py` 2, `_preload.py` 2,
+`pdsviewable.py` 2, and one each in `__init__.py`, `_associations.py`,
+`_index_rows.py`, `_local_fs.py`, `_opus.py`, `_sorting.py`. **35 of the 38** are
+one of: a `UP024` alias substitution (`IOError` **is** `OSError`), an f-string
+whose text was compared byte for byte by hand, an `E701` split that cannot change
+semantics, a local rename `ruff`/`pyflakes` proves complete, or an `F841` binding
+removal whose right-hand side is preserved or absent (`_path_utils.py:136`,
+`_preload.py:201`, `_shelves.py:171`, `__init__.py:7`). **The other three are named rather than
+folded in**: `pdscache.py:321`'s `E721` and the `F541` fragments at `:599` and
+`:1042`, all of which need `pylibmc` to reach (deferred observation 72). No
+`SIM`, `RUF005`, `RUF015`, `B020`, `SIM118`, `C405`, `E713` or `F401` fix is among
+the 38; every one of those is covered by the suite, the probe, or both. The one
+unreached `E721` is discharged by the metaclass argument in §4 and by the probe's
+direct evaluation of `type(x) is str` on a `str`, a `str` subclass, an `int` and a
+`bool`.
+
+What the probe covers, by code: **`E721`** — two of the three sites called for
+real (`PdsFile.__repr__` on `PdsFile`, `Pds3File`, `Pds4File` and an anonymous
+subclass; `iconset_for` on a bare object, a plain `list` and a `list` **subclass**
+— exactly the inputs `isinstance` would have mis-dispatched); the third,
+`MemcachedCache.__init__`, cannot be constructed without `pylibmc`, so the probe
+evaluates the predicate on a `str`, a `str` **subclass**, an `int` and a `bool`
+instead. **`RUF015`** — all three sites plus their empty-guard paths.
+**`B020`** — `append` with a nested viewset, and with an empty one.
+**`SIM102`** — `unblock` on all five logger/pid combinations.
+**`F541`** — `DictionaryCache._trim`'s message and `unblock`'s two.
+**`A001`** — `get_multi`'s renamed loop. **`RUF059`** — `get_now`.
+**`F401`** — both re-exports. **`UP004`** — the three MROs.
+
+**All 55 values identical, over three independent base/head run pairs.** Sample:
+
+```
+repr(PdsFile abspath)                    = 'PdsFile("/a/b")'
+repr(Pds3File abspath)                   = 'Pds3File("/a/b")'
+repr(anon subclass abspath)              = 'PdsFile._PdsFileSubclass("/a/b")'
+iconset_for(list SUBCLASS)               !! AttributeError: '_ListSubclass' object has no attribute 'icon_type'
+for_width on empty                       !! OSError: No viewables have been defined
+MemcachedCache.__contains__('perm')      = True
+MemcachedCache.get_multi                 = [('a', 'A'), ('b', 'B')]
+MemcachedCache.unblock otherpid/logger   = (None, [], [('error', 'Process 4242 is unable to unblock MemcachedCache [11211]; Cache is blocked by process 99')])
+DictionaryCache._trim log                = [('debug', '21 items trimmed from DictionaryCache'), ...]
+```
+
+The `repr` lines are the point of `E721`: had `isinstance` been used, the
+`Pds3File` line would read `PdsFile("/a/b")` and the subclass line would lose its
+class name. The `iconset_for(list SUBCLASS)` line is the other one: `isinstance`
+would have stopped wrapping the subclass, so the error would have come from a
+different place. The `unblock` lines are `SIM102`, and they also show the
+collapse preserving the fall-through when `self.logger` is falsy — the two
+`no-logger` cases still reach `self.mc.set('$OK_PID', 0, time=0)`, which is the
+behavior the nested form had.
+
+The three lines nothing reaches in `pdscache.py` are `type(port) is str` in
+`MemcachedCache.__init__` and the two `F541` fragments inside
+`except pylibmc.TooBig` handlers; all three need `pylibmc`, which is not a
+declared dependency. Recorded as deferred observation 72.
+
+The probe also **caught something**, which is why it is worth reporting rather
+than merely claiming: one value differed on the first pair, and it turned out to
+differ between two runs of the **same** tree. `PdsViewSet.append`'s recursive
+branch keeps an arbitrary member of the nested set and `PdsViewable` is hashed by
+identity, so which one survives is not a function of the input. Recorded as
+deferred observation 73, with five-run evidence on unmodified `rewrite`; the
+probe now asserts the invariant rather than the member.
+
+### 3. The violation set was derived, not assumed
+
+The plan says not to trust its own PR-23 list, and the list is provably stale: it
+places `A002` in `pdsfile.py`, but PR-18 moved those three methods into
+`_derived_paths.py` (deferred entry 45).
+
+`ruff check` was run with the template select set and **no `per-file-ignores` at
+all**, so nothing the committed ratchet suppresses could hide. Over the fifteen
+modules: **154 violations in 14 files**; `preload_and_cache.py` is the one clean
+file, and `_version.py` is `.gitignore`d and absent from a checkout. The
+coordinator's scoping run reported 155; the one-violation difference is not
+reconciled and is not load-bearing — every disposition below is keyed to a
+`file:line`, not to a total.
+
+**154 → 33. 121 fixed, 33 permanent.** By code. **Superseded by the "PR-23 revision" section at the end of this file: the owner's `RUF005` ruling on 2026-08-03 reverted seven fixes, so the measured figures are now 154 → 40, 114 fixed, 40 permanent, with `RUF005` 0 fixed / 8 permanent.**
+
+| Code | n | Fixed | Frozen |
+|---|---|---|---|
+| `E701` | 20 | 20 | — |
+| `UP024` | 20 | 20 | — |
+| `RUF012` | 16 | — | 16 |
+| `UP031` | 14 | 13 | 1 |
+| `F841` | 9 | 9 | — |
+| `RUF005` | 8 | 7 | 1 |
+| `F541` | 7 | 7 | — |
+| `B904` | 4 | — | 4 |
+| `C405` | 4 | 4 | — |
+| `I001` | 4 | 3 | 1 |
+| `RUF015` | 4 | 3 | 1 |
+| `UP004` | 4 | 4 | — |
+| `A002` | 3 | — | 3 |
+| `B006` | 3 | — | 3 |
+| `E501` | 3 | 3 | — |
+| `E721` | 3 | 3 | — |
+| `F403` | 3 | — | 3 |
+| `SIM102` | 3 | 3 | — |
+| `SIM103` | 3 | 3 | — |
+| `A001`, `B007`, `B905`, `F401`, `N806`, `RUF059`, `SIM114`, `SIM118` | 2 each | 16 | — |
+| `B020`, `E713`, `UP015` | 1 each | 3 | — |
+| **Total** | **154** | **121** *(now 114)* | **33** *(now 40)* |
+
+### 4. The behavior-equivalence proofs, per risky code
+
+§2 permits exactly three PRs to change observable behavior and this is not one of
+them. "Mechanical" describes the diff, not the risk.
+
+**`E721` — `is`/`is not`, never `isinstance`.** All three sites sit in a package
+whose design is a subclass hierarchy, and `isinstance` would change dispatch at
+two of them:
+
+| Site | Before | After | What `isinstance` would have done |
+|---|---|---|---|
+| `pdsfile.py` `__repr__` | `type(self) == PdsFile` | `type(self) is PdsFile` | made the branch true for every `Pds3File`/`Pds4File`, changing their repr |
+| `pdsviewable.py` `iconset_for` | `type(pdsfiles) != list` | `type(pdsfiles) is not list` | stopped wrapping a `list` **subclass** in a one-element list |
+| `pdscache.py` `MemcachedCache.__init__` | `type(port) == str` | `type(port) is str` | sent a `str` subclass down the `'127.0.0.1:%d'` branch |
+
+`type(x) is C` and `type(x) == C` can differ only if the metaclass of `type(x)`
+overrides `__eq__`; every class reachable here has metaclass `type`.
+
+**`F841` — two of the nine right-hand sides have effects, and both are kept.**
+`_preload.py`'s `pdsf2 = cls.CACHE[key]` and `pdsfile.py`'s
+`pdsf = cls.CACHE[child_logical_path.lower()]` both become `_ = cls.CACHE[…]` —
+the spelling `_preload.get_permanent_values` already used for the same idiom two
+lines earlier: the lookup still happens, still updates cache bookkeeping, and
+still raises the `KeyError` the enclosing handler is there to catch. Only the
+named binding goes. The other seven are `except … as e` bindings never read, a
+`with open(...) as f: pass` whose `open()` is the entire point (`as f` dropped,
+`open()` kept), and two dead assignments whose right-hand sides are a constant and
+a plain list index. Both dead assignments turned out to mark latent defects, which
+are recorded as deferred observations 67 and 68 rather than repaired.
+
+**`B904` — all four frozen.** There is no behavior-preserving variant.
+`raise X from err` sets `__cause__` **and** `__suppress_context__`, turning the
+traceback's "During handling of the above exception, another exception occurred"
+into "The above exception was the direct cause of"; `raise X from None` sets
+`__suppress_context__` and hides the original traceback entirely. §2 names error
+messages as observable, so both are out of scope here.
+
+**`RUF005` — seven local proofs, one refusal.** `_sorting.py`'s four sites operate
+on `parts`, a list literal built in the same function; `_opus.py`'s two operands
+are assigned seven lines above and are both lists; `_preload.py`'s
+`volinfo_dict[key]` has exactly one assignment in the same function and it is a
+tuple literal; `_index_rows.py`'s `self.childnames` is a list on **every** one of
+its six assignments in the package (`pdsfile.py:428` — to `None`, before the
+property's own `[]` — and `:632`/`:688`,
+`_properties.py:398/403/413`, where `sort_basenames` ends
+`basenames = list(basenames); basenames.sort(...); return basenames`).
+
+`_properties.py`'s `self._info[:4] + (shape,)` is **frozen**: `_info_filled` is a
+**list** at `pdsfile.py:634` and `:690` (`new_merged_dir` and
+`new_index_row_pdsfile`). On those objects `list + tuple` raises `TypeError`
+today, while `(*self._info[:4], shape)` would silently succeed. The site is
+unreachable with a list only via a whole-program argument about
+`len(self._info[4]) > 2`, and a mechanical style PR should not rest on that.
+
+**`SIM102`/`SIM114` — same short-circuit, proven structurally.** ruff raises
+SIM102 only when the outer `if`'s body is *exactly* the nested `if`, so
+`if A: if B: S` ≡ `if A and B: S` evaluates `A`, then `B` only if `A` is truthy —
+the same order and the same subset. SIM114 merges two branches with identical
+bodies into `if A or B`, which likewise evaluates `B` only when `A` is falsy,
+exactly as the `elif` did.
+
+**`SIM103` — all three fixed, as `return bool(...)`.** The *bare* collapse would
+change the returned object from the `True`/`False` singleton to the condition's
+raw value, and `_local_fs.py`'s condition is a call
+(`cls.os_path_exists(shelf_abspath)`) that is not proven `bool`-returning — it has
+a `return (pdsf.exists and pdsf.child_of_index(...).exists)` path. Wrapping in
+`bool(...)`, which is the form ruff's own message names, removes the question
+entirely: `bool(x)` invokes exactly the `__bool__`/`__len__` that `if x:` invoked
+and returns exactly the singleton the branch returned, so the callee's return type
+never reaches the caller. `_shelves.py:338`'s `bool(self.bundlename)` is the same
+argument on a `str`. **This is a round-1 correction**: the two `_local_fs.py`
+sites were first classified freeze-locked on the strength of the bare rewrite
+alone, and the reviewer showed that the `bool(...)` form — which this PR was
+already using at `_shelves.py:338` — makes them provable locally. See
+`critiques/pr-23/round-1.md` M1.
+
+**`UP031` — thirteen fixes, one refusal.** For every fixed site the argument is a
+`str`, an explicit tuple literal matching the placeholder count, or `len(...)`;
+`'%s' % x` is `str(x)` and `f'{x}'` is `format(x, '')`, which is `str(x)` for
+every type here, and the only general divergence — a tuple right-hand operand
+raising `TypeError` under `%` — cannot arise. `pdscache.py`'s
+`'127.0.0.1:%d' % port` is **frozen**: `%d` truncates a non-int, `{port:d}` raises
+on one, and `{port}` prints it, so no f-string spelling reproduces the current
+behavior across the whole input domain. It is also inside `MemcachedCache`, which
+ground rule 9 protects and no test here can reach.
+
+**`UP024` — genuinely safe, and for a stronger reason than "renamed".** In Python
+3 `IOError` and `EnvironmentError` **are** `OSError` — the same class object — so
+`except IOError` and `except OSError` compile to the same catch, `raise IOError(x)`
+constructs the same object, and a traceback already prints `OSError` either way.
+Three sites additionally simplified `except (ValueError, IndexError, IOError,
+OSError)` to a tuple without the duplicate.
+
+**`UP004` — the class statement, measured rather than assumed.**
+`plans/2026-07-27-addendum-phase5-mixin-base-order.md` already ruled that trailing
+`object` is not a mixin, is not required, gives an identical MRO, and is left for
+PR-23. Verified in both trees:
+
+| | Baseline `96e5960` | PR-23 head |
+|---|---|---|
+| `PdsFile.__mro__` | 11 entries, `PdsFile` → 9 mixins → `object` | **identical, entry for entry** |
+| `Pds3File.__mro__` | 12 entries | **identical** |
+| `Pds4File.__mro__` | 12 entries | **identical** |
+| `PdsFile.__bases__` | 9 mixins + `object` | 9 mixins |
+
+The one line that depended on it is `test_the_class_statement_stays_in_pdsfile_pdsfile`'s
+`assert PdsFile.__bases__[-1] is object`, which the addendum names explicitly
+("stops being meaningful once `object` is gone"). It is replaced by two
+assertions that have teeth — `object not in PdsFile.__bases__`, and a check that
+every base's `__module__` starts with `pdsfile._`, which fails both if `object`
+returns to the base list and if any non-mixin base is added. (An earlier draft
+used `PdsFile.__mro__[-1] is object`; round 2 removed it as a tautology — it
+cannot fail for any Python 3 class.) **The test id set is unchanged**; the module's
+mixin discovery (`[base for base in PdsFile.__bases__ if base is not object]`)
+reads the same either way, and `tests/api/` is 26 passed before and after.
+
+**`N806`, `A001`, `B007`, `B020`, `RUF059` — local renames only.** Every renamed
+name is a function-local or a loop variable; none appears in a signature, in the
+manifest, or after the construct that binds it. `pdscache.py`'s two `tuple`
+shadows are safe to rename because the builtin `tuple` is never called anywhere in
+that module (`grep -n 'tuple('` → no matches).
+
+**`F401` — fixed by re-export, not by deletion.** `pdsfile.pdscache.sys` and
+`pdsfile.pdsviewable.pdslogger` are **frozen manifest members**, so deleting
+either import is a manifest break. Both become `import X as X` with a comment,
+which is the form `pdsfile.py` already uses for ten unused stdlib modules and
+which ruff honours (that file reports no `F401`). The names stay bound; the
+manifest is unchanged.
+
+### 5. The ratchet — 14 entries and 78 code slots become 7 and 10
+
+| File | Before | After |
+|---|---|---|
+| `__init__.py` | `F403, F841, I001` | `F403` |
+| `_associations.py` | `UP024` | **removed** |
+| `_derived_paths.py` | `A002` | `A002` |
+| `_index_rows.py` | `RUF005, UP024` | **removed** |
+| `_local_fs.py` | `B007, B905, E701, SIM103, SIM118, UP024` | **removed** |
+| `_opus.py` | `RUF005, UP024` | **removed** |
+| `_path_utils.py` | `E701, F841` | **removed** |
+| `_preload.py` | `E501, E701, F841, RUF005, UP015, UP031` | **removed** |
+| `_properties.py` | `E701, F841, RUF005, SIM114, UP024, UP031` | `RUF005` |
+| `_shelves.py` | `B904, B905, F841, RUF059, SIM103, UP024, UP031` | `B904` |
+| `_sorting.py` | `E701, RUF005` | **removed** |
+| `pdscache.py` | `A001, E701, E721, F401, F541, F841, I001, RUF015, RUF059, SIM102, UP004, UP031` | `RUF015, UP031` |
+| `pdsfile.py` | `B904, C405, E501, E701, E713, E721, F841, I001, N806, RUF012, SIM102, SIM114, SIM118, UP004, UP024, UP031` | `B904, I001, RUF012` |
+| `pdsviewable.py` | `B006, B007, B020, C405, E701, E721, F401, I001, RUF015, RUF059, UP004, UP024` | `B006` |
+
+Each of the 10 surviving codes is a real, present violation: the no-ignores run
+over the same fifteen files after the fixes reports **exactly 33**, and they map
+one-for-one onto the 10 slots. (Point ruff at `src/pdsfile/*.py` in a tree where
+an install has regenerated the gitignored `_version.py` and the answer is 34, the
+extra one being that file's `RUF022` — deferred observation 71.) `pdsviewable.py`'s `RUF059` was **already dead** in
+the committed table — the derived set has no `RUF059` in that file — so it leaves
+as a stale-entry removal rather than as a fix, and that is stated rather than
+counted as work.
+
+**Nothing was added.** No entry gained a code, no entry gained a file, and no
+inline `noqa` exists in any source file: `grep -rn noqa src/pdsfile/*.py` → no
+matches, at head. (A naive `git diff … | grep -c '^+.*noqa'` returns 6, all of
+them prose — this paragraph, two sub-plan lines, the `pyproject.toml` and
+`pdsfile_overrides.mdc` sentences that say `noqa` is never added. The grep worth
+recording is the one that answers the question.)
+
+`.cursor/rules/pdsfile_overrides.mdc` deviation (4) records the same set as a
+per-file table with the same reasons, as the plan requires. Its non-core lines
+(rule modules, the `pds{3,4}file/__init__.py` pair, `re_validate.py`,
+`tests/rules/**`) are unchanged and stay PR-24's to re-derive.
+
+**`scripts/gen_ruff_ratchet.py` was not used**, and the ratchet header now says
+why: deferred entry 33 records that the script runs `ruff` with the project config
+and therefore emits an empty block against a tree whose committed ignores already
+suppress everything — which is exactly this tree.
+
+### 6. Deferred entry 60 — banner widths, proven comment-only
+
+Measured over every indented `#`-only line in the fifteen modules (each banner
+contributes two, one above its text and one below): the in-class convention is
+**80 columns**, with six outliers forming three banners — `# Preload management`
+and `# Set parameters for both Pds3File and Pds4File` at 90, and
+`# Interior function to recursively preload one physical directory`, indented
+eight spaces inside `preload()`, at 84. All six now end at column 80; the tally
+across all fifteen files is 40 lines at 80 and nothing else, except the two
+8-space bare `#` lines at `pdsfile.py:989`/`:994`, which are blank lines inside a
+comment paragraph rather than banner rules.
+
+Proven rather than asserted: each of the fifteen modules was tokenized before and
+after with `tokenize.generate_tokens`, `COMMENT` and `NL` tokens dropped, and the
+remaining `(type, string)` streams compared. **15 files compared, 0 differing.**
+
+### 7. API freeze — an empty diff, byte for byte
+
+`scripts/dump_public_api.py` was run in the baseline worktree and in the head
+worktree:
+
+| | Bytes | md5 |
+|---|---|---|
+| `96e5960` | 733,876 | `442428dafbdf30f291987a196b22a2ce` |
+| PR-23 head | 733,876 | `442428dafbdf30f291987a196b22a2ce` |
+
+`diff` is empty. `tests/api/test_api_freeze.py` passes inside `run-all-checks.sh`.
+Neither the manifest, the allowlist, the dumper nor the checker was edited.
+
+This is the gate that catches the two riskiest fixes in the PR — dropping
+`object` from `PdsFile`'s bases, and rewriting two frozen module-level imports as
+`import X as X`. Both leave the dump byte-identical.
+
+### 8. Holdings-free gate
+
+`scripts/run-all-checks.sh` with `PDS3_HOLDINGS_DIR`, `PDS4_HOLDINGS_DIR`,
+`PDSFILE_TEST_HOLDINGS` and `PDSFILE_TEST_DATA_DIR` all unset:
+
+| Check | Result |
+|---|---|
+| `ruff check src/pdsfile tests scripts` | passed |
+| pytest | **92 passed, 800 skipped** — the same split as the baseline |
+| pyroma | passed |
+| API freeze | passed |
+| clean install | passed — all runtime modules import with no dev extras |
+
+### 9. Consumer smoke — outcome unchanged
+
+The gate is **same outcome as baseline**, not "passes"
+(`critiques/baselines/consumer-smoke-baseline.md`).
+
+| Check | Baseline | This branch |
+|---|---|---|
+| A — rms-opus import paths | 4/4 resolve, 0 failures | **4/4 resolve, 0 failures** |
+| B — rms-viewmaster startup | 5 ok, 3 pre-existing failures | **5 ok, 3 failures — the same three** |
+
+The three Check-B failures are still `pdsfile.cache_lifetime` (raises),
+`pdsfile.DEFAULT_CACHING` (absent) and the same `cache_lifetime` read inside
+`get_page_cache()` with `PAGE_CACHING=True`. None became a pass, which matters
+here: a `F401` "fix" that deleted `sys` or `pdslogger`, or an `__init__.py`
+"cleanup" of the star imports, is exactly the class of change that would move this
+table. `pdsfile.pdsfile.repair_case` still resolves.
+
+Check B is load-bearing in a second way: `create_app()` → `init_once()` preloads
+rms-viewmaster's own holdings configuration against a **different holdings tree**
+than this repo's tests use, so the edited `child()`, `os_path_exists`,
+`glob_glob`, `sort_basenames` and `_get_shelf` all run outside this repo's
+harness. The run's log shows the `Pre-loading:` lines, the
+`Missing category dir:` warnings for categories absent there, and
+`PdsFile preloading completed`.
+
+Environment note carried from the baseline: the check ran under the pdsfile venv's
+interpreter with rms-viewmaster's `site-packages` appended to `PYTHONPATH`,
+because that venv lacks pdsfile's declared `range_ex` dependency.
+rms-viewmaster is at `a0d05e2`; rms-opus is at `73cb6de7`.
+
+### 10. Deferred observations
+
+Entries **45** and **60** are resolved by this PR. Entry **33** is resolved as
+documented rather than fixed — the ratchet header now records the workaround —
+and stays open as a tooling gap. Entry **37** is half resolved: its `F841` is
+fixed, its `B904` is now a justified permanent ignore. Entry **31** is untouched
+and still needs the owner decision it asks for. Entry **64** is untouched **on
+purpose**: it asks for an owner decision that has not been given, and PR-23 did
+not remove the six commented-out `MemcachedCache.get_multi` lines.
+
+Seven new entries are recorded in `critiques/deferred-observations.md`:
+**67** (`child()` discards the cache entry it looks up), **68** (`version_ranks`
+returns `None` for a nonexistent file), **69** (`_local_fs.py`'s now-visibly-dead
+`values`/`zip` pair), **70** (`tools/show_opus_products.py`'s orphan `I001`
+ratchet entry), **71** (the gitignored `_version.py` carries a real `RUF022` no
+gate can see), **72** (only one `MemcachedCache` method is reachable by any test
+here: 28 of the 37 lines this PR changed in `pdscache.py` are inside that class,
+and `set_multi` is the only one the suite executes) and **73** (`PdsViewSet.append` keeps a nondeterministic member of a
+nested viewset). 67, 68, 69 and 73 are latent defects this PR uncovered — the
+first three while removing the unused bindings that concealed them, the last by
+diffing the differential probe — and repairing any of them is a behavior change
+§2 forbids here.
+
+Later rounds and reviews added seven more, so this PR carries **fourteen** in
+all: **74** (`MemcachedCache.flush` calls `.sort()` on a `dict_keys`) and **75**
+(`_opus.py` spelled one concatenation two ways — closed by the `RUF005` revert)
+from round 2; **76** (`pdscache.py`'s off-grid indentation, invisible because
+ruff's `E1xx` rules are preview-gated) and **77** (whether prose may follow a
+mechanical fix) from round 3; **78** (`MemcachedCache.unblock` releases a lock it
+does not own when no logger is configured) from the CodeRabbit review of this PR;
+**79** (130 logging calls across the package build their message eagerly) from
+the owner's lazy-logging correction; and **80** (the module headers narrate the
+port instead of describing the code) from the owner directly.
+
+The count is stated here rather than left implicit because it is the one figure
+in this record that a later reader can check in a second, against
+`critiques/deferred-observations.md`.
+
+### 11. Review loop
+
+Every round's record exists on disk before its row is written here.
+
+| Round | Major | Minor | Deferred | Verdict | Full-data record |
+|---|---|---|---|---|---|
+| [1](pr-23/round-1.md) | **1** | 9 | 2 | `goal not met` | regenerated after the fixes (`runs/pr23-r2`) |
+| [2](pr-23/round-2.md) | 0 | 6 | 2 | `goal met`, but new Minors → loop continues | regenerated after the fixes (`runs/pr23-r3`) |
+| [3](pr-23/round-3.md) | 0 | 6 | 2 | `goal met`, but new Minors → loop continues | regenerated after the fixes (`runs/pr23-r4`) |
+| [4](pr-23/round-4.md), **scoped** | **0** | — | — | **`goal met`** — loop terminates | `runs/pr23-r4` carries forward: the round's four record fixes touch no source |
+
+**Round 1's Major is the one finding that changed the deliverable.** `SIM103` ×2
+in `_local_fs.py` had been classified freeze-locked on the strength of ruff's
+*bare* rewrite; the reviewer showed that `return bool(<condition>)` — the form
+ruff's own message names, and the form this PR was already using at
+`_shelves.py:338` — is provable locally, so the classification was internally
+inconsistent and `pdsfile_overrides.mdc` was about to record a false claim
+permanently. Fixed; 35 → 33 permanent, ratchet 8/11 → 7/10.
+
+**Round 2 found no Major and confirmed every gate by independent measurement**,
+including the one that is hardest to check from a diff: `ruff format --check`
+reports the *same* 13 unformatted files at base and at head, which is direct
+evidence that owner decision 3 was honoured.
+
+**Round 2's m1 is the most useful Minor of the two rounds.** The record claimed
+the differential probe covered `pdscache.py`; it covered none of it — the
+`DictionaryCache` round trip went through `DictionaryCache`'s own methods, which
+this PR never touched. That claim is now replaced by a measurement, and the probe
+was extended to drive `MemcachedCache` through the `__new__`-plus-stub-client
+technique `tests/core/test_pdscache_set_multi.py` already uses. It is why §2's
+numbers are 55 values and 105 of 143 lines rather than 39 and 81.
+
+**Round 3 invented the two strongest checks in this record**, neither of which
+the executor had run: an **AST control-flow skeleton diff** of all thirteen
+changed source files base-vs-head, whose only differences are the two `SIM102`,
+three `SIM103` and two `SIM114` collapses, the `version_ranks` inversion, and
+index shifts — direct mechanical evidence that none of the 20 `E701` splits
+moved a statement into or out of a block; and **mutation-testing the
+differential probe** in a scratch copy, which showed that reverting each of the
+`E721`, `SIM102` and `B020` fixes changes a probe value, i.e. the probe is not
+passing vacuously.
+
+**Round 4 is §6.6's scoped fourth round** — "confirm the prior round's findings
+are resolved; raise only new Major findings" — and the hard cap. It confirmed
+all six of round 3's Minors and both Deferred items resolved, and returned
+**zero Major**, so the loop terminates. It also ran one check no earlier round
+did: it cross-validated `setdiff.py` against the raw junit XML
+(`failures="0" errors="0"` in all four files) so that no failure could be masked
+by the script's last-child-wins outcome rule. Its four would-be-Minors — which a
+scoped round may not raise — were all one-line record corrections, and were made
+rather than carried; since they touch no source, `runs/pr23-r4` carries forward.
+
+**Findings by kind, across the four rounds: 1 Major and 21 Minor.** **Four
+Minors were in the code** — a tautological assertion, two one-character idiom
+mismatches, and one comment placed above the wrong import. The other seventeen
+and the Major were figures, claims or classifications in this record, the
+sub-plan, `pdsfile_overrides.mdc` and one plan addendum. That is the same
+distribution PR-19 through PR-22 reported: the defects are in what the executor
+*says*, not in what it changed. **No round found a defect in the behavior of the
+code this PR changed.**
+
+---
+
+### PR-23 revision — four owner corrections, 2026-08-03
+
+Appended, not merged into the sections above, so that the record shows the state
+before and after the corrections. The corrections were given after the §6.6 loop
+had closed clean at `0a7dc60`; `f59ec05` is the coordinator commit that recorded deferred 78 on top of it, and is the base of the corrections diff. Everything below was measured after them.
+
+#### What changed and why
+
+| # | Correction | What it touched |
+|---|---|---|
+| 1 | `RUF005`'s `[*a, b]` rewrite is not wanted; the exclusion is permanent | 7 source lines reverted; 4 ratchet entries recreated; `pdsfile_overrides.mdc` (4); deferred 75 closed |
+| 2 | Logging passes lazy `%` arguments, never f-strings | 4 logging calls; deferred 79 added |
+| 3 | Code comments may not name plans, critiques, PR numbers, the frozen surface or the manifest | 11 comment/docstring sites in 6 files |
+| 4 | `pyproject.toml`'s plan commentary is allowed only until the rewrite finishes | plan §Phase 8, as a PR-37 deliverable |
+
+Corrections 2 and 3 are restatements of standing rules that this PR had violated,
+not new preferences. Correction 1 reverses a fix the PR made; correction 4 adds a
+future obligation and changes nothing now.
+
+#### 1. The seven reverts are byte-identical, not merely equivalent
+
+Each restored line was extracted from `git show origin/rewrite:<file>` and
+required to appear byte-for-byte in the working tree. Both operands and the exact
+whitespace match, including `_preload.py`'s idiosyncratic continuation indent:
+
+| Site (HEAD line) | Restored text |
+|---|---|
+| `_index_rows.py:164` | `childnames = self.childnames + [selection]` |
+| `_opus.py:246` | `label_pdsfiles[abspath] = [pdsf] + fmt_pdsfiles` |
+| `_sorting.py:188` | `parts[3:] = [self.basename_is_label(basename)] + parts[3:]` |
+| `_sorting.py:196` | `parts = [not isdir] + parts` |
+| `_sorting.py:200` | `parts = [isdir] + parts` |
+| `_sorting.py:205` | `parts = [self.info_basename != basename] + parts` |
+| `_preload.py:325–327` | `volinfo_dict[key] = (volinfo_dict[key][:4] +` / `(dsids_vs_key[alt_key],` / `volinfo_dict[key][5]))` |
+
+`git diff origin/rewrite -- <those four files>` no longer contains any of them.
+`_opus.py:268` and `_sorting.py:269` also carry `+` concatenations; neither was
+ever converted and neither changed, so all of `_opus.py`'s concatenations read
+alike again — which is what closes deferred entry **75**.
+
+#### 2. This is a shrink, not a widen
+
+The claim a reviewer must be able to check is **per file**: no file's remaining
+code set contains a code its `origin/rewrite` set did not. Measured against
+`96e5960`:
+
+| File | at `96e5960` | now | added? |
+|---|---|---|---|
+| `__init__.py` | `F403, F841, I001` | `F403` | no |
+| `_associations.py` | `UP024` | *(entry removed)* | no |
+| `_derived_paths.py` | `A002` | `A002` | no |
+| `_index_rows.py` | `RUF005, UP024` | `RUF005` | no |
+| `_local_fs.py` | `B007, B905, E701, SIM103, SIM118, UP024` | *(entry removed)* | no |
+| `_opus.py` | `RUF005, UP024` | `RUF005` | no |
+| `_path_utils.py` | `E701, F841` | *(entry removed)* | no |
+| `_preload.py` | `E501, E701, F841, RUF005, UP015, UP031` | `RUF005` | no |
+| `_properties.py` | `E701, F841, RUF005, SIM114, UP024, UP031` | `RUF005` | no |
+| `_shelves.py` | `B904, B905, F841, RUF059, SIM103, UP024, UP031` | `B904` | no |
+| `_sorting.py` | `E701, RUF005` | `RUF005` | no |
+| `pdscache.py` | 12 codes | `RUF015, UP031` | no |
+| `pdsfile.py` | 16 codes | `B904, I001, RUF012` | no |
+| `pdsviewable.py` | 12 codes | `B006` | no |
+
+**14 entries / 78 code slots → 11 entries / 14 slots.** Every `RUF005` entry is a
+restoration of a code that file already carried; none is new. Four entries the
+first pass deleted are recreated (`_index_rows.py`, `_opus.py`, `_preload.py`,
+`_sorting.py`), which is why the entry count went 7 → 11.
+
+Re-derived violation counts, `ruff 0.15.22`, template select set, **no**
+`per-file-ignores`, over the fifteen in-scope modules — the generated
+`_version.py` excluded, per deferred entry 71:
+
+| Tree | Violations |
+|---|---|
+| `origin/rewrite` @ `96e5960` | **154** |
+| this branch | **40** |
+
+So **114 fixed**, not the 121 this record claimed before the revert. The 40 are
+`RUF012` 16, `RUF005` 8, `B904` 4, `A002` 3, `B006` 3, `F403` 3, `I001` 1,
+`RUF015` 1, `UP031` 1. `ruff check src/pdsfile tests scripts` with the project
+config is clean.
+
+#### 3. The four logging conversions emit the same text
+
+`pdslogger.PdsLogger.log()` reinterprets a lone argument as a `filepath` when the
+message carries no substitution pattern, so "it has a `%s`" is a fact that has to
+be checked, not assumed. `_message_uses_args` tests `re.compile(r'%[^\(]')`
+against the message with `%%` removed; all four messages match.
+
+| File:line | Now |
+|---|---|
+| `_preload.py:204` | `cls.LOGGER.warn('Permanent value %s missing from Memcache; ' 'preloading again', str(e))` |
+| `_preload.py:382` | `cls.LOGGER.info('Connecting to PdsFile Memcache [%s]', cls.MEMCACHE_PORT)` |
+| `_shelves.py:258` | `cls.LOGGER.debug('Retrieving key "%s"', py_path)` |
+| `pdscache.py:73` | `self.logger.debug('%d items trimmed from DictionaryCache', len(pairs))` |
+
+The first is wrapped as two implicitly concatenated literals; the format string
+the interpreter sees is the single-line one.
+
+A probe exercised each site in three spellings — A = `origin/rewrite`'s eager
+`'fmt' % v`, B = this PR's f-string, C = the lazy form — over 18 value cases
+(realistic values, empty strings, ints, `str`/`int` ports, and values containing
+a literal `%`), through both of `pdslogger`'s output paths. It asserts that a
+handler is attached and that output is non-empty, so it cannot pass vacuously.
+
+| Path | Cases | A ≡ B ≡ C |
+|---|---|---|
+| `PdsLogger` with a handler (production; `self._logger.log(level, text, *args)`) | 18 | **18** |
+| `EasyLogger` / no handler (`print(self._format_message(...))`) | 18 | 14 |
+
+The four `EasyLogger` divergences are exactly the cases whose value contains a
+literal `%`. There, **both** eager spellings raise
+`TypeError: not enough arguments for format string` out of the log call and emit
+nothing, while the lazy form logs correctly. No text that an existing spelling
+emits changes; the lazy form only produces output where `rewrite` throws. None of
+the four values can contain `%` in practice — a `KeyError` on a holdings logical
+path, a port, a shelf `.py` path, and `len(pairs)`.
+
+The exception messages are untouched: `raise ValueError(f'…')` / `raise
+OSError(f'…')` in `_properties.py`, `_shelves.py` and `pdsfile.py` stay as
+f-strings, which is what the owner asked for.
+
+**Pre-existing inventory, swept and recorded, not converted.** An AST sweep of
+`src/pdsfile/**/*.py` (excluding the generated `_version.py`). The predicate,
+stated exactly so the count is reproducible: an `ast.Call` whose `func` is an
+`ast.Attribute` with `attr` in `{debug, info, warn, warning, error, critical,
+exception, log, fatal, open, close}` and whose receiver, as `ast.unparse`d text,
+contains `logger` (case-insensitive), counted once if its **first** argument is
+an `ast.JoinedStr`, an `ast.BinOp` with `Add` or `Mod`, or a `.format()` call:
+
+| Area | Sites | `+` | f-string | eager `%` |
+|---|---|---|---|---|
+| core, `src/pdsfile/*.py` | 34 | 30 | 2 | 2 |
+| subpackages | 96 | 33 | 7 | 56 |
+| total | **130** | 63 | 9 | 58 |
+
+Core by file: `pdscache.py` 20, `_preload.py` 8, `_sorting.py` 2, `_opus.py` 1,
+`_properties.py` 1, `pdsfile.py` 1, `pdsviewable.py` 1. Recorded as deferred
+observation **79**, which also notes the two traps a future conversion faces: the
+message must keep its `%` pattern, and many of these calls already pass a real
+second argument that *is* a filepath.
+
+#### 4. Disposition of all eleven comment sites
+
+Each was re-read and decided on its own; no blanket transformation.
+
+| Site | Was | Now |
+|---|---|---|
+| `_index_rows.py:55` | "Its fragility is deferred observation 49." | the fragility itself, in code terms: a subclass one level deeper, or one whose first base is not the PDS3/PDS4 class, silently gets the PDS3 table |
+| `_properties.py:1340` | "…; see critiques/deferred-observations.md." | "…, so the property returns None in that case" |
+| `pdsfile.py:1112` | "The looked-up object is discarded; see critiques/deferred-observations.md." | "…discarded, not returned, so the child is rebuilt below either way" |
+| `pdscache.py:4–5` | "…a frozen member of this module's public surface (tests/api/api_manifest.json)…" | "`sys` is not referenced below; it is re-exported for callers that reach it as `pdsfile.pdscache.sys`" |
+| `pdsviewable.py:7–9` | same shape, for `pdslogger` | same rewrite, for `pdsfile.pdsviewable.pdslogger` |
+| `pdsfile.py:79–81` | "…and tests/api/api_manifest.json — which records names and kinds, never the defining class — is unchanged." | "…nothing a caller imports or calls has moved or been renamed. It does show in `__module__`, `__qualname__` and `__mro__`." |
+| `pdsfile.py:87–89` | "…all of them are frozen members of this module's public surface…" | "…re-exported for callers that reach them as `pdsfile.pdsfile.<name>`" |
+| `pdsfile.py:106–107` | "…all three names are frozen members of this module's surface…" | "…all three are also reachable as `pdsfile.pdsfile.<name>`…" |
+| `pdsfile.py:117` | "…resolving for callers and for the API freeze." | "…resolving for callers." |
+| `pdsfile.py:141–145` | "…are frozen members of this module's public surface; … are private…" | "…are public; … are private. All are carried so that no name reachable as `pdsfile.pdsfile.<name>` is lost." |
+| `_derived_paths.py:225` | "…; theirs is frozen by the public API" | "…; theirs stays `dir` because callers pass it by that keyword" |
+
+Five of the eleven exist to stop a future reader deleting an import that looks
+unused. That is a real, current property of the code, so it is kept — restated
+without naming the freeze. The rest carried nothing beyond a pointer and lost it.
+
+Measured as prose-only: tokenizing all fifteen core modules at the commit before
+and after, with `COMMENT`/`NL` dropped — **12 of 15 byte-identical token
+streams**; the other three (`_derived_paths.py`, `_index_rows.py`, `pdsfile.py`)
+differ in **exactly one `STRING` token each, at identical token counts**, because
+those three sites are docstrings rather than `#` comments. The API dump records
+names and kinds, never docstrings.
+
+#### 5. Re-validation
+
+The whole suite of gates was re-run after the corrections, because they touch
+`src/pdsfile/`; the pre-correction run is superseded and not carried forward.
+
+| Gate | Baseline (`rewrite` @ `96e5960`) | This branch | Verdict |
+|---|---|---|---|
+| §6.2 `--mode ns` | 892 ids, 858 passed / 34 skipped | 892 ids, 858 passed / 34 skipped | **identical set** — 0 ids only in baseline, 0 only in head, 0 outcomes changed |
+| §6.2 `--mode s` | 558 ids, 555 passed / 3 skipped | 558 ids, 555 passed / 3 skipped | **identical set** — 0/0/0 |
+| non-vacuity | — | all fifteen in-scope modules in `measured_files()` | pass |
+| no holdings | 92 passed / 800 skipped | **92 passed / 800 skipped**, `run-all-checks.sh` green throughout | pass |
+| API freeze | dump 733,876 bytes | dump 733,876 bytes | **`diff` empty** |
+| `PdsFile.__mro__` | — | identical at base and head for `PdsFile`, `Pds3File`, `Pds4File` | pass |
+| `ruff check src/pdsfile tests scripts` | clean | clean | pass |
+| clean install | passes | passes | pass |
+| consumer smoke A (rms-opus) | 4/4 resolve, 0 failures | **4/4, 0 failures** | same outcome |
+| consumer smoke B (rms-viewmaster) | 5 ok, 3 pre-existing failures | **5 ok, 3 failures — the same three** | same outcome |
+
+Check B still exercises the edited code against a different holdings tree than
+this repo's tests use: the run log shows the `Pre-loading:` lines, the
+`Missing category dir:` warnings, and `PdsFile preloading completed`. The three
+failures are still `pdsfile.cache_lifetime` (raises), `pdsfile.DEFAULT_CACHING`
+(absent) and the same `cache_lifetime` read inside `get_page_cache()` with
+`PAGE_CACHING=True`; `pdsfile.pdsfile.repair_case` still resolves. That last one
+matters more after correction 3 than before, because correction 3 rewrote the
+comments that explain why the re-export imports exist.
+
+#### 6. Deferred observations after the revision
+
+**75** is closed by the revert. **79** is new — the 130-site eager-logging
+inventory. **31**, **33**, **37** and **64** are unchanged and still open;
+**64** still needs the owner decision it has always needed.
+
+#### 7. Review round 5, and the regenerated evidence
+
+The four corrections were given after the §6.6 loop had already closed clean at
+round 4. **One** fresh, no-context, opus-class round was run over the corrected
+branch, told what the four corrections were. Record:
+`critiques/pr-23/round-5.md`. It is not a fifth round of the original loop — that
+loop terminated — and does not breach the hard cap of four.
+
+**Verdict returned: `goal not met` — 2 Major, 6 Minor, 3 Deferred.** Both Majors
+were in text that **correction 3 itself introduced**, which is the correction
+whose subject is comment text:
+
+- **M1, `pdsfile.py:79–81`** — the rewrite that removed the `api_manifest.json`
+  reference generalised it into a false claim ("a caller cannot tell which module
+  defines any of them"). `PdsFile.opus_products.__module__` is `pdsfile._opus`,
+  and the paragraph nine lines above tells the reader that two tests inspect
+  exactly that. Fixed to what is true, in the same three lines so no line number
+  in `pdsfile.py` moves.
+- **M2, `tests/api/test_mixin_collisions.py:74`** — this PR had itself added a
+  code comment citing `plans/2026-07-27-addendum-phase5-mixin-base-order.md`.
+  Correction 3's sweep covered `src/` only; the rule is about code comments, so
+  it reaches `tests/` too. Parenthetical dropped. The 36 other `plans/`/
+  `critiques/` lines under `tests/` are pre-existing and out of scope.
+
+The six Minors were all figures: six stale `file:line` sites in three records
+(correction 3 shifted `pdscache.py` −1, `_derived_paths.py` +1, `_index_rows.py`
++2), two missing supersession pointers, a banner count of 32 that is 34, two
+off-by-one citations, a non-reproducible subpackage logging count, and one
+request to state rather than assume that `pyproject.toml`'s freeze wording is
+covered by correction 4. All fixed in `374dcdd`; details in the round record.
+
+**M1 is the lesson worth keeping.** Correction 3 says to restate a comment "in
+terms of the code" rather than delete it. That is only safe when the restatement
+is itself checked against the code. A weaker, more general sentence is not
+automatically a safer one — here it was the only *false* sentence the PR
+produced, and it was produced by the rule meant to make comments truer.
+
+M1 touched `src/pdsfile/`, so §6.6's regeneration rule applies and every figure
+in §5 above was re-measured at `374dcdd` rather than carried forward. **All ten
+gates returned the same results**, listed again in the round record: ns
+892/892 ids with 0/0/0 movement, s 558/558 with 0/0/0, all fifteen modules
+measured, 92 passed / 800 skipped with no holdings, an empty manifest diff at
+733,876 bytes each side, identical MROs, `ruff check` clean with the no-ignores
+derivation still at 40, and the consumer smoke unchanged.

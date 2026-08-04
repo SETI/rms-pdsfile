@@ -1,8 +1,8 @@
 ##########################################################################################
 # tests/api/test_mixin_import_isolation.py
 #
-# The Phase 5 mechanics pin one rule about how the mixin modules may import: a
-# mixin module must NOT do a module-level `from pdsfile.pdsfile import ...`.
+# One rule governs how the mixin modules may import: a mixin module must NOT do
+# a module-level `from pdsfile.pdsfile import ...`.
 # pdsfile/pdsfile.py imports the mixin modules to build the class, so a top-level
 # back-import is a cycle; a method that needs the PdsFile class object uses a
 # function-local import inside the method body instead.
@@ -12,7 +12,7 @@
 # fails the whole suite at collection. Importing some OTHER name that pdsfile.py
 # has already bound by that point is silent -- the package imports, the suite
 # stays green, and the cycle sits there. That silent case is what this module is
-# for (deferred observation 42).
+# for.
 #
 # The check is behavioral, not syntactic. An AST walk over import statements has
 # to learn every spelling and every nesting -- relative vs absolute, aliased,
@@ -82,7 +82,7 @@ def test_the_mixin_modules_are_found():
     # Without this the parametrization below could shrink to nothing and every
     # case would pass by not existing.
     assert len(_MODULES) >= 9, (
-        f'expected at least the nine Phase-5 mixin modules, found {_MODULES}')
+        f'expected at least the nine mixin modules, found {_MODULES}')
 
 
 @pytest.mark.parametrize(('module_name', 'module_file'), _MODULES, ids=_IDS)

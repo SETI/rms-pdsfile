@@ -50,8 +50,10 @@ TOOL_MODULES = {
 HOLDINGS_DIRNAME = {'pds3': 'holdings', 'pds4': 'pds4-holdings'}
 
 # Tools that exit 0 even after logging ERRORs, because main() never feeds its
-# failure flag to sys.exit. Pinned as current behavior; see entry 5 under
-# "From PR-13" in critiques/deferred-observations.md.
+# failure flag to sys.exit -- a --validate that reports checksum mismatches still
+# exits 0. That is a defect; it is pinned as current behavior here rather than
+# fixed, so whichever change gives these two tools an exit status has to update
+# these expectations deliberately.
 TOOLS_WITHOUT_EXIT_STATUS = frozenset({'pdschecksums', 'pds4checksums'})
 
 TOOL_TIMEOUT = 600      # seconds; every subset here runs in well under a second
