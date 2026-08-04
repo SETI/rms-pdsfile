@@ -1944,6 +1944,9 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
 
 ## From PR-24 (`style: ruff-clean rules and remaining files`, Phase 5)
 
+**Line numbers in this block are at PR-24's head**, not at its base, because
+these entries are read by the PRs that come after it.
+
 ### Added by the PR-24 executor's own measurements (2026-08-04)
 
 81. **`LOGDIRS` is a module-level list that `main()` shadows with a bare local,
@@ -1986,12 +1989,12 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     recorded so the figure a later PR works from is the measured one.
     **Owner: whoever executes the entry-79 conversion.**
 
-83. **`pdsarchives.py` assigns `proceed` six times and never reads it.** At
-    `:530`–`:542` each of the five task functions' return values is bound to
-    `proceed`, and `:554` sets it to `False` in the exception handler. Its four
-    sibling tools use the same variable to gate a chained follow-on step
-    (`pdschecksums.py:915`, `if proceed and args.infoshelf:`), but `pdsarchives`
-    has no such option — its `argparse` block offers only the five task flags,
+83. **`pdsarchives.py` assigned `proceed` six times and never read it.** At
+    `8cab66a` the five task functions' return values were bound to `proceed` at
+    `:530`–`:542`, and `:554` set it to `False` in the exception handler; PR-24
+    removed the six dead bindings and kept every call. Its four sibling tools use
+    the same variable to gate a chained follow-on step (`pdschecksums.py:915`,
+    `if proceed and args.infoshelf:`), but `pdsarchives` has no such option — its `argparse` block offers only the five task flags,
     `volume`, `--log` and `--quiet`. So the variable is a vestige of the shared
     skeleton rather than a missing feature, and PR-24 removed the dead bindings
     (`F841`) while keeping every call.
@@ -2000,7 +2003,7 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     written, which is the thing PR-25 is consolidating.
     **Owner: PR-25 (Phase 6).**
 
-84. **`test_pds4file_blackbox.py:137` is a duplicate `parametrize` case.**
+84. **`test_pds4file_blackbox.py:138` is a duplicate `parametrize` case.**
     `PT014` reports it as a duplicate of the case at index 34 — the same
     `uranus_occs_earthbased/.../u0_kao_91cm_734nm_radius_six_ingress_100m.xml`
     input appears twice in one table. It is permanently excluded in the ratchet
@@ -2063,4 +2066,23 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     This matters because **PR-25 consolidates exactly these two function pairs
     into `_common.py`** and will have to choose one signature for each. Choosing
     the pds4 form is the `B006` fix and removes two of the nine.
+    **Owner: PR-25 (Phase 6).**
+
+### Added by the PR-24 adversarial review (round 3)
+
+89. **The six tool `main()`s now spell the same `logger.close()` unpacking three
+    ways.** After PR-24's `RUF059` work, eight sites read
+    `(fatal, errors, _warnings, _tests) = logger.close()`
+    (`pdsarchives.py:558`, `pdschecksums.py:911`, `pdsdependency.py:1155`,
+    `pdsindexshelf.py:545`, `pdsinfoshelf.py:935`, `pdslinkshelf.py:1776`,
+    `pds4checksums.py:885`, `pds4indexshelf.py:535`, `pds4infoshelf.py:918`);
+    two read `(fatal, errors, _, _)` (`pds4archives.py:583`,
+    `pds4linkshelf.py:1271`); and `pdsdependency.py:322,347` still read
+    `(fatal, errors, warnings, tests)` because those two sites do use the values.
+
+    The two bare-`_` sites already used that spelling at `8cab66a` and carried no
+    `RUF059`, so PR-24 had no ruff trigger to touch them and correctly did not.
+    The divergence is worth recording because **PR-25 consolidates exactly this
+    `finally` block into `_common.py`** and will have to choose one spelling —
+    the same situation deferred observation 88 records for the `B006` defaults.
     **Owner: PR-25 (Phase 6).**

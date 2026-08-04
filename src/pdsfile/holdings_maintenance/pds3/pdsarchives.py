@@ -87,7 +87,7 @@ def load_directory_info(pdsdir, *, logger=None, limits=None):
             for dirname in dirs:
                 abspath = os.path.join(path, dirname)
 
-                if dirname.startswith('._'):       # skip dot-underscore files
+                if dirname.startswith('._'):    # skip dot-underscore files
                     logger.dot_underscore('._* directory skipped', abspath)
                     continue
 

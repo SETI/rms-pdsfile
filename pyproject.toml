@@ -172,7 +172,9 @@ extend-ignore = ["PT011", "SIM105", "SIM108"]
 #   N801/N999/N802/N805/A002/F401 -- frozen public class, module, method and
 #     parameter names, and the rule-module names the package re-exports.
 #   UP031 -- 46 logging calls (a lazy rewrite needs filepath= and is not this
-#     PR's to make), 24 sidecar-writing format strings, and 69 aligned % blocks.
+#     PR's to make), 24 sidecar-writing format strings, 51 in hand-aligned
+#     blocks, 12 plain % expressions the conversion rule does not reach, and 6
+#     more in the frozen re_validate.py.
 #   B006/B012/SIM115/RUF015/PT028 -- tool signatures and control flow whose
 #     rewrite changes what propagates, when a file closes, or which exception is
 #     raised.

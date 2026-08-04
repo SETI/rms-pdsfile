@@ -6836,16 +6836,21 @@ second run of `tests/holdings_maintenance/` with `COVERAGE_PROCESS_START` and a
 processes: **111 passed**, and **107 of the 137** changed executable lines
 execute.
 
-The 30 that do not are: the four `except (ValueError, OSError)` fallback branches
-in the checksum/info tools (17 lines, mostly the `A001` `dir` → `dirname`
-renames); three `E701` `return` splits; two `raise OSError` lines; the `SIM102`
-collapse in `pds4linkshelf.py`; two `log_path_for_*` set literals; and the
-`with open(abspath)` in `pds4linkshelf.py`. Every one of them is covered by the
-differential probe in §3.
+The 30 that do not are, measured rather than characterised: **12** lines of the
+`A001` `dir` → `dirname` rename and **4** `except (ValueError, OSError)` headers,
+all inside the four fallback branches of the checksum/info tools; **4** `E701`
+`return` splits; **3** lines of the `SIM102` collapse; **3** `logfiles = {…}`
+set literals; **2** `raise OSError`; **1** `with open(abspath)`; and **1**
+`logger.info` whose `f` prefix the `F541` fix removed.
+
+The 12 rename lines are not covered by the probe in §3 — no probe can prove a
+rename — but by the `F821` measurement in §3's last paragraph, which is the check
+that catches a rename that missed a use. Everything else in the list has a probe
+row.
 
 ### 3. The unreached rewrites — a differential probe
 
-Because 53 tool lines and all of `re_validate.py` are unreached, the
+Because 30 of the tool lines this PR changes are unreached, the
 behavior-sensitive rewrites among them were proved directly rather than by
 assertion. The probe evaluates the `rewrite` spelling and the PR-24 spelling over
 the same inputs and compares:
@@ -6855,8 +6860,6 @@ the same inputs and compares:
 | `SIM102` nested-`if` collapse — branch taken **and** operand evaluation order | 8 of 8 boolean combinations, with a trace of which operands were evaluated | agree |
 | `E721` `type(x) == C` → `type(x) is C` | 7 values including `str` and `list` subclasses | agree |
 | `E721` — that `isinstance()` would **not** be equivalent | the same subclasses | confirmed different, which is why the fix is `is` |
-| `RUF051` `if k in d: del d[k]` → `d.pop(k, None)` | present and absent key | agree |
-| `UP034` parentheses around an `or`-chain in `&=` | 16 of 16 combinations | agree |
 | `UP024` `IOError is OSError`, and the two `except` tuples | 3 exception instances | agree |
 | `E701` one-line-`if` split | 6 representative sites, `ast.dump` compared | identical AST |
 | `C405` `set([…])` → `{…}` | the real literals, incl. one with a duplicate element | agree |
@@ -6866,9 +6869,11 @@ the same inputs and compares:
 | `E711` / `E712` | str/None values; `False`/`True`/object | agree |
 | `E712` — that ruff's suggested `if res:` would **not** be equivalent | an empty falsy value | confirmed different, which is why the fix is `is not False` |
 
-**15 checks, 15 agree, 0 disagree.** The probe is scratch evidence, not a
-committed test: PR-24's gate is an identical test-id set, and a new test id is
-movement.
+**13 checks, 13 agree, 0 disagree.** The probe script also carries `RUF051` and
+`UP034` rows, and both agree, but they are **not counted here**: their only sites
+in scope are in `re_validate.py`, which round 1 restored, so neither rewrite is
+in this PR. The probe is scratch evidence, not a committed test: PR-24's gate is
+an identical test-id set, and a new test id is movement.
 
 **A mechanical check that no rename left a dangling name.** The `A001` and `N806`
 work renamed 34 identifiers in the tools and 51 in the test tree, all by AST
@@ -6987,6 +6992,7 @@ corrected it.
 |---|---|---|
 | 1 | **1 Major**, 9 Minor, 3 Deferred — verdict `goal not met` | `critiques/pr-24/round-1.md` |
 | 2 | **0 Major**, 4 Minor, 1 Deferred — verdict `goal not met` | `critiques/pr-24/round-2.md` |
+| 3 | **1 Major**, 6 Minor, 1 Deferred — verdict `goal not met` | `critiques/pr-24/round-3.md` |
 
 Round 1's Major is the `re_validate.py` freeze violation; all nine of its Minors
 were accepted and fixed, none rebutted. Because that round changed
@@ -7002,3 +7008,25 @@ double-counted one site and filed twelve unaligned `%` expressions under
 round changed **only** `plans/`, `critiques/` and `pdsfile_overrides.mdc`, so
 under §6.6 step 5 the full-data record carries forward rather than being
 regenerated.
+
+Round 3's Major is **this section's own §3**: after round 1 restored
+`re_validate.py`, §3 still opened on the pre-revert "53 tool lines" and still
+listed a `RUF051` and a `UP034` probe row for rewrites the PR no longer contains
+— while §10 asserted every figure above it had been regenerated. It is fixed and
+the probe count restated as 13. Five of its six Minors were records; one was code
+(an inline comment column the `dir` → `dirname` rename pushed right in the two
+archive tools, a class of damage neither prior audit could see). **One Minor was
+rebutted with a measurement:** converting
+`tests/holdings_maintenance/support.py:200`'s `[*x, y]` to the house `x + [y]`
+spelling raises a fresh `RUF005` in a file with **no** ratchet entry at
+`8cab66a`, so taking the finding would mean creating an entry — a widen, and a
+hard stop. The rebuttal is recorded in `critiques/pr-24/round-3.md` and the
+tension is noted so deviation (4)'s "not wanted anywhere" is not read as a claim
+of fact about the tree.
+
+Round 3's three source edits are **comment-only**: tokenizing each file before
+and after with `COMMENT`/`NL` dropped gives byte-identical token streams (3,130 /
+3,135 / 275 tokens), so no executable line changed. The full-data run was
+regenerated anyway — round 3's Major was precisely a stale record — and the
+tool-coverage measurement carries forward on the token-equality proof, since the
+changed-executable-line set it maps is provably unchanged.
