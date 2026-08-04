@@ -898,6 +898,18 @@ Run the template's `.cursor/skills` — `critique-test-suite`,
 in `critiques/`; triage findings with the owner; fix the accepted ones.
 
 **PR-37 (S)** `chore: finalization`
+- **Strip the rewrite scaffolding from `pyproject.toml`.** The owner permits
+  plan-related commentary there — the ratchet header and the per-entry notes
+  naming sub-plans, deferred observations and PR numbers — **on the condition
+  that it is deleted once the rewrite is finished** (owner, 2026-08-03). Before
+  the `rewrite` → `main` PR opens, `pyproject.toml` must carry no reference to
+  `plans/`, `critiques/`, `deferred-observations.md` or a PR number. The
+  per-file-ignores entries themselves stay; only the commentary explaining how
+  the port derived them goes, and what survives of the reasoning lives in
+  `.cursor/rules/pdsfile_overrides.mdc` deviation (4), which is a rules file
+  rather than a build file. Source files are already held to this rule
+  continuously: code comments describe the current state of the code and may
+  never name a plan, a critique, a PR or the API freeze.
 - Verify: `run-all-checks.sh` fully green; hosted lint/no-holdings job green;
   self-hosted full-data matrix green with the per-test pass/fail set
   identical to the recorded baseline; nightly green; OPUS integration green;
