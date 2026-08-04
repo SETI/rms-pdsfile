@@ -157,7 +157,32 @@ extend-ignore = ["PT011", "SIM105", "SIM108"]
 # already suppress (deferred observation 33). Each entry lists a file's remaining
 # violation codes so `ruff check` passes now. This ratchet may only SHRINK in
 # later PRs (never grow, never gain inline noqa). Entries are alphabetical by path.
-"scripts/check_runtime_imports.py" = ["RUF100"]
+#
+# REST (PR-24) -- the rule modules, the pds3file/pds4file initializers, the
+# holdings-maintenance tools, the tools/scripts entry points and the test tree were
+# re-derived with the template select set and no per-file-ignores at all (2,760
+# violations) and every one classified fixable or excluded; 501 were fixed. The
+# 2,259 that remain are permanent, and each is enumerated with its sites and its
+# reason in plans/2026-08-04-pr-24-subplan.md sections 4 and 5 and in
+# .cursor/rules/pdsfile_overrides.mdc deviation (4). In outline:
+#   E501/W191/RUF022 -- hand-aligned translator, parametrize and __all__ tables;
+#     rewrapping or retabbing them is the layout change the owner dropped.
+#   RUF012 -- mutable class-attribute defaults; ClassVar is forbidden by ground
+#     rule 5.
+#   N801/N999/N802/N805/A002/F401 -- frozen public class, module, method and
+#     parameter names, and the rule-module names the package re-exports.
+#   UP031 -- 46 logging calls (a lazy rewrite needs filepath= and is not this
+#     PR's to make), 24 sidecar-writing format strings, and 69 aligned % blocks.
+#   B006/B012/SIM115/RUF015/PT028 -- tool signatures and control flow whose
+#     rewrite changes what propagates, when a file closes, or which exception is
+#     raised.
+#   PT017/PT015/PT012/PT014/B011 -- rewriting these changes what a test asserts,
+#     and PT014's duplicate case cannot be dropped without removing a test id.
+#   F821 -- a genuine undefined name, owned by a later PR that gives the script a
+#     main(); fixing it here would change behavior.
+#   RUF005 -- `x + [y]` is the spelling this project uses (owner, 2026-08-03).
+#   RUF100 in scripts/dump_public_api.py -- that file may not be edited at all,
+#     so this entry is permanent by prohibition rather than by freeze.
 "scripts/dump_public_api.py" = ["RUF100"]
 # CORE (PR-23) -- the eight entries below plus pdscache.py, pdsfile.py and
 # pdsviewable.py further down, which sort after the rule modules. The fifteen
@@ -181,84 +206,66 @@ extend-ignore = ["PT011", "SIM105", "SIM108"]
 "src/pdsfile/_shelves.py" = ["B904"]           # x1: from err / from None both change the traceback
 "src/pdsfile/_sorting.py" = ["RUF005"]         # x4: owner-chosen style exclusion
 "src/pdsfile/holdings_maintenance/pds3/crlf.py" = ["PT028"]
-"src/pdsfile/holdings_maintenance/pds3/pdsarchives.py" = ["A001", "C405", "F841", "I001", "RUF059", "SIM115", "UP031"]
-"src/pdsfile/holdings_maintenance/pds3/pdschecksums.py" = ["A001", "B006", "B007", "B012", "C405", "I001", "N806", "RUF059", "SIM115", "UP015", "UP024", "UP031"]
-"src/pdsfile/holdings_maintenance/pds3/pdsdependency.py" = ["B006", "C405", "I001", "PT028", "RUF012", "RUF059", "UP004", "UP031"]
-"src/pdsfile/holdings_maintenance/pds3/pdsindexshelf.py" = ["I001", "RUF059", "UP031"]
-"src/pdsfile/holdings_maintenance/pds3/pdsinfoshelf.py" = ["A001", "B006", "B007", "B012", "C405", "E701", "I001", "N806", "RUF005", "RUF015", "RUF059", "UP024", "UP031"]
-"src/pdsfile/holdings_maintenance/pds3/pdslinkshelf.py" = ["B007", "B012", "C405", "E701", "E721", "F541", "I001", "N806", "RUF059", "UP004", "UP015", "UP024", "UP031"]
-"src/pdsfile/holdings_maintenance/pds3/re_validate.py" = ["B007", "C405", "E701", "E721", "I001", "RUF005", "RUF051", "RUF059", "UP031", "UP034"]
-"src/pdsfile/holdings_maintenance/pds3/shelf_consistency_check.py" = ["B007", "E401", "E701", "F821", "I001", "UP031", "W291"]
-"src/pdsfile/holdings_maintenance/pds4/pds4archives.py" = ["A001", "C405", "I001", "UP031"]
-"src/pdsfile/holdings_maintenance/pds4/pds4checksums.py" = ["A001", "B007", "C405", "E701", "I001", "RUF059", "UP015", "UP024", "UP031"]
-"src/pdsfile/holdings_maintenance/pds4/pds4indexshelf.py" = ["I001", "RUF059", "UP031"]
-"src/pdsfile/holdings_maintenance/pds4/pds4infoshelf.py" = ["A001", "B007", "I001", "RUF005", "RUF015", "UP024", "UP031"]
-"src/pdsfile/holdings_maintenance/pds4/pds4linkshelf.py" = ["B007", "E701", "I001", "SIM102", "UP004", "UP015", "UP024", "UP031"]
-"src/pdsfile/pds3file/__init__.py" = ["A002", "E721", "F401", "F811", "I001", "RUF012"]
-"src/pdsfile/pds3file/rules/ASTROM_xxxx.py" = ["E501", "I001", "N801", "N999"]
-"src/pdsfile/pds3file/rules/COCIRS_xxxx.py" = ["E501", "I001", "N801", "N999", "RUF012", "UP031"]
-"src/pdsfile/pds3file/rules/COISS_xxxx.py" = ["E501", "I001", "N801", "N802", "N999", "RUF012"]
-"src/pdsfile/pds3file/rules/CORSS_8xxx.py" = ["E501", "I001", "N801", "N999", "RUF012"]
-"src/pdsfile/pds3file/rules/COSP_xxxx.py" = ["E501", "I001", "N801", "N999"]
-"src/pdsfile/pds3file/rules/COUVIS_0xxx.py" = ["E501", "I001", "N801", "N802", "N999", "RUF012", "UP031"]
-"src/pdsfile/pds3file/rules/COUVIS_8xxx.py" = ["E501", "I001", "N801", "N999", "RUF012"]
-"src/pdsfile/pds3file/rules/COVIMS_0xxx.py" = ["E501", "F811", "I001", "N801", "N802", "N805", "N999", "RUF012"]
-"src/pdsfile/pds3file/rules/COVIMS_8xxx.py" = ["E501", "I001", "N801", "N999", "RUF012"]
-"src/pdsfile/pds3file/rules/EBROCC_xxxx.py" = ["E501", "I001", "N801", "N999", "RUF012"]
-"src/pdsfile/pds3file/rules/GO_0xxx.py" = ["E501", "E701", "I001", "N801", "N999", "RUF012"]
-"src/pdsfile/pds3file/rules/HSTxx_xxxx.py" = ["E501", "I001", "N801", "N999", "RUF012"]
-"src/pdsfile/pds3file/rules/JNOJIR_xxxx.py" = ["E501", "I001", "N801", "N999"]
-"src/pdsfile/pds3file/rules/JNOJNC_xxxx.py" = ["E501", "I001", "N801", "N999", "RUF012"]
-"src/pdsfile/pds3file/rules/JNOSP_xxxx.py" = ["E501", "I001", "N801", "N999"]
-"src/pdsfile/pds3file/rules/JNOSRU_xxxx.py" = ["E501", "I001", "N801", "N999", "RUF012"]
-"src/pdsfile/pds3file/rules/NHSP_xxxx.py" = ["E501", "I001", "N801", "N999"]
-"src/pdsfile/pds3file/rules/NHxxxx_xxxx.py" = ["E501", "I001", "N801", "N999", "RUF012"]
-"src/pdsfile/pds3file/rules/RES_xxxx.py" = ["E501", "I001", "N801", "N999"]
-"src/pdsfile/pds3file/rules/RPX_xxxx.py" = ["E501", "I001", "N801", "N802", "N999", "RUF012"]
-"src/pdsfile/pds3file/rules/VGIRIS_xxxx.py" = ["E501", "I001", "N801", "N999"]
-"src/pdsfile/pds3file/rules/VGISS_xxxx.py" = ["E501", "I001", "N801", "N999", "RUF012"]
-"src/pdsfile/pds3file/rules/VG_0xxx.py" = ["E501", "I001", "N801", "N999", "RUF012"]
-"src/pdsfile/pds3file/rules/VG_20xx.py" = ["E501", "I001", "N801", "N999"]
-"src/pdsfile/pds3file/rules/VG_28xx.py" = ["E501", "I001", "N801", "N999", "RUF012"]
-"src/pdsfile/pds3file/rules/__init__.py" = ["E501", "I001", "RUF022"]
-"src/pdsfile/pds4file/__init__.py" = ["E721", "F401", "I001", "RUF012"]
-"src/pdsfile/pds4file/rules/__init__.py" = ["E501", "I001", "RUF022"]
-"src/pdsfile/pds4file/rules/cassini_iss.py" = ["E501", "I001", "N801", "RUF012"]
-"src/pdsfile/pds4file/rules/cassini_iss_fring_mosaics_rsfrench2025.py" = ["E501", "I001", "N801", "RUF012"]
+"src/pdsfile/holdings_maintenance/pds3/pdsarchives.py" = ["SIM115", "UP031"]
+"src/pdsfile/holdings_maintenance/pds3/pdschecksums.py" = ["B006", "B012", "N806", "SIM115", "UP031"]
+"src/pdsfile/holdings_maintenance/pds3/pdsdependency.py" = ["B006", "PT028", "RUF012", "UP031"]
+"src/pdsfile/holdings_maintenance/pds3/pdsindexshelf.py" = ["UP031"]
+"src/pdsfile/holdings_maintenance/pds3/pdsinfoshelf.py" = ["B006", "B012", "N806", "RUF005", "RUF015", "UP031"]
+"src/pdsfile/holdings_maintenance/pds3/pdslinkshelf.py" = ["B012", "N806", "UP031"]
+"src/pdsfile/holdings_maintenance/pds3/re_validate.py" = ["RUF005", "UP031"]
+"src/pdsfile/holdings_maintenance/pds3/shelf_consistency_check.py" = ["F821"]
+"src/pdsfile/holdings_maintenance/pds4/pds4archives.py" = ["UP031"]
+"src/pdsfile/holdings_maintenance/pds4/pds4checksums.py" = ["UP031"]
+"src/pdsfile/holdings_maintenance/pds4/pds4indexshelf.py" = ["UP031"]
+"src/pdsfile/holdings_maintenance/pds4/pds4infoshelf.py" = ["RUF005", "RUF015", "UP031"]
+"src/pdsfile/holdings_maintenance/pds4/pds4linkshelf.py" = ["UP031"]
+"src/pdsfile/pds3file/__init__.py" = ["A002", "F401", "I001", "RUF012"]
+"src/pdsfile/pds3file/rules/ASTROM_xxxx.py" = ["E501", "N801", "N999"]
+"src/pdsfile/pds3file/rules/COCIRS_xxxx.py" = ["E501", "N801", "N999", "RUF012", "UP031"]
+"src/pdsfile/pds3file/rules/COISS_xxxx.py" = ["E501", "N801", "N802", "N999", "RUF012"]
+"src/pdsfile/pds3file/rules/CORSS_8xxx.py" = ["E501", "N801", "N999", "RUF012"]
+"src/pdsfile/pds3file/rules/COSP_xxxx.py" = ["E501", "N801", "N999"]
+"src/pdsfile/pds3file/rules/COUVIS_0xxx.py" = ["E501", "N801", "N802", "N999", "RUF012"]
+"src/pdsfile/pds3file/rules/COUVIS_8xxx.py" = ["E501", "N801", "N999", "RUF012"]
+"src/pdsfile/pds3file/rules/COVIMS_0xxx.py" = ["E501", "N801", "N802", "N805", "N999", "RUF012"]
+"src/pdsfile/pds3file/rules/COVIMS_8xxx.py" = ["E501", "N801", "N999", "RUF012"]
+"src/pdsfile/pds3file/rules/EBROCC_xxxx.py" = ["E501", "N801", "N999", "RUF012"]
+"src/pdsfile/pds3file/rules/GO_0xxx.py" = ["E501", "N801", "N999", "RUF012"]
+"src/pdsfile/pds3file/rules/HSTxx_xxxx.py" = ["E501", "N801", "N999", "RUF012"]
+"src/pdsfile/pds3file/rules/JNOJIR_xxxx.py" = ["E501", "N801", "N999"]
+"src/pdsfile/pds3file/rules/JNOJNC_xxxx.py" = ["E501", "N801", "N999", "RUF012"]
+"src/pdsfile/pds3file/rules/JNOSP_xxxx.py" = ["E501", "N801", "N999"]
+"src/pdsfile/pds3file/rules/JNOSRU_xxxx.py" = ["E501", "N801", "N999", "RUF012"]
+"src/pdsfile/pds3file/rules/NHSP_xxxx.py" = ["E501", "N801", "N999"]
+"src/pdsfile/pds3file/rules/NHxxxx_xxxx.py" = ["E501", "N801", "N999", "RUF012"]
+"src/pdsfile/pds3file/rules/RES_xxxx.py" = ["E501", "N801", "N999"]
+"src/pdsfile/pds3file/rules/RPX_xxxx.py" = ["E501", "N801", "N802", "N999", "RUF012"]
+"src/pdsfile/pds3file/rules/VGIRIS_xxxx.py" = ["E501", "N801", "N999"]
+"src/pdsfile/pds3file/rules/VGISS_xxxx.py" = ["E501", "N801", "N999", "RUF012"]
+"src/pdsfile/pds3file/rules/VG_0xxx.py" = ["E501", "N801", "N999", "RUF012"]
+"src/pdsfile/pds3file/rules/VG_20xx.py" = ["E501", "N801", "N999"]
+"src/pdsfile/pds3file/rules/VG_28xx.py" = ["E501", "N801", "N999", "RUF012"]
+"src/pdsfile/pds3file/rules/__init__.py" = ["E501", "RUF022"]
+"src/pdsfile/pds4file/__init__.py" = ["F401", "I001", "RUF012"]
+"src/pdsfile/pds4file/rules/__init__.py" = ["E501", "RUF022"]
+"src/pdsfile/pds4file/rules/cassini_iss.py" = ["E501", "N801", "RUF012"]
+"src/pdsfile/pds4file/rules/cassini_iss_fring_mosaics_rsfrench2025.py" = ["E501", "N801", "RUF012"]
 "src/pdsfile/pds4file/rules/cassini_iss_fring_mosaics_rsfrench2025_primary_filespec.py" = ["W191"]
-"src/pdsfile/pds4file/rules/cassini_iss_spokes_hedman_hamilton_2024.py" = ["E501", "I001", "N801"]
-"src/pdsfile/pds4file/rules/cassini_uvis_solarocc_beckerjarmak2023.py" = ["E501", "I001", "N801", "RUF012"]
-"src/pdsfile/pds4file/rules/cassini_vims.py" = ["E501", "I001", "N801", "RUF012"]
-"src/pdsfile/pds4file/rules/uranus_occs_earthbased.py" = ["B007", "E501", "I001", "N801", "RUF012"]
+"src/pdsfile/pds4file/rules/cassini_iss_spokes_hedman_hamilton_2024.py" = ["E501", "N801"]
+"src/pdsfile/pds4file/rules/cassini_uvis_solarocc_beckerjarmak2023.py" = ["E501", "N801", "RUF012"]
+"src/pdsfile/pds4file/rules/cassini_vims.py" = ["E501", "N801", "RUF012"]
+"src/pdsfile/pds4file/rules/uranus_occs_earthbased.py" = ["B007", "E501", "N801", "RUF012"]
 "src/pdsfile/pdscache.py" = ["RUF015", "UP031"]  # x1 each, both inside MemcachedCache
 "src/pdsfile/pdsfile.py" = ["B904", "I001", "RUF012"]  # x3, x1, x16
 "src/pdsfile/pdsviewable.py" = ["B006"]         # x3: frozen public signatures
-"src/pdsfile/tools/show_opus_products.py" = ["I001"]
-"tests/conftest.py" = ["F401", "I001", "N806"]
-"tests/pds3file/helper.py" = ["B904", "I001", "N806"]
-"tests/pds3file/test_pds3file_blackbox.py" = ["A002", "B011", "E501", "E711", "F401", "F841", "I001", "PT006", "PT015", "PT017"]
-"tests/pds3file/test_pds3file_blackbox_cached.py" = ["E501", "F401", "I001", "PT006"]
-"tests/pds3file/test_pds3file_whitebox.py" = ["E501", "E711", "F401", "F841", "I001", "PT006", "PT012", "PT017"]
-"tests/pds3file/test_pdsviewable_blackbox.py" = ["I001", "PT006"]
-"tests/pds4file/helper.py" = ["B904", "I001", "N806"]
-"tests/pds4file/test_pds4file_blackbox.py" = ["E501", "E712", "F401", "I001", "PT006", "PT014"]
-"tests/rules/pds3/test_cocirs_xxxx.py" = ["F841", "I001", "N806", "PT006"]
-"tests/rules/pds3/test_coiss_xxxx.py" = ["I001", "N806", "PT006"]
-"tests/rules/pds3/test_corss_8xxx.py" = ["E501", "E701", "I001", "N806", "PT006"]
-"tests/rules/pds3/test_couvis_0xxx.py" = ["E501", "E701", "I001", "N806", "PT006"]
-"tests/rules/pds3/test_couvis_8xxx.py" = ["E501", "I001", "N806", "PT006"]
-"tests/rules/pds3/test_covims_0xxx.py" = ["I001", "N806", "PT006"]
-"tests/rules/pds3/test_covims_8xxx.py" = ["E701", "I001", "N806", "PT006"]
-"tests/rules/pds3/test_ebrocc_xxxx.py" = ["I001", "N806", "PT006"]
-"tests/rules/pds3/test_go_0xxx.py" = ["I001", "N806", "PT006"]
-"tests/rules/pds3/test_hstxx_xxxx.py" = ["I001", "N806", "PT006"]
-"tests/rules/pds3/test_nhxxxx_xxxx.py" = ["E501", "I001", "N806", "PT006"]
-"tests/rules/pds3/test_vg_28xx.py" = ["I001", "N806", "PT006"]
-"tests/rules/pds3/test_vgiss_xxxx.py" = ["I001", "N806", "PT006"]
-"tests/rules/pds4/test_cassini_iss_fring_mosaics_rsfrench2025.py" = ["I001"]
-"tests/rules/pds4/test_cassini_uvis_solarocc_beckerjarmak2023.py" = ["I001"]
-"tests/rules/pds4/test_uranus_occs_earthbased.py" = ["E501", "I001", "PT006"]
-"tests/support/pdsfile_test_helper.py" = ["I001", "N806", "UP015"]
+"tests/pds3file/test_pds3file_blackbox.py" = ["B011", "E501", "PT015", "PT017"]
+"tests/pds3file/test_pds3file_blackbox_cached.py" = ["E501"]
+"tests/pds3file/test_pds3file_whitebox.py" = ["E501", "PT012", "PT017"]
+"tests/pds4file/test_pds4file_blackbox.py" = ["E501", "PT014"]
+"tests/rules/pds3/test_corss_8xxx.py" = ["E501"]
+"tests/rules/pds3/test_couvis_8xxx.py" = ["E501"]
+"tests/rules/pds3/test_nhxxxx_xxxx.py" = ["E501"]
+"tests/rules/pds4/test_uranus_occs_earthbased.py" = ["E501"]
 
 [tool.pymarkdown.plugins.md013]
 # Line length (disable so README/CONTRIBUTING can use longer lines).
