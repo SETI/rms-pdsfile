@@ -3,14 +3,13 @@
 # Whitebox tests for pds3file
 ##########################################################################################
 
-import os
+
+import pytest
+
 import pdsfile.pds3file as pds3file
 from pdsfile import pdsviewable
-import pytest
-import re
 
-from .helper import (PDS3_HOLDINGS_DIR,
-                     instantiate_target_pdsfile)
+from .helper import PDS3_HOLDINGS_DIR, instantiate_target_pdsfile
 
 PDS_PDSDATA_PATH = PDS3_HOLDINGS_DIR[:PDS3_HOLDINGS_DIR.index('holdings')]
 
@@ -24,7 +23,7 @@ class TestPdsFileWhiteBox:
     # Can only be tested with pds3file.Pds3File.use_shelves_only(False) to make sure
     # child.abspath is None for this path
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes', True),
         ]
@@ -36,7 +35,7 @@ class TestPdsFileWhiteBox:
         assert child.exists == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/ASTROM_xxxx/ASTROM_0001', False),
         ]
@@ -49,7 +48,7 @@ class TestPdsFileWhiteBox:
         assert child.isdir == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             # virtual directory
             ('volumes', '/holdings/volumes'),
@@ -58,11 +57,11 @@ class TestPdsFileWhiteBox:
     def test_html_path(self, input_path, expected):
         target_pdsfile = instantiate_target_pdsfile(
             input_path, is_abspath=False)
-        assert target_pdsfile.abspath == None
+        assert target_pdsfile.abspath is None
         assert target_pdsfile.html_path == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes', ''),
         ]
@@ -73,7 +72,7 @@ class TestPdsFileWhiteBox:
         assert target_pdsfile.parent_logical_path == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes', ['', 'UNKNOWN']),
         ]
@@ -87,7 +86,7 @@ class TestPdsFileWhiteBox:
         assert target_pdsfile._volume_info[1] == expected[1]
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('previews/HSTUx_xxxx/HSTU0_5167/DATA/VISIT_04', ''),
             ('volumes/RPX_xxxx/RPX_0001/CALIB/F130LP.TAB', 'text/plain'),
@@ -98,7 +97,7 @@ class TestPdsFileWhiteBox:
         assert target_pdsfile.mime_type == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/COCIRS_6xxx/COCIRS_6004/DATA/GEODATA/GEO1004021018_699.TAB',
             'GEO1004021018_699.LBL'),
@@ -110,7 +109,7 @@ class TestPdsFileWhiteBox:
         assert target_pdsfile.info_basename == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             # Something that don't exist
             ('volumes/COUVIS_0xxx_v1/COUVIS_0009/DATA/D2004_274/EUV2004_274_01_39x.lbl',
@@ -126,7 +125,7 @@ class TestPdsFileWhiteBox:
         assert target_pdsfile.label_basename == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             # Something that doesn't exist
             ('previews/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/HDAC1999_007_16_31_fullx.png',
@@ -138,7 +137,7 @@ class TestPdsFileWhiteBox:
         assert target_pdsfile.viewset == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes', ''),
         ]
@@ -148,7 +147,7 @@ class TestPdsFileWhiteBox:
         assert target_pdsfile.volume_publication_date == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             # The 1st case should return [], instead of None
             ('volumes/VGISS_8xxx/VGISS_8201/DATA/C08966XX/C0896631_RAW.LBL',
@@ -164,7 +163,7 @@ class TestPdsFileWhiteBox:
         assert target_pdsfile.version_ranks == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             # nonexistent pdsfile path
             ('archives-volumes/COCIRS_xxxx/COCIRS_0012.tar.gz',
@@ -179,7 +178,7 @@ class TestPdsFileWhiteBox:
         assert res1 == res2
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('diagrams/COCIRS_5xxx/COCIRS_5401/BROWSE/TARGETS/IMG0401130240_FP1_x.jpg',
              False),
@@ -191,7 +190,7 @@ class TestPdsFileWhiteBox:
         assert res == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/COVIMS_0xxx/COVIMS_0006/data/2005088T102825_2005089T113931/v1490784910_3_001.qub',
              17),
@@ -211,7 +210,7 @@ class TestPdsFileWhiteBox:
         assert target_pdsfile.filename_keylen == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('previews/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/HDAC1999_007_16_31_thumb.png',
              'HDAC1999_007_16_31'),
@@ -224,7 +223,7 @@ class TestPdsFileWhiteBox:
         assert target_pdsfile.anchor == expected
 
     @pytest.mark.parametrize(
-        'input_path,selection,flag,expected',
+        ('input_path', 'selection', 'flag', 'expected'),
         [
 
             ('metadata/HSTUx_xxxx/HSTU0_5167/HSTU0_5167_index.tab',
@@ -237,7 +236,7 @@ class TestPdsFileWhiteBox:
         assert index_row.anchor == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('diagrams/COCIRS_6xxx/COCIRS_6004',
              'Diagrams for Cassini CIRS data, re-formatted, 2010-04-01 to 2010-04-30 (SC clock 1648773882-1651332653)'),
@@ -250,7 +249,7 @@ class TestPdsFileWhiteBox:
         assert target_pdsfile.description == expected
 
     @pytest.mark.parametrize(
-        'input_path,selection,flag,expected',
+        ('input_path', 'selection', 'flag', 'expected'),
         [
             ('metadata/HSTUx_xxxx/HSTU0_5167/HSTU0_5167_index.tab',
              'u2no0403t', '', 'Selected row of index'),
@@ -264,7 +263,7 @@ class TestPdsFileWhiteBox:
         assert index_row.description == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/Cxxx_123x', ''),
         ]
@@ -275,7 +274,7 @@ class TestPdsFileWhiteBox:
         assert res == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/COCIRS_0xxx/COCIRS_0010',
               '/holdings/archives-volumes/COCIRS_0xxx/COCIRS_0010.tar.gz'),
@@ -287,7 +286,7 @@ class TestPdsFileWhiteBox:
         assert res == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             # nonexistent pdsfile path
             ('archives-volumes/COCIRS_xxxx/COCIRS_0010.tar.gz',''),
@@ -302,7 +301,7 @@ class TestPdsFileWhiteBox:
 
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/HDAC1999_007_16_31x.DAT', '')
         ]
@@ -314,7 +313,7 @@ class TestPdsFileWhiteBox:
         assert res1 == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/COUVIS_0xxx/COUVIS_0001/DATA/DATAINFO.TXT', 'Undefined DATA_SET_ID')
         ]
@@ -323,7 +322,7 @@ class TestPdsFileWhiteBox:
         """lid: return self._lid_filled"""
         target_pdsfile = instantiate_target_pdsfile(input_path)
         try:
-            res1 = target_pdsfile.data_set_id
+            _ = target_pdsfile.data_set_id
         except ValueError as e:
             assert expected in str(e)
 
@@ -332,7 +331,7 @@ class TestPdsFileWhiteBox:
     # Test for class functions
     ############################################################################
     @pytest.mark.parametrize(
-        'input_suffix,expected',
+        ('input_suffix', 'expected'),
         [
             ('_in_prep', (990100, 'In preparation', '')),
             ('_lien_resolution', (990400, 'In lien resolution', '')),
@@ -346,7 +345,7 @@ class TestPdsFileWhiteBox:
     # Test for functions
     ############################################################################
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes',
              'Pds3File.COCIRS_xxxx("' + PDS3_HOLDINGS_DIR + '/volumes/COCIRS_0xxx")'),
@@ -362,7 +361,7 @@ class TestPdsFileWhiteBox:
         assert res == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('previews/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007',
              [
@@ -389,7 +388,7 @@ class TestPdsFileWhiteBox:
             assert res == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('/volumes/pdsdata/holdings/volumes/COUVIS_0xxx_v1',
              'volumes/COUVIS_0xxx_v1'),
@@ -417,7 +416,7 @@ class TestPdsFileWhiteBox:
         assert res.logical_path == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             # this one doesn't exist
             ('COUVIS_4xxx_v1', '"_v1" not found: COUVIS_4xxx_v1'),
@@ -426,12 +425,12 @@ class TestPdsFileWhiteBox:
     )
     def test_from_path2(self, input_path, expected):
         try:
-            res = pds3file.Pds3File.from_path(path=input_path)
+            pds3file.Pds3File.from_path(path=input_path)
         except ValueError as e:
             assert expected in str(e)
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('diagrams/checksums/CORSS_8xxx', 'checksums-diagrams/CORSS_8xxx'),
             ('COISS_2002', 'volumes/COISS_2xxx/COISS_2002'),
@@ -447,7 +446,7 @@ class TestPdsFileWhiteBox:
             assert True
 
     @pytest.mark.parametrize(
-        'input_id,expected',
+        ('input_id', 'expected'),
         [
             ('co-vims-v1490784910_00x', 'Unrecognized OPUS ID'),
         ]
@@ -463,7 +462,7 @@ class TestPdsFileWhiteBox:
     # Test for associated volumes and volsets
     ############################################################################
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('archives-volumes/COUVIS_0xxx/COUVIS_0001.tar.gz',
              PDS3_HOLDINGS_DIR + '/archives-volumes/COUVIS_0xxx/COUVIS_0001.tar.gz'),
@@ -475,7 +474,7 @@ class TestPdsFileWhiteBox:
         assert target_pdsfile.volume_abspath() == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('checksums-archives-volumes/ASTROM_xxxx_md5.txt',
              PDS3_HOLDINGS_DIR + '/checksums-archives-volumes/ASTROM_xxxx_md5.txt'),
@@ -495,7 +494,7 @@ class TestPdsFileWhiteBox:
         assert target_pdsfile.absolute_or_logical_path == expected
 
     @pytest.mark.parametrize(
-        'input_path,selection,flag,expected',
+        ('input_path', 'selection', 'flag', 'expected'),
         [
             ('metadata/HSTUx_xxxx/HSTU0_5167/HSTU0_5167_index.tab',
              'u2no0403t', '', 'U2NO0403T'),
@@ -511,7 +510,7 @@ class TestPdsFileWhiteBox:
         assert res == expected
 
     @pytest.mark.parametrize(
-        'input_path,selection,flag,expected',
+        ('input_path', 'selection', 'flag', 'expected'),
         [
             ('metadata/HSTUx_xxxx/HSTU0_5167/HSTU0_5167_index.tab',
              'U2nO040', '=', 'Index selection is ambiguous'),
@@ -520,12 +519,12 @@ class TestPdsFileWhiteBox:
     def test_find_selected_row_key2(self, input_path, selection, flag, expected):
         target_pdsfile = instantiate_target_pdsfile(input_path)
         try:
-            res = target_pdsfile.find_selected_row_key(selection, flag)
+            target_pdsfile.find_selected_row_key(selection, flag)
         except OSError as e:
             assert expected in str(e)
 
     @pytest.mark.parametrize(
-        'input_path,selection,flag,expected',
+        ('input_path', 'selection', 'flag', 'expected'),
         [
             ('metadata/HSTUx_xxxx/HSTU0_5167/HSTU0_5167_index.tab',
              'U2nO040', '',
@@ -540,7 +539,7 @@ class TestPdsFileWhiteBox:
         assert res.logical_path == expected
 
     @pytest.mark.parametrize(
-        'input_path,selection,flag,expected',
+        ('input_path', 'selection', 'flag', 'expected'),
         [
             ('metadata/HSTUx_xxxx/HSTU0_5167/HSTU0_5167_index.tab',
              'U2NO04', '',
@@ -553,12 +552,12 @@ class TestPdsFileWhiteBox:
         target_pdsfile = instantiate_target_pdsfile(input_path)
         index_row = target_pdsfile.child_of_index(selection, flag)
         try:
-            res = index_row.data_abspath_associated_with_index_row()
+            index_row.data_abspath_associated_with_index_row()
         except OSError as e:
             assert expected in str(e)
 
     @pytest.mark.parametrize(
-        'input_path,selection,flag,expected',
+        ('input_path', 'selection', 'flag', 'expected'),
         [
             # The following case shouldn't exist in real word. (index row exists
             # but data file doesn't)
@@ -582,7 +581,7 @@ class TestPdsFileWhiteBox:
         assert res == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/HSTNx_xxxx/HSTN0_7176', ''),
         ]
@@ -598,7 +597,7 @@ class TestPdsFileWhiteBox:
     # Test for transformations
     ############################################################################
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ([
                 'volumes/COISS_1xxx/COISS_1001/data/1294561143_1295221348/W1294561202_1.LBL',
@@ -623,7 +622,7 @@ class TestPdsFileWhiteBox:
             assert path in expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ([
                 'volumes/COISS_1xxx/COISS_1001/data/1294561143_1295221348/W1294561202_1.LBL',
@@ -647,7 +646,7 @@ class TestPdsFileWhiteBox:
             assert path in expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ([
                 'volumes/COISS_1xxx/COISS_1001/data/1294561143_1295221348/W1294561202_1.LBL',
@@ -668,7 +667,7 @@ class TestPdsFileWhiteBox:
             assert basename in expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ([
                 PDS3_HOLDINGS_DIR + '/volumes/COISS_1xxx/COISS_1001/data/1294561143_1295221348/W1294561202_1.LBL',
@@ -685,7 +684,7 @@ class TestPdsFileWhiteBox:
             assert basename in expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ([
                 'volumes/COISS_1xxx/COISS_1001/data/1294561143_1295221348/W1294561202_1.LBL',
@@ -705,7 +704,7 @@ class TestPdsFileWhiteBox:
             assert pdsf.logical_path in expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ([
                 'volumes/COISS_1xxx/COISS_1001/data/1294561143_1295221348/W1294561202_1.LBL',
@@ -722,7 +721,7 @@ class TestPdsFileWhiteBox:
             assert basename in expected
 
     @pytest.mark.parametrize(
-        'input_path,basenames,expected',
+        ('input_path', 'basenames', 'expected'),
         [
             ('volumes/COISS_0xxx/COISS_0001/data/wacfm/bit_wght/13302',
              ['133020.lbl'],
@@ -738,7 +737,7 @@ class TestPdsFileWhiteBox:
             assert path in expected
 
     @pytest.mark.parametrize(
-        'input_path,basenames,expected',
+        ('input_path', 'basenames', 'expected'),
         [
             ('volumes/COCIRS_6xxx/COCIRS_6004/DATA/GEODATA/',
              ['GEO1004021018_699.LBL'],
@@ -757,7 +756,7 @@ class TestPdsFileWhiteBox:
     # Test for path associations
     ############################################################################
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.DAT',
              'volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.DAT'),
@@ -777,7 +776,7 @@ class TestPdsFileWhiteBox:
             assert res == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.DAT',
              'volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.DAT'),
@@ -797,7 +796,7 @@ class TestPdsFileWhiteBox:
     # Test for split and sort filenames
     ############################################################################
     @pytest.mark.parametrize(
-        'input_path,basenames,expected',
+        ('input_path', 'basenames', 'expected'),
         [
             ('volumes/COCIRS_0xxx',
              ['COCIRS_0xxx_v3', 'COCIRS_0xxx', 'COCIRS_0xxx_v2'],
@@ -811,7 +810,7 @@ class TestPdsFileWhiteBox:
         assert res == expected
 
     @pytest.mark.parametrize(
-        'input_path,basenames,expected',
+        ('input_path', 'basenames', 'expected'),
         [
             ('volumes/COCIRS_0xxx',
              ['COCIRS_0xxx_v3', 'COCIRS_0xxx', 'COCIRS_0xxx_v2'],
@@ -828,7 +827,7 @@ class TestPdsFileWhiteBox:
     # Test for associations
     ############################################################################
     @pytest.mark.parametrize(
-        'input_path,rank,category,expected',
+        ('input_path', 'rank', 'category', 'expected'),
         [
             ('checksums-volumes/COUVIS_0xxx/COUVIS_0001_md5.txt',
              None, 'checksums-volumes', 'checksums-volumes/COUVIS_0xxx/COUVIS_0001_md5.txt'),
@@ -854,7 +853,7 @@ class TestPdsFileWhiteBox:
             assert target_associated_parallel == expected
 
     @pytest.mark.parametrize(
-        'input_path,rank,category,expected',
+        ('input_path', 'rank', 'category', 'expected'),
         [
             ('volumes', None, 'volumes', 'volumes'),
             ('volumes', 999999, 'volumes', 'volumes')
@@ -871,7 +870,7 @@ class TestPdsFileWhiteBox:
             assert target_associated_parallel == expected
 
     @pytest.mark.parametrize(
-        'input_path,rank,category,expected',
+        ('input_path', 'rank', 'category', 'expected'),
         [
             ('volumes/COUVIS_0xxx', 'latest', 'volumes', 'volumes/COUVIS_0xxx'),
         ]
@@ -890,7 +889,7 @@ class TestPdsFileWhiteBox:
     # Test for alternative constructors
     ############################################################################
     @pytest.mark.parametrize(
-        'input_path,basename,expected',
+        ('input_path', 'basename', 'expected'),
         [
             ('',
              'volumexs',
@@ -910,7 +909,7 @@ class TestPdsFileWhiteBox:
         assert res
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/COISS_0xxx/COISS_0001',
              PDS3_HOLDINGS_DIR + '/volumes/COISS_0xxx/COISS_0001'),

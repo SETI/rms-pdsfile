@@ -11,9 +11,9 @@
 import pdslogger
 import pytest
 
-from pdsfile import (Pds3File,
-                     Pds4File)
-from tests.support.holdings import resolve_holdings, SKIP_REASON
+from pdsfile import Pds3File, Pds4File
+from tests.support.holdings import SKIP_REASON, resolve_holdings
+
 
 ##########################################################################################
 # Setup before all tests
@@ -55,9 +55,9 @@ def pytest_collection_modifyitems(config, items):
                 item.add_marker(skip_full)
 
 def turn_on_logger(filename):
-    LOGGER = pdslogger.PdsLogger(filename)
-    Pds3File.set_logger(LOGGER)
-    Pds4File.set_logger(LOGGER)
+    logger = pdslogger.PdsLogger(filename)
+    Pds3File.set_logger(logger)
+    Pds4File.set_logger(logger)
 
 @pytest.fixture(scope='session', autouse=True)
 def setup(request):

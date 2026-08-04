@@ -3,14 +3,13 @@
 # Blackbox tests for pds3file cached
 ##########################################################################################
 
-import datetime
-import os
-import pdsfile.pds3file as pds3file
-from pdsfile import pdsviewable
+
 import pytest
 
-from .helper import (PDS3_HOLDINGS_DIR,
-                     instantiate_target_pdsfile)
+import pdsfile.pds3file as pds3file
+from pdsfile import pdsviewable
+
+from .helper import PDS3_HOLDINGS_DIR, instantiate_target_pdsfile
 
 try:
     PDS_TESTING_ROOT = PDS3_HOLDINGS_DIR[:PDS3_HOLDINGS_DIR.rindex('pdsdata')]
@@ -22,7 +21,7 @@ except ValueError: # pragma: no cover
 ##########################################################################################
 class TestPdsFileBlackBox:
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/VGISS_6xxx/VGISS_6101/DATA/C27830XX/C2783018_RAW.IMG',
              False),
@@ -39,7 +38,7 @@ class TestPdsFileBlackBox:
         assert res1 == res2
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/RES_xxxx_prelim/RES_0001/data/601_cas.lbl', True),
             ('volumes/VGISS_7xxx/VGISS_7201/DATA/C24476XX/C2447654_RAW.lbl',
@@ -57,7 +56,7 @@ class TestPdsFileBlackBox:
         assert res1 == res2
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('previews/NHxxLO_xxxx/NHLALO_1001/data/20060224_000310/'
              + 'lor_0003103486_0x630_eng_thumb.jpg', True),
@@ -75,7 +74,7 @@ class TestPdsFileBlackBox:
         assert res1 == res2
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('metadata/VGISS_7xxx/VGISS_7201/VGISS_7201_inventory.tab',
              ('VGISS_7201_inventory', '', '.tab')),
@@ -94,7 +93,7 @@ class TestPdsFileBlackBox:
         assert res1 == res2
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/RPX_xxxx/RPX_0001/CALIB/F130LP.lbl',
              'volumes-RPX_xxxx-RPX_0001-CALIB-F130LP'),
@@ -111,7 +110,7 @@ class TestPdsFileBlackBox:
         assert res1 == res2
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/RPX_xxxx/RPX_0001/CALIB/F130LP.LBL', []),
             ('previews/VGISS_5xxx/VGISS_5101/DATA/C13854XX',
@@ -148,7 +147,7 @@ class TestPdsFileBlackBox:
         assert res1 == res2
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/VG_20xx/VG_2001/JUPITER/CALIB/VG1PREJT.DAT',
              '2011-05-05 10:43:33')
@@ -163,7 +162,7 @@ class TestPdsFileBlackBox:
         assert res1 == res2
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/VG_20xx/VG_2001/JUPITER/CALIB/VG1PREJT.LBL', '33 KB'),
             ('volumes/VG_28xx/VG_2801/EDITDATA/PN1D01.DAT', '610 KB'),
@@ -178,7 +177,7 @@ class TestPdsFileBlackBox:
         assert res1 == res2
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/COISS_2xxx/COISS_2002/data/1460960653_1461048959/N1460960868_1.LBL',
              (
@@ -201,7 +200,7 @@ class TestPdsFileBlackBox:
         assert res1 == res2
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/VGIRIS_xxxx_peer_review/VGIRIS_0001/DATA/JUPITER_VG1/C1547XXX.lbl', 'PDS3 label'),
             ('previews/NHxxMV_xxxx/NHLAMV_1001/data/20060321_000526/mc1_0005261846_0x536_eng_1_thumb.jpg', 'Thumbnail preview image'),
@@ -216,7 +215,7 @@ class TestPdsFileBlackBox:
         assert res1 == res2
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('metadata/VGISS_5xxx/VGISS_5101/VGISS_5101_supplemental_index.tab',
              'INDEX')
@@ -231,7 +230,7 @@ class TestPdsFileBlackBox:
         assert res1 == res2
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/NHxxMV_xxxx/NHLAMV_1001/data/20060321_000526/mc0_0005261846_0x536_eng_1.fit', 'image/fits'),
             ('volumes/RPX_xxxx/RPX_0001/CALIB/F130LP.TAB', 'text/plain'),
@@ -248,7 +247,7 @@ class TestPdsFileBlackBox:
         assert res1 == res2
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/COVIMS_0xxx/COVIMS_0001/data/1999010T054026_1999010T060958/v1294638283_1.qub',
              'co-vims-v1294638283')
@@ -263,7 +262,7 @@ class TestPdsFileBlackBox:
         assert res1 == res2
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('metadata/COUVIS_0xxx/COUVIS_0001/COUVIS_0001_index.tab',
              ('ASCII', 'Table')),
@@ -282,7 +281,7 @@ class TestPdsFileBlackBox:
         assert res1 == res2
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/COCIRS_6xxx/COCIRS_6004/DATA/GEODATA/GEO1004021018_699.TAB',
              ('Cassini CIRS', 110, 'cocirs_geo',  'System Geometry', True)),
@@ -303,7 +302,7 @@ class TestPdsFileBlackBox:
         assert res1 == res2
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/VGISS_8xxx/VGISS_8201', 'VOLDESC.CAT'),
             ('volumes/VG_28xx/VG_2801/EDITDATA/PN1D01.LBL', 'PN1D01.LBL'),
@@ -318,7 +317,7 @@ class TestPdsFileBlackBox:
         assert res1 == res2
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/COUVIS_0xxx_v1/COUVIS_0009/DATA/D2004_274/EUV2004_274_01_39.LBL',
              [
@@ -343,7 +342,7 @@ class TestPdsFileBlackBox:
         assert res1 == res2
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/COUVIS_8xxx/COUVIS_8001/data/UVIS_HSP_2017_228_BETORI_I_TAU10KM.TAB',
              'UVIS_HSP_2017_228_BETORI_I_TAU10KM.LBL')
@@ -358,7 +357,7 @@ class TestPdsFileBlackBox:
         assert res1 == res2
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('previews/COCIRS_1xxx/COCIRS_1001/DATA/CUBE/EQUIRECTANGULAR/123RI_EQLBS002_____CI____699_F1_039E_thumb.jpg',
              [
@@ -382,7 +381,7 @@ class TestPdsFileBlackBox:
             assert viewable['url'] in expected
 
     @pytest.mark.parametrize(
-        'input_path,expected_pdsviewset,expected_path',
+        ('input_path', 'expected_pdsviewset', 'expected_path'),
         [
             ('previews/HSTIx_xxxx/HSTI1_1556/DATA/VISIT_01/IB4W01I5Q_thumb.jpg',
              True,
@@ -404,7 +403,7 @@ class TestPdsFileBlackBox:
                 assert viewable['url'] in expected_path
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('previews/HSTJx_xxxx/HSTJ0_9296/DATA/VISIT_B1/', '2018-03-25'),
         ]
@@ -418,7 +417,7 @@ class TestPdsFileBlackBox:
         assert res1 == res2
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/COUVIS_0xxx_v1/COUVIS_0009/DATA/D2004_274/EUV2004_274_01_39.lbl', '1.0'),
             ('volumes/COCIRS_1xxx/COCIRS_1001/DATA/TSDR/NAV_DATA/TAR10013100.DAT'
@@ -435,7 +434,7 @@ class TestPdsFileBlackBox:
         assert res1 == res2
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/VGISS_7xxx/VGISS_7201/DATA/C24476XX/C2447654_RAW.IMG',
              ['VG2-U-ISS-2/3/4/6-PROCESSED-V1.0']),
@@ -450,7 +449,7 @@ class TestPdsFileBlackBox:
         assert res1 == res2
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/VGISS_8xxx/VGISS_8201/DATA/C08966XX/C0896631_RAW.LBL',
              [999999]),
@@ -465,7 +464,7 @@ class TestPdsFileBlackBox:
         assert res1 == res2
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('metadata/VGISS_7xxx/VGISS_7201/VGISS_7201_inventory.tab', 8),
             ('metadata/HSTJx_xxxx/HSTJ0_9296/HSTJ0_9296_index.tab', 9),
@@ -480,7 +479,7 @@ class TestPdsFileBlackBox:
         assert res1 == res2
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('previews/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007',
              [
@@ -506,7 +505,7 @@ class TestPdsFileBlackBox:
 
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('previews/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007',
              [
@@ -532,7 +531,7 @@ class TestPdsFileBlackBox:
             assert viewable['url'] in expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('previews/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007',
              [
@@ -559,7 +558,7 @@ class TestPdsFileBlackBox:
             assert viewable['url'] in expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/COISS_2xxx/COISS_2002/data/1460960653_1461048959/N1460960868_1.IMG',
              'CO-S-ISSNA/ISSWA-2-EDR-V1.0:COISS_2002:data/1460960653_1461048959:N1460960868_1.IMG'),
@@ -601,7 +600,7 @@ class TestPdsFileBlackBox:
         assert res1 == res2
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/COISS_2xxx/COISS_2002/data/1460960653_1461048959/N1460960868_1.IMG',
              'CO-S-ISSNA/ISSWA-2-EDR-V1.0:COISS_2002:data/1460960653_1461048959:N1460960868_1.IMG::1.0'),
@@ -627,7 +626,7 @@ class TestPdsFileBlackBox:
         assert res1 == res2
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/COISS_2xxx/COISS_2002/data/1460960653_1461048959/N1460960868_1.IMG',
              'CO-S-ISSNA/ISSWA-2-EDR-V1.0'),
@@ -660,7 +659,7 @@ class TestPdsFileBlackBox:
         assert res1 == res2
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             # Return '' for COUVIS_0xxx (multiple data set ids) since
             # we don't have a properly defined DATA_SET_ID rule for it.
@@ -684,7 +683,7 @@ class TestPdsFileBlackBox:
             assert res1 == res2
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/COCIRS_0xxx/COCIRS_0012/DATA/NAV_DATA/GEO00120100.DAT',
              'CO-J-CIRS-2/3/4-TSDR-V2.0:COCIRS_0012:DATA/NAV_DATA:GEO00120100.DAT'),
@@ -701,7 +700,7 @@ class TestPdsFileBlackBox:
         assert res1 == res2
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/COCIRS_0xxx/COCIRS_0012/DATA/NAV_DATA/GEO00120100.DAT',
              'CO-J-CIRS-2/3/4-TSDR-V2.0:COCIRS_0012:DATA/NAV_DATA:GEO00120100.DAT::1.0'),

@@ -1,16 +1,17 @@
 import pytest
 
 import pdsfile.pds3file as pds3file
-
 from tests.rules.support import (
     PDS3_TEST_RESULTS_DIR as TEST_RESULTS_DIR,
+)
+from tests.rules.support import (
     associated_abspaths_test,
     opus_products_test,
 )
 
 
 @pytest.mark.parametrize(
-    'input_path,expected',
+    ('input_path', 'expected'),
     [
         ('volumes/VGISS_5xxx/VGISS_5101/DATA/C13854XX/C1385455_RAW.IMG',
          'VGISS_5xxx/opus_products/C1385455_RAW.txt')
@@ -21,7 +22,7 @@ def test_opus_products(request, input_path, expected):
     opus_products_test(pds3file.Pds3File, input_path, TEST_RESULTS_DIR+expected, update)
 
 @pytest.mark.parametrize(
-    'input_path,category,expected',
+    ('input_path', 'category', 'expected'),
     [
         ('volumes/VGISS_5xxx/VGISS_5101/DATA/C13854XX/C1385455_RAW.IMG',
          'volumes',
@@ -34,7 +35,7 @@ def test_associated_abspaths(request, input_path, category, expected):
                              TEST_RESULTS_DIR+expected, update)
 
 def test_opus_id_to_primary_logical_path():
-    TESTS = [
+    test_cases = [
         "VGISS_5101/DATA/C13854XX/C1385455_RAW.IMG",
         "VGISS_5101/DATA/C14604XX/C1460413_RAW.IMG",
         "VGISS_5101/DATA/C14700XX/C1470042_RAW.IMG",
@@ -284,7 +285,7 @@ def test_opus_id_to_primary_logical_path():
         "VGISS_8210/DATA/C12400XX/C1240005_RAW.IMG",
     ]
 
-    for filepath in TESTS:
+    for filepath in test_cases:
         logical_path = 'volumes/VGISS_' + filepath[6] + 'xxx/' + filepath
         test_pdsf = pds3file.Pds3File.from_logical_path(logical_path)
         opus_id = test_pdsf.opus_id

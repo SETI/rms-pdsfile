@@ -3,13 +3,14 @@
 # Blackbox tests for pds4file
 ##########################################################################################
 
-import os
-import pdsfile.pds4file as pds4file
-from pdsfile import pdsviewable
+
 import pytest
 
-from .helper import (PDS4_BUNDLES_DIR,
-                     instantiate_target_pdsfile)
+import pdsfile.pds4file as pds4file
+from pdsfile import pdsviewable
+
+from .helper import PDS4_BUNDLES_DIR, instantiate_target_pdsfile
+
 PDS4_HOLDINGS_NAME = 'pds4-holdings'
 
 
@@ -25,7 +26,7 @@ class _DummyTranslator:
 ##########################################################################################
 class TestPds4FileBlackBox:
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             # ('cassini_iss/cassini_iss_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947228n.img',
             #  'co-iss-n1308947228'),
@@ -144,7 +145,7 @@ class TestPds4FileBlackBox:
         assert res == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm',
              f'{PDS4_BUNDLES_DIR}/uranus_occs_earthbased/uranus_occ_u0_kao_91cm'),
@@ -160,7 +161,7 @@ class TestPds4FileBlackBox:
         assert res == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
            ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_alpha_egress_1000m.xml',
            'bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_alpha_egress_1000m.xml'),
@@ -178,7 +179,7 @@ class TestPds4FileBlackBox:
         assert res == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_alpha_egress_1000m.xml',
              True),
@@ -198,7 +199,7 @@ class TestPds4FileBlackBox:
         assert res == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('uranus_occs_earthbased/',
              False),
@@ -234,7 +235,7 @@ class TestPds4FileBlackBox:
         assert res == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm',
              True), # This test fails with `ValueError: Illegal bundle set directory "": bundles`, because of match failure with BUNDLE_SET_PLUS_REGEX_I on line 3254 of pds4file.py
@@ -292,7 +293,7 @@ class TestPds4FileBlackBox:
         assert res == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_alpha_egress_1000m.xml',
              False),
@@ -314,7 +315,7 @@ class TestPds4FileBlackBox:
         assert res == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('uranus_occs_earthbased',
              True),
@@ -340,7 +341,7 @@ class TestPds4FileBlackBox:
         assert res == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('uranus_occs_earthbased',
              True),
@@ -366,7 +367,7 @@ class TestPds4FileBlackBox:
         assert res == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('uranus_occs_earthbased/',
              'uranus_occs_earthbased'),
@@ -462,7 +463,7 @@ class TestPds4FileBlackBox:
 
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             # expected bundles for uranus are coming from staging server
             # /volumes/pdsdata-admin/pds4-holdings/bundles/uranus_occs_earthbased
@@ -552,7 +553,7 @@ class TestPds4FileBlackBox:
         assert res.sort() == expected.sort()
 
     @pytest.mark.parametrize(
-    'input_path,expected',
+    ('input_path', 'expected'),
         [
             # ('cassini_iss/cassini_iss_cruise',
             #  f'{PDS4_BUNDLES_DIR}/cassini_iss/cassini_iss_cruise'),
@@ -586,7 +587,7 @@ class TestPds4FileBlackBox:
         assert res.abspath == expected
 
     @pytest.mark.parametrize(
-        'filespec,expected',
+        ('filespec', 'expected'),
         [
             # ('cassini_iss_cruise', f'{PDS4_BUNDLES_DIR}/cassini_iss/cassini_iss_cruise'),
             # ('cassini_iss_cruise/browse_raw/130xxxxxxx/13089xxxxx/1308947228n-full.xml',
@@ -609,7 +610,7 @@ class TestPds4FileBlackBox:
 
     # For now we fake all the images files under previews dir
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             # ('cassini_iss/cassini_iss_cruise/data_raw/130xxxxxxx/13089xxxxx/1308947228n.xml',
             #  [
@@ -734,7 +735,7 @@ class TestPds4FileBlackBox:
             )
         target_pdsfile = instantiate_target_pdsfile(input_path)
         res = target_pdsfile.viewset
-        if res != False:
+        if res is not False:
             assert isinstance(res, pdsviewable.PdsViewSet)
             viewables = res.to_dict()['viewables']
             for viewable in viewables:
@@ -744,7 +745,7 @@ class TestPds4FileBlackBox:
             assert res == expected
 
     @pytest.mark.parametrize(
-    'input_path,expected',
+    ('input_path', 'expected'),
     [
         # cassini_iss_fring_mosaics_rsfrench2025
         (

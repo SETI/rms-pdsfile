@@ -5,11 +5,13 @@
 # different places.
 ##########################################################################################
 
-from pdsfile.pdsfile import abspath_for_logical_path
 import ast
 import os
-from pathlib import Path
 import pprint
+from pathlib import Path
+
+from pdsfile.pdsfile import abspath_for_logical_path
+
 
 def instantiate_target_pdsfile(cls, path, is_abspath=True):
     """Return the pdsfile instance of the given path.
@@ -24,11 +26,11 @@ def instantiate_target_pdsfile(cls, path, is_abspath=True):
     """
 
     if is_abspath:
-        TESTFILE_PATH = abspath_for_logical_path(path, cls)
-        target_pdsfile = cls.from_abspath(TESTFILE_PATH)
+        testfile_path = abspath_for_logical_path(path, cls)
+        target_pdsfile = cls.from_abspath(testfile_path)
     else:
-        TESTFILE_PATH = path
-        target_pdsfile = cls.from_logical_path(TESTFILE_PATH)
+        testfile_path = path
+        target_pdsfile = cls.from_logical_path(testfile_path)
     return target_pdsfile
 
 def read_or_update_golden_copy(data, path, update):
@@ -67,7 +69,7 @@ def read_file(path):
         The data of the file.
     """
 
-    with open(path, 'r') as f:
+    with open(path) as f:
         expected_data = f.read()
         expected_data = ast.literal_eval(expected_data)
         return expected_data

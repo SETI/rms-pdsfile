@@ -1,16 +1,17 @@
 import pytest
 
 import pdsfile.pds3file as pds3file
-
 from tests.rules.support import (
     PDS3_TEST_RESULTS_DIR as TEST_RESULTS_DIR,
+)
+from tests.rules.support import (
     associated_abspaths_test,
     opus_products_test,
 )
 
 
 @pytest.mark.parametrize(
-    'input_path,expected',
+    ('input_path', 'expected'),
     [
         # VG_2801
         ('volumes/VG_28xx/VG_2801/EASYDATA/KM000_2/PS1P0107.TAB',
@@ -39,7 +40,7 @@ def test_opus_products(request, input_path, expected):
     opus_products_test(pds3file.Pds3File, input_path, TEST_RESULTS_DIR+expected, update)
 
 @pytest.mark.parametrize(
-    'input_path,category,expected',
+    ('input_path', 'category', 'expected'),
     [
         ('volumes/VG_28xx/VG_2801/EASYDATA/KM000_2/PS1P0107.TAB',
          'volumes',
@@ -73,7 +74,7 @@ def test_associated_abspaths(request, input_path, category, expected):
                              TEST_RESULTS_DIR+expected, update)
 
 def test_opus_id_to_primary_logical_path():
-    TESTS = [
+    test_cases = [
         'VG_2803/U_RINGS/EASYDATA/KM00_25/RU4P2XEI.TAB',
         'VG_2801/EASYDATA/KM000_1/PU1P01LI.TAB',
         'VG_2802/EASYDATA/FILTER01/UN1F01.TAB',
@@ -83,7 +84,7 @@ def test_opus_id_to_primary_logical_path():
         'VG_2810/DATA/IS1_P0001_V01_KM002.TAB',
     ]
 
-    for filepath in TESTS:
+    for filepath in test_cases:
         logical_path = 'volumes/VG_28xx/' + filepath
         test_pdsf = pds3file.Pds3File.from_logical_path(logical_path)
         opus_id = test_pdsf.opus_id

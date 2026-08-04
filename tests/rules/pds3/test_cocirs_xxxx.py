@@ -1,21 +1,22 @@
 import pytest
 
 import pdsfile.pds3file as pds3file
-
-from tests.rules.support import (
-    PDS3_TEST_RESULTS_DIR as TEST_RESULTS_DIR,
-    associated_abspaths_test,
-    opus_products_test,
-    translate_all,
-)
 from pdsfile.pds3file.rules.COCIRS_xxxx import (
     associations_to_diagrams,
     associations_to_volumes,
 )
+from tests.rules.support import (
+    PDS3_TEST_RESULTS_DIR as TEST_RESULTS_DIR,
+)
+from tests.rules.support import (
+    associated_abspaths_test,
+    opus_products_test,
+    translate_all,
+)
 
 
 def test_associations_to_volumes():
-    TESTS = [
+    test_cases = [
         ( 1, 'volumes/COCIRS_5xxx/COCIRS_5512/BROWSE'),
         ( 1, 'volumes/COCIRS_5xxx/COCIRS_5512/BROWSE/DIONE'),
         (14, 'volumes/COCIRS_5xxx/COCIRS_5512/BROWSE/DIONE/POI0512240325_FP3_604.LBL'),
@@ -41,14 +42,13 @@ def test_associations_to_volumes():
         (14, 'diagrams/COCIRS_5xxx/COCIRS_5912/BROWSE/TITAN/POI0912111106_FP1_606_small.jpg'),
     ]
 
-    for (count, path) in TESTS:
+    for (count, path) in test_cases:
         abspaths = translate_all(associations_to_volumes, path)
-        trimmed = [p.rpartition('holdings/')[-1] for p in abspaths]
         assert len(abspaths) == count, f'Miscount: {path} {len(abspaths)} {abspaths}'
 
 
 def test_associations_to_diagrams():
-    TESTS = [
+    test_cases = [
         ( 1, 'volumes/COCIRS_5xxx/COCIRS_5512/BROWSE'),
         ( 1, 'volumes/COCIRS_5xxx/COCIRS_5512/BROWSE/DIONE'),
         ( 4, 'volumes/COCIRS_5xxx/COCIRS_5512/BROWSE/DIONE/POI0512240325_FP3_604.LBL'),
@@ -78,13 +78,13 @@ def test_associations_to_diagrams():
         ( 8, 'diagrams/COCIRS_5xxx/COCIRS_5512/BROWSE/RHEA/POI0512231930_FP1_605.LBL'),
     ]
 
-    for (count, path) in TESTS:
+    for (count, path) in test_cases:
         abspaths = translate_all(associations_to_diagrams, path)
         trimmed = [p.rpartition('holdings/')[-1] for p in abspaths]
         assert len(abspaths) == count, f'Miscount: {path} {len(abspaths)} {trimmed}'
 
 @pytest.mark.parametrize(
-    'input_path,expected',
+    ('input_path', 'expected'),
     [
         ('volumes/COCIRS_5xxx/COCIRS_5408/DATA/POIDATA/POI0408010000_FP1.LBL',
          'COCIRS_xxxx/opus_products/POI0408010000_FP1.txt'),
@@ -98,7 +98,7 @@ def test_opus_products(request, input_path, expected):
     opus_products_test(pds3file.Pds3File, input_path, TEST_RESULTS_DIR+expected, update)
 
 @pytest.mark.parametrize(
-    'input_path,category,expected',
+    ('input_path', 'category', 'expected'),
     [
         ('volumes/COCIRS_5xxx/COCIRS_5408/DATA/POIDATA/POI0408010000_FP1.LBL',
          'volumes',
@@ -111,7 +111,7 @@ def test_associated_abspaths(request, input_path, category, expected):
                              TEST_RESULTS_DIR+expected, update)
 
 def test_opus_id_to_primary_logical_path():
-    TESTS = [
+    test_cases = [
         'volumes/COCIRS_5xxx/COCIRS_5912/DATA/APODSPEC/SPEC0912010101_FP1.DAT',
         'volumes/COCIRS_5xxx/COCIRS_5912/DATA/APODSPEC/SPEC0912111106_FP3.DAT',
         'volumes/COCIRS_5xxx/COCIRS_5912/DATA/APODSPEC/SPEC0912111106_FP1.DAT',
@@ -132,7 +132,7 @@ def test_opus_id_to_primary_logical_path():
         'volumes/COCIRS_0xxx/COCIRS_0406/DATA/CUBE/POINT_PERSPECTIVE/000IA_PRESOI001____RI____699_F4_038P.tar.gz'
     ]
 
-    for logical_path in TESTS:
+    for logical_path in test_cases:
         test_pdsf = pds3file.Pds3File.from_logical_path(logical_path)
         opus_id = test_pdsf.opus_id
         opus_id_pdsf = pds3file.Pds3File.from_opus_id(opus_id)

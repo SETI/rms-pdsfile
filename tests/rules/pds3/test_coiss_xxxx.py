@@ -1,14 +1,15 @@
-import pytest
 import os
 
-import pdsfile.pds3file as pds3file
+import pytest
 
+import pdsfile.pds3file as pds3file
 from tests.rules.support import (
     PDS3_TEST_RESULTS_DIR as TEST_RESULTS_DIR,
+)
+from tests.rules.support import (
     associated_abspaths_test,
     opus_products_test,
 )
-
 
 # TODO: When cassini_iss_fring_mosaics_rsfrench2025 and
 # cassini_iss_spokes_hedman-hamilton-2024 bundles are available (e.g. in test
@@ -31,7 +32,7 @@ def _coiss_opus_products_golden_references_pds4_reproj(expected_relative):
 
 
 @pytest.mark.parametrize(
-    'input_path,expected',
+    ('input_path', 'expected'),
     [
         ('volumes/COISS_1xxx/COISS_1001/data/1294561143_1295221348/W1294561202_1.IMG',
          'COISS_xxxx/opus_products/W1294561202_1.txt'),
@@ -60,7 +61,7 @@ def test_opus_products(request, input_path, expected):
     opus_products_test(pds3file.Pds3File, input_path, TEST_RESULTS_DIR+expected, update)
 
 @pytest.mark.parametrize(
-    'input_path,category,expected',
+    ('input_path', 'category', 'expected'),
     [
         ('volumes/COISS_1xxx/COISS_1001/data/1294561143_1295221348/W1294561202_1.IMG',
          'volumes',
@@ -74,7 +75,7 @@ def test_associated_abspaths(request, input_path, category, expected):
 
 def test_opus_id_to_primary_logical_path():
     import pdsfile.pds4file as pds4file
-    TESTS = [
+    test_cases = [
         'volumes/COISS_1xxx/COISS_1001/data/1294561143_1295221348/W1294561143_1.IMG',
         'volumes/COISS_1xxx/COISS_1001/data/1294561143_1295221348/W1294561143_1.IMG',
         'volumes/COISS_1xxx/COISS_1001/data/1294561143_1295221348/W1294561143_1.IMG',
@@ -264,7 +265,7 @@ def test_opus_id_to_primary_logical_path():
         'volumes/COISS_2xxx/COISS_2116/data/1881830414_1881948814/N1881830414_1.IMG',
     ]
 
-    for logical_path in TESTS:
+    for logical_path in test_cases:
         stem, _ = os.path.splitext(os.path.basename(logical_path))
         # TODO: When cassini_iss_fring_mosaics_rsfrench2025 and
         # cassini_iss_spokes_hedman-hamilton-2024 bundles are available, remove

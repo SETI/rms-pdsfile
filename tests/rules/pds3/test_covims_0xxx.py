@@ -1,16 +1,17 @@
 import pytest
 
 import pdsfile.pds3file as pds3file
-
 from tests.rules.support import (
     PDS3_TEST_RESULTS_DIR as TEST_RESULTS_DIR,
+)
+from tests.rules.support import (
     associated_abspaths_test,
     opus_products_test,
 )
 
 
 @pytest.mark.parametrize(
-    'input_path,expected',
+    ('input_path', 'expected'),
     [
         ('volumes/COVIMS_0xxx/COVIMS_0006/data/2005088T102825_2005089T113931/v1490784910_3_001.qub',
          'COVIMS_0xxx/opus_products/v1490784910_3_001.txt')
@@ -21,7 +22,7 @@ def test_opus_products(request, input_path, expected):
     opus_products_test(pds3file.Pds3File, input_path, TEST_RESULTS_DIR+expected, update)
 
 @pytest.mark.parametrize(
-    'input_path,category,expected',
+    ('input_path', 'category', 'expected'),
     [
         ('volumes/COVIMS_0xxx/COVIMS_0006/data/2005088T102825_2005089T113931/v1490784910_3_001.qub',
          'volumes',
@@ -34,7 +35,7 @@ def test_associated_abspaths(request, input_path, category, expected):
                              TEST_RESULTS_DIR+expected, update)
 
 def test_opus_id_to_primary_logical_path():
-    TESTS = [
+    test_cases = [
         'COVIMS_0001/data/1999010T054026_1999010T060958/v1294638283_1.qub',
         'COVIMS_0001/data/1999017T031657_1999175T202056/v1308946681_1_001.qub',
         'COVIMS_0001/data/1999175T204004_1999230T014404/v1313631515_1_001.qub',
@@ -209,7 +210,7 @@ def test_opus_id_to_primary_logical_path():
         'COVIMS_0094/data/2017238T104254_2017238T235735/v1882439160_1.qub',
     ]
 
-    for file_path in TESTS:
+    for file_path in test_cases:
         logical_path = 'volumes/COVIMS_0xxx/' + file_path
         test_pdsf = pds3file.Pds3File.from_logical_path(logical_path)
         opus_id = test_pdsf.opus_id
