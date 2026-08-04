@@ -6993,6 +6993,7 @@ corrected it.
 | 1 | **1 Major**, 9 Minor, 3 Deferred — verdict `goal not met` | `critiques/pr-24/round-1.md` |
 | 2 | **0 Major**, 4 Minor, 1 Deferred — verdict `goal not met` | `critiques/pr-24/round-2.md` |
 | 3 | **1 Major**, 6 Minor, 1 Deferred — verdict `goal not met` | `critiques/pr-24/round-3.md` |
+| 4 (scoped) | **0 Major**, 6 Deferred — verdict **`goal met`** | `critiques/pr-24/round-4.md` |
 
 Round 1's Major is the `re_validate.py` freeze violation; all nine of its Minors
 were accepted and fixed, none rebutted. Because that round changed
@@ -7030,3 +7031,24 @@ and after with `COMMENT`/`NL` dropped gives byte-identical token streams (3,130 
 regenerated anyway — round 3's Major was precisely a stale record — and the
 tool-coverage measurement carries forward on the token-equality proof, since the
 changed-executable-line set it maps is provably unchanged.
+
+**Round 4 is the scoped re-review §6.6 prescribes for a fourth round** — confirm
+the prior findings, raise only new Majors. It returned **none**, and the loop
+terminates. It confirmed round 1's and round 3's Majors resolved by
+re-derivation (`re_validate.py` md5-identical to `origin/rewrite` with its
+derived set of 26 violations identical at base and head; the 30 unreached tool
+lines reproduced line-for-line), all 19 Minors resolved, and round 3's rebuttal
+sound — it applied the `[*x, y]` conversion itself and observed the fresh
+`RUF005` on a file with no ratchet entry.
+
+It also added three checks no earlier round ran: a **rename-collision sweep**
+(per-function binding sets compared base against head across every changed file;
+thirteen scopes changed size, all accounted for, and in the four that grew every
+surviving load is dominated by its own store), a measurement of the `E501`
+justification (of the 41 files, in **exactly one** is every site a comment line,
+which is what §5 claims), and a package-wide audit confirming the only f-strings
+this PR adds are two `print()`s and three exception messages.
+
+Its six Deferred findings were five prose-accuracy defects in this PR's own
+records plus one style choice. The five are corrected; none touches `src/` or
+`tests/`, so this record carries forward unchanged.

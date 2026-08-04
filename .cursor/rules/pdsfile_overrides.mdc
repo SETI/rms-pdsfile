@@ -45,6 +45,14 @@ conflicts with a rule below, follow the rule below. See
    wanted anywhere, in core or in the subpackages. It is a settled style
    preference, not a residue awaiting cleanup, and PR-24 must not "fix" it either.
 
+   This is a rule about **ruff's rewrite of a concatenation**, not a claim that
+   no `[*x, y]` exists in the tree. Where an author wrote the unpacking form
+   directly there is no concatenation to preserve, and converting it to `x + [y]`
+   *manufactures* a `RUF005` — which a file with no `per-file-ignores` entry
+   cannot absorb without widening the ratchet.
+   `tests/holdings_maintenance/support.py:200` is such a site and is left alone
+   for exactly that reason.
+
    **Core — the fifteen modules directly under `src/pdsfile/` (PR-23, 2026-08-03).**
    Re-derived with the template select set and *no* per-file-ignores: 154
    violations, of which 114 were fixed and **40 are permanent**. Four modules

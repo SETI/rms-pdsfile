@@ -2070,8 +2070,8 @@ these entries are read by the PRs that come after it.
 
 ### Added by the PR-24 adversarial review (round 3)
 
-89. **The six tool `main()`s now spell the same `logger.close()` unpacking three
-    ways.** After PR-24's `RUF059` work, eight sites read
+89. **The maintenance tools now spell the same `logger.close()` unpacking three
+    ways.** After PR-24's `RUF059` work, nine sites read
     `(fatal, errors, _warnings, _tests) = logger.close()`
     (`pdsarchives.py:558`, `pdschecksums.py:911`, `pdsdependency.py:1155`,
     `pdsindexshelf.py:545`, `pdsinfoshelf.py:935`, `pdslinkshelf.py:1776`,
