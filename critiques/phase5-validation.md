@@ -6056,8 +6056,8 @@ whose text was compared byte for byte by hand, an `E701` split that cannot chang
 semantics, a local rename `ruff`/`pyflakes` proves complete, or an `F841` binding
 removal whose right-hand side is preserved or absent (`_path_utils.py:136`,
 `_preload.py:201`, `_shelves.py:171`, `__init__.py:7`). **The other three are named rather than
-folded in**: `pdscache.py:322`'s `E721` and the `F541` fragments at `:600` and
-`:1043`, all of which need `pylibmc` to reach (deferred observation 72). No
+folded in**: `pdscache.py:321`'s `E721` and the `F541` fragments at `:599` and
+`:1042`, all of which need `pylibmc` to reach (deferred observation 72). No
 `SIM`, `RUF005`, `RUF015`, `B020`, `SIM118`, `C405`, `E713` or `F401` fix is among
 the 38; every one of those is covered by the suite, the probe, or both. The one
 unreached `E721` is discharged by the metaclass argument in §4 and by the probe's
@@ -6127,7 +6127,7 @@ coordinator's scoping run reported 155; the one-violation difference is not
 reconciled and is not load-bearing — every disposition below is keyed to a
 `file:line`, not to a total.
 
-**154 → 33. 121 fixed, 33 permanent.** By code:
+**154 → 33. 121 fixed, 33 permanent.** By code. **Superseded by the "PR-23 revision" section at the end of this file: the owner's `RUF005` ruling on 2026-08-03 reverted seven fixes, so the measured figures are now 154 → 40, 114 fixed, 40 permanent, with `RUF005` 0 fixed / 8 permanent.**
 
 | Code | n | Fixed | Frozen |
 |---|---|---|---|
@@ -6152,7 +6152,7 @@ reconciled and is not load-bearing — every disposition below is keyed to a
 | `SIM103` | 3 | 3 | — |
 | `A001`, `B007`, `B905`, `F401`, `N806`, `RUF059`, `SIM114`, `SIM118` | 2 each | 16 | — |
 | `B020`, `E713`, `UP015` | 1 each | 3 | — |
-| **Total** | **154** | **121** | **33** |
+| **Total** | **154** | **121** *(now 114)* | **33** *(now 40)* |
 
 ### 4. The behavior-equivalence proofs, per risky code
 
@@ -6517,7 +6517,7 @@ whitespace match, including `_preload.py`'s idiosyncratic continuation indent:
 
 | Site (HEAD line) | Restored text |
 |---|---|
-| `_index_rows.py:162` | `childnames = self.childnames + [selection]` |
+| `_index_rows.py:164` | `childnames = self.childnames + [selection]` |
 | `_opus.py:246` | `label_pdsfiles[abspath] = [pdsf] + fmt_pdsfiles` |
 | `_sorting.py:188` | `parts[3:] = [self.basename_is_label(basename)] + parts[3:]` |
 | `_sorting.py:196` | `parts = [not isdir] + parts` |
@@ -6584,7 +6584,7 @@ against the message with `%%` removed; all four messages match.
 | `_preload.py:204` | `cls.LOGGER.warn('Permanent value %s missing from Memcache; ' 'preloading again', str(e))` |
 | `_preload.py:382` | `cls.LOGGER.info('Connecting to PdsFile Memcache [%s]', cls.MEMCACHE_PORT)` |
 | `_shelves.py:258` | `cls.LOGGER.debug('Retrieving key "%s"', py_path)` |
-| `pdscache.py:74` | `self.logger.debug('%d items trimmed from DictionaryCache', len(pairs))` |
+| `pdscache.py:73` | `self.logger.debug('%d items trimmed from DictionaryCache', len(pairs))` |
 
 The first is wrapped as two implicitly concatenated literals; the format string
 the interpreter sees is the single-line one.
@@ -6613,8 +6613,12 @@ OSError(f'…')` in `_properties.py`, `_shelves.py` and `pdsfile.py` stay as
 f-strings, which is what the owner asked for.
 
 **Pre-existing inventory, swept and recorded, not converted.** An AST sweep of
-`src/pdsfile/**/*.py` (excluding `_version.py`) for logging calls whose first
-argument is an f-string, a `+` concatenation, an eager `%` or a `.format()`:
+`src/pdsfile/**/*.py` (excluding the generated `_version.py`). The predicate,
+stated exactly so the count is reproducible: an `ast.Call` whose `func` is an
+`ast.Attribute` with `attr` in `{debug, info, warn, warning, error, critical,
+exception, log, fatal, open, close}` and whose receiver, as `ast.unparse`d text,
+contains `logger` (case-insensitive), counted once if its **first** argument is
+an `ast.JoinedStr`, an `ast.BinOp` with `Add` or `Mod`, or a `.format()` call:
 
 | Area | Sites | `+` | f-string | eager `%` |
 |---|---|---|---|---|
@@ -6635,13 +6639,13 @@ Each was re-read and decided on its own; no blanket transformation.
 | Site | Was | Now |
 |---|---|---|
 | `_index_rows.py:55` | "Its fragility is deferred observation 49." | the fragility itself, in code terms: a subclass one level deeper, or one whose first base is not the PDS3/PDS4 class, silently gets the PDS3 table |
-| `_properties.py:1341` | "…; see critiques/deferred-observations.md." | "…, so the property returns None in that case" |
-| `pdsfile.py:1113` | "The looked-up object is discarded; see critiques/deferred-observations.md." | "…discarded, not returned, so the child is rebuilt below either way" |
+| `_properties.py:1340` | "…; see critiques/deferred-observations.md." | "…, so the property returns None in that case" |
+| `pdsfile.py:1112` | "The looked-up object is discarded; see critiques/deferred-observations.md." | "…discarded, not returned, so the child is rebuilt below either way" |
 | `pdscache.py:4–5` | "…a frozen member of this module's public surface (tests/api/api_manifest.json)…" | "`sys` is not referenced below; it is re-exported for callers that reach it as `pdsfile.pdscache.sys`" |
-| `pdsviewable.py:6–8` | same shape, for `pdslogger` | same rewrite, for `pdsfile.pdsviewable.pdslogger` |
-| `pdsfile.py:79–81` | "…and tests/api/api_manifest.json — which records names and kinds, never the defining class — is unchanged." | "…and a caller cannot tell which module defines any of them" |
+| `pdsviewable.py:7–9` | same shape, for `pdslogger` | same rewrite, for `pdsfile.pdsviewable.pdslogger` |
+| `pdsfile.py:79–81` | "…and tests/api/api_manifest.json — which records names and kinds, never the defining class — is unchanged." | "…nothing a caller imports or calls has moved or been renamed. It does show in `__module__`, `__qualname__` and `__mro__`." |
 | `pdsfile.py:87–89` | "…all of them are frozen members of this module's public surface…" | "…re-exported for callers that reach them as `pdsfile.pdsfile.<name>`" |
-| `pdsfile.py:105–106` | "…all three names are frozen members of this module's surface…" | "…all three are also reachable as `pdsfile.pdsfile.<name>`…" |
+| `pdsfile.py:106–107` | "…all three names are frozen members of this module's surface…" | "…all three are also reachable as `pdsfile.pdsfile.<name>`…" |
 | `pdsfile.py:117` | "…resolving for callers and for the API freeze." | "…resolving for callers." |
 | `pdsfile.py:141–145` | "…are frozen members of this module's public surface; … are private…" | "…are public; … are private. All are carried so that no name reachable as `pdsfile.pdsfile.<name>` is lost." |
 | `_derived_paths.py:225` | "…; theirs is frozen by the public API" | "…; theirs stays `dir` because callers pass it by that keyword" |

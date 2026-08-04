@@ -55,14 +55,14 @@ conflicts with a rule below, follow the rule below. See
    | File | Codes | Why it can never be fixed |
    |---|---|---|
    | `__init__.py` `:10,:12,:13` | `F403` ×3 | the three star imports are what bind `Pds3File`, `Pds4File` and the rule modules onto the package; removing them shrinks the frozen surface and "correcting" the self-import grows it |
-   | `_derived_paths.py` `:263,:280,:296` | `A002` ×3 | the frozen `dir=` parameter of `log_path_for_*`, passed by keyword from the maintenance tools. PR-18 moved these methods, so this — not `pdsfile.py` — is `A002`'s home |
-   | `_index_rows.py` `:162` | `RUF005` ×1 | style exclusion |
+   | `_derived_paths.py` `:264,:281,:297` | `A002` ×3 | the frozen `dir=` parameter of `log_path_for_*`, passed by keyword from the maintenance tools. PR-18 moved these methods, so this — not `pdsfile.py` — is `A002`'s home |
+   | `_index_rows.py` `:164` | `RUF005` ×1 | style exclusion |
    | `_opus.py` `:246` | `RUF005` ×1 | style exclusion. `:268` is the same spelling on a subscript operand, which ruff does not flag; both now read alike |
    | `_preload.py` `:325` | `RUF005` ×1 | style exclusion |
    | `_properties.py` `:609` | `RUF005` ×1 | style exclusion, and independently: `self._info[:4] + (shape,)` where `_info_filled` is a **list** on two construction paths, so `list + tuple` raises today and `(*…, shape)` would silently succeed |
    | `_shelves.py` `:172` | `B904` ×1 | `from err` and `from None` both change `__cause__`/`__suppress_context__`, and so the traceback |
    | `_sorting.py` `:188,:196,:200,:205` | `RUF005` ×4 | style exclusion |
-   | `pdscache.py` `:623`, `:325` | `RUF015` ×1, `UP031` ×1 | `list(d)[0]` raises `IndexError` where `next(iter(d))` raises `StopIteration`; `'%d' % port` truncates a non-int where an f-string does not. Both sit inside `MemcachedCache`, which ground rule 9 protects and no test here exercises |
+   | `pdscache.py` `:622`, `:324` | `RUF015` ×1, `UP031` ×1 | `list(d)[0]` raises `IndexError` where `next(iter(d))` raises `StopIteration`; `'%d' % port` truncates a non-int where an f-string does not. Both sit inside `MemcachedCache`, which ground rule 9 protects and no test here exercises |
    | `pdsfile.py` `:1418,:1824,:1874`, `:84`, class body | `B904` ×3, `I001` ×1, `RUF012` ×16 | tracebacks as above; ruff's isort rejects this repo's aligned-under-the-paren import style outright and rewrites it one name per line with a trailing comma, which is the layout change dropped by (11); `ClassVar` is forbidden by (1) |
    | `pdsviewable.py` `:52,:114,:205` | `B006` ×3 | frozen public signatures — `PdsViewable.to_dict(exclude=[])`, `PdsViewSet.__init__(viewables=[])`, `PdsViewSet.to_dict(exclude=['abspath','alt'])`. "Fixing" `B006` here is a manifest break |
 

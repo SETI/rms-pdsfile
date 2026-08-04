@@ -903,7 +903,9 @@ in `critiques/`; triage findings with the owner; fix the accepted ones.
   naming sub-plans, deferred observations and PR numbers — **on the condition
   that it is deleted once the rewrite is finished** (owner, 2026-08-03). Before
   the `rewrite` → `main` PR opens, `pyproject.toml` must carry no reference to
-  `plans/`, `critiques/`, `deferred-observations.md` or a PR number. The
+  `plans/`, `critiques/`, `deferred-observations.md`, a PR number, or the frozen
+  public surface / API freeze / `api_manifest.json` — the same list source files
+  are held to continuously; `pyproject.toml` is merely exempt until here. The
   per-file-ignores entries themselves stay; only the commentary explaining how
   the port derived them goes, and what survives of the reasoning lives in
   `.cursor/rules/pdsfile_overrides.mdc` deviation (4), which is a rules file

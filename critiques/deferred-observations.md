@@ -1849,9 +1849,19 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     has no rule that reports them (`G004`/`flake8-logging-format` is not in the
     selected set, and would not catch the `+` form anyway).
 
-    Measured with an AST sweep over `src/pdsfile/**/*.py` (excluding the generated
-    `_version.py`), counting calls whose **first** argument is an f-string, a `+`
-    concatenation, an eager `%`, or a `.format()`:
+    Measured with an AST sweep over `src/pdsfile/**/*.py`, excluding the
+    generated `_version.py`. The predicate, stated exactly so the count is
+    reproducible: an `ast.Call` whose `func` is an `ast.Attribute` with `attr` in
+    `{debug, info, warn, warning, error, critical, exception, log, fatal, open,
+    close}` and whose receiver, as `ast.unparse`d text, contains `logger`
+    (case-insensitive), counted once if its **first** argument is an
+    `ast.JoinedStr`, an `ast.BinOp` with `Add` or `Mod`, or a `.format()` call.
+    The core figure is stable under three variants of the predicate (first
+    argument only, any argument, and dropping `open`/`close` from the method
+    set); an independent sweep during review reported **98** rather than 96 for
+    the subpackages, and the two extra sites were not identified, so treat the
+    subpackage figure as ±2. Nothing in the decision this entry asks for turns on
+    it.
 
     | Area | Sites | `+` concat | f-string | eager `%` |
     |---|---|---|---|---|
@@ -1874,7 +1884,7 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
       conversion that drops the pattern silently turns its value into a path
       suffix instead of raising.
     - **Many of these calls already pass a real second argument that *is* a
-      filepath** (`_opus.py:114`, `_properties.py:1582`, `pdscache.py:600`/`:611`,
+      filepath** (`_opus.py:114`, `_properties.py:1582`, `pdscache.py:599`/`:610`,
       and most of the maintenance tools' `logger.error(..., abspath)` calls). A
       conversion has to distinguish a filepath argument from a value argument at
       every site. `pdsviewable.py:529` shows the failure mode already present:

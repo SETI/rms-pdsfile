@@ -76,9 +76,9 @@ nothing shadows them, that they hold no state and that the order is alphabetical
 tests/api/test_mixin_import_isolation.py checks the no-back-import rule by
 loading each module in a fresh interpreter.
 
-The split is invisible from outside: pdsfile.pdsfile.<name> still resolves for
-every name it resolved for before, and a caller cannot tell which module defines
-any of them.
+The split is invisible to a caller's code: pdsfile.pdsfile.<name> still resolves
+for every name it resolved for before, and nothing a caller imports or calls has
+moved or been renamed. It does show in __module__, __qualname__ and __mro__.
 """
 
 import os
