@@ -161,8 +161,8 @@ extend-ignore = ["PT011", "SIM105", "SIM108"]
 # REST (PR-24) -- the rule modules, the pds3file/pds4file initializers, the
 # holdings-maintenance tools, the tools/scripts entry points and the test tree were
 # re-derived with the template select set and no per-file-ignores at all (2,760
-# violations) and every one classified fixable or excluded; 501 were fixed. The
-# 2,259 that remain are permanent, and each is enumerated with its sites and its
+# violations) and every one classified fixable or excluded; 483 were fixed. The
+# 2,277 that remain are permanent, and each is enumerated with its sites and its
 # reason in plans/2026-08-04-pr-24-subplan.md sections 4 and 5 and in
 # .cursor/rules/pdsfile_overrides.mdc deviation (4). In outline:
 #   E501/W191/RUF022 -- hand-aligned translator, parametrize and __all__ tables;
@@ -183,6 +183,13 @@ extend-ignore = ["PT011", "SIM105", "SIM108"]
 #   RUF005 -- `x + [y]` is the spelling this project uses (owner, 2026-08-03).
 #   RUF100 in scripts/dump_public_api.py -- that file may not be edited at all,
 #     so this entry is permanent by prohibition rather than by freeze.
+#   re_validate.py keeps its whole derived set: ground rule 7 and overrides
+#     deviation (6) freeze the file, so none of its violations is this PR's to
+#     fix. It is the only edited-package module with no test of any kind.
+#   A few entries are locked by this PR rather than for ever -- N806 on the three
+#     LOGDIRS locals, F821, RUF059 on pdsinfoshelf, and PT014 -- each because the
+#     fix would change behavior or remove a test id. Deviation (4) names the
+#     later PR that owns each one.
 "scripts/dump_public_api.py" = ["RUF100"]
 # CORE (PR-23) -- the eight entries below plus pdscache.py, pdsfile.py and
 # pdsviewable.py further down, which sort after the rule modules. The fifteen
@@ -210,9 +217,9 @@ extend-ignore = ["PT011", "SIM105", "SIM108"]
 "src/pdsfile/holdings_maintenance/pds3/pdschecksums.py" = ["B006", "B012", "N806", "SIM115", "UP031"]
 "src/pdsfile/holdings_maintenance/pds3/pdsdependency.py" = ["B006", "PT028", "RUF012", "UP031"]
 "src/pdsfile/holdings_maintenance/pds3/pdsindexshelf.py" = ["UP031"]
-"src/pdsfile/holdings_maintenance/pds3/pdsinfoshelf.py" = ["B006", "B012", "N806", "RUF005", "RUF015", "UP031"]
+"src/pdsfile/holdings_maintenance/pds3/pdsinfoshelf.py" = ["B006", "B012", "N806", "RUF005", "RUF015", "RUF059", "UP031"]
 "src/pdsfile/holdings_maintenance/pds3/pdslinkshelf.py" = ["B012", "N806", "UP031"]
-"src/pdsfile/holdings_maintenance/pds3/re_validate.py" = ["RUF005", "UP031"]
+"src/pdsfile/holdings_maintenance/pds3/re_validate.py" = ["B007", "C405", "E701", "E721", "I001", "RUF005", "RUF051", "RUF059", "UP031", "UP034"]
 "src/pdsfile/holdings_maintenance/pds3/shelf_consistency_check.py" = ["F821"]
 "src/pdsfile/holdings_maintenance/pds4/pds4archives.py" = ["UP031"]
 "src/pdsfile/holdings_maintenance/pds4/pds4checksums.py" = ["UP031"]

@@ -2020,3 +2020,27 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     API; wrapping the loop in a function would drop all four at once, which is a
     surface change needing sign-off.
     **Owner: owner decision; a natural fit for the Phase 7/8 surface tidy-up.**
+
+### Added by the PR-24 adversarial review (round 1)
+
+86. **`tests/rules/pds3/test_cocirs_xxxx.py`'s two association loops now differ in
+    what their failure message reports.** The `F841` fix deleted the unused
+    `trimmed = [p.rpartition('holdings/')[-1] for p in abspaths]` from the first
+    of two otherwise-identical loops; the surviving loop still builds `trimmed`
+    and interpolates it into its assertion message, while the first now
+    interpolates the full `abspaths`. The deletion is what `F841` asks for and is
+    behavior-neutral — the text only appears on a failure — but it settles a
+    pre-existing copy-paste inconsistency in the less informative direction.
+    Either both loops should report the trimmed paths or neither should.
+    **Owner: a test-content PR.**
+
+87. **`src/pdsfile/pds3file/__init__.py`'s alias comment now introduces one
+    method instead of eight.** After the `F811` de-duplication removed the seven
+    shadowed definitions, `# Alias, compatible with old function/property names`
+    at `:123` sits above `log_path_for_volset` alone, while its twin
+    `log_path_for_volume` and the six alias properties live about fifty lines
+    below under `# Override functions`. Nothing is wrong — the comment is still
+    true of the method it introduces — but the two alias groups would read better
+    merged under one heading. Moving code is not a `ruff check` fix, so it
+    correctly stayed out of PR-24.
+    **Owner: Phase 7 (PR-29–PR-34), which owns docstrings and module structure.**

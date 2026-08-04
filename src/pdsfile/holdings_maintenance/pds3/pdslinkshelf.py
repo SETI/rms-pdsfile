@@ -1581,7 +1581,7 @@ def update(pdsdir, *, logger=None, limits=None):
     # Generate link dict
     (dir_linkdict,
      _latest_mtime) = generate_links(pdsdir.abspath, shelf_linkdict,
-                                    logger=logger, limits=limits)
+                                     logger=logger, limits=limits)
 
     # Compare
     canceled = (dir_linkdict == shelf_linkdict)

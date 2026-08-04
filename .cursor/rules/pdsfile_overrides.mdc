@@ -69,38 +69,47 @@ conflicts with a rule below, follow the rule below. See
    **Everything else — the rule modules, the subpackage `__init__`s, the
    holdings-maintenance tools, the tools/scripts entry points and the test tree
    (PR-24, 2026-08-04).** Re-derived the same way with *no* per-file-ignores:
-   **2,760 violations, of which 501 were fixed and 2,259 are permanent**, spread
-   over **59 entries**. Nineteen files came off the ratchet entirely. The
-   permanent set, grouped by the code that locks it:
+   **2,760 violations, of which 483 were fixed and 2,277 are permanent**, spread
+   over **59 entries** (184 code slots). Nineteen files came off the ratchet
+   entirely. `re_validate.py` keeps its **whole** derived set: ground rule 7 and
+   deviation (6) freeze that file, so none of its violations was PR-24's to fix.
 
-   | Code | n | Where | Why it can never be fixed |
-   |---|---:|---|---|
-   | `E501` | 1638 | 41 files: every rule module with a table, plus `test_pds3file_blackbox{,_cached}.py`, `test_pds3file_whitebox.py`, `test_pds4file_blackbox.py`, `test_corss_8xxx.py`, `test_couvis_8xxx.py`, `test_nhxxxx_xxxx.py`, `tests/rules/pds4/test_uranus_occs_earthbased.py` | hand-aligned `TranslatorByRegex` and `parametrize` rows, and path/regex literals that cannot be split without breaking a semantic unit. Rewrapping is the layout change dropped by (11) |
-   | `W191` | 302 | `cassini_iss_fring_mosaics_rsfrench2025_primary_filespec.py` | the whole file is one tab-indented table; retabbing *is* the forbidden table rewrite |
-   | `UP031` | 139 | 12 maintenance tools, plus `COCIRS_xxxx.py` | 46 logging calls, 24 `file.write` calls emitting the frozen sidecar formats, 69 aligned `%` blocks (39 of them `pdsdependency.py`'s `PdsDependency(...)` argument tables). A lazy rewrite of a logging call must pass `filepath=` explicitly, because `pdslogger` re-reads a lone positional argument as the filepath once the message has no `%` pattern; that conversion is a code change this style ratchet does not authorize |
-   | `RUF012` | 33 | 22 rule modules, both subpackage `__init__`s, `pdsdependency.py` | `ClassVar` is forbidden by (1) |
-   | `F401` | 31 | `pds3file/__init__.py` ×25, `pds4file/__init__.py` ×6 | the `from .rules import (…)` blocks bind names that are part of the frozen surface *and* carry the side effect that registers the rule subclasses |
-   | `N801` | 31 | every rule module with a rule class | the rule class names are the frozen public classes |
-   | `N999` | 25 | every pds3 rule module | the module names *are* the frozen volset identifiers |
-   | `B006` | 9 | `pdschecksums.py`, `pdsdependency.py` ×7, `pdsinfoshelf.py` | mutable defaults in public tool signatures; the None-sentinel rewrite changes the reported signature, and where the default flows into `pdslogger` the callee's mutation behavior is not locally provable |
-   | `PT017` | 7 | `test_pds3file_blackbox.py` ×2, `test_pds3file_whitebox.py` ×5 | rewriting as `pytest.raises` changes what the test asserts |
-   | `PT028` | 6 | `crlf.py` ×2, `pdsdependency.py` ×4 | `test_crlf()` and `test()` are tool functions, not pytest tests; `PT` fires only on the name |
-   | `N802` | 5 | `COISS_xxxx`, `COUVIS_0xxx`, `COVIMS_0xxx` ×2, `RPX_xxxx` | frozen uppercase methods (`DATA_SET_ID`, `FILENAME_KEYLEN`) |
-   | `RUF005` | 4 | `pdsinfoshelf.py`, `pds4infoshelf.py`, `re_validate.py` ×2 | the repo-wide style exclusion above |
-   | `I001` | 4 | `pds3file/__init__.py` ×2, `pds4file/__init__.py` ×2 | the rule-module import block is aligned under its opening parenthesis, and isort also reorders `from . import rules` against the other package imports in a module whose initialization order is load-bearing |
-   | `SIM115` | 3 | `pdsarchives.py`, `pdschecksums.py` ×2 | a `with` block changes *when* the file closes, which these tools order against later reads and `tarfile` finalization |
-   | `B012` | 3 | `pdschecksums.py`, `pdsinfoshelf.py`, `pdslinkshelf.py` | `return` inside `finally` swallows an in-flight exception; removing it changes the exit-code path |
-   | `N806` | 3 | `pdschecksums.py`, `pdsinfoshelf.py`, `pdslinkshelf.py` | each `LOGDIRS` local deliberately mirrors the module-level list of the same name; renaming it would hide that the two are meant to be one |
-   | `RUF015` | 2 | `pdsinfoshelf.py`, `pds4infoshelf.py` | `list(d)[0]` raises `IndexError` where `next(iter(d))` raises `StopIteration`, and the dict is not proven non-empty |
-   | `A002` | 2 | `pds3file/__init__.py` | the frozen `dir=` parameter of `log_path_for_volset`/`log_path_for_volume` |
-   | `RUF022` | 2 | `pds3file/rules/__init__.py`, `pds4file/rules/__init__.py` | `__all__` is hand-aligned with padding before the commas; the sort rewrites the block |
-   | `PT015`, `B011` | 2 + 2 | `test_pds3file_blackbox.py` | the same two `assert False` lines, the unreachable arm of the `PT017` blocks |
-   | `RUF100` | 1 | `scripts/dump_public_api.py` | that file may not be edited at all (2), so this entry is permanent **by prohibition**, not by freeze |
-   | `F821` | 1 | `shelf_consistency_check.py` | a genuine undefined name; fixing it changes behavior and it is already owned by the PR that gives this script a `main()` |
-   | `N805` | 1 | `COVIMS_0xxx.py` | `OPUS_ID_TO_PRIMARY_LOGICAL_PATH(opus_id)` takes no `self`; `@staticmethod` changes the manifest kind |
-   | `B007` | 1 | `uranus_occs_earthbased.py` | the loop runs at module level, so the control variable stays bound as a module attribute that is part of the frozen surface |
-   | `PT012` | 1 | `test_pds3file_whitebox.py` | narrowing the `pytest.raises` block changes what is asserted |
-   | `PT014` | 1 | `test_pds4file_blackbox.py` | a duplicate parametrize case; dropping it removes a test id |
+   The permanent set, grouped by the code that locks it. **"Locked by" says what
+   holds each row: `frozen` and `aligned` are permanent; `behavior` rows are
+   locked because the fix would change what the code does, and where a later PR
+   already owns that change it is named.**
+
+   | Code | n | Where | Locked by | Why |
+   |---|---:|---|---|---|
+   | `E501` | 1638 | 41 files: every rule module with a table, plus `test_pds3file_blackbox{,_cached}.py`, `test_pds3file_whitebox.py`, `test_pds4file_blackbox.py`, `test_corss_8xxx.py`, `test_couvis_8xxx.py`, `test_nhxxxx_xxxx.py`, `tests/rules/pds4/test_uranus_occs_earthbased.py` | aligned | hand-aligned `TranslatorByRegex` and `parametrize` rows, and path/regex literals that cannot be split without breaking a semantic unit. Rewrapping is the layout change dropped by (11) |
+   | `W191` | 302 | `cassini_iss_fring_mosaics_rsfrench2025_primary_filespec.py` | aligned | the whole file is one tab-indented table; retabbing *is* the forbidden table rewrite |
+   | `UP031` | 139 | 12 maintenance tools, plus `COCIRS_xxxx.py` | behavior + aligned + frozen | 46 logging calls, 24 `file.write` calls emitting the frozen sidecar formats, 69 aligned `%` blocks (39 of them `pdsdependency.py`'s `PdsDependency(...)` argument tables). A lazy rewrite of a logging call must pass `filepath=` explicitly, because `pdslogger` re-reads a lone positional argument as the filepath once the message has no `%` pattern; that conversion is a code change this style ratchet does not authorize |
+   | `RUF012` | 33 | 22 rule modules, both subpackage `__init__`s, `pdsdependency.py` | frozen | `ClassVar` is forbidden by (1) |
+   | `F401` | 31 | `pds3file/__init__.py` ×25, `pds4file/__init__.py` ×6 | frozen | the `from .rules import (…)` blocks bind names that are part of the frozen surface *and* carry the side effect that registers the rule subclasses |
+   | `N801` | 31 | every rule module with a rule class | frozen | the rule class names are the frozen public classes |
+   | `N999` | 25 | every pds3 rule module | frozen | the module names *are* the frozen volset identifiers |
+   | `B006` | 9 | `pdschecksums.py`, `pdsdependency.py` ×7, `pdsinfoshelf.py` | behavior | **not a manifest lock** — the manifest covers no `holdings_maintenance` module. Five of the nine defaults flow into `pdslogger`'s `open(limits=…, handler=…)`, so "the callee never mutates it" rests on a third-party library's behavior, and the None-sentinel rewrite changes the signature `inspect.signature` reports for a tool §2 freezes at the CLI |
+   | `PT017` | 7 | `test_pds3file_blackbox.py` ×2, `test_pds3file_whitebox.py` ×5 | behavior | rewriting as `pytest.raises` changes what the test asserts |
+   | `PT028` | 6 | `crlf.py` ×2, `pdsdependency.py` ×4 | frozen | `test_crlf()` and `test()` are tool functions, not pytest tests; `PT` fires only on the name. `pdsdependency.test()` is called by name from `re_validate.py`, which (6) freezes |
+   | `N802` | 5 | `COISS_xxxx`, `COUVIS_0xxx`, `COVIMS_0xxx` ×2, `RPX_xxxx` | frozen | frozen uppercase methods (`DATA_SET_ID`, `FILENAME_KEYLEN`) |
+   | `RUF005` | 4 | `pdsinfoshelf.py`, `pds4infoshelf.py`, `re_validate.py` ×2 | style | the repo-wide owner-chosen exclusion above |
+   | `I001` | 5 | `pds3file/__init__.py` ×2, `pds4file/__init__.py` ×2, `re_validate.py` | aligned + frozen | in the initializers, the rule-module import block is aligned under its opening parenthesis, and isort also reorders `from . import rules` against the other package imports in a module whose initialization order is load-bearing |
+   | `SIM115` | 3 | `pdsarchives.py`, `pdschecksums.py` ×2 | behavior | a `with` block changes *when* the file closes, which these tools order against later reads and `tarfile` finalization |
+   | `B012` | 3 | `pdschecksums.py`, `pdsinfoshelf.py`, `pdslinkshelf.py` | behavior | `return` inside `finally` swallows an in-flight exception; removing it changes the exit-code path |
+   | `N806` | 3 | `pdschecksums.py`, `pdsinfoshelf.py`, `pdslinkshelf.py` | behavior — **PR-25 owns it** | each `LOGDIRS` local shadows a module-level list of the same name, so the "move old logs aside" step never runs; the uppercase spelling is what keeps the intended link visible. Adding `global LOGDIRS` fixes it and changes behavior (deferred observation 81) |
+   | `RUF015` | 2 | `pdsinfoshelf.py`, `pds4infoshelf.py` | behavior | `list(d)[0]` raises `IndexError` where `next(iter(d))` raises `StopIteration`, and the dict is not proven non-empty |
+   | `A002` | 2 | `pds3file/__init__.py` | frozen | the frozen `dir=` parameter of `log_path_for_volset`/`log_path_for_volume` |
+   | `RUF022` | 2 | `pds3file/rules/__init__.py`, `pds4file/rules/__init__.py` | aligned | `__all__` is hand-aligned with padding before the commas; the sort rewrites the block |
+   | `PT015`, `B011` | 2 + 2 | `test_pds3file_blackbox.py` | behavior | the same two `assert False` lines, the unreachable arm of the `PT017` blocks |
+   | `RUF100` | 1 | `scripts/dump_public_api.py` | prohibited | that file may not be edited at all (2), so this entry is permanent **by prohibition**, not by freeze |
+   | `F821` | 1 | `shelf_consistency_check.py` | behavior — **PR-28 owns it** | a genuine undefined name (`error` for `errors`); fixing it changes behavior (deferred observation 6) |
+   | `N805` | 1 | `COVIMS_0xxx.py` | frozen | `OPUS_ID_TO_PRIMARY_LOGICAL_PATH(opus_id)` takes no `self`; `@staticmethod` changes the manifest kind |
+   | `B007` | 3 | `uranus_occs_earthbased.py`, `re_validate.py` ×2 | frozen | in the rule module the loop runs at module level, so the control variable stays bound as a module attribute that is part of the frozen surface; `re_validate.py` is frozen by (6) |
+   | `PT012` | 1 | `test_pds3file_whitebox.py` | behavior | narrowing the `pytest.raises` block changes what is asserted |
+   | `PT014` | 1 | `test_pds4file_blackbox.py` | behavior — **a test-content PR owns it** | a duplicate parametrize case; dropping it removes a test id, which PR-24's own gate forbids (deferred observation 84) |
+   | `RUF059` | 6 | `re_validate.py` ×5, `pdsinfoshelf.py` | frozen / behavior | `re_validate.py` is frozen by (6). `pdsinfoshelf.py:373`'s `checksum2` is unused only because `:395` reads `checksum1 != checksum1`, a defect Phase 6 owns; renaming it `_checksum2` would assert the binding is deliberately unused |
+   | `E701` | 5 | `re_validate.py` | frozen | (6) |
+   | `C405`, `RUF051`, `E721`, `UP034` | 1 each | `re_validate.py` | frozen | (6) |
 
    `RUF012` is repo-wide permanent because its only fix (`ClassVar`) is an inline
    type annotation, forbidden by (1).

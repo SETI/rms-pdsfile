@@ -583,7 +583,7 @@ def update(pdsdir, selection=None, logger=None):
     # Generate new checksums if necessary
     (dirpairs,
      _latest_mtime) = generate_checksums(pdsdir, selection, md5pairs,
-                                        regardless=False, logger=logger)
+                                         regardless=False, logger=logger)
     if not dirpairs:
         return False
 
@@ -737,7 +737,7 @@ def main():
             pdsf = pdsfile.Pds4File.from_abspath(path, must_exist=True)
             abspaths.append(pdsf.abspath)
 
-        except (OSError, ValueError):
+        except (ValueError, OSError):
             # Allow a bundle name to stand in for a .tar.gz archive
             (dirname, basename) = os.path.split(path)
             pdsdir = pdsfile.Pds4File.from_abspath(dirname)

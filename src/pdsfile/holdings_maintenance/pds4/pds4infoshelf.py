@@ -771,7 +771,7 @@ def main():
             pdsf = pdsfile.Pds4File.from_abspath(path, must_exist=True)
             abspaths.append(pdsf.abspath)
 
-        except (OSError, ValueError):
+        except (ValueError, OSError):
             # Allow a bundle name to stand in for a .tar.gz archive
             (dirname, basename) = os.path.split(path)
             pdsdir = pdsfile.Pds4File.from_abspath(dirname)

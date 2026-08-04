@@ -6814,17 +6814,17 @@ builds ids.
 head run lists **72** files under `src/pdsfile/`, including **all 36** rule
 modules.
 
-**Non-vacuity, at line level.** Of the **363 executable lines this PR changed**
+**Non-vacuity, at line level.** Of the **339 executable lines this PR changed**
 (`git diff -U0 origin/rewrite...HEAD` intersected with `coverage`'s own statement
 set):
 
 | Area | changed executable | executed | how measured |
 |---|---:|---:|---|
 | rule modules, the two initializers, `show_opus_products.py` | 77 | **73** | the in-process full-data run |
-| holdings-maintenance tools | 161 | **108** | a **second** coverage run, see below |
+| holdings-maintenance tools | 137 | **107** | a **second** coverage run, see below |
 | `tests/**` | 124 | — | `[tool.coverage.run] omit = tests/*`, so coverage cannot report them; the 892 collected ids and 858 passes are what prove these modules import and run |
 | `scripts/check_runtime_imports.py` | 1 | — | exercised by the clean-install gate as a subprocess |
-| **total** | **363** | **181** | |
+| **total** | **339** | **180** | |
 
 **The maintenance tools needed their own measurement, and this is the one thing
 the sub-plan did not anticipate.** `tests/holdings_maintenance/` drives the tools
@@ -6833,13 +6833,15 @@ through `subprocess`, so the in-process run records all 17 modules in
 looks like total absence of testing and is in fact an artifact of the harness. A
 second run of `tests/holdings_maintenance/` with `COVERAGE_PROCESS_START` and a
 `sitecustomize.py` that calls `coverage.process_startup()` collects the child
-processes: **111 passed**, and 108 of the 161 changed executable lines execute.
+processes: **111 passed**, and **107 of the 137** changed executable lines
+execute.
 
-The 53 that do not are: **`re_validate.py` entirely (23)** — deviation (6)
-freezes it and no test imports it; the four `except (OSError, ValueError)`
-fallback branches in the checksum/info tools (17 lines, the `A001` `dir` →
-`dirname` renames); three `E701` `return` splits; two `raise OSError` lines; the
-`SIM102` collapse in `pds4linkshelf.py`; and two `log_path_for_*` set literals.
+The 30 that do not are: the four `except (ValueError, OSError)` fallback branches
+in the checksum/info tools (17 lines, mostly the `A001` `dir` → `dirname`
+renames); three `E701` `return` splits; two `raise OSError` lines; the `SIM102`
+collapse in `pds4linkshelf.py`; two `log_path_for_*` set literals; and the
+`with open(abspath)` in `pds4linkshelf.py`. Every one of them is covered by the
+differential probe in §3.
 
 ### 3. The unreached rewrites — a differential probe
 
@@ -6914,9 +6916,14 @@ once directly and once through `get_page_cache()` with `PAGE_CACHING=True`) and
 
 ### 7. The ratchet
 
-`per-file-ignores` in scope: **78 entries / 369 code slots → 59 entries / 175
+`per-file-ignores` in scope: **78 entries / 369 code slots → 59 entries / 184
 slots**. Nineteen files come off entirely. Whole-file totals including PR-23's
-eleven core entries: 89 → 70 entries, 383 → 189 slots.
+eleven core entries: 89 → 70 entries, 383 → 198 slots.
+
+`re_validate.py`'s entry is deliberately **unchanged**: ground rule 7 and
+overrides deviation (6) freeze that file, so none of its ten codes was this PR's
+to fix. Round 1 caught this after the file had been cleaned; it is byte-identical
+to `origin/rewrite` again.
 
 The shrink property was checked mechanically against `git show
 origin/rewrite:pyproject.toml`, not against any intermediate state of this branch:
@@ -6926,10 +6933,12 @@ WIDENED (a code present after but not before): NONE
 NEW FILES with no committed entry:             NONE
 ```
 
-Two of the nineteen removals are **stale** entries rather than fixes:
-`tests/pds3file/helper.py` and `tests/pds4file/helper.py` both carried `B904`,
-and the no-ignores derivation at `8cab66a` reports no `B904` in either file — the
-same class of dead entry PR-23 found in `pdsviewable.py`'s `RUF059`.
+**Three code slots** in the removed entries were already **stale** at `8cab66a`
+rather than fixed here — `tests/pds3file/helper.py` and `tests/pds4file/helper.py`
+carried `B904` and `tests/conftest.py` carried `F401`, none of which the
+no-ignores derivation reports in those files. (The unit is the code slot, not the
+entry: both helpers' `I001` and `N806` were real and were fixed.) Same class of
+dead entry PR-23 found in `pdsviewable.py`'s `RUF059`.
 
 `scripts/gen_ruff_ratchet.py` was **not** used: deferred entry 33 records that it
 emits an empty block against a tree whose committed ignores already suppress
@@ -6945,13 +6954,14 @@ Derived with the template select set, `target-version = "py310"`, `line-length =
 | | |
 |---|---:|
 | at `8cab66a`, in scope | **2,760** |
-| fixed | **501** |
-| permanent | **2,259** |
+| fixed | **483** |
+| permanent | **2,277** |
 
-The sub-plan predicted 505/2,255; §11 of it reconciles the four-violation
-difference line by line (`I001` −4, `B007` −1, `N806` −3, `A002` +1, `E501` +3),
-each of which is a case where the plan's classification was wrong and the
-measurement corrected it.
+The sub-plan predicted 505/2,255; §11 of it reconciles the difference line by
+line — `I001` −4, `B007` −1, `N806` −3, `A002` +1, `E501` +3 from the executor's
+own measurements, and `re_validate.py` −18 from round 1's Major. Each is a case
+where the plan's classification was wrong and a measurement, or a reviewer,
+corrected it.
 
 ### 9. What this PR deliberately did not do
 
@@ -6965,3 +6975,20 @@ measurement corrected it.
   rule stated in sub-plan §4.2, which closes deferred entry 77.
 - **Deferred entries 31, 44, 52 and 76 were not acted on**; 31 and 76 need owner
   decisions that have not been given.
+- **`re_validate.py` was not touched.** Ground rule 7 and overrides deviation (6)
+  freeze it and the plan's PR-24 text says its whole derived set is permanent, so
+  its ten-code ratchet entry survives byte for byte. It is also the only module
+  in the edited package with no test of any kind, which is the practical reason
+  the freeze matters rather than being a formality.
+
+### 10. The §6.6 review loop
+
+| Round | Findings | Record |
+|---|---|---|
+| 1 | **1 Major**, 9 Minor, 3 Deferred — verdict `goal not met` | `critiques/pr-24/round-1.md` |
+
+Round 1's Major is the `re_validate.py` freeze violation; all nine Minors were
+accepted and fixed, none rebutted. Because the round changed `src/pdsfile/`, the
+full-data run, the tool-coverage run and the API dump were **all regenerated**
+before the next reviewer, per §6.6 step 5. The figures in §2–§8 above are the
+regenerated ones.

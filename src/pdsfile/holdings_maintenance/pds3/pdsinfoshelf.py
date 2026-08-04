@@ -370,7 +370,7 @@ def validate_infodict(pdsdir, dirdict, shelfdict, selection, *, logger=None,
                 shelfinfo = shelfdict[key]
 
                 (bytes1, count1, modtime1, checksum1, size1) = dirinfo
-                (bytes2, count2, modtime2, _checksum2, size2) = shelfinfo
+                (bytes2, count2, modtime2, checksum2, size2) = shelfinfo
 
                 # Truncate modtimes to seconds
                 modtime1 = modtime1.rpartition('.')[0]
@@ -790,7 +790,7 @@ def main():
             pdsf = pdsfile.Pds3File.from_abspath(path, must_exist=True)
             abspaths.append(pdsf.abspath)
 
-        except (OSError, ValueError):
+        except (ValueError, OSError):
             # Allow a volume name to stand in for a .tar.gz archive
             (dirname, basename) = os.path.split(path)
             pdsdir = pdsfile.Pds3File.from_abspath(dirname)
