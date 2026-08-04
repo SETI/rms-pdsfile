@@ -424,7 +424,15 @@ Two further observations, not defects in a single tool:
     require specific node ids to have run) belongs with whatever PR next touches
     the hosted job. **Owner:** PR-37's finalization sweep, or any earlier PR that
     edits the lint job.
-21. **Two §6.4-frozen files cite the archived v1 plan.**
+21. **CLOSED — owner decision, 2026-08-04: leave them.** Asked directly, in the
+    context of a sweep that removed every other plan and critique citation from
+    `src/` and `tests/`, the owner ruled that `tests/api/test_api_freeze.py`'s
+    docstring stays as it is. The two frozen files keep their references to the
+    archived v1 plan; no owner-blessed touch-up is wanted. They are now the only
+    plan citations left in any `.py` file in the repository, which is the
+    intended end state, not an oversight. The original entry follows.
+
+    **Two §6.4-frozen files cite the archived v1 plan.**
     `scripts/dump_public_api.py` and `tests/api/test_api_freeze.py` both point at
     `plans/2026-07-17-modernization-plan.md`, which moved to `plans/archive/`.
     Both files are under the absolute prohibition on editing, so PR-14 left them
