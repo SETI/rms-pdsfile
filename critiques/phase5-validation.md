@@ -6427,6 +6427,21 @@ first three while removing the unused bindings that concealed them, the last by
 diffing the differential probe — and repairing any of them is a behavior change
 §2 forbids here.
 
+Later rounds and reviews added seven more, so this PR carries **fourteen** in
+all: **74** (`MemcachedCache.flush` calls `.sort()` on a `dict_keys`) and **75**
+(`_opus.py` spelled one concatenation two ways — closed by the `RUF005` revert)
+from round 2; **76** (`pdscache.py`'s off-grid indentation, invisible because
+ruff's `E1xx` rules are preview-gated) and **77** (whether prose may follow a
+mechanical fix) from round 3; **78** (`MemcachedCache.unblock` releases a lock it
+does not own when no logger is configured) from the CodeRabbit review of this PR;
+**79** (130 logging calls across the package build their message eagerly) from
+the owner's lazy-logging correction; and **80** (the module headers narrate the
+port instead of describing the code) from the owner directly.
+
+The count is stated here rather than left implicit because it is the one figure
+in this record that a later reader can check in a second, against
+`critiques/deferred-observations.md`.
+
 ### 11. Review loop
 
 Every round's record exists on disk before its row is written here.
