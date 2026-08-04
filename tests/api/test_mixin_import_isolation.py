@@ -12,7 +12,7 @@
 # fails the whole suite at collection. Importing some OTHER name that pdsfile.py
 # has already bound by that point is silent -- the package imports, the suite
 # stays green, and the cycle sits there. That silent case is what this module is
-# for (deferred observation 42).
+# for.
 #
 # The check is behavioral, not syntactic. An AST walk over import statements has
 # to learn every spelling and every nesting -- relative vs absolute, aliased,

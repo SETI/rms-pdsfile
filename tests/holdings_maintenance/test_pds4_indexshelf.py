@@ -5,8 +5,7 @@
 #
 # This module cannot run the task cycle its pds3 twin runs, because pds4indexshelf
 # reads its tables through a PDS3 detached-label reader and so cannot shelve any
-# PDS4 metadata table that exists today. Pinned rather than fixed; see entry 3 of
-# "From PR-13" in critiques/deferred-observations.md.
+# PDS4 metadata table that exists today. That defect is pinned rather than fixed.
 #
 # Every test rebuilds the tree first, so each one is independent and order-agnostic.
 ##########################################################################################
@@ -30,10 +29,10 @@ SHELF_DIR = f'_indexshelf-metadata/{subsets.PDS4_BUNDLESET}/{subsets.PDS4_BUNDLE
 def test_initialize_cannot_read_a_pds4_index(fresh_tree):
     """An unlabelled PDS4 .csv index cannot be shelved.
 
-    Pinned as current behaviour; see entry 3 of "From PR-13" in
-    critiques/deferred-observations.md. When the tool gains a PDS4-aware table
-    reader, this test must be replaced by the same cycle test_pds3_indexshelf.py
-    runs.
+    generate_indexdict() builds a pdstable.PdsTable from the file's PDS3 detached
+    label, which a PDS4 .csv does not have, so the read raises FileNotFoundError.
+    Pinned as current behaviour. When the tool gains a PDS4-aware table reader,
+    this test must be replaced by the same cycle test_pds3_indexshelf.py runs.
     """
 
     run = support.run_tool(fresh_tree, 'pds4indexshelf', '--initialize',

@@ -23,7 +23,7 @@ def pds3_cache(monkeypatch):
 
     # A non-zero default lifetime, as the real caches are built with: a
     # DictionaryCache constructed with lifetime=0 cannot serve set() without an
-    # explicit lifetime (see entry 23 of critiques/deferred-observations.md).
+    # explicit lifetime.
     throwaway = RecordingDictionaryCache(lifetime=86400, limit=100)
     monkeypatch.setattr(Pds3File, 'CACHE', throwaway)
     return throwaway

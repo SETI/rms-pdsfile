@@ -7,8 +7,8 @@
 # real edges in both directions (label -> table, table -> label) rather than the
 # empty lists a labels-only subset would produce.
 #
-# The final test pins a known defect: --update raises against any existing shelf.
-# See entry 4 of "From PR-13" in critiques/deferred-observations.md.
+# The final test pins a known defect: --update raises against any existing shelf,
+# so --repair is the only working path.
 #
 # Every test rebuilds the tree first, so each one is independent and order-agnostic.
 ##########################################################################################
@@ -133,9 +133,10 @@ def test_corruption_is_detected_and_repaired(shelved_tree, corruption):
 def test_update_is_broken_and_repair_is_the_working_path(shelved_tree):
     """--update raises against any existing shelf; --repair is what works.
 
-    Pinned as current behaviour; see entry 4 of "From PR-13" in
-    critiques/deferred-observations.md. Its pds3 twin merges the same data
-    correctly, so this is pds4-only.
+    generate_links() is handed the loaded shelf as old_links, whose values are the
+    plain tuples that were pickled, and then dereferences info.linktext on them.
+    That is a defect, pinned here as current behaviour; its pds3 twin merges the
+    same data correctly, so this is pds4-only.
     """
 
     support.add_file(shelved_tree, NEW_FILE, NEW_FILE_BYTES, NEW_FILE_MTIME)

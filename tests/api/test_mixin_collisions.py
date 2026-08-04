@@ -9,8 +9,8 @@
 # manifest could not see it -- it records the names and signatures a class
 # exposes, not which base supplies them.
 #
-# So these checks are the freeze's blind spot, in their own file: section 6.4 of
-# plans/2026-07-25-modernization-plan.md forbids editing tests/api/test_api_freeze.py.
+# So these checks cover that blind spot from their own file, because
+# tests/api/test_api_freeze.py must not be edited.
 #
 # The mixins are discovered from PdsFile's bases rather than listed, so every
 # later extraction PR is covered the moment it adds one.
@@ -126,8 +126,8 @@ def test_no_mixin_is_shadowed_by_a_pdsfile_subclass(subclass):
     # PdsFile name are class attributes and translator tables, which the Phase 5
     # mechanics keep on PdsFile, plus __init__, __repr__ and the four
     # use_shelves_only/require_shelves/set_logger/set_easylogger classmethods,
-    # every one of which is on PR-22's explicit stay-list. None of them can reach
-    # a mixin, so nothing this phase does can trip this check by accident.
+    # every one of which is likewise excluded from extraction. None of them can
+    # reach a mixin, so nothing this phase does can trip this check by accident.
     assert subclass in PdsFile.__subclasses__(), (
         f'{subclass.__name__} is not a direct subclass of PdsFile, so this check '
         f'is not looking where it thinks it is')

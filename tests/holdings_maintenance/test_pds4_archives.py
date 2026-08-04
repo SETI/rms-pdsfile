@@ -5,8 +5,8 @@
 #
 # This module cannot run the full init -> validate -> repair cycle its pds3 twin
 # runs, because pds4archives cannot round-trip today and dies on a bundle path.
-# Both defects are pinned here rather than fixed; see entries 1 and 2 of
-# "From PR-13" in critiques/deferred-observations.md.
+# Both defects are pinned here rather than fixed; each is described at the test
+# that pins it.
 #
 # Every test rebuilds the tree first, so each one is independent and order-agnostic.
 ##########################################################################################
@@ -41,8 +41,9 @@ def test_initialize_on_a_bundle_raises(fresh_tree):
     """Pointing the tool at a bundle hits a bare `raise` and dies.
 
     This bundle set defines archives at the bundle-set level only, so a bundle path
-    resolves to no archive path and takes the broken branch. Pinned as current
-    behaviour; see entry 2 of "From PR-13" in critiques/deferred-observations.md.
+    resolves to no archive path and takes the "no archive paths resolved" branch,
+    which is a bare `raise` outside any `except`. That is a defect, pinned here as
+    current behaviour: a fix has to invert these assertions deliberately.
     """
 
     run = support.run_tool(fresh_tree, 'pds4archives', '--initialize',
@@ -79,8 +80,9 @@ def test_validate_cannot_round_trip(archived_tree):
     Members are written relative to the bundle-set basename but read back with a
     prefix that already ends at the bundle set, so every member is reported twice
     over: once as missing from the tar (its real path) and once as missing from the
-    directory (a doubled path). Pinned as current behaviour; see entry 1 of
-    "From PR-13" in critiques/deferred-observations.md.
+    directory (a doubled path). That is a defect: the archive has never round-tripped,
+    in production either. Pinned here as current behaviour, so a fix has to invert
+    these assertions deliberately.
     """
 
     run = support.run_tool(archived_tree, 'pds4archives', '--validate',

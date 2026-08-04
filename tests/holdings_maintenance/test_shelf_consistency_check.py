@@ -149,8 +149,8 @@ def test_an_extraneous_index_shelf_raises(legacy_tree):
 
     The index branch increments an undefined name where every other branch uses
     the counter, so the first extraneous *index* shelf kills the run with
-    NameError instead of being counted. Pinned as current behaviour; see entry 6
-    of "From PR-13" in critiques/deferred-observations.md.
+    NameError instead of being counted. Pinned as current behaviour: a fix has to
+    invert these assertions deliberately.
     """
 
     index_dir = legacy_tree.disk / 'shelves' / 'index' / 'metadata' / 'VG_28xx'
@@ -169,8 +169,9 @@ def test_a_modern_holdings_tree_has_nothing_to_check(fresh_tree):
 
     Current holdings keep shelves in `_infoshelf-volumes/` and friends, none of
     which contain the substring "shelves" the walk filters on, so a dogfooded tree
-    with real, valid shelves reports zero tests and zero errors. Pinned as current
-    behaviour; see entry 6 of "From PR-13" in critiques/deferred-observations.md.
+    with real, valid shelves reports zero tests and zero errors -- the tool checks
+    nothing at all unless it is pointed at a legacy tree. Pinned as current
+    behaviour, not endorsed: a fix has to invert this assertion deliberately.
     """
 
     run = support.run_tool(fresh_tree, 'pdschecksums', '--initialize',

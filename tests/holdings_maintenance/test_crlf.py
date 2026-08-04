@@ -121,8 +121,10 @@ class TestArgumentValidation:
     def test_an_empty_file_raises_zerodivisionerror(self, tmp_path):
         """A zero-byte file divides by zero.
 
-        Pinned as current behaviour; see entry 11 of "From PR-13" in
-        critiques/deferred-observations.md.
+        The non-ASCII fraction divides by the decoded length with no guard for an
+        empty file, so a run over a tree containing one dies instead of reporting
+        it. That is a defect, pinned here as current behaviour: a fix has to
+        decide what an empty file classifies as and invert this assertion.
         """
 
         path = write(tmp_path, 'empty.txt', b'')

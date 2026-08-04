@@ -7,9 +7,9 @@
 #
 # Note the deliberate contrast with test_pds3_infoshelf.py: pds4infoshelf compares
 # modification times and checksums correctly, so the two corruptions its pds3 twin
-# silently accepts are reported here. See entry 10 of "From PR-13" in
-# critiques/deferred-observations.md; when the pair is folded onto a shared core,
-# both modules must agree.
+# silently accepts are reported here. The opposite expectations are deliberate --
+# the pds3 twin pins its defective comparison -- and when the pair is folded onto a
+# shared core, both modules must agree.
 #
 # Every test rebuilds the tree first, so each one is independent and order-agnostic.
 ##########################################################################################

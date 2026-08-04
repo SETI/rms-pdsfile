@@ -9,10 +9,9 @@
 #
 # tests/conftest.py skips every collected item that does not carry the
 # holdings_free marker when no holdings are available. Rather than marking each
-# module (tests/api/test_api_freeze.py is frozen and must not be edited -- see the
-# section 6.4 prohibitions in plans/2026-07-25-modernization-plan.md), the marker is
-# applied here to everything collected from this directory, which also covers
-# future additions.
+# module (tests/api/test_api_freeze.py must not be edited), the marker is applied
+# here to everything collected from this directory, which also covers future
+# additions.
 #
 # That makes "no test in this directory needs holdings" a rule of the directory,
 # not an observation about the files currently in it. A test added here that does

@@ -9,8 +9,8 @@
 # required" list against a golden, then perform some of those steps and show the
 # corresponding lines disappear.
 #
-# pdsdependency is pds3-only by design: the modernization plan records that it has
-# no pds4 twin and stays a standalone tool.
+# pdsdependency is pds3-only by design: it has no pds4 twin and stays a standalone
+# tool.
 #
 # The emitted order is only partly pinned. A dependency rule emits its messages, in
 # source order, once per path its glob matched -- and that glob is unsorted, so
@@ -24,7 +24,9 @@
 # of every step -- and the twelve stable steps are additionally pinned in exact
 # order, which keeps the dependency semantics under test: a target's archive is
 # built before the checksums of that archive, and its checksums before its info
-# shelf. See entry 14 of "From PR-13" in critiques/deferred-observations.md.
+# shelf. The unsorted glob is a defect the tests work around rather than assert:
+# when the tool starts sorting, these tests keep passing and the golden stays
+# valid.
 #
 # Every test rebuilds the tree first, so each one is independent and order-agnostic.
 ##########################################################################################
