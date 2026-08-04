@@ -18,7 +18,7 @@ except ImportError:
 
 class PdsCache:
 
-        pass
+    pass
 
 ################################################################################
 ################################################################################
@@ -589,16 +589,16 @@ class MemcachedCache(PdsCache):
                 self.mc.set_multi(mydict, time=lifetime)
             except pylibmc.TooBig:
                 for (k,v) in mydict.items():
-                  try:
-                    self.mc.set(k, v, time=lifetime)
-                  except pylibmc.TooBig:
-                    toobigs.append(k)
-                    failures.append(k)
-                    self.toobig_dict[k] = v[0]
-                    if self.logger:
-                      self.logger.warn('TooBig error in process ' +
-                                       f'{self.pid}; ' +
-                                       'saved to internal cache', k)
+                    try:
+                        self.mc.set(k, v, time=lifetime)
+                    except pylibmc.TooBig:
+                        toobigs.append(k)
+                        failures.append(k)
+                        self.toobig_dict[k] = v[0]
+                        if self.logger:
+                            self.logger.warn('TooBig error in process ' +
+                                             f'{self.pid}; ' +
+                                             'saved to internal cache', k)
             except pylibmc.Error as e:
                 if self.logger:
                     self.logger.exception(e)
@@ -607,8 +607,8 @@ class MemcachedCache(PdsCache):
                 if self.logger:
                     keys.sort()
                     for key in keys:
-                      self.logger.error(f'Process {self.pid} has failed ' +
-                                        'to flush; deleted', key)
+                        self.logger.error(f'Process {self.pid} has failed ' +
+                                          'to flush; deleted', key)
 
                 failures += keys
 

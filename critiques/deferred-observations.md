@@ -628,6 +628,30 @@ touch.
     **Owner:** PR-24, or whichever PR next revisits `__init__.py` — with an
     explicit decision about which of the two readings is intended.
 
+    **RESOLVED by the owner, 2026-08-04: the intent was to export the `PdsFile`
+    class only.** Implemented in PR-24 as
+    `from pdsfile.pdsfile import PdsFile as PdsFile`. Three things make this a
+    strictly neutral change rather than the surface change the entry feared:
+
+    - **The manifest does not move.** `PdsFile` already reached the package
+      namespace indirectly, via `from .pds3file import *` / `from .pds4file
+      import *`, and `pdsfile.PdsFile is pdsfile.pdsfile.PdsFile` was already
+      true. A fresh `dump_public_api.py` before and after is byte-identical at
+      733,876 bytes. The import makes explicit a name that was already exported
+      by accident of star-import ordering.
+    - **The redundant alias is load-bearing.** Written as a plain
+      `from ... import PdsFile` the name is unreferenced below and raises
+      `F401`, which would have traded one code for another rather than dropping
+      one. The `X as X` form is the same explicit-re-export marker
+      `preload_and_cache.py` uses.
+    - **The absolute form keeps the import order.** Written relatively,
+      `.pdsfile` sorts after `.pds3file`/`.pds4file` and isort raises `I001`;
+      obeying it would move the core import below the two star imports and
+      change which module initializes first.
+
+    `F403` drops from 3 occurrences to 2 — the two remaining are the genuine
+    star imports, which stay.
+
 32. **A commented-out line of dead code rode along with the move.**
     `src/pdsfile/_path_utils.py`, inside `_clean_join`:
     `#     joined = _clean_join(a,b).replace('\\', '/')`. PR-16 moved it
@@ -1788,6 +1812,32 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     owner-level decision about the whole tree, not a PR-23 one.
     **Owner: PR-24, or whoever proposes enabling preview rules.**
 
+    **RESOLVED for `pdscache.py` by the owner, 2026-08-04: fix the indentation.**
+    PR-24 re-indented both `flush` handlers onto the 4-space grid — the `try` /
+    `except pylibmc.TooBig` pair inside the `for` loop and its `if self.logger:`
+    body, and the `for key in keys:` body in the `except pylibmc.Error` handler.
+    A fifth site in the same file was fixed with them: `class PdsCache:`'s `pass`
+    sat at 8 columns.
+
+    Indentation is semantic in Python, so the change is proved rather than
+    asserted: `ast.dump(ast.parse(...))` of the file before and after is
+    identical. `ruff check --select E1 --preview` on `pdscache.py` goes from 8
+    findings to 3.
+
+    The 3 that remain are `E115` on the commented-out `MemcachedCache.get_multi`
+    block at `:1034-1036`, which **deferred entry 64 still owns** — those six
+    lines need an owner decision that has not been given, and re-indenting a
+    block that may simply be deleted is wasted motion.
+
+    **Still open: the rest of the tree.** Measured after the `pdscache.py` fix,
+    `ruff check --select E1 --preview src/pdsfile tests scripts` reports **112**
+    findings — 56 real code-indentation sites (`E111` 41, `E117` 15) across ten
+    files, led by `pdslinkshelf.py` (22), `_properties.py` (12) and `pdsfile.py`
+    (8), plus 56 comment-indentation sites (`E116`/`E114`/`E115`). One of the 56
+    is in `re_validate.py`, which is frozen. Whether to sweep those — and whether
+    to enable `--preview` `E1` as a standing gate — is still the owner-level
+    decision this entry was raised for.
+
 77. **Whether prose may follow a mechanical fix is not written down anywhere.**
     Round 1's m8 had PR-23 change three `IOError` references to `OSError` in
     `_path_utils.py` comments and docstrings — accurate (`IOError` **is**
@@ -1970,6 +2020,20 @@ these entries are read by the PRs that come after it.
     **Owner: PR-25 (Phase 6), which consolidates exactly this shared skeleton
     into `_common.py`; it needs an owner decision on whether the versioning was
     meant to run.**
+
+    **DECIDED by the owner, 2026-08-04: the log files should be versioned.** The
+    three pds3 tools are the defective copies and the pds4 twins are correct —
+    `pds4checksums.py:824`, `pds4infoshelf.py:859` and `pds4linkshelf.py:1217`
+    each declare `global LOGDIRS` in the same place.
+
+    The fix is one line per tool. It stays assigned to **PR-25**, not PR-24,
+    because it changes behavior: old log files begin being renamed to `_v###`,
+    which is a new filesystem side effect that PR-13's tool tests observe, and
+    PR-24's gate is an identical pass/fail set with no behavior change permitted.
+    Per §2 a behavior change must be pinned by a regression test — here, that the
+    second run of a task versions the first run's log rather than overwriting it,
+    asserted for a pds3 tool and its pds4 twin so the two stay converged through
+    the `_common.py` consolidation.
 
 82. **Deferred entry 79's eager-logging inventory undercounts: it is 132 sites
     and 69 filepath-passing sites, not 130 and 67.** Entry 79 states its

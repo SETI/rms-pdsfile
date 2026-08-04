@@ -206,7 +206,7 @@ extend-ignore = ["PT011", "SIM105", "SIM108"]
 # exist at all.
 # _associations.py, _local_fs.py, _path_utils.py and preload_and_cache.py need no
 # entry at all.
-"src/pdsfile/__init__.py" = ["F403"]           # x3: the star imports bind the frozen surface
+"src/pdsfile/__init__.py" = ["F403"]           # x2: the star imports bind the frozen surface
 "src/pdsfile/_derived_paths.py" = ["A002"]     # x3: the frozen dir= parameter the tools pass by keyword
 "src/pdsfile/_index_rows.py" = ["RUF005"]      # x1: owner-chosen style exclusion
 "src/pdsfile/_opus.py" = ["RUF005"]            # x1: owner-chosen style exclusion
