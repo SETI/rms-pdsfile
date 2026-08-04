@@ -1941,3 +1941,82 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     a `ruff check` PR whose warrant is that it changes nothing. It also overlaps
     Phase 7, which owns docstrings.
     **Owner: owner-directed; Phase 7 (PR-29–PR-34) is the natural home.**
+
+## From PR-24 (`style: ruff-clean rules and remaining files`, Phase 5)
+
+### Added by the PR-24 executor's own measurements (2026-08-04)
+
+81. **`LOGDIRS` is a module-level list that `main()` shadows with a bare local,
+    so the "move old logs aside" step never runs.** Three pds3 tools carry the
+    same shape: `pdschecksums.py` (`:25` global, read at `:387`, shadowed at
+    `:854`), `pdsinfoshelf.py` (`:27` / `:440` / `:878`) and `pdslinkshelf.py`
+    (`:29` / `:1393` / `:1727`). In each, `main()` writes `LOGDIRS = []` with no
+    `global` declaration, so the appends that follow land on a **local** list;
+    `move_old_checksums()` / `move_old_info()` / `move_old_links()`, called from
+    `initialize`/`repair`/`update`, then iterate the still-empty module-level
+    list and version nothing. The comment above each global — "Holds log file
+    directories temporarily, used by `move_old_*()`" — describes an intent the
+    code does not implement.
+
+    PR-24 left the `N806` on each local rather than lowercasing it: the uppercase
+    spelling is what makes the intended link to the global visible, and renaming
+    it would make the shadowing read as deliberate. Adding `global LOGDIRS` is
+    the fix and it **changes behavior** — old log files would start being renamed
+    to `_v###` — which is outside a style PR.
+
+    **Owner: PR-25 (Phase 6), which consolidates exactly this shared skeleton
+    into `_common.py`; it needs an owner decision on whether the versioning was
+    meant to run.**
+
+82. **Deferred entry 79's eager-logging inventory undercounts: it is 132 sites
+    and 69 filepath-passing sites, not 130 and 67.** Entry 79 states its
+    predicate exactly, and the `attr` set it uses —
+    `{debug, info, warn, warning, error, critical, exception, log, fatal, open,
+    close}` — omits `pdslogger.PdsLogger.normal()`, which is a real level method
+    alongside `blankline`, `ds_store`, `dot_underscore`, `invisible` and
+    `hidden`. Re-running the same sweep with the full method set adds
+    `pds4checksums.py:119` and `:128`
+    (`logger.normal('Selected MD5=%s' % md5, abspath)` and
+    `logger.normal('MD5=%s' % md5, abspath)`) — both of which are also
+    filepath-passing sites, so both counts move by two. Their pds3 counterparts
+    at `pdschecksums.py:118`/`:127` use `logger.info` and were already counted,
+    which is what makes the asymmetry easy to miss.
+
+    This does not change entry 79's conclusion or PR-24's disposition; it is
+    recorded so the figure a later PR works from is the measured one.
+    **Owner: whoever executes the entry-79 conversion.**
+
+83. **`pdsarchives.py` assigns `proceed` six times and never reads it.** At
+    `:530`–`:542` each of the five task functions' return values is bound to
+    `proceed`, and `:554` sets it to `False` in the exception handler. Its four
+    sibling tools use the same variable to gate a chained follow-on step
+    (`pdschecksums.py:915`, `if proceed and args.infoshelf:`), but `pdsarchives`
+    has no such option — its `argparse` block offers only the five task flags,
+    `volume`, `--log` and `--quiet`. So the variable is a vestige of the shared
+    skeleton rather than a missing feature, and PR-24 removed the dead bindings
+    (`F841`) while keeping every call.
+
+    Recorded because the vestige is evidence about how the five tools were
+    written, which is the thing PR-25 is consolidating.
+    **Owner: PR-25 (Phase 6).**
+
+84. **`test_pds4file_blackbox.py:137` is a duplicate `parametrize` case.**
+    `PT014` reports it as a duplicate of the case at index 34 — the same
+    `uranus_occs_earthbased/.../u0_kao_91cm_734nm_radius_six_ingress_100m.xml`
+    input appears twice in one table. It is permanently excluded in the ratchet
+    rather than fixed, because removing a case removes a generated test id and
+    PR-24's gate is an identical id set. Whether the duplicate was meant to be a
+    different radius or should simply go needs someone who knows the bundle.
+    **Owner: a test-content PR, not a style PR.**
+
+85. **`uranus_occs_earthbased.py`'s module-level loop leaves its control
+    variables bound as public module attributes.** The loop at `:537` runs at
+    module scope, so `bundle_prefix`, `opus_id_prefix_e`, `opus_id_prefix_i` and
+    `opus_id_prefix_a` survive it as attributes of
+    `pdsfile.pds4file.rules.uranus_occs_earthbased` — and all four are in
+    `tests/api/api_manifest.json`. That is why PR-24 could not take `B007`'s
+    rename here: `_bundle_prefix` would remove a name the freeze records. The
+    names are an accident of writing the loop at module level, not an intended
+    API; wrapping the loop in a function would drop all four at once, which is a
+    surface change needing sign-off.
+    **Owner: owner decision; a natural fit for the Phase 7/8 surface tidy-up.**

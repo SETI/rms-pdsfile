@@ -6753,3 +6753,215 @@ gates returned the same results**, listed again in the round record: ns
 measured, 92 passed / 800 skipped with no holdings, an empty manifest diff at
 733,876 bytes each side, identical MROs, `ruff check` clean with the no-ignores
 derivation still at 40, and the consumer smoke unchanged.
+
+## PR-24 — `style: ruff-clean rules and remaining files`
+
+**Branch:** `pr-24-ruff-rest`, based on and opened against `rewrite` @ `8cab66a`
+(the merge of PR-23, #118). PR-24 is **not stacked** (owner, 2026-08-03,
+`plans/2026-08-03-addendum-pr23-24-owner-decisions.md` decision 4), so its
+baseline is `rewrite` itself and its reviewer diff is `git diff origin/rewrite...HEAD`.
+
+**Sub-plan:** `plans/2026-08-04-pr-24-subplan.md`.
+**Deliverable:** `ruff check` only over everything PR-23 did not take — the rule
+modules, the `pds3file`/`pds4file` initializers, the holdings-maintenance tools,
+the tools/scripts entry points and the test tree. No `ruff format`, no
+`ruff format --check` gate, no `# fmt: off` guards. No test is added and no golden
+is touched, so the §6.2 gate is an **identical** per-test set in both modes.
+
+**Why this PR's gate is sharper than PR-23's:** PR-24 edits the files that
+*generate* the test ids. A `PT006` or `N806` rewrite inside a parametrized test
+changes the source pytest builds ids from, so the gate is the **id set**, not the
+counts — one id removed and one added would net to zero in a count check.
+
+### 1. Environment
+
+| Item | Value |
+|---|---|
+| Python | 3.12.3 |
+| ruff | 0.15.22 |
+| Suite driver | the command lines of `scripts/automated_tests/pdsfile_main_test.sh` — serial, under `coverage run`, plus `-rA --junitxml` |
+| Holdings | `PDS3_HOLDINGS_DIR` / `PDS4_HOLDINGS_DIR` at the limited testing copy the goldens are tuned to |
+| Baseline tree | a detached worktree at `8cab66a`, measured here rather than copied from a record |
+
+### 2. Full-data suite — an identical set in both modes
+
+Regenerated after the last change under `src/` and `tests/`.
+
+| Mode | Baseline @ `8cab66a` | PR-24 head | ids | Diff |
+|---|---|---|---|---|
+| `--mode ns` | 858 passed / 34 skipped | **858 passed / 34 skipped** | 892 both | **empty** |
+| `--mode s` | 555 passed / 3 skipped | **555 passed / 3 skipped** | 558 both | **empty** |
+
+The comparison is id-by-id from the two `junitxml` files: every `testcase` is
+reduced to `classname::name -> outcome` and the two maps are compared three ways.
+
+```
+ns: 892 vs 892 ids; only-in-baseline 0, only-in-head 0, outcome changed 0
+ s: 558 vs 558 ids; only-in-baseline 0, only-in-head 0, outcome changed 0
+```
+
+The independently-measured baseline was also checked against the coordinator's
+`8cab66a` capture: 892/558 ids, 0/0/0 on both modes, so the two agree and the
+baseline is not being taken on trust.
+
+**The id set was additionally measured after the `PT006` rewrite alone**, before
+the rest of the test-tree work, by `pytest --collect-only -q` — 892 and 558 ids,
+identical id-for-id. `PT006`'s fix is one ruff marks **unsafe**, and this
+measurement is what discharges that, rather than an argument about how pytest
+builds ids.
+
+**Non-vacuity, at file level.** `coverage.CoverageData.measured_files()` for the
+head run lists **72** files under `src/pdsfile/`, including **all 36** rule
+modules.
+
+**Non-vacuity, at line level.** Of the **363 executable lines this PR changed**
+(`git diff -U0 origin/rewrite...HEAD` intersected with `coverage`'s own statement
+set):
+
+| Area | changed executable | executed | how measured |
+|---|---:|---:|---|
+| rule modules, the two initializers, `show_opus_products.py` | 77 | **73** | the in-process full-data run |
+| holdings-maintenance tools | 161 | **108** | a **second** coverage run, see below |
+| `tests/**` | 124 | — | `[tool.coverage.run] omit = tests/*`, so coverage cannot report them; the 892 collected ids and 858 passes are what prove these modules import and run |
+| `scripts/check_runtime_imports.py` | 1 | — | exercised by the clean-install gate as a subprocess |
+| **total** | **363** | **181** | |
+
+**The maintenance tools needed their own measurement, and this is the one thing
+the sub-plan did not anticipate.** `tests/holdings_maintenance/` drives the tools
+through `subprocess`, so the in-process run records all 17 modules in
+`measured_files()` with **zero executed statements** — a coverage number that
+looks like total absence of testing and is in fact an artifact of the harness. A
+second run of `tests/holdings_maintenance/` with `COVERAGE_PROCESS_START` and a
+`sitecustomize.py` that calls `coverage.process_startup()` collects the child
+processes: **111 passed**, and 108 of the 161 changed executable lines execute.
+
+The 53 that do not are: **`re_validate.py` entirely (23)** — deviation (6)
+freezes it and no test imports it; the four `except (OSError, ValueError)`
+fallback branches in the checksum/info tools (17 lines, the `A001` `dir` →
+`dirname` renames); three `E701` `return` splits; two `raise OSError` lines; the
+`SIM102` collapse in `pds4linkshelf.py`; and two `log_path_for_*` set literals.
+
+### 3. The unreached rewrites — a differential probe
+
+Because 53 tool lines and all of `re_validate.py` are unreached, the
+behavior-sensitive rewrites among them were proved directly rather than by
+assertion. The probe evaluates the `rewrite` spelling and the PR-24 spelling over
+the same inputs and compares:
+
+| Check | Inputs | Result |
+|---|---|---|
+| `SIM102` nested-`if` collapse — branch taken **and** operand evaluation order | 8 of 8 boolean combinations, with a trace of which operands were evaluated | agree |
+| `E721` `type(x) == C` → `type(x) is C` | 7 values including `str` and `list` subclasses | agree |
+| `E721` — that `isinstance()` would **not** be equivalent | the same subclasses | confirmed different, which is why the fix is `is` |
+| `RUF051` `if k in d: del d[k]` → `d.pop(k, None)` | present and absent key | agree |
+| `UP034` parentheses around an `or`-chain in `&=` | 16 of 16 combinations | agree |
+| `UP024` `IOError is OSError`, and the two `except` tuples | 3 exception instances | agree |
+| `E701` one-line-`if` split | 6 representative sites, `ast.dump` compared | identical AST |
+| `C405` `set([…])` → `{…}` | the real literals, incl. one with a duplicate element | agree |
+| `UP015` `open(p, 'r')` → `open(p)` | round-trip read | agree |
+| `F541` f-string with no placeholder | the `pdslinkshelf.py` message | identical string |
+| `UP031` `%s`/`%d` → f-string | str, empty, `%`-containing, custom `__str__`, four ints | agree |
+| `E711` / `E712` | str/None values; `False`/`True`/object | agree |
+| `E712` — that ruff's suggested `if res:` would **not** be equivalent | an empty falsy value | confirmed different, which is why the fix is `is not False` |
+
+**15 checks, 15 agree, 0 disagree.** The probe is scratch evidence, not a
+committed test: PR-24's gate is an identical test-id set, and a new test id is
+movement.
+
+**A mechanical check that no rename left a dangling name.** The `A001` and `N806`
+work renamed 34 identifiers in the tools and 51 in the test tree, all by AST
+position within one function scope. A missed use — or a renamed use whose binding
+was missed — is an undefined name, and `F821` reports exactly **1** violation
+both at `8cab66a` and at HEAD: the pre-existing `error`/`errors` typo at
+`shelf_consistency_check.py`, which deferred entry 6 assigns to a later PR.
+
+### 4. API freeze
+
+`scripts/dump_public_api.py` run against a worktree at `8cab66a` and against
+HEAD: **733,876 bytes each, `diff` empty**. `tests/api/test_api_freeze.py` passes,
+and all 26 tests under `tests/api/` pass.
+
+The freeze is what stopped three otherwise-obvious fixes: the 31 `F401`s in the
+two initializers (every name is a manifest member), `B007` in
+`uranus_occs_earthbased.py` (a module-scope loop variable that is a manifest
+member), and `N805`/`N802` on the frozen uppercase methods.
+
+### 5. Other gates
+
+| Gate | Result |
+|---|---|
+| no holdings — `scripts/run-all-checks.sh`, all holdings vars unset | **92 passed / 800 skipped**; ruff, pytest, pyroma, API-freeze and clean-install all green |
+| `ruff check src/pdsfile tests scripts` with the project config | clean, over **139 files** (26 pds3 rule modules, 10 pds4, 17 maintenance modules, 2 tools, 2 subpackage initializers, 64 test modules, 3 scripts, 15 PR-23 core) |
+| no-ignores re-derivation over the in-scope files | reports exactly the 2,259 permanent violations and nothing else |
+| clean install | `scripts/clean_install_check.sh`, via `run-all-checks.sh` — passed |
+| `__mro__` for the three `UP004` classes | identical at base and HEAD |
+| inline `noqa` | **none added**; the only `noqa` strings in the diff are prose in the sub-plan and this file |
+| consumer smoke | see §6 |
+
+### 6. Consumer smoke — same outcome as the baseline
+
+Against `critiques/baselines/consumer-smoke-baseline.md`. The gate is **same
+outcome**, so fewer failures would be as much a flag as more.
+
+| Check | Baseline | PR-24 head |
+|---|---|---|
+| A — rms-opus import paths | 4/4 ok, 0 failures | **4/4 ok, 0 failures** |
+| B — rms-viewmaster startup | 5 ok / 3 fail | **5 ok / 3 fail** |
+
+The three check-B failures are the same three: `pdsfile.cache_lifetime` (twice,
+once directly and once through `get_page_cache()` with `PAGE_CACHING=True`) and
+`pdsfile.DEFAULT_CACHING`. `pdsfile.pdsfile.repair_case` still resolves.
+
+### 7. The ratchet
+
+`per-file-ignores` in scope: **78 entries / 369 code slots → 59 entries / 175
+slots**. Nineteen files come off entirely. Whole-file totals including PR-23's
+eleven core entries: 89 → 70 entries, 383 → 189 slots.
+
+The shrink property was checked mechanically against `git show
+origin/rewrite:pyproject.toml`, not against any intermediate state of this branch:
+
+```
+WIDENED (a code present after but not before): NONE
+NEW FILES with no committed entry:             NONE
+```
+
+Two of the nineteen removals are **stale** entries rather than fixes:
+`tests/pds3file/helper.py` and `tests/pds4file/helper.py` both carried `B904`,
+and the no-ignores derivation at `8cab66a` reports no `B904` in either file — the
+same class of dead entry PR-23 found in `pdsviewable.py`'s `RUF059`.
+
+`scripts/gen_ruff_ratchet.py` was **not** used: deferred entry 33 records that it
+emits an empty block against a tree whose committed ignores already suppress
+everything, which is exactly this tree. The block is hand-derived from the
+no-ignores run and then verified by running the project config.
+
+### 8. Violation arithmetic
+
+Derived with the template select set, `target-version = "py310"`, `line-length =
+100`, `extend-ignore = ["PT011", "SIM105", "SIM108"]` and **no**
+`per-file-ignores`:
+
+| | |
+|---|---:|
+| at `8cab66a`, in scope | **2,760** |
+| fixed | **501** |
+| permanent | **2,259** |
+
+The sub-plan predicted 505/2,255; §11 of it reconciles the four-violation
+difference line by line (`I001` −4, `B007` −1, `N806` −3, `A002` +1, `E501` +3),
+each of which is a case where the plan's classification was wrong and the
+measurement corrected it.
+
+### 9. What this PR deliberately did not do
+
+- **No logging call was converted.** 46 of the 139 permanent `UP031`s are logging
+  calls. `pdslogger.PdsLogger.log` treats a lone positional argument as the
+  keyword-only `filepath` once the message has no `%` pattern, so the naive lazy
+  rewrite is a `TypeError` at every site that already passes a filepath — 69 of
+  them, measured. Deferred entry 79 owns the conversion and says in terms that it
+  is too large for PR-24. Entry 82 corrects its figures from 130/67 to 132/69.
+- **No prose was rewritten** except where a fix in this PR made it wrong — the
+  rule stated in sub-plan §4.2, which closes deferred entry 77.
+- **Deferred entries 31, 44, 52 and 76 were not acted on**; 31 and 76 need owner
+  decisions that have not been given.
