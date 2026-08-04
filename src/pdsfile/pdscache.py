@@ -1,9 +1,8 @@
 import os
 import random
 
-# Nothing below references `sys`, but pdsfile.pdscache.sys is a frozen member
-# of this module's public surface (tests/api/api_manifest.json), so it stays
-# bound. The redundant `as` alias is the explicit re-export form.
+# `sys` is not referenced below; it is re-exported for callers that reach it as
+# pdsfile.pdscache.sys. The redundant `as` alias is the explicit re-export form.
 import sys as sys
 import time
 

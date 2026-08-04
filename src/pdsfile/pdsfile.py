@@ -77,16 +77,16 @@ tests/api/test_mixin_import_isolation.py checks the no-back-import rule by
 loading each module in a fresh interpreter.
 
 The split is invisible from outside: pdsfile.pdsfile.<name> still resolves for
-every name it resolved for before, and tests/api/api_manifest.json -- which
-records names and kinds, never the defining class -- is unchanged.
+every name it resolved for before, and a caller cannot tell which module defines
+any of them.
 """
 
 import os
 import re
 
-# Nothing below references these ten, but all of them are frozen members of
-# this module's public surface (tests/api/api_manifest.json), so it keeps them
-# bound. The redundant `as` alias is the explicit re-export form.
+# None of these ten is referenced below; they are re-exported for callers that
+# reach them as pdsfile.pdsfile.<name>. The redundant `as` alias is the explicit
+# re-export form.
 import bisect as bisect
 import datetime as datetime
 import fnmatch as fnmatch
@@ -103,8 +103,8 @@ import translator
 
 # pdstable is used by the index-row methods, defaultdict by the OPUS methods and
 # pdsparser by the lazy properties, which live in _index_rows.py, _opus.py and
-# _properties.py; all three names are frozen members of this module's surface, so
-# they are bound here in the same redundant-alias form as the ten above.
+# _properties.py; all three are also reachable as pdsfile.pdsfile.<name>, so they
+# are bound here in the same redundant-alias form as the ten above.
 import pdsparser as pdsparser
 import pdstable as pdstable
 
@@ -114,7 +114,7 @@ from pdsfile import pdscache
 from ._preload import cache_lifetime_for_class
 
 # The path helpers live in a private module. Importing them here is also what
-# keeps pdsfile.pdsfile.<name> resolving for callers and for the API freeze.
+# keeps pdsfile.pdsfile.<name> resolving for callers.
 from ._path_utils import (_clean_join,
                           abspath_for_logical_path,
                           construct_category_list,
@@ -138,11 +138,11 @@ from ._sorting import _SortingMixin
 
 # Re-exported only; nothing below references these. FILE_BYTE_UNITS,
 # formatted_file_size, HAS_PYLIBMC, PATH_EXISTS_CACHE_SIZE, pause_caching,
-# pdsviewable, resume_caching and selected_path_from_path are frozen members of
-# this module's public surface; _GLOB_CACHE_SIZE, _clean_abspath, _clean_glob and
-# _needs_glob are private, and are carried so that no name reachable as
-# pdsfile.pdsfile.<name> is lost. The redundant `as` alias is the explicit
-# re-export form, so they do not read as unused imports.
+# pdsviewable, resume_caching and selected_path_from_path are public;
+# _GLOB_CACHE_SIZE, _clean_abspath, _clean_glob and _needs_glob are private. All
+# are carried so that no name reachable as pdsfile.pdsfile.<name> is lost. The
+# redundant `as` alias is the explicit re-export form, so they do not read as
+# unused imports.
 from pdsfile import pdsviewable as pdsviewable
 
 from ._local_fs import PATH_EXISTS_CACHE_SIZE as PATH_EXISTS_CACHE_SIZE
@@ -1109,8 +1109,8 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
                     basename = self.childnames[k]
 
             # Create the logical path and touch the cache entry if there is
-            # one. The looked-up object is discarded; see
-            # critiques/deferred-observations.md.
+            # one. The looked-up object is discarded, not returned, so the
+            # child is rebuilt below either way.
             child_logical_path = _clean_join(self.logical_path, basename)
             try:
                 _ = cls.CACHE[child_logical_path.lower()]

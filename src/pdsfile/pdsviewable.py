@@ -4,9 +4,9 @@
 
 import os
 
-# Nothing below references `pdslogger`, but pdsfile.pdsviewable.pdslogger is a
-# frozen member of this module's public surface (tests/api/api_manifest.json),
-# so it stays bound. The redundant `as` alias is the explicit re-export form.
+# `pdslogger` is not referenced below; it is re-exported for callers that reach
+# it as pdsfile.pdsviewable.pdslogger. The redundant `as` alias is the explicit
+# re-export form.
 import pdslogger as pdslogger
 from PIL import Image
 
