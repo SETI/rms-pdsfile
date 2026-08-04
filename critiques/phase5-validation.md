@@ -6693,3 +6693,48 @@ comments that explain why the re-export imports exist.
 **75** is closed by the revert. **79** is new — the 130-site eager-logging
 inventory. **31**, **33**, **37** and **64** are unchanged and still open;
 **64** still needs the owner decision it has always needed.
+
+#### 7. Review round 5, and the regenerated evidence
+
+The four corrections were given after the §6.6 loop had already closed clean at
+round 4. **One** fresh, no-context, opus-class round was run over the corrected
+branch, told what the four corrections were. Record:
+`critiques/pr-23/round-5.md`. It is not a fifth round of the original loop — that
+loop terminated — and does not breach the hard cap of four.
+
+**Verdict returned: `goal not met` — 2 Major, 6 Minor, 3 Deferred.** Both Majors
+were in text that **correction 3 itself introduced**, which is the correction
+whose subject is comment text:
+
+- **M1, `pdsfile.py:79–81`** — the rewrite that removed the `api_manifest.json`
+  reference generalised it into a false claim ("a caller cannot tell which module
+  defines any of them"). `PdsFile.opus_products.__module__` is `pdsfile._opus`,
+  and the paragraph nine lines above tells the reader that two tests inspect
+  exactly that. Fixed to what is true, in the same three lines so no line number
+  in `pdsfile.py` moves.
+- **M2, `tests/api/test_mixin_collisions.py:74`** — this PR had itself added a
+  code comment citing `plans/2026-07-27-addendum-phase5-mixin-base-order.md`.
+  Correction 3's sweep covered `src/` only; the rule is about code comments, so
+  it reaches `tests/` too. Parenthetical dropped. The 36 other `plans/`/
+  `critiques/` lines under `tests/` are pre-existing and out of scope.
+
+The six Minors were all figures: six stale `file:line` sites in three records
+(correction 3 shifted `pdscache.py` −1, `_derived_paths.py` +1, `_index_rows.py`
++2), two missing supersession pointers, a banner count of 32 that is 34, two
+off-by-one citations, a non-reproducible subpackage logging count, and one
+request to state rather than assume that `pyproject.toml`'s freeze wording is
+covered by correction 4. All fixed in `374dcdd`; details in the round record.
+
+**M1 is the lesson worth keeping.** Correction 3 says to restate a comment "in
+terms of the code" rather than delete it. That is only safe when the restatement
+is itself checked against the code. A weaker, more general sentence is not
+automatically a safer one — here it was the only *false* sentence the PR
+produced, and it was produced by the rule meant to make comments truer.
+
+M1 touched `src/pdsfile/`, so §6.6's regeneration rule applies and every figure
+in §5 above was re-measured at `374dcdd` rather than carried forward. **All ten
+gates returned the same results**, listed again in the round record: ns
+892/892 ids with 0/0/0 movement, s 558/558 with 0/0/0, all fifteen modules
+measured, 92 passed / 800 skipped with no holdings, an empty manifest diff at
+733,876 bytes each side, identical MROs, `ruff check` clean with the no-ignores
+derivation still at 40, and the consumer smoke unchanged.
