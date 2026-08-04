@@ -6487,3 +6487,205 @@ sub-plan, `pdsfile_overrides.mdc` and one plan addendum. That is the same
 distribution PR-19 through PR-22 reported: the defects are in what the executor
 *says*, not in what it changed. **No round found a defect in the behavior of the
 code this PR changed.**
+
+---
+
+### PR-23 revision — four owner corrections, 2026-08-03
+
+Appended, not merged into the sections above, so that the record shows the state
+before and after the corrections. The corrections were given after the §6.6 loop
+had closed clean at `f59ec05`. Everything below was measured after them.
+
+#### What changed and why
+
+| # | Correction | What it touched |
+|---|---|---|
+| 1 | `RUF005`'s `[*a, b]` rewrite is not wanted; the exclusion is permanent | 7 source lines reverted; 4 ratchet entries recreated; `pdsfile_overrides.mdc` (4); deferred 75 closed |
+| 2 | Logging passes lazy `%` arguments, never f-strings | 4 logging calls; deferred 79 added |
+| 3 | Code comments may not name plans, critiques, PR numbers, the frozen surface or the manifest | 11 comment/docstring sites in 6 files |
+| 4 | `pyproject.toml`'s plan commentary is allowed only until the rewrite finishes | plan §Phase 8, as a PR-37 deliverable |
+
+Corrections 2 and 3 are restatements of standing rules that this PR had violated,
+not new preferences. Correction 1 reverses a fix the PR made; correction 4 adds a
+future obligation and changes nothing now.
+
+#### 1. The seven reverts are byte-identical, not merely equivalent
+
+Each restored line was extracted from `git show origin/rewrite:<file>` and
+required to appear byte-for-byte in the working tree. Both operands and the exact
+whitespace match, including `_preload.py`'s idiosyncratic continuation indent:
+
+| Site (HEAD line) | Restored text |
+|---|---|
+| `_index_rows.py:162` | `childnames = self.childnames + [selection]` |
+| `_opus.py:246` | `label_pdsfiles[abspath] = [pdsf] + fmt_pdsfiles` |
+| `_sorting.py:188` | `parts[3:] = [self.basename_is_label(basename)] + parts[3:]` |
+| `_sorting.py:196` | `parts = [not isdir] + parts` |
+| `_sorting.py:200` | `parts = [isdir] + parts` |
+| `_sorting.py:205` | `parts = [self.info_basename != basename] + parts` |
+| `_preload.py:325–327` | `volinfo_dict[key] = (volinfo_dict[key][:4] +` / `(dsids_vs_key[alt_key],` / `volinfo_dict[key][5]))` |
+
+`git diff origin/rewrite -- <those four files>` no longer contains any of them.
+`_opus.py:268` and `_sorting.py:269` also carry `+` concatenations; neither was
+ever converted and neither changed, so all of `_opus.py`'s concatenations read
+alike again — which is what closes deferred entry **75**.
+
+#### 2. This is a shrink, not a widen
+
+The claim a reviewer must be able to check is **per file**: no file's remaining
+code set contains a code its `origin/rewrite` set did not. Measured against
+`96e5960`:
+
+| File | at `96e5960` | now | added? |
+|---|---|---|---|
+| `__init__.py` | `F403, F841, I001` | `F403` | no |
+| `_associations.py` | `UP024` | *(entry removed)* | no |
+| `_derived_paths.py` | `A002` | `A002` | no |
+| `_index_rows.py` | `RUF005, UP024` | `RUF005` | no |
+| `_local_fs.py` | `B007, B905, E701, SIM103, SIM118, UP024` | *(entry removed)* | no |
+| `_opus.py` | `RUF005, UP024` | `RUF005` | no |
+| `_path_utils.py` | `E701, F841` | *(entry removed)* | no |
+| `_preload.py` | `E501, E701, F841, RUF005, UP015, UP031` | `RUF005` | no |
+| `_properties.py` | `E701, F841, RUF005, SIM114, UP024, UP031` | `RUF005` | no |
+| `_shelves.py` | `B904, B905, F841, RUF059, SIM103, UP024, UP031` | `B904` | no |
+| `_sorting.py` | `E701, RUF005` | `RUF005` | no |
+| `pdscache.py` | 12 codes | `RUF015, UP031` | no |
+| `pdsfile.py` | 16 codes | `B904, I001, RUF012` | no |
+| `pdsviewable.py` | 12 codes | `B006` | no |
+
+**14 entries / 78 code slots → 11 entries / 14 slots.** Every `RUF005` entry is a
+restoration of a code that file already carried; none is new. Four entries the
+first pass deleted are recreated (`_index_rows.py`, `_opus.py`, `_preload.py`,
+`_sorting.py`), which is why the entry count went 7 → 11.
+
+Re-derived violation counts, `ruff 0.15.22`, template select set, **no**
+`per-file-ignores`, over the fifteen in-scope modules — the generated
+`_version.py` excluded, per deferred entry 71:
+
+| Tree | Violations |
+|---|---|
+| `origin/rewrite` @ `96e5960` | **154** |
+| this branch | **40** |
+
+So **114 fixed**, not the 121 this record claimed before the revert. The 40 are
+`RUF012` 16, `RUF005` 8, `B904` 4, `A002` 3, `B006` 3, `F403` 3, `I001` 1,
+`RUF015` 1, `UP031` 1. `ruff check src/pdsfile tests scripts` with the project
+config is clean.
+
+#### 3. The four logging conversions emit the same text
+
+`pdslogger.PdsLogger.log()` reinterprets a lone argument as a `filepath` when the
+message carries no substitution pattern, so "it has a `%s`" is a fact that has to
+be checked, not assumed. `_message_uses_args` tests `re.compile(r'%[^\(]')`
+against the message with `%%` removed; all four messages match.
+
+| File:line | Now |
+|---|---|
+| `_preload.py:204` | `cls.LOGGER.warn('Permanent value %s missing from Memcache; ' 'preloading again', str(e))` |
+| `_preload.py:382` | `cls.LOGGER.info('Connecting to PdsFile Memcache [%s]', cls.MEMCACHE_PORT)` |
+| `_shelves.py:258` | `cls.LOGGER.debug('Retrieving key "%s"', py_path)` |
+| `pdscache.py:74` | `self.logger.debug('%d items trimmed from DictionaryCache', len(pairs))` |
+
+The first is wrapped as two implicitly concatenated literals; the format string
+the interpreter sees is the single-line one.
+
+A probe exercised each site in three spellings — A = `origin/rewrite`'s eager
+`'fmt' % v`, B = this PR's f-string, C = the lazy form — over 18 value cases
+(realistic values, empty strings, ints, `str`/`int` ports, and values containing
+a literal `%`), through both of `pdslogger`'s output paths. It asserts that a
+handler is attached and that output is non-empty, so it cannot pass vacuously.
+
+| Path | Cases | A ≡ B ≡ C |
+|---|---|---|
+| `PdsLogger` with a handler (production; `self._logger.log(level, text, *args)`) | 18 | **18** |
+| `EasyLogger` / no handler (`print(self._format_message(...))`) | 18 | 14 |
+
+The four `EasyLogger` divergences are exactly the cases whose value contains a
+literal `%`. There, **both** eager spellings raise
+`TypeError: not enough arguments for format string` out of the log call and emit
+nothing, while the lazy form logs correctly. No text that an existing spelling
+emits changes; the lazy form only produces output where `rewrite` throws. None of
+the four values can contain `%` in practice — a `KeyError` on a holdings logical
+path, a port, a shelf `.py` path, and `len(pairs)`.
+
+The exception messages are untouched: `raise ValueError(f'…')` / `raise
+OSError(f'…')` in `_properties.py`, `_shelves.py` and `pdsfile.py` stay as
+f-strings, which is what the owner asked for.
+
+**Pre-existing inventory, swept and recorded, not converted.** An AST sweep of
+`src/pdsfile/**/*.py` (excluding `_version.py`) for logging calls whose first
+argument is an f-string, a `+` concatenation, an eager `%` or a `.format()`:
+
+| Area | Sites | `+` | f-string | eager `%` |
+|---|---|---|---|---|
+| core, `src/pdsfile/*.py` | 34 | 30 | 2 | 2 |
+| subpackages | 96 | 33 | 7 | 56 |
+| total | **130** | 63 | 9 | 58 |
+
+Core by file: `pdscache.py` 20, `_preload.py` 8, `_sorting.py` 2, `_opus.py` 1,
+`_properties.py` 1, `pdsfile.py` 1, `pdsviewable.py` 1. Recorded as deferred
+observation **79**, which also notes the two traps a future conversion faces: the
+message must keep its `%` pattern, and many of these calls already pass a real
+second argument that *is* a filepath.
+
+#### 4. Disposition of all eleven comment sites
+
+Each was re-read and decided on its own; no blanket transformation.
+
+| Site | Was | Now |
+|---|---|---|
+| `_index_rows.py:55` | "Its fragility is deferred observation 49." | the fragility itself, in code terms: a subclass one level deeper, or one whose first base is not the PDS3/PDS4 class, silently gets the PDS3 table |
+| `_properties.py:1341` | "…; see critiques/deferred-observations.md." | "…, so the property returns None in that case" |
+| `pdsfile.py:1113` | "The looked-up object is discarded; see critiques/deferred-observations.md." | "…discarded, not returned, so the child is rebuilt below either way" |
+| `pdscache.py:4–5` | "…a frozen member of this module's public surface (tests/api/api_manifest.json)…" | "`sys` is not referenced below; it is re-exported for callers that reach it as `pdsfile.pdscache.sys`" |
+| `pdsviewable.py:6–8` | same shape, for `pdslogger` | same rewrite, for `pdsfile.pdsviewable.pdslogger` |
+| `pdsfile.py:79–81` | "…and tests/api/api_manifest.json — which records names and kinds, never the defining class — is unchanged." | "…and a caller cannot tell which module defines any of them" |
+| `pdsfile.py:87–89` | "…all of them are frozen members of this module's public surface…" | "…re-exported for callers that reach them as `pdsfile.pdsfile.<name>`" |
+| `pdsfile.py:105–106` | "…all three names are frozen members of this module's surface…" | "…all three are also reachable as `pdsfile.pdsfile.<name>`…" |
+| `pdsfile.py:117` | "…resolving for callers and for the API freeze." | "…resolving for callers." |
+| `pdsfile.py:141–145` | "…are frozen members of this module's public surface; … are private…" | "…are public; … are private. All are carried so that no name reachable as `pdsfile.pdsfile.<name>` is lost." |
+| `_derived_paths.py:225` | "…; theirs is frozen by the public API" | "…; theirs stays `dir` because callers pass it by that keyword" |
+
+Five of the eleven exist to stop a future reader deleting an import that looks
+unused. That is a real, current property of the code, so it is kept — restated
+without naming the freeze. The rest carried nothing beyond a pointer and lost it.
+
+Measured as prose-only: tokenizing all fifteen core modules at the commit before
+and after, with `COMMENT`/`NL` dropped — **12 of 15 byte-identical token
+streams**; the other three (`_derived_paths.py`, `_index_rows.py`, `pdsfile.py`)
+differ in **exactly one `STRING` token each, at identical token counts**, because
+those three sites are docstrings rather than `#` comments. The API dump records
+names and kinds, never docstrings.
+
+#### 5. Re-validation
+
+The whole suite of gates was re-run after the corrections, because they touch
+`src/pdsfile/`; the pre-correction run is superseded and not carried forward.
+
+| Gate | Baseline (`rewrite` @ `96e5960`) | This branch | Verdict |
+|---|---|---|---|
+| §6.2 `--mode ns` | 892 ids, 858 passed / 34 skipped | 892 ids, 858 passed / 34 skipped | **identical set** — 0 ids only in baseline, 0 only in head, 0 outcomes changed |
+| §6.2 `--mode s` | 558 ids, 555 passed / 3 skipped | 558 ids, 555 passed / 3 skipped | **identical set** — 0/0/0 |
+| non-vacuity | — | all fifteen in-scope modules in `measured_files()` | pass |
+| no holdings | 92 passed / 800 skipped | **92 passed / 800 skipped**, `run-all-checks.sh` green throughout | pass |
+| API freeze | dump 733,876 bytes | dump 733,876 bytes | **`diff` empty** |
+| `PdsFile.__mro__` | — | identical at base and head for `PdsFile`, `Pds3File`, `Pds4File` | pass |
+| `ruff check src/pdsfile tests scripts` | clean | clean | pass |
+| clean install | passes | passes | pass |
+| consumer smoke A (rms-opus) | 4/4 resolve, 0 failures | **4/4, 0 failures** | same outcome |
+| consumer smoke B (rms-viewmaster) | 5 ok, 3 pre-existing failures | **5 ok, 3 failures — the same three** | same outcome |
+
+Check B still exercises the edited code against a different holdings tree than
+this repo's tests use: the run log shows the `Pre-loading:` lines, the
+`Missing category dir:` warnings, and `PdsFile preloading completed`. The three
+failures are still `pdsfile.cache_lifetime` (raises), `pdsfile.DEFAULT_CACHING`
+(absent) and the same `cache_lifetime` read inside `get_page_cache()` with
+`PAGE_CACHING=True`; `pdsfile.pdsfile.repair_case` still resolves. That last one
+matters more after correction 3 than before, because correction 3 rewrote the
+comments that explain why the re-export imports exist.
+
+#### 6. Deferred observations after the revision
+
+**75** is closed by the revert. **79** is new — the 130-site eager-logging
+inventory. **31**, **33**, **37** and **64** are unchanged and still open;
+**64** still needs the owner decision it has always needed.
