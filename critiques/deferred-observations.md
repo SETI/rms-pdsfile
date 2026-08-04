@@ -1829,14 +1829,46 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     lines need an owner decision that has not been given, and re-indenting a
     block that may simply be deleted is wasted motion.
 
-    **Still open: the rest of the tree.** Measured after the `pdscache.py` fix,
-    `ruff check --select E1 --preview src/pdsfile tests scripts` reports **112**
-    findings — 56 real code-indentation sites (`E111` 41, `E117` 15) across ten
-    files, led by `pdslinkshelf.py` (22), `_properties.py` (12) and `pdsfile.py`
-    (8), plus 56 comment-indentation sites (`E116`/`E114`/`E115`). One of the 56
-    is in `re_validate.py`, which is frozen. Whether to sweep those — and whether
-    to enable `--preview` `E1` as a standing gate — is still the owner-level
-    decision this entry was raised for.
+    **RESOLVED tree-wide by the owner, 2026-08-04: fix all of it.** The same
+    sweep over `src/pdsfile tests scripts` had found **112** findings across 23
+    files — 56 code-indentation (`E111` 41, `E117` 15) and 56 comment-indentation
+    (`E116` 48, `E114` 5, `E115` 3). PR-24 fixed **110** of them, in 22 files and
+    473 lines.
+
+    None of the 112 was auto-fixable, and fixing an `E111` means moving the whole
+    block beneath it, so the work was done by a re-indenter rather than by hand:
+    for each logical line the correct indent is `4 × (its INDENT-stack depth)`,
+    and the whole logical line — first physical line and every continuation —
+    shifts by the same delta, so alignment under an opening parenthesis survives.
+    Physical lines inside a multi-line string are never touched. A standalone
+    comment moves with its block when the block moved, and is otherwise aligned
+    to the code it introduces.
+
+    Because indentation is semantic, every file carries three proofs, checked
+    independently of the tool that made the change: the `ast.dump(ast.parse(…))`
+    of each file is identical before and after; the token stream is identical
+    with `INDENT`/`DEDENT` dropped; and every changed line differs from its
+    predecessor only in leading whitespace, with the line count unchanged. 22 of
+    22 files pass all three, and the diff is 473 insertions against 473
+    deletions. `ruff check` stays clean — worth checking rather than assuming,
+    since shifting a line right can push it past 100 columns; the three files
+    whose longest line grew end at 84, 85 and 84.
+
+    The heaviest files are `pdslinkshelf.py` (281 lines — it was indented in
+    2-space steps in places), `shelf_consistency_check.py` (45),
+    `pds4linkshelf.py` (36), `_properties.py` (25) and `pdsfile.py` (24).
+
+    **Two findings are deliberately left**, both in
+    `holdings_maintenance/pds3/re_validate.py` — an `E117` at `:149` and an
+    `E116` at `:830`. Ground rule 7 and `pdsfile_overrides.mdc` deviation (6)
+    freeze that file, and a whitespace change is still a change to internals the
+    plan says are untouched. They are the only `E1` findings left in the tree.
+
+    **Not resolved: whether to enable `--preview` `E1` as a standing gate.** The
+    tree is clean of it today except for the two frozen lines, so a gate would
+    pass — but it would need a `per-file-ignores` entry for `re_validate.py`
+    carrying codes the ratchet has never held, which is a widen. Still an
+    owner-level decision.
 
 77. **Whether prose may follow a mechanical fix is not written down anywhere.**
     Round 1's m8 had PR-23 change three `IOError` references to `OSError` in

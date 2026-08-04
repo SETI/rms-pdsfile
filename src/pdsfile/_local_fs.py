@@ -425,7 +425,7 @@ class _LocalFsMixin:
                     # contains the same number of slashes as the pattern.
                     if (fnmatch.fnmatchcase(interior_path, key) and
                         len(interior_path.split('/')) == num_key_slashes):
-                            abspaths.append(root_ + interior_path)
+                        abspaths.append(root_ + interior_path)
             else:
                 if key in shelf:
                     abspaths.append(root_ + key)

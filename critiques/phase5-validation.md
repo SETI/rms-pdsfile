@@ -7134,3 +7134,76 @@ The consumer smoke matters more than usual here: entry 31 edits
 `src/pdsfile/__init__.py`, which is the module every consumer's `import pdsfile`
 executes, and check A's third path is literally
 `from pdsfile import Pds3File, Pds4File`.
+
+### 13. The tree-wide indentation sweep (owner, 2026-08-04)
+
+After the `pdscache.py` fix, entry 76's sweep had found **112** `E1` findings
+across 23 files. The owner directed all of them fixed. PR-24 fixes **110** in 22
+files and 473 lines; the two left are in frozen `re_validate.py`.
+
+| Finding | Count | |
+|---|---:|---|
+| `E111` indentation-with-invalid-multiple | 41 | code |
+| `E117` over-indented | 15 | code |
+| `E116` unexpected-indentation-comment | 48 | comment |
+| `E114` indentation-with-invalid-multiple-comment | 5 | comment |
+| `E115` no-indented-block-comment | 3 | comment |
+
+**None was auto-fixable** (`ruff --fix` offers nothing for `E1`), and fixing an
+`E111` means moving the whole block beneath it, so this was done by a re-indenter
+rather than by hand. Its rule: for each logical line the correct indent is
+`4 × (its INDENT-stack depth)`, and the whole logical line — first physical line
+and every continuation — shifts by the same delta, so alignment under an opening
+parenthesis survives. Physical lines inside a multi-line string are never
+touched. A standalone comment moves with its block when the block moved, and is
+otherwise aligned to the code it introduces.
+
+**Indentation is semantic, so this is proved three ways per file, checked
+independently of the tool that made the change:**
+
+1. `ast.dump(ast.parse(...))` identical before and after — 22 of 22 files.
+2. Token stream identical with `INDENT`/`DEDENT` dropped — 22 of 22.
+3. Every changed line differs from its predecessor **only in leading
+   whitespace**, and the line count is unchanged — 22 of 22.
+
+The diff is **473 insertions against 473 deletions**, which is what a
+whitespace-only rewrite looks like.
+
+`ruff check src/pdsfile tests scripts` stays clean. That is worth checking rather
+than assuming: shifting a line right can push it past 100 columns and raise a new
+`E501`. Measured, three files' longest lines grew — `shelf_consistency_check.py`
+80 → 84, `pdscache.py` 80 → 85, `pdsviewable.py` 81 → 84 — all well inside the
+limit, and no file gained a violation.
+
+| File | Lines re-indented |
+|---|---:|
+| `holdings_maintenance/pds3/pdslinkshelf.py` | 281 |
+| `holdings_maintenance/pds3/shelf_consistency_check.py` | 45 |
+| `holdings_maintenance/pds4/pds4linkshelf.py` | 36 |
+| `_properties.py` | 25 |
+| `pdsfile.py` | 24 |
+| `_preload.py` | 15 |
+| `pdscache.py` | 15 |
+| `holdings_maintenance/pds3/pdsdependency.py` | 6 |
+| `pds4infoshelf.py`, `pdsinfoshelf.py`, `tests/rules/pds4/test_uranus_occs_earthbased.py` | 4 each |
+| `pdsviewable.py`, `pds3file/__init__.py`, `pds4file/__init__.py` | 2 each |
+| `_sorting.py`, `_local_fs.py`, `_index_rows.py`, `NHxxxx_xxxx.py`, `crlf.py`, `pdsarchives.py`, `pdschecksums.py`, `pds4checksums.py` | 1 each |
+
+`pdslinkshelf.py` dominates because parts of it were indented in 2-space steps,
+so every statement under those blocks moved.
+
+**`re_validate.py` keeps its two findings** — an `E117` at `:149` and an `E116`
+at `:830`. Ground rule 7 and deviation (6) freeze the file, and a whitespace
+change is still a change to internals the plan says are untouched. They are the
+only `E1` findings left in the tree.
+
+#### Gates re-run after the sweep
+
+| Gate | Result |
+|---|---|
+| `--mode ns` | 858 passed / 34 skipped — **892 ids, 0 / 0 / 0** vs `8cab66a` |
+| `--mode s` | 555 passed / 3 skipped — **558 ids, 0 / 0 / 0** |
+| API freeze | fresh dump **733,876 bytes, `diff` empty**; `test_api_freeze.py` passes |
+| no-holdings | **92 passed / 800 skipped**; ruff, pyroma, freeze, clean-install green |
+| `ruff check src/pdsfile tests scripts` | clean |
+| consumer smoke A / B | **4/4 ok** · **5 ok / the same 3 failures** — same outcome as baseline |

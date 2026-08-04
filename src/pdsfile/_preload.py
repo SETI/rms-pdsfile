@@ -246,13 +246,13 @@ class _PreloadMixin:
         volinfo_path = _clean_join(holdings, '_volinfo')
 
         volinfo_dict = {}           # the master dictionary of high-level paths vs.
-                                    # (description, icon_type, version ID,
-                                    #  publication date, optional list of data set
-                                    #  IDs, optional checksum)
+        # (description, icon_type, version ID,
+        #  publication date, optional list of data set
+        #  IDs, optional checksum)
 
         keys_without_dsids = []     # internal list of entries without data set IDs
         dsids_vs_key = {}           # global dictionary of data set IDs for entries
-                                    # that have them
+        # that have them
 
         # For each file in the volinfo subdirectory...
         children = os.listdir(volinfo_path)
@@ -292,11 +292,11 @@ class _PreloadMixin:
 
                 if (parts[0].startswith('documents/') or
                     parts[0].rpartition('/')[2] in cls.EXTRA_README_BASENAMES):
-                        md5 = parts[5]
-                        dsids = []
+                    md5 = parts[5]
+                    dsids = []
                 else:
-                        md5 = ''
-                        dsids = list(parts[5:])
+                    md5 = ''
+                    dsids = list(parts[5:])
 
                 # Update either keys_without_dsids or dsids_vs_key. This is used
                 # to fill in data set IDs for voltypes other than "volumes/".
@@ -417,8 +417,8 @@ class _PreloadMixin:
 
         if clear:
             cls.CACHE.clear(block=True) # For a MemcachedCache, this will pause for any
-                                    # other thread's block, then clear, and retain
-                                    # the block until the preload is finished.
+            # other thread's block, then clear, and retain
+            # the block until the preload is finished.
             cls.LOCAL_PRELOADED = []
             cls.LOGGER.info('Cache cleared')
 
@@ -442,15 +442,15 @@ class _PreloadMixin:
                 if not something_is_missing:
                     if cls.MEMCACHE_PORT:
                         cls.get_permanent_values(holdings_list, cls.MEMCACHE_PORT)
-                        # Note that if any permanently cached values are missing,
-                        # this call will recursively clear the cache and preload
-                        # again. This reduces the chance of a corrupted cache.
+                    # Note that if any permanently cached values are missing,
+                    # this call will recursively clear the cache and preload
+                    # again. This reduces the chance of a corrupted cache.
 
                     return
 
                 waited = cls.CACHE.wait_and_block()
                 if not waited:      # A wait suggests the answer might have changed,
-                                    # so try again.
+                    # so try again.
                     break
 
                 cls.CACHE.unblock()
@@ -459,7 +459,7 @@ class _PreloadMixin:
 
         # Pause the cache before proceeding--saves I/O
         cls.CACHE.pause()       # Paused means no local changes will be flushed to the
-                            # external cache until resume() is called.
+        # external cache until resume() is called.
 
         ########################################################################
         # Interior function to recursively preload one physical directory

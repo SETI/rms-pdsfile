@@ -116,6 +116,6 @@ if __name__ == '__main__':
             if repairs == 1:
                 print(f'{repairs}/{nfiles} files repaired')
         elif invalid:
-                print(f'{invalid}/{nfiles} files invalid')
+            print(f'{invalid}/{nfiles} files invalid')
         else:
             print(str(nfiles), 'files tested')

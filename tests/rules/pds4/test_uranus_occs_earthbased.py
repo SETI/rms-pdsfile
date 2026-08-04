@@ -96,18 +96,18 @@ def test_opus_id_to_primary_logical_path():
         #    opus_id_abspaths.add(pdsf.abspath)
 
         #for pdsf in product_pdsfiles:
-            # Every version is in the product set
+        # Every version is in the product set
         #    for version_pdsf in pdsf.all_versions().values():
         #        assert version_pdsf.abspath in opus_id_abspaths
 
-            # Every viewset is in the product set
+        # Every viewset is in the product set
         #    for viewset in pdsf.all_viewsets.values():
         #        for viewable in viewset.viewables:
         #            assert viewable.abspath in opus_id_abspaths
 
-            # Every associated product is in the product set except metadata
+        # Every associated product is in the product set except metadata
         #    for category in ('volumes', 'calibrated', 'previews'):
         #        for abspath in pdsf.associated_abspaths(category):
         #            assert abspath in opus_id_abspaths
 
-##########################################################################################
+        ##########################################################################################

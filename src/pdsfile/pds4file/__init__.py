@@ -230,8 +230,8 @@ try:
                         uranus_occs_earthbased)
 except AttributeError:
     pass                    # This occurs when running pytests on individual
-                            # rule subclasses, where pdsfile can be imported
-                            # recursively.
+# rule subclasses, where pdsfile can be imported
+# recursively.
 
 
 Pds4File.cache_category_merged_dirs()

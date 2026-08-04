@@ -1048,14 +1048,14 @@ def main():
         path = os.path.abspath(path)
         pdsdir = pdsfile.Pds3File.from_abspath(path)
         if not pdsdir.is_volume_dir and not pdsdir.is_volset_dir:
-          print('pdsdependency error: '
-                'not a volume or volume set directory: ' + pdsdir.logical_path)
-          sys.exit(1)
+            print('pdsdependency error: '
+                  'not a volume or volume set directory: ' + pdsdir.logical_path)
+            sys.exit(1)
 
         if pdsdir.category_ != 'volumes/':
-          print('pdsdependency error: '
-                'not a volume or volume set directory: ' + pdsdir.logical_path)
-          sys.exit(1)
+            print('pdsdependency error: '
+                  'not a volume or volume set directory: ' + pdsdir.logical_path)
+            sys.exit(1)
 
     # Initialize the logger
     logger = pdslogger.PdsLogger(LOGNAME)

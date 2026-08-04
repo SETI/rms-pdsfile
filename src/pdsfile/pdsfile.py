@@ -263,8 +263,8 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
                                      logger=LOGGER)
 
     DEFAULT_CACHING = 'dir'     # 'dir', 'all' or 'none';
-                                # use 'dir' for Viewmaster without MemCache;
-                                # use 'all' for Viewmaster with MemCache;
+    # use 'dir' for Viewmaster without MemCache;
+    # use 'all' for Viewmaster with MemCache;
     PRELOAD_TRIES = 3
 
     # CATEGORIES contains the name of every subdirectory of holdings/
@@ -409,16 +409,16 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
         self.interior     = ''      # Path starting inside volume directory
 
         self.is_index_row = False   # True for a "fake" PdsFile describing one
-                                    # or more rows inside an index table
+        # or more rows inside an index table
         self.row_dicts    = []      # List of row dictionaries if this is an
-                                    # index row.
+        # index row.
         self.column_names = []      # Ordered list of column names for an index
-                                    # row or its parent.
+        # row or its parent.
 
         self.permanent    = False   # If True, never to be removed from cache
         self.is_merged    = False   # If True, a category directory with
-                                    # contents merged from multiple phsical
-                                    # directories
+        # contents merged from multiple phsical
+        # directories
 
         self._exists_filled         = None
         self._islabel_filled        = None
@@ -428,7 +428,7 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
         self._childnames_filled     = None
         self._childnames_lc_filled  = None
         self._info_filled           = None  # (bytes, child_count, modtime,
-                                            # checksum, size)
+        # checksum, size)
         self._date_filled           = None
         self._formatted_size_filled = None
         self._is_viewable_filled    = None
@@ -445,8 +445,8 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
         self._opus_format_filled    = None
         self._view_options_filled   = None  # (grid, multipage, continuous)
         self._volume_info_filled    = None  # (desc, icon type, version ID,
-                                            #  pub date, list of dataset IDs,
-                                            # optional MD5 checksum)
+        #  pub date, list of dataset IDs,
+        # optional MD5 checksum)
         self._all_version_abspaths  = None
         self._html_path_filled      = None
         self._description_and_icon_filled    = None
@@ -559,7 +559,7 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
 
         subclasses = cls.__subclasses__()
         for child_class in subclasses:
-             child_class.LOGGER = logger
+            child_class.LOGGER = logger
 
 
     @classmethod
@@ -572,7 +572,7 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
 
         subclasses = cls.__subclasses__()
         for child_class in subclasses:
-             child_class.set_easylogger()
+            child_class.set_easylogger()
 
     ############################################################################
     # Merged directories, index rows, and object utilities
@@ -1815,12 +1815,12 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
                 # See if any of these alternative ranks will work
                 this_abspath = None
                 for alt_rank in alt_ranks:
-                  try:
-                    this_abspath = cls.CACHE['$VOLS-' + this.category_][bundlename]\
-                                                                   [alt_rank]
-                    break
-                  except KeyError:
-                    continue
+                    try:
+                        this_abspath = cls.CACHE['$VOLS-' + this.category_][bundlename]\
+                                                                       [alt_rank]
+                        break
+                    except KeyError:
+                        continue
 
                 if not this_abspath:
                     raise ValueError(f'Suffix "{this.suffix}" not found: '
@@ -1865,12 +1865,12 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
                 # See if any of these alternative ranks will work
                 this_abspath = None
                 for alt_rank in alt_ranks:
-                  try:
-                    this_abspath = cls.CACHE['$VOLS-' + this.category_][bundleset]\
-                                                                   [alt_rank]
-                    break
-                  except KeyError:
-                    continue
+                    try:
+                        this_abspath = cls.CACHE['$VOLS-' + this.category_][bundleset]\
+                                                                       [alt_rank]
+                        break
+                    except KeyError:
+                        continue
 
                 if not this_abspath:
                     raise ValueError(f'Suffix "{this.suffix}" not found: '

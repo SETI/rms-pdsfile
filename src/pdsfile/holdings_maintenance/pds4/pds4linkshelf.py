@@ -73,13 +73,13 @@ class LinkInfo:
 
         self.recno = recno          # record number
         self.linktext = linkname    # substring within this record that looks
-                                    # like a link.
+        # like a link.
         self.linkname = linkname    # link text after possible repair for known
-                                    # errors.
+        # errors.
         self.is_target = is_target  # True if, based on the local context, this
-                                    # might be a target of a label file
+        # might be a target of a label file
         self.target = ''            # abspath to target of link, if any.
-                                    # If not blank, this file must exist.
+    # If not blank, this file must exist.
 
     def remove_path(self):
         """Remove any leading directory path from this LinkInfo object."""
@@ -130,7 +130,7 @@ def generate_links(dirpath, old_links=None, *, logger=None, limits=None):
 
         linkinfo_dict = old_links.copy()      # abspath: list of LinkInfo objects
         label_dict = {k:v for k,v in old_links.items() if isinstance(v,str)}
-                                                # abspath: label for this file
+        # abspath: label for this file
         abspaths = []                         # list of all abspaths
 
         latest_mtime = 0.
@@ -339,10 +339,10 @@ def generate_links(dirpath, old_links=None, *, logger=None, limits=None):
                     if (len(linkname_uc) > ltest and
                         linkname_uc[:ltest] == baseroot_uc and
                         linkname_uc[ltest] == '.'):
-                            label_dict[info.target] = abspath
-                            logger.info('Label identified (by name) for %s' %
-                                         info.linkname, abspath)
-                            continue
+                        label_dict[info.target] = abspath
+                        logger.info('Label identified (by name) for %s' %
+                                     info.linkname, abspath)
+                        continue
 
                     # Otherwise, then maybe
                     if info.is_target:
@@ -799,34 +799,34 @@ def write_linkdict(dirpath, link_dict, *, logger=None, limits=None):
         with open(python_path, 'w', encoding='latin-1') as f:
             f.write(name + ' = {\n')
             for valtype in (list, str):
-              for key in keys:
-                if not isinstance(interior_dict[key], valtype):
-                    continue
+                for key in keys:
+                    if not isinstance(interior_dict[key], valtype):
+                        continue
 
-                f.write('  "%s"' % key)
-                if len(key) < len_key:
-                    f.write((len_key - len(key)) * ' ')
-                f.write(': ')
-                tuple_indent = max(len(key),len_key) + 7
+                    f.write('  "%s"' % key)
+                    if len(key) < len_key:
+                        f.write((len_key - len(key)) * ' ')
+                    f.write(': ')
+                    tuple_indent = max(len(key),len_key) + 7
 
-                values = interior_dict[key]
-                if isinstance(values, str):
-                    f.write('"%s",\n' % values)
-                elif len(values) == 0:
-                    f.write('[],\n')
-                else:
-                    f.write('[')
-                    for k in range(len(values)):
-                        (recno, basename, interior_path) = values[k]
-                        f.write('(%4d, ' % recno)
-                        f.write('"%s, ' % (basename + '"' +
-                                           (len_base-len(basename)) * ' '))
-                        f.write('"%s")' % interior_path)
+                    values = interior_dict[key]
+                    if isinstance(values, str):
+                        f.write('"%s",\n' % values)
+                    elif len(values) == 0:
+                        f.write('[],\n')
+                    else:
+                        f.write('[')
+                        for k in range(len(values)):
+                            (recno, basename, interior_path) = values[k]
+                            f.write('(%4d, ' % recno)
+                            f.write('"%s, ' % (basename + '"' +
+                                               (len_base-len(basename)) * ' '))
+                            f.write('"%s")' % interior_path)
 
-                        if k < len(values) - 1:
-                            f.write(',\n' + tuple_indent * ' ')
-                        else:
-                            f.write('],\n')
+                            if k < len(values) - 1:
+                                f.write(',\n' + tuple_indent * ' ')
+                            else:
+                                f.write('],\n')
 
             f.write('}\n\n')
 

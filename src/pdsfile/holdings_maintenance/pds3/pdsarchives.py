@@ -490,7 +490,7 @@ def main():
             pdsdir = pdsf.volset_pdsfile()
             children = [pdsdir.child(c) for c in pdsdir.childnames]
             pdsdirs += [c for c in children if c.isdir]
-                    # "if c.isdir" is False for volset level readme files
+    # "if c.isdir" is False for volset level readme files
 
     # Begin logging and loop through pdsdirs...
     logger.open(' '.join(sys.argv))
