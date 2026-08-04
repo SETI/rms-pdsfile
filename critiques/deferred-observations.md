@@ -1745,14 +1745,22 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     The fix is `keys = sorted(mydict.keys())` plus dropping the separate `.sort()`.
     **Owner: phase "b" of issue #77.**
 
-75. **`_opus.py` now spells the same concatenation two ways.**
-    `src/pdsfile/_opus.py:246` is `[pdsf, *fmt_pdsfiles]` after PR-23's `RUF005`
-    fix; `:271` is still `sublist = [pdsf] + label_pdsfiles[pdsf.label_abspath]`,
-    which is the same shape. ruff does not flag `:271` — `RUF005` fires on
-    `iterable + [literal]`, not on `[literal] + name` where the right operand is a
-    subscript — so PR-23 correctly left it alone rather than making an unforced
-    edit. Cosmetic; a reader will see the file disagreeing with itself.
-    **Owner: PR-24, or Phase 6.**
+75. **`_opus.py` now spells the same concatenation two ways. — RESOLVED
+    (2026-08-03), by reverting the fix that caused it.**
+    As recorded in round 2: `src/pdsfile/_opus.py:246` had become
+    `[pdsf, *fmt_pdsfiles]` after PR-23's `RUF005` fix while `:268` stayed
+    `sublist = [pdsf] + label_pdsfiles[pdsf.label_abspath]`, which is the same
+    shape. ruff does not flag `:268` — `RUF005` fires on `iterable + [literal]`,
+    not on `[literal] + name` where the right operand is a subscript — so the file
+    disagreed with itself. (The second site is `:268`, not `:271` as round 2's
+    record and this entry's first draft said; re-measured 2026-08-03, and it is
+    `:268` in `rewrite` @ `96e5960` as well.)
+
+    The owner has since ruled that `RUF005`'s rewrite is not wanted at all
+    (2026-08-03). All seven of PR-23's `RUF005` conversions were reverted to their
+    `rewrite` spelling and `RUF005` became a permanent, owner-chosen exclusion in
+    the ratchet and in `pdsfile_overrides.mdc` deviation (4). `:246` and `:268` now
+    read alike again, and no PR will diverge them.
 
 ### Added by the PR-23 adversarial review (round 3)
 

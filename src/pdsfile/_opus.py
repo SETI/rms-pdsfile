@@ -243,7 +243,7 @@ class _OpusMixin:
                     fmts.sort()
                     fmt_pdsfiles = pds_class.pdsfiles_for_abspaths(fmts,
                                                              must_exist=True)
-                label_pdsfiles[abspath] = [pdsf, *fmt_pdsfiles]
+                label_pdsfiles[abspath] = [pdsf] + fmt_pdsfiles
             else:
                 data_pdsfiles.append(pdsf)
 

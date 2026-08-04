@@ -322,9 +322,9 @@ class _PreloadMixin:
                             'volumes/' + bundleset + '/' + remainder)
                 for alt_key in alt_keys:
                     if alt_key in dsids_vs_key:
-                        volinfo_dict[key] = (*volinfo_dict[key][:4],
-                                             dsids_vs_key[alt_key],
-                                             volinfo_dict[key][5])
+                        volinfo_dict[key] = (volinfo_dict[key][:4] +
+                                            (dsids_vs_key[alt_key],
+                                            volinfo_dict[key][5]))
                         break
 
         # Save the master dictionary in the cache now

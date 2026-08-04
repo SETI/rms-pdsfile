@@ -159,7 +159,7 @@ class _IndexRowsMixin:
             raise KeyError('Index selection not found: ' +
                            self.logical_path + '/' + selection)
 
-        childnames = [*self.childnames, selection]
+        childnames = self.childnames + [selection]
         childnames = self.sort_basenames(childnames)
         k = childnames.index(selection)
 
