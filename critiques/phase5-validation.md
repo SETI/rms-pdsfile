@@ -7074,3 +7074,63 @@ records plus one style choice. The five are corrected; none touches `src/` or
 81–89 come from this PR's own measurements and its review rounds; **90 and 91
 were raised by the CodeRabbit review of PR #119** and are pre-existing at
 `8cab66a` in both cases.
+
+### 12. Two files added after the loop closed, by owner decision (2026-08-04)
+
+The owner decided three open deferred entries after round 4 converged. Two of
+them are edits, and both live in **PR-23's** file set rather than this PR's:
+
+| Entry | File | Decision | Change |
+|---|---|---|---|
+| 31 | `src/pdsfile/__init__.py` | the intent was to export the `PdsFile` class only | `from pdsfile import *` → `from pdsfile.pdsfile import PdsFile as PdsFile` |
+| 76 | `src/pdsfile/pdscache.py` | fix the indentation | both `flush` handlers and `class PdsCache:`'s `pass` re-indented onto the 4-space grid |
+| 81 | (none) | the log files should be versioned | recorded only; the fix changes behavior and stays with PR-25 |
+
+**Entry 31 is surface-neutral, and that is measured, not assumed.** `PdsFile`
+already reached the package namespace through `from .pds3file import *` /
+`from .pds4file import *` — `pdsfile.PdsFile is pdsfile.pdsfile.PdsFile` held
+before the change. A fresh `dump_public_api.py` before and after is
+**byte-identical at 733,876 bytes**. Two spellings were rejected on evidence:
+a plain `from ... import PdsFile` leaves the name unreferenced and raises `F401`,
+which trades one ratchet code for another instead of dropping one; and the
+relative `from .pdsfile import ...` sorts after the two star imports, so `I001`
+would have moved the core import below them and changed which module initializes
+first. `F403` goes from 3 occurrences to 2 — the two genuine star imports.
+
+**Entry 76 is semantics-neutral, and indentation is semantic, so it is proved.**
+`ast.dump(ast.parse(...))` of `pdscache.py` is identical before and after.
+`ruff check --select E1 --preview` on the file goes 8 → 3; the 3 remaining are
+`E115` on the commented-out `MemcachedCache.get_multi` block that deferred entry
+64 still owes a decision on. The same sweep run tree-wide reports **112**
+findings — 56 real code-indentation sites across ten files and 56 comment ones —
+which entry 76 now records, because that is the scale of the decision it was
+raised to ask for and it is far larger than one file.
+
+**Neither file is inside this PR's 2,760-violation target set**, so §8's
+arithmetic (483 fixed / 2,277 permanent) and §7's ratchet arithmetic are
+unchanged apart from `__init__.py`'s count comment, `x3` → `x2`.
+
+These two edits landed after round 4, so they have had **no adversarial review
+round of their own**. That is stated plainly rather than papered over: what backs
+them is the byte-identical manifest, the identical AST, a clean `ruff check`, and
+the regenerated full-data run below.
+
+#### Gates re-run after these two edits
+
+`src/pdsfile/` changed, so §6.6 step 5 requires the record regenerated rather
+than carried forward. Every gate was re-run at the new head:
+
+| Gate | Result |
+|---|---|
+| `--mode ns` | 858 passed / 34 skipped — **892 ids, 0 added / 0 removed / 0 outcome-changed** vs `8cab66a` |
+| `--mode s` | 555 passed / 3 skipped — **558 ids, 0 / 0 / 0** |
+| API freeze | fresh dump **733,876 bytes, `diff` empty** against the pre-change dump; `test_api_freeze.py` passes |
+| no-holdings `run-all-checks.sh` | **92 passed / 800 skipped**; ruff, pyroma, API-freeze and clean-install all green |
+| `ruff check src/pdsfile tests scripts` | clean |
+| consumer smoke A — rms-opus | **4/4 ok, 0 failures** (baseline: same) |
+| consumer smoke B — rms-viewmaster | **5 ok / 3 fail**, the same three flat-name failures (baseline: same) |
+
+The consumer smoke matters more than usual here: entry 31 edits
+`src/pdsfile/__init__.py`, which is the module every consumer's `import pdsfile`
+executes, and check A's third path is literally
+`from pdsfile import Pds3File, Pds4File`.
