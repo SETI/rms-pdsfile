@@ -7207,3 +7207,50 @@ only `E1` findings left in the tree.
 | no-holdings | **92 passed / 800 skipped**; ruff, pyroma, freeze, clean-install green |
 | `ruff check src/pdsfile tests scripts` | clean |
 | consumer smoke A / B | **4/4 ok** · **5 ok / the same 3 failures** — same outcome as baseline |
+
+### 14. `re_validate.py` re-indented, and the indentation gate enabled (owner, 2026-08-04)
+
+Two follow-on decisions after §13.
+
+**`re_validate.py`'s freeze is lifted for whitespace only.** Its `E117` at `:149`
+and `E116` at `:830` are fixed — 9 lines — so the tree has no `E1` finding left
+anywhere. It carries the same three proofs as the other 22 files (identical AST,
+identical token stream ignoring `INDENT`/`DEDENT`, every changed line differing
+only in leading whitespace with the line count unchanged), and its ten-code
+`per-file-ignores` entry is untouched. The freeze on its logic stands;
+`pdsfile_overrides.mdc` deviation (6) records the exception explicitly so the
+next executor does not read it as the freeze having lapsed.
+
+**The gate is on.** `scripts/run-all-checks.sh` now runs a second `ruff check`
+after the configured one:
+
+```
+ruff check --preview --select E111,E112,E113,E114,E115,E116,E117 src/pdsfile tests scripts
+```
+
+**Why a separate invocation rather than `preview = true` in `pyproject.toml`.**
+Preview mode is not selective. It changes the behaviour of the *stable* rules as
+well as adding preview ones, and `explicit-preview-rules` governs only which
+preview rules are selected, not that. Measured against this tree — which the
+configured gate reports **clean** — adding `--preview` yields **5,687**
+findings, including 28 `F822` and `RUF012` 33 → 49, `B006` 9 → 12, `RUF005`
+4 → 12. Absorbing those would mean a ratchet widen on a scale §6.4 forbids
+outright. Naming the seven codes explicitly keeps the new surface to indentation
+and nothing else.
+
+**The gate is non-vacuous, and that took two attempts to establish.** Adding two
+spaces to one statement in `_sorting.py` makes the gate report `E111` and `E112`
+and `run-all-checks.sh` exit `FAILURE`. The first control mutated a
+*continuation* line, which `E1` does not check, and the gate passed green — a
+reminder that a negative control can itself be vacuous. The tree was restored and
+verified clean afterwards.
+
+**Verified under both ruff versions.** The development venv has 0.15.7;
+`pyproject.toml` declares `ruff>=0.8` and CI resolves that to 0.16.1. A preview
+rule's behaviour can change between releases, so both gates were run under both:
+clean under each.
+
+The gate needs **no per-file exemption at all** — which is the reason the
+`re_validate.py` decision above mattered. Had those two lines stayed, enabling
+the gate would have required an entry carrying `E1` codes the ratchet has never
+held, and that is a widen.

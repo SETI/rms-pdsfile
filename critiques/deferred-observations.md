@@ -1858,17 +1858,36 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     2-space steps in places), `shelf_consistency_check.py` (45),
     `pds4linkshelf.py` (36), `_properties.py` (25) and `pdsfile.py` (24).
 
-    **Two findings are deliberately left**, both in
-    `holdings_maintenance/pds3/re_validate.py` — an `E117` at `:149` and an
-    `E116` at `:830`. Ground rule 7 and `pdsfile_overrides.mdc` deviation (6)
-    freeze that file, and a whitespace change is still a change to internals the
-    plan says are untouched. They are the only `E1` findings left in the tree.
+    **`re_validate.py`'s two findings were left at first** — an `E117` at `:149`
+    and an `E116` at `:830` — because ground rule 7 and deviation (6) freeze the
+    file. **The owner lifted that for whitespace on 2026-08-04**, so they are
+    fixed too: 9 lines, same three proofs, and the file's ten-code
+    `per-file-ignores` entry untouched. The freeze on its logic stands, and
+    deviation (6) now records the exception. **`ruff check --preview --select
+    E111,E112,E113,E114,E115,E116,E117` is clean over the whole tree with no
+    per-file exemption at all.**
 
-    **Not resolved: whether to enable `--preview` `E1` as a standing gate.** The
-    tree is clean of it today except for the two frozen lines, so a gate would
-    pass — but it would need a `per-file-ignores` entry for `re_validate.py`
-    carrying codes the ratchet has never held, which is a widen. Still an
-    owner-level decision.
+    **The gate is enabled (owner, 2026-08-04).** `run-all-checks.sh` runs it as a
+    second `ruff check` invocation, recorded in the plan's §2 gate table and
+    `pdsfile_overrides.mdc` deviation (12).
+
+    It is a **separate invocation, not `preview = true` in `pyproject.toml`**,
+    because preview mode is not selective: it changes the behaviour of the
+    *stable* rules too, and `explicit-preview-rules` governs only which preview
+    rules get selected, not that. Measured against a tree the configured gate
+    reports clean, `--preview` raises **5,687** findings — 28 `F822`, and
+    `RUF012` 33 → 49, `B006` 9 → 12, `RUF005` 4 → 12, among others. Absorbing
+    those would be a large ratchet widen, which §6.4 forbids. Naming the seven
+    codes keeps the new surface to indentation alone.
+
+    Two things checked rather than assumed. The gate is **non-vacuous**: adding
+    two spaces to one statement in `_sorting.py` makes it report `E111` and
+    `E112` and `run-all-checks.sh` exit FAILURE. (The first attempt at this
+    control mutated a *continuation* line, which `E1` does not check, and passed
+    green — the control needed its own control.) And it is clean under **both**
+    ruff 0.15.7, the development venv, and 0.16.1, which is what CI resolves
+    `ruff>=0.8` to; a preview rule's behaviour can change between releases and
+    the two versions are not pinned together.
 
 77. **Whether prose may follow a mechanical fix is not written down anywhere.**
     Round 1's m8 had PR-23 change three `IOError` references to `OSError` in

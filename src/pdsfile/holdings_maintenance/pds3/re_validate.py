@@ -146,13 +146,13 @@ def validate_one_volume(pdsdir, voltypes, tests, args, logger):
 
             if (args.linkshelves and
                 voltype in ('volumes', 'calibrated', 'metadata')):
-                    logger.open('Linkshelf re-validatation for', abspath)
-                    try:
-                        pdslinkshelf.validate(temp_pdsdir,
-                                              limits=LINKSHELF_LIMITS)
-                    finally:
-                        tests_performed += 1
-                        logger.close()
+                logger.open('Linkshelf re-validatation for', abspath)
+                try:
+                    pdslinkshelf.validate(temp_pdsdir,
+                                          limits=LINKSHELF_LIMITS)
+                finally:
+                    tests_performed += 1
+                    logger.close()
 
         # Infoshelves for each 'archive-' + voltype...
         if args.infoshelves and args.archives:
@@ -825,6 +825,6 @@ else:
             send_email(args.error_email, ERROR_REPORT_SUBJ,
                                               '\n'.join(full_message))
 
-#     sys.exit(status)
+    #     sys.exit(status)
     sys.exit(0)         # In batch mode, don't cancel the launchdaemon.
-                        # Does this help??
+    # Does this help??

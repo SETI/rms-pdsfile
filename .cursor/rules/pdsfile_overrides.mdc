@@ -133,7 +133,11 @@ conflicts with a rule below, follow the rule below. See
    `pathlib.Path` objects when interacting with it.
 6. **`re_validate.py` and the sync shell scripts are frozen** (document-only): do
    not refactor their internals (email/batch logic, ordering) — only mechanical
-   renames/moves with their package.
+   renames/moves with their package. **One exception, owner 2026-08-04:**
+   `re_validate.py` is re-indented onto the 4-space grid along with the rest of
+   the tree, so that the indentation gate in (12) has no exemption. Nine lines
+   moved; the file's parse tree and token stream are unchanged and its ten-code
+   `per-file-ignores` entry is untouched. The freeze on its logic stands.
 7. **`pytest` `addopts` carries no `-n`/xdist or `--cov` flags** (unlike the
    template). Worker count and coverage are chosen per invocation, because
    `--update` runs and full-data runs must be serial.
@@ -178,3 +182,24 @@ conflicts with a rule below, follow the rule below. See
     unchanged. Consequences: `ENABLE_RUFF_FORMAT` stays `false`, no CI job runs
     `ruff format --check`, and `# fmt: off` guards are unnecessary and should not
     be added. `[tool.ruff.format]`'s settings are inert but harmless.
+
+12. **Indentation is enforced by its own `ruff check` invocation** (owner
+    decision, 2026-08-04). `python.mdc` requires 4-space indentation, but ruff's
+    `E1` rules are preview-gated and so were never in force. `run-all-checks.sh`
+    now runs a second pass,
+    `ruff check --preview --select E111,E112,E113,E114,E115,E116,E117`, over the
+    same targets as the configured gate.
+
+    **It is a separate invocation rather than `preview = true` in
+    `pyproject.toml` because preview mode is not selective.** `preview` changes
+    the behaviour of the *stable* rules too, and `explicit-preview-rules` governs
+    only which preview rules are selected, not that. Measured against a tree the
+    configured gate reports clean: **5,687** findings, including 28 `F822`, and
+    `RUF012` 33 → 49, `B006` 9 → 12, `RUF005` 4 → 12. Absorbing those would mean
+    a large ratchet widen, which §6.4 forbids. Naming the seven codes explicitly
+    keeps the new surface to indentation alone.
+
+    The tree is clean under this gate with **no per-file exemption at all** —
+    including `re_validate.py`, see (6). Verified under both ruff 0.15.7 (the
+    development venv) and 0.16.1 (what CI resolves `ruff>=0.8` to), because a
+    preview rule's behaviour can change between releases.
