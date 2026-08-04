@@ -45,8 +45,8 @@ def test_initialize_cannot_read_a_pds4_index(fresh_tree):
 def test_non_metadata_argument_is_rejected(fresh_tree):
     """A path outside metadata/ is refused before any table work is attempted.
 
-    This part of the CLI contract does work, and the Phase 6 consolidation must
-    preserve it.
+    This part of the CLI contract does work, and consolidating the pds3 and pds4
+    tools onto a shared core must preserve it.
     """
 
     outside = support.add_file(
