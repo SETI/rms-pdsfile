@@ -1903,3 +1903,41 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     **Owner: owner decision on scope, then a dedicated style PR — the count is too
     large and too spread out for PR-24, whose warrant is `ruff check` on the
     subpackages.**
+
+### Added by the owner, 2026-08-04
+
+80. **Module-level comments and docstrings still narrate the port instead of
+    describing the code.** The rule is the same one that governs every other
+    comment: say what the code *is*, not how it got that way. The module headers
+    were written during the decomposition and read accordingly.
+
+    `src/pdsfile/pdsfile.py`'s module docstring is the main one. Its concrete
+    tells, measured rather than characterised:
+
+    - "re-exports every name it **has ever exported**" (:10) — a claim about the
+      past. It re-exports the names it exports; that is all a reader needs.
+    - "`preload_and_cache.py` … is **now** a re-export shim over `_preload.py`"
+      (:47) — "now" is only meaningful against a previous state.
+    - The whole closing paragraph (:80–82): "The split is invisible to a caller's
+      code: `pdsfile.pdsfile.<name>` still resolves for every name it resolved
+      for **before**, and nothing a caller imports or calls has **moved or been
+      renamed**." This is a statement about a migration, not about the module.
+    - "**What stays here, and why**" (:51) frames the contents as a residue of an
+      extraction rather than as the module's subject matter.
+
+    Elsewhere: `src/pdsfile/preload_and_cache.py:4` ("every name this module has
+    **always** exported still resolves here"), and the same "stays"/"still"
+    framing in the re-export blocks of `pdsfile.py`, `pdscache.py` and
+    `pdsviewable.py`.
+
+    The information in these headers is worth keeping — the module map, the
+    mixin mechanics, the reason the `class PdsFile` statement cannot move, the
+    reason an unreferenced import must not be deleted. **Only the framing
+    changes:** written as description rather than as change history, every one of
+    these facts still has a natural form. Rewrite them; do not delete them.
+
+    Deliberately not done inside PR-23: it is a prose pass over fifteen module
+    headers, wanted by the owner as its own piece of work rather than folded into
+    a `ruff check` PR whose warrant is that it changes nothing. It also overlaps
+    Phase 7, which owns docstrings.
+    **Owner: owner-directed; Phase 7 (PR-29–PR-34) is the natural home.**

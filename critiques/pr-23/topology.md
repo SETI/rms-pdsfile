@@ -13,8 +13,11 @@ fallback ("collapse levels from the **top**, never the bottom"):
 | §6.6 adversarial reviewer | one fresh, no-context opus-class subagent **per round**, spawned by the PR-executor |
 
 What is preserved: exactly one PR-executor subagent for this PR, and under it a
-new reviewer per round that receives no implementation conversation, no executor
-reasoning and no prior round records — only the PR-23 section of the plan, the
+new reviewer per round that receives no implementation conversation and no
+executor reasoning. Prior round records are a separate matter: rounds after the
+first receive them, so a reviewer can audit whether recorded findings were
+actually resolved, which §6.6 makes the whole job of the fourth, scoped round.
+What each reviewer gets is the PR-23 section of the plan, the
 Phase-5 preamble, the `2026-08-03` owner-decisions addendum (which is what makes
 this a `ruff check`-only PR), §2, §6.1/§6.2 and the §6.6 rules including the
 progressive `.cursor/rules` compliance schedule, the exact diff, and read access

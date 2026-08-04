@@ -6494,7 +6494,7 @@ code this PR changed.**
 
 Appended, not merged into the sections above, so that the record shows the state
 before and after the corrections. The corrections were given after the §6.6 loop
-had closed clean at `f59ec05`. Everything below was measured after them.
+had closed clean at `0a7dc60`; `f59ec05` is the coordinator commit that recorded deferred 78 on top of it, and is the base of the corrections diff. Everything below was measured after them.
 
 #### What changed and why
 

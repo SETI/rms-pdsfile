@@ -819,13 +819,15 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
     @property
     def is_bundle_dir(self):
         """Return True if this is the root level directory of a bundle."""
-        # Note that a bundle set will return an empty string '' rather than False
+        # The bool() matters: without it a bundle set would yield the empty string
+        # the `and` produces, not False.
         return bool(self.bundlename_ and not self.interior)
 
     @property
     def is_bundle_file(self):
         """Return True if this is a bundle-level checksum or archive file."""
-        # Note that a bundle set will return an empty string '' rather than False
+        # The bool() matters: without it a bundle set would yield the empty string
+        # the `and` produces, not False.
         return bool(self.bundlename and not self.bundlename_)
 
     @property
