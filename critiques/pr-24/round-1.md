@@ -18,9 +18,11 @@ deviation (4) agree code-for-code; the junit id sets (892/892 and 558/558, 0
 added / 0 removed / 0 changed) against **both** recorded baselines; that the head
 run postdates the last `src/`+`tests/` commit; a fresh `dump_public_api.py` dump
 byte-identical to base at 733,876 bytes; that no prohibited file is in the diff;
-that no inline `noqa` was added and no `[*x, y]` appears anywhere; that the only
-added f-strings are two `print()`s and three exception messages, none in a
-logging call; and the 132/69 logging sweep, the 15/15 probe, the 111-passed tool
+that no inline `noqa` was added and the diff introduces no `[*x, y]` expression
+(one pre-existing site, `tests/holdings_maintenance/support.py:200`, is unchanged
+from `origin/rewrite` — see round 3's rebuttal of m5); that the only added
+f-strings are two `print()`s and three exception messages, none in a logging
+call; and the 132/69 logging sweep, the 15/15 probe, the 111-passed tool
 coverage run, the 92/800 no-holdings run, the MRO dumps and both consumer checks.
 
 ## Major

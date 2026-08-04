@@ -7052,3 +7052,25 @@ this PR adds are two `print()`s and three exception messages.
 Its six Deferred findings were five prose-accuracy defects in this PR's own
 records plus one style choice. The five are corrected; none touches `src/` or
 `tests/`, so this record carries forward unchanged.
+
+### 11. Deferred entries this PR adds
+
+**Eleven**, numbered 81–91, taking the file from 80 to 91:
+
+| # | Subject | Owner |
+|---|---|---|
+| 81 | `LOGDIRS` is shadowed by a bare local in `main()` in the three pds3 tools, so the "move old logs aside" step never runs; the pds4 twins declare `global` | owner decision, then PR-25 |
+| 82 | entry 79's eager-logging inventory undercounts — 132 sites and 69 filepath-passing, not 130 and 67; its `attr` set omitted `pdslogger.normal` | whoever executes the entry-79 conversion |
+| 83 | `pdsarchives.py` assigned `proceed` six times and never read it | PR-25 |
+| 84 | `test_pds4file_blackbox.py:138` is a duplicate `parametrize` case (`PT014`) | a test-content PR |
+| 85 | `uranus_occs_earthbased.py`'s module-level loop leaves its control variables bound as public module attributes, which is why its `B007` is unfixable | owner decision; Phase 7/8 |
+| 86 | `test_cocirs_xxxx.py`'s two association loops now differ in what their failure message reports | a test-content PR |
+| 87 | `pds3file/__init__.py`'s alias comment introduces one method instead of eight after the `F811` de-duplication | Phase 7 |
+| 88 | the pds3 and pds4 tool twins have already diverged on their mutable defaults | PR-25 |
+| 89 | the maintenance tools now spell the same `logger.close()` unpacking three ways | PR-25 |
+| 90 | five exception tests in `test_pds3file_whitebox.py` pass vacuously when the call returns normally | PR-36 |
+| 91 | two negative `from_lid` tests take an `expected` value they never assert on | PR-36 |
+
+81–89 come from this PR's own measurements and its review rounds; **90 and 91
+were raised by the CodeRabbit review of PR #119** and are pre-existing at
+`8cab66a` in both cases.

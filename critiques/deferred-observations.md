@@ -2086,3 +2086,55 @@ these entries are read by the PRs that come after it.
     `finally` block into `_common.py`** and will have to choose one spelling —
     the same situation deferred observation 88 records for the `B006` defaults.
     **Owner: PR-25 (Phase 6).**
+
+### Added by the CodeRabbit review of PR #119 (2026-08-04)
+
+90. **Five exception tests pass vacuously when the call under test returns
+    normally.** `tests/pds3file/test_pds3file_whitebox.py` wraps the call in a
+    bare `try` and asserts only inside the `except` handler, with no `else` and
+    no unconditional failure:
+
+    ```python
+    def test_data_set_id_exception(self, input_path, expected):
+        target_pdsfile = instantiate_target_pdsfile(input_path)
+        try:
+            _ = target_pdsfile.data_set_id
+        except ValueError as e:
+            assert expected in str(e)
+    ```
+
+    If `data_set_id` ever stops raising, the handler never runs and the test
+    passes green while checking nothing. Measured by walking the module's AST for
+    `try` statements with no `else` and no unconditional failure in the body,
+    there are five: `:324` (`data_set_id`), `:427` (`from_opus_id`), `:455`
+    (`from_opus_id` with a wrong id), `:521` (`find_selected_row_key`) and `:554`
+    (`data_abspath_associated_with_index_row`). It is the reason this file carries
+    a `PT017` ratchet entry: `pytest.raises` is exactly the construct that makes
+    the exception mandatory.
+
+    Pre-existing — the shape is identical at `8cab66a`, and PR-24 changed only
+    the `parametrize` argument form and, at `:324`, one `res1 =` to `_ =`. Fixing it means
+    either adding an `else: raise AssertionError(...)` to each site or converting
+    to `pytest.raises` and dropping the `PT017` entry, both of which change what
+    the suite asserts — outside a `ruff check` PR whose gate is an identical
+    pass/fail set. Note the sibling tests in `test_pds3file_blackbox.py` already
+    use the stronger form (`assert False  # pragma: no cover` after the call), so
+    the repair pattern is already in the tree.
+    **Owner: PR-36 (the test-suite critique pass), or any PR that revisits these
+    modules' assertions.**
+
+91. **Two negative `from_lid` tests are parametrized with an `expected` value
+    they never use.** `tests/pds3file/test_pds3file_blackbox.py`
+    `test_from_lid_mismatched_lid` (:947) and `test_from_lid_invalid_lid` (:962)
+    both take `(input_lid, expected)` and assert only on a fixed substring of the
+    error message, so `expected` — in the first case the data-set ID the
+    resolution is supposed to disagree with — is dead. The mismatch test would
+    pass on a `ValueError` naming any other data-set ID.
+
+    The stronger version asserts `expected` appears in the message; the invalid
+    test has no data-set ID in its error contract at all and should simply drop
+    the parameter. Both are pre-existing at `8cab66a`; PR-24 touched only the
+    `parametrize` argument form. The unused parameter is invisible to the gate
+    because `ARG002` is not in the select set.
+    **Owner: PR-36, with entry 90 — the two are the same weakness at different
+    strengths.**
