@@ -532,7 +532,7 @@ class NHxxxx_xxxx(pds3file.Pds3File):
             # Sort items by priority among each available version
             for rank in ranks:
                 prioritizer = []    # (priority from hex code, hex code,
-                # sublist)
+                                    # sublist)
                 for sublist in rank_dict[rank]:
                     code = (sublist[0].basename.replace('X','x')
                             .partition('_0x')[2][:3]).upper()

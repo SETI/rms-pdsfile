@@ -119,7 +119,7 @@ class PdsViewSet:
         self.by_width = {}          # Keyed by width in pixels
         self.by_height = {}         # Keyed by height in pixels
         self.by_name = {}           # Keyed by name; these PdsViewables might
-        # not appear in other dictionaries
+                                    # not appear in other dictionaries
 
         self.widths = []            # sorted smallest to largest
         self.heights = []           # ditto

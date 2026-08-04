@@ -7138,16 +7138,16 @@ executes, and check A's third path is literally
 ### 13. The tree-wide indentation sweep (owner, 2026-08-04)
 
 After the `pdscache.py` fix, entry 76's sweep had found **112** `E1` findings
-across 23 files. The owner directed all of them fixed. PR-24 fixes **110** in 22
-files and 473 lines; the two left are in frozen `re_validate.py`.
+across 23 files. The owner directed all of them fixed, and then that the gate be
+enabled and `re_validate.py`'s freeze lifted for whitespace.
 
-| Finding | Count | |
+| Finding | Count | Fires on |
 |---|---:|---|
 | `E111` indentation-with-invalid-multiple | 41 | code |
-| `E117` over-indented | 15 | code |
-| `E116` unexpected-indentation-comment | 48 | comment |
-| `E114` indentation-with-invalid-multiple-comment | 5 | comment |
-| `E115` no-indented-block-comment | 3 | comment |
+| `E117` over-indented | 15 | code and comments |
+| `E116` unexpected-indentation-comment | 48 | comments only |
+| `E114` indentation-with-invalid-multiple-comment | 5 | comments only |
+| `E115` no-indented-block-comment | 3 | comments only |
 
 **None was auto-fixable** (`ruff --fix` offers nothing for `E1`), and fixing an
 `E111` means moving the whole block beneath it, so this was done by a re-indenter
@@ -7155,102 +7155,133 @@ rather than by hand. Its rule: for each logical line the correct indent is
 `4 × (its INDENT-stack depth)`, and the whole logical line — first physical line
 and every continuation — shifts by the same delta, so alignment under an opening
 parenthesis survives. Physical lines inside a multi-line string are never
-touched. A standalone comment moves with its block when the block moved, and is
-otherwise aligned to the code it introduces.
+touched.
 
-**Indentation is semantic, so this is proved three ways per file, checked
-independently of the tool that made the change:**
+**Comments needed a rule the first attempt got wrong, twice.** The first version
+left comments where they were while their block moved, stranding them at the old
+indent — caught by reading the diff of `shelf_consistency_check.py`. The second
+version pulled *every* standalone comment to the code grid, which broke a
+different thing: a comment line hanging under the trailing comment of the line
+above is a **continuation of that comment**, not a comment on the code below.
+Dedenting those detached 32 lines from the statements they document, and at six
+of them attached the text to the next `def`. `src/pdsfile/pdsfile.py:411-449`,
+the `__init__` attribute-documentation block, was the clearest casualty. The
+adversarial review of the post-loop diff found this; it is fixed, and the rule is
+now three cases in order: a hanging continuation takes its statement's delta and
+keeps its alignment; otherwise a comment inside a block that moved shifts with
+the block; otherwise it aligns to the code it introduces.
 
-1. `ast.dump(ast.parse(...))` identical before and after — 22 of 22 files.
-2. Token stream identical with `INDENT`/`DEDENT` dropped — 22 of 22.
-3. Every changed line differs from its predecessor **only in leading
-   whitespace**, and the line count is unchanged — 22 of 22.
+**What that leaves.** 33 `E114`/`E116` findings survive, and **all 33 are that
+same house pattern** — a trailing comment continued on the following line under
+the column it started in, used to document attributes (`pdsfile.py`'s
+`__init__`, `pdslinkshelf.py`'s `LinkInfo`) and `except` clauses. Measured by
+tokenizing each file and matching every flagged line's indent against the column
+of the preceding line's trailing `COMMENT` token: 31 match directly, and the
+remaining site (`pdslinkshelf.py:710`, which raises both codes) is a trailing
+comment placed on the next line at the same trailing-comment column. There is no
+misindented *code* left anywhere.
 
-The diff is **473 insertions against 473 deletions**, which is what a
-whitespace-only rewrite looks like.
+This is the conflict that got `ruff format` dropped, in a smaller form: a tool
+preference against a deliberate alignment style. The gate therefore selects
+`E111,E112,E113,E115,E117` and leaves out the two rules that fire **only** on
+comment lines. See §14.
 
-`ruff check src/pdsfile tests scripts` stays clean. That is worth checking rather
-than assuming: shifting a line right can push it past 100 columns and raise a new
-`E501`. Measured, three files' longest lines grew — `shelf_consistency_check.py`
-80 → 84, `pdscache.py` 80 → 85, `pdsviewable.py` 81 → 84 — all well inside the
-limit, and no file gained a violation.
+**Two `E117` sites were cleared by hand rather than excluded**, because `E117`
+also catches genuinely over-indented *code* and is worth keeping in the gate.
+`_preload.py:452` and `_properties.py:527` each had a two-line trailing comment
+whose continuation tripped it; each comment moved to its own lines above or
+inside the statement it describes. Those are the only two content edits in the
+sweep, and both are comment relocations with an identical parse tree.
 
-| File | Lines re-indented |
+**The proofs.** Indentation is semantic, so every file is checked three ways,
+independently of the tool that made the change:
+
+1. `ast.dump(ast.parse(...))` identical before and after — **19 of 19 files**.
+2. Token stream identical with `INDENT`/`DEDENT` dropped — 17 of 19 (the two
+   comment relocations change comment tokens; their ASTs are identical).
+3. Every changed line differing **only in leading whitespace**, line count
+   unchanged — the same 17 of 19.
+
+19 files, 454 lines. `ruff check` stays clean, which is worth checking rather
+than assuming: shifting a line right can cross 100 columns. Three files' longest
+lines grew — `shelf_consistency_check.py` 80 → 84, `pdscache.py` 80 → 85,
+`pdsviewable.py` 81 → 84 — all inside the limit.
+
+| File | Lines |
 |---|---:|
-| `holdings_maintenance/pds3/pdslinkshelf.py` | 281 |
+| `holdings_maintenance/pds3/pdslinkshelf.py` | 277 |
 | `holdings_maintenance/pds3/shelf_consistency_check.py` | 45 |
-| `holdings_maintenance/pds4/pds4linkshelf.py` | 36 |
-| `_properties.py` | 25 |
-| `pdsfile.py` | 24 |
-| `_preload.py` | 15 |
+| `holdings_maintenance/pds4/pds4linkshelf.py` | 32 |
+| `_properties.py` | 26 |
 | `pdscache.py` | 15 |
+| `pdsfile.py` | 14 |
+| `_preload.py` | 12 |
+| `holdings_maintenance/pds3/re_validate.py` | 8 |
 | `holdings_maintenance/pds3/pdsdependency.py` | 6 |
 | `pds4infoshelf.py`, `pdsinfoshelf.py`, `tests/rules/pds4/test_uranus_occs_earthbased.py` | 4 each |
-| `pdsviewable.py`, `pds3file/__init__.py`, `pds4file/__init__.py` | 2 each |
-| `_sorting.py`, `_local_fs.py`, `_index_rows.py`, `NHxxxx_xxxx.py`, `crlf.py`, `pdsarchives.py`, `pdschecksums.py`, `pds4checksums.py` | 1 each |
+| `pdsviewable.py`, `_local_fs.py`, `_index_rows.py`, `pds4checksums.py`, `pdschecksums.py`, `pdsarchives.py`, `crlf.py` | 1 each |
 
 `pdslinkshelf.py` dominates because parts of it were indented in 2-space steps,
-so every statement under those blocks moved.
-
-**`re_validate.py` keeps its two findings** — an `E117` at `:149` and an `E116`
-at `:830`. Ground rule 7 and deviation (6) freeze the file, and a whitespace
-change is still a change to internals the plan says are untouched. They are the
-only `E1` findings left in the tree.
-
-#### Gates re-run after the sweep
-
-| Gate | Result |
-|---|---|
-| `--mode ns` | 858 passed / 34 skipped — **892 ids, 0 / 0 / 0** vs `8cab66a` |
-| `--mode s` | 555 passed / 3 skipped — **558 ids, 0 / 0 / 0** |
-| API freeze | fresh dump **733,876 bytes, `diff` empty**; `test_api_freeze.py` passes |
-| no-holdings | **92 passed / 800 skipped**; ruff, pyroma, freeze, clean-install green |
-| `ruff check src/pdsfile tests scripts` | clean |
-| consumer smoke A / B | **4/4 ok** · **5 ok / the same 3 failures** — same outcome as baseline |
+so everything beneath those blocks moved.
 
 ### 14. `re_validate.py` re-indented, and the indentation gate enabled (owner, 2026-08-04)
 
-Two follow-on decisions after §13.
-
 **`re_validate.py`'s freeze is lifted for whitespace only.** Its `E117` at `:149`
-and `E116` at `:830` are fixed — 9 lines — so the tree has no `E1` finding left
-anywhere. It carries the same three proofs as the other 22 files (identical AST,
-identical token stream ignoring `INDENT`/`DEDENT`, every changed line differing
-only in leading whitespace with the line count unchanged), and its ten-code
-`per-file-ignores` entry is untouched. The freeze on its logic stands;
-`pdsfile_overrides.mdc` deviation (6) records the exception explicitly so the
-next executor does not read it as the freeze having lapsed.
+and `E116` at `:830` are fixed — 8 lines — with the same three proofs as the
+other whitespace-only files, and its ten-code `per-file-ignores` entry untouched.
+The freeze on its logic stands; `pdsfile_overrides.mdc` deviation (6) records the
+exception explicitly, so the next executor does not read it as the freeze having
+lapsed. This mattered because it is what lets the gate run with **no per-file
+exemption at all**.
 
-**The gate is on.** `scripts/run-all-checks.sh` now runs a second `ruff check`
-after the configured one:
+**The gate.** `scripts/run-all-checks.sh` now runs a second `ruff check` after
+the configured one:
 
 ```
-ruff check --preview --select E111,E112,E113,E114,E115,E116,E117 src/pdsfile tests scripts
+ruff check --preview --select E111,E112,E113,E115,E117 src/pdsfile tests scripts
 ```
 
 **Why a separate invocation rather than `preview = true` in `pyproject.toml`.**
 Preview mode is not selective. It changes the behaviour of the *stable* rules as
 well as adding preview ones, and `explicit-preview-rules` governs only which
 preview rules are selected, not that. Measured against this tree — which the
-configured gate reports **clean** — adding `--preview` yields **5,687**
-findings, including 28 `F822` and `RUF012` 33 → 49, `B006` 9 → 12, `RUF005`
-4 → 12. Absorbing those would mean a ratchet widen on a scale §6.4 forbids
-outright. Naming the seven codes explicitly keeps the new surface to indentation
-and nothing else.
+configured gate reports **clean** — adding `--preview` yields **5,687** findings,
+including 28 `F822` and `RUF012` 33 → 49, `B006` 9 → 12, `RUF005` 4 → 12.
+Absorbing those would mean a ratchet widen on a scale §6.4 forbids outright.
+Naming the codes explicitly keeps the new surface to indentation alone.
+
+**Why `E114` and `E116` are left out.** They fire only on comment lines, and all
+33 instances in this tree are the hanging trailing-comment continuation described
+in §13. Including them would mean either churning that style across eleven files
+or carrying a `per-file-ignores` entry for codes the ratchet has never held —
+a widen. `E117`, which catches over-indented *code* as well, is kept, which is
+why its two comment-only instances were cleared by hand instead.
 
 **The gate is non-vacuous, and that took two attempts to establish.** Adding two
-spaces to one statement in `_sorting.py` makes the gate report `E111` and `E112`
-and `run-all-checks.sh` exit `FAILURE`. The first control mutated a
-*continuation* line, which `E1` does not check, and the gate passed green — a
-reminder that a negative control can itself be vacuous. The tree was restored and
-verified clean afterwards.
+spaces to one statement in `_sorting.py` makes it report `E111` and `E112` and
+`run-all-checks.sh` exit `FAILURE`. The first control mutated a *continuation*
+line, which `E1` does not check, and the gate passed green — a negative control
+can itself be vacuous. The tree was restored and verified clean afterwards.
 
 **Verified under both ruff versions.** The development venv has 0.15.7;
 `pyproject.toml` declares `ruff>=0.8` and CI resolves that to 0.16.1. A preview
-rule's behaviour can change between releases, so both gates were run under both:
-clean under each.
+rule's behaviour can change between releases, so both gates were run under both.
 
-The gate needs **no per-file exemption at all** — which is the reason the
-`re_validate.py` decision above mattered. Had those two lines stayed, enabling
-the gate would have required an entry carrying `E1` codes the ratchet has never
-held, and that is a widen.
+### 15. Findings from the post-loop adversarial review
+
+§12 recorded that the post-loop commits had had no review of their own. A fresh
+no-context reviewer was then run over that range. It returned **2 Major and 3
+Minor**, all accepted, none rebutted:
+
+| # | Finding | Disposition |
+|---|---|---|
+| M1 | `a48602f` committed a `venv` symlink holding an absolute machine-local path. `.gitignore:131`'s `venv*/` did not catch it — the trailing slash restricts the pattern to directories, and this is a symlink | untracked, and `.gitignore` gained a bare `venv`. The reviewer measured the blast radius: absent from the sdist, and inside pytest's `norecursedirs` and ruff's default exclude — so no gate broke, and nothing would have caught it |
+| M2 | the re-indenter's stated comment rule was contradicted at 32 sites, and at 6 lines a comment came to document a `def` it does not describe | the rule is fixed and the sweep redone; see §13 |
+| m3 | entry 76 still said three `E115` findings remained in `pdscache.py`, after the sweep had re-indented them | corrected |
+| m4 | "56 code-indentation sites across ten files" — it is eleven files, or 55 across ten | corrected |
+| m5 | entry 90 labelled `:427` `from_opus_id`; it is `test_from_path2`, calling `from_path` | corrected |
+
+M1 is the more instructive of the two. It was introduced by my own `git add -A`
+after symlinking the venv into the worktree so `run-all-checks.sh` would run, and
+it survived because every gate in this repository is configured to ignore a
+directory called `venv` — the one name that would not be looked at.

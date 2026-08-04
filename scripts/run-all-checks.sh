@@ -418,9 +418,15 @@ run_code_checks() {
         # invocation: turning preview on in pyproject.toml would also change the
         # behaviour of the stable rules and raise thousands of new findings.
         # Naming the codes explicitly keeps the surface to indentation alone.
+        #
+        # E114 and E116 are left out. They fire only on comment lines, and every
+        # instance in this tree is a trailing comment continued on the next line
+        # under the column it started in -- the style used to document attributes
+        # and except-clauses. Pulling those to the code grid detaches the text
+        # from the statement it belongs to.
         print_info "Running ruff check (indentation)..."
         if python -m ruff check --preview \
-                --select E111,E112,E113,E114,E115,E116,E117 $RUFF_TARGETS; then
+                --select E111,E112,E113,E115,E117 $RUFF_TARGETS; then
             print_success "Ruff indentation check passed"
         else
             print_error "Ruff indentation check failed"

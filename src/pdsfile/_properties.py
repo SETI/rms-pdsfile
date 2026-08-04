@@ -524,8 +524,9 @@ class _PropertiesMixin:
                 try:
                     (file_bytes, _,
                      timestring, _, _) = self.shelf_lookup('info', bundlename)
-                except OSError:     # Shelf file for bundlename is missing--maybe
-                    # it's not a bundle name after all
+                except OSError:
+                    # A missing shelf file means bundlename may not be a bundle
+                    # name after all.
                     file_bytes = os.path.getsize(self.abspath)
                     timestamp = os.path.getmtime(self.abspath)
                     modtime = datetime.datetime.fromtimestamp(timestamp)
@@ -1601,7 +1602,7 @@ class _PropertiesMixin:
 
         if self._all_version_abspaths is None:
             _ = self.all_versions()     # This has the side-effect of filling
-        # _all_version_abspaths
+                                        # _all_version_abspaths
 
         return self._all_version_abspaths
 

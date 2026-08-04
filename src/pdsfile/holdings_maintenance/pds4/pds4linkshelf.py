@@ -73,13 +73,13 @@ class LinkInfo:
 
         self.recno = recno          # record number
         self.linktext = linkname    # substring within this record that looks
-        # like a link.
+                                    # like a link.
         self.linkname = linkname    # link text after possible repair for known
-        # errors.
+                                    # errors.
         self.is_target = is_target  # True if, based on the local context, this
-        # might be a target of a label file
+                                    # might be a target of a label file
         self.target = ''            # abspath to target of link, if any.
-    # If not blank, this file must exist.
+                                    # If not blank, this file must exist.
 
     def remove_path(self):
         """Remove any leading directory path from this LinkInfo object."""

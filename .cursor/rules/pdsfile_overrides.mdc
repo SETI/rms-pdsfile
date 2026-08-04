@@ -187,8 +187,18 @@ conflicts with a rule below, follow the rule below. See
     decision, 2026-08-04). `python.mdc` requires 4-space indentation, but ruff's
     `E1` rules are preview-gated and so were never in force. `run-all-checks.sh`
     now runs a second pass,
-    `ruff check --preview --select E111,E112,E113,E114,E115,E116,E117`, over the
-    same targets as the configured gate.
+    `ruff check --preview --select E111,E112,E113,E115,E117`, over the same
+    targets as the configured gate.
+
+    **`E114` and `E116` are deliberately left out.** They fire only on comment
+    lines, and all 33 instances in this tree are one pattern: a trailing comment
+    continued on the following line, under the column it started in — the style
+    used to document attributes (`pdsfile.py`'s `__init__`, `pdslinkshelf.py`'s
+    `LinkInfo`) and `except` clauses. Pulling those to the code grid detaches the
+    text from the statement it documents, so this is the same house-style
+    conflict that dropped `ruff format` in (11). `E117` is kept because it also
+    catches over-indented **code**; its two comment-only instances were cleared
+    by hand rather than excluded.
 
     **It is a separate invocation rather than `preview = true` in
     `pyproject.toml` because preview mode is not selective.** `preview` changes

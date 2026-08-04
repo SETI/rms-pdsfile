@@ -1824,61 +1824,74 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     identical. `ruff check --select E1 --preview` on `pdscache.py` goes from 8
     findings to 3.
 
-    The 3 that remain are `E115` on the commented-out `MemcachedCache.get_multi`
-    block at `:1034-1036`, which **deferred entry 64 still owns** — those six
-    lines need an owner decision that has not been given, and re-indenting a
-    block that may simply be deleted is wasted motion.
+    Three `E115` findings remained after that first pass, on the commented-out
+    `MemcachedCache.get_multi` block that **deferred entry 64 still owns**. The
+    tree-wide sweep below then re-indented them with everything else; entry 64 is
+    about whether those six lines should exist at all, which the whitespace does
+    not prejudge.
 
-    **RESOLVED tree-wide by the owner, 2026-08-04: fix all of it.** The same
-    sweep over `src/pdsfile tests scripts` had found **112** findings across 23
-    files — 56 code-indentation (`E111` 41, `E117` 15) and 56 comment-indentation
-    (`E116` 48, `E114` 5, `E115` 3). PR-24 fixed **110** of them, in 22 files and
-    473 lines.
+    **RESOLVED tree-wide by the owner, 2026-08-04: fix all of it, lift
+    `re_validate.py`'s freeze for whitespace, and enable the gate.** The sweep
+    over `src/pdsfile tests scripts` had found **112** findings across 23 files —
+    `E111` 41, `E117` 15, `E116` 48, `E114` 5, `E115` 3. PR-24 fixes **79** of
+    them, in 19 files and 454 lines, leaving **33**.
 
-    None of the 112 was auto-fixable, and fixing an `E111` means moving the whole
-    block beneath it, so the work was done by a re-indenter rather than by hand:
-    for each logical line the correct indent is `4 × (its INDENT-stack depth)`,
-    and the whole logical line — first physical line and every continuation —
-    shifts by the same delta, so alignment under an opening parenthesis survives.
-    Physical lines inside a multi-line string are never touched. A standalone
-    comment moves with its block when the block moved, and is otherwise aligned
-    to the code it introduces.
+    None was auto-fixable, and fixing an `E111` means moving the whole block
+    beneath it, so a re-indenter did the work: for each logical line the correct
+    indent is `4 × (its INDENT-stack depth)`, and the whole logical line — first
+    physical line and every continuation — shifts by the same delta, so alignment
+    under an opening parenthesis survives. Lines inside a multi-line string are
+    never touched.
 
-    Because indentation is semantic, every file carries three proofs, checked
-    independently of the tool that made the change: the `ast.dump(ast.parse(…))`
-    of each file is identical before and after; the token stream is identical
-    with `INDENT`/`DEDENT` dropped; and every changed line differs from its
-    predecessor only in leading whitespace, with the line count unchanged. 22 of
-    22 files pass all three, and the diff is 473 insertions against 473
-    deletions. `ruff check` stays clean — worth checking rather than assuming,
-    since shifting a line right can push it past 100 columns; the three files
-    whose longest line grew end at 84, 85 and 84.
+    **The 33 that remain are all one thing: a trailing comment continued on the
+    following line, under the column it started in.** That is the style this
+    codebase uses to document attributes (`pdsfile.py`'s `__init__`,
+    `pdslinkshelf.py`'s `LinkInfo`) and `except` clauses. Measured by tokenizing
+    each file and comparing every flagged line's indent against the column of the
+    preceding line's trailing `COMMENT` token: 31 match directly, and the last
+    site (`pdslinkshelf.py:710`, which raises both codes) is a trailing comment
+    placed on the next line at that same column. **No misindented code is left
+    anywhere in the tree.**
 
-    The heaviest files are `pdslinkshelf.py` (281 lines — it was indented in
+    Pulling those to the code grid is not a fix — it detaches the text from the
+    statement it documents. An earlier pass did exactly that at 32 sites and, at
+    six of them, left a comment sitting above a `def` it does not describe; the
+    `__init__` attribute block at `pdsfile.py:411-449` was the clearest casualty.
+    The adversarial review of the post-loop diff caught it and the sweep was
+    redone. This is the `ruff format` conflict in miniature: a tool preference
+    against a deliberate alignment style, where the style wins.
+
+    **The gate selects `E111,E112,E113,E115,E117`** and leaves out `E114` and
+    `E116`, the two rules that fire *only* on comment lines. `E117` also catches
+    over-indented **code**, so it is kept and its two comment-only instances were
+    cleared by hand instead — `_preload.py:452` and `_properties.py:527`, where a
+    two-line trailing comment moved onto its own lines. Those are the sweep's
+    only content edits, both comment relocations with identical parse trees.
+
+    Because indentation is semantic, every file carries proofs checked
+    independently of the tool: `ast.dump(ast.parse(…))` identical before and
+    after in **19 of 19** files; token stream identical with `INDENT`/`DEDENT`
+    dropped, and every changed line differing only in leading whitespace with the
+    line count unchanged, in the 17 that are pure whitespace. `ruff check` stays
+    clean — worth checking rather than assuming, since shifting a line right can
+    cross 100 columns; the three files whose longest line grew end at 84, 85, 84.
+    The heaviest files are `pdslinkshelf.py` (277 lines — it was indented in
     2-space steps in places), `shelf_consistency_check.py` (45),
-    `pds4linkshelf.py` (36), `_properties.py` (25) and `pdsfile.py` (24).
+    `pds4linkshelf.py` (32) and `_properties.py` (26).
 
-    **`re_validate.py`'s two findings were left at first** — an `E117` at `:149`
-    and an `E116` at `:830` — because ground rule 7 and deviation (6) freeze the
-    file. **The owner lifted that for whitespace on 2026-08-04**, so they are
-    fixed too: 9 lines, same three proofs, and the file's ten-code
-    `per-file-ignores` entry untouched. The freeze on its logic stands, and
-    deviation (6) now records the exception. **`ruff check --preview --select
-    E111,E112,E113,E114,E115,E116,E117` is clean over the whole tree with no
-    per-file exemption at all.**
+    **`re_validate.py` is included.** Its `E117` at `:149` and `E116` at `:830`
+    are fixed — 8 lines — because the owner lifted the freeze for whitespace on
+    2026-08-04. Its ten-code `per-file-ignores` entry is untouched and the freeze
+    on its logic stands; deviation (6) records the exception. This is what lets
+    the gate run with **no per-file exemption at all**.
 
-    **The gate is enabled (owner, 2026-08-04).** `run-all-checks.sh` runs it as a
-    second `ruff check` invocation, recorded in the plan's §2 gate table and
-    `pdsfile_overrides.mdc` deviation (12).
-
-    It is a **separate invocation, not `preview = true` in `pyproject.toml`**,
-    because preview mode is not selective: it changes the behaviour of the
-    *stable* rules too, and `explicit-preview-rules` governs only which preview
-    rules get selected, not that. Measured against a tree the configured gate
-    reports clean, `--preview` raises **5,687** findings — 28 `F822`, and
-    `RUF012` 33 → 49, `B006` 9 → 12, `RUF005` 4 → 12, among others. Absorbing
-    those would be a large ratchet widen, which §6.4 forbids. Naming the seven
-    codes keeps the new surface to indentation alone.
+    **The gate is a separate `ruff check` invocation, not `preview = true` in
+    `pyproject.toml`**, because preview mode is not selective: it changes the
+    behaviour of the *stable* rules too, and `explicit-preview-rules` governs
+    only which preview rules get selected, not that. Measured against a tree the
+    configured gate reports clean, `--preview` raises **5,687** findings — 28
+    `F822`, and `RUF012` 33 → 49, `B006` 9 → 12, `RUF005` 4 → 12, among others.
+    Absorbing those is a large ratchet widen, which §6.4 forbids.
 
     Two things checked rather than assumed. The gate is **non-vacuous**: adding
     two spaces to one statement in `_sorting.py` makes it report `E111` and
@@ -1886,8 +1899,7 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     control mutated a *continuation* line, which `E1` does not check, and passed
     green — the control needed its own control.) And it is clean under **both**
     ruff 0.15.7, the development venv, and 0.16.1, which is what CI resolves
-    `ruff>=0.8` to; a preview rule's behaviour can change between releases and
-    the two versions are not pinned together.
+    `ruff>=0.8` to; a preview rule's behaviour can change between releases.
 
 77. **Whether prose may follow a mechanical fix is not written down anywhere.**
     Round 1's m8 had PR-23 change three `IOError` references to `OSError` in
@@ -2221,7 +2233,7 @@ these entries are read by the PRs that come after it.
     If `data_set_id` ever stops raising, the handler never runs and the test
     passes green while checking nothing. Measured by walking the module's AST for
     `try` statements with no `else` and no unconditional failure in the body,
-    there are five: `:324` (`data_set_id`), `:427` (`from_opus_id`), `:455`
+    there are five: `:324` (`data_set_id`), `:427` (`from_path`), `:455`
     (`from_opus_id` with a wrong id), `:521` (`find_selected_row_key`) and `:554`
     (`data_abspath_associated_with_index_row`). It is the reason this file carries
     a `PT017` ratchet entry: `pytest.raises` is exactly the construct that makes

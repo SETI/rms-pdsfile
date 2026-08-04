@@ -98,7 +98,7 @@ class _SortingMixin:
         matchobj = cls.BUNDLENAME_PLUS_REGEX.match(basename)
         if matchobj is not None:
             test = self.SPLIT_RULES.first(basename) # a split rule overrides
-            # the default behavior
+                                                    # the default behavior
             if test == basename:
                 # For PDS4, we capture bundle name + version, so two groups
                 if len(matchobj.groups()) == 2:

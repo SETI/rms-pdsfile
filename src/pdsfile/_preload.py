@@ -246,13 +246,13 @@ class _PreloadMixin:
         volinfo_path = _clean_join(holdings, '_volinfo')
 
         volinfo_dict = {}           # the master dictionary of high-level paths vs.
-        # (description, icon_type, version ID,
-        #  publication date, optional list of data set
-        #  IDs, optional checksum)
+                                    # (description, icon_type, version ID,
+                                    #  publication date, optional list of data set
+                                    #  IDs, optional checksum)
 
         keys_without_dsids = []     # internal list of entries without data set IDs
         dsids_vs_key = {}           # global dictionary of data set IDs for entries
-        # that have them
+                                    # that have them
 
         # For each file in the volinfo subdirectory...
         children = os.listdir(volinfo_path)
@@ -449,8 +449,8 @@ class _PreloadMixin:
                     return
 
                 waited = cls.CACHE.wait_and_block()
-                if not waited:      # A wait suggests the answer might have changed,
-                    # so try again.
+                # A wait suggests the answer might have changed, so try again.
+                if not waited:
                     break
 
                 cls.CACHE.unblock()
