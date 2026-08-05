@@ -385,10 +385,10 @@ class MemcachedCache(PdsCache):
         if self.clear_count is None:
             self.clear_count = 0
             self.mc.set('$CLEAR_COUNT', 0, time=0)
-    # This is the internal copy of the cached value of '$CLEAR_COUNT'. When
-    # a thread clears the cache, this value is incremented. If this thread
-    # finds a cached value that differs from its internal value, it knows
-    # to clear its own contents.
+        # This is the internal copy of the cached value of '$CLEAR_COUNT'. When
+        # a thread clears the cache, this value is incremented. If this thread
+        # finds a cached value that differs from its internal value, it knows
+        # to clear its own contents.
 
     def _wait_for_ok(self, funcname='', try_to_block=False):
         """Pause until another process stops blocking, or until timeout."""
@@ -698,8 +698,8 @@ class MemcachedCache(PdsCache):
         if nonlocal_keys:
             self.wait_for_unblock('get_multi')
 
-            # Memcached->get_multi hangs on long lists; individual requests work fine
-            #             mydict = self.mc.get_multi(nonlocal_keys)
+# Memcached->get_multi hangs on long lists; individual requests work fine
+#             mydict = self.mc.get_multi(nonlocal_keys)
             mydict = {}
             for key in nonlocal_keys:
                 pair = self.mc.get(key)
@@ -1008,12 +1008,12 @@ class MemcachedCache(PdsCache):
         # Update permanent values from cache
         local_dict = self.permanent_values.copy()
 
-        # Memcached->get_multi hangs on long lists; individual requests work fine
-        #         permanent_keys = list(self.permanent_values.keys())
-        #         mydict = self.mc.get_multi(permanent_keys)
-        #         for (key, pair) in mydict.items():
-        #             self.permanent_values[key] = pair[0]
-        #             del local_dict[key]
+# Memcached->get_multi hangs on long lists; individual requests work fine
+#         permanent_keys = list(self.permanent_values.keys())
+#         mydict = self.mc.get_multi(permanent_keys)
+#         for (key, pair) in mydict.items():
+#             self.permanent_values[key] = pair[0]
+#             del local_dict[key]
 
         for key in self.permanent_values:
             pair = self.mc.get(key)
@@ -1031,9 +1031,9 @@ class MemcachedCache(PdsCache):
 
         except pylibmc.TooBig:
 
-            # This happens if a "TooBig" item is supposed to be in the permanent
-            # cache. It means that we have to remove it from the permanent_values
-            # dictionary so this doesn't happen again.
+        # This happens if a "TooBig" item is supposed to be in the permanent
+        # cache. It means that we have to remove it from the permanent_values
+        # dictionary so this doesn't happen again.
 
             for (k,v) in mydict.items():
                 try:

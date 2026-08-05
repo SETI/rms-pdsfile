@@ -1830,11 +1830,12 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     about whether those six lines should exist at all, which the whitespace does
     not prejudge.
 
-    **RESOLVED tree-wide by the owner, 2026-08-04: fix all of it, lift
+    **RESOLVED tree-wide by the owner, 2026-08-04: fix the indentation, lift
     `re_validate.py`'s freeze for whitespace, and enable the gate.** The sweep
     over `src/pdsfile tests scripts` had found **112** findings across 23 files —
-    `E111` 41, `E117` 15, `E116` 48, `E114` 5, `E115` 3. PR-24 fixes **79** of
-    them, in 19 files and 454 lines, leaving **33**.
+    `E111` 41, `E117` 15, `E116` 48, `E114` 5, `E115` 3. PR-24 fixes **59**, in
+    11 files and 404 lines. `E111`, `E112` and `E113` — the three rules that fire
+    on **code** — now measure **zero** across the whole tree.
 
     None was auto-fixable, and fixing an `E111` means moving the whole block
     beneath it, so a re-indenter did the work: for each logical line the correct
@@ -1843,47 +1844,60 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     under an opening parenthesis survives. Lines inside a multi-line string are
     never touched.
 
-    **The 33 that remain are all one thing: a trailing comment continued on the
-    following line, under the column it started in.** That is the style this
-    codebase uses to document attributes (`pdsfile.py`'s `__init__`,
-    `pdslinkshelf.py`'s `LinkInfo`) and `except` clauses. Measured by tokenizing
-    each file and comparing every flagged line's indent against the column of the
-    preceding line's trailing `COMMENT` token: 31 match directly, and the last
-    site (`pdslinkshelf.py:710`, which raises both codes) is a trailing comment
-    placed on the next line at that same column. **No misindented code is left
-    anywhere in the tree.**
+    **Comments are carried, never re-aligned.** A comment moves by exactly the
+    delta of the nearest logical line at its own column, searching forwards first
+    and stopping at the first line shallower than the comment, because that line
+    ends the block the comment belongs to. If nothing in the block sits at the
+    comment's column, the comment does not move. In practice that means comments
+    move only inside a block whose code moved: of the 404 lines, 45 are comments,
+    all in `pdslinkshelf.py` and `shelf_consistency_check.py`, the two files that
+    were indented in 2-space steps.
 
-    Pulling those to the code grid is not a fix — it detaches the text from the
-    statement it documents. An earlier pass did exactly that at 32 sites and, at
-    six of them, left a comment sitting above a `def` it does not describe; the
-    `__init__` attribute block at `pdsfile.py:411-449` was the clearest casualty.
-    The adversarial review of the post-loop diff caught it and the sweep was
-    redone. This is the `ruff format` conflict in miniature: a tool preference
-    against a deliberate alignment style, where the style wins.
+    Getting there took three wrong rules, and the owner caught the third:
 
-    **The gate selects `E111,E112,E113,E115,E117`** and leaves out `E114` and
-    `E116`, the two rules that fire *only* on comment lines. `E117` also catches
-    over-indented **code**, so it is kept and its two comment-only instances were
-    cleared by hand instead — `_preload.py:452` and `_properties.py:527`, where a
-    two-line trailing comment moved onto its own lines. Those are the sweep's
-    only content edits, both comment relocations with identical parse trees.
+    - the first left comments behind while their block moved, stranding them at
+      the old indent;
+    - the second pulled every standalone comment to the code grid, which broke 32
+      **trailing-comment continuations** — a comment hanging under the trailing
+      comment of the line above continues *that* comment and belongs to its
+      statement. `pdsfile.py:411-449`, the `__init__` attribute-documentation
+      block, was the clearest casualty;
+    - the third still re-aligned a comment whose own block had not moved, which
+      damaged two more conventions the owner named: an **annotation placed after
+      the statement it describes** (`"if c.isdir" is False for volset level
+      readme files`, in `pdsarchives.py`, `pdschecksums.py`, `pdsinfoshelf.py`,
+      `pds4checksums.py` and `pds4infoshelf.py`) and **commented-out code parked
+      at column 0** so it reads as disabled (`pdsinfoshelf.py:155-157`,
+      `pds4infoshelf.py:158-160`, `pdscache.py:701-702` and `:1011-1016`,
+      `re_validate.py:828`).
+
+    **53 findings remain, and every one is on a comment line** — `E116` 48,
+    `E115` 3, `E117` 2. They are the three conventions above. Pulling them to the
+    grid is not a fix; it detaches the text from what it documents. This is the
+    `ruff format` conflict in miniature: a tool preference against a deliberate
+    alignment style, where the style wins.
+
+    **The gate is `E111,E112,E113`** — the three rules that fire only on code.
+    `E114`/`E115`/`E116` are their comment-line counterparts and `E117` fires on
+    both, so all four are out. The cost is that an over-indented *code* block
+    would not be caught by `E117`; there are none today, and the only two `E117`
+    findings in the tree are comment continuations
+    (`_preload.py:453`, `_properties.py:528`).
 
     Because indentation is semantic, every file carries proofs checked
-    independently of the tool: `ast.dump(ast.parse(…))` identical before and
-    after in **19 of 19** files; token stream identical with `INDENT`/`DEDENT`
-    dropped, and every changed line differing only in leading whitespace with the
-    line count unchanged, in the 17 that are pure whitespace. `ruff check` stays
-    clean — worth checking rather than assuming, since shifting a line right can
-    cross 100 columns; the three files whose longest line grew end at 84, 85, 84.
-    The heaviest files are `pdslinkshelf.py` (277 lines — it was indented in
-    2-space steps in places), `shelf_consistency_check.py` (45),
-    `pds4linkshelf.py` (32) and `_properties.py` (26).
+    independently of the tool: identical `ast.dump(ast.parse(…))`, identical
+    token stream with `INDENT`/`DEDENT` dropped, every changed line differing
+    only in leading whitespace, and an unchanged line count — **11 of 11 files
+    pass all four**. `ruff check` stays clean, worth checking rather than
+    assuming since shifting a line right can cross 100 columns. The heaviest
+    files are `pdslinkshelf.py` (276 lines), `shelf_consistency_check.py` (44),
+    `pds4linkshelf.py` (31) and `_properties.py` (19).
 
-    **`re_validate.py` is included.** Its `E117` at `:149` and `E116` at `:830`
-    are fixed — 8 lines — because the owner lifted the freeze for whitespace on
-    2026-08-04. Its ten-code `per-file-ignores` entry is untouched and the freeze
-    on its logic stands; deviation (6) records the exception. This is what lets
-    the gate run with **no per-file exemption at all**.
+    **`re_validate.py` is included.** Its `E117` at `:149` is fixed — 7 lines —
+    because the owner lifted the freeze for whitespace on 2026-08-04. Its
+    ten-code `per-file-ignores` entry is untouched and the freeze on its logic
+    stands; deviation (6) records the exception. This is what lets the gate run
+    with **no per-file exemption at all**.
 
     **The gate is a separate `ruff check` invocation, not `preview = true` in
     `pyproject.toml`**, because preview mode is not selective: it changes the

@@ -417,8 +417,8 @@ class _PreloadMixin:
 
         if clear:
             cls.CACHE.clear(block=True) # For a MemcachedCache, this will pause for any
-            # other thread's block, then clear, and retain
-            # the block until the preload is finished.
+                                    # other thread's block, then clear, and retain
+                                    # the block until the preload is finished.
             cls.LOCAL_PRELOADED = []
             cls.LOGGER.info('Cache cleared')
 
@@ -442,15 +442,15 @@ class _PreloadMixin:
                 if not something_is_missing:
                     if cls.MEMCACHE_PORT:
                         cls.get_permanent_values(holdings_list, cls.MEMCACHE_PORT)
-                    # Note that if any permanently cached values are missing,
-                    # this call will recursively clear the cache and preload
-                    # again. This reduces the chance of a corrupted cache.
+                        # Note that if any permanently cached values are missing,
+                        # this call will recursively clear the cache and preload
+                        # again. This reduces the chance of a corrupted cache.
 
                     return
 
                 waited = cls.CACHE.wait_and_block()
-                # A wait suggests the answer might have changed, so try again.
-                if not waited:
+                if not waited:      # A wait suggests the answer might have changed,
+                                    # so try again.
                     break
 
                 cls.CACHE.unblock()
@@ -459,7 +459,7 @@ class _PreloadMixin:
 
         # Pause the cache before proceeding--saves I/O
         cls.CACHE.pause()       # Paused means no local changes will be flushed to the
-        # external cache until resume() is called.
+                            # external cache until resume() is called.
 
         ########################################################################
         # Interior function to recursively preload one physical directory

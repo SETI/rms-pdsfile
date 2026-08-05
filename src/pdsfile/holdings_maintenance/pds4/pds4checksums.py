@@ -770,7 +770,7 @@ def main():
             else:
                 children = [pdsf.child(c) for c in pdsf.childnames]
                 info += [(c, None) for c in children if c.isdir]
-        # "if c.isdir" is False for bundleset level readme files
+                        # "if c.isdir" is False for bundleset level readme files
 
         elif pdsf.is_bundle_dir:
             # Checksum one bundle

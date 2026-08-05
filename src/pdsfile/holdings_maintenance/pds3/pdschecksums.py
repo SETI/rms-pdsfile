@@ -798,7 +798,7 @@ def main():
             else:
                 children = [pdsf.child(c) for c in pdsf.childnames]
                 info += [(c, None) for c in children if c.isdir]
-        # "if c.isdir" is False for volset level readme files
+                        # "if c.isdir" is False for volset level readme files
 
         elif pdsf.is_volume_dir:
             # Checksum one volume

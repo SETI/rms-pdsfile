@@ -524,9 +524,8 @@ class _PropertiesMixin:
                 try:
                     (file_bytes, _,
                      timestring, _, _) = self.shelf_lookup('info', bundlename)
-                except OSError:
-                    # A missing shelf file means bundlename may not be a bundle
-                    # name after all.
+                except OSError:     # Shelf file for bundlename is missing--maybe
+                                    # it's not a bundle name after all
                     file_bytes = os.path.getsize(self.abspath)
                     timestamp = os.path.getmtime(self.abspath)
                     modtime = datetime.datetime.fromtimestamp(timestamp)
@@ -990,10 +989,10 @@ class _PropertiesMixin:
                         self.basename in cls.EXTRA_README_BASENAMES):
 
                     self._internal_links_filled = ()
-                    # An empty _tuple_ indicates that link info is missing
-                    # because of a shelf file failure; an empty _list_
-                    # object means that the file simply contains no links.
-                    # This distinction is there if we ever care.
+                        # An empty _tuple_ indicates that link info is missing
+                        # because of a shelf file failure; an empty _list_
+                        # object means that the file simply contains no links.
+                        # This distinction is there if we ever care.
 
                     cls.LOGGER.warn('Missing link shelf', self.abspath)
 

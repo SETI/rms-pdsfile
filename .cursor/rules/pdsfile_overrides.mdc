@@ -186,19 +186,20 @@ conflicts with a rule below, follow the rule below. See
 12. **Indentation is enforced by its own `ruff check` invocation** (owner
     decision, 2026-08-04). `python.mdc` requires 4-space indentation, but ruff's
     `E1` rules are preview-gated and so were never in force. `run-all-checks.sh`
-    now runs a second pass,
-    `ruff check --preview --select E111,E112,E113,E115,E117`, over the same
-    targets as the configured gate.
+    now runs a second pass, `ruff check --preview --select E111,E112,E113`, over
+    the same targets as the configured gate.
 
-    **`E114` and `E116` are deliberately left out.** They fire only on comment
-    lines, and all 33 instances in this tree are one pattern: a trailing comment
-    continued on the following line, under the column it started in — the style
-    used to document attributes (`pdsfile.py`'s `__init__`, `pdslinkshelf.py`'s
-    `LinkInfo`) and `except` clauses. Pulling those to the code grid detaches the
-    text from the statement it documents, so this is the same house-style
-    conflict that dropped `ruff format` in (11). `E117` is kept because it also
-    catches over-indented **code**; its two comment-only instances were cleared
-    by hand rather than excluded.
+    **Only the three rules that fire on code are selected.** `E114`, `E115` and
+    `E116` are their comment-line counterparts and `E117` fires on both. Where a
+    comment sits is the author's decision in this repository, and three of its
+    conventions all read worse pulled to the code grid: a trailing comment
+    continued on the next line under the column it started in (`pdsfile.py`'s
+    `__init__` attribute block, `pdslinkshelf.py`'s `LinkInfo`); an annotation
+    placed after the statement it describes rather than before it (the
+    `"if c.isdir" is False for volset level readme files` note in four tools);
+    and commented-out code parked at column 0 so it reads as disabled
+    (`pdsinfoshelf.py`, `pds4infoshelf.py`, `pdscache.py`, `re_validate.py`).
+    This is the same house-style conflict that dropped `ruff format` in (11).
 
     **It is a separate invocation rather than `preview = true` in
     `pyproject.toml` because preview mode is not selective.** `preview` changes
@@ -210,6 +211,7 @@ conflicts with a rule below, follow the rule below. See
     keeps the new surface to indentation alone.
 
     The tree is clean under this gate with **no per-file exemption at all** —
-    including `re_validate.py`, see (6). Verified under both ruff 0.15.7 (the
-    development venv) and 0.16.1 (what CI resolves `ruff>=0.8` to), because a
-    preview rule's behaviour can change between releases.
+    including `re_validate.py`, see (6). `E111`, `E112` and `E113` all measure
+    **zero** across `src/pdsfile tests scripts`. Verified under both ruff 0.15.7
+    (the development venv) and 0.16.1 (what CI resolves `ruff>=0.8` to), because
+    a preview rule's behaviour can change between releases.

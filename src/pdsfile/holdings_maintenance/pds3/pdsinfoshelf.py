@@ -152,9 +152,9 @@ def generate_infodict(pdsdir, selection, old_infodict={}, *, logger=None,
     try:
         # Load checksum dictionary
         checkdict = pdschecksums.checksum_dict(dirpath, logger=logger)
-        #         Removed... because we can't ignore empty directories
-        #         if not checkdict:
-        #             return ({}, 0.)
+#         Removed... because we can't ignore empty directories
+#         if not checkdict:
+#             return ({}, 0.)
 
         # Generate info recursively
         infodict = {}
@@ -823,7 +823,7 @@ def main():
             else:
                 children = [pdsf.child(c) for c in pdsf.childnames]
                 info += [(c, None) for c in children if c.isdir]
-        # "if c.isdir" is False for volset level readme files
+                        # "if c.isdir" is False for volset level readme files
 
         elif pdsf.is_volume_dir:
             # Shelve one volume
