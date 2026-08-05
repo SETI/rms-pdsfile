@@ -15,6 +15,13 @@ conflicts with a rule below, follow the rule below. See
    do not run mypy. The public API is documented via a hand-written `.pyi` stub
    only (added in a later phase). This overrides `python.mdc`'s "annotate
    everything / run mypy" mandate.
+
+   **Field annotations on a `@dataclass` are permitted** (owner, 2026-08-05). A
+   dataclass declares its fields by annotation and cannot be written without one,
+   so the ban would have banned the construct; it does not. This is the one
+   exception: it does not reopen annotations on functions, variables or ordinary
+   class bodies, it does not bring mypy back, and `RUF012` stays permanently
+   excluded because `ClassVar` on a plain class body is not a dataclass field.
 2. **The public API is frozen.** The public surface reachable via
    `import pdsfile` must not change. It is captured in
    `tests/api/api_manifest.json` and enforced by `tests/api/test_api_freeze.py`.
@@ -82,12 +89,16 @@ conflicts with a rule below, follow the rule below. See
    entirely. `re_validate.py` keeps its **whole** derived set: ground rule 7 and
    deviation (6) freeze that file, so none of its violations was PR-24's to fix.
 
-   PR-25 shrank that set by **eleven**, to **2,266** over **58 entries** (179 code
-   slots), measured the same way. Eight are `UP031`: the archives pair's four sites
-   each, in code that now lives in `holdings_maintenance/_common.py` written with
-   concatenation, which ruff does not flag. Three are `N806`: the `LOGDIRS` locals
-   below, now `global` declarations. `pds4archives.py` came off the ratchet
-   entirely and `_common.py` needs no entry.
+   PR-25 shrank that set by **eighteen**, to **2,259** over **58 entries** (179
+   code slots), measured the same way. Fourteen are `UP031`: the archives pair's
+   four sites each, and one version-number format string in each of the six
+   checksum and shelf tools, all in code that now lives one copy in
+   `holdings_maintenance/_common.py` written with concatenation or an f-string,
+   which ruff does not flag. Three are `N806`: the `LOGDIRS` locals, which are gone
+   along with the module-level lists they shadowed. One is `SIM115`: `pdschecksums`
+   held two copies of `hashfile`'s bare `open`, and the one copy that remains, in
+   `_common.py`, is the `with`-block spelling its pds4 twin already used.
+   `pds4archives.py` came off the ratchet entirely and `_common.py` needs no entry.
 
    The permanent set, grouped by the code that locks it. **"Locked by" says what
    holds each row: `frozen` and `aligned` are permanent; `behavior` rows are
@@ -98,7 +109,7 @@ conflicts with a rule below, follow the rule below. See
    |---|---:|---|---|---|
    | `E501` | 1638 | 41 files: every rule module with a table, plus `test_pds3file_blackbox{,_cached}.py`, `test_pds3file_whitebox.py`, `test_pds4file_blackbox.py`, `test_corss_8xxx.py`, `test_couvis_8xxx.py`, `test_nhxxxx_xxxx.py`, `tests/rules/pds4/test_uranus_occs_earthbased.py` | aligned | hand-aligned `TranslatorByRegex` and `parametrize` rows, and path/regex literals that cannot be split without breaking a semantic unit. Rewrapping is the layout change dropped by (11) |
    | `W191` | 302 | `cassini_iss_fring_mosaics_rsfrench2025_primary_filespec.py` | aligned | the whole file is one tab-indented table; retabbing *is* the forbidden table rewrite |
-   | `UP031` | 131 | 10 maintenance tools, plus `COCIRS_xxxx.py` | behavior + aligned + frozen | 40 logging calls, 24 `file.write` calls emitting the frozen sidecar formats, 49 in hand-aligned blocks (37 of them in `pdsdependency.py`'s `PdsDependency(...)` argument tables, which contributes 38 to this group and 39 in all), 12 plain `%` expressions the conversion rule deliberately does not reach, and 6 in the frozen `re_validate.py` (which holds 7 `UP031` sites; the seventh is a `logger.info` call and is counted among the logging calls). A lazy rewrite of a logging call must pass `filepath=` explicitly, because `pdslogger` re-reads a lone positional argument as the filepath once the message has no `%` pattern; that conversion is a code change this style ratchet does not authorize |
+   | `UP031` | 125 | 10 maintenance tools, plus `COCIRS_xxxx.py` | behavior + aligned + frozen | 40 logging calls, 24 `file.write` calls emitting the frozen sidecar formats, 49 in hand-aligned blocks (37 of them in `pdsdependency.py`'s `PdsDependency(...)` argument tables, which contributes 38 to this group and 39 in all), 6 plain `%` expressions the conversion rule deliberately does not reach, and 6 in the frozen `re_validate.py` (which holds 7 `UP031` sites; the seventh is a `logger.info` call and is counted among the logging calls). A lazy rewrite of a logging call must pass `filepath=` explicitly, because `pdslogger` re-reads a lone positional argument as the filepath once the message has no `%` pattern; that conversion is a code change this style ratchet does not authorize |
    | `RUF012` | 33 | 22 rule modules, both subpackage `__init__`s, `pdsdependency.py` | frozen | `ClassVar` is forbidden by (1) |
    | `F401` | 31 | `pds3file/__init__.py` ×25, `pds4file/__init__.py` ×6 | frozen | the `from .rules import (…)` blocks bind names that are part of the frozen surface *and* carry the side effect that registers the rule subclasses |
    | `N801` | 31 | every rule module with a rule class | frozen | the rule class names are the frozen public classes |
@@ -109,7 +120,7 @@ conflicts with a rule below, follow the rule below. See
    | `N802` | 5 | `COISS_xxxx`, `COUVIS_0xxx`, `COVIMS_0xxx` ×2, `RPX_xxxx` | frozen | frozen uppercase methods (`DATA_SET_ID`, `FILENAME_KEYLEN`) |
    | `RUF005` | 4 | `pdsinfoshelf.py`, `pds4infoshelf.py`, `re_validate.py` ×2 | style | the repo-wide owner-chosen exclusion above |
    | `I001` | 5 | `pds3file/__init__.py` ×2, `pds4file/__init__.py` ×2, `re_validate.py` | aligned + frozen | in the initializers, the rule-module import block is aligned under its opening parenthesis, and isort also reorders `from . import rules` against the other package imports in a module whose initialization order is load-bearing |
-   | `SIM115` | 3 | `pdsarchives.py`, `pdschecksums.py` ×2 | behavior | a `with` block changes *when* the file closes, which these tools order against later reads and `tarfile` finalization |
+   | `SIM115` | 2 | `pdsarchives.py`, `pdschecksums.py` | behavior | a `with` block changes *when* the file closes, which these tools order against later reads and `tarfile` finalization |
    | `B012` | 3 | `pdschecksums.py`, `pdsinfoshelf.py`, `pdslinkshelf.py` | behavior | `return` inside `finally` swallows an in-flight exception; removing it changes the exit-code path |
    | `RUF015` | 2 | `pdsinfoshelf.py`, `pds4infoshelf.py` | behavior | `list(d)[0]` raises `IndexError` where `next(iter(d))` raises `StopIteration`, and the dict is not proven non-empty |
    | `A002` | 2 | `pds3file/__init__.py` | frozen | the frozen `dir=` parameter of `log_path_for_volset`/`log_path_for_volume` |

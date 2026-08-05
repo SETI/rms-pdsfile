@@ -10,9 +10,14 @@
 ##########################################################################################
 
 import argparse
+import glob
+import hashlib
 import os
 import re
+import shutil
 import sys
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import pdslogger
 
@@ -28,6 +33,7 @@ BACKUP_FILENAME = re.compile(r'.*[-_](20\d\d-\d\d-\d\dT\d\d-\d\d-\d\d'
 # Tool specification
 ##########################################################################################
 
+@dataclass(kw_only=True)
 class ToolSpec:
     """Everything that differs between the two halves of a maintenance-tool pair.
 
@@ -37,6 +43,13 @@ class ToolSpec:
     a missing archive file is reported -- the code stays in the tool module and the
     spec says nothing about it.
 
+    Two fields are declared for tools that are not on this core yet and are read
+    nowhere today: holdings_sentinel, which the checksums and infoshelf tools use to
+    split a command-line path, and index_ext, which the indexshelf tools use to
+    find and to recognize an index table. Both are properties of the PDS3/PDS4
+    flavor rather than of one tool, so every spec of that flavor carries the same
+    value, whether or not its own tool reads it.
+
     Attributes:
         progname: The tool's name, as it appears in the --help description, in the
             "Missing task" error, and as the subdirectory of each log root.
@@ -44,6 +57,9 @@ class ToolSpec:
         pdsfile_cls: Pds3File or Pds4File.
         unit: 'volume' or 'bundle'. Names the command-line positional, and is
             substituted into the help text.
+        holdings_sentinel: The directory component that separates the holdings root
+            from the rest of a path, '/holdings/' or '/pds4-holdings/'.
+        index_ext: The extension of an index table, '.tab' or '.csv'.
         file_log_level: The name of the PdsLogger method the tool writes its
             per-file lines through, 'info' or 'normal'. The two are not
             interchangeable: they render different level names, produce different
@@ -68,22 +84,21 @@ class ToolSpec:
             as (args, kwargs) pairs passed straight to add_argument.
     """
 
-    def __init__(self, *, progname, logname, pdsfile_cls, unit, file_log_level,
-                 description, task_help, positional_help, log_path_for, expand_target,
-                 handler_factories, lskip_for=None, extra_arguments=()):
-        self.progname = progname
-        self.logname = logname
-        self.pdsfile_cls = pdsfile_cls
-        self.unit = unit
-        self.file_log_level = file_log_level
-        self.description = description
-        self.task_help = task_help
-        self.positional_help = positional_help
-        self.log_path_for = log_path_for
-        self.expand_target = expand_target
-        self.handler_factories = handler_factories
-        self.lskip_for = lskip_for
-        self.extra_arguments = extra_arguments
+    progname: str
+    logname: str
+    pdsfile_cls: type
+    unit: str
+    holdings_sentinel: str
+    index_ext: str
+    file_log_level: str
+    description: str
+    task_help: dict
+    positional_help: str
+    log_path_for: Callable
+    expand_target: Callable
+    handler_factories: tuple
+    lskip_for: Callable | None = None
+    extra_arguments: tuple = ()
 
 
 ##########################################################################################
@@ -162,6 +177,29 @@ def reject_checksum_and_archive_paths(pdsf, path):
         sys.exit(1)
 
 
+def log_paths_for(spec, pdsdir, task):
+    """Return the up-to-two paths one target's log is written to.
+
+    The default place and the parallel place are the same path when no log root is
+    configured, which is why the result is a set. Both are built under one pinned
+    time tag: they are two copies of one run's log, and the tag has one-second
+    resolution, so two unpinned calls that straddle a second boundary would date
+    them a second apart.
+
+    Args:
+        spec: The tool's ToolSpec.
+        pdsdir: The target PdsFile.
+        task: The task name, part of the log file's basename.
+
+    Returns:
+        set[str]: One or two log file paths.
+    """
+
+    with spec.pdsfile_cls._pinned_log_timetag():
+        return {spec.log_path_for(pdsdir, task),
+                spec.log_path_for(pdsdir, task, place='parallel')}
+
+
 def run_main(spec, tasks, argv):
     """Run one tool: parse the command line, set up logging, perform the task.
 
@@ -226,8 +264,7 @@ def run_main(spec, tasks, argv):
         for pdsdir in pdsdirs:
 
             # Save logs in up to two places
-            logfiles = {spec.log_path_for(pdsdir, args.task),
-                        spec.log_path_for(pdsdir, args.task, place='parallel')}
+            logfiles = log_paths_for(spec, pdsdir, args.task)
 
             # Create all the handlers for this level in the logger
             local_handlers = []
@@ -484,3 +521,156 @@ def validate_tuples(spec, dir_tuples, tar_tuples, *, logger=None, limits=None):
         logger.close()
 
     return valid
+
+
+##########################################################################################
+# Checksum and shelf file tools
+##########################################################################################
+
+# The PdsLogger name each tool kind logs under. Both flavors of a kind share one.
+CHECKSUMS_LOGNAME = 'pds.validation.checksums'
+INFOSHELF_LOGNAME = 'pds.validation.fileinfo'
+LINKSHELF_LOGNAME = 'pds.validation.links'
+
+# The log directories a superseded checksum or shelf file is versioned into. A tool's
+# main() fills this in for each target it is about to work on; a process that never
+# calls set_log_dirs leaves it empty, and then move_old_*() versions nothing.
+LOGDIRS = []
+
+
+def set_log_dirs(logfiles):
+    """Record the log directories the move_old_*() functions version a file into.
+
+    Args:
+        logfiles: The log file paths of the target about to be worked on. The
+            directory of each is what a superseded file is copied into.
+    """
+
+    global LOGDIRS
+    LOGDIRS = [os.path.split(logfile)[0] for logfile in logfiles]
+
+
+# From http://stackoverflow.com/questions/3431825/-
+#       generating-an-md5-checksum-of-a-file
+
+def hashfile(fname, blocksize=65536):
+    hasher = hashlib.md5()
+
+    with open(fname, 'rb') as f:
+        for chunk in iter(lambda: f.read(blocksize), b''):
+            hasher.update(chunk)
+
+    return hasher.hexdigest()
+
+
+def move_old_checksums(check_path, *, logger=None):
+    """Appends a version number to an existing checksum file and moves it to
+    the associated log directory."""
+
+    if not os.path.exists(check_path):
+        return
+
+    check_basename = os.path.basename(check_path)
+    (check_prefix, check_ext) = os.path.splitext(check_basename)
+
+    logger = logger or pdslogger.PdsLogger.get_logger(CHECKSUMS_LOGNAME)
+
+    from_logged = False
+    for log_dir in LOGDIRS:
+        dest_template = log_dir + '/' + check_prefix + '_v???' + check_ext
+        version_paths = glob.glob(dest_template)
+
+        max_version = 0
+        lskip = len(check_ext)
+        for version_path in version_paths:
+            version = int(version_path[-lskip-3:-lskip])
+            max_version = max(max_version, version)
+
+        new_version = max_version + 1
+        dest = dest_template.replace('???', f'{new_version:03d}')
+        shutil.copy(check_path, dest)
+
+        if not from_logged:
+            logger.info('Checksum file moved from: ' + check_path, force=True)
+            from_logged = True
+
+        logger.info('Checksum file moved to', dest, force=True)
+
+
+def move_old_info(shelf_file, logger=None):
+    """Move a file to the /logs/ directory tree and append a time tag."""
+
+    if not os.path.exists(shelf_file):
+        return
+
+    shelf_basename = os.path.basename(shelf_file)
+    (shelf_prefix, shelf_ext) = os.path.splitext(shelf_basename)
+
+    logger = logger or pdslogger.PdsLogger.get_logger(INFOSHELF_LOGNAME)
+
+    from_logged = False
+    for log_dir in LOGDIRS:
+        dest_template = log_dir + '/' + shelf_prefix + '_v???' + shelf_ext
+        version_paths = glob.glob(dest_template)
+
+        max_version = 0
+        lskip = len(shelf_ext)
+        for version_path in version_paths:
+            version = int(version_path[-lskip-3:-lskip])
+            max_version = max(max_version, version)
+
+        new_version = max_version + 1
+        dest = dest_template.replace('???', f'{new_version:03d}')
+        shutil.copy(shelf_file, dest)
+
+        if not from_logged:
+            logger.info('Info shelf file moved from: ' + shelf_file)
+            from_logged = True
+
+        logger.info('Info shelf file moved to', dest)
+
+        python_file = shelf_file.rpartition('.')[0] + '.py'
+        dest = dest.rpartition('.')[0] + '.py'
+        shutil.copy(python_file, dest)
+
+
+def move_old_links(shelf_file, logger=None):
+    """Move a file to the /logs/ directory tree and append a time tag."""
+
+    if not os.path.exists(shelf_file):
+        return
+
+    shelf_basename = os.path.basename(shelf_file)
+    (shelf_prefix, shelf_ext) = os.path.splitext(shelf_basename)
+
+    if logger is None:
+        logger = pdslogger.PdsLogger.get_logger(LINKSHELF_LOGNAME)
+
+    from_logged = False
+    for log_dir in LOGDIRS:
+        dest_template = log_dir + '/' + shelf_prefix + '_v???' + shelf_ext
+        version_paths = glob.glob(dest_template)
+
+        max_version = 0
+        lskip = len(shelf_ext)
+        for version_path in version_paths:
+            version = int(version_path[-lskip-3:-lskip])
+            max_version = max(max_version, version)
+
+        new_version = max_version + 1
+        dest = dest_template.replace('???', f'{new_version:03d}')
+        shutil.copy(shelf_file, dest)
+
+        if not from_logged:
+            logger.info('Link shelf file moved from: ' + shelf_file)
+            from_logged = True
+
+        logger.info('Link shelf file moved to ' + dest)
+
+        python_src = shelf_file.rpartition('.')[0] + '.py'
+        python_dest = dest.rpartition('.')[0] + '.py'
+        shutil.copy(python_src, python_dest)
+
+        pickle_src = shelf_file.rpartition('.')[0] + '.pickle'
+        pickle_dest = dest.rpartition('.')[0] + '.pickle'
+        shutil.copy(pickle_src, pickle_dest)

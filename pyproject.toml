@@ -162,8 +162,8 @@ extend-ignore = ["PT011", "SIM105", "SIM108"]
 # holdings-maintenance tools, the tools/scripts entry points and the test tree were
 # re-derived with the template select set and no per-file-ignores at all (2,760
 # violations) and every one classified fixable or excluded; 483 were fixed. The
-# 2,277 that remained were permanent then; PR-25 removed eleven more, so the group
-# now measures 2,266 over 58 entries (179 code slots). Each is enumerated with its
+# 2,277 that remained were permanent then; PR-25 removed eighteen more, so the group
+# now measures 2,259 over 58 entries (179 code slots). Each is enumerated with its
 # sites and its reason in plans/2026-08-04-pr-24-subplan.md sections 4 and 5 and in
 # .cursor/rules/pdsfile_overrides.mdc deviation (4). In outline:
 #   E501/W191/RUF022 -- hand-aligned translator, parametrize and __all__ tables;
@@ -174,10 +174,12 @@ extend-ignore = ["PT011", "SIM105", "SIM108"]
 #     parameter names, and the rule-module names the package re-exports.
 #   UP031 -- 40 logging calls (a lazy rewrite needs filepath= and is not a style
 #     PR's to make), 24 sidecar-writing format strings, 49 in hand-aligned
-#     blocks, 12 plain % expressions the conversion rule does not reach, and 6
-#     more in the frozen re_validate.py. The archives pair's eight sites are gone:
-#     the code holding them now lives in holdings_maintenance/_common.py, written
-#     with concatenation, which ruff does not flag.
+#     blocks, 6 plain % expressions the conversion rule does not reach, and 6
+#     more in the frozen re_validate.py. Fourteen sites are gone: the archives
+#     pair's eight, and the version-number format string each of the six checksum
+#     and shelf tools held a copy of. That code now lives one copy in
+#     holdings_maintenance/_common.py, written with concatenation or an f-string,
+#     which ruff does not flag.
 #   B006/B012/SIM115/RUF015/PT028 -- tool signatures and control flow whose
 #     rewrite changes what propagates, when a file closes, or which exception is
 #     raised.
@@ -194,8 +196,9 @@ extend-ignore = ["PT011", "SIM105", "SIM108"]
 #   A few entries are locked for now rather than for ever -- F821, RUF059 on
 #     pdsinfoshelf, and PT014 -- each because the fix would change behavior or
 #     remove a test id. Deviation (4) names the later PR that owns each one. The
-#     N806 on the three LOGDIRS locals was one of them; those three now declare
-#     `global LOGDIRS`, so the locals, and the code they made unreachable, are gone.
+#     N806 on the three LOGDIRS locals was one of them; the tools now record their
+#     log directories through the one shared list, so the locals, and the code they
+#     made unreachable, are gone.
 "scripts/dump_public_api.py" = ["RUF100"]
 # CORE (PR-23) -- the eight entries below plus pdscache.py, pdsfile.py and
 # pdsviewable.py further down, which sort after the rule modules. The fifteen

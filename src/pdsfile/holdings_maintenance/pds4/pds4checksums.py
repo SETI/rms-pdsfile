@@ -11,21 +11,17 @@
 import argparse
 import datetime
 import glob
-import hashlib
 import os
 import re
-import shutil
 import subprocess
 import sys
 
 import pdslogger
 
 import pdsfile
+from pdsfile.holdings_maintenance import _common
 
-# Holds log file directories temporarily, used by move_old_checksums()
-LOGDIRS = []
-
-LOGNAME = 'pds.validation.checksums'
+LOGNAME = _common.CHECKSUMS_LOGNAME
 LOGROOT_ENV = 'PDS_LOG_ROOT'
 
 # Default limits
@@ -36,20 +32,6 @@ VALIDATE_PAIRS_LIMITS = {}
 
 BACKUP_FILENAME = re.compile(r'.*[-_](20\d\d-\d\d-\d\dT\d\d-\d\d-\d\d'
                              r'|backup|original)\.[\w.]+$')
-
-################################################################################
-
-# From http://stackoverflow.com/questions/3431825/-
-#       generating-an-md5-checksum-of-a-file
-
-def hashfile(fname, blocksize=65536):
-    hasher = hashlib.md5()
-
-    with open(fname, 'rb') as f:
-        for chunk in iter(lambda: f.read(blocksize), b''):
-            hasher.update(chunk)
-
-    return hasher.hexdigest()
 
 ################################################################################
 
@@ -115,7 +97,7 @@ def generate_checksums(pdsdir, selection=None, oldpairs=None, *, regardless=True
                     logger.invisible('Invisible file', abspath)
 
                 if regardless and selection:
-                    md5 = hashfile(abspath)
+                    md5 = _common.hashfile(abspath)
                     newtuples.append((abspath, md5, file))
                     logger.normal('Selected MD5=%s' % md5, abspath)
 
@@ -124,7 +106,7 @@ def generate_checksums(pdsdir, selection=None, oldpairs=None, *, regardless=True
                     logger.debug('MD5 copied', abspath)
 
                 else:
-                    md5 = hashfile(abspath)
+                    md5 = _common.hashfile(abspath)
                     newtuples.append((abspath, md5, file))
                     logger.normal('MD5=%s' % md5, abspath)
 
@@ -368,41 +350,6 @@ def validate_pairs(pairs1, pairs2, selection=None, *, logger=None,
     return success
 
 ################################################################################
-
-def move_old_checksums(check_path, logger=None):
-    """Appends a version number to an existing checksum file and moves it to
-    the associated log directory."""
-
-    if not os.path.exists(check_path):
-        return
-
-    check_basename = os.path.basename(check_path)
-    (check_prefix, check_ext) = os.path.splitext(check_basename)
-
-    logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
-
-    from_logged = False
-    for log_dir in LOGDIRS:
-        dest_template = log_dir + '/' + check_prefix + '_v???' + check_ext
-        version_paths = glob.glob(dest_template)
-
-        max_version = 0
-        lskip = len(check_ext)
-        for version_path in version_paths:
-            version = int(version_path[-lskip-3:-lskip])
-            max_version = max(max_version, version)
-
-        new_version = max_version + 1
-        dest = dest_template.replace('???', '%03d' % new_version)
-        shutil.copy(check_path, dest)
-
-        if not from_logged:
-            logger.info('Checksum file moved from: ' + check_path)
-            from_logged = True
-
-        logger.info('Checksum file moved to', dest)
-
-################################################################################
 # Simplified functions to perform tasks
 ################################################################################
 
@@ -459,7 +406,7 @@ def reinitialize(pdsdir, selection=None, logger=None):
         return False
 
     # Write new checksum file
-    move_old_checksums(check_path, logger=logger)
+    _common.move_old_checksums(check_path, logger=logger)
     write_checksums(check_path, pairs, logger=logger)
     return True
 
@@ -557,7 +504,7 @@ def repair(pdsdir, selection=None, logger=None):
         return True
 
     # Write checksum file
-    move_old_checksums(check_path, logger=logger)
+    _common.move_old_checksums(check_path, logger=logger)
     write_checksums(check_path, dirpairs, logger=logger)
     return True
 
@@ -598,7 +545,7 @@ def update(pdsdir, selection=None, logger=None):
         return True
 
     # Write checksum file
-    move_old_checksums(check_path, logger=logger)
+    _common.move_old_checksums(check_path, logger=logger)
     write_checksums(check_path, dirpairs, logger=logger)
     return True
 
@@ -823,12 +770,10 @@ def main():
 
             # Create all the handlers for this level in the logger
             local_handlers = []
-            global LOGDIRS
-            LOGDIRS = []    # used by move_old_checksums()
+            _common.set_log_dirs(logfiles)
             for logfile in logfiles:
                 local_handlers.append(pdslogger.file_handler(logfile))
                 logdir = os.path.split(logfile)[0]
-                LOGDIRS.append(os.path.split(logfile)[0])
 
                 # These handlers are only used if they don't already exist
                 warning_handler = pdslogger.warning_handler(logdir)

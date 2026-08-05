@@ -180,6 +180,10 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
 
     LOGFILE_TIME_FMT = '%Y-%m-%dT%H-%M-%S'
 
+    # The time tag every log path built inside a _pinned_log_timetag() block shares.
+    # None outside such a block, which is when each path is dated from the clock.
+    _LOG_TIMETAG = None
+
     PLAIN_TEXT_EXTS = {'lbl', 'txt', 'asc', 'tab', 'cat', 'fmt', 'f', 'c',
                        'cpp', 'pro', 'for', 'f77', 'py', 'inc', 'h', 'sh',
                        'idl', 'csh', 'tf', 'ti', 'tls', 'lsk', 'tsc'}

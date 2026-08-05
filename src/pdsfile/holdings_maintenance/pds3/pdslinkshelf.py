@@ -10,23 +10,19 @@
 
 import argparse
 import datetime
-import glob
 import os
 import pickle
 import re
-import shutil
 import sys
 
 import pdslogger
 import translator
 
 import pdsfile
+from pdsfile.holdings_maintenance import _common
 
-LOGNAME = 'pds.validation.links'
+LOGNAME = _common.LINKSHELF_LOGNAME
 LOGROOT_ENV = 'PDS_LOG_ROOT'
-
-# Holds log file directories temporarily, used by move_old_links()
-LOGDIRS = []
 
 # Default limits
 GENERATE_LINKS_LIMITS = {'debug':200, 'ds_store':10}
@@ -1376,49 +1372,6 @@ def validate_links(dirpath, dirdict, shelfdict, *, logger=None, limits=None):
         return logger.close()
 
 ################################################################################
-
-def move_old_links(shelf_file, logger=None):
-    """Move a file to the /logs/ directory tree and append a time tag."""
-
-    if not os.path.exists(shelf_file):
-        return
-
-    shelf_basename = os.path.basename(shelf_file)
-    (shelf_prefix, shelf_ext) = os.path.splitext(shelf_basename)
-
-    if logger is None:
-        logger = pdslogger.PdsLogger.get_logger(LOGNAME)
-
-    from_logged = False
-    for log_dir in LOGDIRS:
-        dest_template = log_dir + '/' + shelf_prefix + '_v???' + shelf_ext
-        version_paths = glob.glob(dest_template)
-
-        max_version = 0
-        lskip = len(shelf_ext)
-        for version_path in version_paths:
-            version = int(version_path[-lskip-3:-lskip])
-            max_version = max(max_version, version)
-
-        new_version = max_version + 1
-        dest = dest_template.replace('???', '%03d' % new_version)
-        shutil.copy(shelf_file, dest)
-
-        if not from_logged:
-            logger.info('Link shelf file moved from: ' + shelf_file)
-            from_logged = True
-
-        logger.info('Link shelf file moved to ' + dest)
-
-        python_src = shelf_file.rpartition('.')[0] + '.py'
-        python_dest = dest.rpartition('.')[0] + '.py'
-        shutil.copy(python_src, python_dest)
-
-        pickle_src = shelf_file.rpartition('.')[0] + '.pickle'
-        pickle_dest = dest.rpartition('.')[0] + '.pickle'
-        shutil.copy(pickle_src, pickle_dest)
-
-################################################################################
 # Simplified functions to perform tasks
 ################################################################################
 
@@ -1441,7 +1394,7 @@ def initialize(pdsdir, *, logger=None, limits=None):
 
     # Move old file if necessary
     if os.path.exists(link_path):
-        move_old_links(link_path, logger=logger)
+        _common.move_old_links(link_path, logger=logger)
 
     # Save link files
     write_linkdict(pdsdir.abspath, link_dict, logger=logger, limits=limits)
@@ -1467,7 +1420,7 @@ def reinitialize(pdsdir, *, logger=None, limits=None):
 
     # Move old file if necessary
     if os.path.exists(link_path):
-        move_old_links(link_path, logger=logger)
+        _common.move_old_links(link_path, logger=logger)
 
     # Save link files
     write_linkdict(pdsdir.abspath, link_dict, logger=logger, limits=limits)
@@ -1557,7 +1510,7 @@ def repair(pdsdir, *, logger=None, limits=None):
         return
 
     # Move files and write new links
-    move_old_links(link_path, logger=logger)
+    _common.move_old_links(link_path, logger=logger)
     write_linkdict(pdsdir.abspath, dir_linkdict, logger=logger, limits=limits)
 
 def update(pdsdir, *, logger=None, limits=None):
@@ -1592,7 +1545,7 @@ def update(pdsdir, *, logger=None, limits=None):
         return
 
     # Move files and write new links
-    move_old_links(link_path, logger=logger)
+    _common.move_old_links(link_path, logger=logger)
     write_linkdict(pdsdir.abspath, dir_linkdict, logger=logger, limits=limits)
 
 ################################################################################
@@ -1724,12 +1677,10 @@ def main():
 
             # Create all the handlers for this level in the logger
             local_handlers = []
-            global LOGDIRS
-            LOGDIRS = []            # used by move_old_links()
+            _common.set_log_dirs(logfiles)
             for logfile in logfiles:
                 local_handlers.append(pdslogger.file_handler(logfile))
                 logdir = os.path.split(logfile)[0]
-                LOGDIRS.append(os.path.split(logfile)[0])
 
                 # These handlers are only used if they don't already exist
                 error_handler = pdslogger.error_handler(logdir)

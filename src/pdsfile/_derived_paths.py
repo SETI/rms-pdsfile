@@ -4,6 +4,7 @@
 # archive file that contains it, and the log files written about it
 ##########################################################################################
 
+import contextlib
 import datetime
 
 
@@ -14,9 +15,9 @@ class _DerivedPathsMixin:
     """Builders for the paths PdsFile derives from its own path.
 
     A mixin of PdsFile; it holds methods only and defines no state of its own. The
-    class attributes these methods read -- LOG_ROOT_ and LOGFILE_TIME_FMT -- are
-    defined on PdsFile, and set_log_root writes LOG_ROOT_ back onto the class it is
-    called on.
+    class attributes these methods read -- LOG_ROOT_, LOGFILE_TIME_FMT and
+    _LOG_TIMETAG -- are defined on PdsFile; set_log_root writes LOG_ROOT_ and
+    _pinned_log_timetag writes _LOG_TIMETAG back onto the class each is called on.
 
     checksum_path_if_exact and archive_path_if_exact call os_path_exists, which
     _LocalFsMixin supplies. That call resolves through the class at run time, so
@@ -204,6 +205,34 @@ class _DerivedPathsMixin:
         else:
             cls.LOG_ROOT_ = root.rstrip('/') + '/'
 
+    @classmethod
+    @contextlib.contextmanager
+    def _pinned_log_timetag(cls):
+        """Give every log path built inside the block one time tag.
+
+        A tool writes one run's log in up to two places and builds the two paths
+        with two calls. The time tag has one-second resolution, so two calls that
+        straddle a second boundary date the two copies of one log a second apart and
+        they stop naming one run. Reading the clock once, on the way into the block,
+        makes every path built inside it agree.
+
+        The pin is a class attribute, like the log root, and is restored on the way
+        out, so a block that raises leaves nothing behind and nesting is safe.
+        """
+
+        previous = cls._LOG_TIMETAG
+        cls._LOG_TIMETAG = cls._log_timetag()
+        try:
+            yield
+        finally:
+            cls._LOG_TIMETAG = previous
+
+    @classmethod
+    def _log_timetag(cls):
+        """Return a log file name's time tag, read from the clock now."""
+
+        return datetime.datetime.now().strftime(cls.LOGFILE_TIME_FMT)
+
     def _log_path_for(self, target, suffix, task, subdir, place):
         """Return a complete log file path, given the parts that name what is logged.
 
@@ -251,8 +280,7 @@ class _DerivedPathsMixin:
         if suffix:
             parts += ['_', suffix.lstrip('_')]  # exactly one "_" before suffix
 
-        timetag = datetime.datetime.now().strftime(cls.LOGFILE_TIME_FMT)
-        parts += ['_', timetag]
+        parts += ['_', cls._LOG_TIMETAG or cls._log_timetag()]
 
         if task:
             parts += ['_', task]
