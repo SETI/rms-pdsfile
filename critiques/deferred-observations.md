@@ -2535,16 +2535,34 @@ these entries are read by the PRs that come after it.
     copy has moved into `_common.py` — but it *is* a log-text change, and the six
     other tools still have their own copy — and `re_validate.py` is frozen.
 
-    **DECIDED (owner, 2026-08-05): hold; PR-26/PR-27 owns it.** No ordering change
-    was made in PR-25. Converging one copy while nine others keep the set would
-    make the tools disagree with each other as well as with themselves, and the
-    change is worth making once, where all the copies come together. PR-25's
-    archives copy of the set literal now sits inside `log_paths_for`
-    (`_common.py`), which is the single place a `sorted()` would go for every tool
-    that reaches it, so the later change is one line plus the tools still
-    standalone. PR-25's tool-run gate continues to pin `PYTHONHASHSEED` so its
-    comparison measures the code rather than the hash.
-    **Owner: PR-26/PR-27 (Phase 6).**
+    **Held by the owner on 2026-08-05** for PR-26/PR-27, on the reasoning that
+    converging one copy while nine others kept the set would make the tools
+    disagree with each other as well as with themselves.
+
+    **RESOLVED the same day, as a consequence of a later ruling rather than a
+    decision of its own — the owner should see this.** Ruling (3) of 2026-08-05
+    sent all fifteen log-path sites through `_common.log_paths_for`, and one
+    function has to return one type. A `set`, which nine of the eleven tools used,
+    would have **introduced** hash-dependent ordering into the two indexshelf
+    tools, which built an ordered list; there was no way to route all eleven
+    through one helper and leave those two as they were. The helper returns an
+    ordered list -- the default place first, the parallel place second, the second
+    dropped when it equals the first -- which is exactly what the indexshelf pair
+    already did, and which removes the nondeterminism from the other nine.
+
+    Measured over five `PYTHONHASHSEED` values, one `--log` invocation of
+    `pdschecksums` against a real volume:
+
+    | seed | at `540447f` | at PR-25's head |
+    |---|---|---|
+    | 0, 1, 2, 4 | `logroot`, `logs` | `logroot`, `logs` |
+    | **3** | **`logs`, `logroot`** | `logroot`, `logs` |
+
+    So the order was observably hash-dependent and is now fixed. `re_validate.py`,
+    which this entry noted was frozen and therefore out of reach, is included: the
+    owner lifted that freeze the same day. The tool-run gate still pins
+    `PYTHONHASHSEED`, which now has nothing left to pin down.
+    **Owner: recorded, not open. Flagged because the owner had held it.**
 
 ### Added by the PR-25 executor's second round of owner rulings (2026-08-05)
 
@@ -2575,12 +2593,26 @@ these entries are read by the PRs that come after it.
 
      What *is* collapsible without touching any log text is the ten-line
      version-numbering block the three share verbatim (glob the `_v???` template,
-     take the highest, add one). PR-25 left it in three copies because its
-     instruction for this move was "verbatim", and because the PR that has all the
-     callers in front of it is better placed to name the helper.
-     **Owner: PR-26/PR-27 (Phase 6) — either lift the shared block into one private
-     helper, or decide the three-way duplication is the price of the frozen log
-     text.**
+     take the highest, add one).
+
+     **RESOLVED (owner, 2026-08-05): the blocker was lifted and the three are now
+     one.** The owner relaxed the log-output freeze precisely so that a difference
+     like this one stops forcing duplication (addendum §8). `_common.move_old(path,
+     kind)` is one body of **17 statements**, with `next_version_dest()` at **7**
+     for the shared version-numbering block, against **76** for the three bodies it
+     replaces. What differs between the kinds is a `VersionedFile` record holding a
+     noun and a tuple of companion extensions -- data, not control flow, so the
+     sub-plan's §2 rule is satisfied rather than waived.
+
+     **The two-argument call shape won everywhere**, including on the "moved from"
+     line, which all three previously wrote as a concatenation with the colon baked
+     into the message. Two of the three already used it for "moved to"; it renders
+     the colon from one mechanism; and it passes the path as the filepath so the
+     logger's root replacement applies. The resulting text change is 100 lines in
+     two classes, enumerated in `critiques/phase6-validation.md` §5.3 and in
+     addendum §8, with zero lines unattributed and no line added or removed.
+     Pinned by `TestTheTwoLogLines` in `test_common_versioning.py`; reverting either
+     half of the call-shape change fails three ids.
 
 101. **`holdings_sentinel` hard-codes the *name* of the holdings directory.** The
      new `ToolSpec` field carries `'/holdings/'` and `'/pds4-holdings/'`, which is
@@ -2608,7 +2640,18 @@ these entries are read by the PRs that come after it.
      a limits cap — applies word for word to the two shelf movers, and the
      inconsistency is now visible in a way it was not when the six copies sat in six
      files. Forcing them is a log-text change on four tools.
-     **Owner: needs a decision; PR-26/PR-27 are where those four tools converge.**
+
+     **RESOLVED (2026-08-05): `force=True` for every kind.** With the three movers
+     collapsed into one function there is one call site for each line, so the
+     alternative was a `force` field on `VersionedFile` whose only job would be to
+     re-create one side's behavior -- the shrug-flag the sub-plan's §2 rule forbids
+     and the owner's 2026-08-05 ruling tells us not to pay for. Entry 95's reasoning
+     applies unchanged: versioning is a filesystem mutation and its report should
+     not be droppable by a limits cap. Invisible outside a capped scope, which is
+     why no line of the real-holdings gate moved; pinned by
+     `TestReportingUnderAnInfoCap`, which now covers all three kinds and whose
+     control emits an unforced line in the same kind of scope and asserts it is
+     dropped.
 
 103. **`move_old_links` copies the shelf file twice, to the same destination.** It
      runs `shutil.copy(shelf_file, dest)` and then, as its `.pickle` sidecar step,
@@ -2619,6 +2662,11 @@ these entries are read by the PRs that come after it.
      because the redundancy is only visible with the two flavors' copies merged into
      one, and because the obvious "fix" (dropping the sidecar step) would be wrong
      if a shelf file ever stops being a `.pickle`.
+
+     **Carried into the merged function unchanged**, and now visible as data rather
+     than as code: `LINK_SHELF.companions` is `('.py', '.pickle')`, and the
+     `.pickle` entry names the shelf file itself. The `move_old()` docstring says
+     so. Still a redundant copy; still not worth removing blind.
      **Owner: PR-27 (Phase 6), when it migrates the linkshelf pair.**
 
 ### Added by the PR-25 adversarial review (round 5)
@@ -2654,9 +2702,23 @@ these entries are read by the PRs that come after it.
      same reason; the indexshelf pair is where the intent to dedupe is written down
      and defeated.
 
-     PR-25 touched none of the fourteen: its scope over six of those files is the
-     `hashfile`/`move_old_*`/`LOGDIRS` move only, and the racing lines sit a few
-     hundred lines away from the ones it edited.
-     **Owner: needs a decision. PR-26/PR-27 cover eight of the ten by migration;
-     `pdsdependency` and `re_validate.py` need a decision of their own, and the
-     indexshelf dedupe may deserve fixing ahead of its migration.**
+     **RESOLVED (owner, 2026-08-05): fix all fifteen now.** Every one of the ten
+     tool modules now calls `_common.log_paths_for(pdsf, method, *args, **kwargs)`,
+     which reads the clock once, builds both paths under that one tag, and returns
+     them as an ordered list with the duplicate dropped. `grep -n "place='parallel'"
+     src/` now reports **one** site, inside that helper.
+
+     That includes the two the plan was never going to reach: `pdsdependency.py`,
+     which Phase 6 leaves standalone, and `re_validate.py`, whose freeze the owner
+     lifted the same day. Making the ten call the shared helper, rather than
+     sprinkling `_pinned_log_timetag()` blocks through them, was the owner's
+     instruction and it is also what removed the last `set([...])` from
+     `re_validate.py`.
+
+     The indexshelf dedupe now works: `log_paths_for` compares two paths built from
+     **one** clock reading, so equal paths are equal. Pinned by
+     `TestTheIndexshelfDedupe` in `tests/core/test_log_path_timetag.py`, whose
+     control builds the pair the way the tool used to under a clock that advances a
+     second per reading and asserts the two paths differ -- so the test cannot pass
+     by the race failing to fire.
+     **Owner: recorded, not open.**

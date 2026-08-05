@@ -321,3 +321,66 @@ and that it leaves the class dictionary as it found it — which the reader does
 touch. They are not idle: the round-5 adversarial reviewer broke the fix **eleven**
 different ways and all eleven were caught, with those four catching the mutations
 that drop or misplace the `finally`.
+
+## 8. The log-output freeze is relaxed — owner, 2026-08-05
+
+**This section records a standing change to the plan, not a deviation from it.**
+
+**The ruling.** Having versions of the same message that do and do not render a
+colon is not worth preserving; a small change in logged text is acceptable; the
+code should be as common as possible; and the freeze must not be applied so
+rigorously that it makes the code bad. So where preserving frozen log text was
+forcing duplication or a shrug-flag, the common code wins and the text moves.
+
+**What is still frozen.** **CLI names, flags and exit codes.** Also unchanged in
+substance: which events are logged, at what level, and where each log file is
+written. The relaxation is about the *wording* of a message and nothing else.
+
+**The limit, stated plainly so a later PR does not read this as licence.** Output
+text may move **only where keeping it would force duplication or a flag whose one
+job is to re-create one side's wording.** It is not licence to reword, reformat,
+re-order or drop messages for taste, to change a level, or to change a log file's
+name or path. The tool-run gate still diffs every captured line; what changed is
+that a differing line is now *enumerated and attributed to the commonality it
+bought* rather than treated as a failure. **A differing line that cannot be
+attributed is still a defect.** `critiques/phase6-validation.md` §5.3 carries the
+enumeration, and the attribution is mechanical — a script classifies every
+differing line and exits non-zero if any is left over.
+
+**What PR-25 spent it on, and what it bought.** Three functions became one.
+`move_old_checksums`, `move_old_info` and `move_old_links` — **76 statements**
+over three near-identical bodies — are now `_common.move_old(path, kind)` at
+**17**, plus `next_version_dest()` at **7** for the version-numbering block the
+three shared verbatim: **24 against 76**. A `VersionedFile` record carries the
+noun and the companion extensions, which is all that differs between the kinds. Deferred entry 100 recorded that this was blocked precisely by the
+log text: the "moved to" line was a two-argument PdsLogger call in two of the
+three and a plain concatenation in the third, and those render differently.
+
+The two-argument shape won everywhere, for three reasons: two of the three
+already used it, it renders the colon from one mechanism instead of having it
+baked into one message and absent from another, and it passes the path as the
+filepath so the logger's root replacement applies. The "moved from" line was
+converted the same way for the same reason.
+
+Measured against the real holdings, 32 invocations of the six tools from both
+trees, that is **100 differing lines in two classes and nothing else**:
+
+| Class | Lines | What changed | Why |
+|---|---:|---|---|
+| A | 68 | `… moved from: /disk/holdings/checksums-volumes/X_md5.txt` → `… moved from: checksums-volumes/X_md5.txt` | the path is now the filepath argument, so `replace_root` trims it |
+| B | 32 | `Link shelf file moved to /disk/logs/…` → `Link shelf file moved to: /disk/logs/…` | the link shelf's concatenation became the two-argument call |
+
+No line was added or removed — both trees emit 3,594 normalized lines — and the
+archives pair's 36 invocations show **zero** lines in either class.
+
+**One consequence the owner should see, because it resolves something the owner
+had held.** Ruling (3) of the same day sent all fifteen log-path sites through
+`_common.log_paths_for`, which has to return one type. Returning a `set`, which
+is what nine of the eleven tools used, would have *introduced* hash-dependent
+ordering into the two indexshelf tools, which used an ordered list. Returning an
+ordered list instead removes that nondeterminism from the other nine — which is
+**deferred entry 99**, held by the owner on 2026-08-05 for PR-26/PR-27. It is
+resolved here as a consequence rather than as a decision: measured over five
+`PYTHONHASHSEED` values, the previous head emits the two `Log file:` lines in a
+different order for seed 3 than for seeds 0, 1, 2 and 4, and this head emits them
+in the same order for all five. The alternative was to make two tools worse.
