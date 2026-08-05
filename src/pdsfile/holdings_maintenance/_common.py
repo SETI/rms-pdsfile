@@ -57,8 +57,8 @@ class ToolSpec:
         log_path_for: Callable (pdsdir, task, place='default') returning the path of
             the log file for one target.
         expand_target: Callable (pdsf, path) returning the list of PdsFile objects
-            one command-line path resolves to. `path` is the command line's own
-            spelling of the path, for messages.
+            one command-line path resolves to. `path` is the absolute path the
+            command line resolved to, for messages.
         handler_factories: The pdslogger handler factories to attach at each log
             root, in the order they are added.
         lskip_for: Callable (pdsdir) returning the number of leading characters
@@ -150,7 +150,7 @@ def reject_checksum_and_archive_paths(pdsf, path):
 
     Args:
         pdsf: The PdsFile the path resolved to.
-        path: The path as the command line spelled it, for the message.
+        path: The absolute path the command line resolved to, for the message.
     """
 
     if pdsf.checksums_:
@@ -172,8 +172,10 @@ def run_main(spec, tasks, argv):
         argv: The full command line, sys.argv.
 
     Raises:
-        SystemExit: Always. The status is 1 if the run logged a fatal or an error,
-            0 otherwise.
+        SystemExit: On a normal return, with status 1 if the run logged a fatal or
+            an error and 0 otherwise. A task that raises is logged and re-raised
+            instead, so the original exception propagates and sys.exit is not
+            reached.
     """
 
     parser = build_arg_parser(spec)
