@@ -194,8 +194,8 @@ docstring says so and says they are read nowhere today.
 
 The plan's parenthetical values were checked against the code rather than taken on
 trust, and **both are right**. `holdings_sentinel` is `'/holdings/'` at
-`pdschecksums.py:750`, `pdsdependency.py:1107` and `pdsinfoshelf.py:775`, and
-`'/pds4-holdings/'` at `pds4checksums.py:722,733` and `pds4infoshelf.py:756,767`;
+`pdschecksums.py:697`, `pdsdependency.py:1107` and `pdsinfoshelf.py:734`, and
+`'/pds4-holdings/'` at `pds4checksums.py:669,680` and `pds4infoshelf.py:715,726`;
 each tool both splits a command-line path on it and rebuilds an archives path
 with it, so the value is the literal including both slashes. `index_ext` is
 `'.tab'` at `pdsindexshelf.py:459,461,464,473` and `'.csv'` at
@@ -210,7 +210,7 @@ The `handler_factories` change is the more material one and is deliberate. A
 boolean "pds4 adds a warning handler" is exactly the shrug-flag the sub-plan's
 rule forbids, and it would not carry the thing that is actually observable: the
 **order** in which handlers are added, at the log root
-(`_common.py:206-209`) and again per target (`_common.py:239-240`). A tuple of
+(`_common.py:246-249`) and again per target (`_common.py:276-277`). A tuple of
 factories carries both which handlers and in what order, as data, and generalizes
 to a tool that wants some third handler. The two `--log` / `PDS_LOG_ROOT`
 invocations per tool in `critiques/phase6-validation.md` §5 are what put that
@@ -253,15 +253,31 @@ methods: `_log_timetag()`, which reads the clock, and `_pinned_log_timetag()`, a
 context manager that reads it **once** on the way in, holds it for the length of
 the block, and restores the previous value on the way out. `_log_path_for` uses
 the pinned tag when there is one and reads the clock when there is not.
-`_common.log_paths_for(spec, pdsdir, task)` — new, and the one place in the tree
-that builds the pair — wraps its two calls in it, and `run_main` calls that.
+`_common.log_paths_for(spec, pdsdir, task)` is new, wraps its two calls in the
+pin, and `run_main` calls it.
 
-The pin is class state, restored in a `finally`, set on the class it is called on
-and found through the MRO by the rule subclass a real target is an instance of.
-That is the same shape as `set_log_root`, which already writes `LOG_ROOT_` onto
-the class it is called on, so it introduces no pattern the module did not have.
-The nine tools PR-26 and PR-27 migrate inherit the fix when they reach
-`run_main`; until then they behave exactly as they do today.
+The pin is class state, set on the class it is called on and found through the MRO
+by the rule subclass a real target is an instance of. On the way out the class
+dictionary is put back exactly as it was found — restored if the class had its own
+value, deleted if the value was inherited — because writing it back
+unconditionally leaves a shadowing entry, and a class holding its own value stops
+seeing one set on a base class. Otherwise it is the same shape as `set_log_root`,
+which already writes `LOG_ROOT_` onto the class it is called on, so it introduces
+no pattern the module did not have.
+
+**The fix reaches one of the eleven tools, and the owner should decide the rest
+rather than inherit it.** Measured at this head, the two-call pair is built at
+**15 sites**: `_common.py:200`, which is fixed, and **14 in ten tool modules**,
+which are not — the checksums, infoshelf, linkshelf and indexshelf pairs,
+`pdsdependency` and `re_validate`. Eight of those ten reach `run_main` in PR-26
+and PR-27 and inherit the fix then. **Two do not**: this plan leaves
+`pdsdependency` a standalone tool this phase, and ground rule 7 freezes
+`re_validate.py`. The two indexshelf tools deserve a specific mention — they
+dedupe their pair explicitly with `if logfiles[0] == logfiles[1]: logfiles =
+logfiles[:-1]`, and that comparison is defeated by precisely this race, so on a
+straddling second they write one run's log **twice into one directory**. PR-25
+did not touch any of the fourteen, because its scope over six of those files is
+the versioning move only; deferred entry 104 records the scope.
 
 **The owner relaxed the frozen-signature constraint for this fix, and the fix did
 not need it.** The owner's ruling on 2026-08-05 was: do not be picky about frozen
@@ -294,11 +310,14 @@ character-for-character what they were, so no consumer call can break. Had the
 keyword been added, an *optional* keyword would have been backward compatible for
 every existing call, but that is now hypothetical.
 
-**Pinned by** `tests/core/test_log_path_timetag.py`, ten ids, `holdings_free`.
+**Pinned by** `tests/core/test_log_path_timetag.py`, twelve ids, `holdings_free`.
 The clock those tests install advances one second on **every** reading, which
 turns the race from rare into certain; each test that asserts the pin holds also
 builds the same pair unpinned and asserts those two disagree, so no assertion can
 pass by the race failing to fire. Against the unfixed reader — `_log_path_for`
-reading the clock unconditionally — **8 of the 10 fail**; the two that still pass
-assert only that the pin is released, which is bookkeeping the reader does not
-touch.
+reading the clock unconditionally — **8 of the 12 fail**; the four that still pass
+assert only the pin's own bookkeeping — that it is released on exit and on a raise,
+and that it leaves the class dictionary as it found it — which the reader does not
+touch. They are not idle: the round-5 adversarial reviewer broke the fix **eleven**
+different ways and all eleven were caught, with those four catching the mutations
+that drop or misplace the `finally`.

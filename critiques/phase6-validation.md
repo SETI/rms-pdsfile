@@ -66,18 +66,18 @@ with the one unavoidable exception §5.1 measures and §12's row 6 names.
 | Gate | Result |
 |---|---|
 | API-freeze manifest test | **passed** — `pytest tests/api/`, 26 ids. No `holdings_maintenance` module is in the manifest, so this gate is silent about this PR's edits; it is run to prove nothing leaked out of them |
-| Full-data suite, `--mode ns` | **passed** — **945 ids** vs the baseline's **892**; the 53 extra are the new tests, listed one by one in §3, and nothing else moved |
+| Full-data suite, `--mode ns` | **passed** — **947 ids** vs the baseline's **892**; the 55 extra are the new tests, listed one by one in §3, and nothing else moved |
 | Full-data suite, `--mode s` | **passed** — 558 ids, set diff **empty** (§3) |
 | Phase-6 per-tool gate, archives pair vs `ab1fa3b` | **passed with one recorded difference** — 36 invocations and 39 log files per tree, 4,005 / 4,009 normalized lines; the six artifacts that differ differ only in Python traceback frames (§5.1) |
 | Per-tool gate, the six moved-from tools vs `b84fe75` | **passed, no difference at all** — 32 invocations and 76 log files per tree, 3,594 normalized lines on both sides, **32 of 32** stdout captures and **76 of 76** log files identical (§5.2) |
 | `ruff check src/pdsfile tests scripts` | **passed**; the ratchet forgives **eighteen** fewer findings and gained no code slot (§9) |
 | `ruff check --preview --select E111,E112,E113 …` | **passed**, no findings |
 | Clean-install import check | **passed** (throwaway venv, `pip install .`, full manifest module surface imports) |
-| Hosted lint/no-holdings job (`scripts/run-all-checks.sh -c -s`, no holdings env vars) | **passed**, **141 passed / 804 skipped**, pyroma 10/10 — against the baseline's 92 passed / 800 skipped. The 49 extra passes are the two new `holdings_free` modules, which must run on a machine with no holdings; the 4 extra skips are the `full_holdings` regression tests (§3) |
-| PR-13 tool tests, with holdings | **passed** — inside the `ns` run, `tests/holdings_maintenance/` collects **154** ids (111 at the baseline), all passing |
+| Hosted lint/no-holdings job (`scripts/run-all-checks.sh -c -s`, no holdings env vars) | **passed**, **143 passed / 804 skipped**, pyroma 10/10 — against the baseline's 92 passed / 800 skipped. The 51 extra passes are the two new `holdings_free` modules, which must run on a machine with no holdings; the 4 extra skips are the `full_holdings` regression tests (§3) |
+| PR-13 tool tests, with holdings | **passed** — inside the `ns` run, `tests/holdings_maintenance/` collects **154** ids (111 at the baseline) and `tests/core/` **55** (43), all passing |
 | Adversarial review loop | `critiques/pr-25/round-<k>.md` (§14) |
 
-### 3. Full-data suite — 53 added ids, nothing else
+### 3. Full-data suite — 55 added ids, nothing else
 
 Both passes were run on the baseline worktree and on the branch with the same
 interpreter and the same holdings. Every `testcase` element of each `--junitxml`
@@ -89,20 +89,20 @@ direction is visible).
 
 | Run | baseline `ab1fa3b` | `pr-25-common-core` | id-set diff |
 |---|---|---|---|
-| `--mode ns` | 858 passed / 34 skipped (**892 ids**) | 911 passed / 34 skipped (**945 ids**) | **+53, all new and all passing** |
+| `--mode ns` | 858 passed / 34 skipped (**892 ids**) | 913 passed / 34 skipped (**947 ids**) | **+55, all new and all passing** |
 | `--mode s` | 555 passed / 3 skipped (**558 ids**) | 555 passed / 3 skipped (**558 ids**) | **empty** |
 
 Ids whose outcome changed: **0** in both modes. Ids removed: **0** in both modes.
-The 53 additions are three groups, and every one of them is a test this PR's own
+The 55 additions are three groups, and every one of them is a test this PR's own
 changes required:
 
 | Group | ids | What it pins |
 |---|---:|---|
-| `tests/core/test_log_path_timetag.py` | **10** | the log time-tag pin: 6 on the mixin (unpinned pair disagrees / pinned pair agrees, a rule subclass sees the pin, release on exit, release on a raise, nesting restores, the two flavors pin independently) and 4 parametrized over the two archives specs through `_common.log_paths_for` |
+| `tests/core/test_log_path_timetag.py` | **12** | the log time-tag pin: 8 on the mixin (unpinned pair disagrees / pinned pair agrees, a rule subclass sees the pin, release on exit, release on a raise, nesting restores, the class dictionary is left as it was found, a flavor pinned once still sees a pin taken above it, the two flavors pin independently) and 4 parametrized over the two archives specs through `_common.log_paths_for` |
 | `tests/holdings_maintenance/test_common_versioning.py` | **39** | the moved versioning code: **30** asserting that none of the six tool modules still defines its own `LOGDIRS`, `hashfile`, `move_old_checksums`, `move_old_info` or `move_old_links` (5 names × 6 modules), **3** that each mover versions one past the highest already there, **3** that a process with no recorded log directory versions nothing, and **3** for the `force=True` decision — 1 that the checksum mover still reports under an `{'info': 0}` cap and 2 that the shelf movers do not |
 | the deferred-81 regression tests | **4** | `test_pds3_checksums`, `test_pds4_checksums`, `test_pds3_infoshelf`, `test_pds3_linkshelf`, each `…versions_the_…file_it_replaces` |
 
-That is 10 + 39 + 4 = **53**, and the id-set diff contains nothing else. **Every
+That is 12 + 39 + 4 = **55**, and the id-set diff contains nothing else. **Every
 behavior change this PR makes is confined to those ids.** The archives migration
 — still the bulk of the diff — moved no id and changed no outcome, and neither did
 the move of the versioning code out of the six tool modules: apart from the ids
@@ -113,8 +113,8 @@ ids appear only in `ns`; the driver script's comment explains that the tools run
 in their own subprocesses and `--mode` cannot reach them.
 
 The hosted no-holdings run is the same arithmetic seen from the other side:
-baseline 92 passed / 800 skipped (892), branch 141 passed / 804 skipped (945). The
-49 new `holdings_free` ids **pass** there rather than skipping, which is the point
+baseline 92 passed / 800 skipped (892), branch 143 passed / 804 skipped (947). The
+51 new `holdings_free` ids **pass** there rather than skipping, which is the point
 of that marker — they build their own inputs — and the 4 `full_holdings` ids skip.
 
 ### 4. Which source each run actually imported, proved rather than assumed
@@ -239,7 +239,7 @@ runs — the one place the spec's handler-factory tuple is applied **at the log
 root**, and so the only place pds4's `warning_handler`-before-`error_handler`
 ordering is exercised at that scope — and the only ones where `logfiles` has two
 elements and each run writes its log in two places. The tuple is also applied
-per target (`_common.py:239-240`), which every invocation reaches, so the
+per target (`_common.py:276-277`), which every invocation reaches, so the
 ordering itself is not unexercised elsewhere; what these two add is the log-root
 branch and the two-element `logfiles`.
 
@@ -383,7 +383,7 @@ of it the same code written twice. After the migration:
 `_common.py`'s 676 lines and 316 statements are **not** all the archives pair's.
 It grew by **190 lines / 103 statements** over `b84fe75`, and that growth splits
 into the "Checksum and shelf file tools" section — **151 lines / 93 statements**,
-the code moved out of six other tools, accounted for in §6.1 — and **38 lines / 10
+the code moved out of six other tools, accounted for in §6.1 — and **39 lines / 10
 statements** for everything else this round added: the `@dataclass` conversion,
 the two new `ToolSpec` fields with their docstring paragraph, `log_paths_for`, and
 the imports the move needed. Measured against the archives pair alone the shared core is
@@ -493,8 +493,19 @@ lines (§11.4, deferred entry 95 — the one observable change); `hashfile` take
 pds4 `with`-block spelling, which leaks no descriptor and computes the same digest
 (and removes one `SIM115` from the ratchet); and `move_old_checksums` keeps the
 pds3 keyword-only `logger`, which every call site in both trees already used.
-`move_old_info` and `move_old_links` needed no decision — their pds3 and pds4
-twins are **byte-identical**, so each moved verbatim.
+`move_old_info` and `move_old_links` needed no decision: their pds3 and pds4
+twins are **byte-identical to the character**, verified by extracting each with
+`ast` from `b84fe75` and diffing.
+
+**"Verbatim" needs one qualification.** The plan says "moved verbatim, one copy",
+and the twin comparison above is exact, but each moved function differs from the
+copies it replaces in **two lines**: `LOGNAME` became the shared
+`_common.<KIND>_LOGNAME` (the same string, one source of truth), and
+`'%03d' % new_version` became `f'{new_version:03d}'` — required, because
+`_common.py` must be ruff-clean and can carry no `UP031` ignore, and identical
+output for every `int`. `move_old_checksums` differs in those two plus the
+signature and the two `force=True`. Nothing else in any of the four functions
+changed.
 
 **What was not merged: the three kinds stay three functions.** They are not one
 function with data differences. Two of their three differences are data (the noun
@@ -504,10 +515,23 @@ movers and `logger.info(noun + ' moved to ' + dest)` in the links mover, and
 `pdslogger` 3.2.1 renders those differently — `… moved to: /path` against
 `… moved to /path`, and only the two-argument form's path is subject to
 `replace_root`. Collapsing them would need a flag choosing between two call
-shapes, which the sub-plan's §2 rule forbids, and either choice would rewrite
-frozen log text for two tool families. That is the hard stop the addendum's own
-rule calls for, taken rather than forced; deferred entry 100 records it, and
-§5.2's mutation control is a measurement of what forcing it would have cost.
+shapes, and either choice would rewrite frozen log text for two tool families.
+That is the hard stop the addendum's own rule calls for, taken rather than
+forced; §5.2's mutation control measures what forcing it would have cost.
+
+**What that leaves, stated plainly rather than left to the deferred entry.** The
+three functions still share **18 identical non-blank lines** once variable names
+are set aside — the existence guard, the basename/`splitext` pair, the whole
+`for log_dir in LOGDIRS` version-numbering block, the `shutil.copy` and the
+`from_logged` latch — three copies of them, in the one section of the one file
+whose purpose is one copy each. The stop is real but it is narrower than the
+whole question: sub-plan §2 forbids "a **boolean flag** whose only job is to
+re-create one side's quirk", and the same document admits "a **tuple** of handler
+factories" as data, so a per-kind emitter callable is a shape the rule does not
+reach. PR-25 did not take it, because its instruction for this move was
+"verbatim" and because the version-numbering block can be lifted without touching
+any log text — which is a smaller, safer change for the PR that has all the
+callers in front of it. Deferred entry 100 owns it.
 
 ### 7. The `ToolSpec` fields, and the rule that admitted each
 
@@ -516,7 +540,15 @@ earlier revision of this PR made it a plain keyword-only class, on the reading
 that overrides deviation (1)'s annotation ban rules out a construct that declares
 its fields by annotation; the owner lifted the ban for this case on 2026-08-05
 and deviation (1) now says so, so the deviation is withdrawn rather than argued
-(addendum §2). Fifteen field annotations, no other change to what the spec holds.
+(addendum §2). Fifteen field annotations, and the spec holds exactly what it held.
+
+**Two generated behaviors came with the decorator**, neither of which any caller
+in the tree uses, both recorded because "no other change" would be false: the
+dataclass generates `__eq__` and `__repr__`, and because it does, Python sets
+`__hash__ = None` — so `hash(SPEC)` now raises `TypeError: unhashable type:
+'ToolSpec'` where the plain class hashed by identity. Nothing in the tree hashes a
+spec or puts one in a set (checked), and construction is still keyword-only with
+every field required except the two that default.
 
 | Field | pds3 | pds4 | Why it is data |
 |---|---|---|---|
@@ -546,11 +578,14 @@ does not read them as an oversight.
 
 The plan's parenthetical values were **checked against the code rather than taken
 on trust, and both are right.** `holdings_sentinel` is `'/holdings/'` at
-`pdschecksums.py:750`, `pdsdependency.py:1107` and `pdsinfoshelf.py:775`, and
-`'/pds4-holdings/'` at `pds4checksums.py:722,733` and `pds4infoshelf.py:756,767`;
-each of those tools `partition()`s a command-line path on it, and the two pds4
-tools also rebuild an archives path by concatenating it back, so the value is the
-literal including both slashes. `index_ext` is `'.tab'` at
+`pdschecksums.py:697`, `pdsdependency.py:1107` and `pdsinfoshelf.py:734`, and
+`'/pds4-holdings/'` at `pds4checksums.py:669,680` and `pds4infoshelf.py:715,726`;
+each of those tools `partition()`s a command-line path on it, and **four** of
+them — `pdschecksums.py:708`, `pdsinfoshelf.py:745`, `pds4checksums.py:680` and
+`pds4infoshelf.py:726` — also rebuild an archives path by concatenating it back,
+so the value is the literal including both slashes. Note for the PR that migrates
+them: those four build `<sentinel>archives-`, so the field is a *component* of
+that literal rather than the whole of it. `index_ext` is `'.tab'` at
 `pdsindexshelf.py:459,461,464,473` and `'.csv'` at
 `pds4indexshelf.py:445,447,450,459`, used both as a `glob` suffix and in an
 `endswith` test, so the value includes the dot. One thing the plan does not say
@@ -622,7 +657,7 @@ moved out of each archives module are:
 | `'Task %s for' % args.task` | `'Task ' + args.task + ' for'` |
 
 Concatenation, not an f-string: `'%s' % x` is `str(x)` exactly, and
-`'Task "' + args.task + '" for'` is already the spelling `pdschecksums.py:873`
+`'Task "' + args.task + '" for'` is already the spelling `pdschecksums.py:815`
 uses for the same header, so this is the house idiom rather than a new one. For
 the two `%d` sites, both operands are integers at every construction site
 (`os.path.getsize`, a literal `0`, and `TarInfo.size`), and `'%d' % n` is `str(n)`
@@ -685,7 +720,7 @@ of one comment):
 | `#### Begin active code` (both files) | **removed.** It marked the boundary between `write_archive`'s nested `archive_filter` definition and the function body. The nested definition is gone — the filter comes from `_common.make_archive_filter` — so the comment has no boundary left to mark |
 | `# Set up parser` (both files) | **removed.** It labelled the argparse block, which is now a named function with a docstring, `_common.build_arg_parser` |
 | `# update` (the trailing comment on `else:       # update`, both files) | **removed** with the `if`/`elif` chain it annotated; the driver now dispatches through `tasks[args.task]` |
-| `# Generate a list of pdsfiles for volume directories` / `… for bundle directories` | **reworded** to `# Generate a list of pdsfiles for the target directories` at `_common.py:211`, because the one shared loop serves both vocabularies |
+| `# Generate a list of pdsfiles for volume directories` / `… for bundle directories` | **reworded** to `# Generate a list of pdsfiles for the target directories` at `_common.py:249`, because the one shared loop serves both vocabularies |
 
 Nothing was added to either tool module: against the head **pair** alone the same
 diff shows 18 base texts absent and **zero** new. `_common.py` of course carries
@@ -771,21 +806,22 @@ so the control was re-run in the shape the code now has: the head tree was copie
 to `/tmp/pr25-revert2`, `__pycache__` was cleared, and the `global LOGDIRS` line
 inside `set_log_dirs` was deleted — which reproduces the original bug exactly, an
 assignment to a local that leaves the module-level list empty. Then the four
-regression tests, plus the 49 new unit ids, were run against that copy:
+regression tests, plus the 51 new unit ids, were run against that copy:
 
 ```
 FAILED tests/holdings_maintenance/test_pds3_checksums.py::test_reinitialize_versions_the_checksum_file_it_replaces
 FAILED tests/holdings_maintenance/test_pds3_infoshelf.py::test_update_versions_the_shelf_file_it_replaces
 FAILED tests/holdings_maintenance/test_pds3_linkshelf.py::test_update_versions_the_shelf_file_it_replaces
 FAILED tests/holdings_maintenance/test_pds4_checksums.py::test_reinitialize_versions_the_checksum_file_it_replaces
-4 failed, 49 passed, 111 deselected
+4 failed, 51 passed, 111 deselected
 ```
 
 **All four fail now, where three failed before**, because the plumbing is shared:
-breaking it once breaks both flavors, which is the point of moving it. And the 49
-unit ids in `test_common_versioning.py` still **pass**, because they set
-`_common.LOGDIRS` themselves — so they are testing the movers, and the four tool
-tests are testing the plumbing, and neither can stand in for the other.
+breaking it once breaks both flavors, which is the point of moving it. And all 51
+unit ids still **pass**, because `test_common_versioning.py`'s 39 set
+`_common.LOGDIRS` themselves and the 12 time-tag ids do not touch it at all — so
+the unit tests are testing the movers and the pin, the four tool tests are testing
+the plumbing, and neither can stand in for the other.
 
 #### 11.4 The `force=True` decision, and a control that cannot be inert
 
@@ -831,11 +867,33 @@ make any future golden over a two-log run flaky at that rate.
 `_LOG_TIMETAG`; the derived-paths mixin gains `_log_timetag()`, which reads the
 clock, and `_pinned_log_timetag()`, a context manager that reads it once on the
 way in, holds it for the block and restores the previous value in a `finally`.
-`_log_path_for` uses the pinned tag when there is one. `_common.log_paths_for` —
-new, and the one place in the tree that builds the pair — wraps its two calls in
-it, and `run_main` calls that. The pin is class state restored on exit, the same
-shape as `set_log_root`, which already writes `LOG_ROOT_` onto the class it is
-called on.
+`_log_path_for` uses the pinned tag when there is one. `_common.log_paths_for` is
+new, wraps its two calls in the pin, and `run_main` calls it. The pin is class
+state, and on the way out the class dictionary is put back exactly as it was —
+restored if the class had its own value, **deleted** if the value was inherited.
+Writing it back unconditionally would leave a shadowing entry, and a class holding
+its own value stops seeing one set on a base class, so a flavor pinned once would
+quietly become immune to a pin taken above it; that is measured by
+`test_the_pin_leaves_the_class_dictionary_as_it_found_it` and
+`test_a_flavor_pinned_once_still_sees_a_pin_taken_above_it`, both of which fail
+against the unconditional restore. Otherwise the pin is the same shape as
+`set_log_root`, which already writes `LOG_ROOT_` onto the class it is called on.
+
+**The fix reaches one of the eleven tools, and the record must not imply more.**
+Measured at this head, `grep -n "place='parallel'" src/` reports **15 sites**:
+`_common.py:200`, which is fixed, and **14 in ten tool modules**, which are not —
+`pdschecksums.py:789,797`, `pdsinfoshelf.py:825,833`, `pdslinkshelf.py:1676`,
+`pds4checksums.py:761,769`, `pds4infoshelf.py:806,814`, `pds4linkshelf.py:1169`,
+`pdsindexshelf.py:493`, `pds4indexshelf.py:479`, `pdsdependency.py:1126` and
+`re_validate.py:60`. Six of those files are edited by this PR, for the versioning
+move, with the racing lines a few hundred lines away and untouched. Eight of the
+ten tools reach `run_main` in PR-26 and PR-27 and inherit the fix then; **two do
+not** — the plan leaves `pdsdependency` a standalone tool this phase, and ground
+rule 7 freezes `re_validate.py`. The two indexshelf tools are the sharpest case:
+they dedupe explicitly with `if logfiles[0] == logfiles[1]: logfiles =
+logfiles[:-1]`, and that comparison is defeated by exactly this race, so on a
+straddling second they write one run's log twice into one directory. Deferred
+entry 104 records the scope so the owner can decide it rather than inherit it.
 
 Every name added is underscore-prefixed. `_log_path_for` appears **zero** times in
 `tests/api/api_manifest.json`, `tests/api/consumer_used_private_names.json` is
@@ -851,10 +909,12 @@ reading**, so the race is certain rather than rare. Each test that asserts the p
 holds also builds the same pair *unpinned* in the same test and asserts those two
 disagree; one of them additionally asserts the clock was read exactly three times
 for four paths, which is what "read once inside the block" means. Run against the
-unfixed reader — `_log_path_for` reading the clock unconditionally — **8 of the 10
-ids fail**. The two that pass assert only that the pin is released, on exit and on
-a raise, which is bookkeeping the reader does not touch; they are honest passes,
-not a gap.
+unfixed reader — `_log_path_for` reading the clock unconditionally — **8 of the 12
+ids fail**. The four that pass assert only the pin's own bookkeeping — released on
+exit, released on a raise, and the class dictionary left as it was found — which
+the reader does not touch. They are not idle either: the round-5 reviewer broke the
+fix **eleven** independent ways and every one was caught, with those four catching
+the mutations that drop or misplace the `finally` (§14).
 
 The suite is `holdings_free` and builds its own `PdsFile` objects, including one
 of a **rule subclass** (`Pds3File.SUBCLASSES['ASTROM_xxxx']`), because a real
@@ -933,9 +993,9 @@ treatment to the `… moved to` lines for the same reason.
 |---|---|
 | **66** — three maintenance modules over 1,000 lines | **Re-measured, and two of the three shrank.** At this head `pdslinkshelf.py` is **1,735**, `pds4linkshelf.py` **1,229**, `pdsdependency.py` **1,167**; at `ab1fa3b` they measure 1,783 / 1,278 / 1,167. The two linkshelf modules lost 48 and 49 lines to the versioning move, which is not enough to bring either under 1,000, and `pdsdependency.py` is untouched. `_common.py` is 676 lines and `pdsarchives.py`/`pds4archives.py` are 260 and 280, all under the limit that overrides deviation (3) declines to waive for this package. The waiver question stays open for the phase, as entry 66 intends; deferred entry 98 records that 1,000 is also the number that decides when `_common.py` splits |
 | **81** — `LOGDIRS` shadowing | **Resolved**, with its description corrected. §11.1–11.3 |
-| **83** — `proceed` vestige | **Closed.** Confirmed: no `proceed` binding remains in `pdsarchives.py`, and `_common.run_main` calls the task function without binding its result, so the vestige has no home to return to. `pdschecksums.py:917`'s live use is untouched |
-| **88** — divergent mutable defaults | **Carried to PR-26.** Both `B006` sites are `pdschecksums.py:55` and `pdsinfoshelf.py:45`; neither archives module has a mutable default anywhere, so PR-25 has no signature to choose |
-| **89** — three spellings of the `logger.close()` unpacking | **Decided for the archives pair; carried for the rest.** `_common.run_main` uses `(fatal, errors, _warnings, _tests)`, the spelling nine of the eleven sites already used. The two archives sites are gone with the `main()` bodies that held them, leaving eight named-underscore sites and one bare-`_` (`pds4linkshelf.py:1271`) for PR-26/27 |
+| **83** — `proceed` vestige | **Closed.** Confirmed: no `proceed` binding remains in `pdsarchives.py`, and `_common.run_main` calls the task function without binding its result, so the vestige has no home to return to. `pdschecksums.py:862`'s live use is untouched |
+| **88** — divergent mutable defaults | **Carried to PR-26.** Both `B006` sites are `pdschecksums.py:37` and `pdsinfoshelf.py:42`; neither archives module has a mutable default anywhere, so PR-25 has no signature to choose |
+| **89** — three spellings of the `logger.close()` unpacking | **Decided for the archives pair; carried for the rest.** `_common.run_main` uses `(fatal, errors, _warnings, _tests)`, the spelling nine of the eleven sites already used. The two archives sites are gone with the `main()` bodies that held them, leaving eight named-underscore sites and one bare-`_` (`pds4linkshelf.py:1222`) for PR-26/27 |
 | **1** — `pds4archives` cannot round-trip | **Not fixed, deliberately.** It is a behavior defect pinned by `test_pds4_archives.test_validate_cannot_round_trip`, and this PR is behavior-preserving. The two functions involved — `write_archive`'s `arcname` and `read_archive_info`'s prefix — are exactly the two that stayed in the tool module, so neither was touched. Still owned by a PR that may change behavior |
 | **2** — `pds4archives`'s bare `raise` | **Not fixed, deliberately**, same reason; pinned by `test_pds4_archives.test_initialize_on_a_bundle_raises`. The line stayed inside `write_archive`, which did not move, so it is byte-identical at `pds4archives.py:105`; §5's capture 22 shows it still raising `RuntimeError: No active exception to reraise` against a real bundle |
 
@@ -956,7 +1016,7 @@ reviewer (the residual `read_archive_info` duplication).
 | **98** — one `_common.py` or a module per family | **Decided now, not deferred: one file, a section per family.** The number is **1,000**, deviation (3)'s module limit, which it does not waive for this package; `_common.py` measures **676**. The same number says PR-26 splits it: the four remaining pairs project ~1,400 more lines at the archives family's own extraction rate |
 | **99** — the hash-dependent order of the two `Log file:` lines | **Held for PR-26/PR-27**, where all the copies converge. No ordering change was made here |
 
-**Four entries are new to this round: 100 – 103.** 100 — the three
+**Five entries are new to this round: 100 – 104.** 100 — the three
 `move_old_<kind>()` functions are **not** one function with data differences; the
 "moved to" line has two call shapes that `pdslogger` renders differently, so
 collapsing them needs a flag and rewrites frozen log text for two families
@@ -966,21 +1026,66 @@ the movers in one file, the versioning report is forced for checksums and
 droppable for shelves; entry 95's argument applies to both, but changing the shelf
 movers is an unforced log-text change on four tools (**Owner**). 103 —
 `move_old_links` copies the shelf file twice to the same destination, because the
-shelf file *is* its own `.pickle` sidecar (**PR-27**).
+shelf file *is* its own `.pickle` sidecar (**PR-27**). 104 comes from the round-5
+reviewer: the time-tag fix reaches one of the eleven tools, eight of the other ten
+inherit it by migration in PR-26/27, and **two — `pdsdependency` and the frozen
+`re_validate.py` — are not scheduled to inherit anything** (**Owner**).
 
 ### 14. Review loop
+
+**A durability limit on the evidence, stated so no one reads the numbers as
+reproducible from the branch alone.** The harness scripts §3, §5.1, §5.2, §8 and
+§11.5 name — `compare_runs.py`, `tool_run_diff.sh`, `compare_toolruns.py`,
+`shelf_run_diff.sh`, `compare_runs3.py`, `parser_probe.py`,
+`versioning_probe.py` — live in a session scratch directory outside the
+repository and are not committed; `git ls-files | grep scratchpad` is empty. A
+reader at this head cannot re-derive "32 of 32 / 76 of 76" or "4,005 / 4,009"
+from anything the branch contains. What they can do instead is what round 5 did:
+rebuild the harness from §5.2's description and re-run it. That reproduced the
+pds3 half independently — 15 invocations of the six moved-from pds3 tools from
+both trees, 15 of 15 stdout captures and all 823 normalized log lines identical —
+which is a stronger result than a committed script would have given, because it
+was an independent implementation.
 
 `critiques/pr-25/round-1.md` … `round-5.md`. Rounds 1–4 ran against the PR as it
 stood at `b84fe75`; **round 5** is a fresh no-context adversarial review of the
 diff the owner's rulings produced, pointed specifically at the `move_old_<kind>()`
 merge and at whether §11.5's time-tag test is a real control.
 
+**Round 5 returned 3 Major and 7 Minor, every one of them against this record
+rather than against `src/`, and both of the things it was pointed at held.** It
+diffed each moved function against *both* pre-move copies with `ast` and confirmed
+the twin-identity claims to the character; it measured the `pdslogger` call-shape
+difference directly and confirmed the hard stop is real; it broke the time-tag fix
+**eleven** ways — four of them the record never tried — and all eleven were caught
+by the ids; it reverted `force=True` three ways and attacked the control by
+forcing the shelf movers; and, because §5.2's harness lives outside the repository,
+it **rebuilt the harness and re-ran the gate independently**: 15 invocations of the
+six moved-from pds3 tools from both trees, 15 of 15 stdout captures and all 823
+normalized log lines identical. Every ruff, ratchet, line, statement and id number
+in this record reproduced exactly.
+
+Its findings, and what was done:
+
+| # | Finding | Disposition |
+|---|---|---|
+| M1 | Four regression-test docstrings still described the `main()`-shadows-`LOGDIRS` design this PR abolished; §10's comment audit never covered those four files | **Fixed.** All four rewritten to describe `_common.set_log_dirs` |
+| M2 | "`log_paths_for` … the one place in the tree that builds the pair" is false — 15 sites, 14 unfixed — and the claim was in §11.5, the addendum and a test docstring | **Fixed in all three, and escalated.** §11.5 and addendum §7 now enumerate the 14 and name the two tools no PR is scheduled to fix; deferred entry 104 puts the scope in front of the owner |
+| M3 | 22 stale `<file>.py:<n>` citations, three past EOF, under a sentence promising every number was re-measured | **Fixed.** Every citation re-derived at this head and verified to land on the construct it names; the historical ones in entry 89 now say which commit they are cited at |
+| m1 | §6's growth split said 151 + 38 where the measurement is 151 + 39 | **Fixed** (entry 98 already said 39) |
+| m2 | "moved verbatim" understates two changed lines per mover | **Fixed** — §6.1 now qualifies it and names both |
+| m3 | The pin left a shadowing class-dict entry, so a flavor pinned once stopped seeing a base-class pin | **Fixed in `src/`**, with two new ids that fail against the old restore |
+| m4 | The hard stop is real, but 18 lines are still triplicated and §6.1's prose implied the stop covered the whole question | **Fixed** — §6.1 now states the 18 lines and the narrower scope of the rule |
+| m5 | `@dataclass` made `ToolSpec` unhashable; §7 said "no other change" | **Fixed** — §7 records `__eq__`, `__repr__` and `__hash__ = None` |
+| m6 | §7 said two pds4 tools rebuild the archives path; four do | **Fixed**, with the four cited |
+| m7 | The harness scripts the biggest numbers rest on are not in the repository | **Recorded** above, with round 5's independent reproduction as the answer |
+
 Two CodeRabbit comments were posted on PR #120 and both were **verified against
 the code before being accepted**:
 
 | Comment | Verdict |
 |---|---|
-| `phase6-validation.md` overstated the handler-order claim: `handler_factories` is applied per target as well as at the log root, so the ordering is not exercised only by the two `--log` invocations | **Valid.** `_common.py:239-240` runs on every invocation. §5.1's paragraph now scopes the claim to the log root and says where else the tuple is applied |
+| `phase6-validation.md` overstated the handler-order claim: `handler_factories` is applied per target as well as at the log root, so the ordering is not exercised only by the two `--log` invocations | **Valid.** `_common.py:276-277` runs on every invocation. §5.1's paragraph now scopes the claim to the log root and says where else the tuple is applied |
 | `critiques/pr-25/round-2.md` said "four differing artifacts" where its own numbers give two stdout captures plus four log files | **Valid.** 32 of 34 and 35 of 39 is six. Corrected, with a note that the final counts live in §5.1 |
 Round 1 returned `goal not met` (2 Major, 6 Minor); rounds 2 and 3 returned
 `goal met` with zero Major and Minor findings only in the evidence prose, all
