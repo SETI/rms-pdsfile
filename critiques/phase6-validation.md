@@ -54,8 +54,8 @@ invisible, with the one unavoidable exception §5 measures and §12.5 explains.
 | `ruff check src/pdsfile tests scripts` | **passed**; the ratchet shrank by eleven codes and gained none (§9) |
 | `ruff check --preview --select E111,E112,E113 …` | **passed**, no findings |
 | Clean-install import check | **passed** (throwaway venv, `pip install .`, full manifest module surface imports) |
-| Hosted lint/no-holdings job (`scripts/run-all-checks.sh -c -s`, no holdings env vars) | **passed**, pyroma 10/10; the four new tests collect and skip without holdings, as their `full_holdings` marker requires (§3) |
-| PR-13 tool tests, with holdings | **passed** — `pytest tests/holdings_maintenance/` |
+| Hosted lint/no-holdings job (`scripts/run-all-checks.sh -c -s`, no holdings env vars) | **passed**, 92 passed / 804 skipped, pyroma 10/10 — against the baseline's 92 passed / 800 skipped, i.e. the four new tests collect and skip without holdings, as their `full_holdings` marker requires |
+| PR-13 tool tests, with holdings | **passed** — `pytest tests/holdings_maintenance/`, 115 passed |
 | Adversarial review loop | `critiques/pr-25/round-<k>.md` (§14) |
 
 ### 3. Full-data suite — four added ids, nothing else
