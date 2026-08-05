@@ -252,10 +252,10 @@ def test_update_picks_up_a_new_file(shelved_tree):
 def test_update_versions_the_shelf_file_it_replaces(shelved_tree):
     """--update copies the superseded info shelf into the log directory.
 
-    move_old_info() versions the shelf the task is about to rewrite, as
+    _common.move_old_info() versions the shelf the task is about to rewrite, as
     <name>_v###<ext> beside the run's own log file, and copies the `.py` sidecar
-    alongside it. It reads the module-level LOGDIRS list that main() fills in, so
-    a tool whose main() shadows that list with a local versions nothing.
+    alongside it. It reads the shared LOGDIRS list that main() fills in through
+    _common.set_log_dirs(), so a tool that leaves that list empty versions nothing.
     """
 
     support.add_file(shelved_tree, NEW_FILE, NEW_FILE_BYTES, NEW_FILE_MTIME)

@@ -216,16 +216,23 @@ class _DerivedPathsMixin:
         they stop naming one run. Reading the clock once, on the way into the block,
         makes every path built inside it agree.
 
-        The pin is a class attribute, like the log root, and is restored on the way
-        out, so a block that raises leaves nothing behind and nesting is safe.
+        The pin is a class attribute, like the log root. On the way out the class
+        dictionary is put back exactly as it was found -- restored if the class had
+        its own value, deleted if the value was inherited -- so a block that raises
+        leaves nothing behind, nesting is safe, and a class that has been pinned
+        once does not stop inheriting a pin taken on a base class.
         """
 
-        previous = cls._LOG_TIMETAG
+        had_own = '_LOG_TIMETAG' in cls.__dict__
+        previous = cls.__dict__.get('_LOG_TIMETAG')
         cls._LOG_TIMETAG = cls._log_timetag()
         try:
             yield
         finally:
-            cls._LOG_TIMETAG = previous
+            if had_own:
+                cls._LOG_TIMETAG = previous
+            else:
+                del cls._LOG_TIMETAG
 
     @classmethod
     def _log_timetag(cls):

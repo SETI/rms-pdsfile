@@ -25,6 +25,7 @@ from pdsfile import Pds3File, Pds4File, _derived_paths
 from pdsfile.holdings_maintenance import _common
 from pdsfile.holdings_maintenance.pds3 import pdsarchives
 from pdsfile.holdings_maintenance.pds4 import pds4archives
+from pdsfile.pdsfile import PdsFile
 
 pytestmark = pytest.mark.holdings_free
 
@@ -162,6 +163,42 @@ class TestPinnedLogTimetag:
         assert timetags_of([outer_before]) == timetags_of([outer_after])
         assert timetags_of([inner]) != timetags_of([outer_before])
 
+    def test_the_pin_leaves_the_class_dictionary_as_it_found_it(self, ticking_clock):
+        """A class that inherits the default must not be left holding its own copy.
+
+        Writing the restored value back unconditionally would leave a shadowing entry
+        in the class dictionary, and a class carrying its own value stops seeing one
+        set on a base class -- so a flavor that had been pinned once would quietly
+        become immune to a pin taken above it.
+        """
+
+        assert '_LOG_TIMETAG' not in vars(Pds3File)
+
+        with Pds3File._pinned_log_timetag():
+            assert vars(Pds3File)['_LOG_TIMETAG'] is not None
+
+        assert '_LOG_TIMETAG' not in vars(Pds3File)
+
+        with pytest.raises(ValueError), Pds3File._pinned_log_timetag():
+            raise ValueError('the task failed')
+
+        assert '_LOG_TIMETAG' not in vars(Pds3File)
+
+    def test_a_flavor_pinned_once_still_sees_a_pin_taken_above_it(self, ticking_clock):
+        """The consequence of the test above, measured on the paths themselves."""
+
+        pdsf = blank_target(Pds3File, 'volumes/', 'XXXXX_xxxx', 'XXXXX_0001')
+
+        with Pds3File._pinned_log_timetag():
+            pass
+
+        with PdsFile._pinned_log_timetag():
+            paths = [pdsf.log_path_for_bundle('_md5', task='validate', dir='tool'),
+                     pdsf.log_path_for_bundle('_md5', task='validate', dir='tool')]
+
+        assert len(timetags_of(paths)) == 1
+        assert PdsFile._LOG_TIMETAG is None
+
     def test_the_two_flavors_pin_independently(self, ticking_clock):
         """Pinning one class must not date the other class's paths."""
 
@@ -183,10 +220,12 @@ class TestPinnedLogTimetag:
 # The caller: the log paths one target's run writes
 ##########################################################################################
 class TestLogPathsFor:
-    """_common.log_paths_for is the one place in the tree that builds the pair.
+    """_common.log_paths_for is the one place that builds the pair under the pin.
 
-    It lives with the maintenance tools rather than with the core, but it is what
-    makes the pin reach a real run, so the control belongs beside the pin's own.
+    Ten other tools still build the same pair with two unpinned calls; they are not
+    on this core yet. This one lives with the maintenance tools rather than with
+    the core, but it is what makes the pin reach a real run, so the control belongs
+    beside the pin's own.
     """
 
     @pytest.mark.parametrize(('cls', 'spec', 'category_'), ARCHIVE_SPECS)

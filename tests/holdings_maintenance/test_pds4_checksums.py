@@ -178,11 +178,11 @@ def test_update_picks_up_a_new_file(fresh_tree):
 def test_reinitialize_versions_the_checksum_file_it_replaces(fresh_tree):
     """--reinitialize copies the superseded checksum file into the log directory.
 
-    move_old_checksums() versions the file the task is about to overwrite, as
-    <name>_v###.txt beside the run's own log file, one past the highest version
-    already there. It reads the module-level LOGDIRS list that main() fills in, so
-    a tool whose main() shadows that list with a local versions nothing; this test
-    is what makes that visible, here and in the pds3 twin.
+    _common.move_old_checksums() versions the file the task is about to overwrite,
+    as <name>_v###.txt beside the run's own log file, one past the highest version
+    already there. It reads the shared LOGDIRS list that main() fills in through
+    _common.set_log_dirs(), so a tool that leaves that list empty versions nothing;
+    this test is what makes that visible, here and in the pds3 twin.
     """
 
     support.initialize(fresh_tree, 'pds4checksums', fresh_tree.path(BUNDLE_DIR))
