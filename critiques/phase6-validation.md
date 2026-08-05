@@ -203,7 +203,11 @@ one difference below is.
 |---|---:|---:|---|
 | stdout captures | 36 | 36 | **34 of 36** |
 | log files written | 39 | 39 | **35 of 39** |
-| normalized lines compared | 4,005 | 4,005 | — |
+| normalized lines compared | 4,005 | 4,009 | — |
+
+The branch's four extra lines are the disclosed traceback frames themselves:
+the shared driver contributes two lines where the pre-PR stack had none, in each
+of the two stdout captures that carry an outermost traceback.
 
 **The six differing artifacts — two stdout captures and four log files — differ
 in exactly one thing, and it is the same thing in all six.** Aggregating every
@@ -556,7 +560,8 @@ before merge. In brief:
    tuple, because what is observable is not "pds4 adds a warning handler" but the
    order the handlers are added in (§7).
 
-And one consequence that is not a design choice: §5's traceback frames.
+And one consequence that is not a design choice: §5's traceback frames, which
+the addendum escalates in its §6.
 
 ### 13. Deferred observations
 
