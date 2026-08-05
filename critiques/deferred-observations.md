@@ -2324,7 +2324,7 @@ these entries are read by the PRs that come after it.
 92. **`pds4archives`'s four `*_LIMITS` constants constrain nothing.** The archive
     tools cap their per-file log lines with `{'info': N}` entries --
     `LOAD_DIRECTORY_INFO_LIMITS = {'info': 100}` and its three siblings, now one
-    copy at `_common.py:278-281`. But `pdsarchives` writes those lines through
+    copy at `_common.py:280-283`. But `pdsarchives` writes those lines through
     `logger.info` and `pds4archives` through `logger.normal`
     (`pdsarchives.py:239` / `pds4archives.py:259` carry the level as
     `file_log_level`), and **`normal` is not `info`**. Measured directly against
@@ -2442,3 +2442,36 @@ these entries are read by the PRs that come after it.
     the genuinely cross-family driver? PR-25 is at 486 lines, which is
     comfortable; three more families is where it stops being.
     **Owner: PR-26 (Phase 6), as a design decision at its start.**
+
+### Added by the PR-25 adversarial review (round 2)
+
+99. **Nine of the eleven tools build `logfiles` as a `set` and iterate it, so
+    their two `Log file:` lines and their two file handlers come out in a
+    hash-dependent order.** `_common.py:229` for the archives pair, and the same
+    set literal at `pdschecksums.py:836` and `:844`, `pdsinfoshelf.py:860` and
+    `:868`, `pdslinkshelf.py:1717`, `pdsdependency.py:1122`,
+    `pds4checksums.py:808` and `:816`, `pds4infoshelf.py:841` and `:849`, and
+    `pds4linkshelf.py:1210`; `re_validate.py:56` writes `set([…])` for the same
+    thing. Each collects the `place='default'` and `place='parallel'` paths into a
+    set, then loops over it to build the handlers and to log one `Log file: …`
+    line each. The two indexshelf tools are **not** affected:
+    `pdsindexshelf.py:489` and `pds4indexshelf.py:475` build a list, which is
+    ordered.
+
+    The two paths are equal strings when no log root is configured, so the set
+    collapses to one and nothing is visible. **With `PDS_LOG_ROOT` set or `--log`
+    given they are two distinct strings, and the iteration order is whatever
+    `str.__hash__` gives under that process's `PYTHONHASHSEED`** — it was observed
+    flipping between runs of the *baseline* tree, so this is pre-existing and not
+    something PR-25 introduced.
+
+    Consequences: "the log text is frozen" is true only up to that permutation;
+    two invocations of the same task can disagree on the order of two adjacent
+    log lines; and a future golden that captures a two-log run would be flaky.
+    PR-25's own tool-run gate pins `PYTHONHASHSEED` so its comparison measures the
+    code rather than the hash.
+
+    The fix is one `sorted()` in one shared place now that the archives pair's
+    copy has moved into `_common.py` — but it *is* a log-text change, and the six
+    other tools still have their own copy — and `re_validate.py` is frozen.
+    **Owner: needs a decision; PR-26/PR-27 are where the other copies converge.**

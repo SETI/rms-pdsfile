@@ -40,17 +40,17 @@ invisible, with the one unavoidable exception §5 measures and §12.5 explains.
 | Baseline tree | a `git worktree` detached at `ab1fa3b` (`/seti/all_repos/rms-pdsfile-pr25/base`), same interpreter, same holdings |
 | Branch tree | `/seti/all_repos/rms-pdsfile-pr25/work` on `pr-25-common-core` |
 | Command lines | exactly those in `scripts/automated_tests/pdsfile_main_test.sh` (serial, under `coverage`), plus `-rA --junitxml`; `PYTHONPATH=<tree>/src` on each |
-| ruff | 0.15.7 (the development venv) |
+| ruff | 0.15.22 (the development venv) |
 | pdslogger | rms-pdslogger 3.2.1 |
 
 ### 2. Active §2 gates
 
 | Gate | Result |
 |---|---|
-| API-freeze manifest test | **passed** — `pytest tests/api/`, 15 ids. No `holdings_maintenance` module is in the manifest, so this gate is silent about this PR's edits; it is run to prove nothing leaked out of them |
+| API-freeze manifest test | **passed** — `pytest tests/api/`, 26 ids. No `holdings_maintenance` module is in the manifest, so this gate is silent about this PR's edits; it is run to prove nothing leaked out of them |
 | Full-data suite, `--mode ns` | **passed** — 896 ids vs the baseline's 892; the four extra are the new regression tests and nothing else moved (§3) |
 | Full-data suite, `--mode s` | **passed** — 558 ids, set diff **empty** (§3) |
-| Phase-6 per-tool gate: real-holdings run of each migrated tool, diffed against pre-PR | **passed with one recorded difference** — 27 stdout captures and 23 log files per tree; the six artifacts that differ differ only in Python traceback frames (§5) |
+| Phase-6 per-tool gate: real-holdings run of each migrated tool, diffed against pre-PR | **passed with one recorded difference** — 34 invocations and 39 log files per tree, 3,999 normalized lines; the six artifacts that differ differ only in Python traceback frames (§5) |
 | `ruff check src/pdsfile tests scripts` | **passed**; the ratchet shrank by eleven codes and gained none (§9) |
 | `ruff check --preview --select E111,E112,E113 …` | **passed**, no findings |
 | Clean-install import check | **passed** (throwaway venv, `pip install .`, full manifest module surface imports) |
@@ -149,15 +149,44 @@ archives and logs there and never into the shared holdings tree. The whole
 sequence runs twice, once with `PYTHONPATH=<base>/src` and once with
 `PYTHONPATH=<work>/src`.
 
-**The 27 invocations per tree** cover both tools across all five tasks and the
-paths around them: for `pdsarchives` — `--validate` with no archive present (the
-pds3 "File does not exist" critical path), `--initialize`, `--validate` clean,
-`--initialize` again (already-exists error), `--repair` (files match, canceled),
-`--update` (exists, skipping), `--reinitialize`, a **volset** path (the
-expansion-plus-`blankline` path), `--quiet`, a two-flag invocation, a
-nonexistent path, an archives path (the rejection), a missing task, and
-`--help`; and the same thirteen for `pds4archives` against the bundle set, plus
-a single-bundle path (which reaches the bare `raise` of deferred entry 2).
+Two run-to-run variables are pinned so that the comparison is about the code and
+not about the clock. The temporary disk has a **fixed path** and
+**`PYTHONHASHSEED=0`** is exported, because the tools build `logfiles` as a *set*
+of two strings and iterate it: that order is hash-dependent and flips between
+runs of the **baseline** tree too (deferred observation 99). And the harness
+sleeps one second between invocations, because a log file name carries a
+one-second time tag and two runs inside the same second would share a file.
+
+**The 34 invocations per tree** — 19 for `pdsarchives`, 15 for `pds4archives` —
+cover both tools across all five tasks and the paths around them.
+
+Shared by both tools (13 each): `--validate` with no archive present (which is
+the pds3 "File does not exist" critical path and, for pds4, a `FileNotFoundError`
+out of `tarfile.open`), `--initialize`, `--validate` again, `--initialize` a
+second time (the already-exists error), `--repair`, `--update`, `--reinitialize`,
+`--quiet`, a two-flag invocation, an archives path (the rejection), a missing
+task, `--help`, and one `--log <root>` invocation.
+
+`pdsarchives` adds six: a **volset** path (the expansion-plus-`blankline` path),
+a nonexistent path, a `PDS_LOG_ROOT` invocation, and three that corrupt the real
+volume — truncate a table to 100 bytes and `--validate` (which renders
+`Byte count mismatch: 100 (filesystem) vs. 746315 (tarfile)`), move a label's
+modification time and `--validate` (`Modification time mismatch: 1500000000.0
+(filesystem) vs. 1588638541.0 (tarfile)`), then `--reinitialize` to rebuild. Both
+corruptions use pinned times, so the rendered numbers are the same on both sides.
+Those two messages are the ones the `UP031` rewrite touched (§9), which is why
+they are in the diffed evidence rather than left to the tool tests' prefix
+assertions.
+
+`pds4archives` adds two: a single-bundle path (which reaches the bare `raise` of
+deferred entry 2) and a `PDS_LOG_ROOT` invocation.
+
+The two `--log` / `PDS_LOG_ROOT` invocations matter out of proportion to their
+number: they are the only ones where `run_main`'s top-level `if args.log:` block
+runs — the one place the spec's handler-factory tuple is applied at the log root,
+and so the only place pds4's `warning_handler`-before-`error_handler` ordering is
+exercised — and the only ones where `logfiles` has two elements and each run
+writes its log in two places.
 
 **The comparison.** `scratchpad/compare_toolruns.py` normalizes the temporary
 disk path, the source tree path, wall-clock timestamps, elapsed times, and the
@@ -169,9 +198,9 @@ one difference below is.
 
 | | baseline `ab1fa3b` | `pr-25-common-core` | identical after normalization |
 |---|---:|---:|---|
-| stdout captures | 27 | 27 | **25 of 27** |
-| log files written | 23 | 23 | **19 of 23** |
-| normalized lines compared | 2,082 | 2,082 | — |
+| stdout captures | 34 | 34 | **32 of 34** |
+| log files written | 39 | 39 | **35 of 39** |
+| normalized lines compared | 3,999 | 3,999 | — |
 
 **The six differing artifacts differ in exactly one thing, and it is the same
 thing in all six.** Aggregating every changed line across all six:
@@ -345,7 +374,8 @@ uses for the same header, so this is the house idiom rather than a new one. For
 the two `%d` sites, both operands are integers at every construction site
 (`os.path.getsize`, a literal `0`, and `TarInfo.size`), and `'%d' % n` is `str(n)`
 for an `int`. The rendered text is identical: §8's parser dump proves it for the
-help string, and §5's runs exercise both error messages against a real volume.
+help string, and §5's two corruption invocations render both error messages
+against a real volume, inside the diffed evidence, identically from both trees.
 
 Measured with `lint.per-file-ignores = {}` over `src/pdsfile tests scripts`:
 
@@ -380,15 +410,20 @@ measured against.
 
 Comment placement is the author's, and a comment moves only if its block moves.
 Measured with a multiset diff of every comment text in the base pair against
-every comment text in the head trio, **four texts have no exact match at head**,
-and no comment text is new:
+every comment text in the head trio, **four texts have no exact match at head**:
 
 | Base text | What happened |
 |---|---|
 | `#### Begin active code` (both files) | **removed.** It marked the boundary between `write_archive`'s nested `archive_filter` definition and the function body. The nested definition is gone — the filter comes from `_common.make_archive_filter` — so the comment has no boundary left to mark |
 | `# Set up parser` (both files) | **removed.** It labelled the argparse block, which is now a named function with a docstring, `_common.build_arg_parser` |
 | `# update` (the trailing comment on `else:       # update`, both files) | **removed** with the `if`/`elif` chain it annotated; the driver now dispatches through `tasks[args.task]` |
-| `# Generate a list of pdsfiles for volume directories` / `… for bundle directories` | **reworded** to `# Generate a list of pdsfiles for the target directories` at `_common.py:209`, because the one shared loop serves both vocabularies |
+| `# Generate a list of pdsfiles for volume directories` / `… for bundle directories` | **reworded** to `# Generate a list of pdsfiles for the target directories` at `_common.py:211`, because the one shared loop serves both vocabularies |
+
+Nothing was added to either tool module: against the head **pair** alone the same
+diff shows 18 base texts absent and **zero** new. `_common.py` of course carries
+comments of its own — its module header, its three section banners, and notes on
+`LOGROOT_ENV`, `BACKUP_FILENAME` and `TASK_FLAGS` — which is what a new file is
+for.
 
 Everything else travelled with its block at the same relative position,
 including the two that annotate the statement *above* them —
@@ -473,7 +508,10 @@ holdings:
 | `pdslinkshelf --repair` | *(nothing)* | `HSTN0_7176_links_v001.pickle`, `…_links_v001.py` |
 | `pdslinkshelf --update` | *(nothing)* | `HSTN0_7176_links_v001.pickle`, `…_links_v001.py` |
 
-Every run exits 0 on both sides.
+Every run exits 0 on both sides. The table lists each probed tool's own
+versioned files; the four infoshelf and linkshelf rows also produce
+`HSTN0_7176_md5_v001.txt`, because the probe's setup step runs
+`pdschecksums --repair`, which this PR makes version too.
 
 Two divergences surfaced by making the pds3 lines reachable are recorded rather
 than resolved: `pdschecksums` forces its two log lines and `pds4checksums` does
