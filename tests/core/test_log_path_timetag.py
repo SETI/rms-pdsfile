@@ -144,7 +144,8 @@ class TestPinnedLogTimetag:
     def test_the_pin_is_released_when_the_block_raises(self, ticking_clock):
         """A task that raises inside the block must not leave the tag pinned."""
 
-        with pytest.raises(ValueError), Pds3File._pinned_log_timetag():
+        with pytest.raises(ValueError, match='the task failed'), \
+                Pds3File._pinned_log_timetag():
             raise ValueError('the task failed')
 
         assert Pds3File._LOG_TIMETAG is None
@@ -179,7 +180,8 @@ class TestPinnedLogTimetag:
 
         assert '_LOG_TIMETAG' not in vars(Pds3File)
 
-        with pytest.raises(ValueError), Pds3File._pinned_log_timetag():
+        with pytest.raises(ValueError, match='the task failed'), \
+                Pds3File._pinned_log_timetag():
             raise ValueError('the task failed')
 
         assert '_LOG_TIMETAG' not in vars(Pds3File)

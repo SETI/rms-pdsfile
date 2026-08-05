@@ -766,7 +766,16 @@ and all ten task functions stay in their own tool modules; the reasoning and the
 measurements are in `plans/2026-08-04-pr-25-deviations-addendum.md` §1. The
 requirement that stands, and is met, is **no `if pds4:` branch anywhere** in
 `_common.py`. The CLI surface, output, log format, and exit codes are asserted
-unchanged by PR-13's tests.
+unchanged by PR-13's tests, with **one measured exception that no implementation
+can avoid**: a Python **traceback** inside a tool log now names the shared driver
+frame (`_common.run_main / tasks[args.task](pdsdir)`) where it used to name the
+tool's own `main()`. A traceback names the frames on the stack and this design
+puts a shared frame there. Of 36 stdout captures and 39 log files per tree in
+PR-25's real-holdings gate, six differ, and all six differ in exactly those
+frames and in nothing else — same message, level, counts, summary lines, log file
+names and exit codes. Any later comparison of tool output must normalize
+traceback **line numbers** but must **not** normalize traceback file names, which
+is what makes that difference visible rather than hidden.
 
 **PR-26 (L)** `refactor: migrate checksums and infoshelf pairs onto the core`
 Fix the pds3 bugs, each with a test — but **decide the intended semantics; do
