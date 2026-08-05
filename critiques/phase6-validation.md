@@ -519,7 +519,9 @@ quirk, the function is not shared.**
   `limits`. `run_main` calls `tasks[args.task](pdsdir)` with one positional
   argument, which both forms accept, so unification would buy nothing — and
   `pdsarchives.validate(temp_pdsdir, limits=ARCHIVES_LIMITS)` is called from
-  `re_validate.py:102`, which ground rule 7 freezes.
+  `re_validate.py:102`. That file's freeze was lifted on 2026-08-05, so the
+  signature is no longer frozen by rule — but changing it would still mean
+  changing an untested caller for no gain, so it stands.
 
 **What `_common.py` holds**, in four banner-separated sections:
 
@@ -792,8 +794,12 @@ and the CORE group is unchanged at 39.
 
 #### 9.1 `re_validate.py` is no longer frozen — the sweep
 
-The owner lifted the freeze on 2026-08-05. It had been asserted in seven places,
-all now corrected:
+The owner lifted the freeze on 2026-08-05. A grep for `re_validate` across every
+live document — plan, cursor rules, `pyproject.toml`, sub-plan, this record —
+found it asserted in **ten** places, all now corrected. (Historical records are
+left alone: the round-1…5 critiques, `phase5-validation.md`, the PR-24 sub-plan
+and the archived plan describe the state at the time they were written, and
+rewriting them would falsify the history rather than correct it.)
 
 | Where | Was | Now |
 |---|---|---|
@@ -804,6 +810,9 @@ all now corrected:
 | plan, indentation-gate row | "its indentation is fixed while its logic stays frozen" | nothing about the file is exempt from this gate or any other |
 | overrides deviation (6) | "`re_validate.py` and the sync shell scripts are frozen" | only the shell scripts are; the file's two live cautions are recorded instead |
 | overrides deviation (4), **six** justification rows (`UP031`, `PT028`, `I001`, `B007`, `RUF059`, `E701`, `C405`/`RUF051`/`E721`/`UP034`) | "frozen", "(6)" | "**not yet cleaned**", with the reason each is still there |
+| `pyproject.toml`'s ratchet header, `UP031` breakdown | "6 more in the frozen `re_validate.py`" | the freeze was lifted; the entry is not yet cleaned |
+| PR-25 sub-plan §1 "Out:" list and §5 traps | "`re_validate.py` (ground rule 7)"; "is frozen and calls …" | in scope for the race fix; the `validate` signature still stands, on its own merits |
+| this record, §6's task-signature note and §11.5's scope paragraph | "which ground rule 7 freezes"; "two do not" | the freeze is lifted, and all fifteen sites are fixed |
 
 **No ruff finding in that file was fixed here**, per the owner's instruction: its
 `per-file-ignores` entry is untouched, and the only edit this PR makes to
@@ -1006,13 +1015,20 @@ Measured at this head, `grep -n "place='parallel'" src/` reports **15 sites**:
 `pdsindexshelf.py:493`, `pds4indexshelf.py:479`, `pdsdependency.py:1126` and
 `re_validate.py:60`. Six of those files are edited by this PR, for the versioning
 move, with the racing lines a few hundred lines away and untouched. Eight of the
-ten tools reach `run_main` in PR-26 and PR-27 and inherit the fix then; **two do
-not** — the plan leaves `pdsdependency` a standalone tool this phase, and ground
-rule 7 freezes `re_validate.py`. The two indexshelf tools are the sharpest case:
-they dedupe explicitly with `if logfiles[0] == logfiles[1]: logfiles =
-logfiles[:-1]`, and that comparison is defeated by exactly this race, so on a
-straddling second they write one run's log twice into one directory. Deferred
-entry 104 records the scope so the owner can decide it rather than inherit it.
+ten tools would have reached `run_main` in PR-26 and PR-27 and inherited the fix
+then; **two would not** — the plan leaves `pdsdependency` a standalone tool this
+phase, and ground rule 7 froze `re_validate.py`. The two indexshelf tools were the
+sharpest case: they dedupe explicitly with `if logfiles[0] == logfiles[1]:
+logfiles = logfiles[:-1]`, and that comparison is defeated by exactly this race,
+so on a straddling second they wrote one run's log twice into one directory.
+
+**That was the state at `540447f`. The owner then ruled that all fifteen be fixed
+now** (deferred entry 104, and §11.7). Every one of the ten tool modules calls
+`_common.log_paths_for`, including `pdsdependency.py` and `re_validate.py`, whose
+freeze was lifted the same day; `grep -n "place='parallel'" src/` reports **one**
+site, inside the helper. The indexshelf dedupe is pinned by
+`TestTheIndexshelfDedupe`, whose control builds the pair the old way under an
+advancing clock and asserts the two paths differ.
 
 Every name added is underscore-prefixed. `_log_path_for` appears **zero** times in
 `tests/api/api_manifest.json`, `tests/api/consumer_used_private_names.json` is

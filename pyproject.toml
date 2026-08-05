@@ -175,7 +175,8 @@ extend-ignore = ["PT011", "SIM105", "SIM108"]
 #   UP031 -- 40 logging calls (a lazy rewrite needs filepath= and is not a style
 #     PR's to make), 24 sidecar-writing format strings, 49 in hand-aligned
 #     blocks, 6 plain % expressions the conversion rule does not reach, and 6
-#     more in the frozen re_validate.py. Fourteen sites are gone: the archives
+#     more in re_validate.py, whose freeze the owner lifted on 2026-08-05 and
+#     whose entry is therefore not yet cleaned rather than permanent. Fourteen sites are gone: the archives
 #     pair's eight, and the version-number format string each of the six checksum
 #     and shelf tools held a copy of. That code now lives one copy in
 #     holdings_maintenance/_common.py, written with concatenation or an f-string,
