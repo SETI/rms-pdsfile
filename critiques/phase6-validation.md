@@ -51,7 +51,7 @@ invisible, with the one unavoidable exception §5 measures and §12.5 explains.
 | Full-data suite, `--mode ns` | **passed** — 896 ids vs the baseline's 892; the four extra are the new regression tests and nothing else moved (§3) |
 | Full-data suite, `--mode s` | **passed** — 558 ids, set diff **empty** (§3) |
 | Phase-6 per-tool gate: real-holdings run of each migrated tool, diffed against pre-PR | **passed with one recorded difference** — 36 invocations and 39 log files per tree, 4,005 normalized lines; the six artifacts that differ differ only in Python traceback frames (§5) |
-| `ruff check src/pdsfile tests scripts` | **passed**; the ratchet shrank by eleven codes and gained none (§9) |
+| `ruff check src/pdsfile tests scripts` | **passed**; the ratchet forgives eleven fewer findings and gained no code slot (§9) |
 | `ruff check --preview --select E111,E112,E113 …` | **passed**, no findings |
 | Clean-install import check | **passed** (throwaway venv, `pip install .`, full manifest module surface imports) |
 | Hosted lint/no-holdings job (`scripts/run-all-checks.sh -c -s`, no holdings env vars) | **passed**, 92 passed / 804 skipped, pyroma 10/10 — against the baseline's 92 passed / 800 skipped, i.e. the four new tests collect and skip without holdings, as their `full_holdings` marker requires |
@@ -360,7 +360,7 @@ argparse hard error — an observable CLI change. Three independent checks:
    the four two-flag cases that assert `not allowed with argument` never appears
    and that the rightmost flag wins.
 
-### 9. Ruff ratchet — eleven codes dropped, none gained
+### 9. Ruff ratchet — eleven fewer findings forgiven, no code slot gained
 
 `_common.py` is a new file, so any `per-file-ignores` entry for it would be a new
 key, which is a widen. It has **no entry**: measured with
@@ -396,7 +396,8 @@ Measured with `lint.per-file-ignores = {}` over `src/pdsfile tests scripts`:
 | `per-file-ignores` entries | 70 | **69** |
 | code slots | 198 | **193** |
 
-The eleven are the eight `UP031` above and the three `N806` `LOGDIRS` locals,
+The eleven are findings, not codes: the eight `UP031` sites above and the three
+`N806` `LOGDIRS` locals,
 which stop being locals once `main()` declares them `global`. Three entries lost
 `N806`, `pdsarchives.py` lost `UP031`, and `pds4archives.py` came off the ratchet
 entirely. `pdsarchives.py` keeps `SIM115` — its `f = tarfile.open(...)` is in
