@@ -188,7 +188,7 @@ for re-interpretation by the executor:
 | API-freeze manifest test | **Active** (PR-02) | Public surface identical to the pre-rewrite manifest (modulo the two pre-approved forgiveness categories, §6.1) |
 | Full-data suite (self-hosted CI on every PR; also run locally) | **Active** (Phase 0) | No behavior change against real holdings; per-test pass/fail set identical to the recorded baseline (§6.2); additionally run locally after every Phase 5/6 PR and at each phase boundary |
 | `ruff check` (ratcheted) | **Active** (PR-03) | Style; per-file-ignores may only shrink |
-| `ruff check --preview --select E111,E112,E113,E115,E117` (indentation) | **Active** (PR-24, owner 2026-08-04) | Every logical line on the 4-space grid. A separate invocation because the `E1` rules are preview-gated and enabling preview wholesale in `pyproject.toml` also changes the stable rules' behaviour — measured at 5,687 findings against a tree the configured gate reports clean. `E114`/`E116` are left out: they fire only on comment lines, and every instance here is a trailing comment continued on the next line under the column it started in, the style used to document attributes and `except` clauses |
+| `ruff check --preview --select E111,E112,E113,E115,E117` (indentation) | **Active** (PR-24, owner 2026-08-04) | Every logical line on the 4-space grid. A separate invocation because the `E1` rules are preview-gated and enabling preview wholesale in `pyproject.toml` also changes the stable rules' behaviour — measured at 5,687 findings against a tree the configured gate reports clean. `E114`/`E116` are left out: they fire only on comment lines, and every instance here is a trailing comment continued on the next line under the column it started in, the style used to document attributes and `except` clauses. `re_validate.py` is included with no exemption: the owner lifted ground rule 7 for **whitespace only** on 2026-08-04, so its indentation is fixed while its logic stays frozen (`pdsfile_overrides.mdc` deviation (6)) |
 | Clean-install import check | **Active** (PR-08) | `pip install .` with no extras; `import pdsfile` + every manifest module imports (runtime-dep leak guard) |
 | `ruff format --check` | **Never enabled** — the churn checkpoint ran on 2026-08-03 and the owner dropped the reformat entirely (`plans/2026-08-03-addendum-pr23-24-owner-decisions.md`) | — |
 | Hosted lint/no-holdings CI job | **Active** (PR-14) | ruff + pyroma + API-freeze + clean-install + the holdings-free test subset on stock GitHub runners (it runs `run-all-checks.sh`, so it is whatever that enables) |
@@ -661,8 +661,9 @@ begins; PR-24's §6.2 baseline is `rewrite` after PR-23 lands.
 **PR-24 (L, mechanical)** `style: ruff-clean rules and remaining files`
 Rules files + pds3file/pds4file `__init__` (including deduplicating the
 twice-defined Pds3File alias properties — semantically identical bodies, one
-positional/one keyword form; manifest unchanged). `__init__.py` star imports
-get `__all__` + targeted `noqa` where the re-export pattern is intentional.
+positional/one keyword form; manifest unchanged). The `__init__.py` star imports keep the frozen names they bind; the
+violations they raise are carried by permanent per-file ignores. **No inline
+`noqa` is added** — §6.4 forbids it, and PR-24 added none.
 **Freeze trap (do not "clean up"):** the `pds3file`/`pds4file` `__init__`
 modules carry incidental top-level names that are in the manifest (e.g. `re`,
 `pdslogger`, `pdscache`, `cache_lifetime_for_class` on `pdsfile.pds3file`).

@@ -135,7 +135,7 @@ conflicts with a rule below, follow the rule below. See
    not refactor their internals (email/batch logic, ordering) — only mechanical
    renames/moves with their package. **One exception, owner 2026-08-04:**
    `re_validate.py` is re-indented onto the 4-space grid along with the rest of
-   the tree, so that the indentation gate in (12) has no exemption. Nine lines
+   the tree, so that the indentation gate in (12) has no exemption. Eight lines
    moved; the file's parse tree and token stream are unchanged and its ten-code
    `per-file-ignores` entry is untouched. The freeze on its logic stands.
 7. **`pytest` `addopts` carries no `-n`/xdist or `--cov` flags** (unlike the
