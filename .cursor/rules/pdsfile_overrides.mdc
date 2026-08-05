@@ -15,11 +15,6 @@ conflicts with a rule below, follow the rule below. See
    do not run mypy. The public API is documented via a hand-written `.pyi` stub
    only (added in a later phase). This overrides `python.mdc`'s "annotate
    everything / run mypy" mandate.
-
-   It also rules out `@dataclass`, whose fields are declared by annotation and
-   cannot be written without one. `holdings_maintenance/_common.py`'s `ToolSpec`
-   is therefore a plain class with a keyword-only `__init__`, which holds the same
-   per-tool data with no annotations.
 2. **The public API is frozen.** The public surface reachable via
    `import pdsfile` must not change. It is captured in
    `tests/api/api_manifest.json` and enforced by `tests/api/test_api_freeze.py`.

@@ -2171,7 +2171,7 @@ these entries are read by the PRs that come after it.
     **CLOSED by PR-25.** Confirmed against `ab1fa3b`: no `proceed` binding remains
     in `pdsarchives.py`, and the shared driver `_common.run_main` calls the task
     function without binding its return value, so the vestige has no home to come
-    back to. `pdschecksums.py:915`'s use is untouched.
+    back to. `pdschecksums.py:917`'s use is untouched.
 
 84. **`test_pds4file_blackbox.py:138` is a duplicate `parametrize` case.**
     `PT014` reports it as a duplicate of the case at index 34 — the same
@@ -2328,7 +2328,7 @@ these entries are read by the PRs that come after it.
     `logger.info` and `pds4archives` through `logger.normal`
     (`pdsarchives.py:239` / `pds4archives.py:259` carry the level as
     `file_log_level`), and **`normal` is not `info`**. Measured directly against
-    `pdslogger` 3.1.1, four calls under `limits={'info': 2}`:
+    `pdslogger` 3.2.1, four calls under `limits={'info': 2}`:
 
     | Called | Lines emitted | Closing summary |
     |---|---|---|
@@ -2397,3 +2397,48 @@ these entries are read by the PRs that come after it.
     divergence is live, and PR-26 -- which moves `move_old_checksums` into
     `_common.py` -- has to choose one.
     **Owner: PR-26 (Phase 6).**
+
+### Added by the PR-25 adversarial review (round 1)
+
+96. **`read_archive_info` is still duplicated near-verbatim between the archives
+    twins.** 34 statements in `pdsarchives.py`, 31 in `pds4archives.py`, and the
+    only genuine divergence is the three-line existence guard at
+    `pdsarchives.py:41-43` (`logger.critical('File does not exist', tarpath)` then
+    `return []`). The other two differences — the PdsFile class and the
+    `info`/`normal` level — are already carried by `ToolSpec`.
+
+    PR-25 left it alone under its own rule: sharing it would need a flag whose
+    only job is to reinstate one side's guard, and forcing either behavior on the
+    other tool is an observable change. That is a defensible call for one pair,
+    and the plan's target interface leaves the `read_*` functions in the tool
+    modules. It is worth revisiting once the other four pairs land and the shape
+    of the whole family is visible: a `missing_input_action` spec **callable**
+    (not a boolean) would collapse this without a shrug-flag, if the same shape
+    recurs.
+    **Owner: PR-26/PR-27, once five pairs are on the core.**
+
+97. **`ToolSpec.extra_arguments` is unexercised in PR-25.** It defaults to `()`,
+    neither archives tool supplies one, and so `build_arg_parser`'s loop over it
+    never has a body to run. It is the plan's named hook for the tool-specific
+    flags (`--archives`, `--infoshelf`), and PR-26 is the PR that needs it.
+    Recorded so a later coverage or dead-code sweep does not read it as an
+    oversight — and so that if PR-26 finds the hook is the wrong shape (those
+    flags also gate chained follow-on steps in `main()`, which a flag-declaration
+    hook does not reach), replacing it is a deliberate act rather than a surprise.
+    **Owner: PR-26 (Phase 6).**
+
+98. **`_common.py` already mixes the generic driver with one family's constants,
+    and there will be five families.** `_common.py`'s "Archive tools" section
+    holds the four archive `*_LIMITS`, the description and help templates, and
+    three archive functions, below a generic section holding `ToolSpec`,
+    `build_arg_parser` and `run_main`. That follows the plan, whose target
+    interface puts `hashfile()` and the three `move_old_<kind>()` functions — each
+    belonging to one or two tools, not five — in the same file. At five pairs the
+    file becomes the union of five families' constants and helpers.
+
+    The question to settle **before** PR-26 rather than after: does each family
+    get a section in `_common.py`, or its own module beside it
+    (`_archives_common.py`, `_shelf_common.py`, …) with `_common.py` reduced to
+    the genuinely cross-family driver? PR-25 is at 486 lines, which is
+    comfortable; three more families is where it stops being.
+    **Owner: PR-26 (Phase 6), as a design decision at its start.**
