@@ -2112,6 +2112,30 @@ these entries are read by the PRs that come after it.
     asserted for a pds3 tool and its pds4 twin so the two stay converged through
     the `_common.py` consolidation.
 
+    **Correction (measured 2026-08-04, while fixing it): it is not the log file
+    that gets versioned.** `move_old_checksums` (`pdschecksums.py:374-405`),
+    `move_old_info` (`pdsinfoshelf.py:428-462`) and `move_old_links`
+    (`pdslinkshelf.py:1380-1419`) version the **superseded data file** — the
+    checksum file, or the shelf file (`move_old_info` also copies its `.py`
+    sidecar; `move_old_links` copies both the `.py` and the `.pickle`) — by
+    `shutil.copy`ing it into each directory in `LOGDIRS` as `<name>_v###<ext>`,
+    where `###` is one past the highest version already there.
+    The copy is a copy, despite the name and despite the "moved from"/"moved to"
+    message text; the original stays where it is and is then overwritten by the
+    task. The log file of the run is not touched. So the observable change is new
+    `_v###` files in the run's log directory, plus two `Checksum file moved …` (or
+    `Info shelf file moved …` / `Link shelf file moved …`) lines per run.
+
+    **RESOLVED in PR-25.** `global LOGDIRS` added at `pdschecksums.py:854`,
+    `pdsinfoshelf.py:878` and `pdslinkshelf.py:1727`, matching the pds4 twins.
+    Pinned by `test_reinitialize_versions_the_checksum_file_it_replaces` in
+    `tests/holdings_maintenance/test_pds3_checksums.py` and
+    `test_pds4_checksums.py`, which assert the `_v001` copy's name and bytes and
+    that a second run adds `_v002` rather than overwriting `_v001`. The pds3 test
+    was shown to fail before the fix and pass after it; the pds4 test passed
+    before it, which is what proves the test can observe the versioning at all.
+    See `critiques/phase6-validation.md`.
+
 82. **Deferred entry 79's eager-logging inventory undercounts: it is 132 sites
     and 69 filepath-passing sites, not 130 and 67.** Entry 79 states its
     predicate exactly, and the `attr` set it uses —
@@ -2143,6 +2167,11 @@ these entries are read by the PRs that come after it.
     Recorded because the vestige is evidence about how the five tools were
     written, which is the thing PR-25 is consolidating.
     **Owner: PR-25 (Phase 6).**
+
+    **CLOSED by PR-25.** Confirmed against `ab1fa3b`: no `proceed` binding remains
+    in `pdsarchives.py`, and the shared driver `_common.run_main` calls the task
+    function without binding its return value, so the vestige has no home to come
+    back to. `pdschecksums.py:915`'s use is untouched.
 
 84. **`test_pds4file_blackbox.py:138` is a duplicate `parametrize` case.**
     `PT014` reports it as a duplicate of the case at index 34 — the same
@@ -2204,10 +2233,12 @@ these entries are read by the PRs that come after it.
     behavior change — but the reason given, that the rewrite changes the
     signature a frozen tool reports, is one the pds4 twin already contradicts.
 
-    This matters because **PR-25 consolidates exactly these two function pairs
-    into `_common.py`** and will have to choose one signature for each. Choosing
-    the pds4 form is the `B006` fix and removes two of the nine.
-    **Owner: PR-25 (Phase 6).**
+    This matters because the PR that consolidates these two function pairs into
+    `_common.py` will have to choose one signature for each. Choosing the pds4
+    form is the `B006` fix and removes two of the nine.
+    **Owner: PR-26 (Phase 6).** PR-25 migrated only the archives pair, whose
+    functions carry no mutable default; both sites are in `pdschecksums.py` and
+    `pdsinfoshelf.py`, which PR-26 owns.
 
 ### Added by the PR-24 adversarial review (round 3)
 
@@ -2223,10 +2254,16 @@ these entries are read by the PRs that come after it.
 
     The two bare-`_` sites already used that spelling at `8cab66a` and carried no
     `RUF059`, so PR-24 had no ruff trigger to touch them and correctly did not.
-    The divergence is worth recording because **PR-25 consolidates exactly this
-    `finally` block into `_common.py`** and will have to choose one spelling —
-    the same situation deferred observation 88 records for the `B006` defaults.
-    **Owner: PR-25 (Phase 6).**
+    The divergence is worth recording because the PR that consolidates this
+    `finally` block into `_common.py` has to choose one spelling — the same
+    situation deferred observation 88 records for the `B006` defaults.
+
+    **Decided for the archives pair by PR-25:** `_common.run_main` writes
+    `(fatal, errors, _warnings, _tests) = logger.close()`, the spelling nine of
+    the eleven sites already used. `pdsarchives.py:558` and `pds4archives.py:583`
+    are gone with the `main()` bodies that held them, so the count is now eight
+    named-underscore sites and one bare-`_` site (`pds4linkshelf.py:1271`).
+    **Owner: PR-26/PR-27 for the remaining tools.**
 
 ### Added by the CodeRabbit review of PR #119 (2026-08-04)
 
@@ -2279,3 +2316,84 @@ these entries are read by the PRs that come after it.
     because `ARG002` is not in the select set.
     **Owner: PR-36, with entry 90 — the two are the same weakness at different
     strengths.**
+
+## From PR-25 (shared maintenance-tool core, Phase 6)
+
+### Added by the PR-25 executor's own measurements (2026-08-04)
+
+92. **`pds4archives`'s four `*_LIMITS` constants constrain nothing.** The archive
+    tools cap their per-file log lines with `{'info': N}` entries --
+    `LOAD_DIRECTORY_INFO_LIMITS = {'info': 100}` and its three siblings, now one
+    copy at `_common.py:278-281`. But `pdsarchives` writes those lines through
+    `logger.info` and `pds4archives` through `logger.normal`
+    (`pdsarchives.py:239` / `pds4archives.py:259` carry the level as
+    `file_log_level`), and **`normal` is not `info`**. Measured directly against
+    `pdslogger` 3.1.1, four calls under `limits={'info': 2}`:
+
+    | Called | Lines emitted | Closing summary |
+    |---|---|---|
+    | `logger.info` ×4 | 2, then `Additional INFO messages suppressed` | `2 INFO messages reported of 4 total` |
+    | `logger.normal` ×4 | all 4 | `4 NORMAL messages` |
+
+    So `pdsarchives` caps its per-file lines at 100 per scope and `pds4archives`
+    emits one line per file with no ceiling, and the three constants
+    `pds4archives` appears to be governed by are inert. The level difference is
+    also visible in every log line (`| INFO |` vs `| NORMAL |`) and in the closing
+    summary, so converging the two is a change to frozen log text, not a cleanup.
+    PR-25 preserved both sides exactly rather than picking one.
+    **Owner: needs a decision on whether pds4's per-file logging was meant to be
+    capped; whichever way it goes, it changes log output.**
+
+93. **`pdsarchives` names its per-volume log file `_links`, not `_archives`.**
+    `pdsarchives.py:217` passes `'_links'` to `log_path_for_volume`, so a run
+    writes `.../HSTN0_7176_links_<timetag>_<task>.log`. Every other pds3 tool
+    passes a suffix matching its own kind (`_md5`, `_info`, `_dependency`,
+    `_re-validate`) and `pds4archives.py` passes `'_archives'`.
+
+    `pdslinkshelf.py:1717,1720` passes the same `'_links'` suffix for the same
+    volume and the same five task names, which raises the question of a collision.
+    Measured: there is none. `_log_path_for` (`_derived_paths.py:207`) inserts the
+    `dir=` argument as a directory component, and the two tools pass
+    `dir='pdsarchives'` and `dir='pdslinkshelf'`, so for one volume and
+    `task='validate'` the paths are
+
+    ```
+    <disk>/logs/pdsarchives/volumes/HSTNx_xxxx/HSTN0_7176_links_<t>_validate.log
+    <disk>/logs/pdslinkshelf/volumes/HSTNx_xxxx/HSTN0_7176_links_<t>_validate.log
+    ```
+
+    Different directories, so neither run can overwrite or interleave with the
+    other. What remains is a naming inconsistency: the basename of an archive log
+    says `links`. Log file paths are frozen behavior, so PR-25 moved the suffix
+    across unchanged.
+    **Owner: cosmetic, but it is a frozen path -- renaming it to `_archives` needs
+    a decision.**
+
+94. **Deviation (4)'s core table enumerates 40 permanent findings where ruff
+    reports 39.** Re-derived at `ab1fa3b` the way the deviation says
+    (`ruff check` with the project config and `lint.per-file-ignores = {}`), the
+    fifteen modules directly under `src/pdsfile/` report **39**, not the 40 the
+    table's rows add up to. The row that is off is `__init__.py`, recorded as
+    `F403 ×3` at `:10,:12,:13`; ruff reports `F403 ×2`, at `:14,:15`. The line
+    numbers moved because the file changed after the table was written, and the
+    third star import presumably went with them.
+
+    Nothing is broken: `F403` is still in `__init__.py`'s `per-file-ignores` entry
+    and the configured gate passes. It is recorded because the table is what a
+    later shrink is measured against, and 2,316 total findings at `ab1fa3b` split
+    39 + 2,277, not 40 + 2,277.
+    **Owner: whichever PR next shrinks the core group's entries.**
+
+95. **The two `move_old_checksums` twins differ in whether their two log lines are
+    forced.** `pdschecksums.py:402,405` passes `force=True` to both
+    `logger.info('Checksum file moved from: ' ...)` and
+    `logger.info('Checksum file moved to', dest)`; `pds4checksums.py:400,403`
+    passes neither. `force=True` bypasses the scope's limits, so under a limits
+    dict that caps `info` the pds3 tool still reports the versioning and the pds4
+    tool can silently drop it.
+
+    Invisible until PR-25, because the pds3 lines were unreachable: `LOGDIRS` was
+    empty, so the loop that emits them never ran. Now that both tools version, the
+    divergence is live, and PR-26 -- which moves `move_old_checksums` into
+    `_common.py` -- has to choose one.
+    **Owner: PR-26 (Phase 6).**
