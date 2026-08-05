@@ -866,8 +866,8 @@ make any future golden over a two-log run flaky at that rate.
 **The fix, and why it is freeze-safe.** `PdsFile` gains a private class attribute
 `_LOG_TIMETAG`; the derived-paths mixin gains `_log_timetag()`, which reads the
 clock, and `_pinned_log_timetag()`, a context manager that reads it once on the
-way in, holds it for the block and restores the previous value in a `finally`.
-`_log_path_for` uses the pinned tag when there is one. `_common.log_paths_for` is
+way in, holds it for the block, and in a `finally` puts the class dictionary back
+as it found it. `_log_path_for` uses the pinned tag when there is one. `_common.log_paths_for` is
 new, wraps its two calls in the pin, and `run_main` calls it. The pin is class
 state, and on the way out the class dictionary is put back exactly as it was —
 restored if the class had its own value, **deleted** if the value was inherited.
