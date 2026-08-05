@@ -159,3 +159,41 @@ def test_update_picks_up_a_new_file(fresh_tree):
     assert set(before) < set(after)
     for old_key, old_md5 in before.items():
         assert after[old_key] == old_md5, f'{old_key} changed during --update'
+
+
+def test_reinitialize_versions_the_checksum_file_it_replaces(fresh_tree):
+    """--reinitialize copies the superseded checksum file into the log directory.
+
+    move_old_checksums() versions the file the task is about to overwrite, as
+    <name>_v###.txt beside the run's own log file, one past the highest version
+    already there. It reads the module-level LOGDIRS list that main() fills in, so
+    a tool whose main() shadows that list with a local versions nothing; this test
+    is what makes that visible, here and in the pds4 twin.
+    """
+
+    support.initialize(fresh_tree, 'pdschecksums', fresh_tree.path(VOLUME_DIR))
+    first = fresh_tree.path(CHECKSUM_FILE).read_bytes()
+
+    run = support.run_tool(fresh_tree, 'pdschecksums', '--reinitialize',
+                           fresh_tree.path(VOLUME_DIR))
+    assert run.returncode == 0, run.describe()
+    assert 'Checksum file moved from: ' in run.output, run.describe()
+    assert 'Checksum file moved to' in run.output, run.describe()
+
+    logs = fresh_tree.disk / 'logs'
+    versions = sorted(p.name for p in logs.rglob(f'{subsets.PDS3_VOLUME}_md5_v*.txt'))
+    assert versions == [f'{subsets.PDS3_VOLUME}_md5_v001.txt'], run.describe()
+
+    versioned = next(logs.rglob(versions[0]))
+    assert versioned.read_bytes() == first
+    assert fresh_tree.path(CHECKSUM_FILE).exists()
+
+    # A second run versions the file the first run left, rather than overwriting
+    # the copy it made.
+    run = support.run_tool(fresh_tree, 'pdschecksums', '--reinitialize',
+                           fresh_tree.path(VOLUME_DIR))
+    assert run.returncode == 0, run.describe()
+
+    versions = sorted(p.name for p in logs.rglob(f'{subsets.PDS3_VOLUME}_md5_v*.txt'))
+    assert versions == [f'{subsets.PDS3_VOLUME}_md5_v001.txt',
+                        f'{subsets.PDS3_VOLUME}_md5_v002.txt'], run.describe()
