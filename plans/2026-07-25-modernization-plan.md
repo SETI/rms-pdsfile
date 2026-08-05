@@ -732,11 +732,15 @@ re-invented per implementer):
 - `BACKUP_FILENAME` regex, the `*_LIMITS` defaults, `hashfile()`, and
   `move_old_<kind>()` version-numbering — moved verbatim, one copy.
 - A `@dataclass ToolSpec` capturing everything that varies between a pds3 and
-  pds4 tool: `pdsfile_cls` (`Pds3File`/`Pds4File`), `vocab`
-  (`{'bundle': 'volume'|'bundle', ...}` for log text), `holdings_sentinel`
-  (`'/holdings/'` vs `'/pds4-holdings/'`), `index_ext` (`.tab`/`.csv`),
-  `logname` (e.g. `'pds.validation.archives'`), and a `log_extra_handlers`
-  flag (pds4 adds a `warning_handler`; pds3 does not).
+  pds4 tool: `pdsfile_cls` (`Pds3File`/`Pds4File`), `unit` (`'volume'` vs
+  `'bundle'`, substituted into the help text — the `vocab` field under a name
+  that says what it holds), `holdings_sentinel` (`'/holdings/'` vs
+  `'/pds4-holdings/'`), `index_ext` (`.tab`/`.csv`), `logname` (e.g.
+  `'pds.validation.archives'`), and `handler_factories`, an **ordered tuple** of
+  `pdslogger` handler factories — `(error_handler,)` for pds3,
+  `(warning_handler, error_handler)` for pds4. A tuple rather than an
+  "extra handlers" boolean because the order the handlers are added in is
+  observable and a boolean does not carry it.
 - `build_arg_parser(spec)` → the argparse parser with the five task flags with
   **today's exact semantics** — they are independent `store_const`-into-`task`
   flags, **not** an `add_mutually_exclusive_group` (do not introduce one; that
@@ -753,10 +757,16 @@ re-invented per implementer):
 - Each thin tool module (`pdsarchives.py`, …) shrinks to: its `generate_*`/
   `read_*`/`write_*`/`validate_*` domain functions, a `SPEC = ToolSpec(...)`,
   a `TASKS = {...}`, and `def main(): return run_main(SPEC, TASKS, sys.argv)`.
-Migrate `pdsarchives`/`pds4archives` first (hardest divergence: pds3
-single-tar vs pds4 one-bundle-→-many-tarballs — modelled as a `write_archive`
-hook on the spec, not an `if pds4:` branch). The CLI surface, output, log
-format, and exit codes are asserted unchanged by PR-13's tests.
+Migrate `pdsarchives`/`pds4archives` first (hardest divergence: pds3 single-tar
+vs pds4 one-bundle-→-many-tarballs). **`write_archive` is not a spec hook**: the
+divergence proved larger than a hook — measured at `ab1fa3b`, the two
+`write_archive`s and the ten task functions differ in six further observable
+ways, so a shared one would carry a flag per difference. Both implementations
+and all ten task functions stay in their own tool modules; the reasoning and the
+measurements are in `plans/2026-08-04-pr-25-deviations-addendum.md` §1. The
+requirement that stands, and is met, is **no `if pds4:` branch anywhere** in
+`_common.py`. The CLI surface, output, log format, and exit codes are asserted
+unchanged by PR-13's tests.
 
 **PR-26 (L)** `refactor: migrate checksums and infoshelf pairs onto the core`
 Fix the pds3 bugs, each with a test — but **decide the intended semantics; do

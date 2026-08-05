@@ -1,8 +1,11 @@
 # Addendum — PR-25's deviations from the plan's spec'd design
 
-**Status: needs owner acknowledgement before PR-25 merges** (§6.4: "Deviations
-from this plan require an addendum file in `plans/` acknowledged by the owner
-before the deviating PR merges").
+**Status: ruled on by the owner, 2026-08-05.** §1, §2, §3 and §5 are settled and
+each records the ruling under a **Ruling** heading; §4 and §6 stand as written and
+were not objected to. §7 is **new and needs the owner's eye**: it is a public-API
+question the rulings opened, and it is written to be read on its own. (§6.4:
+"Deviations from this plan require an addendum file in `plans/` acknowledged by
+the owner before the deviating PR merges".)
 
 The plan's PR-25 entry (`plans/2026-07-25-modernization-plan.md` lines 717–760)
 specifies a concrete target interface so the design is not re-invented per
@@ -11,7 +14,7 @@ observable behavior; each is a design call the spec did not anticipate, written
 up rather than silently absorbed. The measurements behind them are in
 `critiques/phase6-validation.md`.
 
-## 1. `write_archive` is not a spec hook
+## 1. `write_archive` is not a spec hook — ACCEPTED
 
 **The plan says:** migrate the archives pair first, "hardest divergence: pds3
 single-tar vs pds4 one-bundle-→-many-tarballs — modelled as a `write_archive`
@@ -40,11 +43,13 @@ forbids, and each flag would be one more chance to change frozen output.
 The plan's actual requirement — no `if pds4:` branch anywhere — is met:
 `_common.py` contains no test on which flavor is running.
 
-**If the owner prefers the literal reading**, the hook can be added in PR-26,
-when the other four pairs show whether a `write_*` callback earns its keep
-across five families rather than one.
+**Ruling (owner, 2026-08-05): accepted.** `write_archive` is not a spec hook, and
+the plan has been amended so PR-26 and PR-27 do not re-derive the argument: the
+PR-25 entry of `plans/2026-07-25-modernization-plan.md` now says so, points here,
+and keeps the requirement that actually governs — no `if pds4:` branch anywhere.
+This section is now a record rather than a request.
 
-## 2. `ToolSpec` is a plain class, not a `@dataclass`
+## 2. `ToolSpec` is a plain class, not a `@dataclass` — MOOT
 
 **The plan says:** "A `@dataclass ToolSpec` capturing everything that varies
 between a pds3 and pds4 tool".
@@ -70,11 +75,20 @@ and its two `SPEC = ...` call sites.
 **Note:** an earlier revision of this PR extended deviation (1) in
 `.cursor/rules/pdsfile_overrides.mdc` to say that the annotation ban rules out
 `@dataclass`. That edit was **reverted**: a PR should not extend the rules file
-that authorizes its own departure from the plan. If the owner acknowledges this
-addendum, adding that sentence to deviation (1) is a reasonable follow-up so
-PR-26 and PR-27 do not re-litigate it.
+that authorizes its own departure from the plan.
 
-## 3. `hashfile()` and `move_old_<kind>()` did not move into `_common.py`
+**Ruling (owner, 2026-08-05): moot — the deviation is withdrawn.** The owner
+lifted the annotation ban for this case rather than accepting the argument above,
+so `ToolSpec` is now the `@dataclass(kw_only=True)` the plan specified, with a
+field annotation per field and no other change to what it holds. The whole of the
+reasoning in this section is therefore superseded: it was never rejected on its
+merits, it simply stopped applying. Deviation (1) now says field annotations on a
+`@dataclass` are permitted, so PR-26 and PR-27 do not re-litigate it; the ban on
+inline type hints generally, on mypy, and on `ClassVar` for `RUF012` is unchanged.
+The `collections.namedtuple` alternative weighed above was not taken and is not
+open: the owner chose the dataclass.
+
+## 3. `hashfile()` and `move_old_<kind>()` did not move into `_common.py` — OVERRULED
 
 **The plan says:** the target interface lists "`BACKUP_FILENAME` regex, the
 `*_LIMITS` defaults, `hashfile()`, and `move_old_<kind>()` version-numbering —
@@ -87,6 +101,55 @@ moved verbatim, one copy".
 PR-26 and PR-27 migrate. Moving them now would put code in `_common.py` that no
 migrated tool calls, and would touch three modules this PR is otherwise
 scoped out of. They are still owed by the phase, just not by this PR.
+
+**Ruling (owner, 2026-08-05): overruled — move them now.** "If a future PR is
+going to need a field, might as well add it now" applies to the code as well as to
+the spec fields. `hashfile()`, `move_old_checksums()`, `move_old_info()`,
+`move_old_links()` and the `LOGDIRS` list they read are now one copy each in
+`_common.py`, and the six tool modules call them there. PR-25's file scope is
+widened to those six modules **for that move only** — not for migration onto
+`run_main`, not for ruff cleanup, not for style edits.
+
+Three divergences had to be resolved to make one copy of each, and each one is a
+behavior change on the side that loses:
+
+1. **`move_old_checksums`'s two log lines** (deferred entry 95): pds3 passed
+   `force=True` to both, pds4 passed neither. **`force=True` wins** (owner,
+   2026-08-05): versioning a file is a filesystem mutation and its report should
+   not be droppable by a limits cap, and it is the spelling that was already
+   reachable. **This changes pds4 behavior**: a `pds4checksums` run under a scope
+   that caps `info` now reports the versioning where before it could be silenced.
+   Pinned by `TestReportingUnderAnInfoCap` in
+   `tests/holdings_maintenance/test_common_versioning.py`, whose control is the
+   same cap applied to a shelf mover that still does not force.
+2. **`hashfile`**: pds3 opened the file and never closed it (a `while` loop over
+   `read`); pds4 used a `with` block and `iter`. The pds4 spelling is the one
+   copy. Same digest for the same bytes either way — the difference is when the
+   descriptor is released, and it also removes one `SIM115` from the ratchet.
+3. **`move_old_checksums`'s signature**: pds3 `(check_path, *, logger=None)`,
+   pds4 `(check_path, logger=None)`. The keyword-only pds3 spelling is the one
+   copy; every call site in both trees already passes `logger=`.
+
+**`move_old_info` and `move_old_links` needed no decision**: their pds3 and pds4
+twins are byte-identical, so each moved verbatim.
+
+**What was *not* merged, and why — the hard stop this section's own rule
+requires.** The three `move_old_<kind>()` functions are **not** one function with
+data differences. Two of their differences are data (the noun in the two
+messages; which sidecar files are copied alongside). The third is not: the
+"moved to" line is `logger.info(noun + ' moved to', dest)` in the checksums and
+info movers and `logger.info(noun + ' moved to ' + dest)` in the links mover, and
+`pdslogger` renders those differently — measured against 3.2.1, `… moved to:
+/path` for the two-argument form against `… moved to /path` for the concatenated
+one, and only the two-argument form's path is subject to `replace_root`.
+Collapsing the three would need a flag choosing between two call shapes, which is
+the shrug-flag §2 of the sub-plan forbids, and either choice rewrites frozen log
+text for two tool families. So `_common.py` holds three functions, one per kind,
+sharing a section rather than a body. The identical version-numbering block
+inside them (about ten lines, three copies) could be lifted into one private
+helper without touching any log text; that was left for the PR that has all the
+copies in front of it, because "moved verbatim" is what this section was ordered
+to do.
 
 ## 4. The task-flag help text is spec data, not `build_arg_parser` content
 
@@ -105,7 +168,7 @@ field is the `{unit}` substitution under a shorter name. The rendered result is
 byte-identical to both originals, verified by dumping every `add_argument` call
 from both trees.
 
-## 5. Three `ToolSpec` fields differ from the plan's list
+## 5. Three `ToolSpec` fields differ from the plan's list — PARTLY OVERRULED
 
 **The plan says** the `ToolSpec` captures "`pdsfile_cls` …, `vocab` …,
 `holdings_sentinel` (`'/holdings/'` vs `'/pds4-holdings/'`), `index_ext`
@@ -121,6 +184,27 @@ tuple** of `pdslogger` handler factories: `(error_handler,)` for pds3 and
 `index_ext` belongs to the indexshelf pair, which PR-27 migrates, and nothing in
 the two archives modules distinguishes the two holdings roots by string at all.
 Adding either now would be a field no caller reads.
+
+**Ruling (owner, 2026-08-05): add the two fields now; `handler_factories`
+stands.** "If a future PR is going to need a field, might as well add it now."
+`holdings_sentinel` and `index_ext` are now `ToolSpec` fields, and both archives
+specs carry their flavor's value even though neither archives tool reads one —
+the two are properties of the PDS3/PDS4 flavor, not of a tool. The `ToolSpec`
+docstring says so and says they are read nowhere today.
+
+The plan's parenthetical values were checked against the code rather than taken on
+trust, and **both are right**. `holdings_sentinel` is `'/holdings/'` at
+`pdschecksums.py:750`, `pdsdependency.py:1107` and `pdsinfoshelf.py:775`, and
+`'/pds4-holdings/'` at `pds4checksums.py:722,733` and `pds4infoshelf.py:756,767`;
+each tool both splits a command-line path on it and rebuilds an archives path
+with it, so the value is the literal including both slashes. `index_ext` is
+`'.tab'` at `pdsindexshelf.py:459,461,464,473` and `'.csv'` at
+`pds4indexshelf.py:445,447,450,459`, used both as a `glob` suffix and in an
+`endswith` test, so the value includes the dot. One thing the plan does not say
+and the code assumes: the sentinel hard-codes the *name* of the holdings
+directory, so a holdings root not called `holdings` or `pds4-holdings` fails the
+`if not parts[1]` guard in five tools. That is pre-existing and is not this PR's
+to change; it is recorded so the field is not read as a configuration point.
 
 The `handler_factories` change is the more material one and is deliberate. A
 boolean "pds4 adds a warning handler" is exactly the shrug-flag the sub-plan's
@@ -149,3 +233,72 @@ run of the migrated tools produces text that differs from the pre-PR run.
 Measured: of 36 captured stdout streams and 39 log files per tree, 34 and 35 are
 identical after normalizing the clock, and the six that differ differ in exactly
 these traceback frames and nothing else.
+
+## 7. The log time-tag race, and the public surface it did *not* need
+
+**This section needs the owner's eye and is written to be read on its own.**
+
+**The bug.** A log file's name carries a time tag, `LOGFILE_TIME_FMT =
+'%Y-%m-%dT%H-%M-%S'` — **one-second resolution**. `_log_path_for`
+(`src/pdsfile/_derived_paths.py`) read the clock on **every** call. Each of the
+eleven maintenance tools writes one run's log in up to two places and builds the
+two paths with two separate calls, so a run whose two calls straddle a second
+boundary wrote its two copies of one log under time tags one second apart, and
+they stopped naming one run. Rare — the two calls are microseconds apart — but
+real, and it would make any future golden over a two-log run flaky at that rate.
+
+**The fix, and where it went.** `PdsFile` gains a private class attribute
+`_LOG_TIMETAG` (default `None`) and the derived-paths mixin gains two private
+methods: `_log_timetag()`, which reads the clock, and `_pinned_log_timetag()`, a
+context manager that reads it **once** on the way in, holds it for the length of
+the block, and restores the previous value on the way out. `_log_path_for` uses
+the pinned tag when there is one and reads the clock when there is not.
+`_common.log_paths_for(spec, pdsdir, task)` — new, and the one place in the tree
+that builds the pair — wraps its two calls in it, and `run_main` calls that.
+
+The pin is class state, restored in a `finally`, set on the class it is called on
+and found through the MRO by the rule subclass a real target is an instance of.
+That is the same shape as `set_log_root`, which already writes `LOG_ROOT_` onto
+the class it is called on, so it introduces no pattern the module did not have.
+The nine tools PR-26 and PR-27 migrate inherit the fix when they reach
+`run_main`; until then they behave exactly as they do today.
+
+**The owner relaxed the frozen-signature constraint for this fix, and the fix did
+not need it.** The owner's ruling on 2026-08-05 was: do not be picky about frozen
+signatures when fixing an actual bug, put the fix where it belongs, and add an
+`exact` entry to `tests/api/manifest_allowlist.json` if that means changing a
+frozen member. Taking that permission, the obvious surface fix is an optional
+`timetag=`/`time=` keyword on `log_path_for_bundle`, `log_path_for_bundleset` and
+`log_path_for_index`, plus the two pds3 aliases `log_path_for_volume` and
+`log_path_for_volset`.
+
+**Measured, that costs 154 allowlist entries.** The manifest records methods per
+class, and those five names appear on 34, 34, 34, 26 and 26 classes respectively.
+With `exact` entries only and no category predicate — which the ruling requires —
+one changed member is one entry, so the five signatures are 154 entries for a
+one-second race. A new public method returning the pair costs 34 to 39 for the
+same reason.
+
+**So no public name changed and no allowlist entry was added.** `_log_path_for`
+was already private and appears **zero** times in `tests/api/api_manifest.json`;
+`tests/api/consumer_used_private_names.json` is `[]`, so no underscore name is
+dumped at all, and the two new methods and the new class attribute are all
+underscore-prefixed. `pytest tests/api/` passes with its 26 ids unchanged and the
+allowlist is untouched, which is the proof rather than a hand-diff of the dumper.
+The relaxation is recorded here because it was granted and because the next PR
+that finds a bug behind a frozen signature should know it exists — not because
+this fix spent it.
+
+**Consumer compatibility.** Nothing to check: the three public signatures are
+character-for-character what they were, so no consumer call can break. Had the
+keyword been added, an *optional* keyword would have been backward compatible for
+every existing call, but that is now hypothetical.
+
+**Pinned by** `tests/core/test_log_path_timetag.py`, ten ids, `holdings_free`.
+The clock those tests install advances one second on **every** reading, which
+turns the race from rare into certain; each test that asserts the pin holds also
+builds the same pair unpinned and asserts those two disagree, so no assertion can
+pass by the race failing to fire. Against the unfixed reader — `_log_path_for`
+reading the clock unconditionally — **8 of the 10 fail**; the two that still pass
+assert only that the pin is released, which is bookkeeping the reader does not
+touch.

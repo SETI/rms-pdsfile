@@ -47,8 +47,11 @@ the `pdsfile_overrides.mdc` deviation-(1) self-extension is gone from the diff.
 
 Re-measured after the harness change: **34 invocations and 39 log files per
 tree, 3,999 normalized lines**, of which 32 stdout captures and 35 log files are
-identical, and the four differing artifacts differ only in the traceback frames
-§5 already recorded.
+identical — **six** differing artifacts, two stdout captures and four log files,
+each differing only in the traceback frames §5 already recorded. (An earlier
+revision of this line said four, which is the log-file count alone.) The harness
+grew again after this round; `critiques/phase6-validation.md` §5 carries the
+counts measured at the final commit.
 
 ## Deferred
 
