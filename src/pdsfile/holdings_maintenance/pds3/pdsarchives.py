@@ -211,12 +211,6 @@ def archive_lskip(pdsdir):
 
     return pdsdir.archive_path_and_lskip()[1]
 
-def archive_log_path(pdsdir, task, place='default'):
-    """Return the path of the log file for one volume and task."""
-
-    return pdsdir.log_path_for_volume('_links', task=task, dir='pdsarchives',
-                                      place=place)
-
 def archive_targets(pdsf, path):
     """Return the volume directories one command-line path names."""
 
@@ -242,7 +236,8 @@ SPEC = _common.ToolSpec(
     description=_common.ARCHIVE_DESCRIPTION,
     task_help=_common.ARCHIVE_TASK_HELP,
     positional_help=_common.ARCHIVE_POSITIONAL_HELP,
-    log_path_for=archive_log_path,
+    log_path_method='log_path_for_volume',
+    log_suffix='_links',
     expand_target=archive_targets,
     handler_factories=(pdslogger.error_handler,),
     lskip_for=archive_lskip)

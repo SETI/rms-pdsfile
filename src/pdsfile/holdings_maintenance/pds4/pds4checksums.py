@@ -406,7 +406,7 @@ def reinitialize(pdsdir, selection=None, logger=None):
         return False
 
     # Write new checksum file
-    _common.move_old_checksums(check_path, logger=logger)
+    _common.move_old(check_path, _common.CHECKSUM_FILE, logger=logger)
     write_checksums(check_path, pairs, logger=logger)
     return True
 
@@ -504,7 +504,7 @@ def repair(pdsdir, selection=None, logger=None):
         return True
 
     # Write checksum file
-    _common.move_old_checksums(check_path, logger=logger)
+    _common.move_old(check_path, _common.CHECKSUM_FILE, logger=logger)
     write_checksums(check_path, dirpairs, logger=logger)
     return True
 
@@ -545,7 +545,7 @@ def update(pdsdir, selection=None, logger=None):
         return True
 
     # Write checksum file
-    _common.move_old_checksums(check_path, logger=logger)
+    _common.move_old(check_path, _common.CHECKSUM_FILE, logger=logger)
     write_checksums(check_path, dirpairs, logger=logger)
     return True
 
@@ -751,22 +751,10 @@ def main():
                 pdsf = pdsdir
 
             # Save logs in up to two places
-            if pdsf.bundlename:
-                logfiles = {pdsf.log_path_for_bundle('_md5',
-                                                     task=args.task,
-                                                     dir='pdschecksums'),
-                            pdsf.log_path_for_bundle('_md5',
-                                                     task=args.task,
-                                                     dir='pdschecksums',
-                                                     place='parallel')}
-            else:
-                logfiles = {pdsf.log_path_for_bundleset('_md5',
-                                                        task=args.task,
-                                                        dir='pdschecksums'),
-                            pdsf.log_path_for_bundleset('_md5',
-                                                        task=args.task,
-                                                        dir='pdschecksums',
-                                                        place='parallel')}
+            method = ('log_path_for_bundle' if pdsf.bundlename
+                      else 'log_path_for_bundleset')
+            logfiles = _common.log_paths_for(pdsf, method, '_md5',
+                                             task=args.task, dir='pdschecksums')
 
             # Create all the handlers for this level in the logger
             local_handlers = []

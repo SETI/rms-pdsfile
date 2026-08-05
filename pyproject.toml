@@ -162,8 +162,8 @@ extend-ignore = ["PT011", "SIM105", "SIM108"]
 # holdings-maintenance tools, the tools/scripts entry points and the test tree were
 # re-derived with the template select set and no per-file-ignores at all (2,760
 # violations) and every one classified fixable or excluded; 483 were fixed. The
-# 2,277 that remained were permanent then; PR-25 removed eighteen more, so the group
-# now measures 2,259 over 58 entries (179 code slots). Each is enumerated with its
+# 2,277 that remained were permanent then; PR-25 removed nineteen more, so the group
+# now measures 2,258 over 58 entries (179 code slots). Each is enumerated with its
 # sites and its reason in plans/2026-08-04-pr-24-subplan.md sections 4 and 5 and in
 # .cursor/rules/pdsfile_overrides.mdc deviation (4). In outline:
 #   E501/W191/RUF022 -- hand-aligned translator, parametrize and __all__ tables;
@@ -179,7 +179,8 @@ extend-ignore = ["PT011", "SIM105", "SIM108"]
 #     pair's eight, and the version-number format string each of the six checksum
 #     and shelf tools held a copy of. That code now lives one copy in
 #     holdings_maintenance/_common.py, written with concatenation or an f-string,
-#     which ruff does not flag.
+#     which ruff does not flag. The nineteenth finding is re_validate.py's C405,
+#     whose site went with the log time-tag fix; that entry keeps the code.
 #   B006/B012/SIM115/RUF015/PT028 -- tool signatures and control flow whose
 #     rewrite changes what propagates, when a file closes, or which exception is
 #     raised.
@@ -190,9 +191,14 @@ extend-ignore = ["PT011", "SIM105", "SIM108"]
 #   RUF005 -- `x + [y]` is the spelling this project uses (owner, 2026-08-03).
 #   RUF100 in scripts/dump_public_api.py -- that file may not be edited at all,
 #     so this entry is permanent by prohibition rather than by freeze.
-#   re_validate.py keeps its whole derived set: ground rule 7 and overrides
-#     deviation (6) freeze the file, so none of its violations is this PR's to
-#     fix. It is the only edited-package module with no test of any kind.
+#   re_validate.py keeps its whole derived set, which is now "not yet cleaned"
+#     rather than permanent: the owner lifted its freeze on 2026-08-05, so a later
+#     PR may shrink this entry. PR-25 did not, and its entry is left as it was --
+#     but one of its codes, C405, no longer has a site: the set([...]) around this
+#     file's two log paths went with the log time-tag fix. Dropping that code is
+#     the first thing the cleanup PR should do. It is still the only
+#     edited-package module with no test of any kind, and it runs its whole
+#     command line at import.
 #   A few entries are locked for now rather than for ever -- F821, RUF059 on
 #     pdsinfoshelf, and PT014 -- each because the fix would change behavior or
 #     remove a test id. Deviation (4) names the later PR that owns each one. The

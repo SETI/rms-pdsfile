@@ -192,7 +192,7 @@ def test_reinitialize_versions_the_checksum_file_it_replaces(fresh_tree):
                            fresh_tree.path(BUNDLE_DIR))
     assert run.returncode == 0, run.describe()
     assert 'Checksum file moved from: ' in run.output, run.describe()
-    assert 'Checksum file moved to' in run.output, run.describe()
+    assert 'Checksum file moved to: ' in run.output, run.describe()
 
     logs = fresh_tree.disk / 'logs'
     versions = sorted(p.name for p in logs.rglob(f'{subsets.PDS4_BUNDLE}_md5_v*.txt'))

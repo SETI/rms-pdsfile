@@ -20,6 +20,7 @@ import pdslogger
 import pdstable
 
 import pdsfile
+from pdsfile.holdings_maintenance import _common
 
 LOGNAME = 'pds.validation.indexshelf'
 LOGROOT_ENV = 'PDS_LOG_ROOT'
@@ -486,13 +487,8 @@ def main():
                 continue
 
             # Save logs in up to two places
-            logfiles = [pdsf.log_path_for_index(task=args.task,
-                                                dir='pdsindexshelf'),
-                        pdsf.log_path_for_index(task=args.task,
-                                                dir='pdsindexshelf',
-                                                place='parallel')]
-            if logfiles[0] == logfiles[1]:
-                logfiles = logfiles[:-1]
+            logfiles = _common.log_paths_for(pdsf, 'log_path_for_index',
+                                             task=args.task, dir='pdsindexshelf')
 
             # Create all the handlers for this level in the logger
             local_handlers = []

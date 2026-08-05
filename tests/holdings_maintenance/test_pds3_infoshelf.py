@@ -267,7 +267,7 @@ def test_update_versions_the_shelf_file_it_replaces(shelved_tree):
                            shelved_tree.path(VOLUME_DIR))
     assert run.returncode == 0, run.describe()
     assert 'Info shelf file moved from: ' in run.output, run.describe()
-    assert 'Info shelf file moved to' in run.output, run.describe()
+    assert 'Info shelf file moved to: ' in run.output, run.describe()
 
     logs = shelved_tree.disk / 'logs'
     versions = sorted(p.name for p in logs.rglob(f'{subsets.PDS3_VOLUME}_info_v*'))

@@ -222,12 +222,13 @@ class TestPinnedLogTimetag:
 # The caller: the log paths one target's run writes
 ##########################################################################################
 class TestLogPathsFor:
-    """_common.log_paths_for is the one place that builds the pair under the pin.
+    """_common.log_paths_for is the one place in the tree that builds the pair.
 
-    Ten other tools still build the same pair with two unpinned calls; they are not
-    on this core yet. This one lives with the maintenance tools rather than with
-    the core, but it is what makes the pin reach a real run, so the control belongs
-    beside the pin's own.
+    All eleven maintenance tools reach it -- the archives pair through `run_main`
+    and the other ten directly -- so the pin, the ordering and the deduplication are
+    decided once. It lives with the maintenance tools rather than with the core, but
+    it is what makes the pin reach a real run, so the control belongs beside the
+    pin's own.
     """
 
     @pytest.mark.parametrize(('cls', 'spec', 'category_'), ARCHIVE_SPECS)
@@ -236,12 +237,14 @@ class TestLogPathsFor:
         monkeypatch.setattr(cls, 'LOG_ROOT_', '/nonexistent-logroot/')
         pdsf = blank_target(cls, category_, 'XXXXX_xxxx', 'XXXXX_0001')
 
-        unpinned = {spec.log_path_for(pdsf, 'validate'),
-                    spec.log_path_for(pdsf, 'validate', place='parallel')}
-        assert len(unpinned) == 2
+        build = getattr(pdsf, spec.log_path_method)
+        unpinned = [build(spec.log_suffix, task='validate', dir=spec.progname),
+                    build(spec.log_suffix, task='validate', dir=spec.progname,
+                          place='parallel')]
         assert len(timetags_of(unpinned)) == 2
 
-        paths = _common.log_paths_for(spec, pdsf, 'validate')
+        paths = _common.log_paths_for(pdsf, spec.log_path_method, spec.log_suffix,
+                                      task='validate', dir=spec.progname)
         assert len(paths) == 2
         assert len(timetags_of(paths)) == 1
 
@@ -250,16 +253,91 @@ class TestLogPathsFor:
                                                                   category_,
                                                                   ticking_clock,
                                                                   monkeypatch):
-        """With no log root the two places name one file, and the pin is what makes
-        the set collapse rather than hold two paths a second apart."""
+        """With no log root the two places name one file, and the pin is what lets
+        the duplicate be recognized as one."""
 
         monkeypatch.setattr(cls, 'LOG_ROOT_', None)
         pdsf = blank_target(cls, category_, 'XXXXX_xxxx', 'XXXXX_0001')
 
-        unpinned = {spec.log_path_for(pdsf, 'validate'),
-                    spec.log_path_for(pdsf, 'validate', place='parallel')}
-        assert len(unpinned) == 2
+        build = getattr(pdsf, spec.log_path_method)
+        unpinned = [build(spec.log_suffix, task='validate', dir=spec.progname),
+                    build(spec.log_suffix, task='validate', dir=spec.progname,
+                          place='parallel')]
+        assert unpinned[0] != unpinned[1]
 
-        assert len(_common.log_paths_for(spec, pdsf, 'validate')) == 1
+        assert len(_common.log_paths_for(pdsf, spec.log_path_method, spec.log_suffix,
+                                         task='validate', dir=spec.progname)) == 1
+
+    def test_the_default_place_comes_first(self, ticking_clock, monkeypatch):
+        """The result is ordered, not a set, so the two `Log file:` lines and the two
+        versioned copies come out in the same order on every run."""
+
+        monkeypatch.setattr(Pds3File, 'LOG_ROOT_', '/nonexistent-logroot/')
+        pdsf = blank_target(Pds3File, 'volumes/', 'XXXXX_xxxx', 'XXXXX_0001')
+
+        paths = _common.log_paths_for(pdsf, 'log_path_for_volume', '_md5',
+                                      task='validate', dir='tool')
+
+        assert isinstance(paths, list)
+        assert paths[0].startswith('/nonexistent-logroot/')     # the configured root
+        assert paths[1].startswith('/nonexistent-holdings/')    # parallel to holdings
+
+
+class TestTheIndexshelfDedupe:
+    """The indexshelf pair deduplicates its pair explicitly, and the race defeated it.
+
+    `pdsindexshelf` and `pds4indexshelf` were the only two tools that built a list
+    and then dropped the second entry when it equalled the first. That equality test
+    compares two strings each carrying its own reading of a one-second clock, so on a
+    straddling second it was False when it should have been True and the tool wrote
+    one run's log twice, into one directory, under two names. Both now call
+    log_paths_for, which reads the clock once and then compares.
+    """
+
+    def index_target(self, cls, logical_path):
+        pdsf = cls()
+        pdsf.disk_ = '/nonexistent-holdings/'
+        pdsf.logical_path = logical_path
+        pdsf.abspath = pdsf.disk_ + logical_path
+        pdsf.basename = logical_path.rpartition('/')[2]
+        pdsf._is_index = True
+
+        return pdsf
+
+    @pytest.mark.parametrize(('cls', 'logical_path'), [
+        pytest.param(Pds3File, 'metadata/XXXXX_xxxx/XXXXX_0001/XXXXX_0001_index.tab',
+                     id='pds3'),
+        pytest.param(Pds4File, 'metadata/xxxxx_yyyy/xxxxx_yyyy_index.csv', id='pds4'),
+    ])
+    def test_one_log_file_with_no_log_root(self, cls, logical_path, ticking_clock,
+                                           monkeypatch):
+        monkeypatch.setattr(cls, 'LOG_ROOT_', None)
+        pdsf = self.index_target(cls, logical_path)
+
+        # The control: built the way the tool used to, under the same clock, the two
+        # paths differ and the tool's `logfiles[0] == logfiles[1]` test fails to fire.
+        unpinned = [pdsf.log_path_for_index(task='validate', dir='pdsindexshelf'),
+                    pdsf.log_path_for_index(task='validate', dir='pdsindexshelf',
+                                            place='parallel')]
+        assert unpinned[0] != unpinned[1]
+
+        paths = _common.log_paths_for(pdsf, 'log_path_for_index', task='validate',
+                                      dir='pdsindexshelf')
+        assert len(paths) == 1
+
+    @pytest.mark.parametrize(('cls', 'logical_path'), [
+        pytest.param(Pds3File, 'metadata/XXXXX_xxxx/XXXXX_0001/XXXXX_0001_index.tab',
+                     id='pds3'),
+        pytest.param(Pds4File, 'metadata/xxxxx_yyyy/xxxxx_yyyy_index.csv', id='pds4'),
+    ])
+    def test_two_log_files_under_one_timetag_with_a_log_root(self, cls, logical_path,
+                                                             ticking_clock, monkeypatch):
+        monkeypatch.setattr(cls, 'LOG_ROOT_', '/nonexistent-logroot/')
+        pdsf = self.index_target(cls, logical_path)
+
+        paths = _common.log_paths_for(pdsf, 'log_path_for_index', task='validate',
+                                      dir='pdsindexshelf')
+        assert len(paths) == 2
+        assert len(timetags_of(paths)) == 1
 
 ##########################################################################################

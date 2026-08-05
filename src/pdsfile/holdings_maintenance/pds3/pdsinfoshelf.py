@@ -477,7 +477,7 @@ def reinitialize(pdsdir, selection=None, logger=None, limits=None):
 
     # Move old file if necessary
     if os.path.exists(info_path):
-        _common.move_old_info(info_path, logger=logger)
+        _common.move_old(info_path, _common.INFO_SHELF, logger=logger)
 
     # Save info file
     write_infodict(pdsdir, infodict, logger=logger, limits=limits)
@@ -580,7 +580,7 @@ def repair(pdsdir, selection=None, logger=None, limits=None):
         return
 
     # Move files and write new info
-    _common.move_old_info(info_path, logger=logger)
+    _common.move_old(info_path, _common.INFO_SHELF, logger=logger)
     write_infodict(pdsdir, dir_infodict, logger=logger, limits=limits)
 
 def update(pdsdir, selection=None, logger=None, limits=None):
@@ -618,7 +618,7 @@ def update(pdsdir, selection=None, logger=None, limits=None):
         return
 
     # Write checksum file
-    _common.move_old_info(info_path, logger=logger)
+    _common.move_old(info_path, _common.INFO_SHELF, logger=logger)
     write_infodict(pdsdir, dir_infodict, logger=logger, limits=limits)
 
 ################################################################################
@@ -815,22 +815,10 @@ def main():
                 pdsf = pdsdir
 
             # Save logs in up to two places
-            if pdsf.volname:
-                logfiles = {pdsf.log_path_for_volume('_info',
-                                                     task=args.task,
-                                                     dir='pdsinfoshelf'),
-                            pdsf.log_path_for_volume('_info',
-                                                     task=args.task,
-                                                     dir='pdsinfoshelf',
-                                                     place='parallel')}
-            else:
-                logfiles = {pdsf.log_path_for_volset('_info',
-                                                     task=args.task,
-                                                     dir='pdsinfoshelf'),
-                            pdsf.log_path_for_volset('_info',
-                                                     task=args.task,
-                                                     dir='pdsinfoshelf',
-                                                     place='parallel')}
+            method = ('log_path_for_volume' if pdsf.volname
+                      else 'log_path_for_volset')
+            logfiles = _common.log_paths_for(pdsf, method, '_info',
+                                             task=args.task, dir='pdsinfoshelf')
 
             # Create all the handlers for this level in the logger
             local_handlers = []

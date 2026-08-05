@@ -70,8 +70,10 @@ class ToolSpec:
             {unit} and {units} fields.
         positional_help: Help text for the positional argument, with {unit} and
             {units} fields.
-        log_path_for: Callable (pdsdir, task, place='default') returning the path of
-            the log file for one target.
+        log_path_method: The name of the PdsFile method that builds this tool's log
+            path, e.g. 'log_path_for_volume'. Named rather than bound so that every
+            tool reaches log_paths_for() the same way.
+        log_suffix: The suffix in a log file's basename, e.g. '_archives'.
         expand_target: Callable (pdsf, path) returning the list of PdsFile objects
             one command-line path resolves to. `path` is the absolute path the
             command line resolved to, for messages.
@@ -94,7 +96,8 @@ class ToolSpec:
     description: str
     task_help: dict
     positional_help: str
-    log_path_for: Callable
+    log_path_method: str
+    log_suffix: str
     expand_target: Callable
     handler_factories: tuple
     lskip_for: Callable | None = None
@@ -177,27 +180,37 @@ def reject_checksum_and_archive_paths(pdsf, path):
         sys.exit(1)
 
 
-def log_paths_for(spec, pdsdir, task):
-    """Return the up-to-two paths one target's log is written to.
+def log_paths_for(pdsf, method, *args, **kwargs):
+    """Return the paths one target's run writes its log to, in order.
 
-    The default place and the parallel place are the same path when no log root is
-    configured, which is why the result is a set. Both are built under one pinned
-    time tag: they are two copies of one run's log, and the tag has one-second
-    resolution, so two unpinned calls that straddle a second boundary would date
-    them a second apart.
+    A run logs to its default place and, when a log root is configured, to a
+    parallel place as well. The two are the same path when no log root is
+    configured, so the result is one path or two, the default place first.
+
+    Both are built under one pinned time tag. The tag has one-second resolution and
+    every caller builds the pair with two calls, so without the pin a pair whose
+    calls straddle a second boundary is dated a second apart -- which also defeats
+    the equality test that spots the duplicate, and writes one run's log twice.
 
     Args:
-        spec: The tool's ToolSpec.
-        pdsdir: The target PdsFile.
-        task: The task name, part of the log file's basename.
+        pdsf: The PdsFile the log is about. Its class carries the pin.
+        method: The name of its log_path_for_* method, which builds each path.
+        *args: Positional arguments for that method, e.g. the log file suffix.
+        **kwargs: Keyword arguments for it, e.g. task= and dir=.
 
     Returns:
-        set[str]: One or two log file paths.
+        list[str]: One or two log file paths, the default place first.
     """
 
-    with spec.pdsfile_cls._pinned_log_timetag():
-        return {spec.log_path_for(pdsdir, task),
-                spec.log_path_for(pdsdir, task, place='parallel')}
+    build = getattr(pdsf, method)
+    with type(pdsf)._pinned_log_timetag():
+        paths = [build(*args, place='default', **kwargs),
+                 build(*args, place='parallel', **kwargs)]
+
+    if paths[0] == paths[1]:
+        return paths[:1]
+
+    return paths
 
 
 def run_main(spec, tasks, argv):
@@ -264,7 +277,8 @@ def run_main(spec, tasks, argv):
         for pdsdir in pdsdirs:
 
             # Save logs in up to two places
-            logfiles = log_paths_for(spec, pdsdir, args.task)
+            logfiles = log_paths_for(pdsdir, spec.log_path_method, spec.log_suffix,
+                                     task=args.task, dir=spec.progname)
 
             # Create all the handlers for this level in the logger
             local_handlers = []
@@ -532,14 +546,39 @@ CHECKSUMS_LOGNAME = 'pds.validation.checksums'
 INFOSHELF_LOGNAME = 'pds.validation.fileinfo'
 LINKSHELF_LOGNAME = 'pds.validation.links'
 
+
+@dataclass(kw_only=True)
+class VersionedFile:
+    """What move_old() needs to know about one kind of file it versions.
+
+    Attributes:
+        noun: How the file is named in the two log lines, e.g. 'Checksum file'.
+        logname: The PdsLogger name to fall back on when no logger is given.
+        companions: The extensions of the files that travel with it. Each is copied
+            beside the versioned file under the same name and its own extension. A
+            link shelf lists '.pickle', which names the shelf file itself, so that
+            file is copied twice to the one destination.
+    """
+
+    noun: str
+    logname: str
+    companions: tuple = ()
+
+
+CHECKSUM_FILE = VersionedFile(noun='Checksum file', logname=CHECKSUMS_LOGNAME)
+INFO_SHELF = VersionedFile(noun='Info shelf file', logname=INFOSHELF_LOGNAME,
+                           companions=('.py',))
+LINK_SHELF = VersionedFile(noun='Link shelf file', logname=LINKSHELF_LOGNAME,
+                           companions=('.py', '.pickle'))
+
 # The log directories a superseded checksum or shelf file is versioned into. A tool's
 # main() fills this in for each target it is about to work on; a process that never
-# calls set_log_dirs leaves it empty, and then move_old_*() versions nothing.
+# calls set_log_dirs leaves it empty, and then move_old() versions nothing.
 LOGDIRS = []
 
 
 def set_log_dirs(logfiles):
-    """Record the log directories the move_old_*() functions version a file into.
+    """Record the log directories move_old() versions a superseded file into.
 
     Args:
         logfiles: The log file paths of the target about to be worked on. The
@@ -548,6 +587,70 @@ def set_log_dirs(logfiles):
 
     global LOGDIRS
     LOGDIRS = [os.path.split(logfile)[0] for logfile in logfiles]
+
+
+def next_version_dest(log_dir, prefix, ext):
+    """Return the unused <prefix>_v###<ext> path in one log directory.
+
+    ### is one past the highest version already there, and 001 when there is none.
+
+    Args:
+        log_dir: The directory the versioned copy goes in.
+        prefix: The superseded file's basename without its extension.
+        ext: That extension, including the dot.
+
+    Returns:
+        str: The path to copy to.
+    """
+
+    dest_template = log_dir + '/' + prefix + '_v???' + ext
+
+    max_version = 0
+    lskip = len(ext)
+    for version_path in glob.glob(dest_template):
+        max_version = max(max_version, int(version_path[-lskip-3:-lskip]))
+
+    return dest_template.replace('???', f'{max_version + 1:03d}')
+
+
+def move_old(path, kind, *, logger=None):
+    """Version the file a task is about to replace, into every recorded log directory.
+
+    The file is copied rather than moved, despite what the log lines say: the
+    original stays where it is and the task then overwrites it.
+
+    Args:
+        path: The file about to be replaced. Nothing happens if it does not exist,
+            or if no log directory has been recorded.
+        kind: The VersionedFile describing it.
+        logger: The logger to report through. Defaults to the kind's own.
+    """
+
+    if not os.path.exists(path):
+        return
+
+    logger = logger or pdslogger.PdsLogger.get_logger(kind.logname)
+
+    (prefix, ext) = os.path.splitext(os.path.basename(path))
+    stem = path.rpartition('.')[0]
+
+    from_logged = False
+    for log_dir in LOGDIRS:
+        dest = next_version_dest(log_dir, prefix, ext)
+        shutil.copy(path, dest)
+
+        # Both lines pass the path as the second argument, so PdsLogger renders the
+        # colon and applies the logger's root replacement to it. force=True keeps a
+        # limits cap from dropping the report of a change to the filesystem.
+        if not from_logged:
+            logger.info(kind.noun + ' moved from', path, force=True)
+            from_logged = True
+
+        logger.info(kind.noun + ' moved to', dest, force=True)
+
+        dest_stem = dest.rpartition('.')[0]
+        for companion in kind.companions:
+            shutil.copy(stem + companion, dest_stem + companion)
 
 
 # From http://stackoverflow.com/questions/3431825/-
@@ -561,116 +664,3 @@ def hashfile(fname, blocksize=65536):
             hasher.update(chunk)
 
     return hasher.hexdigest()
-
-
-def move_old_checksums(check_path, *, logger=None):
-    """Appends a version number to an existing checksum file and moves it to
-    the associated log directory."""
-
-    if not os.path.exists(check_path):
-        return
-
-    check_basename = os.path.basename(check_path)
-    (check_prefix, check_ext) = os.path.splitext(check_basename)
-
-    logger = logger or pdslogger.PdsLogger.get_logger(CHECKSUMS_LOGNAME)
-
-    from_logged = False
-    for log_dir in LOGDIRS:
-        dest_template = log_dir + '/' + check_prefix + '_v???' + check_ext
-        version_paths = glob.glob(dest_template)
-
-        max_version = 0
-        lskip = len(check_ext)
-        for version_path in version_paths:
-            version = int(version_path[-lskip-3:-lskip])
-            max_version = max(max_version, version)
-
-        new_version = max_version + 1
-        dest = dest_template.replace('???', f'{new_version:03d}')
-        shutil.copy(check_path, dest)
-
-        if not from_logged:
-            logger.info('Checksum file moved from: ' + check_path, force=True)
-            from_logged = True
-
-        logger.info('Checksum file moved to', dest, force=True)
-
-
-def move_old_info(shelf_file, logger=None):
-    """Move a file to the /logs/ directory tree and append a time tag."""
-
-    if not os.path.exists(shelf_file):
-        return
-
-    shelf_basename = os.path.basename(shelf_file)
-    (shelf_prefix, shelf_ext) = os.path.splitext(shelf_basename)
-
-    logger = logger or pdslogger.PdsLogger.get_logger(INFOSHELF_LOGNAME)
-
-    from_logged = False
-    for log_dir in LOGDIRS:
-        dest_template = log_dir + '/' + shelf_prefix + '_v???' + shelf_ext
-        version_paths = glob.glob(dest_template)
-
-        max_version = 0
-        lskip = len(shelf_ext)
-        for version_path in version_paths:
-            version = int(version_path[-lskip-3:-lskip])
-            max_version = max(max_version, version)
-
-        new_version = max_version + 1
-        dest = dest_template.replace('???', f'{new_version:03d}')
-        shutil.copy(shelf_file, dest)
-
-        if not from_logged:
-            logger.info('Info shelf file moved from: ' + shelf_file)
-            from_logged = True
-
-        logger.info('Info shelf file moved to', dest)
-
-        python_file = shelf_file.rpartition('.')[0] + '.py'
-        dest = dest.rpartition('.')[0] + '.py'
-        shutil.copy(python_file, dest)
-
-
-def move_old_links(shelf_file, logger=None):
-    """Move a file to the /logs/ directory tree and append a time tag."""
-
-    if not os.path.exists(shelf_file):
-        return
-
-    shelf_basename = os.path.basename(shelf_file)
-    (shelf_prefix, shelf_ext) = os.path.splitext(shelf_basename)
-
-    if logger is None:
-        logger = pdslogger.PdsLogger.get_logger(LINKSHELF_LOGNAME)
-
-    from_logged = False
-    for log_dir in LOGDIRS:
-        dest_template = log_dir + '/' + shelf_prefix + '_v???' + shelf_ext
-        version_paths = glob.glob(dest_template)
-
-        max_version = 0
-        lskip = len(shelf_ext)
-        for version_path in version_paths:
-            version = int(version_path[-lskip-3:-lskip])
-            max_version = max(max_version, version)
-
-        new_version = max_version + 1
-        dest = dest_template.replace('???', f'{new_version:03d}')
-        shutil.copy(shelf_file, dest)
-
-        if not from_logged:
-            logger.info('Link shelf file moved from: ' + shelf_file)
-            from_logged = True
-
-        logger.info('Link shelf file moved to ' + dest)
-
-        python_src = shelf_file.rpartition('.')[0] + '.py'
-        python_dest = dest.rpartition('.')[0] + '.py'
-        shutil.copy(python_src, python_dest)
-
-        pickle_src = shelf_file.rpartition('.')[0] + '.pickle'
-        pickle_dest = dest.rpartition('.')[0] + '.pickle'
-        shutil.copy(pickle_src, pickle_dest)

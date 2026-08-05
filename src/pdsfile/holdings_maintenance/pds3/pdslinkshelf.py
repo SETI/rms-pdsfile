@@ -1394,7 +1394,7 @@ def initialize(pdsdir, *, logger=None, limits=None):
 
     # Move old file if necessary
     if os.path.exists(link_path):
-        _common.move_old_links(link_path, logger=logger)
+        _common.move_old(link_path, _common.LINK_SHELF, logger=logger)
 
     # Save link files
     write_linkdict(pdsdir.abspath, link_dict, logger=logger, limits=limits)
@@ -1420,7 +1420,7 @@ def reinitialize(pdsdir, *, logger=None, limits=None):
 
     # Move old file if necessary
     if os.path.exists(link_path):
-        _common.move_old_links(link_path, logger=logger)
+        _common.move_old(link_path, _common.LINK_SHELF, logger=logger)
 
     # Save link files
     write_linkdict(pdsdir.abspath, link_dict, logger=logger, limits=limits)
@@ -1510,7 +1510,7 @@ def repair(pdsdir, *, logger=None, limits=None):
         return
 
     # Move files and write new links
-    _common.move_old_links(link_path, logger=logger)
+    _common.move_old(link_path, _common.LINK_SHELF, logger=logger)
     write_linkdict(pdsdir.abspath, dir_linkdict, logger=logger, limits=limits)
 
 def update(pdsdir, *, logger=None, limits=None):
@@ -1545,7 +1545,7 @@ def update(pdsdir, *, logger=None, limits=None):
         return
 
     # Move files and write new links
-    _common.move_old_links(link_path, logger=logger)
+    _common.move_old(link_path, _common.LINK_SHELF, logger=logger)
     write_linkdict(pdsdir.abspath, dir_linkdict, logger=logger, limits=limits)
 
 ################################################################################
@@ -1667,13 +1667,8 @@ def main():
                 continue
 
             # Save logs in up to two places
-            logfiles = {pdsdir.log_path_for_volume('_links',
-                                                   task=args.task,
-                                                   dir='pdslinkshelf'),
-                        pdsdir.log_path_for_volume('_links',
-                                                   task=args.task,
-                                                   dir='pdslinkshelf',
-                                                   place='parallel')}
+            logfiles = _common.log_paths_for(pdsdir, 'log_path_for_volume', '_links',
+                                             task=args.task, dir='pdslinkshelf')
 
             # Create all the handlers for this level in the logger
             local_handlers = []
