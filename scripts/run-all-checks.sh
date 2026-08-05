@@ -113,10 +113,11 @@ SCOPE_SPECIFIED=false
 # Per-check defaults (override by exporting before invoking this script, or
 # permanently change here).
 #
-# Gates are enabled as they become able to pass. Currently enabled: ruff-check,
-# pytest, pyroma, api-freeze, and the clean-install gate. Not enabled yet:
-# ruff-format, sphinx, and pymarkdown. Never enabled: mypy, bandit, vulture
-# (ground rules / pdsfile_overrides.mdc).
+# Gates are enabled as they become able to pass. Currently enabled: ruff-check
+# (which runs the configured rules and then a second, indentation-only pass over
+# the preview E1 rules), pytest, pyroma, api-freeze, and the clean-install gate.
+# Not enabled yet: ruff-format, sphinx, and pymarkdown. Never enabled: mypy,
+# bandit, vulture (ground rules / pdsfile_overrides.mdc).
 : "${ENABLE_RUFF_CHECK:=true}"
 : "${ENABLE_RUFF_FORMAT:=false}"
 : "${ENABLE_MYPY:=false}"
@@ -411,6 +412,27 @@ run_code_checks() {
             print_error "Ruff check failed"
             failed=true
             failed_checks="${failed_checks}Code - Ruff check"$'\n'
+        fi
+
+        # Indentation of code. The E1 rules are preview-gated, so they need
+        # their own invocation: turning preview on in pyproject.toml would also
+        # change the behaviour of the stable rules and raise thousands of new
+        # findings. Naming the codes explicitly keeps the surface narrow.
+        #
+        # Only the three rules that fire on code are selected. E114, E115 and
+        # E116 are their comment-line counterparts, and E117 fires on both.
+        # Where a comment sits is the author's decision here: a trailing comment
+        # continued under the column it started in, an annotation that follows
+        # the statement it describes, and commented-out code parked at column 0
+        # are all deliberate, and all three read worse pulled to the code grid.
+        print_info "Running ruff check (indentation)..."
+        if python -m ruff check --preview \
+                --select E111,E112,E113 $RUFF_TARGETS; then
+            print_success "Ruff indentation check passed"
+        else
+            print_error "Ruff indentation check failed"
+            failed=true
+            failed_checks="${failed_checks}Code - Ruff indentation"$'\n'
         fi
     fi
 

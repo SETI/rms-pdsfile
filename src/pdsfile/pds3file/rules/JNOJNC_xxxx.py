@@ -3,8 +3,10 @@
 ##########################################################################################
 
 import re
-import pdsfile.pds3file as pds3file
+
 import translator
+
+import pdsfile.pds3file as pds3file
 
 ##########################################################################################
 # DESCRIPTION_AND_ICON

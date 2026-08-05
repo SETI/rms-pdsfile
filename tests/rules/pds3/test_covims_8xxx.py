@@ -1,17 +1,19 @@
-import pytest
 import os
 
-import pdsfile.pds3file as pds3file
+import pytest
 
+import pdsfile.pds3file as pds3file
 from tests.rules.support import (
     PDS3_TEST_RESULTS_DIR as TEST_RESULTS_DIR,
+)
+from tests.rules.support import (
     associated_abspaths_test,
     opus_products_test,
 )
 
 
 @pytest.mark.parametrize(
-    'input_path,expected',
+    ('input_path', 'expected'),
     [
         ('volumes/COVIMS_8xxx/COVIMS_8001/data/VIMS_2005_144_OMICET_E_TAU_01KM.TAB',
          'COVIMS_8xxx/opus_products/VIMS_2005_144_OMICET_E_TAU_01KM.txt')
@@ -22,7 +24,7 @@ def test_opus_products(request, input_path, expected):
     opus_products_test(pds3file.Pds3File, input_path, TEST_RESULTS_DIR+expected, update)
 
 @pytest.mark.parametrize(
-    'input_path,category,expected',
+    ('input_path', 'category', 'expected'),
     [
         ('volumes/COVIMS_8xxx/COVIMS_8001/data/VIMS_2005_144_OMICET_E_TAU_01KM.TAB',
          'volumes',
@@ -35,11 +37,11 @@ def test_associated_abspaths(request, input_path, category, expected):
                              TEST_RESULTS_DIR+expected, update)
 
 def test_opus_id_to_primary_logical_path():
-    TESTS = [
+    test_cases = [
         'volumes/COVIMS_8xxx/COVIMS_8001/data/VIMS_2005_144_OMICET_E_TAU_01KM.TAB',
     ]
 
-    for logical_path in TESTS:
+    for logical_path in test_cases:
         test_pdsf = pds3file.Pds3File.from_logical_path(logical_path)
         opus_id = test_pdsf.opus_id
         opus_id_pdsf = pds3file.Pds3File.from_opus_id(opus_id)
@@ -77,7 +79,8 @@ def test_opus_id_to_primary_logical_path():
             # Every associated product is in the product set except metadata
             for category in ('volumes', 'previews', 'diagrams'):
                 for abspath in pdsf.associated_abspaths(category):
-                    if '.' not in os.path.basename(abspath): continue   # skip dirs
+                    if '.' not in os.path.basename(abspath):  # skip dirs
+                        continue
                     assert abspath in opus_id_abspaths
 
 ##########################################################################################

@@ -1,15 +1,12 @@
-import pdsfile.pds3file as pds3file
-from pdsfile import pdsviewable
-import pdsfile.pds3file.rules as rules
-from pdsfile.pdsfile import (logical_path_from_abspath,
-                             repair_case,
-                             selected_path_from_path)
-
-import pytest
 import re
 
-from .helper import (PDS3_HOLDINGS_DIR,
-                     instantiate_target_pdsfile)
+import pytest
+
+import pdsfile.pds3file as pds3file
+from pdsfile import pdsviewable
+from pdsfile.pdsfile import logical_path_from_abspath, repair_case, selected_path_from_path
+
+from .helper import PDS3_HOLDINGS_DIR, instantiate_target_pdsfile
 
 PDS_PDSDATA_PATH = PDS3_HOLDINGS_DIR[:PDS3_HOLDINGS_DIR.index('holdings')]
 
@@ -61,7 +58,7 @@ class TestPds3FileBlackBox:
             current_class = res_dict[key]
             assert key in expected, f"{key} is not in the SUBCLASSES dictionary"
             expected_class = expected[key]
-            assert current_class != None, f"Rules is not loaded on {key} in the SUBCLASSES"
+            assert current_class is not None, f"Rules is not loaded on {key} in the SUBCLASSES"
             assert current_class == expected_class, f"Mismatch on {key} in the SUBCLASSES"
             assert (f"{current_class.__module__ + current_class.__name__}"
                     == f"{expected_class.__module__ + expected_class.__name__}")
@@ -70,7 +67,7 @@ class TestPds3FileBlackBox:
     # Local implementations of basic filesystem operations
     ############################################################################
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             (PDS3_HOLDINGS_DIR + '/volumes/COISS_2xxx',
              [
@@ -116,7 +113,7 @@ class TestPds3FileBlackBox:
     # Test for DEFAULT FILE SORT ORDER
     ############################################################################
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/HDAC1999_007_16_31.DAT',
              True),
@@ -130,7 +127,7 @@ class TestPds3FileBlackBox:
         assert target_pdsfile.SORT_ORDER['labels_after'] == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/HDAC1999_007_16_31.DAT',
              True),
@@ -144,7 +141,7 @@ class TestPds3FileBlackBox:
         assert target_pdsfile.SORT_ORDER['dirs_first'] == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/HDAC1999_007_16_31.DAT',
              True),
@@ -158,7 +155,7 @@ class TestPds3FileBlackBox:
         assert target_pdsfile.SORT_ORDER['dirs_last'] == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/HDAC1999_007_16_31.DAT',
              True),
@@ -175,7 +172,7 @@ class TestPds3FileBlackBox:
     # Test for properties
     ############################################################################
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/COCIRS_0xxx/COCIRS_0012/DATA/NAV_DATA/GEO00120100.DAT',
              True),
@@ -189,7 +186,7 @@ class TestPds3FileBlackBox:
         assert target_pdsfile.exists == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('diagrams/COCIRS_5xxx/COCIRS_5401/BROWSE/TARGETS/IMG0401130240_FP1_thumb.jpg',
              'COCIRS_5401/BROWSE/TARGETS/IMG0401130240_FP1_thumb.jpg'),
@@ -203,7 +200,7 @@ class TestPds3FileBlackBox:
         assert target_pdsfile.filespec == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/COCIRS_1xxx/COCIRS_1001/DATA/TSDR/NAV_DATA/TAR10013100.lbl',
              True),
@@ -217,7 +214,7 @@ class TestPds3FileBlackBox:
         assert target_pdsfile.islabel == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('diagrams/COCIRS_5xxx/COCIRS_5401/BROWSE/TARGETS/IMG0401130240_FP1_thumb.jpg',
              PDS3_HOLDINGS_DIR + '/diagrams/COCIRS_5xxx/COCIRS_5401/BROWSE/TARGETS/IMG0401130240_FP1_thumb.jpg'),
@@ -232,7 +229,7 @@ class TestPds3FileBlackBox:
         assert target_pdsfile.absolute_or_logical_path == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('diagrams/COCIRS_6xxx/COCIRS_6004/BROWSE/SATURN/POI1004010000_FP1_small.jpg',
              '/holdings/diagrams/COCIRS_6xxx/COCIRS_6004/BROWSE/SATURN/POI1004010000_FP1_small.jpg'),
@@ -245,7 +242,7 @@ class TestPds3FileBlackBox:
         assert target_pdsfile.html_path == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/COISS_3xxx/COISS_3002/data/maps/SE_400K_90S_0_SMN.lbl',
              '.lbl'),
@@ -265,7 +262,7 @@ class TestPds3FileBlackBox:
         assert target_pdsfile.extension == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/COISS_3xxx/COISS_3002/data',
              'volumes/COISS_3xxx/COISS_3002'),
@@ -287,7 +284,7 @@ class TestPds3FileBlackBox:
         assert target_pdsfile.parent_logical_path == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('previews/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/HDAC1999_007_16_31_thumb.png',
              'HDAC1999_007_16_31'),
@@ -300,7 +297,7 @@ class TestPds3FileBlackBox:
         assert target_pdsfile.anchor == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/COVIMS_0xxx/COVIMS_0001/data/1999010T054026_1999010T060958/v1294638283_1.lbl',
              'PDS3 label'),
@@ -313,7 +310,7 @@ class TestPds3FileBlackBox:
         assert target_pdsfile.description == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/COVIMS_8xxx/COVIMS_8001/data/VIMS_2017_251_GAMCRU_I_TAU_10KM.lbl', 'LABEL'),
             ('volumes/COVIMS_8xxx/COVIMS_8001/data/VIMS_2017_251_GAMCRU_I_TAU_10KM.tab', 'TABLE'),
@@ -332,7 +329,7 @@ class TestPds3FileBlackBox:
         assert target_pdsfile.icon_type == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/EBROCC_xxxx/EBROCC_0001/DATA/ESO1M/ES1_EPD.TAB',
              'ES1_EPD.LBL'),
@@ -346,7 +343,7 @@ class TestPds3FileBlackBox:
         assert target_pdsfile.label_basename == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/GO_0xxx/GO_0017/J0/OPNAV/C0346405900R.IMG',
              PDS3_HOLDINGS_DIR + '/volumes/GO_0xxx/GO_0017/J0/OPNAV/C0346405900R.LBL'),
@@ -361,7 +358,7 @@ class TestPds3FileBlackBox:
         assert target_pdsfile.label_abspath == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/HSTIx_xxxx/HSTI1_1556/DATA/VISIT_01/IB4W01I5Q.lbl',
              [
@@ -387,7 +384,7 @@ class TestPds3FileBlackBox:
         assert target_pdsfile._volume_info[1] == expected[1]
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/HSTNx_xxxx/HSTN0_7176/DATA/VISIT_01/N4BI01L4Q.LBL',
              'hst-07176-nicmos-n4bi01l4q'),
@@ -402,7 +399,7 @@ class TestPds3FileBlackBox:
         assert target_pdsfile.opus_id == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/HSTJx_xxxx/HSTJ0_9296/DATA/VISIT_B1/J8M3B1021.asc', False),
             ('previews/HSTJx_xxxx/HSTJ0_9296/DATA/VISIT_B1/J8M3B1021_thumb.jpg',
@@ -415,7 +412,7 @@ class TestPds3FileBlackBox:
         assert target_pdsfile.is_viewable == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('previews/HSTOx_xxxx/HSTO0_7308/DATA/VISIT_05/O43B05C1Q_small.jpg',
              'O43B05C1Q_small.jpg'),
@@ -428,7 +425,7 @@ class TestPds3FileBlackBox:
         assert target_pdsfile.alt == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('previews/HSTOx_xxxx/HSTO0_7308/DATA/VISIT_05/O43B05C1Q_small.jpg',
              [
@@ -457,7 +454,7 @@ class TestPds3FileBlackBox:
             assert viewable['url'] in expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/HSTUx_xxxx/HSTU0_5167/DATA/VISIT_04', True),
             ('volumes/EBROCC_xxxx/EBROCC_0001/CATALOG/ESO22M_DATASET.CAT',
@@ -470,7 +467,7 @@ class TestPds3FileBlackBox:
         assert target_pdsfile.isdir == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('metadata/HSTUx_xxxx/HSTU0_5167/HSTU0_5167_index.tab',
              PDS_PDSDATA_PATH + 'holdings/_indexshelf-metadata/HSTUx_xxxx/HSTU0_5167/HSTU0_5167_index.pickle')
@@ -481,7 +478,7 @@ class TestPds3FileBlackBox:
         assert target_pdsfile.indexshelf_abspath == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('metadata/HSTUx_xxxx/HSTU0_5167/HSTU0_5167_index.tab',
              True)
@@ -492,7 +489,7 @@ class TestPds3FileBlackBox:
         assert target_pdsfile.is_index == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('metadata/HSTUx_xxxx/HSTU0_5167/HSTU0_5167_index.tab',
              'HSTU0_5167_label.txt')
@@ -501,11 +498,11 @@ class TestPds3FileBlackBox:
     def test_index_pdslabel(self, input_path, expected):
         target_pdsfile = instantiate_target_pdsfile(input_path)
         res = target_pdsfile.index_pdslabel
-        assert res != None
+        assert res is not None
         assert res != 'failed'
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/NHxxLO_xxxx/NHLALO_1001/data/20060224_000310/'
              + 'lor_0003103486_0x630_eng.lbl', []),
@@ -522,7 +519,7 @@ class TestPds3FileBlackBox:
         assert target_pdsfile.childnames == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/COCIRS_6xxx/COCIRS_6004/DATA/GEODATA/GEO1004021018_699.LBL',
              [
@@ -538,7 +535,7 @@ class TestPds3FileBlackBox:
             assert path in expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             # Need to revisit and find a proper case for this one
             ('archives-volumes/COCIRS_0xxx/COCIRS_0010.tar.gz',
@@ -551,7 +548,7 @@ class TestPds3FileBlackBox:
         assert res == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('archives-volumes/COCIRS_0xxx',
              '/holdings/checksums-archives-volumes/COCIRS_0xxx_md5.txt'),
@@ -567,7 +564,7 @@ class TestPds3FileBlackBox:
         assert res == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('diagrams/COCIRS_5xxx/COCIRS_5401/BROWSE/TARGETS/IMG0401130240_FP1_thumb.jpg',
              False),
@@ -581,7 +578,7 @@ class TestPds3FileBlackBox:
         assert res == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('diagrams/COCIRS_5xxx/COCIRS_5401/BROWSE/TARGETS/IMG0401130240_FP1_thumb.jpg',
              False),
@@ -595,7 +592,7 @@ class TestPds3FileBlackBox:
         assert res == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('diagrams/COCIRS_5xxx/COCIRS_5401/BROWSE/TARGETS/IMG0401130240_FP1_thumb.jpg',
              False),
@@ -609,7 +606,7 @@ class TestPds3FileBlackBox:
         assert res == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('diagrams/COCIRS_5xxx/COCIRS_5401/BROWSE/TARGETS/IMG0401130240_FP1_thumb.jpg',
              False),
@@ -623,7 +620,7 @@ class TestPds3FileBlackBox:
         assert res == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/COUVIS_0xxx/COUVIS_0001/DATA/', True),
             ('volumes/COUVIS_0xxx', False)
@@ -635,7 +632,7 @@ class TestPds3FileBlackBox:
         assert res == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('previews/COUVIS_0xxx/COUVIS_0009/DATA/D2004_274/EUV2004_274_01_39_thumb.png',
              'f43e6fe3d9eb02ed72e0aba47be443f2'),
@@ -654,7 +651,7 @@ class TestPds3FileBlackBox:
         assert res == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/HDAC1999_007_16_31.LBL',
              (PDS_PDSDATA_PATH + 'holdings/_infoshelf-volumes/COUVIS_0xxx/COUVIS_0001_info.pickle',
@@ -667,7 +664,7 @@ class TestPds3FileBlackBox:
         assert res == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/HSTNx_xxxx/HSTN0_7176/DATA/VISIT_01/N4BI01L4Q.lbl', False),
             ('volumes/HSTNx_xxxx/HSTN0_7176', True)
@@ -679,7 +676,7 @@ class TestPds3FileBlackBox:
         assert res == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('checksums-volumes/COCIRS_0xxx/COCIRS_0010_md5.txt', True),
             ('archives-volumes/COCIRS_0xxx/COCIRS_0010.tar.gz', True),
@@ -692,7 +689,7 @@ class TestPds3FileBlackBox:
         assert res == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('checksums-volumes/COCIRS_0xxx/COCIRS_0010_md5.txt', True),
             ('archives-volumes/COCIRS_0xxx/COCIRS_0010.tar.gz', True),
@@ -706,7 +703,7 @@ class TestPds3FileBlackBox:
         assert res == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('checksums-volumes/COCIRS_0xxx', True),
             ('archives-volumes/COCIRS_0xxx', True),
@@ -720,7 +717,7 @@ class TestPds3FileBlackBox:
         assert res == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('checksums-volumes/COCIRS_0xxx/COCIRS_0010_md5.txt', False),
             ('archives-volumes/COCIRS_0xxx/COCIRS_0010.tar.gz', False),
@@ -735,7 +732,7 @@ class TestPds3FileBlackBox:
         assert res == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('checksums-volumes/COCIRS_0xxx', True),
             ('archives-volumes/COCIRS_0xxx', True),
@@ -751,7 +748,7 @@ class TestPds3FileBlackBox:
         assert res == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/HSTNx_xxxx', False),
             ('volumes', True)
@@ -766,7 +763,7 @@ class TestPds3FileBlackBox:
     # Test for functions
     ############################################################################
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('previews/VGISS_5xxx/VGISS_5101/DATA/C13854XX/C1385455_small.jpg',
              [
@@ -819,7 +816,7 @@ class TestPds3FileBlackBox:
             assert viewable['url'] in expected
 
     @pytest.mark.parametrize(
-        'input_suffix,expected',
+        ('input_suffix', 'expected'),
         [
             ('_v2.1.3', (20103, 'Version 2.1.3 (superseded)', '2.1.3')),
         ]
@@ -829,7 +826,7 @@ class TestPds3FileBlackBox:
         assert res == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('previews/VGISS_5xxx/VGISS_5101/DATA/C13854XX/C1385455_small.jpg',
              'Pds3File.VGISS_xxxx("' + PDS3_HOLDINGS_DIR + '/previews/VGISS_5xxx/VGISS_5101/DATA/C13854XX/C1385455_small.jpg")'),
@@ -849,7 +846,7 @@ class TestPds3FileBlackBox:
     # Test for alternative constructors
     ############################################################################
     @pytest.mark.parametrize(
-        'input_path,basename,expected',
+        ('input_path', 'basename', 'expected'),
         [
             ('volumes/COCIRS_6xxx/COCIRS_6004/DATA/GEODATA/',
              'GEO1004021018_699.LBL',
@@ -867,7 +864,7 @@ class TestPds3FileBlackBox:
         assert res.abspath == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/COCIRS_0xxx_v3/COCIRS_0401/DATA/TSDR/NAV_DATA/TAR04012400.LBL',
              PDS3_HOLDINGS_DIR + '/volumes/COCIRS_0xxx_v3/COCIRS_0401/DATA/TSDR/NAV_DATA'),
@@ -882,7 +879,7 @@ class TestPds3FileBlackBox:
         assert res.abspath == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/COISS_0xxx/COISS_0001/data/wacfm/bit_wght/13302/133020.lbl',
              'volumes/COISS_0xxx/COISS_0001/data/wacfm/bit_wght/13302/133020.lbl')
@@ -894,7 +891,7 @@ class TestPds3FileBlackBox:
         assert res.logical_path == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/COISS_0xxx/COISS_0001/data/wacfm/bit_wght/13302/133020.lbl',
              True),
@@ -907,11 +904,11 @@ class TestPds3FileBlackBox:
             res = pds3file.Pds3File.from_abspath(abspath=input_path)
             assert isinstance(res, pds3file.Pds3File)
             assert res.abspath == expected
-        except ValueError as e:
+        except ValueError:
             assert True # input path is not an absolute path
 
     @pytest.mark.parametrize(
-        'input_lid,expected',
+        ('input_lid', 'expected'),
         [
             ('CO-S-ISSNA/ISSWA-2-EDR-V1.0:COISS_2002:data/1460960653_1461048959:N1460960868_1.IMG',
              ['CO-S-ISSNA/ISSWA-2-EDR-V1.0', 'N1460960868_1.IMG']),
@@ -941,7 +938,7 @@ class TestPds3FileBlackBox:
         assert res.basename == expected[1]
 
     @pytest.mark.parametrize(
-        'input_lid,expected',
+        ('input_lid', 'expected'),
         [
             ('CO-E/V/J/S-VIMS-2-QUBE-V2.0:COVIMS_0001:data/1999010T054026_1999010T060958:v1294638283_1.qub',
              'CO-E/V/J/S-VIMS-2-QUBE-V1.0'),
@@ -949,14 +946,14 @@ class TestPds3FileBlackBox:
     )
     def test_from_lid_mismatched_lid(self, input_lid, expected):
         try:
-            res = pds3file.Pds3File.from_lid(input_lid) # Must raise an exception
+            pds3file.Pds3File.from_lid(input_lid) # Must raise an exception
             assert False # pragma: no cover
         except ValueError as e:
             # input LID data set id doesn't match the one from res
             assert 'does not match the one from pdsfile:' in str(e)
 
     @pytest.mark.parametrize(
-        'input_lid,expected',
+        ('input_lid', 'expected'),
         [
             ('CO-E/V/J/S-VIMS-2-QUBE-V2.0:data/1999010T054026_1999010T060958:v1294638283_1.qub',
              'CO-E/V/J/S-VIMS-2-QUBE-V1.0'),
@@ -964,14 +961,14 @@ class TestPds3FileBlackBox:
     )
     def test_from_lid_invalid_lid(self, input_lid, expected):
         try:
-            res = pds3file.Pds3File.from_lid(input_lid) # Must raise an exception
+            pds3file.Pds3File.from_lid(input_lid) # Must raise an exception
             assert False # pragma: no cover
         except ValueError as e:
             # input LID is not a valid LID
             assert 'is not a valid LID' in str(e)
 
     @pytest.mark.parametrize(
-        'input_path,relative_path,expected',
+        ('input_path', 'relative_path', 'expected'),
         [
             ('previews/COUVIS_0xxx_v1/COUVIS_0009/DATA',
              '/D2004_274/EUV2004_274_01_39_thumb.png',
@@ -991,7 +988,7 @@ class TestPds3FileBlackBox:
         assert res.logical_path == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/CORSS_8xxx/CORSS_8001/data/Rev007/Rev007E/Rev007E_RSS_2005_123_K34_E/RSS_2005_123_K34_E_CAL.LBL',
              PDS3_HOLDINGS_DIR + '/volumes/CORSS_8xxx/CORSS_8001/data/Rev007/Rev007E/Rev007E_RSS_2005_123_K34_E/RSS_2005_123_K34_E_CAL.LBL'),
@@ -1005,7 +1002,7 @@ class TestPds3FileBlackBox:
         assert res.abspath == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('holdings/volumes/COUVIS_0xxx_v1/COUVIS_0009/DATA/D2004_274/EUV2004_274_01_39.DAT',
              PDS3_HOLDINGS_DIR + '/volumes/COUVIS_0xxx_v1/COUVIS_0009/DATA/D2004_274/EUV2004_274_01_39.DAT'),
@@ -1028,7 +1025,7 @@ class TestPds3FileBlackBox:
         assert res.abspath == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/COVIMS_0xxx/COVIMS_0001/data/1999017T031657_1999175T202056/v1308946681_1_002.qub',
              True),
@@ -1046,7 +1043,7 @@ class TestPds3FileBlackBox:
     ############################################################################
     # from_filespec will only work with files under /volumes
     @pytest.mark.parametrize(
-        'filespec,expected',
+        ('filespec', 'expected'),
         [
             ('COISS_0001', PDS3_HOLDINGS_DIR + '/volumes/COISS_0xxx/COISS_0001'),
             ('COISS_1001/data/1294561143_1295221348/W1294561202_1.IMG',
@@ -1061,7 +1058,7 @@ class TestPds3FileBlackBox:
         assert res.abspath == expected
 
     @pytest.mark.parametrize(
-        'input_id,expected',
+        ('input_id', 'expected'),
         [
             ('co-cirs-0408010000-fp1',
              'volumes/COCIRS_5xxx/COCIRS_5408/DATA/APODSPEC/SPEC0408010000_FP1.DAT'),
@@ -1119,7 +1116,7 @@ class TestPds3FileBlackBox:
         assert target_pdsfile2.opus_id == input_id
 
     @pytest.mark.parametrize(
-        'opus_id,expected',
+        ('opus_id', 'expected'),
         [
             ('hst-07176-nicmos-n4bi01l4q',
              PDS3_HOLDINGS_DIR + '/volumes/HSTNx_xxxx/HSTN0_7176/DATA/VISIT_01/N4BI01L4Q.LBL')
@@ -1135,7 +1132,7 @@ class TestPds3FileBlackBox:
     # Test for associated volumes and volsets
     ############################################################################
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/COVIMS_0xxx/COVIMS_0001/data/1999010T054026_1999010T060958/v1294638283_1.lbl',
              'volumes/COVIMS_0xxx/COVIMS_0001'),
@@ -1148,7 +1145,7 @@ class TestPds3FileBlackBox:
         assert res.logical_path == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/EBROCC_xxxx/EBROCC_0001/CATALOG/ESO22M_DATASET.CAT',
              'volumes/EBROCC_xxxx'),
@@ -1161,7 +1158,7 @@ class TestPds3FileBlackBox:
         assert res.logical_path == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('metadata/VGISS_8xxx/VGISS_8201/VGISS_8201_inventory.tab',
              PDS3_HOLDINGS_DIR + '/metadata/VGISS_8xxx/VGISS_8201'),
@@ -1176,7 +1173,7 @@ class TestPds3FileBlackBox:
         assert target_pdsfile.volume_abspath() == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/HSTOx_xxxx/HSTO0_7308/DATA/VISIT_05/O43B05C1Q.ASC',
              PDS3_HOLDINGS_DIR + '/volumes/HSTOx_xxxx'),
@@ -1192,7 +1189,7 @@ class TestPds3FileBlackBox:
     # Test for support for Pds3File objects representing index rows
     ############################################################################
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('metadata/HSTUx_xxxx/HSTU0_5167/HSTU0_5167_index.tab',
              {'U2NO0401T': [0], 'U2NO0402T': [1], 'U2NO0403T': [2], 'U2NO0404T': [3]}),
@@ -1204,7 +1201,7 @@ class TestPds3FileBlackBox:
         assert res == expected
 
     @pytest.mark.parametrize(
-        'input_path,selection,flag,expected',
+        ('input_path', 'selection', 'flag', 'expected'),
         [
             ('metadata/HSTUx_xxxx/HSTU0_5167/HSTU0_5167_index.tab',
              'U2NO0403T', '', 'U2NO0403T'),
@@ -1227,7 +1224,7 @@ class TestPds3FileBlackBox:
         assert res == expected
 
     @pytest.mark.parametrize(
-        'input_path,selection,flag,expected',
+        ('input_path', 'selection', 'flag', 'expected'),
         [
             ('metadata/HSTUx_xxxx/HSTU0_5167/HSTU0_5167_index.tab',
              'U2NO0404T', '=',
@@ -1257,7 +1254,7 @@ class TestPds3FileBlackBox:
         assert res.logical_path == expected
 
     @pytest.mark.parametrize(
-        'input_path,selection,flag,expected',
+        ('input_path', 'selection', 'flag', 'expected'),
         [
             ('metadata/HSTUx_xxxx/HSTU0_5167/HSTU0_5167_index.tab',
              'U2NO0404T', '',
@@ -1276,7 +1273,7 @@ class TestPds3FileBlackBox:
     # Test for checksum path associations
     ############################################################################
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/COUVIS_0xxx_v1/COUVIS_0009/DATA/D2004_274/EUV2004_274_01_39.lbl',
              PDS3_HOLDINGS_DIR + '/checksums-volumes/COUVIS_0xxx_v1/COUVIS_0009_md5.txt'),
@@ -1299,7 +1296,7 @@ class TestPds3FileBlackBox:
         assert target_pdsfile.checksum_path_and_lskip() == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('archives-volumes/COCIRS_0xxx',
              PDS3_HOLDINGS_DIR + '/checksums-archives-volumes/COCIRS_0xxx_md5.txt'),
@@ -1314,7 +1311,7 @@ class TestPds3FileBlackBox:
         assert res == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             # ('archives-volumes/COCIRS_0xxx/COCIRS_0010.tar.gz',
             #  (
@@ -1335,7 +1332,7 @@ class TestPds3FileBlackBox:
     # Test for archive path associations
     ############################################################################
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('metadata/HSTUx_xxxx/HSTU0_5167/HSTU0_5167_index.tab',
              PDS3_HOLDINGS_DIR + '/archives-metadata/HSTUx_xxxx/HSTU0_5167_metadata.tar.gz'),
@@ -1351,7 +1348,7 @@ class TestPds3FileBlackBox:
         assert target_pdsfile.archive_path_and_lskip() == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('archives-volumes/COCIRS_0xxx/COCIRS_0010.tar.gz', ''),
             ('volumes/COCIRS_0xxx/COCIRS_0010',
@@ -1364,7 +1361,7 @@ class TestPds3FileBlackBox:
         assert res == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('archives-volumes/COCIRS_0xxx/COCIRS_0010.tar.gz',
              (PDS3_HOLDINGS_DIR + '/volumes/COCIRS_0xxx/COCIRS_0010',
@@ -1377,7 +1374,7 @@ class TestPds3FileBlackBox:
         assert res == expected
 
     @pytest.mark.parametrize(
-        'input_path,task,expected',
+        ('input_path', 'task', 'expected'),
         [
             ('archives-volumes/COCIRS_0xxx/COCIRS_0012.tar.gz', '',
              PDS_PDSDATA_PATH + 'logs/archives/volumes/COCIRS_0xxx/COCIRS_0012_targz_.*.log')
@@ -1395,7 +1392,7 @@ class TestPds3FileBlackBox:
     # Test for shelf support
     ############################################################################
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/VGISS_5xxx/VGISS_5101/DATA/C13854XX/C1385455_RAW.lbl',
              PDS_PDSDATA_PATH + 'holdings/_infoshelf-volumes/VGISS_5xxx/VGISS_5101_info.pickle'),
@@ -1418,7 +1415,7 @@ class TestPds3FileBlackBox:
         assert target_pdsfile.shelf_path_and_lskip() == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             (PDS_PDSDATA_PATH + 'holdings/_infoshelf-volumes/VGISS_5xxx/VGISS_5101_info.pickle',
              None),
@@ -1431,7 +1428,7 @@ class TestPds3FileBlackBox:
     # Test for log path associations
     ############################################################################
     @pytest.mark.parametrize(
-        'input_path,suffix,task,dir,place,logroot,expected',
+        ('input_path', 'suffix', 'task', 'logdir', 'place', 'logroot', 'expected'),
         [
             ('volumes/HSTIx_xxxx/HSTI1_1556', '', '', '', 'default', None,
              PDS_PDSDATA_PATH + r'logs/volumes/HSTIx_xxxx/HSTI1_1556_20..-..-..T..-..-..\.log'),
@@ -1470,10 +1467,10 @@ class TestPds3FileBlackBox:
              PDS_PDSDATA_PATH + r'logs/tallahassee/volumes/HSTIx_xxxx/HSTI1_1556_alligator_20..-..-..T..-..-.._wrestle\.log'),
         ]
     )
-    def test_log_path_for_volume(self, input_path, suffix, task, dir, place, logroot, expected):
+    def test_log_path_for_volume(self, input_path, suffix, task, logdir, place, logroot, expected):
         target_pdsfile = instantiate_target_pdsfile(input_path)
         pds3file.Pds3File.set_log_root(logroot)
-        res = target_pdsfile.log_path_for_volume(suffix, task, dir, place)
+        res = target_pdsfile.log_path_for_volume(suffix, task, logdir, place)
         pds3file.Pds3File.set_log_root()
         # escape possible "(" & ")" if that exists in PDS_PDSDATA_PATH
         expected = expected.replace('(', '\\(')
@@ -1481,7 +1478,7 @@ class TestPds3FileBlackBox:
         assert re.match(expected, res)
 
     @pytest.mark.parametrize(
-        'input_path,suffix,task,dir,place,logroot,expected',
+        ('input_path', 'suffix', 'task', 'logdir', 'place', 'logroot', 'expected'),
         [
             ('volumes/HSTIx_xxxx/HSTI1_1556', '', '', '', 'default', None,
              PDS_PDSDATA_PATH + r'logs/volumes/HSTIx_xxxx_20..-..-..T..-..-..\.log'),
@@ -1520,10 +1517,10 @@ class TestPds3FileBlackBox:
              PDS_PDSDATA_PATH + r'logs/tallahassee/volumes/HSTIx_xxxx_alligator_20..-..-..T..-..-.._wrestle\.log'),
         ]
     )
-    def test_log_path_for_volset(self, input_path, suffix, task, dir, place, logroot, expected):
+    def test_log_path_for_volset(self, input_path, suffix, task, logdir, place, logroot, expected):
         target_pdsfile = instantiate_target_pdsfile(input_path)
         pds3file.Pds3File.set_log_root(logroot)
-        res = target_pdsfile.log_path_for_volset(suffix, task, dir, place)
+        res = target_pdsfile.log_path_for_volset(suffix, task, logdir, place)
         pds3file.Pds3File.set_log_root()
         # escape possible "(" & ")" if that exists in PDS_PDSDATA_PATH
         expected = expected.replace('(', '\\(')
@@ -1531,7 +1528,7 @@ class TestPds3FileBlackBox:
         assert re.match(expected, res)
 
     @pytest.mark.parametrize(
-        'input_path,task,dir,place,logroot,expected',
+        ('input_path', 'task', 'logdir', 'place', 'logroot', 'expected'),
         [
             ('metadata/HSTIx_xxxx/HSTI1_1556/HSTI1_1556_hstfiles.tab', '', '', 'default', None,
              PDS_PDSDATA_PATH + r'logs/metadata/HSTIx_xxxx/HSTI1_1556/HSTI1_1556_hstfiles_20..-..-..T..-..-..\.log'),
@@ -1552,10 +1549,10 @@ class TestPds3FileBlackBox:
              PDS_PDSDATA_PATH + r'logs/eggs/metadata/HSTIx_xxxx/HSTI1_1556/HSTI1_1556_hstfiles_20..-..-..T..-..-.._scramble\.log'),
         ]
     )
-    def test_log_path_for_index(self, input_path, task, dir, place, logroot, expected):
+    def test_log_path_for_index(self, input_path, task, logdir, place, logroot, expected):
         target_pdsfile = instantiate_target_pdsfile(input_path)
         pds3file.Pds3File.set_log_root(logroot)
-        res = target_pdsfile.log_path_for_index(task, dir, place)
+        res = target_pdsfile.log_path_for_index(task, logdir, place)
         pds3file.Pds3File.set_log_root()
         # escape possible "(" & ")" if that exists in PDS_PDSDATA_PATH
         expected = expected.replace('(', '\\(')
@@ -1566,7 +1563,7 @@ class TestPds3FileBlackBox:
     # Test for split and sort filenames
     ############################################################################
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/COCIRS_5xxx/COCIRS_5401/DATA/GEODATA/GEO0401130240_699.lbl',
              ('GEO0401130240_699', '', '.lbl')),
@@ -1579,7 +1576,7 @@ class TestPds3FileBlackBox:
         assert target_pdsfile.split_basename() == expected
 
     @pytest.mark.parametrize(
-        'input_path,basenames,expected',
+        ('input_path', 'basenames', 'expected'),
         [
             ('volumes/COCIRS_0xxx/COCIRS_0410',
              ['COCIRS_0xxx_v3', 'COCIRS_0xxx', 'COCIRS_0xxx_v2'],
@@ -1592,7 +1589,7 @@ class TestPds3FileBlackBox:
         assert target_pdsfile.sort_basenames(basenames=basenames) == expected
 
     @pytest.mark.parametrize(
-        'input_path,logical_paths,expected',
+        ('input_path', 'logical_paths', 'expected'),
         [
             ('previews/COUVIS_0xxx_v1/COUVIS_0009/DATA/D2004_274',
              [
@@ -1616,7 +1613,7 @@ class TestPds3FileBlackBox:
         assert res == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('previews/COUVIS_0xxx/COUVIS_0009/DATA/D2004_274',
              [
@@ -1638,7 +1635,7 @@ class TestPds3FileBlackBox:
         assert li == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('previews/COUVIS_0xxx/COUVIS_0009/DATA/D2004_274',
              [
@@ -1663,7 +1660,7 @@ class TestPds3FileBlackBox:
     # Test for transformations
     ############################################################################
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ([
                 'volumes/COISS_1xxx/COISS_1001/data/1294561143_1295221348/W1294561202_1.LBL',
@@ -1687,7 +1684,7 @@ class TestPds3FileBlackBox:
             assert path in expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ([
                 'volumes/COISS_1xxx/COISS_1001/data/1294561143_1295221348/W1294561202_1.LBL',
@@ -1710,7 +1707,7 @@ class TestPds3FileBlackBox:
             assert path in expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ([
                 'volumes/COISS_1xxx/COISS_1001/data/1294561143_1295221348/W1294561202_1.LBL',
@@ -1730,7 +1727,7 @@ class TestPds3FileBlackBox:
             assert basename in expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ([
                 PDS3_HOLDINGS_DIR + '/volumes/COISS_1xxx/COISS_1001/data/1294561143_1295221348/W1294561202_1.LBL',
@@ -1750,7 +1747,7 @@ class TestPds3FileBlackBox:
             assert path in expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ([
                 PDS3_HOLDINGS_DIR + '/volumes/COISS_1xxx/COISS_1001/data/1294561143_1295221348/W1294561202_1.LBL',
@@ -1766,7 +1763,7 @@ class TestPds3FileBlackBox:
             assert basename in expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ([
                 'volumes/COISS_1xxx/COISS_1001/data/1294561143_1295221348/W1294561202_1.LBL',
@@ -1786,7 +1783,7 @@ class TestPds3FileBlackBox:
             assert pdsf.logical_path in expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ([
                 'volumes/COISS_1xxx/COISS_1001/data/1294561143_1295221348/W1294561202_1.LBL',
@@ -1806,7 +1803,7 @@ class TestPds3FileBlackBox:
             assert path in expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ([
                 'volumes/COISS_1xxx/COISS_1001/data/1294561143_1295221348/W1294561202_1.LBL',
@@ -1822,7 +1819,7 @@ class TestPds3FileBlackBox:
             assert basename in expected
 
     @pytest.mark.parametrize(
-        'input_path,basenames,expected',
+        ('input_path', 'basenames', 'expected'),
         [
             ('volumes/COISS_0xxx/COISS_0001/data/wacfm/bit_wght/13302',
              ['133020.lbl'],
@@ -1837,7 +1834,7 @@ class TestPds3FileBlackBox:
             assert path in expected
 
     @pytest.mark.parametrize(
-        'input_path,basenames,expected',
+        ('input_path', 'basenames', 'expected'),
         [
             ('volumes/COCIRS_6xxx/COCIRS_6004/DATA/GEODATA/',
              ['GEO1004021018_699.LBL'],
@@ -1855,7 +1852,7 @@ class TestPds3FileBlackBox:
     # Test for associations
     ############################################################################
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.DAT',
              'volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.DAT'),
@@ -1871,7 +1868,7 @@ class TestPds3FileBlackBox:
         assert target_associated_parallel.logical_path == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected_path',
+        ('input_path', 'expected_path'),
         [
             ('volumes/COCIRS_0xxx/COCIRS_0012/DATA/NAV_DATA/GEO00120100.DAT',
              [PDS3_HOLDINGS_DIR + '/volumes/COCIRS_0xxx/COCIRS_0012/DATA/NAV_DATA/GEO00120100.DAT']),
@@ -1884,7 +1881,7 @@ class TestPds3FileBlackBox:
         assert pdsf_copy.abspath in expected_path
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('previews/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/HDAC1999_007_16_31_thumb.png',
              'previews-COUVIS_0xxx-COUVIS_0001-DATA-D1999_007-HDAC1999_007_16_31'),
@@ -1902,7 +1899,7 @@ class TestPds3FileBlackBox:
 ##########################################################################################
 class TestPds3FileHelperBlackBox:
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('volumes/COVIMS_8xxx/COVIMS_8001/data/VIMS_2017_251_GAMCRU_I_TAU_10KM.tab',
              True),
@@ -1915,7 +1912,7 @@ class TestPds3FileHelperBlackBox:
         assert res == expected
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             (PDS3_HOLDINGS_DIR + '/volumes/COUVIS_0xxx/COUVIS_0058/DATA/D2017_001/EUV2017_001_03_49.dat',
              'volumes/COUVIS_0xxx/COUVIS_0058/DATA/D2017_001/EUV2017_001_03_49.dat'),
@@ -1927,11 +1924,11 @@ class TestPds3FileHelperBlackBox:
         try:
             res = logical_path_from_abspath(input_path, pds3file.Pds3File)
             assert res == expected
-        except ValueError as err:
+        except ValueError:
             assert True # Not an absolute path
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             (PDS3_HOLDINGS_DIR + '/volumes/COUVIS_0xxx/COUVIS_0058/DATA/D2017_001/EUV2017_001_03_49.DAT',
              PDS3_HOLDINGS_DIR + '/volumes/COUVIS_0xxx/COUVIS_0058/DATA/D2017_001/EUV2017_001_03_49.DAT')
@@ -1942,7 +1939,7 @@ class TestPds3FileHelperBlackBox:
         assert res.lower() == expected.lower()
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             (PDS3_HOLDINGS_DIR + '/volumes/COUVIS_0xxx/COUVIS_0058/DATA/D2017_001/EUV2017_001_03_49.dat',
              PDS3_HOLDINGS_DIR + '/volumes/COUVIS_0xxx/COUVIS_0058/DATA/D2017_001/EUV2017_001_03_49.dat'),

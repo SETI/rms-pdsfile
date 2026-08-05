@@ -5,7 +5,6 @@
 ##########################################################################################
 
 import pdsfile.pds4file as pds4file
-
 from tests.support.holdings import resolve_holdings
 
 # Holdings root for the selected session flavor (see tests.support.holdings). When
@@ -16,9 +15,9 @@ PDS4_BUNDLES_DIR = f'{PDS4_HOLDINGS_DIR}/bundles'
 
 def instantiate_target_pdsfile(path, is_abspath=True):
     if is_abspath:
-        TESTFILE_PATH = PDS4_BUNDLES_DIR + '/' + path
-        target_pdsfile = pds4file.Pds4File.from_abspath(TESTFILE_PATH)
+        testfile_path = PDS4_BUNDLES_DIR + '/' + path
+        target_pdsfile = pds4file.Pds4File.from_abspath(testfile_path)
     else:
-        TESTFILE_PATH = path
-        target_pdsfile = pds4file.Pds4File.from_logical_path(TESTFILE_PATH)
+        testfile_path = path
+        target_pdsfile = pds4file.Pds4File.from_logical_path(testfile_path)
     return target_pdsfile

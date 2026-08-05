@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 import argparse
 import os
-from pdsfile import (Pds3File,
-                     Pds4File)
 import pprint
-import tabulate
 import traceback
+
+import tabulate
+
+from pdsfile import Pds3File, Pds4File
 
 # Holdings roots read straight from the environment. The test helpers that also
 # expose these live in the tests package (not the distribution), so this tool

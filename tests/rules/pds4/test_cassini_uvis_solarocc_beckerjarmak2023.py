@@ -1,13 +1,14 @@
 import pytest
 
 import pdsfile.pds4file as pds4file
-
+from pdsfile.pds4file.rules.cassini_uvis_solarocc_beckerjarmak2023 import PRIMARY_FILESPEC_LIST
 from tests.rules.support import (
     PDS4_TEST_RESULTS_DIR as TEST_RESULTS_DIR,
+)
+from tests.rules.support import (
     associated_abspaths_test,
     opus_products_test,
 )
-from pdsfile.pds4file.rules.cassini_uvis_solarocc_beckerjarmak2023 import PRIMARY_FILESPEC_LIST
 
 
 @pytest.mark.parametrize(

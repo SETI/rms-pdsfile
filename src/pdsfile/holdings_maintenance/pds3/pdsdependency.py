@@ -8,15 +8,16 @@
 # Enter the --help option to see more information.
 ################################################################################
 
-import sys
-import os
-import glob
-import re
 import argparse
+import glob
+import os
+import re
+import sys
 
 import pdslogger
-import pdsfile
 import translator
+
+import pdsfile
 
 LOGNAME = 'pds.validation.dependencies'
 LOGROOT_ENV = 'PDS_LOG_ROOT'
@@ -104,7 +105,7 @@ TESTS = translator.TranslatorByRegex([
 # Class definition
 ################################################################################
 
-class PdsDependency(object):
+class PdsDependency:
 
     DEPENDENCY_SUITES = {}
     MODTIME_DICT = {}
@@ -1047,14 +1048,14 @@ def main():
         path = os.path.abspath(path)
         pdsdir = pdsfile.Pds3File.from_abspath(path)
         if not pdsdir.is_volume_dir and not pdsdir.is_volset_dir:
-          print('pdsdependency error: '
-                'not a volume or volume set directory: ' + pdsdir.logical_path)
-          sys.exit(1)
+            print('pdsdependency error: '
+                  'not a volume or volume set directory: ' + pdsdir.logical_path)
+            sys.exit(1)
 
         if pdsdir.category_ != 'volumes/':
-          print('pdsdependency error: '
-                'not a volume or volume set directory: ' + pdsdir.logical_path)
-          sys.exit(1)
+            print('pdsdependency error: '
+                  'not a volume or volume set directory: ' + pdsdir.logical_path)
+            sys.exit(1)
 
     # Initialize the logger
     logger = pdslogger.PdsLogger(LOGNAME)
@@ -1118,11 +1119,11 @@ def main():
             pdsdir = pdsfile.Pds3File.from_abspath(path)
 
             # Save logs in up to two places
-            logfiles = set([pdsdir.log_path_for_volume('_dependency',
-                                                       dir='pdsdependency'),
-                            pdsdir.log_path_for_volume('_dependency',
-                                                       dir='pdsdependency',
-                                                       place='parallel')])
+            logfiles = {pdsdir.log_path_for_volume('_dependency',
+                                                   dir='pdsdependency'),
+                        pdsdir.log_path_for_volume('_dependency',
+                                                   dir='pdsdependency',
+                                                   place='parallel')}
 
             # Create all the handlers for this level in the logger
             local_handlers = []
@@ -1151,7 +1152,7 @@ def main():
         raise
 
     finally:
-        (fatal, errors, warnings, tests) = logger.close()
+        (fatal, errors, _warnings, _tests) = logger.close()
         if fatal or errors:
             status = 1
 

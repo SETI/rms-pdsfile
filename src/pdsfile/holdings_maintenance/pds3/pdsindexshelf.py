@@ -17,8 +17,9 @@ import re
 import sys
 
 import pdslogger
-import pdsfile
 import pdstable
+
+import pdsfile
 
 LOGNAME = 'pds.validation.indexshelf'
 LOGROOT_ENV = 'PDS_LOG_ROOT'
@@ -541,7 +542,7 @@ def main():
         raise
 
     finally:
-        (fatal, errors, warnings, tests) = logger.close()
+        (fatal, errors, _warnings, _tests) = logger.close()
         if fatal or errors:
             status = 1
 

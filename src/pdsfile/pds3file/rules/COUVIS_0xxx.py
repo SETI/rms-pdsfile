@@ -2,10 +2,12 @@
 # pds3file/rules/COUVIS_0xxx.py
 ##########################################################################################
 
-import pdsfile.pds3file as pds3file
-import translator
-import re
 import os
+import re
+
+import translator
+
+import pdsfile.pds3file as pds3file
 
 ##########################################################################################
 # DESCRIPTION_AND_ICON
@@ -270,8 +272,7 @@ class COUVIS_0xxx(pds3file.Pds3File):
 
         result = COUVIS_0xxx.VERSIONS_PATH_AND_KEY.first(self.logical_path)
         if not result:
-            raise ValueError('Undefined DATA_SET_ID index for %s' %
-                             self.logical_path)
+            raise ValueError(f'Undefined DATA_SET_ID index for {self.logical_path}')
 
         (versions_path, key) = result
 
@@ -282,8 +283,8 @@ class COUVIS_0xxx(pds3file.Pds3File):
         # This block will never hit unless we have missing version files. Since all
         # version files exist in Dropbox, there is no way to test this.
         if not os.path.exists(abspath): # pragma: no cover
-            raise FileNotFoundError('Missing DATA_SET_ID index for %s: %s' %
-                                    (self.logical_path, abspath))
+            raise FileNotFoundError(
+                f'Missing DATA_SET_ID index for {self.logical_path}: {abspath}')
 
         versions_table = pds3file.Pds3File.from_abspath(abspath)
         row = versions_table.child_of_index(key, flag='')
@@ -291,8 +292,8 @@ class COUVIS_0xxx(pds3file.Pds3File):
         # This block will never hit unless we modify the version files or have a wrong
         # version file.
         if not row.exists: # pragma: no cover
-            raise ValueError('DATA_SET_ID for %s not found in index: %s' %
-                             (self.logical_path, versions_table))
+            raise ValueError(
+                f'DATA_SET_ID for {self.logical_path} not found in index: {versions_table}')
 
         return row.row_dicts[0]['DATA_SET_ID']
 

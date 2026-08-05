@@ -636,12 +636,12 @@ class _PropertiesMixin:
         """Return the size of this file as a formatted string, e.g., "2.16 MB"."""
 
         if self._formatted_size_filled is None:
-          if self.size_bytes:
-            self._formatted_size_filled = formatted_file_size(self.size_bytes)
-          else:
-            self._formatted_size_filled = ''
+            if self.size_bytes:
+                self._formatted_size_filled = formatted_file_size(self.size_bytes)
+            else:
+                self._formatted_size_filled = ''
 
-          self._recache()
+            self._recache()
 
         return self._formatted_size_filled
 
@@ -716,8 +716,8 @@ class _PropertiesMixin:
             # Fill in missing icon types
             if (icon_type is None and
                 self.basename not in cls.EXTRA_README_BASENAMES):
-                    key = (self.category_, self.is_bundleset)
-                    icon_type = cls.DEFAULT_HIGH_LEVEL_ICONS.get(key, None)
+                key = (self.category_, self.is_bundleset)
+                icon_type = cls.DEFAULT_HIGH_LEVEL_ICONS.get(key, None)
 
             if icon_type is None:
                 pair = self.DESCRIPTION_AND_ICON.first(self.logical_path)
@@ -1022,16 +1022,16 @@ class _PropertiesMixin:
                 else:
                     new_list = []
                     for (recno, basename, internal_path) in values:
-                      if internal_path.startswith('../../../'):
-                        abspath = abspath_for_logical_path(internal_path[9:], cls)
-                      elif internal_path.startswith('../../'):
-                        abspath = abspath_for_logical_path(self.category_ +
-                                                           internal_path[6:], cls)
-                      elif internal_path.startswith('../'):
-                        abspath = (self.bundleset_abspath() + internal_path[2:])
-                      else:
-                        abspath = volume_path_ + internal_path
-                      new_list.append((recno, basename, abspath))
+                        if internal_path.startswith('../../../'):
+                            abspath = abspath_for_logical_path(internal_path[9:], cls)
+                        elif internal_path.startswith('../../'):
+                            abspath = abspath_for_logical_path(self.category_ +
+                                                               internal_path[6:], cls)
+                        elif internal_path.startswith('../'):
+                            abspath = (self.bundleset_abspath() + internal_path[2:])
+                        else:
+                            abspath = volume_path_ + internal_path
+                        new_list.append((recno, basename, abspath))
                     self._internal_links_filled = new_list
 
         self._recache()
@@ -1163,7 +1163,7 @@ class _PropertiesMixin:
         # Don't look for PdsViewSets at bundle root; saves time
         if (self.exists and self.bundlename_ and
             not self.archives_ and not self.checksums_ and self.interior):
-                self._viewset_filled = self.viewset_lookup('default')
+            self._viewset_filled = self.viewset_lookup('default')
 
         if self._viewset_filled is None:
             self._viewset_filled = False
@@ -1621,7 +1621,7 @@ class _PropertiesMixin:
 
         if (self._all_viewsets_filled is not None and
             name in self._all_viewsets_filled):
-                return self._all_viewsets_filled[name]
+            return self._all_viewsets_filled[name]
 
         # Check for associated viewables
         try:

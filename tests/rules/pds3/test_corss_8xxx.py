@@ -1,16 +1,9 @@
-import pytest
 import os
+
+import pytest
 import translator
 
 import pdsfile.pds3file as pds3file
-
-from tests.rules.support import (
-    PDS3_TEST_RESULTS_DIR as TEST_RESULTS_DIR,
-    associated_abspaths_test,
-    opus_products_test,
-    translate_all,
-    unmatched_patterns,
-)
 from pdsfile.pds3file.rules.CORSS_8xxx import (
     associations_to_diagrams,
     associations_to_documents,
@@ -24,11 +17,20 @@ from pdsfile.pds3file.rules.CORSS_8xxx import (
     skyview_viewables,
     timeline_viewables,
 )
+from tests.rules.support import (
+    PDS3_TEST_RESULTS_DIR as TEST_RESULTS_DIR,
+)
+from tests.rules.support import (
+    associated_abspaths_test,
+    opus_products_test,
+    translate_all,
+    unmatched_patterns,
+)
 
 
 def test_default_viewables():
     # ((number of default viewables, diagrams, profiles, skyviews, dsntracks, timelines), logical_path)
-    TESTS = [
+    test_cases = [
         ((4, 0, 0, 0, 4, 0), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev007/Rev007_DSN_Elevation.LBL'),
         ((4, 0, 0, 0, 4, 0), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev007/Rev007_DSN_Elevation.pdf'),
         ((4, 0, 0, 0, 0, 4), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev007/Rev007_TimeLine_Figure.pdf'),
@@ -49,7 +51,7 @@ def test_default_viewables():
         ((4, 4, 4, 0, 0, 0), 'volumes/CORSS_8xxx_v1/CORSS_8001/EASYDATA/Rev07E_RSS_2005_123_X43_E/RSS_2005_123_X43_E_TAU_10KM.TAB'),
     ]
 
-    for (counts, path) in TESTS:
+    for (counts, path) in test_cases:
         abspaths = translate_all(default_viewables, path)
         trimmed = [p.rpartition('holdings/')[-1] for p in abspaths]
         assert len(abspaths) == counts[0], f'{path} {len(abspaths)} {trimmed}'
@@ -76,7 +78,7 @@ def test_default_viewables():
 
 def test_associations():
     # ((number of volume associations, previews, diagrams, metadata, documents), logical_path)
-    TESTS = [
+    test_cases = [
         (( 2, 2, 1, 1, 1), 'volumes/CORSS_8xxx/CORSS_8001/data'),
         (( 2, 2, 1, 0, 1), 'volumes/CORSS_8xxx/CORSS_8001/browse'),
         (( 2, 2, 1, 0, 0), 'previews/CORSS_8xxx/CORSS_8001/data'),
@@ -129,7 +131,7 @@ def test_associations():
         (( 1, 1, 4, 0, 1), 'volumes/CORSS_8xxx/CORSS_8001/data/Rev054/Rev054CE/test_unmatched.pdf'),
     ]
 
-    for (counts, path) in TESTS:
+    for (counts, path) in test_cases:
         # This is to test the translated pattern that does not find a matching path in
         # the file system.
         if 'test_unmatched' in path:
@@ -180,7 +182,7 @@ def test_associations():
         assert len(abspaths) == counts[4], f'Miscount: {path} {len(abspaths)} {trimmed}'
 
 @pytest.mark.parametrize(
-    'input_path,expected',
+    ('input_path', 'expected'),
     [
         ('volumes/CORSS_8xxx/CORSS_8001/data/Rev009/Rev009E/Rev009E_RSS_2005_159_K55_E/RSS_2005_159_K55_E_TAU_01KM.TAB',
          'CORSS_8xxx/opus_products/RSS_2005_159_K55_E_TAU_01KM.txt')
@@ -191,7 +193,7 @@ def test_opus_products(request, input_path, expected):
     opus_products_test(pds3file.Pds3File, input_path, TEST_RESULTS_DIR+expected, update)
 
 @pytest.mark.parametrize(
-    'input_path,category,expected',
+    ('input_path', 'category', 'expected'),
     [
         ('volumes/CORSS_8xxx/CORSS_8001/data/Rev009/Rev009E/Rev009E_RSS_2005_159_K55_E/RSS_2005_159_K55_E_TAU_01KM.TAB',
          'volumes',
@@ -204,7 +206,7 @@ def test_associated_abspaths(request, input_path, category, expected):
                              TEST_RESULTS_DIR+expected, update)
 
 def test_opus_id_to_primary_logical_path():
-    TESTS = [
+    test_cases = [
         'Rev009/Rev009E/Rev009E_RSS_2005_159_K55_E/RSS_2005_159_K55_E_TAU_01KM.TAB',
         'Rev007/Rev007E/Rev007E_RSS_2005_123_X43_E/RSS_2005_123_X43_E_TAU_01KM.TAB',
         'Rev007/Rev007E/Rev007E_RSS_2005_123_K34_E/RSS_2005_123_K34_E_TAU_01KM.TAB',
@@ -212,7 +214,7 @@ def test_opus_id_to_primary_logical_path():
         'Rev137/Rev137E/Rev137E_RSS_2010_245_S24_E/RSS_2010_245_S24_E_TAU_1600M.TAB',
     ]
 
-    for file_path in TESTS:
+    for file_path in test_cases:
         logical_path = 'volumes/CORSS_8xxx/CORSS_8001/data/' + file_path
         test_pdsf = pds3file.Pds3File.from_logical_path(logical_path)
         opus_id = test_pdsf.opus_id
@@ -246,13 +248,15 @@ def test_opus_id_to_primary_logical_path():
             # Every viewset is in the product set
             for viewset in pdsf.all_viewsets.values():
                 for viewable in viewset.viewables:
-                    if 'diagrams/' in viewable.abspath: continue    # skip diagrams
+                    if 'diagrams/' in viewable.abspath:  # skip diagrams
+                        continue
                     assert viewable.abspath in opus_id_abspaths
 
             # Every associated product is in the product set except metadata
             for category in ('volumes', 'calibrated', 'previews'):
                 for abspath in pdsf.associated_abspaths(category):
-                    if '.' not in os.path.basename(abspath): continue   # skip dirs
+                    if '.' not in os.path.basename(abspath):  # skip dirs
+                        continue
                     assert abspath in opus_id_abspaths
 
 ##########################################################################################

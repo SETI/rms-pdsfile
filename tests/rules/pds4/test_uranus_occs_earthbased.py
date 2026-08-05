@@ -1,17 +1,18 @@
 import pytest
 
 import pdsfile.pds4file as pds4file
-
+from pdsfile.pds4file.rules.uranus_occs_earthbased import PRIMARY_FILESPEC_LIST
 from tests.rules.support import (
     PDS4_TEST_RESULTS_DIR as TEST_RESULTS_DIR,
+)
+from tests.rules.support import (
     associated_abspaths_test,
     opus_products_test,
 )
-from pdsfile.pds4file.rules.uranus_occs_earthbased import PRIMARY_FILESPEC_LIST
 
 
 @pytest.mark.parametrize(
-    'input_path,expected',
+    ('input_path', 'expected'),
     [
         # rings
         ('bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/rings/u0_kao_91cm_734nm_radius_delta_egress_100m.xml',
@@ -29,7 +30,7 @@ def test_opus_products(request, input_path, expected):
     opus_products_test(pds4file.Pds4File, input_path, TEST_RESULTS_DIR+expected, update)
 
 @pytest.mark.parametrize(
-    'input_path,category,expected',
+    ('input_path', 'category', 'expected'),
     [
         ('bundles/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress.xml',
          'bundles',

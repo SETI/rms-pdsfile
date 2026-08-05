@@ -121,41 +121,14 @@ class Pds3File(PdsFile):
         cls.SHELVES_REQUIRED = status
 
     # Alias, compatible with old function/property names
-    @property
-    def is_volset(self):
-        return self.is_bundleset
-
-    @property
-    def is_volset_file(self):
-        return self.is_bundleset_file
-
-    @property
-    def is_volset_dir(self):
-        return self.is_bundleset_dir
-
-    @property
-    def is_volume(self):
-        return self.is_bundle
-
-    @property
-    def is_volume_file(self):
-        return self.is_bundle_file
-
-    @property
-    def is_volume_dir(self):
-        return self.is_bundle_dir
-
     def log_path_for_volset(self, suffix='', task='', dir='', place='default'):
         return self.log_path_for_bundleset(suffix, task, dir, place)
-
-    def log_path_for_volume(self, suffix='', task='', dir='', place='default'):
-        return self.log_path_for_bundle(suffix, task, dir, place)
 
     # Override functions
     def __repr__(self):
         if self.abspath is None:
             return 'Pds3File-logical("' + self.logical_path + '")'
-        elif type(self) == Pds3File:
+        elif type(self) is Pds3File:
             return 'Pds3File("' + self.abspath + '")'
         else:
             return ('Pds3File.' + type(self).__name__ + '("' +

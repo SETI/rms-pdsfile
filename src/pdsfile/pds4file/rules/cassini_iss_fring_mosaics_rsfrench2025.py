@@ -2,11 +2,15 @@
 # pds4file/rules/cassini_iss_fring_mosaics_rsfrench2025.py
 ##########################################################################################
 
-import pdsfile.pds4file as pds4file
-import translator
 import re
 
-from .cassini_iss_fring_mosaics_rsfrench2025_primary_filespec import PRIMARY_FILESPEC_LIST as PRIMARY_FILESPEC_LIST
+import translator
+
+import pdsfile.pds4file as pds4file
+
+from .cassini_iss_fring_mosaics_rsfrench2025_primary_filespec import (
+    PRIMARY_FILESPEC_LIST as PRIMARY_FILESPEC_LIST,
+)
 
 ##########################################################################################
 # DESCRIPTION_AND_ICON

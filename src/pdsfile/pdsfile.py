@@ -559,7 +559,7 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
 
         subclasses = cls.__subclasses__()
         for child_class in subclasses:
-             child_class.LOGGER = logger
+            child_class.LOGGER = logger
 
 
     @classmethod
@@ -572,7 +572,7 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
 
         subclasses = cls.__subclasses__()
         for child_class in subclasses:
-             child_class.set_easylogger()
+            child_class.set_easylogger()
 
     ############################################################################
     # Merged directories, index rows, and object utilities
@@ -1815,12 +1815,12 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
                 # See if any of these alternative ranks will work
                 this_abspath = None
                 for alt_rank in alt_ranks:
-                  try:
-                    this_abspath = cls.CACHE['$VOLS-' + this.category_][bundlename]\
-                                                                   [alt_rank]
-                    break
-                  except KeyError:
-                    continue
+                    try:
+                        this_abspath = cls.CACHE['$VOLS-' + this.category_][bundlename]\
+                                                                       [alt_rank]
+                        break
+                    except KeyError:
+                        continue
 
                 if not this_abspath:
                     raise ValueError(f'Suffix "{this.suffix}" not found: '
@@ -1865,12 +1865,12 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
                 # See if any of these alternative ranks will work
                 this_abspath = None
                 for alt_rank in alt_ranks:
-                  try:
-                    this_abspath = cls.CACHE['$VOLS-' + this.category_][bundleset]\
-                                                                   [alt_rank]
-                    break
-                  except KeyError:
-                    continue
+                    try:
+                        this_abspath = cls.CACHE['$VOLS-' + this.category_][bundleset]\
+                                                                       [alt_rank]
+                        break
+                    except KeyError:
+                        continue
 
                 if not this_abspath:
                     raise ValueError(f'Suffix "{this.suffix}" not found: '

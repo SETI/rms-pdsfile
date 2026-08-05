@@ -146,13 +146,13 @@ def validate_one_volume(pdsdir, voltypes, tests, args, logger):
 
             if (args.linkshelves and
                 voltype in ('volumes', 'calibrated', 'metadata')):
-                    logger.open('Linkshelf re-validatation for', abspath)
-                    try:
-                        pdslinkshelf.validate(temp_pdsdir,
-                                              limits=LINKSHELF_LIMITS)
-                    finally:
-                        tests_performed += 1
-                        logger.close()
+                logger.open('Linkshelf re-validatation for', abspath)
+                try:
+                    pdslinkshelf.validate(temp_pdsdir,
+                                          limits=LINKSHELF_LIMITS)
+                finally:
+                    tests_performed += 1
+                    logger.close()
 
         # Infoshelves for each 'archive-' + voltype...
         if args.infoshelves and args.archives:

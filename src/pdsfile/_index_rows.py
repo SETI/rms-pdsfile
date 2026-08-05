@@ -308,7 +308,7 @@ class _IndexRowsMixin:
                 abspath = abspath.replace(neighbor.basename, self.basename)
                 if (neighbor.basename != self.basename and
                     cls.os_path_exists(abspath)):
-                        return abspath
+                    return abspath
 
         # We should never reach this point, because there should never be a case
         # where an index row exists but the data file doesn't. Nevertheless,

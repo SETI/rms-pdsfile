@@ -1,16 +1,17 @@
 import pytest
 
 import pdsfile.pds3file as pds3file
-
 from tests.rules.support import (
     PDS3_TEST_RESULTS_DIR as TEST_RESULTS_DIR,
+)
+from tests.rules.support import (
     associated_abspaths_test,
     opus_products_test,
 )
 
 
 @pytest.mark.parametrize(
-    'input_path,expected',
+    ('input_path', 'expected'),
     [
         ('volumes/HSTIx_xxxx/HSTI1_1559/DATA/VISIT_11/IB4V11MNQ.ASC',
          'HSTIx_xxxx/opus_products/IB4V11MNQ.txt')
@@ -22,7 +23,7 @@ def test_opus_products(request, input_path, expected):
 
 
 @pytest.mark.parametrize(
-    'input_path,category,expected',
+    ('input_path', 'category', 'expected'),
     [
         ('volumes/HSTUx_xxxx/HSTU0_5167/DATA/VISIT_04/U2NO0404T.LBL',
          'volumes',
@@ -36,7 +37,7 @@ def test_associated_abspaths(request, input_path, category, expected):
 
 
 def test_opus_id_to_primary_logical_path():
-    TESTS = [
+    test_cases = [
         'volumes/HSTIx_xxxx/HSTI1_1559/DATA/VISIT_11/IB4V11MNQ.LBL',
         'volumes/HSTIx_xxxx/HSTI1_1556/DATA/VISIT_01/IB4W01I5Q.LBL',
         'volumes/HSTJx_xxxx/HSTJ0_9296/DATA/VISIT_B1/J8M3B1021.LBL',
@@ -46,7 +47,7 @@ def test_opus_id_to_primary_logical_path():
         'volumes/HSTUx_xxxx/HSTU0_5167/DATA/VISIT_04/U2NO0404T.LBL',
     ]
 
-    for logical_path in TESTS:
+    for logical_path in test_cases:
         test_pdsf = pds3file.Pds3File.from_logical_path(logical_path)
         opus_id = test_pdsf.opus_id
         opus_id_pdsf = pds3file.Pds3File.from_opus_id(opus_id)

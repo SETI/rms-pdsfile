@@ -1,16 +1,17 @@
 import pytest
 
 import pdsfile.pds3file as pds3file
-
 from tests.rules.support import (
     PDS3_TEST_RESULTS_DIR as TEST_RESULTS_DIR,
+)
+from tests.rules.support import (
     associated_abspaths_test,
     opus_products_test,
 )
 
 
 @pytest.mark.parametrize(
-    'input_path,expected',
+    ('input_path', 'expected'),
     [
         ('volumes/GO_0xxx/GO_0017/J0/OPNAV/C0346405900R.IMG',
          'GO_0xxx/opus_products/C0346405900R.txt')
@@ -22,7 +23,7 @@ def test_opus_products(request, input_path, expected):
 
 
 @pytest.mark.parametrize(
-    'input_path,category,expected',
+    ('input_path', 'category', 'expected'),
     [
         ('volumes/GO_0xxx/GO_0017/J0/OPNAV/C0346405900R.IMG',
          'volumes',
@@ -35,7 +36,7 @@ def test_associated_abspaths(request, input_path, category, expected):
                              TEST_RESULTS_DIR+expected, update)
 
 def test_opus_id_to_primary_logical_path():
-    TESTS = [
+    test_cases = [
         'volumes/GO_0xxx/GO_0002/RAW_CAL/C0003061100R.LBL',
         'volumes/GO_0xxx/GO_0002/RAW_CAL/C0011890900R.LBL',
         'volumes/GO_0xxx/GO_0002/RAW_CAL/C0011895526R.LBL',
@@ -264,7 +265,7 @@ def test_opus_id_to_primary_logical_path():
         'volumes/GO_0xxx/GO_0023/REDO/E11/IO/C0420361500R.LBL',
     ]
 
-    for logical_path in TESTS:
+    for logical_path in test_cases:
         test_pdsf = pds3file.Pds3File.from_logical_path(logical_path)
         opus_id = test_pdsf.opus_id
         opus_id_pdsf = pds3file.Pds3File.from_opus_id(opus_id)
@@ -312,7 +313,7 @@ def test_opus_id_to_primary_logical_path():
 
 def test_duplicated_products():
 
-    TESTS = [
+    test_cases = [
         ('GO_0006/REDO/C0018062639R.LBL'           , 'GO_0002/VENUS/C0018062639R.LBL'         ),
         ('GO_0006/REDO/C0018518445R.LBL'           , 'GO_0002/VENUS/C0018518445R.LBL'         ),
         ('GO_0006/REDO/C0059469700R.LBL'           , 'GO_0002/RAW_CAL/C0059469700R.LBL'       ),
@@ -335,7 +336,7 @@ def test_duplicated_products():
         ('GO_0023/G29/REPAIRED/C0600660969S.LBL'   , 'GO_0023/G29/GARBLED/C0600660969R.LBL'   ),
     ]
 
-    for (file1, file2) in TESTS:
+    for (file1, file2) in test_cases:
         pdsf1 = pds3file.Pds3File.from_logical_path('volumes/GO_0xxx/' + file1)
         pdsf2 = pds3file.Pds3File.from_logical_path('volumes/GO_0xxx/' + file2)
         assert pdsf1.opus_id == pdsf2.opus_id, (pdsf1.opus_id, pdsf2.opus_id)

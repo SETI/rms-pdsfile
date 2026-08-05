@@ -59,7 +59,7 @@ def main():
     for name in _module_set():
         try:
             importlib.import_module(name)
-        except Exception as exc:  # noqa: BLE001 -- report every import failure
+        except Exception as exc:  # report every import failure
             failures.append((name, f'{type(exc).__name__}: {exc}'))
 
     if failures:

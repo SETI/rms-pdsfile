@@ -8,14 +8,15 @@
 # Enter the --help option to see more information.
 ################################################################################
 
-import sys
+import argparse
 import os
 import re
+import sys
 import tarfile
 import zlib
-import argparse
 
 import pdslogger
+
 import pdsfile
 
 LOGNAME = 'pds.validation.archives'
@@ -52,7 +53,7 @@ def load_directory_info(pdsdir, *, logger=None, limits=None):
     logger.open('Generating file info', dirpath, limits=merged_limits)
 
     try:
-        (tarpath, lskip) = pdsdir.archive_path_and_lskip()
+        (_tarpath, lskip) = pdsdir.archive_path_and_lskip()
 
         tuples = [(dirpath, dirpath[lskip:], 0, 0)]
         for (path, dirs, files) in os.walk(dirpath):
@@ -83,10 +84,10 @@ def load_directory_info(pdsdir, *, logger=None, limits=None):
                 tuples.append((abspath, abspath[lskip:], nbytes, modtime))
 
             # Load directories
-            for dir in dirs:
-                abspath = os.path.join(path, dir)
+            for dirname in dirs:
+                abspath = os.path.join(path, dirname)
 
-                if dir.startswith('._'):       # skip dot-underscore files
+                if dirname.startswith('._'):    # skip dot-underscore files
                     logger.dot_underscore('._* directory skipped', abspath)
                     continue
 
@@ -131,7 +132,7 @@ def read_archive_info(tarpath, *, logger=None, limits=None):
     logger.open('Reading archive file', tarpath, limits=merged_limits)
 
     try:
-        (dirpath, prefix) = pdstar.dirpath_and_prefix_for_archive()
+        (_dirpath, prefix) = pdstar.dirpath_and_prefix_for_archive()
 
         tuples = []
         with tarfile.open(tarpath, 'r:gz') as f:
@@ -497,13 +498,13 @@ def main():
         for pdsdir in pdsdirs:
 
             # Save logs in up to two places
-            logfiles = set([pdsdir.log_path_for_volume('_links',
-                                                       task=args.task,
-                                                       dir='pdsarchives'),
-                            pdsdir.log_path_for_volume('_links',
-                                                       task=args.task,
-                                                       dir='pdsarchives',
-                                                       place='parallel')])
+            logfiles = {pdsdir.log_path_for_volume('_links',
+                                                   task=args.task,
+                                                   dir='pdsarchives'),
+                        pdsdir.log_path_for_volume('_links',
+                                                   task=args.task,
+                                                   dir='pdsarchives',
+                                                   place='parallel')}
 
             # Create all the handlers for this level in the logger
             local_handlers = []
@@ -527,19 +528,19 @@ def main():
                     logger.info('Log file', logfile)
 
                 if args.task == 'initialize':
-                    proceed = initialize(pdsdir)
+                    initialize(pdsdir)
 
                 elif args.task == 'reinitialize':
-                    proceed = reinitialize(pdsdir)
+                    reinitialize(pdsdir)
 
                 elif args.task == 'validate':
-                    proceed = validate(pdsdir)
+                    validate(pdsdir)
 
                 elif args.task == 'repair':
-                    proceed = repair(pdsdir)
+                    repair(pdsdir)
 
                 else:       # update
-                    proceed = update(pdsdir)
+                    update(pdsdir)
 
             except (Exception, KeyboardInterrupt) as e:
                 logger.exception(e)
@@ -551,11 +552,10 @@ def main():
     except (Exception, KeyboardInterrupt) as e:
         logger.exception(e)
         status = 1
-        proceed = False
         raise
 
     finally:
-        (fatal, errors, warnings, tests) = logger.close()
+        (fatal, errors, _warnings, _tests) = logger.close()
         if fatal or errors:
             status = 1
 

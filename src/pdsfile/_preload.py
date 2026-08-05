@@ -292,11 +292,11 @@ class _PreloadMixin:
 
                 if (parts[0].startswith('documents/') or
                     parts[0].rpartition('/')[2] in cls.EXTRA_README_BASENAMES):
-                        md5 = parts[5]
-                        dsids = []
+                    md5 = parts[5]
+                    dsids = []
                 else:
-                        md5 = ''
-                        dsids = list(parts[5:])
+                    md5 = ''
+                    dsids = list(parts[5:])
 
                 # Update either keys_without_dsids or dsids_vs_key. This is used
                 # to fill in data set IDs for voltypes other than "volumes/".

@@ -19,8 +19,9 @@ import shutil
 import sys
 
 import pdslogger
-import pdsfile
 import translator
+
+import pdsfile
 
 LOGNAME = 'pds.validation.links'
 LOGROOT_ENV = 'PDS_LOG_ROOT'
@@ -64,7 +65,7 @@ EXTS_WO_LABELS = {'.XML', '.LBLX', '.CAT', '.FMT', '.SFD'}
 
 ################################################################################
 
-class LinkInfo(object):
+class LinkInfo:
     """Used internally to describe a link within a specified record of a file.
     """
 
@@ -135,7 +136,7 @@ def generate_links(dirpath, old_links=None, *, logger=None, limits=None):
         latest_mtime = 0.
         collection_basename_dict = {}
         # Walk the directory tree, one subdirectory "root" at a time...
-        for (root, dirs, files) in os.walk(dirpath):
+        for (root, _dirs, files) in os.walk(dirpath):
 
             local_basenames = []            # Tracks the basenames in this directory
             local_basenames_uc = []         # Same as above, but upper case
@@ -170,7 +171,7 @@ def generate_links(dirpath, old_links=None, *, logger=None, limits=None):
                     abspath not in collection_basename_dict):
                     logger.debug('Construct collection basename dictionary from', abspath)
                     csv_basenames = set()
-                    with open(abspath, 'r') as file:
+                    with open(abspath) as file:
                         csv_lines = csv.reader(file)
                         for line in csv_lines:
                             # skip the empty line
@@ -338,10 +339,10 @@ def generate_links(dirpath, old_links=None, *, logger=None, limits=None):
                     if (len(linkname_uc) > ltest and
                         linkname_uc[:ltest] == baseroot_uc and
                         linkname_uc[ltest] == '.'):
-                            label_dict[info.target] = abspath
-                            logger.info('Label identified (by name) for %s' %
-                                         info.linkname, abspath)
-                            continue
+                        label_dict[info.target] = abspath
+                        logger.info('Label identified (by name) for %s' %
+                                     info.linkname, abspath)
+                        continue
 
                     # Otherwise, then maybe
                     if info.is_target:
@@ -467,11 +468,11 @@ def generate_links(dirpath, old_links=None, *, logger=None, limits=None):
                 is_basename_in_csv = False
                 logger.info('Check if %s is in the collection csv' % basename)
                 for col_abspath, csv_basenames in collection_basename_dict.items():
-                    if (col_abspath.startswith(parent_collection_csv_prefix) or
-                        col_abspath.startswith(local_collection_csv_prefix)):
-                        if basename.rpartition('.')[0] in csv_basenames:
-                            is_basename_in_csv = True
-                            break
+                    if ((col_abspath.startswith(parent_collection_csv_prefix) or
+                         col_abspath.startswith(local_collection_csv_prefix)) and
+                            basename.rpartition('.')[0] in csv_basenames):
+                        is_basename_in_csv = True
+                        break
 
                 if not is_basename_in_csv:
                     continue
@@ -532,7 +533,7 @@ def read_links(abspath, logger=None):
     file.
     """
 
-    with open(abspath, 'r', encoding='latin-1') as f:
+    with open(abspath, encoding='latin-1') as f:
         recs = f.readlines()
 
     links = []
@@ -667,7 +668,7 @@ def load_links(dirpath, *, logger=None, limits=None):
         logger.info('Link shelf file', link_path)
 
         if not os.path.exists(link_path):
-            raise IOError('File not found: ' + link_path)
+            raise OSError('File not found: ' + link_path)
 
         # Read the shelf file and convert to a dictionary
         with open(link_path, 'rb') as f:
@@ -782,7 +783,7 @@ def write_linkdict(dirpath, link_dict, *, logger=None, limits=None):
             len_key = max(len_key, len(key))
             if isinstance(value, list):
                 tuples = value
-                for (recno, basename, interior_path) in tuples:
+                for (_recno, basename, _interior_path) in tuples:
                     len_base = max(len_base, len(basename))
 
         len_key = min(len_key, 60)
@@ -798,33 +799,34 @@ def write_linkdict(dirpath, link_dict, *, logger=None, limits=None):
         with open(python_path, 'w', encoding='latin-1') as f:
             f.write(name + ' = {\n')
             for valtype in (list, str):
-              for key in keys:
-                if not isinstance(interior_dict[key], valtype): continue
+                for key in keys:
+                    if not isinstance(interior_dict[key], valtype):
+                        continue
 
-                f.write('  "%s"' % key)
-                if len(key) < len_key:
-                    f.write((len_key - len(key)) * ' ')
-                f.write(': ')
-                tuple_indent = max(len(key),len_key) + 7
+                    f.write('  "%s"' % key)
+                    if len(key) < len_key:
+                        f.write((len_key - len(key)) * ' ')
+                    f.write(': ')
+                    tuple_indent = max(len(key),len_key) + 7
 
-                values = interior_dict[key]
-                if isinstance(values, str):
-                    f.write('"%s",\n' % values)
-                elif len(values) == 0:
-                    f.write('[],\n')
-                else:
-                    f.write('[')
-                    for k in range(len(values)):
-                        (recno, basename, interior_path) = values[k]
-                        f.write('(%4d, ' % recno)
-                        f.write('"%s, ' % (basename + '"' +
-                                           (len_base-len(basename)) * ' '))
-                        f.write('"%s")' % interior_path)
+                    values = interior_dict[key]
+                    if isinstance(values, str):
+                        f.write('"%s",\n' % values)
+                    elif len(values) == 0:
+                        f.write('[],\n')
+                    else:
+                        f.write('[')
+                        for k in range(len(values)):
+                            (recno, basename, interior_path) = values[k]
+                            f.write('(%4d, ' % recno)
+                            f.write('"%s, ' % (basename + '"' +
+                                               (len_base-len(basename)) * ' '))
+                            f.write('"%s")' % interior_path)
 
-                        if k < len(values) - 1:
-                            f.write(',\n' + tuple_indent * ' ')
-                        else:
-                            f.write('],\n')
+                            if k < len(values) - 1:
+                                f.write(',\n' + tuple_indent * ' ')
+                            else:
+                                f.write('],\n')
 
             f.write('}\n\n')
 
@@ -895,7 +897,8 @@ def validate_links(dirpath, dirdict, shelfdict, *, logger=None, limits=None):
 def move_old_links(shelf_file, logger=None):
     """Move a file to the /logs/ directory tree and append a time tag."""
 
-    if not os.path.exists(shelf_file): return
+    if not os.path.exists(shelf_file):
+        return
 
     shelf_basename = os.path.basename(shelf_file)
     (shelf_prefix, shelf_ext) = os.path.splitext(shelf_basename)
@@ -1266,7 +1269,8 @@ def main():
 
     finally:
         (fatal, errors, _, _) = logger.close()
-        if fatal or errors: status = 1
+        if fatal or errors:
+            status = 1
 
     sys.exit(status)
 

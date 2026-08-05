@@ -18,8 +18,9 @@ import shutil
 import sys
 
 import pdslogger
-import pdsfile
 import translator
+
+import pdsfile
 
 LOGNAME = 'pds.validation.links'
 LOGROOT_ENV = 'PDS_LOG_ROOT'
@@ -637,11 +638,11 @@ TARGET_REGEX2 = re.compile(r'^ *,? *' + PATTERN, re.I)
 LINK_REGEX = re.compile(r'(?:|.*?[^/@\w\.])/?(?:\.\./)*(([A-Z0-9][-\w]+/)*' +
                         r'(makefile\.?|[A-Z0-9][\w-]*(\.[\w-]+)+))', re.I)
 
-EXTS_WO_LABELS = set(['.LBL', '.CAT', '.TXT', '.FMT', '.SFD'])
+EXTS_WO_LABELS = {'.LBL', '.CAT', '.TXT', '.FMT', '.SFD'}
 
 ################################################################################
 
-class LinkInfo(object):
+class LinkInfo:
     """Used internally to describe a link within a specified record of a file.
     """
 
@@ -704,308 +705,308 @@ def generate_links(dirpath, old_links=None, *, logger=None, limits=None):
 
     try:
 
-      linkinfo_dict = old_links.copy()      # abspath: list of LinkInfo objects
-      label_dict = {k:v for k,v in old_links.items() if isinstance(v,str)}
+        linkinfo_dict = old_links.copy()      # abspath: list of LinkInfo objects
+        label_dict = {k:v for k,v in old_links.items() if isinstance(v,str)}
                                             # abspath: label for this file
-      abspaths = []                         # list of all abspaths
+        abspaths = []                         # list of all abspaths
 
-      latest_mtime = 0.
+        latest_mtime = 0.
 
-      # Walk the directory tree, one subdirectory "root" at a time...
-      for (root, dirs, files) in os.walk(dirpath):
+        # Walk the directory tree, one subdirectory "root" at a time...
+        for (root, _dirs, files) in os.walk(dirpath):
 
-        local_basenames = []            # Tracks the basenames in this directory
-        local_basenames_uc = []         # Same as above, but upper case
-        for basename in files:
-            abspath = os.path.join(root, basename)
-            latest_mtime = max(latest_mtime, os.path.getmtime(abspath))
+            local_basenames = []            # Tracks the basenames in this directory
+            local_basenames_uc = []         # Same as above, but upper case
+            for basename in files:
+                abspath = os.path.join(root, basename)
+                latest_mtime = max(latest_mtime, os.path.getmtime(abspath))
 
-            if basename == '.DS_Store':         # skip .DS_Store files
-                logger.ds_store('.DS_Store file skipped', abspath)
-                continue
+                if basename == '.DS_Store':         # skip .DS_Store files
+                    logger.ds_store('.DS_Store file skipped', abspath)
+                    continue
 
-            if basename.startswith('._'):       # skip dot_underscore files
-                logger.dot_underscore('dot_underscore file skipped',
-                                      abspath)
-                continue
+                if basename.startswith('._'):       # skip dot_underscore files
+                    logger.dot_underscore('dot_underscore file skipped',
+                                          abspath)
+                    continue
 
-            if BACKUP_FILENAME.match(basename) or ' copy' in basename:
-                logger.error('Backup file skipped', abspath)
-                continue
+                if BACKUP_FILENAME.match(basename) or ' copy' in basename:
+                    logger.error('Backup file skipped', abspath)
+                    continue
 
-            if basename.startswith('.'):    # skip invisible files
-                logger.invisible('Invisible file skipped', abspath)
-                continue
+                if basename.startswith('.'):    # skip invisible files
+                    logger.invisible('Invisible file skipped', abspath)
+                    continue
 
-            abspaths.append(abspath)
-            local_basenames.append(basename)
-            local_basenames_uc.append(basename.upper())
+                abspaths.append(abspath)
+                local_basenames.append(basename)
+                local_basenames_uc.append(basename.upper())
 
-        # Update linkinfo_dict, searching each relevant file for possible links.
-        # If the linking file is a label and the target file has a matching
-        # name, update the label_dict entry for the target.
-        candidate_labels = {}       # {target: list of possible label basenames}
-        for basename in local_basenames:
+            # Update linkinfo_dict, searching each relevant file for possible links.
+            # If the linking file is a label and the target file has a matching
+            # name, update the label_dict entry for the target.
+            candidate_labels = {}       # {target: list of possible label basenames}
+            for basename in local_basenames:
 
-            abspath = os.path.join(root, basename)
-            if abspath in linkinfo_dict:    # for update op, skip existing links
-                continue
+                abspath = os.path.join(root, basename)
+                if abspath in linkinfo_dict:    # for update op, skip existing links
+                    continue
 
-            basename_uc = basename.upper()
+                basename_uc = basename.upper()
 
-            # Only check LBL, CAT, TXT, etc.
-            ext = basename_uc[-4:] if len(basename) >= 4 else ''
-            if ext not in EXTS_WO_LABELS:
-                continue
+                # Only check LBL, CAT, TXT, etc.
+                ext = basename_uc[-4:] if len(basename) >= 4 else ''
+                if ext not in EXTS_WO_LABELS:
+                    continue
 
-            # Get list of link info for all possible linked filenames
-            logger.debug('*** REVIEWING', abspath)
-            linkinfo_list = read_links(abspath, logger=logger)
+                # Get list of link info for all possible linked filenames
+                logger.debug('*** REVIEWING', abspath)
+                linkinfo_list = read_links(abspath, logger=logger)
 
-            # Apply repairs
-            repairs = REPAIRS.all(abspath)
-            for info in linkinfo_list:
-                for repair in repairs:
-                    linkname = repair.first(info.linktext)
-                    if linkname is None:
-
-                        # Attempt repair with leading directory path removed
-                        if '/' in info.linktext:
-                            info.remove_path()
-                            linkname = repair.first(info.linktext)
-
+                # Apply repairs
+                repairs = REPAIRS.all(abspath)
+                for info in linkinfo_list:
+                    for repair in repairs:
+                        linkname = repair.first(info.linktext)
                         if linkname is None:
-                            continue            # no repair found
 
-                    info.linkname = linkname
-                    if linkname == '':
-                        logger.info('Ignoring link "%s"' %
-                                    info.linktext, abspath, force=True)
-                    else:
-                        logger.info('Repairing link "%s"->"%s"' %
-                                    (info.linktext, linkname),
-                                    abspath, force=True)
+                            # Attempt repair with leading directory path removed
+                            if '/' in info.linktext:
+                                info.remove_path()
+                                linkname = repair.first(info.linktext)
 
-                    # Validate non-local targets of repairs
-                    if '/' in linkname:
-                      target = os.path.join(root, linkname)
-                      if os.path.exists(target):
-                        info.target = os.path.abspath(target)
-                      else:
-                        logger.error('Target of repaired link is missing',
-                                     target)
+                            if linkname is None:
+                                continue            # no repair found
 
-                    break       # apply only one repair per found link
+                        info.linkname = linkname
+                        if linkname == '':
+                            logger.info('Ignoring link "%s"' %
+                                        info.linktext, abspath, force=True)
+                        else:
+                            logger.info('Repairing link "%s"->"%s"' %
+                                        (info.linktext, linkname),
+                                        abspath, force=True)
 
-            # Validate or remove other targets
-            new_linkinfo_list = []
-            baseroot_uc = basename_uc.partition('.')[0]
-            ltest = len(baseroot_uc)
-            for info in linkinfo_list:
-                if info.target:         # Non-local, repaired links have targets
-                    new_linkinfo_list.append(info)
-                    continue
+                        # Validate non-local targets of repairs
+                        if '/' in linkname:
+                            target = os.path.join(root, linkname)
+                            if os.path.exists(target):
+                                info.target = os.path.abspath(target)
+                            else:
+                                logger.error('Target of repaired link is missing',
+                                             target)
 
-                # A blank linkname is from a repair; indicates to ignore
-                if info.linkname == '':
-                    continue
+                        break       # apply only one repair per found link
 
-                # Ignore self-references
-                linkname_uc = info.linkname.upper()
-                if linkname_uc == basename_uc:
-                    continue
-
-                # Check for target inside this directory
-                try:
-                    match_index = local_basenames_uc.index(linkname_uc)
-                except ValueError:
-                    match_index = None
-
-                # If not found, maybe it is a non-local reference (.FMT perhaps)
-                if match_index is None:
-
-                    # It's easy to pick up floats as link candidates; ignore
-                    try:
-                        _ = float(info.linkname)
-                        continue            # Yup, it's just a float
-                    except ValueError:
-                        pass
-
-                    if info.linkname[-1] in ('e', 'E'):
-                      try:
-                        _ = float(info.linkname[:-1])
-                        continue            # Float with exponent
-                      except ValueError:
-                        pass
-
-                    # Also ignore format specifications (e.g., "F10.3")
-                    if info.linkname[0] in ('F', 'E', 'G'):
-                      try:
-                        _ = float(info.linkname[1:])
-                        continue            # Format
-                      except ValueError:
-                        pass
-
-                    # Search non-locally
-                    if '/' in info.linkname:
-                        nonlocal_target = locate_link_with_path(abspath,
-                                                                info.linkname)
-                    else:
-                        nonlocal_target = locate_nonlocal_link(abspath,
-                                                               info.linkname)
-
-                    # Report the outcome
-                    if nonlocal_target:
-                        logger.debug('Located "%s"' % info.linkname,
-                                     nonlocal_target)
-                        info.target = nonlocal_target
+                # Validate or remove other targets
+                new_linkinfo_list = []
+                baseroot_uc = basename_uc.partition('.')[0]
+                ltest = len(baseroot_uc)
+                for info in linkinfo_list:
+                    if info.target:         # Non-local, repaired links have targets
                         new_linkinfo_list.append(info)
                         continue
 
-                    if linkname_uc.endswith('.FMT'):
-                        logger.error('Unable to locate .FMT file "%s"' %
-                                     info.linkname, abspath)
-                    elif linkname_uc.endswith('.CAT'):
-                        logger.error('Unable to locate .CAT file "%s"' %
-                                     info.linkname, abspath)
-                    else:
-                        logger.debug('Substring "%s" is not a link, ignored' %
-                                     info.linkname, abspath)
+                    # A blank linkname is from a repair; indicates to ignore
+                    if info.linkname == '':
+                        continue
 
-                    continue
+                    # Ignore self-references
+                    linkname_uc = info.linkname.upper()
+                    if linkname_uc == basename_uc:
+                        continue
 
-                # Save the match
-                info.linkname = local_basenames[match_index]    # update case
-                info.target = os.path.join(root, info.linkname)
-                new_linkinfo_list.append(info)
+                    # Check for target inside this directory
+                    try:
+                        match_index = local_basenames_uc.index(linkname_uc)
+                    except ValueError:
+                        match_index = None
 
-                # Could this be the label?
-                if ext != '.LBL':       # nope
-                    continue
+                    # If not found, maybe it is a non-local reference (.FMT perhaps)
+                    if match_index is None:
 
-                # If names match up to '.LBL', then yes
-                if (len(linkname_uc) > ltest and
-                    linkname_uc[:ltest] == baseroot_uc and
-                    linkname_uc[ltest] == '.'):
+                        # It's easy to pick up floats as link candidates; ignore
+                        try:
+                            _ = float(info.linkname)
+                            continue            # Yup, it's just a float
+                        except ValueError:
+                            pass
+
+                        if info.linkname[-1] in ('e', 'E'):
+                            try:
+                                _ = float(info.linkname[:-1])
+                                continue            # Float with exponent
+                            except ValueError:
+                                pass
+
+                        # Also ignore format specifications (e.g., "F10.3")
+                        if info.linkname[0] in ('F', 'E', 'G'):
+                            try:
+                                _ = float(info.linkname[1:])
+                                continue            # Format
+                            except ValueError:
+                                pass
+
+                        # Search non-locally
+                        if '/' in info.linkname:
+                            nonlocal_target = locate_link_with_path(abspath,
+                                                                    info.linkname)
+                        else:
+                            nonlocal_target = locate_nonlocal_link(abspath,
+                                                                   info.linkname)
+
+                        # Report the outcome
+                        if nonlocal_target:
+                            logger.debug('Located "%s"' % info.linkname,
+                                         nonlocal_target)
+                            info.target = nonlocal_target
+                            new_linkinfo_list.append(info)
+                            continue
+
+                        if linkname_uc.endswith('.FMT'):
+                            logger.error('Unable to locate .FMT file "%s"' %
+                                         info.linkname, abspath)
+                        elif linkname_uc.endswith('.CAT'):
+                            logger.error('Unable to locate .CAT file "%s"' %
+                                         info.linkname, abspath)
+                        else:
+                            logger.debug('Substring "%s" is not a link, ignored' %
+                                         info.linkname, abspath)
+
+                        continue
+
+                    # Save the match
+                    info.linkname = local_basenames[match_index]    # update case
+                    info.target = os.path.join(root, info.linkname)
+                    new_linkinfo_list.append(info)
+
+                    # Could this be the label?
+                    if ext != '.LBL':       # nope
+                        continue
+
+                    # If names match up to '.LBL', then yes
+                    if (len(linkname_uc) > ltest and
+                        linkname_uc[:ltest] == baseroot_uc and
+                        linkname_uc[ltest] == '.'):
                         label_dict[info.target] = abspath
                         logger.debug('Label identified for %s' % info.linkname,
                                      abspath)
                         continue
 
-                # Otherwise, then maybe
-                if info.is_target:
-                    if info.linkname in candidate_labels:
-                      if basename not in candidate_labels[info.linkname]:
-                        candidate_labels[info.linkname].append(basename)
-                    else:
-                        candidate_labels[info.linkname] = [basename]
+                    # Otherwise, then maybe
+                    if info.is_target:
+                        if info.linkname in candidate_labels:
+                            if basename not in candidate_labels[info.linkname]:
+                                candidate_labels[info.linkname].append(basename)
+                        else:
+                            candidate_labels[info.linkname] = [basename]
 
-                    logger.debug('Candidate label found for ' +
-                                 info.linkname, abspath)
+                        logger.debug('Candidate label found for ' +
+                                     info.linkname, abspath)
 
-            linkinfo_dict[abspath] = new_linkinfo_list
+                linkinfo_dict[abspath] = new_linkinfo_list
 
-        # Identify labels for files
-        for basename in local_basenames:
+            # Identify labels for files
+            for basename in local_basenames:
 
-            basename_uc = basename.upper()
-            ext = basename_uc[-4:] if len(basename) >= 4 else ''
-            if ext in (".LBL", ".FMT"):     # these can't have labels
-                continue
+                basename_uc = basename.upper()
+                ext = basename_uc[-4:] if len(basename) >= 4 else ''
+                if ext in (".LBL", ".FMT"):     # these can't have labels
+                    continue
 
-            abspath = os.path.join(root, basename)
-            if abspath in label_dict:
-                continue                    # label already found
+                abspath = os.path.join(root, basename)
+                if abspath in label_dict:
+                    continue                    # label already found
 
-            # Maybe we already know the label is missing
-            test = KNOWN_MISSING_LABELS.first(abspath)
-            if test == 'unneeded':
-                logger.debug('Label is not neeeded', abspath)
-                continue
+                # Maybe we already know the label is missing
+                test = KNOWN_MISSING_LABELS.first(abspath)
+                if test == 'unneeded':
+                    logger.debug('Label is not neeeded', abspath)
+                    continue
 
-            if test == 'missing':
-                logger.debug('Label is known to be missing', abspath)
-                continue
+                if test == 'missing':
+                    logger.debug('Label is known to be missing', abspath)
+                    continue
 
-            # Determine if a label is required
-            label_is_required = (ext not in EXTS_WO_LABELS)
+                # Determine if a label is required
+                label_is_required = (ext not in EXTS_WO_LABELS)
 
-            # Get the list of candidate labels in this directory
-            candidates = candidate_labels.get(basename, [])
+                # Get the list of candidate labels in this directory
+                candidates = candidate_labels.get(basename, [])
 
-            # Determine if the obvious label file exists
-            label_guess_uc = basename_uc.partition('.')[0] + '.LBL'
-            if label_guess_uc in local_basenames_uc:
-                k = local_basenames_uc.index(label_guess_uc)
-                obvious_label_basename = local_basenames[k]
-            else:
-                obvious_label_basename = ''
+                # Determine if the obvious label file exists
+                label_guess_uc = basename_uc.partition('.')[0] + '.LBL'
+                if label_guess_uc in local_basenames_uc:
+                    k = local_basenames_uc.index(label_guess_uc)
+                    obvious_label_basename = local_basenames[k]
+                else:
+                    obvious_label_basename = ''
 
-            # Simplest case...
-            if obvious_label_basename in candidates:
+                # Simplest case...
+                if obvious_label_basename in candidates:
+                    if not label_is_required:
+                        logger.debug('Unnecessary label found', abspath, force=True)
+
+                    label_dict[abspath] = os.path.join(root, obvious_label_basename)
+                    continue
+
+                # More cases...
                 if not label_is_required:
-                    logger.debug('Unnecessary label found', abspath, force=True)
+                    continue                # leave abspath out of label_dict
 
-                label_dict[abspath] = os.path.join(root, obvious_label_basename)
-                continue
+                # Report a phantom label
+                if obvious_label_basename:
+                    logger.error('Label %s does not point to file' %
+                                 local_basenames[k], abspath)
 
-            # More cases...
-            if not label_is_required:
-                continue                # leave abspath out of label_dict
+                if len(candidates) == 1:
+                    logger.debug('Label found as ' + candidates[0], abspath,
+                                 force=True)
+                    label_dict[abspath] = os.path.join(root, candidates[0])
+                    continue
 
-            # Report a phantom label
-            if obvious_label_basename:
-                logger.error('Label %s does not point to file' %
-                             local_basenames[k], abspath)
-
-            if len(candidates) == 1:
-                logger.debug('Label found as ' + candidates[0], abspath,
-                             force=True)
-                label_dict[abspath] = os.path.join(root, candidates[0])
-                continue
-
-            # or errors...
-            label_dict[abspath] = ""
-            if len(candidates) == 0:
-                logger.error('Label is missing', abspath)
-            else:
-                logger.error('Ambiguous label found as %s' % candidates[0],
-                             abspath, force=True)
-                for candidate in candidates[1:]:
-                    logger.debug('Alternative label found as %s' % candidate,
+                # or errors...
+                label_dict[abspath] = ""
+                if len(candidates) == 0:
+                    logger.error('Label is missing', abspath)
+                else:
+                    logger.error('Ambiguous label found as %s' % candidates[0],
                                  abspath, force=True)
+                    for candidate in candidates[1:]:
+                        logger.debug('Alternative label found as %s' % candidate,
+                                     abspath, force=True)
 
-      # Merge the dictionaries
-      # There are cases where a file can have both a list of links and a label.
-      # This occurs when a .TXT or .CAT file has a label, even though it didn't
-      # need one. In the returned dictionary, link lists take priority.
-      link_dict = {}
-      for key in abspaths:
-        if key in linkinfo_dict:
-            # If this is a new entry, it's a list of LinkInfo objects
-            # If this was copied from old_links, it's already a list of tuples
-            values = linkinfo_dict[key]
-            if isinstance(values, list):
-                # Normalize to (recno, basename, abspath)
-                new_list = []
-                for item in values:
-                  if isinstance(item, LinkInfo):
-                    new_list.append((item.recno, item.linktext, item.target))
-                  else:
-                    new_list.append(item)
-                link_dict[key] = new_list
+        # Merge the dictionaries
+        # There are cases where a file can have both a list of links and a label.
+        # This occurs when a .TXT or .CAT file has a label, even though it didn't
+        # need one. In the returned dictionary, link lists take priority.
+        link_dict = {}
+        for key in abspaths:
+            if key in linkinfo_dict:
+                # If this is a new entry, it's a list of LinkInfo objects
+                # If this was copied from old_links, it's already a list of tuples
+                values = linkinfo_dict[key]
+                if isinstance(values, list):
+                    # Normalize to (recno, basename, abspath)
+                    new_list = []
+                    for item in values:
+                        if isinstance(item, LinkInfo):
+                            new_list.append((item.recno, item.linktext, item.target))
+                        else:
+                            new_list.append(item)
+                    link_dict[key] = new_list
+                else:
+                    link_dict[key] = values
+            elif key in label_dict:
+                link_dict[key] = label_dict[key]
             else:
-                link_dict[key] = values
-        elif key in label_dict:
-            link_dict[key] = label_dict[key]
-        else:
-            link_dict[key] = ''
+                link_dict[key] = ''
 
-      dt = datetime.datetime.fromtimestamp(latest_mtime)
-      logger.info('Lastest holdings file modification date',
-                  dt.strftime('%Y-%m-%dT%H-%M-%S'), force=True)
+        dt = datetime.datetime.fromtimestamp(latest_mtime)
+        logger.info('Lastest holdings file modification date',
+                    dt.strftime('%Y-%m-%dT%H-%M-%S'), force=True)
 
-      return (link_dict, latest_mtime)
+        return (link_dict, latest_mtime)
 
     except (Exception, KeyboardInterrupt) as e:
         logger.exception(e)
@@ -1019,7 +1020,7 @@ def read_links(abspath, logger=None):
     file.
     """
 
-    with open(abspath, 'r', encoding='latin-1') as f:
+    with open(abspath, encoding='latin-1') as f:
         recs = f.readlines()
 
     links = []
@@ -1148,12 +1149,12 @@ def load_links(dirpath, *, logger=None, limits=None):
     logger.open('Reading link shelf file for', dirpath, limits=merged_limits)
 
     try:
-        (link_path, lskip) = pdsdir.shelf_path_and_lskip('link')
+        (link_path, _lskip) = pdsdir.shelf_path_and_lskip('link')
 
         logger.info('Link shelf file', link_path)
 
         if not os.path.exists(link_path):
-            raise IOError('File not found: ' + link_path)
+            raise OSError('File not found: ' + link_path)
 
         # Read the shelf file and convert to a dictionary
         with open(link_path, 'rb') as f:
@@ -1267,7 +1268,7 @@ def write_linkdict(dirpath, link_dict, *, logger=None, limits=None):
             len_key = max(len_key, len(key))
             if isinstance(value, list):
                 tuples = value
-                for (recno, basename, interior_path) in tuples:
+                for (_recno, basename, _interior_path) in tuples:
                     len_base = max(len_base, len(basename))
 
         len_key = min(len_key, 60)
@@ -1283,33 +1284,34 @@ def write_linkdict(dirpath, link_dict, *, logger=None, limits=None):
         with open(python_path, 'w', encoding='latin-1') as f:
             f.write(name + ' = {\n')
             for valtype in (list, str):
-              for key in keys:
-                if not isinstance(interior_dict[key], valtype): continue
+                for key in keys:
+                    if not isinstance(interior_dict[key], valtype):
+                        continue
 
-                f.write('  "%s"' % key)
-                if len(key) < len_key:
-                    f.write((len_key - len(key)) * ' ')
-                f.write(': ')
-                tuple_indent = max(len(key),len_key) + 7
+                    f.write('  "%s"' % key)
+                    if len(key) < len_key:
+                        f.write((len_key - len(key)) * ' ')
+                    f.write(': ')
+                    tuple_indent = max(len(key),len_key) + 7
 
-                values = interior_dict[key]
-                if isinstance(values, str):
-                    f.write('"%s",\n' % values)
-                elif len(values) == 0:
-                    f.write('[],\n')
-                else:
-                    f.write('[')
-                    for k in range(len(values)):
-                        (recno, basename, interior_path) = values[k]
-                        f.write('(%4d, ' % recno)
-                        f.write('"%s, ' % (basename + '"' +
-                                           (len_base-len(basename)) * ' '))
-                        f.write('"%s")' % interior_path)
+                    values = interior_dict[key]
+                    if isinstance(values, str):
+                        f.write('"%s",\n' % values)
+                    elif len(values) == 0:
+                        f.write('[],\n')
+                    else:
+                        f.write('[')
+                        for k in range(len(values)):
+                            (recno, basename, interior_path) = values[k]
+                            f.write('(%4d, ' % recno)
+                            f.write('"%s, ' % (basename + '"' +
+                                               (len_base-len(basename)) * ' '))
+                            f.write('"%s")' % interior_path)
 
-                        if k < len(values) - 1:
-                            f.write(',\n' + tuple_indent * ' ')
-                        else:
-                            f.write('],\n')
+                            if k < len(values) - 1:
+                                f.write(',\n' + tuple_indent * ' ')
+                            else:
+                                f.write('],\n')
 
             f.write('}\n\n')
 
@@ -1344,10 +1346,10 @@ def validate_links(dirpath, dirdict, shelfdict, *, logger=None, limits=None):
                 dirinfo = dirdict[key]
                 shelfinfo = shelfdict[key]
 
-                if type(dirinfo) == list:
+                if type(dirinfo) is list:
                     dirinfo.sort()
 
-                if type(shelfinfo) == list:
+                if type(shelfinfo) is list:
                     shelfinfo.sort()
 
                 if dirinfo != shelfinfo:
@@ -1378,7 +1380,8 @@ def validate_links(dirpath, dirdict, shelfdict, *, logger=None, limits=None):
 def move_old_links(shelf_file, logger=None):
     """Move a file to the /logs/ directory tree and append a time tag."""
 
-    if not os.path.exists(shelf_file): return
+    if not os.path.exists(shelf_file):
+        return
 
     shelf_basename = os.path.basename(shelf_file)
     (shelf_prefix, shelf_ext) = os.path.splitext(shelf_basename)
@@ -1549,7 +1552,7 @@ def repair(pdsdir, *, logger=None, limits=None):
             logger.info('!!! Time tag on link shelf files set to',
                         dt.strftime('%Y-%m-%dT%H-%M-%S'), force=True)
         else:
-            logger.info(f'!!! Link shelf file is up to date; repair canceled',
+            logger.info('!!! Link shelf file is up to date; repair canceled',
                         link_path, force=True)
         return
 
@@ -1577,8 +1580,8 @@ def update(pdsdir, *, logger=None, limits=None):
 
     # Generate link dict
     (dir_linkdict,
-     latest_mtime) = generate_links(pdsdir.abspath, shelf_linkdict,
-                                    logger=logger, limits=limits)
+     _latest_mtime) = generate_links(pdsdir.abspath, shelf_linkdict,
+                                     logger=logger, limits=limits)
 
     # Compare
     canceled = (dir_linkdict == shelf_linkdict)
@@ -1711,13 +1714,13 @@ def main():
                 continue
 
             # Save logs in up to two places
-            logfiles = set([pdsdir.log_path_for_volume('_links',
-                                                       task=args.task,
-                                                       dir='pdslinkshelf'),
-                            pdsdir.log_path_for_volume('_links',
-                                                       task=args.task,
-                                                       dir='pdslinkshelf',
-                                                       place='parallel')])
+            logfiles = {pdsdir.log_path_for_volume('_links',
+                                                   task=args.task,
+                                                   dir='pdslinkshelf'),
+                        pdsdir.log_path_for_volume('_links',
+                                                   task=args.task,
+                                                   dir='pdslinkshelf',
+                                                   place='parallel')}
 
             # Create all the handlers for this level in the logger
             local_handlers = []
@@ -1770,8 +1773,9 @@ def main():
         raise
 
     finally:
-        (fatal, errors, warnings, tests) = logger.close()
-        if fatal or errors: status = 1
+        (fatal, errors, _warnings, _tests) = logger.close()
+        if fatal or errors:
+            status = 1
 
     sys.exit(status)
 

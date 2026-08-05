@@ -118,7 +118,7 @@ class Pds4File(PdsFile):
     def __repr__(self):
         if self.abspath is None:
             return 'Pds4File-logical("' + self.logical_path + '")'
-        elif type(self) == Pds4File:
+        elif type(self) is Pds4File:
             return 'Pds4File("' + self.abspath + '")'
         else:
             return ('Pds4File.' + type(self).__name__ + '("' +

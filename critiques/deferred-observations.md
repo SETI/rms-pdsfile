@@ -628,6 +628,30 @@ touch.
     **Owner:** PR-24, or whichever PR next revisits `__init__.py` — with an
     explicit decision about which of the two readings is intended.
 
+    **RESOLVED by the owner, 2026-08-04: the intent was to export the `PdsFile`
+    class only.** Implemented in PR-24 as
+    `from pdsfile.pdsfile import PdsFile as PdsFile`. Three things make this a
+    strictly neutral change rather than the surface change the entry feared:
+
+    - **The manifest does not move.** `PdsFile` already reached the package
+      namespace indirectly, via `from .pds3file import *` / `from .pds4file
+      import *`, and `pdsfile.PdsFile is pdsfile.pdsfile.PdsFile` was already
+      true. A fresh `dump_public_api.py` before and after is byte-identical at
+      733,876 bytes. The import makes explicit a name that was already exported
+      by accident of star-import ordering.
+    - **The redundant alias is load-bearing.** Written as a plain
+      `from ... import PdsFile` the name is unreferenced below and raises
+      `F401`, which would have traded one code for another rather than dropping
+      one. The `X as X` form is the same explicit-re-export marker
+      `preload_and_cache.py` uses.
+    - **The absolute form keeps the import order.** Written relatively,
+      `.pdsfile` sorts after `.pds3file`/`.pds4file` and isort raises `I001`;
+      obeying it would move the core import below the two star imports and
+      change which module initializes first.
+
+    `F403` drops from 3 occurrences to 2 — the two remaining are the genuine
+    star imports, which stay.
+
 32. **A commented-out line of dead code rode along with the move.**
     `src/pdsfile/_path_utils.py`, inside `_clean_join`:
     `#     joined = _clean_join(a,b).replace('\\', '/')`. PR-16 moved it
@@ -1788,6 +1812,109 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     owner-level decision about the whole tree, not a PR-23 one.
     **Owner: PR-24, or whoever proposes enabling preview rules.**
 
+    **RESOLVED for `pdscache.py` by the owner, 2026-08-04: fix the indentation.**
+    PR-24 re-indented both `flush` handlers onto the 4-space grid — the `try` /
+    `except pylibmc.TooBig` pair inside the `for` loop and its `if self.logger:`
+    body, and the `for key in keys:` body in the `except pylibmc.Error` handler.
+    A fifth site in the same file was fixed with them: `class PdsCache:`'s `pass`
+    sat at 8 columns.
+
+    Indentation is semantic in Python, so the change is proved rather than
+    asserted: `ast.dump(ast.parse(...))` of the file before and after is
+    identical. `ruff check --select E1 --preview` on `pdscache.py` goes from 8
+    findings to 3.
+
+    Three `E115` findings remained after that first pass, on the commented-out
+    `MemcachedCache.get_multi` block that **deferred entry 64 still owns**. The
+    tree-wide sweep below then re-indented them with everything else; entry 64 is
+    about whether those six lines should exist at all, which the whitespace does
+    not prejudge.
+
+    **RESOLVED tree-wide by the owner, 2026-08-04: fix the indentation, lift
+    `re_validate.py`'s freeze for whitespace, and enable the gate.** The sweep
+    over `src/pdsfile tests scripts` had found **112** findings across 23 files —
+    `E111` 41, `E117` 15, `E116` 48, `E114` 5, `E115` 3. PR-24 fixes **59**, in
+    11 files and 404 lines. `E111`, `E112` and `E113` — the three rules that fire
+    on **code** — now measure **zero** across the whole tree.
+
+    None was auto-fixable, and fixing an `E111` means moving the whole block
+    beneath it, so a re-indenter did the work: for each logical line the correct
+    indent is `4 × (its INDENT-stack depth)`, and the whole logical line — first
+    physical line and every continuation — shifts by the same delta, so alignment
+    under an opening parenthesis survives. Lines inside a multi-line string are
+    never touched.
+
+    **Comments are carried, never re-aligned.** A comment moves by exactly the
+    delta of the nearest logical line at its own column, searching forwards first
+    and stopping at the first line shallower than the comment, because that line
+    ends the block the comment belongs to. If nothing in the block sits at the
+    comment's column, the comment does not move. In practice that means comments
+    move only inside a block whose code moved: of the 404 lines, 45 are comments,
+    all in `pdslinkshelf.py` and `shelf_consistency_check.py`, the two files that
+    were indented in 2-space steps.
+
+    Getting there took three wrong rules, and the owner caught the third:
+
+    - the first left comments behind while their block moved, stranding them at
+      the old indent;
+    - the second pulled every standalone comment to the code grid, which broke 32
+      **trailing-comment continuations** — a comment hanging under the trailing
+      comment of the line above continues *that* comment and belongs to its
+      statement. `pdsfile.py:411-449`, the `__init__` attribute-documentation
+      block, was the clearest casualty;
+    - the third still re-aligned a comment whose own block had not moved, which
+      damaged two more conventions the owner named: an **annotation placed after
+      the statement it describes** (`"if c.isdir" is False for volset level
+      readme files`, in `pdsarchives.py`, `pdschecksums.py`, `pdsinfoshelf.py`,
+      `pds4checksums.py` and `pds4infoshelf.py`) and **commented-out code parked
+      at column 0** so it reads as disabled (`pdsinfoshelf.py:155-157`,
+      `pds4infoshelf.py:158-160`, `pdscache.py:701-702` and `:1011-1016`,
+      `re_validate.py:828`).
+
+    **53 findings remain, and every one is on a comment line** — `E116` 48,
+    `E115` 3, `E117` 2. They are the three conventions above. Pulling them to the
+    grid is not a fix; it detaches the text from what it documents. This is the
+    `ruff format` conflict in miniature: a tool preference against a deliberate
+    alignment style, where the style wins.
+
+    **The gate is `E111,E112,E113`** — the three rules that fire only on code.
+    `E114`/`E115`/`E116` are their comment-line counterparts and `E117` fires on
+    both, so all four are out. The cost is that an over-indented *code* block
+    would not be caught by `E117`; there are none today, and the only two `E117`
+    findings in the tree are comment continuations
+    (`_preload.py:453`, `_properties.py:528`).
+
+    Because indentation is semantic, every file carries proofs checked
+    independently of the tool: identical `ast.dump(ast.parse(…))`, identical
+    token stream with `INDENT`/`DEDENT` dropped, every changed line differing
+    only in leading whitespace, and an unchanged line count — **11 of 11 files
+    pass all four**. `ruff check` stays clean, worth checking rather than
+    assuming since shifting a line right can cross 100 columns. The heaviest
+    files are `pdslinkshelf.py` (276 lines), `shelf_consistency_check.py` (44),
+    `pds4linkshelf.py` (31) and `_properties.py` (19).
+
+    **`re_validate.py` is included.** Its `E117` at `:149` is fixed — 7 lines —
+    because the owner lifted the freeze for whitespace on 2026-08-04. Its
+    ten-code `per-file-ignores` entry is untouched and the freeze on its logic
+    stands; deviation (6) records the exception. This is what lets the gate run
+    with **no per-file exemption at all**.
+
+    **The gate is a separate `ruff check` invocation, not `preview = true` in
+    `pyproject.toml`**, because preview mode is not selective: it changes the
+    behaviour of the *stable* rules too, and `explicit-preview-rules` governs
+    only which preview rules get selected, not that. Measured against a tree the
+    configured gate reports clean, `--preview` raises **5,687** findings — 28
+    `F822`, and `RUF012` 33 → 49, `B006` 9 → 12, `RUF005` 4 → 12, among others.
+    Absorbing those is a large ratchet widen, which §6.4 forbids.
+
+    Two things checked rather than assumed. The gate is **non-vacuous**: adding
+    two spaces to one statement in `_sorting.py` makes it report `E111` and
+    `E112` and `run-all-checks.sh` exit FAILURE. (The first attempt at this
+    control mutated a *continuation* line, which `E1` does not check, and passed
+    green — the control needed its own control.) And it is clean under **both**
+    ruff 0.15.7, the development venv, and 0.16.1, which is what CI resolves
+    `ruff>=0.8` to; a preview rule's behaviour can change between releases.
+
 77. **Whether prose may follow a mechanical fix is not written down anywhere.**
     Round 1's m8 had PR-23 change three `IOError` references to `OSError` in
     `_path_utils.py` comments and docstrings — accurate (`IOError` **is**
@@ -1941,3 +2068,214 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     a `ruff check` PR whose warrant is that it changes nothing. It also overlaps
     Phase 7, which owns docstrings.
     **Owner: owner-directed; Phase 7 (PR-29–PR-34) is the natural home.**
+
+## From PR-24 (`style: ruff-clean rules and remaining files`, Phase 5)
+
+**Line numbers in this block are at PR-24's head**, not at its base, because
+these entries are read by the PRs that come after it.
+
+### Added by the PR-24 executor's own measurements (2026-08-04)
+
+81. **`LOGDIRS` is a module-level list that `main()` shadows with a bare local,
+    so the "move old logs aside" step never runs.** Three pds3 tools carry the
+    same shape: `pdschecksums.py` (`:25` global, read at `:387`, shadowed at
+    `:854`), `pdsinfoshelf.py` (`:27` / `:440` / `:878`) and `pdslinkshelf.py`
+    (`:29` / `:1393` / `:1727`). In each, `main()` writes `LOGDIRS = []` with no
+    `global` declaration, so the appends that follow land on a **local** list;
+    `move_old_checksums()` / `move_old_info()` / `move_old_links()`, called from
+    `initialize`/`repair`/`update`, then iterate the still-empty module-level
+    list and version nothing. The comment above each global — "Holds log file
+    directories temporarily, used by `move_old_*()`" — describes an intent the
+    code does not implement.
+
+    PR-24 left the `N806` on each local rather than lowercasing it: the uppercase
+    spelling is what makes the intended link to the global visible, and renaming
+    it would make the shadowing read as deliberate. Adding `global LOGDIRS` is
+    the fix and it **changes behavior** — old log files would start being renamed
+    to `_v###` — which is outside a style PR.
+
+    **Owner: PR-25 (Phase 6), which consolidates exactly this shared skeleton
+    into `_common.py`; it needs an owner decision on whether the versioning was
+    meant to run.**
+
+    **DECIDED by the owner, 2026-08-04: the log files should be versioned.** The
+    three pds3 tools are the defective copies and the pds4 twins are correct —
+    `pds4checksums.py:824`, `pds4infoshelf.py:859` and `pds4linkshelf.py:1217`
+    each declare `global LOGDIRS` in the same place.
+
+    The fix is one line per tool. It stays assigned to **PR-25**, not PR-24,
+    because it changes behavior: old log files begin being renamed to `_v###`,
+    which is a new filesystem side effect that PR-13's tool tests observe, and
+    PR-24's gate is an identical pass/fail set with no behavior change permitted.
+    Per §2 a behavior change must be pinned by a regression test — here, that the
+    second run of a task versions the first run's log rather than overwriting it,
+    asserted for a pds3 tool and its pds4 twin so the two stay converged through
+    the `_common.py` consolidation.
+
+82. **Deferred entry 79's eager-logging inventory undercounts: it is 132 sites
+    and 69 filepath-passing sites, not 130 and 67.** Entry 79 states its
+    predicate exactly, and the `attr` set it uses —
+    `{debug, info, warn, warning, error, critical, exception, log, fatal, open,
+    close}` — omits `pdslogger.PdsLogger.normal()`, which is a real level method
+    alongside `blankline`, `ds_store`, `dot_underscore`, `invisible` and
+    `hidden`. Re-running the same sweep with the full method set adds
+    `pds4checksums.py:119` and `:128`
+    (`logger.normal('Selected MD5=%s' % md5, abspath)` and
+    `logger.normal('MD5=%s' % md5, abspath)`) — both of which are also
+    filepath-passing sites, so both counts move by two. Their pds3 counterparts
+    at `pdschecksums.py:118`/`:127` use `logger.info` and were already counted,
+    which is what makes the asymmetry easy to miss.
+
+    This does not change entry 79's conclusion or PR-24's disposition; it is
+    recorded so the figure a later PR works from is the measured one.
+    **Owner: whoever executes the entry-79 conversion.**
+
+83. **`pdsarchives.py` assigned `proceed` six times and never read it.** At
+    `8cab66a` the five task functions' return values were bound to `proceed` at
+    `:530`–`:542`, and `:554` set it to `False` in the exception handler; PR-24
+    removed the six dead bindings and kept every call. Its four sibling tools use
+    the same variable to gate a chained follow-on step (`pdschecksums.py:915`,
+    `if proceed and args.infoshelf:`), but `pdsarchives` has no such option — its `argparse` block offers only the five task flags,
+    `volume`, `--log` and `--quiet`. So the variable is a vestige of the shared
+    skeleton rather than a missing feature, and PR-24 removed the dead bindings
+    (`F841`) while keeping every call.
+
+    Recorded because the vestige is evidence about how the five tools were
+    written, which is the thing PR-25 is consolidating.
+    **Owner: PR-25 (Phase 6).**
+
+84. **`test_pds4file_blackbox.py:138` is a duplicate `parametrize` case.**
+    `PT014` reports it as a duplicate of the case at index 34 — the same
+    `uranus_occs_earthbased/.../u0_kao_91cm_734nm_radius_six_ingress_100m.xml`
+    input appears twice in one table. It is permanently excluded in the ratchet
+    rather than fixed, because removing a case removes a generated test id and
+    PR-24's gate is an identical id set. Whether the duplicate was meant to be a
+    different radius or should simply go needs someone who knows the bundle.
+    **Owner: a test-content PR, not a style PR.**
+
+85. **`uranus_occs_earthbased.py`'s module-level loop leaves its control
+    variables bound as public module attributes.** The loop at `:537` runs at
+    module scope, so `bundle_prefix`, `opus_id_prefix_e`, `opus_id_prefix_i` and
+    `opus_id_prefix_a` survive it as attributes of
+    `pdsfile.pds4file.rules.uranus_occs_earthbased` — and all four are in
+    `tests/api/api_manifest.json`. That is why PR-24 could not take `B007`'s
+    rename here: `_bundle_prefix` would remove a name the freeze records. The
+    names are an accident of writing the loop at module level, not an intended
+    API; wrapping the loop in a function would drop all four at once, which is a
+    surface change needing sign-off.
+    **Owner: owner decision; a natural fit for the Phase 7/8 surface tidy-up.**
+
+### Added by the PR-24 adversarial review (round 1)
+
+86. **`tests/rules/pds3/test_cocirs_xxxx.py`'s two association loops now differ in
+    what their failure message reports.** The `F841` fix deleted the unused
+    `trimmed = [p.rpartition('holdings/')[-1] for p in abspaths]` from the first
+    of two otherwise-identical loops; the surviving loop still builds `trimmed`
+    and interpolates it into its assertion message, while the first now
+    interpolates the full `abspaths`. The deletion is what `F841` asks for and is
+    behavior-neutral — the text only appears on a failure — but it settles a
+    pre-existing copy-paste inconsistency in the less informative direction.
+    Either both loops should report the trimmed paths or neither should.
+    **Owner: a test-content PR.**
+
+87. **`src/pdsfile/pds3file/__init__.py`'s alias comment now introduces one
+    method instead of eight.** After the `F811` de-duplication removed the seven
+    shadowed definitions, `# Alias, compatible with old function/property names`
+    at `:123` sits above `log_path_for_volset` alone, while its twin
+    `log_path_for_volume` and the six alias properties live about fifty lines
+    below under `# Override functions`. Nothing is wrong — the comment is still
+    true of the method it introduces — but the two alias groups would read better
+    merged under one heading. Moving code is not a `ruff check` fix, so it
+    correctly stayed out of PR-24.
+    **Owner: Phase 7 (PR-29–PR-34), which owns docstrings and module structure.**
+
+### Added by the PR-24 adversarial review (round 2)
+
+88. **The pds3 and pds4 tool twins have already diverged on their mutable
+    defaults, so two of the nine permanent `B006`s are a divergence rather than a
+    shared-skeleton property.** `pdschecksums.py:55` takes `oldpairs=[]` while
+    `pds4checksums.py:56` takes `oldpairs=None` and writes `(oldpairs or [])`;
+    `pdsinfoshelf.py:45` takes `old_infodict={}` while `pds4infoshelf.py:46`
+    takes `old_infodict=None`. The pds4 side has already adopted the
+    None-sentinel form that `B006` asks for.
+
+    PR-24's exclusion still holds at the two pds3 sites — passing `None`
+    explicitly raises `TypeError` today and would stop doing so, which is a
+    behavior change — but the reason given, that the rewrite changes the
+    signature a frozen tool reports, is one the pds4 twin already contradicts.
+
+    This matters because **PR-25 consolidates exactly these two function pairs
+    into `_common.py`** and will have to choose one signature for each. Choosing
+    the pds4 form is the `B006` fix and removes two of the nine.
+    **Owner: PR-25 (Phase 6).**
+
+### Added by the PR-24 adversarial review (round 3)
+
+89. **The maintenance tools now spell the same `logger.close()` unpacking three
+    ways.** After PR-24's `RUF059` work, nine sites read
+    `(fatal, errors, _warnings, _tests) = logger.close()`
+    (`pdsarchives.py:558`, `pdschecksums.py:911`, `pdsdependency.py:1155`,
+    `pdsindexshelf.py:545`, `pdsinfoshelf.py:935`, `pdslinkshelf.py:1776`,
+    `pds4checksums.py:885`, `pds4indexshelf.py:535`, `pds4infoshelf.py:918`);
+    two read `(fatal, errors, _, _)` (`pds4archives.py:583`,
+    `pds4linkshelf.py:1271`); and `pdsdependency.py:322,347` still read
+    `(fatal, errors, warnings, tests)` because those two sites do use the values.
+
+    The two bare-`_` sites already used that spelling at `8cab66a` and carried no
+    `RUF059`, so PR-24 had no ruff trigger to touch them and correctly did not.
+    The divergence is worth recording because **PR-25 consolidates exactly this
+    `finally` block into `_common.py`** and will have to choose one spelling —
+    the same situation deferred observation 88 records for the `B006` defaults.
+    **Owner: PR-25 (Phase 6).**
+
+### Added by the CodeRabbit review of PR #119 (2026-08-04)
+
+90. **Five exception tests pass vacuously when the call under test returns
+    normally.** `tests/pds3file/test_pds3file_whitebox.py` wraps the call in a
+    bare `try` and asserts only inside the `except` handler, with no `else` and
+    no unconditional failure:
+
+    ```python
+    def test_data_set_id_exception(self, input_path, expected):
+        target_pdsfile = instantiate_target_pdsfile(input_path)
+        try:
+            _ = target_pdsfile.data_set_id
+        except ValueError as e:
+            assert expected in str(e)
+    ```
+
+    If `data_set_id` ever stops raising, the handler never runs and the test
+    passes green while checking nothing. Measured by walking the module's AST for
+    `try` statements with no `else` and no unconditional failure in the body,
+    there are five: `:324` (`data_set_id`), `:427` (`from_path`), `:455`
+    (`from_opus_id` with a wrong id), `:521` (`find_selected_row_key`) and `:554`
+    (`data_abspath_associated_with_index_row`). It is the reason this file carries
+    a `PT017` ratchet entry: `pytest.raises` is exactly the construct that makes
+    the exception mandatory.
+
+    Pre-existing — the shape is identical at `8cab66a`, and PR-24 changed only
+    the `parametrize` argument form and, at `:324`, one `res1 =` to `_ =`. Fixing it means
+    either adding an `else: raise AssertionError(...)` to each site or converting
+    to `pytest.raises` and dropping the `PT017` entry, both of which change what
+    the suite asserts — outside a `ruff check` PR whose gate is an identical
+    pass/fail set. Note the sibling tests in `test_pds3file_blackbox.py` already
+    use the stronger form (`assert False  # pragma: no cover` after the call), so
+    the repair pattern is already in the tree.
+    **Owner: PR-36 (the test-suite critique pass), or any PR that revisits these
+    modules' assertions.**
+
+91. **Two negative `from_lid` tests are parametrized with an `expected` value
+    they never use.** `tests/pds3file/test_pds3file_blackbox.py`
+    `test_from_lid_mismatched_lid` (:947) and `test_from_lid_invalid_lid` (:962)
+    both take `(input_lid, expected)` and assert only on a fixed substring of the
+    error message, so `expected` — in the first case the data-set ID the
+    resolution is supposed to disagree with — is dead. The mismatch test would
+    pass on a `ValueError` naming any other data-set ID.
+
+    The stronger version asserts `expected` appears in the message; the invalid
+    test has no data-set ID in its error contract at all and should simply drop
+    the parameter. Both are pre-existing at `8cab66a`; PR-24 touched only the
+    `parametrize` argument form. The unused parameter is invisible to the gate
+    because `ARG002` is not in the select set.
+    **Owner: PR-36, with entry 90 — the two are the same weakness at different
+    strengths.**

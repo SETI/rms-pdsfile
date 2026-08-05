@@ -1,17 +1,19 @@
-import pytest
 import os
 
-import pdsfile.pds3file as pds3file
+import pytest
 
+import pdsfile.pds3file as pds3file
 from tests.rules.support import (
     PDS3_TEST_RESULTS_DIR as TEST_RESULTS_DIR,
+)
+from tests.rules.support import (
     associated_abspaths_test,
     opus_products_test,
 )
 
 
 @pytest.mark.parametrize(
-    'input_path,expected',
+    ('input_path', 'expected'),
     [
         ('volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.DAT',
          'COUVIS_0xxx/opus_products/FUV1999_007_16_57.txt')
@@ -22,7 +24,7 @@ def test_opus_products(request, input_path, expected):
     opus_products_test(pds3file.Pds3File, input_path, TEST_RESULTS_DIR+expected, update)
 
 @pytest.mark.parametrize(
-    'input_path,category,expected',
+    ('input_path', 'category', 'expected'),
     [
         ('volumes/COUVIS_0xxx/COUVIS_0058/DATA/D2017_001/EUV2017_001_03_49.LBL',
          'volumes',
@@ -44,14 +46,14 @@ def test_associated_abspaths(request, input_path, category, expected):
                              TEST_RESULTS_DIR+expected, update)
 
 def test_opus_id_to_primary_logical_path():
-    TESTS = [
+    test_cases = [
         'volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.DAT',
         'volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/HDAC1999_007_16_33.DAT',
         'volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/HDAC1999_007_16_31.DAT',
         'volumes/COUVIS_0xxx/COUVIS_0058/DATA/D2017_001/EUV2017_001_03_49.DAT',
     ]
 
-    for logical_path in TESTS:
+    for logical_path in test_cases:
         test_pdsf = pds3file.Pds3File.from_logical_path(logical_path)
         opus_id = test_pdsf.opus_id
         opus_id_pdsf = pds3file.Pds3File.from_opus_id(opus_id)
@@ -79,7 +81,8 @@ def test_opus_id_to_primary_logical_path():
         for pdsf in product_pdsfiles:
             # Every version is in the product set
             for version_pdsf in pdsf.all_versions().values():
-                if 'previews/COUVIS_0xxx_v' in version_pdsf.abspath: continue   # no versions of previews
+                if 'previews/COUVIS_0xxx_v' in version_pdsf.abspath:  # no versions of previews
+                    continue
                 assert version_pdsf.abspath in opus_id_abspaths
 
             # Every viewset is in the product set
@@ -90,7 +93,8 @@ def test_opus_id_to_primary_logical_path():
             # Every associated product is in the product set except metadata
             for category in ('volumes', 'previews'):
                 for abspath in pdsf.associated_abspaths(category):
-                    if '.' not in os.path.basename(abspath): continue   # skip dirs
+                    if '.' not in os.path.basename(abspath):  # skip dirs
+                        continue
                     assert abspath in opus_id_abspaths
 
 ##########################################################################################

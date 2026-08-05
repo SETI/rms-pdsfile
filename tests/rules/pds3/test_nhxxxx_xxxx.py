@@ -1,9 +1,10 @@
 import pytest
 
 import pdsfile.pds3file as pds3file
-
 from tests.rules.support import (
     PDS3_TEST_RESULTS_DIR as TEST_RESULTS_DIR,
+)
+from tests.rules.support import (
     associated_abspaths_test,
     opus_products_test,
 )
@@ -11,7 +12,7 @@ from tests.rules.support import (
 
 @pytest.mark.parametrize(
 # 1001 is the raw volume and 2001 is the calibrated volume.
-    'input_path,expected',
+    ('input_path', 'expected'),
     [
         ('volumes/NHxxLO_xxxx/NHLALO_1001/data/20060224_000310/lor_0003103486_0x630_eng.fit',
          'NHxxLO_xxxx/opus_products/lor_0003103486_0x630_eng.txt')
@@ -22,7 +23,7 @@ def test_opus_products(request, input_path, expected):
     opus_products_test(pds3file.Pds3File, input_path, TEST_RESULTS_DIR+expected, update)
 
 @pytest.mark.parametrize(
-    'input_path,category,expected',
+    ('input_path', 'category', 'expected'),
     [
         ('volumes/NHxxLO_xxxx/NHLALO_1001/data/20060224_000310/lor_0003103486_0x630_eng.fit',
          'volumes',
@@ -35,7 +36,7 @@ def test_associated_abspaths(request, input_path, category, expected):
                              TEST_RESULTS_DIR+expected, update)
 
 def test_opus_id_to_primary_logical_path():
-    TESTS = [
+    test_cases = [
         ('volumes/NHxxLO_xxxx/NHLALO_1001/data/20060224_000310/lor_0003103486_0x630_eng.fit', ''),
         ('volumes/NHxxLO_xxxx/NHLALO_1001/data/20060423_000810/lor_0008107080_0x633_eng.fit', ''),
         ('volumes/NHxxLO_xxxx/NHLALO_1001/data/20060730_001657/lor_0016577910_0x630_eng.fit', ''),
@@ -119,7 +120,7 @@ def test_opus_id_to_primary_logical_path():
         ('volumes/NHxxMV_xxxx/NHPCMV_1001/data/20130712_023593/mpf_0235933761_0x548_eng.fit',   '0x54a'),
     ]
 
-    for (logical_path, alt_hex_code) in TESTS:
+    for (logical_path, alt_hex_code) in test_cases:
         test_pdsf = pds3file.Pds3File.from_logical_path(logical_path)
         opus_id = test_pdsf.opus_id
         opus_id_pdsf = pds3file.Pds3File.from_opus_id(opus_id)

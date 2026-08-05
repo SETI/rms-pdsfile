@@ -3,17 +3,19 @@
 # Blackbox tests for pdsviewable
 ##########################################################################################
 
-from pdsfile import pdsviewable
 import pytest
 
+from pdsfile import pdsviewable
+
 from .helper import instantiate_target_pdsfile
+
 
 ##########################################################################################
 # Blackbox test for functions & properties in PdsViewSet class
 ##########################################################################################
 class TestPdsViewSetBlackBox:
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('previews/COUVIS_0xxx/COUVIS_0009/DATA/D2004_274/EUV2004_274_01_39_thumb.png',
              'EUV2004_274_01_39_thumb.png')
@@ -26,7 +28,7 @@ class TestPdsViewSetBlackBox:
         assert expected in pdsviewset.thumbnail.url
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('previews/COUVIS_0xxx/COUVIS_0009/DATA/D2004_274/EUV2004_274_09_50_small.png',
              'EUV2004_274_09_50_small.png')
@@ -38,7 +40,7 @@ class TestPdsViewSetBlackBox:
         assert expected in pdsviewset.small.url
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('previews/COUVIS_0xxx/COUVIS_0009/DATA/D2004_274/EUV2004_274_02_25_med.png',
              'EUV2004_274_02_25_med.png')
@@ -50,7 +52,7 @@ class TestPdsViewSetBlackBox:
         assert expected in pdsviewset.medium.url
 
     @pytest.mark.parametrize(
-        'input_path,expected',
+        ('input_path', 'expected'),
         [
             ('previews/COUVIS_0xxx/COUVIS_0009/DATA/D2004_274/EUV2004_274_07_10_full.png',
              'EUV2004_274_07_10_full.png')

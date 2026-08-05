@@ -6753,3 +6753,530 @@ gates returned the same results**, listed again in the round record: ns
 measured, 92 passed / 800 skipped with no holdings, an empty manifest diff at
 733,876 bytes each side, identical MROs, `ruff check` clean with the no-ignores
 derivation still at 40, and the consumer smoke unchanged.
+
+## PR-24 — `style: ruff-clean rules and remaining files`
+
+**Branch:** `pr-24-ruff-rest`, based on and opened against `rewrite` @ `8cab66a`
+(the merge of PR-23, #118). PR-24 is **not stacked** (owner, 2026-08-03,
+`plans/2026-08-03-addendum-pr23-24-owner-decisions.md` decision 4), so its
+baseline is `rewrite` itself and its reviewer diff is `git diff origin/rewrite...HEAD`.
+
+**Sub-plan:** `plans/2026-08-04-pr-24-subplan.md`.
+**Deliverable:** `ruff check` only over everything PR-23 did not take — the rule
+modules, the `pds3file`/`pds4file` initializers, the holdings-maintenance tools,
+the tools/scripts entry points and the test tree. No `ruff format`, no
+`ruff format --check` gate, no `# fmt: off` guards. No test is added and no golden
+is touched, so the §6.2 gate is an **identical** per-test set in both modes.
+
+**Why this PR's gate is sharper than PR-23's:** PR-24 edits the files that
+*generate* the test ids. A `PT006` or `N806` rewrite inside a parametrized test
+changes the source pytest builds ids from, so the gate is the **id set**, not the
+counts — one id removed and one added would net to zero in a count check.
+
+### 1. Environment
+
+| Item | Value |
+|---|---|
+| Python | 3.12.3 |
+| ruff | 0.15.22 |
+| Suite driver | the command lines of `scripts/automated_tests/pdsfile_main_test.sh` — serial, under `coverage run`, plus `-rA --junitxml` |
+| Holdings | `PDS3_HOLDINGS_DIR` / `PDS4_HOLDINGS_DIR` at the limited testing copy the goldens are tuned to |
+| Baseline tree | a detached worktree at `8cab66a`, measured here rather than copied from a record |
+
+### 2. Full-data suite — an identical set in both modes
+
+Regenerated after the last change under `src/` and `tests/`.
+
+| Mode | Baseline @ `8cab66a` | PR-24 head | ids | Diff |
+|---|---|---|---|---|
+| `--mode ns` | 858 passed / 34 skipped | **858 passed / 34 skipped** | 892 both | **empty** |
+| `--mode s` | 555 passed / 3 skipped | **555 passed / 3 skipped** | 558 both | **empty** |
+
+The comparison is id-by-id from the two `junitxml` files: every `testcase` is
+reduced to `classname::name -> outcome` and the two maps are compared three ways.
+
+```
+ns: 892 vs 892 ids; only-in-baseline 0, only-in-head 0, outcome changed 0
+ s: 558 vs 558 ids; only-in-baseline 0, only-in-head 0, outcome changed 0
+```
+
+The independently-measured baseline was also checked against the coordinator's
+`8cab66a` capture: 892/558 ids, 0/0/0 on both modes, so the two agree and the
+baseline is not being taken on trust.
+
+**The id set was additionally measured after the `PT006` rewrite alone**, before
+the rest of the test-tree work, by `pytest --collect-only -q` — 892 and 558 ids,
+identical id-for-id. `PT006`'s fix is one ruff marks **unsafe**, and this
+measurement is what discharges that, rather than an argument about how pytest
+builds ids.
+
+**Non-vacuity, at file level.** `coverage.CoverageData.measured_files()` for the
+head run lists **72** files under `src/pdsfile/`, including **all 36** rule
+modules.
+
+**Non-vacuity, at line level.** Of the **339 executable lines this PR changed**
+(`git diff -U0 origin/rewrite...HEAD` intersected with `coverage`'s own statement
+set):
+
+| Area | changed executable | executed | how measured |
+|---|---:|---:|---|
+| rule modules, the two initializers, `show_opus_products.py` | 77 | **73** | the in-process full-data run |
+| holdings-maintenance tools | 137 | **107** | a **second** coverage run, see below |
+| `tests/**` | 124 | — | `[tool.coverage.run] omit = tests/*`, so coverage cannot report them; the 892 collected ids and 858 passes are what prove these modules import and run |
+| `scripts/check_runtime_imports.py` | 1 | — | exercised by the clean-install gate as a subprocess |
+| **total** | **339** | **180** | |
+
+**The maintenance tools needed their own measurement, and this is the one thing
+the sub-plan did not anticipate.** `tests/holdings_maintenance/` drives the tools
+through `subprocess`, so the in-process run records all 17 modules in
+`measured_files()` with **zero executed statements** — a coverage number that
+looks like total absence of testing and is in fact an artifact of the harness. A
+second run of `tests/holdings_maintenance/` with `COVERAGE_PROCESS_START` and a
+`sitecustomize.py` that calls `coverage.process_startup()` collects the child
+processes: **111 passed**, and **107 of the 137** changed executable lines
+execute.
+
+The 30 that do not are, measured rather than characterised: **12** lines of the
+`A001` `dir` → `dirname` rename and **4** `except (ValueError, OSError)` headers,
+all inside the four fallback branches of the checksum/info tools; **4** `E701`
+`return` splits; **3** lines of the `SIM102` collapse; **3** `logfiles = {…}`
+set literals; **2** `raise OSError`; **1** `with open(abspath)`; and **1**
+`logger.info` whose `f` prefix the `F541` fix removed.
+
+The 12 rename lines are not covered by the probe in §3 — no probe can prove a
+rename — but by the `F821` measurement in §3's last paragraph, which is the check
+that catches a rename that missed a use. Everything else in the list has a probe
+row.
+
+### 3. The unreached rewrites — a differential probe
+
+Because 30 of the tool lines this PR changes are unreached, the
+behavior-sensitive rewrites among them were proved directly rather than by
+assertion. The probe evaluates the `rewrite` spelling and the PR-24 spelling over
+the same inputs and compares:
+
+| Check | Inputs | Result |
+|---|---|---|
+| `SIM102` nested-`if` collapse — branch taken **and** operand evaluation order | 8 of 8 boolean combinations, with a trace of which operands were evaluated | agree |
+| `E721` `type(x) == C` → `type(x) is C` | 7 values including `str` and `list` subclasses | agree |
+| `E721` — that `isinstance()` would **not** be equivalent | the same subclasses | confirmed different, which is why the fix is `is` |
+| `UP024` `IOError is OSError`, and the two `except` tuples | 3 exception instances | agree |
+| `E701` one-line-`if` split | 6 representative sites, `ast.dump` compared | identical AST |
+| `C405` `set([…])` → `{…}` | the real literals, incl. one with a duplicate element | agree |
+| `UP015` `open(p, 'r')` → `open(p)` | round-trip read | agree |
+| `F541` f-string with no placeholder | the `pdslinkshelf.py` message | identical string |
+| `UP031` `%s`/`%d` → f-string | str, empty, `%`-containing, custom `__str__`, four ints | agree |
+| `E711` / `E712` | str/None values; `False`/`True`/object | agree |
+| `E712` — that ruff's suggested `if res:` would **not** be equivalent | an empty falsy value | confirmed different, which is why the fix is `is not False` |
+
+**13 checks, 13 agree, 0 disagree.** The probe script also carries `RUF051` and
+`UP034` rows, and both agree, but they are **not counted here**: their only sites
+in scope are in `re_validate.py`, which round 1 restored, so neither rewrite is
+in this PR. The probe is scratch evidence, not a committed test: PR-24's gate is
+an identical test-id set, and a new test id is movement.
+
+**A mechanical check that no rename left a dangling name.** The `A001` and `N806`
+work renamed 34 identifiers in the tools and 51 in the test tree, all by AST
+position within one function scope. A missed use — or a renamed use whose binding
+was missed — is an undefined name, and `F821` reports exactly **1** violation
+both at `8cab66a` and at HEAD: the pre-existing `error`/`errors` typo at
+`shelf_consistency_check.py`, which deferred entry 6 assigns to a later PR.
+
+### 4. API freeze
+
+`scripts/dump_public_api.py` run against a worktree at `8cab66a` and against
+HEAD: **733,876 bytes each, `diff` empty**. `tests/api/test_api_freeze.py` passes,
+and all 26 tests under `tests/api/` pass.
+
+The freeze is what stopped three otherwise-obvious fixes: the 31 `F401`s in the
+two initializers (every name is a manifest member), `B007` in
+`uranus_occs_earthbased.py` (a module-scope loop variable that is a manifest
+member), and `N805`/`N802` on the frozen uppercase methods.
+
+### 5. Other gates
+
+| Gate | Result |
+|---|---|
+| no holdings — `scripts/run-all-checks.sh`, all holdings vars unset | **92 passed / 800 skipped**; ruff, pytest, pyroma, API-freeze and clean-install all green |
+| `ruff check src/pdsfile tests scripts` with the project config | clean, over **139 files** (26 pds3 rule modules, 10 pds4, 17 maintenance modules, 2 tools, 2 subpackage initializers, 64 test modules, 3 scripts, 15 PR-23 core) |
+| no-ignores re-derivation over the in-scope files | reports exactly the 2,277 permanent violations and nothing else |
+| clean install | `scripts/clean_install_check.sh`, via `run-all-checks.sh` — passed |
+| `__mro__` for the three `UP004` classes | identical at base and HEAD |
+| inline `noqa` | **none added**; the only `noqa` strings in the diff are prose in the sub-plan and this file |
+| consumer smoke | see §6 |
+
+### 6. Consumer smoke — same outcome as the baseline
+
+Against `critiques/baselines/consumer-smoke-baseline.md`. The gate is **same
+outcome**, so fewer failures would be as much a flag as more.
+
+| Check | Baseline | PR-24 head |
+|---|---|---|
+| A — rms-opus import paths | 4/4 ok, 0 failures | **4/4 ok, 0 failures** |
+| B — rms-viewmaster startup | 5 ok / 3 fail | **5 ok / 3 fail** |
+
+The three check-B failures are the same three: `pdsfile.cache_lifetime` (twice,
+once directly and once through `get_page_cache()` with `PAGE_CACHING=True`) and
+`pdsfile.DEFAULT_CACHING`. `pdsfile.pdsfile.repair_case` still resolves.
+
+### 7. The ratchet
+
+`per-file-ignores` in scope: **78 entries / 369 code slots → 59 entries / 184
+slots**. Nineteen files come off entirely. Whole-file totals including PR-23's
+eleven core entries: 89 → 70 entries, 383 → 198 slots.
+
+`re_validate.py`'s entry is deliberately **unchanged**: ground rule 7 and
+overrides deviation (6) freeze that file, so none of its ten codes was this PR's
+to fix. Round 1 caught this after the file had been cleaned; it is byte-identical
+to `origin/rewrite` again.
+
+The shrink property was checked mechanically against `git show
+origin/rewrite:pyproject.toml`, not against any intermediate state of this branch:
+
+```
+WIDENED (a code present after but not before): NONE
+NEW FILES with no committed entry:             NONE
+```
+
+**Three code slots** in the removed entries were already **stale** at `8cab66a`
+rather than fixed here — `tests/pds3file/helper.py` and `tests/pds4file/helper.py`
+carried `B904` and `tests/conftest.py` carried `F401`, none of which the
+no-ignores derivation reports in those files. (The unit is the code slot, not the
+entry: both helpers' `I001` and `N806` were real and were fixed.) Same class of
+dead entry PR-23 found in `pdsviewable.py`'s `RUF059`.
+
+`scripts/gen_ruff_ratchet.py` was **not** used: deferred entry 33 records that it
+emits an empty block against a tree whose committed ignores already suppress
+everything, which is exactly this tree. The block is hand-derived from the
+no-ignores run and then verified by running the project config.
+
+### 8. Violation arithmetic
+
+Derived with the template select set, `target-version = "py310"`, `line-length =
+100`, `extend-ignore = ["PT011", "SIM105", "SIM108"]` and **no**
+`per-file-ignores`:
+
+| | |
+|---|---:|
+| at `8cab66a`, in scope | **2,760** |
+| fixed | **483** |
+| permanent | **2,277** |
+
+The sub-plan predicted 505/2,255; §11 of it reconciles the difference line by
+line — `I001` −4, `B007` −1, `N806` −3, `A002` +1, `E501` +3 from the executor's
+own measurements, and `re_validate.py` −18 from round 1's Major. Each is a case
+where the plan's classification was wrong and a measurement, or a reviewer,
+corrected it.
+
+### 9. What this PR deliberately did not do
+
+- **No logging call was converted.** 46 of the 139 permanent `UP031`s are logging
+  calls. `pdslogger.PdsLogger.log` treats a lone positional argument as the
+  keyword-only `filepath` once the message has no `%` pattern, so the naive lazy
+  rewrite is a `TypeError` at every site that already passes a filepath — 69 of
+  them, measured. Deferred entry 79 owns the conversion and says in terms that it
+  is too large for PR-24. Entry 82 corrects its figures from 130/67 to 132/69.
+- **No prose was rewritten** except where a fix in this PR made it wrong — the
+  rule stated in sub-plan §4.2, which closes deferred entry 77.
+- **Deferred entries 31, 44, 52 and 76 were not acted on**; 31 and 76 need owner
+  decisions that have not been given.
+- **`re_validate.py` was not touched.** Ground rule 7 and overrides deviation (6)
+  freeze it and the plan's PR-24 text says its whole derived set is permanent, so
+  its ten-code ratchet entry survives byte for byte. It is also the only module
+  in the edited package with no test of any kind, which is the practical reason
+  the freeze matters rather than being a formality.
+
+### 10. The §6.6 review loop
+
+| Round | Findings | Record |
+|---|---|---|
+| 1 | **1 Major**, 9 Minor, 3 Deferred — verdict `goal not met` | `critiques/pr-24/round-1.md` |
+| 2 | **0 Major**, 4 Minor, 1 Deferred — verdict `goal not met` | `critiques/pr-24/round-2.md` |
+| 3 | **1 Major**, 6 Minor, 1 Deferred — verdict `goal not met` | `critiques/pr-24/round-3.md` |
+| 4 (scoped) | **0 Major**, 6 Deferred — verdict **`goal met`** | `critiques/pr-24/round-4.md` |
+
+Round 1's Major is the `re_validate.py` freeze violation; all nine of its Minors
+were accepted and fixed, none rebutted. Because that round changed
+`src/pdsfile/`, the full-data run, the tool-coverage run and the API dump were
+**all regenerated** before the next reviewer, per §6.6 step 5. The figures in
+§2–§8 above are the regenerated ones.
+
+Round 2 found no Major. Its four Minors were all arithmetic or citation slips in
+these records — a superseded 2,259 left in the gate table, a "fifteen" that named
+eleven, `A002` cited at a line this PR deletes, and a `UP031` composition that
+double-counted one site and filed twelve unaligned `%` expressions under
+"hand-aligned blocks". All four were accepted and fixed; none was rebutted. That
+round changed **only** `plans/`, `critiques/` and `pdsfile_overrides.mdc`, so
+under §6.6 step 5 the full-data record carries forward rather than being
+regenerated.
+
+Round 3's Major is **this section's own §3**: after round 1 restored
+`re_validate.py`, §3 still opened on the pre-revert "53 tool lines" and still
+listed a `RUF051` and a `UP034` probe row for rewrites the PR no longer contains
+— while §10 asserted every figure above it had been regenerated. It is fixed and
+the probe count restated as 13. Five of its six Minors were records; one was code
+(an inline comment column the `dir` → `dirname` rename pushed right in the two
+archive tools, a class of damage neither prior audit could see). **One Minor was
+rebutted with a measurement:** converting
+`tests/holdings_maintenance/support.py:200`'s `[*x, y]` to the house `x + [y]`
+spelling raises a fresh `RUF005` in a file with **no** ratchet entry at
+`8cab66a`, so taking the finding would mean creating an entry — a widen, and a
+hard stop. The rebuttal is recorded in `critiques/pr-24/round-3.md` and the
+tension is noted so deviation (4)'s "not wanted anywhere" is not read as a claim
+of fact about the tree.
+
+Round 3's three source edits are **comment-only**: tokenizing each file before
+and after with `COMMENT`/`NL` dropped gives byte-identical token streams (3,130 /
+3,135 / 275 tokens), so no executable line changed. The full-data run was
+regenerated anyway — round 3's Major was precisely a stale record — and the
+tool-coverage measurement carries forward on the token-equality proof, since the
+changed-executable-line set it maps is provably unchanged.
+
+**Round 4 is the scoped re-review §6.6 prescribes for a fourth round** — confirm
+the prior findings, raise only new Majors. It returned **none**, and the loop
+terminates. It confirmed round 1's and round 3's Majors resolved by
+re-derivation (`re_validate.py` md5-identical to `origin/rewrite` with its
+derived set of 26 violations identical at base and head; the 30 unreached tool
+lines reproduced line-for-line), all 19 Minors resolved, and round 3's rebuttal
+sound — it applied the `[*x, y]` conversion itself and observed the fresh
+`RUF005` on a file with no ratchet entry.
+
+It also added three checks no earlier round ran: a **rename-collision sweep**
+(per-function binding sets compared base against head across every changed file;
+thirteen scopes changed size, all accounted for, and in the four that grew every
+surviving load is dominated by its own store), a measurement of the `E501`
+justification (of the 41 files, in **exactly one** is every site a comment line,
+which is what §5 claims), and a package-wide audit confirming the only f-strings
+this PR adds are two `print()`s and three exception messages.
+
+Its six Deferred findings were five prose-accuracy defects in this PR's own
+records plus one style choice. The five are corrected; none touches `src/` or
+`tests/`, so this record carries forward unchanged.
+
+### 11. Deferred entries this PR adds
+
+**Eleven**, numbered 81–91, taking the file from 80 to 91:
+
+| # | Subject | Owner |
+|---|---|---|
+| 81 | `LOGDIRS` is shadowed by a bare local in `main()` in the three pds3 tools, so the "move old logs aside" step never runs; the pds4 twins declare `global` | owner decision, then PR-25 |
+| 82 | entry 79's eager-logging inventory undercounts — 132 sites and 69 filepath-passing, not 130 and 67; its `attr` set omitted `pdslogger.normal` | whoever executes the entry-79 conversion |
+| 83 | `pdsarchives.py` assigned `proceed` six times and never read it | PR-25 |
+| 84 | `test_pds4file_blackbox.py:138` is a duplicate `parametrize` case (`PT014`) | a test-content PR |
+| 85 | `uranus_occs_earthbased.py`'s module-level loop leaves its control variables bound as public module attributes, which is why its `B007` is unfixable | owner decision; Phase 7/8 |
+| 86 | `test_cocirs_xxxx.py`'s two association loops now differ in what their failure message reports | a test-content PR |
+| 87 | `pds3file/__init__.py`'s alias comment introduces one method instead of eight after the `F811` de-duplication | Phase 7 |
+| 88 | the pds3 and pds4 tool twins have already diverged on their mutable defaults | PR-25 |
+| 89 | the maintenance tools now spell the same `logger.close()` unpacking three ways | PR-25 |
+| 90 | five exception tests in `test_pds3file_whitebox.py` pass vacuously when the call returns normally | PR-36 |
+| 91 | two negative `from_lid` tests take an `expected` value they never assert on | PR-36 |
+
+81–89 come from this PR's own measurements and its review rounds; **90 and 91
+were raised by the CodeRabbit review of PR #119** and are pre-existing at
+`8cab66a` in both cases.
+
+### 12. Two files added after the loop closed, by owner decision (2026-08-04)
+
+The owner decided three open deferred entries after round 4 converged. Two of
+them are edits, and both live in **PR-23's** file set rather than this PR's:
+
+| Entry | File | Decision | Change |
+|---|---|---|---|
+| 31 | `src/pdsfile/__init__.py` | the intent was to export the `PdsFile` class only | `from pdsfile import *` → `from pdsfile.pdsfile import PdsFile as PdsFile` |
+| 76 | `src/pdsfile/pdscache.py` | fix the indentation | both `flush` handlers and `class PdsCache:`'s `pass` re-indented onto the 4-space grid |
+| 81 | (none) | the log files should be versioned | recorded only; the fix changes behavior and stays with PR-25 |
+
+**Entry 31 is surface-neutral, and that is measured, not assumed.** `PdsFile`
+already reached the package namespace through `from .pds3file import *` /
+`from .pds4file import *` — `pdsfile.PdsFile is pdsfile.pdsfile.PdsFile` held
+before the change. A fresh `dump_public_api.py` before and after is
+**byte-identical at 733,876 bytes**. Two spellings were rejected on evidence:
+a plain `from ... import PdsFile` leaves the name unreferenced and raises `F401`,
+which trades one ratchet code for another instead of dropping one; and the
+relative `from .pdsfile import ...` sorts after the two star imports, so `I001`
+would have moved the core import below them and changed which module initializes
+first. `F403` goes from 3 occurrences to 2 — the two genuine star imports.
+
+**Entry 76 is semantics-neutral, and indentation is semantic, so it is proved.**
+`ast.dump(ast.parse(...))` of `pdscache.py` is identical before and after.
+`ruff check --select E1 --preview` on the file goes 8 → 3; the 3 remaining are
+`E115` on the commented-out `MemcachedCache.get_multi` block that deferred entry
+64 still owes a decision on. The same sweep run tree-wide reports **112**
+findings — 56 real code-indentation sites across ten files and 56 comment ones —
+which entry 76 now records, because that is the scale of the decision it was
+raised to ask for and it is far larger than one file.
+
+**Neither file is inside this PR's 2,760-violation target set**, so §8's
+arithmetic (483 fixed / 2,277 permanent) and §7's ratchet arithmetic are
+unchanged apart from `__init__.py`'s count comment, `x3` → `x2`.
+
+These two edits landed after round 4, so they have had **no adversarial review
+round of their own**. That is stated plainly rather than papered over: what backs
+them is the byte-identical manifest, the identical AST, a clean `ruff check`, and
+the regenerated full-data run below.
+
+#### Gates re-run after these two edits
+
+`src/pdsfile/` changed, so §6.6 step 5 requires the record regenerated rather
+than carried forward. Every gate was re-run at the new head:
+
+| Gate | Result |
+|---|---|
+| `--mode ns` | 858 passed / 34 skipped — **892 ids, 0 added / 0 removed / 0 outcome-changed** vs `8cab66a` |
+| `--mode s` | 555 passed / 3 skipped — **558 ids, 0 / 0 / 0** |
+| API freeze | fresh dump **733,876 bytes, `diff` empty** against the pre-change dump; `test_api_freeze.py` passes |
+| no-holdings `run-all-checks.sh` | **92 passed / 800 skipped**; ruff, pyroma, API-freeze and clean-install all green |
+| `ruff check src/pdsfile tests scripts` | clean |
+| consumer smoke A — rms-opus | **4/4 ok, 0 failures** (baseline: same) |
+| consumer smoke B — rms-viewmaster | **5 ok / 3 fail**, the same three flat-name failures (baseline: same) |
+
+The consumer smoke matters more than usual here: entry 31 edits
+`src/pdsfile/__init__.py`, which is the module every consumer's `import pdsfile`
+executes, and check A's third path is literally
+`from pdsfile import Pds3File, Pds4File`.
+
+### 13. The tree-wide indentation sweep (owner, 2026-08-04)
+
+Entry 76's sweep had found **112** `E1` findings across 23 files. The owner
+directed the indentation fixed, then that the gate be enabled and
+`re_validate.py`'s freeze lifted for whitespace. PR-24 fixes **59**, in 11 files
+and 404 lines. **`E111`, `E112` and `E113` — the three rules that fire on code —
+now measure zero across `src/pdsfile tests scripts`.**
+
+| Finding | Before | After | Fires on |
+|---|---:|---:|---|
+| `E111` indentation-with-invalid-multiple | 41 | **0** | code |
+| `E112` expected-an-indented-block | 0 | **0** | code |
+| `E113` unexpected-indentation | 0 | **0** | code |
+| `E114` …-comment | 5 | 0 | comments |
+| `E115` no-indented-block-comment | 3 | 3 | comments |
+| `E116` unexpected-indentation-comment | 48 | 48 | comments |
+| `E117` over-indented | 15 | 2 | code and comments |
+
+**None was auto-fixable** (`ruff --fix` offers nothing for `E1`), and fixing an
+`E111` means moving the whole block beneath it, so a re-indenter did the work.
+Its rule for code: the correct indent for a logical line is
+`4 × (its INDENT-stack depth)`, and the whole logical line — first physical line
+and every continuation — shifts by the same delta, so alignment under an opening
+parenthesis survives. Physical lines inside a multi-line string are never
+touched.
+
+**Its rule for comments is that they are carried, never re-aligned.** A comment
+moves by exactly the delta of the nearest logical line at its own column,
+searching forwards first and stopping at the first line shallower than the
+comment, since that line ends the block the comment belongs to. If nothing in the
+block sits at the comment's column, the comment does not move. In practice
+comments move only inside a block whose code moved: 45 of the 404 lines are
+comments, all in `pdslinkshelf.py` and `shelf_consistency_check.py`, the two
+files indented in 2-space steps.
+
+**That rule is the third attempt, and the first two damaged real conventions.**
+Worth recording in full, because the damage was invisible to every gate — the
+parse tree, the token stream and the test suite are identical either way:
+
+1. The first left comments behind while their block moved, stranding them at the
+   old indent. Caught by reading the diff of `shelf_consistency_check.py`.
+2. The second pulled every standalone comment to the code grid. That broke 32
+   **trailing-comment continuations**: a comment hanging under the trailing
+   comment of the line above continues *that* comment and belongs to its
+   statement. `pdsfile.py:411-449`, the `__init__` attribute-documentation block,
+   was the clearest casualty. The post-loop adversarial review found it.
+3. The third still re-aligned a comment whose own block had not moved. **The
+   owner caught this one**, naming six sites across two messages, and it damaged
+   two further conventions: an **annotation placed after the statement it
+   describes** — the `"if c.isdir" is False for volset level readme files` note
+   in `pdsarchives.py:493`, `pdschecksums.py:801`, `pdsinfoshelf.py:826`,
+   `pds4checksums.py:773` and `pds4infoshelf.py:807` — and **commented-out code
+   parked at column 0** so it reads as disabled, at `pdsinfoshelf.py:155-157`,
+   `pds4infoshelf.py:158-160`, `pdscache.py:701-702` and `:1011-1016`, and
+   `re_validate.py:828`.
+
+**53 findings remain and every one is on a comment line**: `E116` 48, `E115` 3,
+`E117` 2. They are the three conventions above. Pulling them to the grid is not a
+fix — it detaches the text from what it documents.
+
+**The proofs.** Indentation is semantic, so every file is checked four ways,
+independently of the tool that made the change: identical
+`ast.dump(ast.parse(...))`; identical token stream with `INDENT`/`DEDENT`
+dropped; every changed line differing **only** in leading whitespace; and an
+unchanged line count. **11 of 11 files pass all four**, and the diff is 404
+insertions against 404 deletions.
+
+`ruff check` stays clean, which is worth checking rather than assuming since
+shifting a line right can cross 100 columns.
+
+| File | Lines |
+|---|---:|
+| `holdings_maintenance/pds3/pdslinkshelf.py` | 276 |
+| `holdings_maintenance/pds3/shelf_consistency_check.py` | 44 |
+| `holdings_maintenance/pds4/pds4linkshelf.py` | 31 |
+| `_properties.py` | 19 |
+| `pdsfile.py` | 14 |
+| `holdings_maintenance/pds3/re_validate.py` | 7 |
+| `holdings_maintenance/pds3/pdsdependency.py` | 6 |
+| `_preload.py` | 4 |
+| `_local_fs.py`, `_index_rows.py`, `holdings_maintenance/pds3/crlf.py` | 1 each |
+
+`pdslinkshelf.py` dominates because parts of it were indented in 2-space steps,
+so everything beneath those blocks moved.
+
+### 14. `re_validate.py` re-indented, and the indentation gate enabled (owner, 2026-08-04)
+
+**`re_validate.py`'s freeze is lifted for whitespace only.** Its `E117` at `:149`
+is fixed — 7 lines — with the same four proofs, and its ten-code
+`per-file-ignores` entry untouched. The freeze on its logic stands;
+`pdsfile_overrides.mdc` deviation (6) records the exception explicitly so the
+next executor does not read it as the freeze having lapsed. This is what lets the
+gate run with **no per-file exemption at all**.
+
+**The gate.** `scripts/run-all-checks.sh` runs a second `ruff check` after the
+configured one:
+
+```
+ruff check --preview --select E111,E112,E113 src/pdsfile tests scripts
+```
+
+**Why only three codes.** `E114`, `E115` and `E116` are the comment-line
+counterparts of `E111`, `E112` and `E113`, and `E117` fires on both code and
+comments. Comment placement is the author's decision in this repository, and all
+53 remaining findings are the conventions listed in §13. The cost is real and
+worth stating: an over-indented **code** block would no longer be caught by
+`E117`. There are none today, and the only two `E117` findings in the tree are
+comment continuations at `_preload.py:453` and `_properties.py:528`.
+
+**Why a separate invocation rather than `preview = true` in `pyproject.toml`.**
+Preview mode is not selective. It changes the behaviour of the *stable* rules as
+well as adding preview ones, and `explicit-preview-rules` governs only which
+preview rules are selected, not that. Measured against this tree — which the
+configured gate reports **clean** — adding `--preview` yields **5,687** findings,
+including 28 `F822` and `RUF012` 33 → 49, `B006` 9 → 12, `RUF005` 4 → 12.
+Absorbing those would mean a ratchet widen on a scale §6.4 forbids outright.
+
+**The gate is non-vacuous, and that took two attempts to establish.** Adding two
+spaces to one statement in `_sorting.py` makes it report `E111` and `E112` and
+`run-all-checks.sh` exit `FAILURE`. The first control mutated a *continuation*
+line, which `E1` does not check, and the gate passed green — a negative control
+can itself be vacuous. The tree was restored and verified clean afterwards.
+
+**Verified under both ruff versions.** The development venv has 0.15.7;
+`pyproject.toml` declares `ruff>=0.8` and CI resolves that to 0.16.1. A preview
+rule's behaviour can change between releases, so both gates were run under both.
+
+### 15. Findings from the post-loop adversarial review
+
+§12 recorded that the post-loop commits had had no review of their own. A fresh
+no-context reviewer was run over that range. It returned **2 Major and 3 Minor**,
+all accepted, none rebutted:
+
+| # | Finding | Disposition |
+|---|---|---|
+| M1 | `a48602f` committed a `venv` symlink holding an absolute machine-local path. `.gitignore:131`'s `venv*/` did not catch it — the trailing slash restricts the pattern to directories, and this is a symlink | untracked; `.gitignore` gained `/venv`. The reviewer measured the blast radius: absent from the sdist, and inside pytest's `norecursedirs` and ruff's default exclude — so no gate broke, and nothing would have caught it |
+| M2 | the re-indenter broke 32 trailing-comment continuations, and at 6 lines a comment came to document a `def` it does not describe | rule rewritten and the sweep redone; see §13. The owner then caught a further class the rewrite still got wrong |
+| m3 | entry 76 still said three `E115` findings remained in `pdscache.py` after the sweep had re-indented them | corrected |
+| m4 | "56 code-indentation sites across ten files" — it is eleven files, or 55 across ten | corrected |
+| m5 | entry 90 labelled `:427` `from_opus_id`; it is `test_from_path2`, calling `from_path` | corrected |
+
+M1 is the more instructive of the two. It came from my own `git add -A` after
+symlinking the venv into the worktree so `run-all-checks.sh` would run, and it
+survived because every gate in this repository is configured to ignore a
+directory called `venv` — the one name that would not be looked at.
