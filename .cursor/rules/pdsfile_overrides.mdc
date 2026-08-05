@@ -91,7 +91,7 @@ conflicts with a rule below, follow the rule below. See
    PR-24's to fix. That freeze was lifted on 2026-08-05, so the entry is **not
    yet cleaned** rather than uncleanable; no PR has yet done the work.
 
-   PR-25 shrank that set by **eighteen**, to **2,259** over **58 entries** (179
+   PR-25 shrank that set by **nineteen**, to **2,258** over **58 entries** (179
    code slots), measured the same way. Fourteen are `UP031`: the archives pair's
    four sites each, and one version-number format string in each of the six
    checksum and shelf tools, all in code that now lives one copy in
@@ -100,6 +100,12 @@ conflicts with a rule below, follow the rule below. See
    along with the module-level lists they shadowed. One is `SIM115`: `pdschecksums`
    held two copies of `hashfile`'s bare `open`, and the one copy that remains, in
    `_common.py`, is the `with`-block spelling its pds4 twin already used.
+   One is `C405`: the `set([...])` around `re_validate.py`'s two log paths, which
+   went when that file's log-path pair was routed through `_common.log_paths_for`
+   for the log time-tag race. That last one is a **side effect of an authorized
+   code change, not ruff cleanup** — `re_validate.py`'s entry is deliberately left
+   as it was, so it now lists a `C405` with no site, and dropping that code is the
+   first thing the cleanup PR should do.
    `pds4archives.py` came off the ratchet entirely and `_common.py` needs no entry.
 
    The permanent set, grouped by the code that locks it. **"Locked by" says what

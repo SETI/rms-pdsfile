@@ -143,8 +143,8 @@ see the pin fail.
    **Owner: PR-27.**
 5. **`pdschecksums` and `pds4checksums` never propagate errors into the exit
    code.** Both compute a `proceed` flag from `fatal or errors` and then use it
-   only to gate the optional `--infoshelf` chain (`pdschecksums.py:857-866`,
-   `pds4checksums.py:830-839` at PR-25's head); neither ends in `sys.exit(status)` the way the
+   only to gate the optional `--infoshelf` chain (`pdschecksums`'s `--infoshelf` chain,
+   `pds4checksums`'s `--infoshelf` chain at PR-25's head); neither ends in `sys.exit(status)` the way the
    other nine tools do. A `--validate` that reports checksum mismatches still
    exits 0. Pinned in both checksum test modules (see
    `support.TOOLS_WITHOUT_EXIT_STATUS`). **Owner: PR-25** — its `run_main()` spec
@@ -2158,7 +2158,7 @@ these entries are read by the PRs that come after it.
     `8cab66a` the five task functions' return values were bound to `proceed` at
     `:530`–`:542`, and `:554` set it to `False` in the exception handler; PR-24
     removed the six dead bindings and kept every call. Its four sibling tools use
-    the same variable to gate a chained follow-on step (`pdschecksums.py:862` at
+    the same variable to gate a chained follow-on step (`pdschecksums`'s `if proceed and args.infoshelf:` at
     PR-25's head,
     `if proceed and args.infoshelf:`), but `pdsarchives` has no such option — its `argparse` block offers only the five task flags,
     `volume`, `--log` and `--quiet`. So the variable is a vestige of the shared
@@ -2172,7 +2172,7 @@ these entries are read by the PRs that come after it.
     **CLOSED by PR-25.** Confirmed against `ab1fa3b`: no `proceed` binding remains
     in `pdsarchives.py`, and the shared driver `_common.run_main` calls the task
     function without binding its return value, so the vestige has no home to come
-    back to. `pdschecksums.py:862`'s use is untouched.
+    back to. `pdschecksums`'s `if proceed and args.infoshelf:`'s use is untouched.
 
 84. **`test_pds4file_blackbox.py:138` is a duplicate `parametrize` case.**
     `PT014` reports it as a duplicate of the case at index 34 — the same
@@ -2223,9 +2223,9 @@ these entries are read by the PRs that come after it.
 
 88. **The pds3 and pds4 tool twins have already diverged on their mutable
     defaults, so two of the nine permanent `B006`s are a divergence rather than a
-    shared-skeleton property.** `pdschecksums.py:37` takes `oldpairs=[]` while
+    shared-skeleton property.** `pdschecksums.generate_checksums` takes `oldpairs=[]` while
     `pds4checksums.py:56` takes `oldpairs=None` and writes `(oldpairs or [])`;
-    `pdsinfoshelf.py:42` takes `old_infodict={}` while `pds4infoshelf.py:46`
+    `pdsinfoshelf.generate_infodict` takes `old_infodict={}` while `pds4infoshelf.py:46`
     takes `old_infodict=None`. The pds4 side has already adopted the
     None-sentinel form that `B006` asks for.
 
@@ -2247,10 +2247,10 @@ these entries are read by the PRs that come after it.
     ways.** After PR-24's `RUF059` work, nine sites read
     `(fatal, errors, _warnings, _tests) = logger.close()`
     (`pdsarchives.py:558`, `pdschecksums.py:911`, `pdsdependency.py:1155`,
-    `pdsindexshelf.py:545`, `pdsinfoshelf.py:935`, `pdslinkshelf.py:1776`,
-    `pds4checksums.py:885`, `pds4indexshelf.py:535`, `pds4infoshelf.py:918`, all
+    `pdsindexshelf`'s `main()`, `pdsinfoshelf.py:935`, `pdslinkshelf.py:1776`,
+    `pds4checksums.py:885`, `pds4indexshelf`'s `main()`, `pds4infoshelf.py:918`, all
     cited at `ab1fa3b`); two read `(fatal, errors, _, _)` (`pds4archives.py:583`,
-    `pds4linkshelf.py:1222`); and `pdsdependency.py:322,347` still read
+    `pds4linkshelf`'s `main()`); and `pdsdependency.py:322,347` still read
     `(fatal, errors, warnings, tests)` because those two sites do use the values.
 
     The two bare-`_` sites already used that spelling at `8cab66a` and carried no
@@ -2264,10 +2264,10 @@ these entries are read by the PRs that come after it.
     the eleven sites already used. The two archives sites are gone with the
     `main()` bodies that held them, so the count is now eight named-underscore
     sites and one bare-`_` site. Re-cited at PR-25's head, since the six-module
-    move renumbered most of them: `pdschecksums.py:857`, `pdsdependency.py:1155`,
-    `pdsindexshelf.py:545`, `pdsinfoshelf.py:893`, `pdslinkshelf.py:1728`,
-    `pds4checksums.py:830`, `pds4indexshelf.py:535`, `pds4infoshelf.py:875`, and
-    the bare `_` at `pds4linkshelf.py:1222`.
+    move renumbered most of them: `pdschecksums`'s `main()`, `pdsdependency.py:1155`,
+    `pdsindexshelf`'s `main()`, `pdsinfoshelf`'s `main()`, `pdslinkshelf`'s `main()`,
+    `pds4checksums`'s `main()`, `pds4indexshelf`'s `main()`, `pds4infoshelf`'s `main()`, and
+    the bare `_` at `pds4linkshelf`'s `main()`.
     **Owner: PR-26/PR-27 for the remaining tools.**
 
 ### Added by the CodeRabbit review of PR #119 (2026-08-04)
@@ -2329,9 +2329,9 @@ these entries are read by the PRs that come after it.
 92. **`pds4archives`'s four `*_LIMITS` constants constrain nothing.** The archive
     tools cap their per-file log lines with `{'info': N}` entries --
     `LOAD_DIRECTORY_INFO_LIMITS = {'info': 100}` and its three siblings, now one
-    copy at `_common.py:317-320`. But `pdsarchives` writes those lines through
+    copy at `_common.py`'s archive `*_LIMITS`. But `pdsarchives` writes those lines through
     `logger.info` and `pds4archives` through `logger.normal`
-    (`pdsarchives.py:241` / `pds4archives.py:261` carry the level as
+    (`pdsarchives`'s `file_log_level` / `pds4archives`'s `file_log_level` carry the level as
     `file_log_level`), and **`normal` is not `info`**. Measured directly against
     `pdslogger` 3.2.1, four calls under `limits={'info': 2}`:
 
@@ -2350,14 +2350,14 @@ these entries are read by the PRs that come after it.
     capped; whichever way it goes, it changes log output.**
 
 93. **`pdsarchives` names its per-volume log file `_links`, not `_archives`.**
-    `pdsarchives.py:217` passes `'_links'` to `log_path_for_volume`, so a run
+    `pdsarchives`'s log-path spec fields passes `'_links'` to `log_path_for_volume`, so a run
     writes `.../HSTN0_7176_links_<timetag>_<task>.log`. Every other pds3 tool
     passes a suffix matching its own kind (`_md5`, `_info`, `_dependency`,
     `_re-validate`) and `pds4archives.py` passes `'_archives'`.
 
-    `pdslinkshelf.py:1670,1673` passes the same `'_links'` suffix for the same
+    `pdslinkshelf`'s `main()` passes the same `'_links'` suffix for the same
     volume and the same five task names, which raises the question of a collision.
-    Measured: there is none. `_log_path_for` (`_derived_paths.py:243`) inserts the
+    Measured: there is none. `_log_path_for` (`_derived_paths.py`'s `_log_path_for`) inserts the
     `dir=` argument as a directory component, and the two tools pass
     `dir='pdsarchives'` and `dir='pdslinkshelf'`, so for one volume and
     `task='validate'` the paths are
@@ -2420,7 +2420,7 @@ these entries are read by the PRs that come after it.
 96. **`read_archive_info` is still duplicated near-verbatim between the archives
     twins.** 34 statements in `pdsarchives.py`, 31 in `pds4archives.py`, and the
     only genuine divergence is the three-line existence guard at
-    `pdsarchives.py:41-43` (`logger.critical('File does not exist', tarpath)` then
+    `pdsarchives.read_archive_info`'s existence guard (`logger.critical('File does not exist', tarpath)` then
     `return []`). The other two differences — the PdsFile class and the
     `info`/`normal` level — are already carried by `ToolSpec`.
 
@@ -2507,11 +2507,13 @@ these entries are read by the PRs that come after it.
 
 99. **Nine of the eleven tools build `logfiles` as a `set` and iterate it, so
     their two `Log file:` lines and their two file handlers come out in a
-    hash-dependent order.** `_common.py:199-200` for the archives pair, and the same
-    set literal at `pdschecksums.py:783` and `:844`, `pdsinfoshelf.py:860` and
-    `:868`, `pdslinkshelf.py:1670`, `pdsdependency.py:1122`,
-    `pds4checksums.py:755` and `:763`, `pds4infoshelf.py:800` and `:808`, and
-    `pds4linkshelf.py:1163`; `re_validate.py:56` writes `set([…])` for the same
+    hash-dependent order.** All of the citations in this paragraph are **at
+    `ab1fa3b`**, the state that produced the observation; the code has since moved.
+    `_common.py:229` for the archives pair, and the same
+    set literal at `pdschecksums.py:836` and `:844`, `pdsinfoshelf.py:860` and
+    `:868`, `pdslinkshelf.py:1717`, `pdsdependency.py:1122`,
+    `pds4checksums.py:808` and `:816`, `pds4infoshelf.py:841` and `:849`, and
+    `pds4linkshelf.py:1210`; `re_validate.py:56` writes `set([…])` for the same
     thing. Each collects the `place='default'` and `place='parallel'` paths into a
     set, then loops over it to build the handlers and to log one `Log file: …`
     line each. The two indexshelf tools are **not** affected:
@@ -2616,9 +2618,10 @@ these entries are read by the PRs that come after it.
 
 101. **`holdings_sentinel` hard-codes the *name* of the holdings directory.** The
      new `ToolSpec` field carries `'/holdings/'` and `'/pds4-holdings/'`, which is
-     what five tools already do inline (`pdschecksums.py:697`,
-     `pdsdependency.py:1107`, `pdsinfoshelf.py:734`, `pds4checksums.py:669,680`,
-     `pds4infoshelf.py:715,726`). Each `partition()`s a command-line path on it and
+     what five tools already do inline (`pdschecksums`'s command-line path split,
+     `pdsdependency`'s command-line path split, `pdsinfoshelf`'s command-line path
+     split, `pds4checksums`'s command-line path split and archives rebuild,
+     `pds4infoshelf`'s command-line path split and archives rebuild). Each `partition()`s a command-line path on it and
      exits with `'Not a holdings subdirectory: '` when the separator is absent, and
      the two pds4 tools also rebuild an archives path by concatenating it back.
 
@@ -2675,11 +2678,12 @@ these entries are read by the PRs that come after it.
      ten are not scheduled to inherit it.** PR-25 fixed the one-second race by
      pinning the tag inside `_common.log_paths_for`, which only the archives pair
      reaches. Measured at PR-25's head, `grep -n "place='parallel'" src/` reports
-     **15 sites**: `_common.py:200`, fixed, and **14 in ten tool modules**, not —
-     `pdschecksums.py:789,797`, `pdsinfoshelf.py:825,833`, `pdslinkshelf.py:1676`,
-     `pds4checksums.py:761,769`, `pds4infoshelf.py:806,814`,
-     `pds4linkshelf.py:1169`, `pdsindexshelf.py:493`, `pds4indexshelf.py:479`,
-     `pdsdependency.py:1126` and `re_validate.py:60`.
+     **15 sites at `540447f`**: `_common.py`'s `log_paths_for`, fixed, and **14 in
+     ten tool modules**, not —
+     `pdschecksums`'s two `main()` branches, `pdsinfoshelf`'s two `main()` branches, `pdslinkshelf`'s `main()`,
+     `pds4checksums`'s two `main()` branches, `pds4infoshelf`'s two `main()` branches,
+     `pds4linkshelf`'s `main()`, `pdsindexshelf`'s `main()`, `pds4indexshelf`'s `main()`,
+     `pdsdependency`'s `main()` and `re_validate.validate_volume`.
 
      Eight of those ten reach `run_main` in PR-26 and PR-27 and inherit the fix
      then. **Two do not.** The plan's PR-25 entry leaves `pdsdependency`

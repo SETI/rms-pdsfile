@@ -194,12 +194,12 @@ docstring says so and says they are read nowhere today.
 
 The plan's parenthetical values were checked against the code rather than taken on
 trust, and **both are right**. `holdings_sentinel` is `'/holdings/'` at
-`pdschecksums.py:697`, `pdsdependency.py:1107` and `pdsinfoshelf.py:734`, and
-`'/pds4-holdings/'` at `pds4checksums.py:669,680` and `pds4infoshelf.py:715,726`;
+`pdschecksums`'s, `pdsdependency`'s and `pdsinfoshelf`'s command-line path splits, and
+`'/pds4-holdings/'` at `pds4checksums`'s command-line path split and archives rebuild and `pds4infoshelf`'s command-line path split and archives rebuild;
 each tool both splits a command-line path on it and rebuilds an archives path
 with it, so the value is the literal including both slashes. `index_ext` is
-`'.tab'` at `pdsindexshelf.py:459,461,464,473` and `'.csv'` at
-`pds4indexshelf.py:445,447,450,459`, used both as a `glob` suffix and in an
+`'.tab'` at `pdsindexshelf`'s `glob` patterns and its `endswith` test and `'.csv'` at
+`pds4indexshelf`'s `glob` patterns and its `endswith` test, used both as a `glob` suffix and in an
 `endswith` test, so the value includes the dot. One thing the plan does not say
 and the code assumes: the sentinel hard-codes the *name* of the holdings
 directory, so a holdings root not called `holdings` or `pds4-holdings` fails the
@@ -210,7 +210,7 @@ The `handler_factories` change is the more material one and is deliberate. A
 boolean "pds4 adds a warning handler" is exactly the shrug-flag the sub-plan's
 rule forbids, and it would not carry the thing that is actually observable: the
 **order** in which handlers are added, at the log root
-(`_common.py:246-249`) and again per target (`_common.py:276-277`). A tuple of
+(`_common.py`'s `run_main`, in its `if args.log:` block) and again per target (`_common.py`'s `run_main`, in its per-target handler loop). A tuple of
 factories carries both which handlers and in what order, as data, and generalizes
 to a tool that wants some third handler. The two `--log` / `PDS_LOG_ROOT`
 invocations per tool in `critiques/phase6-validation.md` §5 are what put that
@@ -241,7 +241,7 @@ these traceback frames and nothing else.
 **The bug.** A log file's name carries a time tag, `LOGFILE_TIME_FMT =
 '%Y-%m-%dT%H-%M-%S'` — **one-second resolution**. `_log_path_for`
 (`src/pdsfile/_derived_paths.py`) read the clock on **every** call. Each of the
-eleven maintenance tools writes one run's log in up to two places and builds the
+twelve maintenance tool modules writes one run's log in up to two places and builds the
 two paths with two separate calls, so a run whose two calls straddle a second
 boundary wrote its two copies of one log under time tags one second apart, and
 they stopped naming one run. Rare — the two calls are microseconds apart — but
@@ -265,9 +265,10 @@ seeing one set on a base class. Otherwise it is the same shape as `set_log_root`
 which already writes `LOG_ROOT_` onto the class it is called on, so it introduces
 no pattern the module did not have.
 
-**The fix reaches one of the eleven tools, and the owner should decide the rest
-rather than inherit it.** Measured at this head, the two-call pair is built at
-**15 sites**: `_common.py:200`, which is fixed, and **14 in ten tool modules**,
+**At the time this section was written the fix reached one tool module of twelve,
+and the owner was asked to decide the rest. The owner then ruled that all fifteen
+be fixed now, and they were — §8 and deferred entry 104.** Measured at `540447f`,
+the two-call pair was built at **15 sites**: `_common.py`'s `log_paths_for`, which is fixed, and **14 in ten tool modules**,
 which are not — the checksums, infoshelf, linkshelf and indexshelf pairs,
 `pdsdependency` and `re_validate`. Eight of those ten reach `run_main` in PR-26
 and PR-27 and inherit the fix then. **Two do not**: this plan leaves
@@ -376,7 +377,7 @@ archives pair's 36 invocations show **zero** lines in either class.
 **One consequence the owner should see, because it resolves something the owner
 had held.** Ruling (3) of the same day sent all fifteen log-path sites through
 `_common.log_paths_for`, which has to return one type. Returning a `set`, which
-is what nine of the eleven tools used, would have *introduced* hash-dependent
+is what ten of the twelve tool modules used, would have *introduced* hash-dependent
 ordering into the two indexshelf tools, which used an ordered list. Returning an
 ordered list instead removes that nondeterminism from the other nine — which is
 **deferred entry 99**, held by the owner on 2026-08-05 for PR-26/PR-27. It is

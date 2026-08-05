@@ -224,11 +224,11 @@ class TestPinnedLogTimetag:
 class TestLogPathsFor:
     """_common.log_paths_for is the one place in the tree that builds the pair.
 
-    All eleven maintenance tools reach it -- the archives pair through `run_main`
-    and the other ten directly -- so the pin, the ordering and the deduplication are
-    decided once. It lives with the maintenance tools rather than with the core, but
-    it is what makes the pin reach a real run, so the control belongs beside the
-    pin's own.
+    All twelve maintenance tool modules reach it -- the archives pair through
+    `run_main` and the other ten directly -- so the pin, the ordering and the
+    deduplication are decided once. It lives with the maintenance tools rather than
+    with the core, but it is what makes the pin reach a real run, so the control
+    belongs beside the pin's own.
     """
 
     @pytest.mark.parametrize(('cls', 'spec', 'category_'), ARCHIVE_SPECS)

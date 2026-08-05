@@ -156,6 +156,32 @@ def test_each_call_versions_one_past_the_highest_already_there(kind, basename,
 
 
 @pytest.mark.parametrize(('kind', 'basename', 'extra_exts', 'versioned_exts'), KINDS)
+def test_a_file_that_does_not_exist_is_not_versioned(kind, basename, extra_exts,
+                                                     versioned_exts, tmp_path,
+                                                     monkeypatch):
+    """The guard every caller already duplicates, kept so move_old is safe alone.
+
+    Every in-tree call site checks first -- the checksum tasks return earlier when
+    the file is absent, and the three shelf tools wrap the call in
+    `if os.path.exists(...)` -- so nothing reaches this branch today. It is here so
+    that a caller which forgets gets a no-op rather than a FileNotFoundError out of
+    shutil.copy, and this test is what keeps it from being deleted as dead.
+    """
+
+    logdir = tmp_path / 'logs'
+    logdir.mkdir()
+    monkeypatch.setattr(_common, 'LOGDIRS', [str(logdir)])
+    logger, logfile = capture(tmp_path)
+
+    logger.open('task')
+    _common.move_old(str(tmp_path / 'holdings' / basename), kind, logger=logger)
+    logger.close()
+
+    assert list(logdir.iterdir()) == []
+    assert 'moved' not in logfile.read_text()
+
+
+@pytest.mark.parametrize(('kind', 'basename', 'extra_exts', 'versioned_exts'), KINDS)
 def test_nothing_is_versioned_when_no_log_directory_is_recorded(kind, basename,
                                                                 extra_exts,
                                                                 versioned_exts,
