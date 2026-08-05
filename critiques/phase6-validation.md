@@ -50,7 +50,7 @@ invisible, with the one unavoidable exception §5 measures and §12.5 explains.
 | API-freeze manifest test | **passed** — `pytest tests/api/`, 26 ids. No `holdings_maintenance` module is in the manifest, so this gate is silent about this PR's edits; it is run to prove nothing leaked out of them |
 | Full-data suite, `--mode ns` | **passed** — 896 ids vs the baseline's 892; the four extra are the new regression tests and nothing else moved (§3) |
 | Full-data suite, `--mode s` | **passed** — 558 ids, set diff **empty** (§3) |
-| Phase-6 per-tool gate: real-holdings run of each migrated tool, diffed against pre-PR | **passed with one recorded difference** — 34 invocations and 39 log files per tree, 3,999 normalized lines; the six artifacts that differ differ only in Python traceback frames (§5) |
+| Phase-6 per-tool gate: real-holdings run of each migrated tool, diffed against pre-PR | **passed with one recorded difference** — 36 invocations and 39 log files per tree, 4,005 normalized lines; the six artifacts that differ differ only in Python traceback frames (§5) |
 | `ruff check src/pdsfile tests scripts` | **passed**; the ratchet shrank by eleven codes and gained none (§9) |
 | `ruff check --preview --select E111,E112,E113 …` | **passed**, no findings |
 | Clean-install import check | **passed** (throwaway venv, `pip install .`, full manifest module surface imports) |
@@ -149,23 +149,26 @@ archives and logs there and never into the shared holdings tree. The whole
 sequence runs twice, once with `PYTHONPATH=<base>/src` and once with
 `PYTHONPATH=<work>/src`.
 
-Two run-to-run variables are pinned so that the comparison is about the code and
-not about the clock. The temporary disk has a **fixed path** and
-**`PYTHONHASHSEED=0`** is exported, because the tools build `logfiles` as a *set*
-of two strings and iterate it: that order is hash-dependent and flips between
-runs of the **baseline** tree too (deferred observation 99). And the harness
-sleeps one second between invocations, because a log file name carries a
-one-second time tag and two runs inside the same second would share a file.
+The temporary disk has a **fixed path**, `PYTHONHASHSEED` is pinned, and the
+harness sleeps one second between invocations — a log file name carries a
+one-second time tag, and two invocations inside the same second would share a
+file. Pinning the hash seed is not enough to align the two runs' `logfiles` set
+iteration, because the two strings in that set contain the run's own time tag and
+so hash differently from one run to the next; the comparator sorts each run of
+consecutive `Log file:` lines instead. That ordering is not a property of the
+code — it flips between two runs of the **baseline** tree as readily as between
+base and head — and it is recorded as deferred observation 99.
 
-**The 34 invocations per tree** — 19 for `pdsarchives`, 15 for `pds4archives` —
+**The 36 invocations per tree** — 20 for `pdsarchives`, 16 for `pds4archives` —
 cover both tools across all five tasks and the paths around them.
 
-Shared by both tools (13 each): `--validate` with no archive present (which is
+Shared by both tools (14 each): `--validate` with no archive present (which is
 the pds3 "File does not exist" critical path and, for pds4, a `FileNotFoundError`
 out of `tarfile.open`), `--initialize`, `--validate` again, `--initialize` a
 second time (the already-exists error), `--repair`, `--update`, `--reinitialize`,
-`--quiet`, a two-flag invocation, an archives path (the rejection), a missing
-task, `--help`, and one `--log <root>` invocation.
+`--quiet`, a two-flag invocation, an archives path and a checksums path (the two
+`reject_checksum_and_archive_paths` branches), a missing task, `--help`, and one
+`--log <root>` invocation.
 
 `pdsarchives` adds six: a **volset** path (the expansion-plus-`blankline` path),
 a nonexistent path, a `PDS_LOG_ROOT` invocation, and three that corrupt the real
@@ -198,12 +201,13 @@ one difference below is.
 
 | | baseline `ab1fa3b` | `pr-25-common-core` | identical after normalization |
 |---|---:|---:|---|
-| stdout captures | 34 | 34 | **32 of 34** |
+| stdout captures | 36 | 36 | **34 of 36** |
 | log files written | 39 | 39 | **35 of 39** |
-| normalized lines compared | 3,999 | 3,999 | — |
+| normalized lines compared | 4,005 | 4,005 | — |
 
-**The six differing artifacts differ in exactly one thing, and it is the same
-thing in all six.** Aggregating every changed line across all six:
+**The six differing artifacts — two stdout captures and four log files — differ
+in exactly one thing, and it is the same thing in all six.** Aggregating every
+changed line across all six:
 
 ```
 -  File ".../pds4/pds4archives.py", line <LINENO>, in main
@@ -409,8 +413,10 @@ measured against.
 ### 10. Comments: three removed, one reworded, the rest travelled with their block
 
 Comment placement is the author's, and a comment moves only if its block moves.
-Measured with a multiset diff of every comment text in the base pair against
-every comment text in the head trio, **four texts have no exact match at head**:
+Measured with a `tokenize`-based multiset diff of every comment text in the base
+pair against every comment text in the head trio, **five texts have no exact match
+at head**, in four dispositions (the last row covers the pds3 and pds4 spellings
+of one comment):
 
 | Base text | What happened |
 |---|---|
@@ -519,7 +525,7 @@ not (new deferred observation 95, owned by PR-26, which merges the two).
 
 ### 12. Design note — where this deviates from the plan's PR-25 sketch
 
-Four deviations, written up in full in
+Five deviations, written up in full in
 [`plans/2026-08-04-pr-25-deviations-addendum.md`](../plans/2026-08-04-pr-25-deviations-addendum.md),
 which §6.4 requires to be an addendum in `plans/` acknowledged by the owner
 before merge. In brief:
@@ -544,6 +550,11 @@ before merge. In brief:
    semantics; the wording is archives-specific and lives in the spec as
    `{unit}`/`{units}` templates. The plan's `vocab` field is that substitution
    under a shorter name.
+5. **Three `ToolSpec` fields differ from the plan's list.** `holdings_sentinel`
+   and `index_ext` are not fields, because neither archives tool reads either;
+   and the plan's `log_extra_handlers` *flag* is `handler_factories`, an ordered
+   tuple, because what is observable is not "pds4 adds a warning handler" but the
+   order the handlers are added in (§7).
 
 And one consequence that is not a design choice: §5's traceback frames.
 
@@ -561,7 +572,7 @@ And one consequence that is not a design choice: §5's traceback frames.
 | **1** — `pds4archives` cannot round-trip | **Not fixed, deliberately.** It is a behavior defect pinned by `test_pds4_archives.test_validate_cannot_round_trip`, and this PR is behavior-preserving. The two functions involved — `write_archive`'s `arcname` and `read_archive_info`'s prefix — are exactly the two that stayed in the tool module, so neither was touched. Still owned by a PR that may change behavior |
 | **2** — `pds4archives`'s bare `raise` | **Not fixed, deliberately**, same reason; pinned by `test_pds4_archives.test_initialize_on_a_bundle_raises`. The line stayed inside `write_archive`, which did not move, so it is byte-identical at `pds4archives.py:105`; §5's capture 22 shows it still raising `RuntimeError: No active exception to reraise` against a real bundle |
 
-**New entries: 92 – 98.** 92 — `pds4archives`'s `*_LIMITS` are inert because it
+**New entries: 92 – 99.** 92 — `pds4archives`'s `*_LIMITS` are inert because it
 logs `normal` (**Owner**). 93 — `pdsarchives` names its log `_links`, not
 `_archives`; the collision with `pdslinkshelf` that this looks like was checked
 and does not exist, because the `dir=` component separates them, so it is a
@@ -570,8 +581,15 @@ table enumerates 40 findings where ruff reports 39. 95 — the two
 `move_old_checksums` twins differ on `force=True` (**PR-26**). 96, 97, 98 come
 from the round-1 reviewer: the residual `read_archive_info` duplication,
 `extra_arguments` being unexercised until PR-26, and where `_common.py`'s
-per-family sections should live once five pairs have landed.
+per-family sections should live once five pairs have landed. 99 comes from the
+round-2 reviewer: nine of the eleven tools iterate `logfiles` as a **set**, so
+with a log root configured their two `Log file:` lines come out in a
+hash-dependent order — pre-existing, observed flipping between runs of the
+baseline tree, and the reason §5's comparator sorts those lines (**Owner**).
 
 ### 14. Review loop
 
-`critiques/pr-25/round-1.md` and the rounds after it.
+`critiques/pr-25/round-1.md`, `round-2.md`, `round-3.md` and `round-4.md`.
+Round 1 returned `goal not met` (2 Major, 6 Minor); rounds 2 and 3 returned
+`goal met` with zero Major and Minor findings only in the evidence prose, all
+accepted; round 4 was the scoped confirmation §6.6 allows at the cap.

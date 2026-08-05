@@ -6,7 +6,7 @@ before the deviating PR merges").
 
 The plan's PR-25 entry (`plans/2026-07-25-modernization-plan.md` lines 717–760)
 specifies a concrete target interface so the design is not re-invented per
-implementer. Four things in the delivered PR-25 depart from it. None changes any
+implementer. Five things in the delivered PR-25 depart from it. None changes any
 observable behavior; each is a design call the spec did not anticipate, written
 up rather than silently absorbed. The measurements behind them are in
 `critiques/phase6-validation.md`.
@@ -105,7 +105,34 @@ field is the `{unit}` substitution under a shorter name. The rendered result is
 byte-identical to both originals, verified by dumping every `add_argument` call
 from both trees.
 
-## 5. One consequence worth the owner's eye, which is not a design choice
+## 5. Three `ToolSpec` fields differ from the plan's list
+
+**The plan says** the `ToolSpec` captures "`pdsfile_cls` …, `vocab` …,
+`holdings_sentinel` (`'/holdings/'` vs `'/pds4-holdings/'`), `index_ext`
+(`.tab`/`.csv`), `logname` …, and a `log_extra_handlers` flag (pds4 adds a
+`warning_handler`; pds3 does not)".
+
+**What was done:** `holdings_sentinel` and `index_ext` are **not** fields, and
+`log_extra_handlers` is not a flag — it is `handler_factories`, an **ordered
+tuple** of `pdslogger` handler factories: `(error_handler,)` for pds3 and
+`(warning_handler, error_handler)` for pds4.
+
+**Why:** neither archives tool reads a holdings sentinel or an index extension —
+`index_ext` belongs to the indexshelf pair, which PR-27 migrates, and nothing in
+the two archives modules distinguishes the two holdings roots by string at all.
+Adding either now would be a field no caller reads.
+
+The `handler_factories` change is the more material one and is deliberate. A
+boolean "pds4 adds a warning handler" is exactly the shrug-flag the sub-plan's
+rule forbids, and it would not carry the thing that is actually observable: the
+**order** in which handlers are added, at the log root
+(`_common.py:206-209`) and again per target (`_common.py:239-240`). A tuple of
+factories carries both which handlers and in what order, as data, and generalizes
+to a tool that wants some third handler. The two `--log` / `PDS_LOG_ROOT`
+invocations per tool in `critiques/phase6-validation.md` §5 are what put that
+ordering under the gate.
+
+## 6. One consequence worth the owner's eye, which is not a design choice
 
 Extracting `main()` into a shared `run_main` changes what a **Python traceback**
 inside a tool log looks like: where the pre-PR log showed one frame,
@@ -119,6 +146,6 @@ This is not avoidable by any implementation: a traceback names the frames on the
 stack, and the plan's own design puts a shared frame there. It is called out
 because §2 freezes log formats and this is the one place where a real-holdings
 run of the migrated tools produces text that differs from the pre-PR run.
-Measured: of 27 captured stdout streams and 23 log files per tree, 25 and 19 are
+Measured: of 36 captured stdout streams and 39 log files per tree, 34 and 35 are
 identical after normalizing the clock, and the six that differ differ in exactly
 these traceback frames and nothing else.
