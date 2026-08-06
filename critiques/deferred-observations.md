@@ -2781,6 +2781,22 @@ these entries are read by the PRs that come after it.
      recovering the path reliably means changing what is written, which changes a
      log format that older logs are already in. Anything that reads existing logs
      has to cope with both.
+
+     **The same split has a second consequence, in the opposite direction.** Batch
+     mode holds the holdings roots twice: `resolve_holdings_paths()` returns the
+     canonicalized, deduplicated list, and that is what the missing-volume report
+     intersects against — but `get_volume_info()` is called over the raw
+     `args.volume` entries, so `holdings_info` and everything downstream of it carry
+     the path *as the user typed it*. Naming one root twice globs it twice, and the
+     abspath a batch run reports is not the abspath the report compares against.
+
+     Identical at PR-25a's base and head; that PR did not introduce it and did not
+     change it. Iterating the resolved list instead looks like a one-line fix and is
+     not one: on a machine where the holdings root is a symlink, the canonical path
+     is a different tree, and `Pds3File.from_abspath` has to recognize it as a
+     holdings root for `--batch-status` to print anything at all. Which of the two
+     forms is the right one to carry is the same question as the paragraph above,
+     and should be settled once for both.
      **Owner: open.**
 
 108. **`re_validate --batch` with no log root at all crashes with a `TypeError`.**

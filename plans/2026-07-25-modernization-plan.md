@@ -716,11 +716,14 @@ the method (deleting the method would change behavior and the manifest kind).
   and opens against `rewrite`; the two are not stacked (owner, 2026-08-03). Its
   §6.2 baseline is `rewrite` at that point.
 - **`re_validate.py` gets a `ruff check` per-file-ignore set** (its full derived
-  violation set — UP031, E402, RUF059, E701, I001, B007, RUF005, C405, RUF051,
-  E721, UP034 as of 2026-07-17), not tables. It was permanent under the old
-  ground rule 7; since the owner lifted that freeze on 2026-08-05 the entry is
-  **not yet cleaned** rather than never cleanable, and a later PR may shrink it.
-  Add it to `pdsfile_overrides.mdc` deviation (4).
+  violation set), not tables. The set this line first listed was the 2026-07-17
+  snapshot and named eleven codes including `E402`; by the time PR-24 ran, the
+  entry was the ten `B007`, `C405`, `E701`, `E721`, `I001`, `RUF005`, `RUF051`,
+  `RUF059`, `UP031`, `UP034`, and `E402` had no site left — measured at `02f07a8`,
+  where `ruff check --select E402` on that file reports nothing. It was permanent
+  under the old ground rule 7; the owner lifted that freeze on 2026-08-05 and
+  PR-25a then cleaned the entry to `RUF005` and `UP031`.
+  It is in `pdsfile_overrides.mdc` deviation (4).
   Cleaning *other* `holdings_maintenance/` tools here is behavior-preserving
   style only.
 
