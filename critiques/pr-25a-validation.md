@@ -16,8 +16,8 @@ $ cd <tree> && PYTHONPATH=$PWD/src <venv>/bin/python -c \
 ```
 
 Where a number is inherited from an earlier record rather than re-measured here,
-it says so in the line that carries it. Section 12 lists the three places that
-applies.
+it says so in the line that carries it. Section 12 lists the three places where the
+provenance is anything other than "I ran this at both commits".
 
 ---
 
@@ -337,8 +337,9 @@ the new test module.
 **Every mutation is caught.** The counts in this table are the ones measured when
 it was run, at 73 ids; the module is now at 85, so each row's passed count is
 understated by twelve. The table has not been re-run because it cannot change
-direction: adding tests cannot make a failing mutation pass. §2.14, which is the
-table that matters, was run against the current module.
+direction: adding tests cannot make a failing mutation pass. The same applies to
+§2.14 below, whose baseline is 84: it was run before round 3 added the
+eighty-fifth test.
 
 The first draft of this PR failed three of these rows — B4, B5 and B6 left 62/62
 green — which is what round 1 found and what the `validate_one_volume` test group
@@ -494,6 +495,10 @@ log paths through `_common.log_paths_for(pdsdir, 'log_path_for_volume', …)`.
 
 ## 6. The ratchet
 
+Every head line number in this section was re-measured after the last code edit
+in this branch, from the `ruff check` output quoted below rather than from reading.
+Three rounds of review moved them; a fourth caught them stale.
+
 ```
 $ <venv>/bin/python -m ruff check --config 'lint.per-file-ignores = {}' \
       --output-format concise src/pdsfile tests scripts | grep -c ':'
@@ -536,7 +541,7 @@ scripts`).
 
 ### The two codes kept, and why
 
-- **`RUF005`** — head `:928`, `:932`, both `[batch_prefix] + messages +
+- **`RUF005`** — head `:930`, `:934`, both `[batch_prefix] + messages +
   [batch_suffix]`. Permanent owner-chosen style exclusion; `x + [y]` is the
   spelling this project uses.
 - **`UP031`** — six sites at head, classified against the standing rule
@@ -547,17 +552,17 @@ scripts`).
   | head site | what it is | disposition |
   |---|---|---|
   | `:211` | `logger.info('%d re-validation tests performed' % n, path, force=True)` | **logging call** — permanently excluded |
-  | `:878` | `'%20s%-11s  modified %s, %s' % …` | **hand-aligned column block** — permanently excluded |
+  | `:880` | `'%20s%-11s  modified %s, %s' % …` | **hand-aligned column block** — permanently excluded |
   | `:443` | the email `From:/To:/Subject:/Date:` block | plain `%` expression the rule does not reach |
-  | `:862` | `batch_prefix` | plain `%` expression; feeds both a `print()` and the email body |
-  | `:877` | `ps = 'last validated %s' % …` | plain `%` expression |
-  | `:917` | `batch_suffix` | plain `%` expression; feeds both a `print()` and the email body |
+  | `:864` | `batch_prefix` | plain `%` expression; feeds both a `print()` and the email body |
+  | `:879` | `ps = 'last validated %s' % …` | plain `%` expression |
+  | `:919` | `batch_suffix` | plain `%` expression; feeds both a `print()` and the email body |
 
   A seventh site, base `:444`, was the hand-copied `--log` help text and went with
   G3.
 
   The four "plain `%` expression" sites were **left alone deliberately**: converting
-  them buys nothing on the ratchet (the code stays either way, on `:211` and `:878`
+  them buys nothing on the ratchet (the code stays either way, on `:211` and `:880`
   alone) and each one is text that reaches a user, two of them through an emailed
   report this PR is not chartered to redesign. §11 records this as a decision the
   owner might make differently.
@@ -687,7 +692,20 @@ Two lines; attributed to **B4**; §2.4 has the rendered before/after.
 
 `sys.exit(0)`'s comment no longer asks "Does this help??". Behavior unchanged.
 
-### 7.7 What B1 changes about which events are logged
+### 7.7 The two command-line echoes
+
+`run_interactive` and `run_batch` open their log with `' '.join(argv)` where the
+module-level program wrote `' '.join(sys.argv)` — `re_validate.py:687` and `:870`.
+The rendered line is identical whenever `main()` supplies the argv, which is every
+real invocation, because `main` defaults `argv` to `sys.argv`. It differs only when
+a caller passes an argv of its own, which nothing but a test does.
+
+Listed because the rule asks for every changed line of source that produces logged
+text, not only every line whose output changes. Forced by the refactor: a function
+that takes `argv` and then reads `sys.argv` is the bug the parameter exists to
+prevent, and two tests pin it (§2.14).
+
+### 7.8 What B1 changes about which events are logged
 
 B1 is a fix to *option derivation*, so for the three command lines it corrects it
 also changes which volume types a run walks — and therefore the `Volume types` INFO
@@ -698,7 +716,7 @@ message text changes; the run is doing what the flags asked for instead of
 something else. Enumerated here because §7 is the section the output rule points
 at, and §2.1 alone was not enough.
 
-**With §7.1 to §7.7 accounted for, no other log line at any level changed. No event
+**With §7.1 to §7.8 accounted for, no other log line at any level changed. No event
 was added, removed or moved between levels, and no log file's path or name
 changed.** `_common.log_paths_for(…,
 dir=PROGNAME)` with `PROGNAME = 're-validate'`, and the log root subdirectory is
@@ -746,13 +764,25 @@ sibling module in the directory. The sibling convention exists because
 an in-process call can resolve a temporary-tree path back to the real tree.
 
 Running in-process here is safe for a reason that has to be **maintained**, and the
-module header says which: four of the functions under test — `validate_one_volume`,
-`run_interactive`, `run_batch` and `print_batch_status` — do construct `PdsFile`
-objects, and every test that reaches one replaces `re_validate.pdsfile` with a stub
-first. Round 3 of review measured what happens without that: deleting the fixture's
-one `monkeypatch.setattr(re_validate, 'pdsfile', …)` line still passes, with real
-`PdsFile` objects built from the temporary tree and nothing noticing. Everything
-else under test is genuinely pure over text, paths and an argparse namespace.
+module header says which. **Five** functions under test touch the real `Pds3File`
+class: `validate_one_volume`, `run_interactive`, `run_batch` and
+`print_batch_status` construct objects through `from_abspath`, and `main` calls
+`set_log_root`, a classmethod that writes class state every later caller in the
+process sees. Every test that drives one of the five replaces `re_validate.pdsfile`
+with a stub first.
+
+Round 3 named four and round 4 found the fifth, which is the one that would have
+bitten: `main` is under test through five direct callers, and a test written to a
+rule that lists only the other four would leak a log root into `Pds3File.LOG_ROOT_`
+for the rest of the session. Round 3 also measured what the stub is worth: deleting
+the fixture's one `monkeypatch.setattr(re_validate, 'pdsfile', …)` line still
+passes, with real `PdsFile` objects built from the temporary tree and nothing
+noticing. Two tests call `run_interactive` and one calls `print_batch_status`
+without a stub; each is safe only because it returns before the construction, and
+the header says so rather than leaving it to be copied.
+
+Everything else under test is genuinely pure over text, paths and an argparse
+namespace.
 
 Five tests use a subprocess anyway, and only these five: the two import-inertness
 tests, which need an interpreter that has not imported the module yet, and the
@@ -770,7 +800,8 @@ The group counts below were taken from `pytest --collect-only`, not from reading
 | `validate_one_volume` | 9 | B4 ×2 (plain and `--timeless`), B6, B5, all six misspelling sites with the tarballs that make the last two reachable, each per-volume-type line naming its own directory, the log subdirectory the tool writes under, the order of the returned fatal/error counts, and the closing test count — all driven over a real temporary volume tree with the five sibling tools and the logger stubbed |
 | the email message | 4 | built without a socket: one address as a string, a `str` subclass (B9), a list, and the exact header block |
 | `_common.resolve_log_root` | 3 | the helper this PR extracted: an explicit `--log`, the environment fallback, and neither |
-| exit codes and `main` | 19 | §8, including both directions of interactive mode's end-of-run status; that `main(argv)` parses and forwards the argv it is given and defaults to `sys.argv`; that both modes log *that* argv rather than `sys.argv`; the terminal handler under `--quiet` and without it; and the error handler's directory |
+| exit codes and `main` | 16 | §8, including both directions of interactive mode's end-of-run status; that `main(argv)` parses and forwards the argv it is given and defaults to `sys.argv`; that both modes log *that* argv rather than `sys.argv`; the terminal handler under `--quiet` and without it; and the error handler's directory |
+| the whole program, through `python -m` | 3 | that it exits 1 with no arguments and 1 in batch mode with no holdings path, and that `--help` exits 0 naming every flag |
 
 `send_email` was split: `format_email(to_addr, subject, message, date=None)` builds
 the recipients and the message text and is what the tests call; `send_email` opens
@@ -849,7 +880,7 @@ the tool now imports them.
 
 ---
 
-## 12. Numbers not measured at this head
+## 12. Numbers whose provenance is not simply "measured here"
 
 Three, all of them flagged where they appear:
 

@@ -2782,3 +2782,30 @@ these entries are read by the PRs that come after it.
      log format that older logs are already in. Anything that reads existing logs
      has to cope with both.
      **Owner: open.**
+
+108. **`re_validate --batch` with no log root at all crashes with a `TypeError`.**
+     Batch mode reads the existing logs with `get_all_log_info(args.log)`, and
+     `args.log` is `None` when neither `--log` nor `PDS_LOG_ROOT` is set — that is
+     what `_common.resolve_log_root` leaves. `os.walk(None)` then raises
+     `TypeError: expected str, bytes or os.PathLike object, not NoneType`.
+
+     Measured at PR-25a's base and at its head, against a holdings directory with
+     an empty `volumes/`, with `PDS_LOG_ROOT` removed from the environment:
+
+     ```
+     $ python -m pdsfile.holdings_maintenance.pds3.re_validate --batch-status <holdings>
+     base  rc=1  TypeError: expected str, bytes or os.PathLike object, not NoneType
+     head  rc=1  TypeError: expected str, bytes or os.PathLike object, not NoneType
+     ```
+
+     Identical at both, so PR-25a neither introduces nor fixes it; it is recorded
+     because that PR's review is what found it. Interactive mode is unaffected — it
+     never reads the log root as a directory to walk.
+
+     Not obviously a one-line fix. Batch mode's whole scheduling model is "read the
+     logs, find what is stale", so with no log tree there is nothing to schedule
+     from and every volume looks unvalidated. Whether the right behavior is to
+     refuse with a message, or to treat it as "no logs yet" and validate
+     everything oldest-first, is a decision about how the launch daemon should
+     behave on a fresh install, not a defect with one obvious repair.
+     **Owner: open.**

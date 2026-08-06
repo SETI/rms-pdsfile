@@ -9,11 +9,19 @@
 # an in-process call can resolve a temporary-tree path back to the real tree.
 #
 # Running in-process here is safe for a reason that has to be maintained, not for a
-# property of the code: four of the functions under test -- validate_one_volume,
-# run_interactive, run_batch and print_batch_status -- DO construct PdsFile objects, and
-# every test that reaches one of them replaces `re_validate.pdsfile` with a stub first.
-# The `volume_tree` fixture does that. A new test that drives one of those four without
-# stubbing it inherits the cache hazard in full.
+# property of the code. Five of the functions under test touch the real Pds3File class:
+#
+#   validate_one_volume, run_interactive, run_batch and print_batch_status construct
+#     PdsFile objects through Pds3File.from_abspath;
+#   main calls Pds3File.set_log_root, a classmethod that writes class state every later
+#     caller in the process sees.
+#
+# EVERY test that drives one of those five replaces `re_validate.pdsfile` with a stub
+# first -- the `volume_tree` fixture does it for the first, each main test does it for
+# itself -- and a new test that does not inherits the cache hazard, or leaks a log root,
+# in full. Two tests call run_interactive and one calls print_batch_status without a
+# stub; each is safe only because it returns before the construction, which is a reason
+# to check rather than to copy.
 #
 # Everything else under test -- option derivation, log parsing, find_modified_volumes,
 # the missing-volume report, format_email, resolve_log_root -- is pure over text, paths

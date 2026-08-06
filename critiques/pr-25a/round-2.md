@@ -109,10 +109,12 @@ It closed all four of round 1's stated gaps:
   at head, matching my measurement exactly.
 
 Two of this round's figures are of the tree **as the round found it**, before its
-own eleven tests landed: the hosted gate's 238 (now 249) and the whole-tree
-`--mode s` head figure of 1,003 passed (now 1,014). They are left as measured
-rather than restated, because a round record should say what that round saw. The
-current figures are in record §4.
+own eleven tests landed: the hosted gate's 238 and the whole-tree `--mode s` head
+figure of 1,003 passed. They are left as measured rather than restated, because a
+round record should say what that round saw. Record §4 carries the current
+figures, and it is the only place that should — the first attempt at this note
+quoted "now 249" and "now 1,014", and round 4 then added an eighty-fifth test and
+made both stale on the spot.
 - **`ruff format` was demonstrably not run:** `ruff format --check` still reports
   all three changed files as "would reformat".
 

@@ -68,10 +68,15 @@ class**, which is an invariant a future test must maintain, not a property of th
 code that holds automatically. The header was telling a future author that the
 `PdsFile.CACHE` hazard does not apply here. It does.
 
-**Disposition: accepted, fixed.** Both headers rewritten. They now name the four
-functions that do construct a `PdsFile`, say that every test reaching one replaces
-the class with a stub first, and state plainly that a new test which forgets to
-inherits the cache hazard in full. Record §13's bullet is rewritten the same way.
+**Disposition: accepted, fixed.** Both headers rewritten. They now name the
+functions that touch the real `Pds3File` class, say that every test reaching one
+replaces the class with a stub first, and state plainly what a new test that
+forgets to would inherit. Record §13's bullet is rewritten the same way.
+
+This round's rewrite named **four** — the ones that construct a `PdsFile`. Round 4
+found a fifth: `main` calls `Pds3File.set_log_root`, which writes class state rather
+than constructing anything, so a test written to this round's four-function rule
+would have leaked a log root into the session. The headers name five.
 
 ---
 
@@ -127,16 +132,19 @@ configured gate.
 
 And it closed the one question about blast radius that neither earlier round
 answered directly: the `_common.py` change is additive plus one call-site
-substitution inside `run_main`, there is no `import *` anywhere in the package, no
-name collision, and `_common` is in no manifest — so the nine tools that keep their
+substitution inside `run_main`, there is no `import *` anywhere under
+`holdings_maintenance/`, no name collision, and `_common` is in no manifest — so the nine tools that keep their
 own log-root block are untouched by construction, not merely by test.
 
 Re-measured and clean: the ratchet at both commits, including every one of §6's
 eight dropped-code sites and six kept `UP031` sites by line number, and the `.mdc`'s
 corrected REST-scope counts (`UP031` 124, `I001` 4, `B007` 1, `RUF059` 1, `RUF005`
-4); the nine `sys.exit` sites one to one; `--help`; `--mode ns` at head (1,019
-passed); the hosted gate (249 passed / 804 skipped); rules 4, 5, 7, 9, 10, 11;
-`ruff format` demonstrably not run. An AST scan of the head confirmed **no
+4); the nine `sys.exit` sites one to one; `--help`; `--mode ns` at head; the hosted
+gate; rules 4, 5, 7, 9, 10, 11; `ruff format` demonstrably not run. This round's
+suite and gate figures were current when it ran and are one test behind the head,
+for the same reason its own annotation gives for round 2's; record §4 carries the
+current ones. Its by-line-number check of §6 was also invalidated by its own
+docstring fix, which shifted every site below it by two — round 4 caught that. An AST scan of the head confirmed **no
 surviving analogue of B6** — no function has an unresolved free name — so that
 class of defect is structurally closed rather than merely fixed in one place.
 

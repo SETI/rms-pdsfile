@@ -11,8 +11,9 @@
 #
 # test_re_validate.py is the exception: it runs in-process and needs no holdings at
 # all. Most of what it covers is pure over text, paths and an argparse namespace;
-# where it drives a function that does build a PdsFile, it replaces the class with
-# a stub first. Its own header says which functions those are and why that matters.
+# where it drives a function that builds a PdsFile or writes Pds3File class state,
+# it replaces the class with a stub first. Its own header names those five
+# functions and says what forgetting the stub would cost.
 #
 # Deliberately NOT covered here:
 #
