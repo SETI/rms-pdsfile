@@ -44,12 +44,10 @@ class ToolSpec:
     a missing archive file is reported -- the code stays in the tool module and the
     spec says nothing about it.
 
-    Two fields are declared for tools that are not on this core yet and are read
-    nowhere today: holdings_sentinel, which the checksums and infoshelf tools use to
-    split a command-line path, and index_ext, which the indexshelf tools use to
-    find and to recognize an index table. Both are properties of the PDS3/PDS4
-    flavor rather than of one tool, so every spec of that flavor carries the same
-    value, whether or not its own tool reads it.
+    index_ext is declared for the indexshelf tools, which are not on this core yet,
+    and so is read nowhere today. Like holdings_sentinel it is a property of the
+    PDS3/PDS4 flavor rather than of one tool, so every spec of that flavor carries
+    the same value, whether or not its own tool reads it.
 
     Attributes:
         progname: The tool's name, as it appears in the --help description, in the
@@ -73,18 +71,29 @@ class ToolSpec:
             {units} fields.
         log_path_method: The name of the PdsFile method that builds this tool's log
             path, e.g. 'log_path_for_volume'. Named rather than bound so that every
-            tool reaches log_paths_for() the same way.
+            tool reaches log_paths_for() the same way. Read by run_main; the
+            checksum and shelf tools pick between two methods per target instead,
+            so they leave it empty.
         log_suffix: The suffix in a log file's basename, e.g. '_archives'.
         expand_target: Callable (pdsf, path) returning the list of PdsFile objects
             one command-line path resolves to. `path` is the absolute path the
-            command line resolved to, for messages.
+            command line resolved to, for messages. Read by run_main; the checksum
+            and shelf tools expand a path into targets that carry a file selection,
+            so they leave it unset.
         handler_factories: The pdslogger handler factories to attach at each log
             root, in the order they are added.
         lskip_for: Callable (pdsdir) returning the number of leading characters
             trimmed from an absolute path to form the archive-relative path. Used
             by the archive tools.
         extra_arguments: Command-line arguments beyond the ones every tool takes,
-            as (args, kwargs) pairs passed straight to add_argument.
+            as (args, kwargs) pairs passed straight to add_argument. Each help
+            string is formatted with {unit} and {units} like the rest.
+        checksum_path_message: What the checksum and shelf tools print when a
+            command-line path names checksum files, which they cannot work on.
+        invalid_dir_message: What they print for a directory that is neither a unit
+            nor a unit set.
+        invalid_file_message: What they print for a file that is neither an archive
+            file nor a top-level file of a unit.
     """
 
     progname: str
@@ -97,12 +106,15 @@ class ToolSpec:
     description: str
     task_help: dict
     positional_help: str
-    log_path_method: str
     log_suffix: str
-    expand_target: Callable
     handler_factories: tuple
+    log_path_method: str = ''
+    expand_target: Callable | None = None
     lskip_for: Callable | None = None
     extra_arguments: tuple = ()
+    checksum_path_message: str = ''
+    invalid_dir_message: str = ''
+    invalid_file_message: str = ''
 
 
 ##########################################################################################
@@ -162,7 +174,8 @@ def build_arg_parser(spec):
     units = unit + 's'
 
     parser = argparse.ArgumentParser(
-        description=spec.description.format(progname=spec.progname, unit=unit))
+        description=spec.description.format(progname=spec.progname, unit=unit,
+                                            units=units))
 
     for flags, task in TASK_FLAGS:
         parser.add_argument(*flags, const=task,
@@ -178,6 +191,8 @@ def build_arg_parser(spec):
     parser.add_argument('--quiet', '-q', action='store_true', help=QUIET_HELP)
 
     for args, kwargs in spec.extra_arguments:
+        kwargs = dict(kwargs)
+        kwargs['help'] = kwargs['help'].format(unit=unit, units=units)
         parser.add_argument(*args, **kwargs)
 
     return parser
