@@ -145,8 +145,9 @@ for re-interpretation by the executor:
    a whitespace-only exemption on 2026-08-04 — and the freeze is now lifted
    outright: its internals, including the email and batch logic, may be changed
    like any other module, under the same gates. PR-25 changes it only for the
-   log time-tag race; its `ruff check` per-file-ignore entry is **not yet
-   cleaned**, which is now a backlog item rather than a permanent exemption.
+   log time-tag race; PR-25a gives it a `main()`, a test module and eleven bug
+   fixes, and shrinks its `ruff check` per-file-ignore entry to the two codes
+   that are permanent everywhere else in the tree.
    **Sync shell scripts are document-only** (no port, no rewrite).
 8. **Single package:** the maintenance tools live in the `pdsfile` package
    (`src/pdsfile/holdings_maintenance/` — done, PR-06); no separate top-level
@@ -406,9 +407,9 @@ across machines because the limited copy is a copy of the complete set.
 - `pdsdependency` tests: run against the copied tree with deliberately
   removed derived files; assert the emitted "Steps required" commands.
 - the shell scripts: explicitly out of scope (ground rule 7). `re_validate` was
-  out of scope under the old ground rule 7 and is no longer frozen, but it still
-  has no test of any kind and executes its whole command line at import, so an
-  import-safety exclusion is documented and testing it is its own piece of work.
+  out of scope under the old ground rule 7 and was left untested here because it
+  executed its whole command line at import; PR-25a is the piece of work that
+  gave it a `main()` and its own test module.
 - Update `scripts/automated_tests/pdsfile_main_test.sh` to include
   `tests/holdings_maintenance/` in the suite paths.
 - Validation: tool tests green against both holdings roots (or module-skip
@@ -801,6 +802,27 @@ design puts a shared frame there. Any later comparison of tool output must
 normalize traceback **line numbers** but must **not** normalize traceback file
 names, which is what makes that difference visible rather than hidden.
 
+**PR-25a (M)** `refactor: main() and a test module for re_validate`
+Brings the last unmodernized tool up to the standard of the others, now that
+ground rule 7's freeze is lifted. The whole program ran at module level, so
+importing the module parsed a command line and could call `sys.exit()` from
+inside the import; it is decomposed into `build_parser()`, `derive_options()`,
+`run_interactive()`, `run_batch()` and `main(argv=None)`, with
+`if __name__ == '__main__'`. **No new console-script name** (§8.4): `python -m
+pdsfile.holdings_maintenance.pds3.re_validate` stays the only invocation. It does
+**not** migrate onto `run_main`/`ToolSpec` — it has no five-task flag set, its
+positional is `nargs='*'`, and its driver loop is nothing like `run_main`'s — so
+what it shares with `_common.py` is the four things that were genuinely duplicated:
+`LOGROOT_ENV`, `LOG_HELP`, `QUIET_HELP`, and a new `resolve_log_root()` extracted
+from `run_main` and called by both. **Eleven bugs fixed, each with a test**, four of
+them forced by the move into a function scope because they read module globals that
+a function scope does not supply. New `tests/holdings_maintenance/test_re_validate.py`,
+marked `holdings_free` and run in-process. The ruff entry shrinks from ten codes to
+two. **Two `--help` lines change**, both because the hand-copied help text is
+replaced by the `_common` constant it duplicated, and **six log lines** lose the
+misspelling `re-validatation`; every one is enumerated in
+`critiques/pr-25a-validation.md`.
+
 **PR-26 (L)** `refactor: migrate checksums and infoshelf pairs onto the core`
 Fix the pds3 bugs, each with a test — but **decide the intended semantics; do
 not blindly inherit pds4's version:**
@@ -845,8 +867,7 @@ only; `[project.scripts]` is not extended). Also fixes the
 PR-15's bug list) with a regression test. **Update the PR-13 subprocess
 tests** for these two tools to call `main()` in-process and keep them green
 (the behavior under test is unchanged; only the invocation path moves).
-`re_validate.py`: not touched by this PR. It is no longer frozen (ground rule 7,
-amended 2026-08-05), so a later PR may modernize it; nothing in Phase 6 does.
+`re_validate.py`: not touched by this PR. PR-25a is the one that modernizes it.
 
 ### Phase 7 — Docstrings and documentation
 
@@ -1254,7 +1275,7 @@ executed inline):
 | #92 move inline `@parametrize` values into golden files | **Future work, not in this plan** (its hermetic motivation is withdrawn with the mini-holdings scope; it remains a valid consistency cleanup on its own and stays open) |
 | #47 log-path functions don't belong in PdsFile | PR-18 handles only the refactoring half (mixin move; names stay on `PdsFile` per the freeze); full removal deferred to phase "b"; #47 stays open |
 | #71 sync scripts | Document-only (PR-32), by decision |
-| #85 re-validate email | Explicitly out of scope ("leave re-validate alone for now") |
+| #85 re-validate email | Still out of scope. PR-25a modernizes the module and splits the message construction out of `send_email()` so it can be tested without a socket, but it does not redesign the email feature |
 | #102 Windows classifier | Owner decision surfaced in PR-14 |
 
 **Deliberately out of scope** (open issues this rewrite does not address —
