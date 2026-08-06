@@ -2478,21 +2478,22 @@ these entries are read by the PRs that come after it.
     **DECIDED (owner's rule, applied 2026-08-05): one file, a section per family.**
     The owner's rule is to decide by volume — a little code stays in one file, a lot
     splits into separate files beside it. Measured at the final commit,
-    `_common.py` is **676 lines** (486 before this round: `+151` for the
-    versioning section and `+39` for everything else — the `@dataclass`
-    conversion, the two `ToolSpec` fields with their docstring, `log_paths_for`
-    and the imports), in a 31-line header plus four banner-separated sections —
-    tool specification 72, command line 208, archive tools 214, checksum and shelf
-    file tools 151.
+    `_common.py` is **666 lines** (486 before this round: `+190` when the
+    versioning section arrived — `+151` for that section and `+39` for the
+    `@dataclass` conversion, the two `ToolSpec` fields with their docstring,
+    `log_paths_for` and the imports — and then `−10` when the three versioning
+    functions became one), in a 31-line header plus four banner-separated
+    sections — tool specification 75, command line 219, archive tools 214,
+    checksum and shelf file tools 127.
     **The number the decision turns on is 1,000**, which is not arbitrary:
     overrides deviation (3) holds `holdings_maintenance/` modules to the repo's
-    1,000-line module limit and explicitly declines to waive it for them. At 676
-    the file is at 68% of its own governing limit, so the volume rule says keep it.
+    1,000-line module limit and explicitly declines to waive it for them. At 666
+    the file is at 67% of its own governing limit, so the volume rule says keep it.
 
     **And the same number says PR-26 splits it.** The archives family contributed
     214 lines of family-specific code out of a pair that measured 1,155 lines at
-    `ab1fa3b`, a rate of 18.5%. The four pairs still to migrate measure 1,711
-    (checksums), 1,782 (infoshelf), 2,964 (linkshelf) and 1,094 (indexshelf) lines;
+    `ab1fa3b`, a rate of 18.5%. The four pairs still to migrate measure 1,687
+    (checksums), 1,758 (infoshelf), 2,954 (linkshelf) and 1,086 (indexshelf) lines;
     at that rate they project **~1,400 more lines**, which puts `_common.py` near
     2,100, twice the limit. The linkshelf figure is the softest, because PR-27
     moves the pds3 `REPAIRS` table out to its own data module, but even halving the
