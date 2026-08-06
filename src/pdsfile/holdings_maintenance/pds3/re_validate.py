@@ -18,6 +18,7 @@ from smtplib import SMTP
 
 import pdslogger
 import pdsfile
+from pdsfile.holdings_maintenance import _common
 
 from pdsfile.holdings_maintenance.pds3 import pdschecksums
 from pdsfile.holdings_maintenance.pds3 import pdsarchives
@@ -53,11 +54,8 @@ def validate_one_volume(pdsdir, voltypes, tests, args, logger):
     tests_performed = 0
 
     # Open logger for this volume
-    logfiles = set([pdsdir.log_path_for_volume('_re-validate',
-                                               dir='re-validate'),
-                    pdsdir.log_path_for_volume('_re-validate',
-                                               dir='re-validate',
-                                               place='parallel')])
+    logfiles = _common.log_paths_for(pdsdir, 'log_path_for_volume', '_re-validate',
+                                     dir='re-validate')
 
     local_handlers = []
     for logfile in logfiles:

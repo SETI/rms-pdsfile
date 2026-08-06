@@ -140,8 +140,13 @@ for re-interpretation by the executor:
 6. **No FCPath.** Do not adopt rms-filecache, and do not copy `filecache.mdc`
    into this repo's cursor rules.
 7. **CLI names unchanged** (all 11 console scripts keep their names).
-   **`re_validate.py` is left alone for now** (moved/renamed with its package
-   in PR-06, but its internals — including email/batch logic — are untouched).
+   **`re_validate.py` is no longer frozen** (owner, 2026-08-05). It was left
+   alone through PR-06 to PR-24 — moved and renamed with its package, then given
+   a whitespace-only exemption on 2026-08-04 — and the freeze is now lifted
+   outright: its internals, including the email and batch logic, may be changed
+   like any other module, under the same gates. PR-25 changes it only for the
+   log time-tag race; its `ruff check` per-file-ignore entry is **not yet
+   cleaned**, which is now a backlog item rather than a permanent exemption.
    **Sync shell scripts are document-only** (no port, no rewrite).
 8. **Single package:** the maintenance tools live in the `pdsfile` package
    (`src/pdsfile/holdings_maintenance/` — done, PR-06); no separate top-level
@@ -188,7 +193,7 @@ for re-interpretation by the executor:
 | API-freeze manifest test | **Active** (PR-02) | Public surface identical to the pre-rewrite manifest (modulo the two pre-approved forgiveness categories, §6.1) |
 | Full-data suite (self-hosted CI on every PR; also run locally) | **Active** (Phase 0) | No behavior change against real holdings; per-test pass/fail set identical to the recorded baseline (§6.2); additionally run locally after every Phase 5/6 PR and at each phase boundary |
 | `ruff check` (ratcheted) | **Active** (PR-03) | Style; per-file-ignores may only shrink |
-| `ruff check --preview --select E111,E112,E113` (indentation) | **Active** (PR-24, owner 2026-08-04) | Every logical line of **code** on the 4-space grid. A separate invocation because the `E1` rules are preview-gated and enabling preview wholesale in `pyproject.toml` also changes the stable rules' behaviour — measured at 5,687 findings against a tree the configured gate reports clean. The comment-line counterparts (`E114`/`E115`/`E116`, and `E117` which fires on both) are left out: comment placement is the author's here, and this codebase's conventions — a trailing comment continued under its own column, an annotation after the statement it describes, commented-out code parked at column 0 — all read worse pulled to the code grid. `re_validate.py` is included with no exemption: the owner lifted ground rule 7 for **whitespace only** on 2026-08-04, so its indentation is fixed while its logic stays frozen (`pdsfile_overrides.mdc` deviation (6)) |
+| `ruff check --preview --select E111,E112,E113` (indentation) | **Active** (PR-24, owner 2026-08-04) | Every logical line of **code** on the 4-space grid. A separate invocation because the `E1` rules are preview-gated and enabling preview wholesale in `pyproject.toml` also changes the stable rules' behaviour — measured at 5,687 findings against a tree the configured gate reports clean. The comment-line counterparts (`E114`/`E115`/`E116`, and `E117` which fires on both) are left out: comment placement is the author's here, and this codebase's conventions — a trailing comment continued under its own column, an annotation after the statement it describes, commented-out code parked at column 0 — all read worse pulled to the code grid. `re_validate.py` is included with no exemption: the owner lifted ground rule 7 for **whitespace only** on 2026-08-04 and lifted it **entirely** on 2026-08-05, so nothing about that file is exempt from this gate or any other (`pdsfile_overrides.mdc` deviation (6)) |
 | Clean-install import check | **Active** (PR-08) | `pip install .` with no extras; `import pdsfile` + every manifest module imports (runtime-dep leak guard) |
 | `ruff format --check` | **Never enabled** — the churn checkpoint ran on 2026-08-03 and the owner dropped the reformat entirely (`plans/2026-08-03-addendum-pr23-24-owner-decisions.md`) | — |
 | Hosted lint/no-holdings CI job | **Active** (PR-14) | ruff + pyroma + API-freeze + clean-install + the holdings-free test subset on stock GitHub runners (it runs `run-all-checks.sh`, so it is whatever that enables) |
@@ -400,8 +405,10 @@ across machines because the limited copy is a copy of the complete set.
   to call `main()` in-process).
 - `pdsdependency` tests: run against the copied tree with deliberately
   removed derived files; assert the emitted "Steps required" commands.
-- `re_validate` and the shell scripts: explicitly out of scope (ground
-  rule 7); an import-safety exclusion is documented.
+- the shell scripts: explicitly out of scope (ground rule 7). `re_validate` was
+  out of scope under the old ground rule 7 and is no longer frozen, but it still
+  has no test of any kind and executes its whole command line at import, so an
+  import-safety exclusion is documented and testing it is its own piece of work.
 - Update `scripts/automated_tests/pdsfile_main_test.sh` to include
   `tests/holdings_maintenance/` in the suite paths.
 - Validation: tool tests green against both holdings roots (or module-skip
@@ -707,10 +714,12 @@ the method (deleting the method would change behavior and the manifest kind).
 - **Branch and base:** PR-24 branches from `rewrite` **after PR-23 has merged**
   and opens against `rewrite`; the two are not stacked (owner, 2026-08-03). Its
   §6.2 baseline is `rewrite` at that point.
-- **`re_validate.py` also gets a permanent `ruff check` per-file-ignore set**
-  (its full derived violation set — UP031, E402, RUF059, E701, I001, B007,
-  RUF005, C405, RUF051, E721, UP034 as of 2026-07-17), for the same freeze
-  reason, not tables. Add it to `pdsfile_overrides.mdc` deviation (4).
+- **`re_validate.py` gets a `ruff check` per-file-ignore set** (its full derived
+  violation set — UP031, E402, RUF059, E701, I001, B007, RUF005, C405, RUF051,
+  E721, UP034 as of 2026-07-17), not tables. It was permanent under the old
+  ground rule 7; since the owner lifted that freeze on 2026-08-05 the entry is
+  **not yet cleaned** rather than never cleanable, and a later PR may shrink it.
+  Add it to `pdsfile_overrides.mdc` deviation (4).
   Cleaning *other* `holdings_maintenance/` tools here is behavior-preserving
   style only.
 
@@ -718,8 +727,22 @@ the method (deleting the method would change behavior and the manifest kind).
 
 Gates: PR-13's tool tests + a real-holdings validate run of each migrated tool
 against at least one real volume/bundle, recorded in
-`critiques/phase6-validation.md`. CLI names, flags, output formats, log
-formats, and exit codes are all frozen (tests assert them).
+`critiques/phase6-validation.md`. **CLI names, flags and exit codes are frozen**
+(tests assert them). **Log and output *text* is not** — owner, 2026-08-05:
+having versions that do and do not render a colon is not worth preserving, a
+small change in logged text is acceptable, and the code should be as common as
+possible rather than shaped by the text it emits.
+
+**The limit, so this is not read as licence.** Output text may move **only where
+keeping it would force duplication or a flag whose one job is to re-create one
+side's wording.** It is not licence to reword, reformat or drop messages, to
+change which events are logged or at what level, or to change a log file's path
+or name. Every text change is enumerated line by line in
+`critiques/phase6-validation.md`, each attributed to the commonality it bought;
+a differing line that cannot be attributed is a defect. The tool-run gate still
+diffs every captured line — it is the enumeration that changed, not the
+measurement. `plans/2026-08-04-pr-25-deviations-addendum.md` §8 records the
+ruling in full, with the changed lines PR-25 itself produced.
 
 **PR-25 (L)** `refactor: shared maintenance-tool core (_common.py) + archives pair`
 Extract the shared skeleton the **five** pds3/pds4 tool-pairs re-implement
@@ -732,11 +755,15 @@ re-invented per implementer):
 - `BACKUP_FILENAME` regex, the `*_LIMITS` defaults, `hashfile()`, and
   `move_old_<kind>()` version-numbering — moved verbatim, one copy.
 - A `@dataclass ToolSpec` capturing everything that varies between a pds3 and
-  pds4 tool: `pdsfile_cls` (`Pds3File`/`Pds4File`), `vocab`
-  (`{'bundle': 'volume'|'bundle', ...}` for log text), `holdings_sentinel`
-  (`'/holdings/'` vs `'/pds4-holdings/'`), `index_ext` (`.tab`/`.csv`),
-  `logname` (e.g. `'pds.validation.archives'`), and a `log_extra_handlers`
-  flag (pds4 adds a `warning_handler`; pds3 does not).
+  pds4 tool: `pdsfile_cls` (`Pds3File`/`Pds4File`), `unit` (`'volume'` vs
+  `'bundle'`, substituted into the help text — the `vocab` field under a name
+  that says what it holds), `holdings_sentinel` (`'/holdings/'` vs
+  `'/pds4-holdings/'`), `index_ext` (`.tab`/`.csv`), `logname` (e.g.
+  `'pds.validation.archives'`), and `handler_factories`, an **ordered tuple** of
+  `pdslogger` handler factories — `(error_handler,)` for pds3,
+  `(warning_handler, error_handler)` for pds4. A tuple rather than an
+  "extra handlers" boolean because the order the handlers are added in is
+  observable and a boolean does not carry it.
 - `build_arg_parser(spec)` → the argparse parser with the five task flags with
   **today's exact semantics** — they are independent `store_const`-into-`task`
   flags, **not** an `add_mutually_exclusive_group` (do not introduce one; that
@@ -753,10 +780,26 @@ re-invented per implementer):
 - Each thin tool module (`pdsarchives.py`, …) shrinks to: its `generate_*`/
   `read_*`/`write_*`/`validate_*` domain functions, a `SPEC = ToolSpec(...)`,
   a `TASKS = {...}`, and `def main(): return run_main(SPEC, TASKS, sys.argv)`.
-Migrate `pdsarchives`/`pds4archives` first (hardest divergence: pds3
-single-tar vs pds4 one-bundle-→-many-tarballs — modelled as a `write_archive`
-hook on the spec, not an `if pds4:` branch). The CLI surface, output, log
-format, and exit codes are asserted unchanged by PR-13's tests.
+Migrate `pdsarchives`/`pds4archives` first (hardest divergence: pds3 single-tar
+vs pds4 one-bundle-→-many-tarballs). **`write_archive` is not a spec hook**: the
+divergence proved larger than a hook — measured at `ab1fa3b`, the two
+`write_archive`s and the ten task functions differ in six further observable
+ways, so a shared one would carry a flag per difference. Both implementations
+and all ten task functions stay in their own tool modules; the reasoning and the
+measurements are in `plans/2026-08-04-pr-25-deviations-addendum.md` §1. The
+requirement that stands, and is met, is **no `if pds4:` branch anywhere** in
+`_common.py`. The CLI surface and exit codes are asserted unchanged by PR-13's
+tests. **Log text changes in three enumerated places**, each under the Phase 6
+rule above and each listed line by line in `critiques/phase6-validation.md`: a
+traceback inside a tool log names the shared driver frame rather than the tool's
+own `main()`; the link shelf's "moved to" line gains the colon the other two
+kinds already rendered, which is what let the three versioning functions become
+one; and the "moved from" line of all three reports its path relative to the
+logger's root, for the same reason. The traceback change is the one no
+implementation can avoid — a traceback names the frames on the stack and this
+design puts a shared frame there. Any later comparison of tool output must
+normalize traceback **line numbers** but must **not** normalize traceback file
+names, which is what makes that difference visible rather than hidden.
 
 **PR-26 (L)** `refactor: migrate checksums and infoshelf pairs onto the core`
 Fix the pds3 bugs, each with a test — but **decide the intended semantics; do
@@ -778,14 +821,21 @@ not blindly inherit pds4's version:**
   is chosen, pds3 and pds4 share it via `_common.py`.
 Preserve the pds3 `--infoshelf` chaining behavior (modernize `os.system` →
 `subprocess.run` as pds4 already does — flagged behavior change, tested).
+CLI surface and exit codes asserted unchanged by PR-13's tests; log text held to
+the Phase 6 rule above — it may move only where keeping it would force
+duplication or a shrug-flag, and every changed line is enumerated and attributed.
+**Note:** PR-25 already made the `LOGDIRS` fix listed above, and already merged
+`hashfile()` and the three `move_old_<kind>()` functions into one, so those
+items are done rather than owed here.
 
 **PR-27 (L)** `refactor: migrate indexshelf and linkshelf pairs onto the core`
 Migrate `pdsindexshelf`/`pds4indexshelf` and `pdslinkshelf`/`pds4linkshelf`
 onto `_common.py`, same pattern as PR-25/26 (ToolSpec + task table + thin
-`main()`); CLI surface, output, log formats, and exit codes asserted unchanged
-by PR-13's tests. The large pds3 `REPAIRS` table is moved **content-unchanged**
-into its own data module, `pds3/linkshelf_repairs.py`, imported by the thin
-linkshelf tool.
+`main()`); CLI surface and exit codes asserted unchanged by PR-13's tests, and
+log text held to the Phase 6 rule above — it may move only where keeping it
+would force duplication or a shrug-flag, and every changed line is enumerated.
+The large pds3 `REPAIRS` table is moved **content-unchanged** into its own data
+module, `pds3/linkshelf_repairs.py`, imported by the thin linkshelf tool.
 
 **PR-28 (M)** `refactor: main() for crlf, shelf_consistency_check, show_opus_products`
 Proper argparse + `main()` so they are testable and runnable via
@@ -795,7 +845,8 @@ only; `[project.scripts]` is not extended). Also fixes the
 PR-15's bug list) with a regression test. **Update the PR-13 subprocess
 tests** for these two tools to call `main()` in-process and keep them green
 (the behavior under test is unchanged; only the invocation path moves).
-`re_validate.py`: untouched (ground rule 7).
+`re_validate.py`: not touched by this PR. It is no longer frozen (ground rule 7,
+amended 2026-08-05), so a later PR may modernize it; nothing in Phase 6 does.
 
 ### Phase 7 — Docstrings and documentation
 
@@ -988,8 +1039,11 @@ line-by-line human review at its boundary.
   (`plans/2026-08-03-addendum-pr23-24-owner-decisions.md`). Running `ruff format`
   is now itself the hard stop.
 - Any situation where following the plan would require changing behavior,
-  file formats, CLI flags, log formats, or exit codes not explicitly listed
-  as changing.
+  file formats, CLI flags, or exit codes not explicitly listed as changing.
+  **Log and output text is no longer on this list** (owner, 2026-08-05) — but
+  only under the Phase 6 rule: it may move where keeping it would force
+  duplication or a shrug-flag, every changed line is enumerated and attributed,
+  and a change that buys no commonality is still a stop.
 - Any new decision not already settled in §8 or elsewhere in this plan —
   surface it rather than choosing unilaterally.
 

@@ -18,6 +18,7 @@ import pdslogger
 import translator
 
 import pdsfile
+from pdsfile.holdings_maintenance import _common
 
 LOGNAME = 'pds.validation.dependencies'
 LOGROOT_ENV = 'PDS_LOG_ROOT'
@@ -1119,11 +1120,8 @@ def main():
             pdsdir = pdsfile.Pds3File.from_abspath(path)
 
             # Save logs in up to two places
-            logfiles = {pdsdir.log_path_for_volume('_dependency',
-                                                   dir='pdsdependency'),
-                        pdsdir.log_path_for_volume('_dependency',
-                                                   dir='pdsdependency',
-                                                   place='parallel')}
+            logfiles = _common.log_paths_for(pdsdir, 'log_path_for_volume',
+                                             '_dependency', dir='pdsdependency')
 
             # Create all the handlers for this level in the logger
             local_handlers = []

@@ -247,3 +247,33 @@ def test_update_picks_up_a_new_file(shelved_tree):
                            shelved_tree.path(VOLUME_DIR))
     assert run.returncode == 0, run.describe()
     assert run.error_lines == [], run.describe()
+
+
+def test_update_versions_the_shelf_file_it_replaces(shelved_tree):
+    """--update copies the superseded info shelf into the log directory.
+
+    _common.move_old_info() versions the shelf the task is about to rewrite, as
+    <name>_v###<ext> beside the run's own log file, and copies the `.py` sidecar
+    alongside it. It reads the shared LOGDIRS list that main() fills in through
+    _common.set_log_dirs(), so a tool that leaves that list empty versions nothing.
+    """
+
+    support.add_file(shelved_tree, NEW_FILE, NEW_FILE_BYTES, NEW_FILE_MTIME)
+    refresh_checksums(shelved_tree)
+    first_pickle = shelved_tree.path(PICKLE).read_bytes()
+    first_sidecar = shelved_tree.path(SIDECAR).read_bytes()
+
+    run = support.run_tool(shelved_tree, 'pdsinfoshelf', '--update',
+                           shelved_tree.path(VOLUME_DIR))
+    assert run.returncode == 0, run.describe()
+    assert 'Info shelf file moved from: ' in run.output, run.describe()
+    assert 'Info shelf file moved to: ' in run.output, run.describe()
+
+    logs = shelved_tree.disk / 'logs'
+    versions = sorted(p.name for p in logs.rglob(f'{subsets.PDS3_VOLUME}_info_v*'))
+    assert versions == [f'{subsets.PDS3_VOLUME}_info_v001.pickle',
+                        f'{subsets.PDS3_VOLUME}_info_v001.py'], run.describe()
+
+    assert next(logs.rglob(versions[0])).read_bytes() == first_pickle
+    assert next(logs.rglob(versions[1])).read_bytes() == first_sidecar
+    assert shelved_tree.path(PICKLE).exists()
