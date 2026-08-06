@@ -2826,3 +2826,154 @@ these entries are read by the PRs that come after it.
      everything oldest-first, is a decision about how the launch daemon should
      behave on a fresh install, not a defect with one obvious repair.
      **Owner: open.**
+
+### Added by the PR-26 executor's own measurements (2026-08-06)
+
+109. **The pds4 `--infoshelf` chain re-runs `pds4checksums`, not `pds4infoshelf`.**
+     Both checksums tools build the chained command by rewriting their own argv:
+     `[a.replace('pdschecksums', 'pdsinfoshelf') for a in sys.argv]`. The pds4 tool
+     carries that line **verbatim from its pds3 twin**, and `'pdschecksums'` is not
+     a substring of `'pds4checksums'` — `pds4c…` breaks the run of characters. So
+     no element is rewritten, `--infoshelf`/`-i` is stripped, and the child is the
+     same `pds4checksums` command over again with the chain flag removed:
+
+     ```
+     '/venv/bin/pdschecksums'.replace('pdschecksums', 'pdsinfoshelf')
+         -> '/venv/bin/pdsinfoshelf'          # pds3: the other tool
+     '/venv/bin/pds4checksums'.replace('pdschecksums', 'pdsinfoshelf')
+         -> '/venv/bin/pds4checksums'         # pds4: itself
+     ```
+
+     `pds4checksums --initialize --infoshelf <bundle>` therefore runs the checksum
+     task twice and never builds an info shelf; the second run's
+     "Checksum file already exists" error is what it reports.
+
+     Identical at PR-26's base and head. It was **not** fixed here: the plan
+     enumerates PR-26's behavior changes and this is not among them, and rewriting
+     the substitution changes what the pds4 chain *does* rather than how faithfully
+     it reports. The migration deliberately left both tools' substitution strings
+     alone. Whether the fix is `'pds4checksums'` → `'pds4infoshelf'` or dropping
+     argv[0] rewriting for an explicit console-script name is worth settling once
+     for both flavors, since argv[0] rewriting also assumes an installed console
+     script — `python -m …` puts a module file path there and the chain then
+     depends on that file's executable bit and shebang.
+     **Owner: open.**
+
+110. **`PYTHONPATH=<other tree>/src` does not redirect pytest's in-process
+     imports, so the obvious differential probe silently measures the wrong tree.**
+     `pyproject.toml` sets `pythonpath = [".", "src"]`, and pytest prepends those to
+     `sys.path` **ahead of** `PYTHONPATH`. Measured from inside a test run as
+     `PYTHONPATH=<base>/src:<work> pytest …` from the work tree:
+
+     ```
+     sys.path[:5] = ['<work>/tests', '<work>', '<work>/src', '<work>', '<base>/src']
+     pdsfile.__file__ = <work>/src/pdsfile/__init__.py
+     ```
+
+     A plain `python -c "import pdsfile"` with the same `PYTHONPATH` resolves to
+     `<base>`, which is what makes this easy to get wrong: the check that proves
+     the tree is honest outside pytest and misleading inside it. Tests that shell
+     out (`support.run_tool`, which runs `python -m <module>` in a subprocess) *are*
+     redirected, because the subprocess never sees pytest's insertion. So a probe
+     run this way exercises base for subprocess tests and head for in-process ones,
+     in the same session, with nothing in the output saying so.
+
+     PR-26's first base probe was wrong for this reason and was redone. Recorded
+     because every future PR that wants "do my new tests fail at base?" will reach
+     for the same command. The reliable forms are to run pytest **from** the base
+     worktree with the head's test files, or to assert the measured path inside a
+     test.
+     **Owner: recorded, not open — but worth a line in the plan's gate section.**
+
+111. **The pds4 tools identify themselves as their pds3 twins, in help text, in
+     one error message, and in their log directory.** `pds4checksums --help` begins
+     `pdschecksums: Create, maintain and validate MD5 checksum files…`, its missing
+     task error is `pdschecksums error: Missing task`, and both its log root
+     subdirectory and its per-target log directory are `pdschecksums/`. Same for
+     `pds4infoshelf` and `pdsinfoshelf`. That is the behavior at base, it is not new,
+     and PR-25 already carried it forward for the archive pair by giving
+     `pds4archives` `progname='pdsarchives'`. PR-26 does the same for these four, so
+     the logs of a PDS3 and a PDS4 run still land under one directory name and can
+     collide only by holdings root, not by tool.
+
+     It is now a **single, visible piece of data** — one `progname` field per spec —
+     rather than five hand-copied strings per tool, so changing it is a one-line
+     decision per tool rather than a hunt. Not changed here: the log directory name
+     is a path that existing installations and the sync scripts already use.
+     **Owner: open.**
+
+112. **Two `ToolSpec` fields are carried by the checksum and shelf specs and read
+     by nothing.** `index_ext` is declared for the indexshelf tools, which are not
+     on the core yet (this is the standing case entry 97 records). `file_log_level`
+     is different: it is *accurate* for these four tools — pds3 logs its per-file
+     lines through `logger.info` and pds4 through `logger.normal` — but their domain
+     functions hard-code the call rather than reading the spec, because those
+     functions stayed in the tool modules. So the field states a true fact that the
+     tool it describes ignores.
+
+     Making the domain functions read it is not free: `generate_checksums` and
+     `generate_infodict` would each need the spec threaded in, which is a bigger
+     change than PR-26's scope and touches the functions the plan says to leave
+     alone. Recorded so that a later PR can either wire it up or narrow the field's
+     documented scope, rather than a sweep finding it and deleting it.
+     **Owner: open.**
+
+113. **Ten identical copies of `BACKUP_FILENAME`.** `_common.py` defines it, and so
+     do all nine tool modules — `pdschecksums`, `pdsinfoshelf`, `pdsindexshelf`,
+     `pdslinkshelf`, `pdsdependency` and their pds4 counterparts. Measured at PR-26's
+     head: **one distinct pattern across ten definitions**, character for character:
+
+     ```
+     r'.*[-_](20\d\d-\d\d-\d\dT\d\d-\d\d-\d\d' r'|backup|original)\.[\w.]+$'
+     ```
+
+     `_archives_common.load_directory_info` imports the `_common` one; every tool's
+     own `generate_*` uses its local copy. PR-26 did not consolidate them: the
+     copies live in the domain functions that stay in the tool modules, and
+     replacing a module-level constant that nine files define is a sweep of its own,
+     not a side effect of migrating four `main()`s. The risk it carries is the usual
+     one for a duplicated constant — nine of the ten can be updated and the tenth
+     left behind, with no gate that would notice.
+     **Owner: open.**
+
+114. **`_shelf_common.py` serves two audiences, which is the question entry 98
+     answered only for `_common.py`.** The split PR-26 performed put the checksum and
+     shelf family's code in `_shelf_common.py`: the versioning helpers
+     (`move_old`, `next_version_dest`, `VersionedFile`, `LOGDIRS`, `hashfile`) plus
+     the new selection driver (`run_selection_main`, `resolve_holdings_paths`,
+     `expand_selection_targets`, `modtimes_agree`). Measured at PR-26's head, six
+     tool modules import it, but only four of them — the two checksums and the two
+     infoshelf tools — are on the driver. `pdslinkshelf` and `pds4linkshelf` import
+     it for `LINK_SHELF` and `move_old` alone, and call neither the driver nor
+     `ToolSpec`.
+
+     That is the same shape entry 98 flagged before the split: one file, two
+     disjoint audiences. It is not urgent — the file is 529 lines against a limit of
+     1,000 — but PR-27 migrates the linkshelf and indexshelf pairs and will add to
+     it, so the measurement should be taken again there. If it crosses, entry 98's
+     rule applies unchanged, and the natural seam is the one already visible: the
+     versioning and hashing helpers serve six tools regardless of driver, while the
+     driver serves four.
+     **Owner: PR-27 re-measures. Not open otherwise.**
+
+115. **`pdschecksums` and `pds4checksums` still exit 0 after logging errors.**
+     `support.TOOLS_WITHOUT_EXIT_STATUS` records this and PR-13's tests assert it:
+     a `--validate` that reports checksum mismatches exits 0. PR-26 **preserved it
+     deliberately**. The shared driver returns its status rather than exiting, and
+     each tool decides: `pdsinfoshelf`/`pds4infoshelf` call `sys.exit(result.status)`,
+     the two checksums tools do not, exactly as before.
+
+     Preserved rather than fixed because it is pinned current behavior that the plan
+     does not enumerate as a PR-26 change, and because changing it would change the
+     exit code of every failing checksums run — the most externally visible thing
+     these tools do, and something a sync script or a cron wrapper may depend on.
+     The one change PR-26 did make here is adjacent and enumerated: a **chained**
+     `pdsinfoshelf` run's exit code now reaches the caller intact, where
+     `os.system`'s wait status previously truncated every failure to 0. So
+     `pdschecksums --infoshelf` now reports the chained run's failure while still
+     not reporting its own.
+
+     Giving these two tools an exit status is now a two-line change in one place
+     each, and `expected_error_exit_code()` is the single point the tests would move
+     through.
+     **Owner: open.**
