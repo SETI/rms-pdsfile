@@ -2726,3 +2726,102 @@ these entries are read by the PRs that come after it.
      second per reading and asserts the two paths differ -- so the test cannot pass
      by the race failing to fire.
      **Owner: recorded, not open.**
+
+105. **`scripts/check_runtime_imports.py` covers seven core modules and the two
+     rules packages; it never imports a maintenance tool.** `_TOP_MODULES` lists
+     `pdsfile`, `pdsfile.pdsfile`, `pdsfile.pdscache`, `pdsfile.pdsviewable`,
+     `pdsfile.preload_and_cache`, `pdsfile.pds3file` and `pdsfile.pds4file`, plus
+     everything under the two `rules` packages. Nothing under
+     `holdings_maintenance/` is in the set, so a tool that grows an import outside
+     the runtime dependencies passes the clean-install gate untouched.
+
+     Now that `re_validate.py` imports cleanly — PR-25a — extending the gate to the
+     tool modules is finally *possible*: before PR-25a, importing that one module
+     ran a command line and called `sys.exit()`, so the gate could not have
+     imported it at all. It is still not *free*: the tools import `pdslogger` and
+     `translator`, and whether every one of those is a runtime dependency rather
+     than a dev extra is a measurement nobody has made. Extending the gate can
+     therefore legitimately turn CI red, which makes it its own measured change
+     rather than a rider on this PR.
+     **Owner: open.**
+
+106. **Nine tool modules still carry a private `LOGROOT_ENV = 'PDS_LOG_ROOT'` and
+     their own copy of the log-root resolution block.** `pdschecksums.py:24`,
+     `pdsindexshelf.py:26`, `pdsinfoshelf.py:27`, `pdslinkshelf.py:25`,
+     `pdsdependency.py:24`, `pds4checksums.py:25`, `pds4indexshelf.py:26`,
+     `pds4infoshelf.py:27` and `pds4linkshelf.py:26`, each above the same five
+     lines that read the variable and fall back to `None`.
+
+     PR-25a extracted those five lines as `_common.resolve_log_root()` and pointed
+     `run_main` and `re_validate` at it, so there are two callers today. The other
+     nine are not this PR's to change — the brief forbids touching another tool
+     module except where a shared constant moves — and PR-26 and PR-27 retire them
+     as they migrate each tool onto `run_main`. This entry exists so that the count
+     is on the record: if either of those PRs lands and the grep still finds nine,
+     something was missed.
+     **Owner: recorded, not open.**
+
+107. **`re_validate` batch mode cannot handle a holdings root whose path contains
+     a space.** `volume_abspath_from_log()` recovers the volume path from a log's
+     first record as `parts[-1].strip().split(' ')[-1]` — the last
+     whitespace-separated token. A path with a space in it is silently truncated to
+     its final component.
+
+     This is not hypothetical on this machine: `/seti/opus/pdsdata/holdings`
+     resolves to a Dropbox path containing three spaces, and the tool intersects
+     each log's recovered holdings prefix against the **realpath** of the
+     command-line root. Measured at PR-25a's head, a log naming the resolved path
+     yields the prefix `rfrench@rfrench.org/Shared/Shared-OPUS/pdsdata/holdings`,
+     which matches nothing, so the missing-volume report stays silent whatever the
+     logs say. PR-25a's B2 fix had to be demonstrated against a synthetic
+     space-free holdings root for exactly this reason.
+
+     The fix is not obvious and is not PR-25a's: the log's first record is written
+     by `pdslogger` as `Re-validate <abspath>` with no quoting or delimiter, so
+     recovering the path reliably means changing what is written, which changes a
+     log format that older logs are already in. Anything that reads existing logs
+     has to cope with both.
+
+     **The same split has a second consequence, in the opposite direction.** Batch
+     mode holds the holdings roots twice: `resolve_holdings_paths()` returns the
+     canonicalized, deduplicated list, and that is what the missing-volume report
+     intersects against — but `get_volume_info()` is called over the raw
+     `args.volume` entries, so `holdings_info` and everything downstream of it carry
+     the path *as the user typed it*. Naming one root twice globs it twice, and the
+     abspath a batch run reports is not the abspath the report compares against.
+
+     Identical at PR-25a's base and head; that PR did not introduce it and did not
+     change it. Iterating the resolved list instead looks like a one-line fix and is
+     not one: on a machine where the holdings root is a symlink, the canonical path
+     is a different tree, and `Pds3File.from_abspath` has to recognize it as a
+     holdings root for `--batch-status` to print anything at all. Which of the two
+     forms is the right one to carry is the same question as the paragraph above,
+     and should be settled once for both.
+     **Owner: open.**
+
+108. **`re_validate --batch` with no log root at all crashes with a `TypeError`.**
+     Batch mode reads the existing logs with `get_all_log_info(args.log)`, and
+     `args.log` is `None` when neither `--log` nor `PDS_LOG_ROOT` is set — that is
+     what `_common.resolve_log_root` leaves. `os.walk(None)` then raises
+     `TypeError: expected str, bytes or os.PathLike object, not NoneType`.
+
+     Measured at PR-25a's base and at its head, against a holdings directory with
+     an empty `volumes/`, with `PDS_LOG_ROOT` removed from the environment:
+
+     ```
+     $ python -m pdsfile.holdings_maintenance.pds3.re_validate --batch-status <holdings>
+     base  rc=1  TypeError: expected str, bytes or os.PathLike object, not NoneType
+     head  rc=1  TypeError: expected str, bytes or os.PathLike object, not NoneType
+     ```
+
+     Identical at both, so PR-25a neither introduces nor fixes it; it is recorded
+     because that PR's review is what found it. Interactive mode is unaffected — it
+     never reads the log root as a directory to walk.
+
+     Not obviously a one-line fix. Batch mode's whole scheduling model is "read the
+     logs, find what is stale", so with no log tree there is nothing to schedule
+     from and every volume looks unvalidated. Whether the right behavior is to
+     refuse with a message, or to treat it as "no logs yet" and validate
+     everything oldest-first, is a decision about how the launch daemon should
+     behave on a fresh install, not a defect with one obvious repair.
+     **Owner: open.**

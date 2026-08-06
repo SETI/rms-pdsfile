@@ -127,6 +127,25 @@ LOG_HELP = ('Optional root directory for a duplicate of the log files. If not '
 QUIET_HELP = 'Do not also log to the terminal.'
 
 
+def resolve_log_root(args):
+    """Settle where the duplicate log tree goes, in place on the parsed command line.
+
+    An unset --log falls back to the environment variable, and an unset variable
+    leaves no log root at all. Either way the rest of a tool reads one of two
+    states: a path, or None for "no duplicate tree". The empty string the parser
+    defaults to never survives this call.
+
+    Args:
+        args: The parsed command line. Its log attribute is overwritten.
+    """
+
+    if args.log == '':
+        try:
+            args.log = os.environ[LOGROOT_ENV]
+        except KeyError:
+            args.log = None
+
+
 def build_arg_parser(spec):
     """Return the argument parser for one tool.
 
@@ -241,11 +260,7 @@ def run_main(spec, tasks, argv):
     status = 0
 
     # Define the logging directory
-    if args.log == '':
-        try:
-            args.log = os.environ[LOGROOT_ENV]
-        except KeyError:
-            args.log = None
+    resolve_log_root(args)
 
     # Initialize the logger
     logger = pdslogger.PdsLogger(spec.logname)

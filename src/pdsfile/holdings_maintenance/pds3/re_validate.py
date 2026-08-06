@@ -1,34 +1,47 @@
 #!/usr/bin/env python3
 ################################################################################
-# re-validate.py
+# re_validate.py library and main program
 #
 # Syntax:
-#   re-validate.py path [path ...]
+#   python -m pdsfile.holdings_maintenance.pds3.re_validate path [path ...]
 #
 # Enter the --help option to see more information.
 ################################################################################
 
-import sys
-import os
-import glob
 import argparse
 import datetime
+import glob
+import os
 import socket
+import sys
 from smtplib import SMTP
 
 import pdslogger
+
 import pdsfile
 from pdsfile.holdings_maintenance import _common
-
-from pdsfile.holdings_maintenance.pds3 import pdschecksums
-from pdsfile.holdings_maintenance.pds3 import pdsarchives
-from pdsfile.holdings_maintenance.pds3 import pdsinfoshelf
-from pdsfile.holdings_maintenance.pds3 import pdslinkshelf
-from pdsfile.holdings_maintenance.pds3 import pdsdependency
+from pdsfile.holdings_maintenance.pds3 import (
+    pdsarchives,
+    pdschecksums,
+    pdsdependency,
+    pdsinfoshelf,
+    pdslinkshelf,
+)
 
 LOGNAME = 'pds.validation'
-LOGROOT_ENV = 'PDS_LOG_ROOT'
+
+# Read nowhere in this module. Whether it should exist at all is a question for
+# whoever owns the batch report, not a cleanup.
 MAX_INFO = 50
+
+# The tool's name: the subdirectory of each log root, and the name in --help.
+PROGNAME = 're-validate'
+
+# Every volume type this tool knows how to check, in the order it checks them.
+ALL_VOLTYPES = ['volumes', 'calibrated', 'diagrams', 'metadata', 'previews']
+
+# The volume types a link shelf exists for.
+LINKSHELF_VOLTYPES = ('volumes', 'calibrated', 'metadata')
 
 SERVER = 'list.seti.org'
 FROM_ADDR = "PDS Administrator <pds-admin@seti.org>"
@@ -55,11 +68,11 @@ def validate_one_volume(pdsdir, voltypes, tests, args, logger):
 
     # Open logger for this volume
     logfiles = _common.log_paths_for(pdsdir, 'log_path_for_volume', '_re-validate',
-                                     dir='re-validate')
+                                     dir=PROGNAME)
+    logfiles = [f.replace('/volumes/','/') for f in logfiles]  # this subdir not needed
 
     local_handlers = []
     for logfile in logfiles:
-        logfile = logfile.replace('/volumes/','/')  # this subdir not needed
         local_handlers.append(pdslogger.file_handler(logfile))
         logdir = os.path.split(logfile)[0]
         logdir = os.path.split(logdir)[0]
@@ -86,7 +99,7 @@ def validate_one_volume(pdsdir, voltypes, tests, args, logger):
 
             temp_pdsdir = pdsfile.Pds3File.from_abspath(abspath)
             if args.checksums:
-                logger.open('Checksum re-validatation for', abspath)
+                logger.open('Checksum re-validation for', abspath)
                 try:
                     pdschecksums.validate(temp_pdsdir,
                                           limits=CHECKSUMS_LIMITS)
@@ -95,7 +108,7 @@ def validate_one_volume(pdsdir, voltypes, tests, args, logger):
                     logger.close()
 
             if args.archives:
-                logger.open('Archive re-validatation for', abspath)
+                logger.open('Archive re-validation for', abspath)
                 try:
                     pdsarchives.validate(temp_pdsdir,
                                          limits=ARCHIVES_LIMITS)
@@ -104,20 +117,20 @@ def validate_one_volume(pdsdir, voltypes, tests, args, logger):
                     logger.close()
 
         # Checksums for each 'archive-' + voltype...
-        if checksums and args.archives:
+        if args.checksums and args.archives:
             for voltype in voltypes:
                 abspath = pdsdir.abspath.replace('/volumes/',
                                                  '/archives-' + voltype + '/')
                 abspath += '*.tar.gz'
-                abspath = glob.glob(abspath)
-                if not abspath:
+                tarpaths = glob.glob(abspath)
+                if not tarpaths:
                     continue
 
-                abspath = abspath[0]    # there should only be one
+                abspath = tarpaths[0]   # there should only be one
 
                 (prefix, basename) = os.path.split(abspath)
                 temp_pdsdir = pdsfile.Pds3File.from_abspath(prefix)
-                logger.open('Checksum re-validatation for', abspath)
+                logger.open('Checksum re-validation for', abspath)
                 try:
                     pdschecksums.validate(temp_pdsdir, basename,
                                           limits=CHECKSUMS_LIMITS)
@@ -134,7 +147,7 @@ def validate_one_volume(pdsdir, voltypes, tests, args, logger):
 
             temp_pdsdir = pdsfile.Pds3File.from_abspath(abspath)
             if args.infoshelves:
-                logger.open('Infoshelf re-validatation for', abspath)
+                logger.open('Infoshelf re-validation for', abspath)
                 try:
                     pdsinfoshelf.validate(temp_pdsdir,
                                           limits=INFOSHELF_LIMITS)
@@ -142,9 +155,8 @@ def validate_one_volume(pdsdir, voltypes, tests, args, logger):
                     tests_performed += 1
                     logger.close()
 
-            if (args.linkshelves and
-                voltype in ('volumes', 'calibrated', 'metadata')):
-                logger.open('Linkshelf re-validatation for', abspath)
+            if args.linkshelves and voltype in LINKSHELF_VOLTYPES:
+                logger.open('Linkshelf re-validation for', abspath)
                 try:
                     pdslinkshelf.validate(temp_pdsdir,
                                           limits=LINKSHELF_LIMITS)
@@ -158,15 +170,15 @@ def validate_one_volume(pdsdir, voltypes, tests, args, logger):
                 abspath = pdsdir.abspath.replace('/volumes/',
                                                  '/archives-' + voltype + '/')
                 abspath += '*.tar.gz'
-                abspath = glob.glob(abspath)
-                if not abspath:
+                tarpaths = glob.glob(abspath)
+                if not tarpaths:
                     continue
 
-                abspath = abspath[0]    # there should only be one
+                abspath = tarpaths[0]   # there should only be one
 
                 (prefix, basename) = os.path.split(abspath)
                 temp_pdsdir = pdsfile.Pds3File.from_abspath(prefix)
-                logger.open('Infoshelf re-validatation for', abspath)
+                logger.open('Infoshelf re-validation for', abspath)
                 try:
                     pdsinfoshelf.validate(temp_pdsdir, basename,
                                           limits=INFOSHELF_LIMITS)
@@ -177,9 +189,10 @@ def validate_one_volume(pdsdir, voltypes, tests, args, logger):
         # Dependencies
         if args.dependencies:
             if args.timeless:
-                logger.open('Timeless dependency re-validation for', abspath)
+                logger.open('Timeless dependency re-validation for',
+                            pdsdir.abspath)
             else:
-                logger.open('Dependency re-validation for', abspath)
+                logger.open('Dependency re-validation for', pdsdir.abspath)
             try:
                 pdsdependency.test(pdsdir, limits=DEPENDENCY_LIMITS,
                                    check_newer=(not args.timeless))
@@ -197,9 +210,9 @@ def validate_one_volume(pdsdir, voltypes, tests, args, logger):
         else:
             logger.info('%d re-validation tests performed' % tests_performed,
                         pdsdir.abspath, force=True)
-        (fatal, errors, warnings, tests) = logger.close()
+        (fatal, errors, _warnings, _tests) = logger.close()
 
-    return (logfile, fatal, errors)
+    return (logfiles[-1], fatal, errors)
 
 ################################################################################
 # Log and volume management for batch mode
@@ -229,7 +242,7 @@ def key_from_log_path(log_path):
     """Return 'volset/bundlename' from this log path.
     """
 
-    parts = abspath.split('/')
+    parts = log_path.split('/')
     bundlename = parts[-1].split('_re-validate_')[0]
 
     return parts[-2] + '/' + bundlename
@@ -256,7 +269,7 @@ def get_log_info(log_path):
 
     abspath = parts[-1].strip().split(' ')[-1]
 
-    if len(recs) < 1:
+    if len(recs) < 2:
         raise ValueError('Not a re-validate log file')
 
     if 'Last modification' not in recs[1]:
@@ -293,7 +306,7 @@ def get_all_log_info(logroot):
     # Create a dictionary keyed by volset/bundlename that returns the chronological
     # list of all associated log paths
     logs_for_volset_volume = {}
-    for (root, dirs, files) in os.walk(logroot):
+    for (root, _dirs, files) in os.walk(logroot):
         files = list(files)
         files.sort()
         for file in files:
@@ -354,7 +367,7 @@ def find_modified_volumes(holdings_info, log_info):
     log_dict = {}
     log_modtimes = set()
     for info in log_info:
-        (start, elapsed, modtime, abspath, had_error, had_fatal) = info
+        (_start, _elapsed, modtime, abspath, _had_error, _had_fatal) = info
         key = key_from_volume_abspath(abspath)
         log_dict[key] = info
         log_modtimes.add((modtime, key))
@@ -376,12 +389,12 @@ def find_modified_volumes(holdings_info, log_info):
     # Update content to an ordered list of tuples (abspath, modtime)
     modified_holdings = list(modified_holdings)
     modified_holdings.sort()    # from oldest to newest
-    modified_holdings = [holdings_dict[info[1]] for info in modified_holdings]
+    modified_keys = [info[1] for info in modified_holdings]
+    modified_holdings = [holdings_dict[key] for key in modified_keys]
 
     # Delete these keys from the log info dictionary
-    for (_, key) in modified_holdings:
-        if key in log_dict:
-            del log_dict[key]
+    for key in modified_keys:
+        log_dict.pop(key, None)
 
     # Identify previously logged volumes not found in holdings
     # Delete these from the log dictionary
@@ -406,12 +419,23 @@ def find_modified_volumes(holdings_info, log_info):
     return (modified_holdings, current_log_info, missing_keys)
 
 
-def send_email(to_addr, subject, message):
-    smtp = SMTP()
-    smtp.connect(SERVER, 25)
-    date = datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+def format_email(to_addr, subject, message, date=None):
+    """Return the (recipient list, message text) an email report is sent as.
 
-    if type(to_addr) == str:
+    Args:
+        to_addr: One address as a string, or a list of addresses.
+        subject: The subject line.
+        message: The body.
+        date: The value of the Date header. Defaults to now.
+
+    Returns:
+        tuple: (list[str], str), the recipients and the complete message text.
+    """
+
+    if date is None:
+        date = datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+
+    if isinstance(to_addr, str):
         to_addr = [to_addr]
 
     to_addr_in_msg = ','.join(to_addr)
@@ -419,194 +443,218 @@ def send_email(to_addr, subject, message):
     msg = ("From: %s\nTo: %s\nSubject: %s\nDate: %s\n\n%s" \
            % (FROM_ADDR, to_addr_in_msg, subject, date, message))
 
+    return (to_addr, msg)
+
+
+def send_email(to_addr, subject, message):
+    smtp = SMTP()
+    smtp.connect(SERVER, 25)
+
+    (to_addr, msg) = format_email(to_addr, subject, message)
+
     for addr in to_addr:
         smtp.sendmail(FROM_ADDR, addr, msg)
 
     smtp.quit()
 
 ################################################################################
-# Executable program
+# Command line
 ################################################################################
 
-# Set up parser
-parser = argparse.ArgumentParser(
-    description='re-validate: Perform various validation tasks on an online '  +
-                'volume or volumes.')
+def build_parser():
+    """Return the argument parser for this tool."""
 
-parser.add_argument('volume', nargs='*', type=str,
-                    help='Paths to volumes or volume sets for validation. '    +
-                         'In batch mode, provide the path to the holdings '    +
-                         'directory.')
+    parser = argparse.ArgumentParser(
+        description='re-validate: Perform various validation tasks on an online '  +
+                    'volume or volumes.')
 
-parser.add_argument('--log', '-l', type=str, default='',
-                    help='Optional root directory for a duplicate of the log ' +
-                         'files. If not specified, the value of '              +
-                         'environment variable "%s" ' % LOGROOT_ENV            +
-                         'is used. In addition, logs are written to the '      +
-                         '"logs" directory parallel to "holdings". Logs are '  +
-                         'created inside the "re-validate" subdirectory of '   +
-                         'each log root directory.')
+    parser.add_argument('volume', nargs='*', type=str,
+                        help='Paths to volumes or volume sets for validation. '    +
+                             'In batch mode, provide the path to the holdings '    +
+                             'directory.')
 
-parser.add_argument('--batch', '-b', action='store_true',
-                    help='Operate in batch mode. In this mode, the program '   +
-                         'searches the existing logs and the given holdings '  +
-                         'directories and validates any new volumes found. '   +
-                         'Afterward, it validates volumes starting with the '  +
-                         'ones with the oldest logs. Use --minutes to limit '  +
-                         'the duration of the run.')
+    parser.add_argument('--log', '-l', type=str, default='',
+                        help=_common.LOG_HELP.format(env=_common.LOGROOT_ENV,
+                                                     progname=PROGNAME))
 
-parser.add_argument('--minutes', type=int, default=60,
-                    help='In batch mode, this is the rough upper limit of '    +
-                         'the duration of the run. The program will iterate '  +
-                         'through available volumes but will not start a new ' +
-                         'one once the time limit in minutes has been reached.')
+    parser.add_argument('--batch', '-b', action='store_true',
+                        help='Operate in batch mode. In this mode, the program '   +
+                             'searches the existing logs and the given holdings '  +
+                             'directories and validates any new volumes found. '   +
+                             'Afterward, it validates volumes starting with the '  +
+                             'ones with the oldest logs. Use --minutes to limit '  +
+                             'the duration of the run.')
 
-parser.add_argument('--batch-status', action='store_true',
-                    help='Prints a summary of what the program would do now '  +
-                         'if run in batch mode.')
+    parser.add_argument('--minutes', type=int, default=60,
+                        help='In batch mode, this is the rough upper limit of '    +
+                             'the duration of the run. The program will iterate '  +
+                             'through available volumes but will not start a new ' +
+                             'one once the time limit in minutes has been reached.')
 
-parser.add_argument('--email', type=str, action='append', default=[],
-                    metavar='ADDR',
-                    help='Email address to which to send a report when a '     +
-                         'batch job completes. Repeat for multiple recipients.')
+    parser.add_argument('--batch-status', action='store_true',
+                        help='Prints a summary of what the program would do now '  +
+                             'if run in batch mode.')
 
-parser.add_argument('--error-email',  type=str, action='append', default=[],
-                    metavar='ADDR',
-                    help='Email address to which to send an error report '     +
-                         'when a batch job completes. If no errors are '       +
-                         'found, no message is sent. Repeat for multiple '     +
-                         'recipients.')
+    parser.add_argument('--email', type=str, action='append', default=[],
+                        metavar='ADDR',
+                        help='Email address to which to send a report when a '     +
+                             'batch job completes. Repeat for multiple recipients.')
 
-parser.add_argument('--quiet', '-q', action='store_true',
-                    help='Do not log to the terminal.')
+    parser.add_argument('--error-email',  type=str, action='append', default=[],
+                        metavar='ADDR',
+                        help='Email address to which to send an error report '     +
+                             'when a batch job completes. If no errors are '       +
+                             'found, no message is sent. Repeat for multiple '     +
+                             'recipients.')
 
-parser.add_argument('--checksums', '-C', action='store_true',
-                    help='Validate MD5 checksums.')
+    parser.add_argument('--quiet', '-q', action='store_true',
+                        help=_common.QUIET_HELP)
 
-parser.add_argument('--archives', '-A', action='store_true',
-                    help='Validate archive files.')
+    parser.add_argument('--checksums', '-C', action='store_true',
+                        help='Validate MD5 checksums.')
 
-parser.add_argument('--info', '-I', action='store_true',
-                    help='Validate infoshelves.')
+    parser.add_argument('--archives', '-A', action='store_true',
+                        help='Validate archive files.')
 
-parser.add_argument('--links', '-L', action='store_true',
-                    help='Validate linkshelves.')
+    parser.add_argument('--info', '-I', action='store_true',
+                        help='Validate infoshelves.')
 
-parser.add_argument('--dependencies', '-D', action='store_true',
-                    help='Validate dependencies.')
+    parser.add_argument('--links', '-L', action='store_true',
+                        help='Validate linkshelves.')
 
-parser.add_argument('--full', '-F', action='store_true',
-                    help='Perform the full set of validation tests '           +
-                         '(checksums, archives, infoshelves, linkshelves, '    +
-                         'dependencies). This is the default.')
+    parser.add_argument('--dependencies', '-D', action='store_true',
+                        help='Validate dependencies.')
 
-parser.add_argument('--timeless', '-T', action='store_true',
-                    help='Suppress "newer modification date" tests for '       +
-                         'dependencies. These tests are unnecessary during a ' +
-                         'full validation because the contents of archive, '   +
-                         'checksum and shelf files are also checked, so the '  +
-                         'dates on these files are immaterial.')
+    parser.add_argument('--full', '-F', action='store_true',
+                        help='Perform the full set of validation tests '           +
+                             '(checksums, archives, infoshelves, linkshelves, '    +
+                             'dependencies). This is the default.')
 
-parser.add_argument('--volumes', '-v', action='store_true',
-                    help='Check volume directories.')
+    parser.add_argument('--timeless', '-T', action='store_true',
+                        help='Suppress "newer modification date" tests for '       +
+                             'dependencies. These tests are unnecessary during a ' +
+                             'full validation because the contents of archive, '   +
+                             'checksum and shelf files are also checked, so the '  +
+                             'dates on these files are immaterial.')
 
-parser.add_argument('--calibrated', '-c', action='store_true',
-                    help='Check calibrated directories.')
+    parser.add_argument('--volumes', '-v', action='store_true',
+                        help='Check volume directories.')
 
-parser.add_argument('--diagrams', '-d', action='store_true',
-                    help='Check diagram directories.')
+    parser.add_argument('--calibrated', '-c', action='store_true',
+                        help='Check calibrated directories.')
 
-parser.add_argument('--metadata', '-m', action='store_true',
-                    help='Check metadata directories.')
+    parser.add_argument('--diagrams', '-d', action='store_true',
+                        help='Check diagram directories.')
 
-parser.add_argument('--previews', '-p', action='store_true',
-                    help='Check preview directories.')
+    parser.add_argument('--metadata', '-m', action='store_true',
+                        help='Check metadata directories.')
 
-parser.add_argument('--all', '-a', action='store_true',
-                    help='Check all directories and files related to the '     +
-                         'selected volume(s), i.e., those in volumes/, '       +
-                         'calibrated/, diagrams/, metadata/, and previews/, '  +
-                         'plus their checksums and archives. This is the '     +
-                         'default.')
+    parser.add_argument('--previews', '-p', action='store_true',
+                        help='Check preview directories.')
 
-# Parse and validate the command line
-args = parser.parse_args()
+    parser.add_argument('--all', '-a', action='store_true',
+                        help='Check all directories and files related to the '     +
+                             'selected volume(s), i.e., those in volumes/, '       +
+                             'calibrated/, diagrams/, metadata/, and previews/, '  +
+                             'plus their checksums and archives. This is the '     +
+                             'default.')
 
-# Interpret file types
-voltypes = []
-if args.volumes:
-    voltypes += ['volumes']
-if args.calibrated:
-    voltypes += ['calibrated']
-if args.diagrams:
-    voltypes += ['diagrams']
-if args.metadata:
-    voltypes += ['metadata']
-if args.calibrated:
-    voltypes += ['previews']
+    return parser
 
-if voltypes == [] or args.all:
-    voltypes = ['volumes', 'calibrated', 'diagrams', 'metadata', 'previews']
 
-# Determine which tests to perform
-checksums    = args.checksums
-archives     = args.archives
-infoshelves  = args.info
-linkshelves  = args.links
-dependencies = args.dependencies
+def derive_options(args):
+    """Work out which volume types and which tests one command line calls for.
 
-if args.full or not (checksums or archives or infoshelves or linkshelves or
-                     dependencies):
-    checksums    = True
-    archives     = True
-    infoshelves  = True
-    linkshelves  = True
-    dependencies = True
+    Each of the five volume-type flags selects one directory tree; naming none of
+    them, or naming --all, selects every tree. Each of the five test flags selects
+    one test; naming none of them, or naming --full, selects every test. Two of
+    the tests are then narrowed to the trees they can run against at all, and
+    --timeless survives only for as long as the dependency test does.
 
-dependencies &= ('volumes' in voltypes)
-linkshelves  &= (('volumes' in voltypes or 'metadata' in voltypes or
-                                           'calibrated' in voltypes))
+    Args:
+        args: The parsed command line. The five test attributes and the timeless
+            attribute are overwritten with the derived values, because
+            validate_one_volume reads the tests back off it.
 
-args.checksums    = checksums
-args.archives     = archives
-args.infoshelves  = infoshelves
-args.linkshelves  = linkshelves
-args.dependencies = dependencies
+    Returns:
+        tuple: (voltypes, tests), the selected directory trees and the names of
+        the selected tests, each in a fixed order.
+    """
 
-tests = []
-if checksums   : tests.append('checksums')
-if archives    : tests.append('archives')
-if infoshelves : tests.append('infoshelves')
-if linkshelves : tests.append('linkshelves')
-if dependencies: tests.append('dependencies')
+    # Interpret file types
+    voltypes = []
+    if args.volumes:
+        voltypes += ['volumes']
+    if args.calibrated:
+        voltypes += ['calibrated']
+    if args.diagrams:
+        voltypes += ['diagrams']
+    if args.metadata:
+        voltypes += ['metadata']
+    if args.previews:
+        voltypes += ['previews']
 
-args.timeless = args.timeless and args.dependencies
+    if voltypes == [] or args.all:
+        voltypes = list(ALL_VOLTYPES)
 
-# Define the logging directory
-if args.log == '':
-    try:
-        args.log = os.environ[LOGROOT_ENV]
-    except KeyError:
-        args.log = None
+    # Determine which tests to perform
+    checksums    = args.checksums
+    archives     = args.archives
+    infoshelves  = args.info
+    linkshelves  = args.links
+    dependencies = args.dependencies
 
-# Initialize the logger
-logger = pdslogger.PdsLogger(LOGNAME, limits={'info':100, 'debug':10})
+    if args.full or not (checksums or archives or infoshelves or linkshelves or
+                         dependencies):
+        checksums    = True
+        archives     = True
+        infoshelves  = True
+        linkshelves  = True
+        dependencies = True
 
-# Place to search for existing logs in batch mode
-pdsfile.Pds3File.set_log_root(args.log)
+    dependencies &= ('volumes' in voltypes)
+    linkshelves  &= any(voltype in voltypes for voltype in LINKSHELF_VOLTYPES)
 
-if not args.quiet:
-    logger.add_handler(pdslogger.stdout_handler)
+    args.checksums    = checksums
+    args.archives     = archives
+    args.infoshelves  = infoshelves
+    args.linkshelves  = linkshelves
+    args.dependencies = dependencies
 
-if args.log:
-    path = os.path.join(args.log, 're-validate')
-    logger.add_handler(pdslogger.error_handler(path))
+    tests = []
+    if checksums:
+        tests.append('checksums')
+    if archives:
+        tests.append('archives')
+    if infoshelves:
+        tests.append('infoshelves')
+    if linkshelves:
+        tests.append('linkshelves')
+    if dependencies:
+        tests.append('dependencies')
 
-########################################
+    args.timeless = args.timeless and args.dependencies
+
+    return (voltypes, tests)
+
+################################################################################
 # Interactive mode
-########################################
+################################################################################
 
-if not args.batch and not args.batch_status:
+def run_interactive(args, voltypes, tests, logger, argv):
+    """Validate every volume named on the command line, then exit.
+
+    Args:
+        args: The parsed command line, after derive_options.
+        voltypes: The selected directory trees.
+        tests: The names of the selected tests.
+        logger: The run's logger.
+        argv: The full command line, echoed into the top of the log.
+
+    Raises:
+        SystemExit: Always, with status 1 if a path is unusable or if the run
+            logged a fatal or an error, and 0 otherwise.
+    """
 
     # Stop if a volume or volume set doesn't exist
     if not args.volume:
@@ -620,7 +668,6 @@ if not args.batch and not args.batch_status:
 
     # Convert to PdsFile objects; expand volume sets; collect holdings paths
     pdsdirs = []
-    roots = set()
     for volume in args.volume:
         abspath = os.path.abspath(volume)
         pdsdir = pdsfile.Pds3File.from_abspath(abspath)
@@ -637,7 +684,7 @@ if not args.batch and not args.batch_status:
                 pdsdirs.append(pdsdir.child(name))
 
     # Main loop
-    logger.open(' '.join(sys.argv))
+    logger.open(' '.join(argv))
     try:
         # For each volume...
         for pdsdir in pdsdirs:
@@ -648,23 +695,36 @@ if not args.batch and not args.batch_status:
         raise
 
     finally:
-        (fatal, errors, warnings, tests) = logger.close()
+        (fatal, errors, _warnings, _tests) = logger.close()
         status = 1 if (fatal or errors) else 0
 
     sys.exit(status)
 
-########################################
+################################################################################
 # Batch mode
-########################################
+################################################################################
 
-else:
+def resolve_holdings_paths(paths):
+    """Return the holdings roots the given command-line paths name, deduplicated.
 
-    if not args.volume:
+    Args:
+        paths: The command line's positional arguments.
+
+    Returns:
+        list[str]: One absolute path per distinct holdings root, in the order
+        first named.
+
+    Raises:
+        SystemExit: With status 1 if no path is given, if one does not exist, or
+            if one is not a holdings directory.
+    """
+
+    if not paths:
         print('No holdings path identified')
         sys.exit(1)
 
     holdings_abspaths = []
-    for holdings in args.volume:
+    for holdings in paths:
         if not os.path.exists(holdings):
             print('Holdings path not found: ' + holdings)
             sys.exit(1)
@@ -678,6 +738,96 @@ else:
 
         if holdings not in holdings_abspaths:
             holdings_abspaths.append(holdings)
+
+    return holdings_abspaths
+
+
+def report_missing_volumes(missing_keys, logs_for_volset_volname,
+                           holdings_abspaths, logger):
+    """Log an error for every volume that has a log but is no longer in holdings.
+
+    A key is only worth reporting when one of the holdings trees being validated
+    is the one its logs were written against; a key whose logs all came from some
+    other tree is not this run's business.
+
+    Args:
+        missing_keys: The volset/volname keys found in the logs and not in
+            holdings.
+        logs_for_volset_volname: Every log path, keyed by volset/volname.
+        holdings_abspaths: The holdings roots this run is validating, as a set.
+        logger: The run's logger.
+    """
+
+    for key in missing_keys:
+        # Determine if this volset has ever appeared in any of the
+        # holdings directory trees
+        holdings_for_key = set()
+        for log_path in logs_for_volset_volname[key]:
+            volume_abspath = volume_abspath_from_log(log_path)
+            if volume_abspath == '':        # if log file is empty
+                continue
+
+            holdings_abspath = volume_abspath.split('/volumes')[0]
+            holdings_for_key.add(holdings_abspath)
+
+        # If not, ignore
+        if not (holdings_abspaths & holdings_for_key):
+            continue
+
+        # Report error
+        holdings_for_key = list(holdings_for_key)
+        holdings_for_key.sort()
+        for holdings_abspath in holdings_for_key:
+            logger.error('Missing volume',
+                         os.path.join(holdings_abspath + '/volumes', key))
+
+
+def print_batch_status(modified_holdings, current_logs):
+    """Print what a batch run would do now, then exit.
+
+    Raises:
+        SystemExit: Always, raised by sys.exit() with no argument. Its code is None
+            and its process status is 0, which is not the same call as sys.exit(0)
+            at the end of a batch run.
+    """
+
+    fmt = '%4d %20s%-11s  modified %s, not previously validated'
+    line_number = 0
+    for (abspath, date) in modified_holdings:
+        pdsdir = pdsfile.Pds3File.from_abspath(abspath)
+        line_number += 1
+        print(fmt % (line_number, pdsdir.volset_, pdsdir.volname,
+                     date[:10]))
+
+    fmt ='%4d  %20s%-11s  modified %s, last validated %s, duration %s%s'
+    for info in current_logs:
+        (start, elapsed, date, abspath, had_error, _had_fatal) = info
+        pdsdir = pdsfile.Pds3File.from_abspath(abspath)
+        error_text = ', error logged' if had_error else ''
+        line_number += 1
+        print(fmt % (line_number, pdsdir.volset_, pdsdir.volname,
+                     date[:10], start[:10], elapsed[:-7], error_text))
+
+    sys.exit()
+
+
+def run_batch(args, voltypes, tests, logger, argv):
+    """Validate the volumes whose logs are oldest, until the time limit is up.
+
+    Args:
+        args: The parsed command line, after derive_options.
+        voltypes: The selected directory trees.
+        tests: The names of the selected tests.
+        logger: The run's logger.
+        argv: The full command line, echoed into the top of the log.
+
+    Raises:
+        SystemExit: Always, with status 1 if a path is unusable and 0 otherwise --
+            including when the run logged errors, because a nonzero status would
+            cancel the launch daemon that schedules it.
+    """
+
+    holdings_abspaths = resolve_holdings_paths(args.volume)
 
     logger.add_root(holdings_abspaths)
     holdings_abspaths = set(holdings_abspaths)
@@ -696,49 +846,12 @@ else:
      missing_keys) = find_modified_volumes(holdings_info, log_info)
 
     # Report missing volumes
-    for key in missing_keys:
-        # Determine if this volset has ever appeared in any of the
-        # holdings directory trees
-        holdings_for_key = set()
-        for log_path in logs_for_volset_volname[key]:
-            volume_abspath = volume_abspath_from_log(log_path)
-            if volume_abspath == '':        # if log file is empty
-                continue
-
-                holdings_abspath = volume_abspath.split('/volumes')[0]
-                holdings_for_key.add(holdings_abspath)
-
-        # If not, ignore
-        if not (holdings_abspaths & holdings_for_key):
-            continue
-
-        # Report error
-        holdings_for_key = list(holdings_for_key)
-        holdings_for_key.sort()
-        for holdings_abspath in holdings_for_key:
-            logger.error('Missing volume',
-                         os.path.join(holdings_abspath + '/volumes', key))
+    report_missing_volumes(missing_keys, logs_for_volset_volname,
+                           holdings_abspaths, logger)
 
     # Print info in trial run mode
     if args.batch_status:
-        fmt = '%4d %20s%-11s  modified %s, not previously validated'
-        line_number = 0
-        for (abspath, date) in modified_holdings:
-            pdsdir = pdsfile.Pds3File.from_abspath(abspath)
-            line_number += 1
-            print(fmt % (line_number, pdsdir.volset_, pdsdir.volname,
-                         date[:10]))
-
-        fmt ='%4d  %20s%-11s  modified %s, last validated %s, duration %s%s'
-        for info in current_logs:
-            (start, elapsed, date, abspath, had_error, had_fatal) = info
-            pdsdir = pdsfile.Pds3File.from_abspath(abspath)
-            error_text = ', error logged' if had_error else ''
-            line_number += 1
-            print(fmt % (line_number, pdsdir.volset_, pdsdir.volname,
-                         date[:10], start[:10], elapsed[:-7], error_text))
-
-        sys.exit()
+        print_batch_status(modified_holdings, current_logs)
 
     # Start batch processing
     # info = (abspath, mod_date, prev_validation, had_errors)
@@ -754,11 +867,11 @@ else:
     print(batch_prefix)
 
     # Main loop
-    logger.open(' '.join(sys.argv))
+    logger.open(' '.join(argv))
     try:
 
         # For each volume...
-        for (abspath, mod_date, prev_validation, had_errors) in info:
+        for (abspath, mod_date, prev_validation, _had_errors) in info:
             pdsdir = pdsfile.Pds3File.from_abspath(abspath)
             if prev_validation is None:
                 ps = 'not previously validated'
@@ -800,8 +913,7 @@ else:
         raise
 
     finally:
-        (fatal, errors, warnings, tests) = logger.close()
-        status = 1 if (fatal or errors) else 0
+        _ = logger.close()
 
         now = datetime.datetime.now()
         batch_suffix = ('\nTimeout at %s after %d minutes' %
@@ -823,6 +935,53 @@ else:
             send_email(args.error_email, ERROR_REPORT_SUBJ,
                                               '\n'.join(full_message))
 
-#     sys.exit(status)
-    sys.exit(0)         # In batch mode, don't cancel the launchdaemon.
-                        # Does this help??
+    # Batch mode reports success even when the run logged errors, because a
+    # nonzero status would cancel the launch daemon that schedules it.
+    sys.exit(0)
+
+################################################################################
+# Executable program
+################################################################################
+
+def main(argv=None):
+    """Parse the command line, set up logging, and run the mode it selects.
+
+    Args:
+        argv: The full command line, defaulting to sys.argv.
+
+    Raises:
+        SystemExit: Always. See run_interactive and run_batch for the statuses.
+    """
+
+    if argv is None:
+        argv = sys.argv
+
+    # Parse and validate the command line
+    parser = build_parser()
+    args = parser.parse_args(argv[1:])
+
+    (voltypes, tests) = derive_options(args)
+
+    # Define the logging directory
+    _common.resolve_log_root(args)
+
+    # Initialize the logger
+    logger = pdslogger.PdsLogger(LOGNAME, limits={'info':100, 'debug':10})
+
+    # Place to search for existing logs in batch mode
+    pdsfile.Pds3File.set_log_root(args.log)
+
+    if not args.quiet:
+        logger.add_handler(pdslogger.stdout_handler)
+
+    if args.log:
+        path = os.path.join(args.log, PROGNAME)
+        logger.add_handler(pdslogger.error_handler(path))
+
+    if not args.batch and not args.batch_status:
+        run_interactive(args, voltypes, tests, logger, argv)
+    else:
+        run_batch(args, voltypes, tests, logger, argv)
+
+if __name__ == '__main__':
+    main()

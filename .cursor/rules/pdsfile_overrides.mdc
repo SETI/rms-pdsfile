@@ -86,10 +86,10 @@ conflicts with a rule below, follow the rule below. See
    (PR-24, 2026-08-04).** Re-derived the same way with *no* per-file-ignores:
    **2,760 violations, of which 483 were fixed and 2,277 are permanent**, spread
    over **59 entries** (184 code slots). Nineteen files came off the ratchet
-   entirely. `re_validate.py` keeps its **whole** derived set: ground rule 7 and
+   entirely. `re_validate.py` kept its **whole** derived set: ground rule 7 and
    deviation (6) froze that file when PR-24 ran, so none of its violations was
-   PR-24's to fix. That freeze was lifted on 2026-08-05, so the entry is **not
-   yet cleaned** rather than uncleanable; no PR has yet done the work.
+   PR-24's to fix. That freeze was lifted on 2026-08-05, and PR-25a then cleaned
+   the entry down to `RUF005` and `UP031`.
 
    PR-25 shrank that set by **nineteen**, to **2,258** over **58 entries** (179
    code slots), measured the same way. Fourteen are `UP031`: the archives pair's
@@ -103,10 +103,15 @@ conflicts with a rule below, follow the rule below. See
    One is `C405`: the `set([...])` around `re_validate.py`'s two log paths, which
    went when that file's log-path pair was routed through `_common.log_paths_for`
    for the log time-tag race. That last one is a **side effect of an authorized
-   code change, not ruff cleanup** — `re_validate.py`'s entry is deliberately left
-   as it was, so it now lists a `C405` with no site, and dropping that code is the
-   first thing the cleanup PR should do.
+   code change, not ruff cleanup**; PR-25a is the PR that dropped the code, along
+   with seven others, when it gave that file a `main()`.
    `pds4archives.py` came off the ratchet entirely and `_common.py` needs no entry.
+
+   PR-25a shrank it by a further **seventeen**, to **2,241** over the same **58
+   entries** (171 code slots), measured the same way. All seventeen are
+   `re_validate.py`'s, and all of them fell out of giving that file a `main()`
+   rather than out of a style pass: its findings went from 25 to 8 and its entry
+   from ten codes to `RUF005` and `UP031`. No entry was added or widened.
 
    The permanent set, grouped by the code that locks it. **"Locked by" says what
    holds each row: `frozen` and `aligned` are permanent; `behavior` rows are
@@ -117,7 +122,7 @@ conflicts with a rule below, follow the rule below. See
    |---|---:|---|---|---|
    | `E501` | 1638 | 41 files: every rule module with a table, plus `test_pds3file_blackbox{,_cached}.py`, `test_pds3file_whitebox.py`, `test_pds4file_blackbox.py`, `test_corss_8xxx.py`, `test_couvis_8xxx.py`, `test_nhxxxx_xxxx.py`, `tests/rules/pds4/test_uranus_occs_earthbased.py` | aligned | hand-aligned `TranslatorByRegex` and `parametrize` rows, and path/regex literals that cannot be split without breaking a semantic unit. Rewrapping is the layout change dropped by (11) |
    | `W191` | 302 | `cassini_iss_fring_mosaics_rsfrench2025_primary_filespec.py` | aligned | the whole file is one tab-indented table; retabbing *is* the forbidden table rewrite |
-   | `UP031` | 125 | 10 maintenance tools, plus `COCIRS_xxxx.py` | behavior + aligned + frozen | 40 logging calls, 24 `file.write` calls emitting the frozen sidecar formats, 49 in hand-aligned blocks (37 of them in `pdsdependency.py`'s `PdsDependency(...)` argument tables, which contributes 38 to this group and 39 in all), 6 plain `%` expressions the conversion rule deliberately does not reach, and 6 in `re_validate.py`, **not yet cleaned** (it holds 7 `UP031` sites; the seventh is a `logger.info` call and is counted among the logging calls). A lazy rewrite of a logging call must pass `filepath=` explicitly, because `pdslogger` re-reads a lone positional argument as the filepath once the message has no `%` pattern; that conversion is a code change this style ratchet does not authorize |
+   | `UP031` | 124 | 10 maintenance tools, plus `COCIRS_xxxx.py` | behavior + aligned + frozen | 40 logging calls, 24 `file.write` calls emitting the frozen sidecar formats, 49 in hand-aligned blocks (37 of them in `pdsdependency.py`'s `PdsDependency(...)` argument tables, which contributes 38 to this group and 39 in all), 6 plain `%` expressions the conversion rule deliberately does not reach, and 5 in `re_validate.py` (it holds 6 `UP031` sites; the sixth is a `logger.info` call and is counted among the logging calls, and a seventh went with the hand-copied `--log` help text PR-25a replaced). A lazy rewrite of a logging call must pass `filepath=` explicitly, because `pdslogger` re-reads a lone positional argument as the filepath once the message has no `%` pattern; that conversion is a code change this style ratchet does not authorize |
    | `RUF012` | 33 | 22 rule modules, both subpackage `__init__`s, `pdsdependency.py` | frozen | `ClassVar` is forbidden by (1) |
    | `F401` | 31 | `pds3file/__init__.py` ×25, `pds4file/__init__.py` ×6 | frozen | the `from .rules import (…)` blocks bind names that are part of the frozen surface *and* carry the side effect that registers the rule subclasses |
    | `N801` | 31 | every rule module with a rule class | frozen | the rule class names are the frozen public classes |
@@ -127,7 +132,7 @@ conflicts with a rule below, follow the rule below. See
    | `PT028` | 6 | `crlf.py` ×2, `pdsdependency.py` ×4 | frozen | `test_crlf()` and `test()` are tool functions, not pytest tests; `PT` fires only on the name. `pdsdependency.test()` is called by name from `re_validate.py`; that file is no longer frozen (6), so the rename is possible now, but it is a two-file change no PR has taken |
    | `N802` | 5 | `COISS_xxxx`, `COUVIS_0xxx`, `COVIMS_0xxx` ×2, `RPX_xxxx` | frozen | frozen uppercase methods (`DATA_SET_ID`, `FILENAME_KEYLEN`) |
    | `RUF005` | 4 | `pdsinfoshelf.py`, `pds4infoshelf.py`, `re_validate.py` ×2 | style | the repo-wide owner-chosen exclusion above |
-   | `I001` | 5 | `pds3file/__init__.py` ×2, `pds4file/__init__.py` ×2, `re_validate.py` | aligned + not yet cleaned | in the initializers, the rule-module import block is aligned under its opening parenthesis, and isort also reorders `from . import rules` against the other package imports in a module whose initialization order is load-bearing. `re_validate.py`'s is **not yet cleaned**: its import block is unsorted and its order may be load-bearing, which is worth checking rather than assuming |
+   | `I001` | 4 | `pds3file/__init__.py` ×2, `pds4file/__init__.py` ×2 | aligned | in the initializers, the rule-module import block is aligned under its opening parenthesis, and isort also reorders `from . import rules` against the other package imports in a module whose initialization order is load-bearing. `re_validate.py`'s went with PR-25a: its import order was checked and is not load-bearing |
    | `SIM115` | 2 | `pdsarchives.py`, `pdschecksums.py` | behavior | a `with` block changes *when* the file closes, which these tools order against later reads and `tarfile` finalization |
    | `B012` | 3 | `pdschecksums.py`, `pdsinfoshelf.py`, `pdslinkshelf.py` | behavior | `return` inside `finally` swallows an in-flight exception; removing it changes the exit-code path |
    | `RUF015` | 2 | `pdsinfoshelf.py`, `pds4infoshelf.py` | behavior | `list(d)[0]` raises `IndexError` where `next(iter(d))` raises `StopIteration`, and the dict is not proven non-empty |
@@ -137,12 +142,10 @@ conflicts with a rule below, follow the rule below. See
    | `RUF100` | 1 | `scripts/dump_public_api.py` | prohibited | that file may not be edited at all (2), so this entry is permanent **by prohibition**, not by freeze |
    | `F821` | 1 | `shelf_consistency_check.py` | behavior — **PR-28 owns it** | a genuine undefined name (`error` for `errors`); fixing it changes behavior (deferred observation 6) |
    | `N805` | 1 | `COVIMS_0xxx.py` | frozen | `OPUS_ID_TO_PRIMARY_LOGICAL_PATH(opus_id)` takes no `self`; `@staticmethod` changes the manifest kind |
-   | `B007` | 3 | `uranus_occs_earthbased.py`, `re_validate.py` ×2 | frozen + not yet cleaned | in the rule module the loop runs at module level, so the control variable stays bound as a module attribute that is part of the frozen surface — that one is permanent. `re_validate.py`'s two are **not yet cleaned**; (6) no longer freezes them |
+   | `B007` | 1 | `uranus_occs_earthbased.py` | frozen | the loop runs at module level, so the control variable stays bound as a module attribute that is part of the frozen surface. `re_validate.py`'s two went with PR-25a |
    | `PT012` | 1 | `test_pds3file_whitebox.py` | behavior | narrowing the `pytest.raises` block changes what is asserted |
    | `PT014` | 1 | `test_pds4file_blackbox.py` | behavior — **a test-content PR owns it** | a duplicate parametrize case; dropping it removes a test id, which PR-24's own gate forbids (deferred observation 84) |
-   | `RUF059` | 6 | `re_validate.py` ×5, `pdsinfoshelf.py` | not yet cleaned / behavior | `re_validate.py`'s five are **not yet cleaned**; (6) no longer freezes them. `pdsinfoshelf.py:373`'s `checksum2` is unused only because `:395` reads `checksum1 != checksum1`, a defect Phase 6 owns; renaming it `_checksum2` would assert the binding is deliberately unused |
-   | `E701` | 5 | `re_validate.py` | not yet cleaned | (6) no longer freezes this file; no PR has done the work |
-   | `C405`, `RUF051`, `E721`, `UP034` | 1 each | `re_validate.py` | not yet cleaned | (6) no longer freezes this file; no PR has done the work. The `C405` site was the `set([...])` around this file's two log paths and is **gone** — PR-25 routed it through `_common.log_paths_for` for the time-tag race — so this row's `C405` is already stale by one |
+   | `RUF059` | 1 | `pdsinfoshelf.py` | behavior | `re_validate.py`'s five went with PR-25a. `pdsinfoshelf.py:373`'s `checksum2` is unused only because `:395` reads `checksum1 != checksum1`, a defect Phase 6 owns; renaming it `_checksum2` would assert the binding is deliberately unused |
 
    `RUF012` is repo-wide permanent because its only fix (`ClassVar`) is an inline
    type annotation, forbidden by (1).
@@ -165,14 +168,10 @@ conflicts with a rule below, follow the rule below. See
    freeze is now lifted outright: its internals, including the email and batch
    logic, may be changed like any other module, under the same gates.
 
-   Two consequences for reading the rest of this file. Its ten-code
-   `per-file-ignores` entry is **not yet cleaned** rather than permanently
-   exempt, and every justification below that said "frozen" or "(6)" about
-   `re_validate.py` now says so; a later PR may shrink that entry, and the
-   ratchet's shrink-only rule applies to it as to any other. And it still has
-   **no test of any kind** and executes its whole command line at import — it
-   has no `main()` and no `__main__` guard — so anyone changing it is changing
-   untested code, which is a reason for care rather than a prohibition.
+   PR-25a then modernized it: it has a `main(argv=None)` and a `__main__` guard,
+   importing it is inert, and `tests/holdings_maintenance/test_re_validate.py`
+   covers it. Its `per-file-ignores` entry is down from ten codes to `RUF005` and
+   `UP031`, which are the two that are permanent everywhere else in this file.
 7. **`pytest` `addopts` carries no `-n`/xdist or `--cov` flags** (unlike the
    template). Worker count and coverage are chosen per invocation, because
    `--update` runs and full-data runs must be serial.
@@ -233,7 +232,7 @@ conflicts with a rule below, follow the rule below. See
     placed after the statement it describes rather than before it (the
     `"if c.isdir" is False for volset level readme files` note in four tools);
     and commented-out code parked at column 0 so it reads as disabled
-    (`pdsinfoshelf.py`, `pds4infoshelf.py`, `pdscache.py`, `re_validate.py`).
+    (`pdsinfoshelf.py`, `pds4infoshelf.py`, `pdscache.py`).
     This is the same house-style conflict that dropped `ruff format` in (11).
 
     **It is a separate invocation rather than `preview = true` in
