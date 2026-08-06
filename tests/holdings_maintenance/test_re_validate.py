@@ -703,10 +703,11 @@ def test_missing_volume_with_only_empty_logs_is_not_reported(tmp_path):
 class StubLogger:
     """Records what validate_one_volume logs, instead of logging it."""
 
-    def __init__(self):
+    def __init__(self, close_result=(0, 0, 0, 0)):
         self.opens = []
         self.infos = []
         self.exceptions = []
+        self.close_result = close_result
 
     def blankline(self):
         pass
@@ -721,20 +722,26 @@ class StubLogger:
         pass
 
     def close(self):
-        return (0, 0, 0, 0)
+        # The real PdsLogger returns (fatal, errors, warnings, tests). The counts
+        # are distinguishable on purpose, so a test can tell the positions apart.
+        return self.close_result
 
     def exception(self, e):
         self.exceptions.append(e)
 
 
 class StubBatchLogger(StubLogger):
-    """A StubLogger that also answers the calls the batch driver makes."""
+    """A StubLogger that also answers the calls main() and the batch driver make."""
+
+    def __init__(self, close_result=(0, 0, 0, 0)):
+        super().__init__(close_result)
+        self.handlers = []
 
     def add_root(self, root):
         pass
 
     def add_handler(self, handler):
-        pass
+        self.handlers.append(handler)
 
 
 class StubPdsdir:
@@ -766,8 +773,13 @@ def volume_tree(tmp_path, monkeypatch):
                 str(tmp_path / 'b' / 'volumes' / 'VOL_0001_re-validate_x.log')]
 
     calls = []
-    monkeypatch.setattr(re_validate._common, 'log_paths_for',
-                        lambda *a, **k: list(logfiles))
+    log_path_kwargs = {}
+
+    def fake_log_paths_for(pdsf, method, *args, **kwargs):
+        log_path_kwargs.update(method=method, args=args, kwargs=kwargs)
+        return list(logfiles)
+
+    monkeypatch.setattr(re_validate._common, 'log_paths_for', fake_log_paths_for)
     monkeypatch.setattr(re_validate.pdslogger, 'file_handler', lambda p: ('file', p))
     monkeypatch.setattr(re_validate.pdslogger, 'error_handler', lambda d: ('err', d))
     monkeypatch.setattr(re_validate, 'pdsfile', types.SimpleNamespace(
@@ -778,9 +790,22 @@ def volume_tree(tmp_path, monkeypatch):
     monkeypatch.setattr(re_validate, 'pdsdependency', types.SimpleNamespace(
         test=lambda *a, **k: calls.append('dependency')))
 
+    def add_tarballs():
+        """Create one archive tarball per volume type, as a real holdings tree has.
+
+        Without these, glob.glob returns [] in both `archives-` loops and the two
+        message sites inside them are never reached.
+        """
+
+        for voltype in re_validate.ALL_VOLTYPES:
+            directory = holdings / ('archives-' + voltype) / 'VS_1xxx'
+            directory.mkdir(parents=True, exist_ok=True)
+            (directory / 'VOL_0001.tar.gz').write_bytes(b'')
+
     return types.SimpleNamespace(
         pdsdir=StubPdsdir(str(holdings / 'volumes' / 'VS_1xxx' / 'VOL_0001')),
-        holdings=holdings, logfiles=logfiles, calls=calls)
+        holdings=holdings, logfiles=logfiles, calls=calls,
+        add_tarballs=add_tarballs, log_path_kwargs=log_path_kwargs)
 
 
 def run_one_volume(volume_tree, logger, **flags):
@@ -847,17 +872,85 @@ def test_the_archive_checksum_block_runs(volume_tree):
             str(archives / 'VOL_0001.tar.gz')) in logger.opens
 
 
-def test_no_log_message_misspells_re_validation(volume_tree):
-    """Every per-test log line says "re-validation"."""
+# The six log messages that carried the misspelling. All six must be reachable in
+# one run, or a test that asserts over "every message logged" silently covers fewer
+# sites than it claims.
+MISSPELLED_SITES = ['Checksum re-validation for',      # per volume type
+                    'Archive re-validation for',       # per volume type
+                    'Infoshelf re-validation for',     # per volume type
+                    'Linkshelf re-validation for',     # per volume type
+                    'Checksum re-validation for',      # per archive tarball
+                    'Infoshelf re-validation for']     # per archive tarball
 
+
+def test_no_log_message_misspells_re_validation(volume_tree):
+    """No log message says "re-validatation", at any of the six sites that did.
+
+    The two sites inside the `archives-` loops are only reached when a tarball is
+    there to be found, so this test builds them. Without that, `glob.glob` returns
+    [] and an assertion over "every message logged" would cover four sites while
+    appearing to cover six.
+    """
+
+    volume_tree.add_tarballs()
     logger = StubLogger()
     run_one_volume(volume_tree, logger)
 
     messages = [o[0] for o in logger.opens]
+    tarball = str(volume_tree.holdings
+                  / 'archives-volumes' / 'VS_1xxx' / 'VOL_0001.tar.gz')
 
-    assert messages, 'no log lines were captured, so this assertion is vacuous'
     assert not [m for m in messages if 're-validatation' in m]
-    assert [m for m in messages if 're-validation' in m]
+    for site in set(MISSPELLED_SITES):
+        assert site in messages, site
+    # Both of the tarball sites were reached, which is what makes the loop above
+    # an assertion about six sites rather than four.
+    assert ('Checksum re-validation for', tarball) in logger.opens
+    assert ('Infoshelf re-validation for', tarball) in logger.opens
+
+
+def test_every_per_voltype_line_names_its_own_directory(volume_tree):
+    """Each per-volume-type message names the directory that test ran against."""
+
+    logger = StubLogger()
+    run_one_volume(volume_tree, logger)
+
+    def directory(voltype):
+        return str(volume_tree.holdings / voltype / 'VS_1xxx' / 'VOL_0001')
+
+    for voltype in re_validate.ALL_VOLTYPES:
+        assert ('Checksum re-validation for', directory(voltype)) in logger.opens
+        assert ('Archive re-validation for', directory(voltype)) in logger.opens
+        assert ('Infoshelf re-validation for', directory(voltype)) in logger.opens
+
+    # A link shelf exists for three of the five trees. Asserting on each of the
+    # three separately is what makes this more than a check that the volumes path
+    # appears: that one is also pdsdir.abspath, so it would still be there if every
+    # line named the volume instead of its own directory.
+    for voltype in re_validate.LINKSHELF_VOLTYPES:
+        assert ('Linkshelf re-validation for', directory(voltype)) in logger.opens
+    for voltype in ('diagrams', 'previews'):
+        assert ('Linkshelf re-validation for', directory(voltype)) not in logger.opens
+
+
+def test_the_log_is_written_under_the_tool_subdirectory(volume_tree):
+    """The per-volume log goes to the tool's own log subdirectory."""
+
+    logger = StubLogger()
+    run_one_volume(volume_tree, logger)
+
+    assert volume_tree.log_path_kwargs['method'] == 'log_path_for_volume'
+    assert volume_tree.log_path_kwargs['args'] == ('_re-validate',)
+    assert volume_tree.log_path_kwargs['kwargs'] == {'dir': 're-validate'}
+
+
+def test_the_fatal_and_error_counts_are_returned_in_that_order(volume_tree):
+    """The return is (log path, fatal, errors), and batch mode reads it that way."""
+
+    logger = StubLogger(close_result=(7, 5, 3, 1))
+    (_log_path, fatal, errors) = run_one_volume(volume_tree, logger)
+
+    assert (fatal, errors) == (7, 5)
 
 
 def test_the_returned_log_path_is_the_last_one_written(volume_tree):
@@ -873,6 +966,7 @@ def test_the_returned_log_path_is_the_last_one_written(volume_tree):
 
     assert log_path == volume_tree.logfiles[-1].replace('/volumes/', '/')
     assert (fatal, errors) == (0, 0)
+    assert log_path != volume_tree.logfiles[0].replace('/volumes/', '/')
 
 
 def test_a_test_count_is_logged(volume_tree):
@@ -1098,6 +1192,147 @@ def test_main_defaults_to_sys_argv(monkeypatch):
     re_validate.main()
 
     assert seen['argv'] == ['re_validate.py', '--batch-status', '/h']
+
+
+def test_main_adds_a_terminal_handler_unless_quiet(monkeypatch, tmp_path):
+    """Without --quiet the run logs to the terminal; with it, it does not."""
+
+    def run(*flags):
+        logger = StubBatchLogger()
+        monkeypatch.setattr(re_validate.pdslogger, 'PdsLogger',
+                            lambda *a, **k: logger)
+        monkeypatch.setattr(re_validate.pdslogger, 'stdout_handler', 'STDOUT')
+        monkeypatch.setattr(re_validate, 'pdsfile', types.SimpleNamespace(
+            Pds3File=types.SimpleNamespace(set_log_root=lambda root: None)))
+        monkeypatch.setattr(re_validate, 'run_interactive',
+                            lambda *a, **k: None)
+        monkeypatch.delenv(re_validate._common.LOGROOT_ENV, raising=False)
+        re_validate.main(['re_validate.py', *flags, '/some/volume'])
+        return logger.handlers
+
+    assert 'STDOUT' in run()
+    assert 'STDOUT' not in run('--quiet')
+
+
+def test_main_adds_an_error_handler_under_the_tool_subdirectory(monkeypatch,
+                                                                tmp_path):
+    """With a log root, the run's error log goes to <root>/re-validate."""
+
+    logger = StubBatchLogger()
+    monkeypatch.setattr(re_validate.pdslogger, 'PdsLogger', lambda *a, **k: logger)
+    monkeypatch.setattr(re_validate.pdslogger, 'error_handler',
+                        lambda directory: ('error_handler', directory))
+    monkeypatch.setattr(re_validate, 'pdsfile', types.SimpleNamespace(
+        Pds3File=types.SimpleNamespace(set_log_root=lambda root: None)))
+    monkeypatch.setattr(re_validate, 'run_interactive', lambda *a, **k: None)
+
+    re_validate.main(['re_validate.py', '--quiet', '--log', str(tmp_path),
+                      '/some/volume'])
+
+    assert ('error_handler', os.path.join(str(tmp_path), 're-validate')) \
+        in logger.handlers
+
+
+def test_main_takes_the_log_root_from_the_environment(monkeypatch, tmp_path):
+    """An unset --log falls back to the environment variable."""
+
+    seen = {}
+    monkeypatch.setattr(re_validate.pdslogger, 'PdsLogger',
+                        lambda *a, **k: StubBatchLogger())
+    monkeypatch.setattr(re_validate.pdslogger, 'error_handler', lambda d: ('err', d))
+    monkeypatch.setattr(re_validate, 'pdsfile', types.SimpleNamespace(
+        Pds3File=types.SimpleNamespace(
+            set_log_root=lambda root: seen.__setitem__('log_root', root))))
+    monkeypatch.setattr(re_validate, 'run_interactive', lambda *a, **k: None)
+    monkeypatch.setenv(re_validate._common.LOGROOT_ENV, str(tmp_path))
+
+    re_validate.main(['re_validate.py', '--quiet', '/some/volume'])
+
+    assert seen['log_root'] == str(tmp_path)
+
+
+def test_interactive_mode_logs_the_command_line_it_was_given(monkeypatch,
+                                                             tmp_path):
+    """The run's log opens with the command line, taken from argv, not sys.argv."""
+
+    volume = tmp_path / 'holdings' / 'volumes' / 'VS_1xxx' / 'VOL_0001'
+    volume.mkdir(parents=True)
+    pdsdir = StubPdsdir(str(volume))
+    pdsdir.category_ = 'volumes/'
+    pdsdir.interior = ''
+
+    monkeypatch.setattr(re_validate, 'pdsfile', types.SimpleNamespace(
+        Pds3File=types.SimpleNamespace(from_abspath=lambda p: pdsdir)))
+    monkeypatch.setattr(re_validate, 'validate_one_volume',
+                        lambda *a, **k: ('/logs/x.log', 0, 0))
+    monkeypatch.setattr(sys, 'argv', ['SYS_ARGV_MUST_NOT_BE_READ'])
+
+    logger = StubBatchLogger()
+    argv = ['re_validate.py', '--checksums', str(volume)]
+
+    with pytest.raises(SystemExit) as exc:
+        re_validate.run_interactive(Namespace(volume=[str(volume)]), ['volumes'],
+                                    ['checksums'], logger, argv)
+
+    assert exc.value.code == 0
+    assert (' '.join(argv), None) in logger.opens
+    assert not [o for o in logger.opens if 'SYS_ARGV_MUST_NOT_BE_READ' in o[0]]
+
+
+def test_batch_mode_logs_the_command_line_it_was_given(tmp_path, monkeypatch):
+    """Batch mode opens its log with the command line it was given too."""
+
+    holdings = tmp_path / 'holdings'
+    (holdings / 'volumes' / 'VS_1xxx' / 'VOL_0001').mkdir(parents=True)
+
+    monkeypatch.setattr(re_validate, 'pdsfile', types.SimpleNamespace(
+        Pds3File=types.SimpleNamespace(from_abspath=StubPdsdir)))
+    monkeypatch.setattr(re_validate, 'get_volume_info', lambda h: [])
+    monkeypatch.setattr(sys, 'argv', ['SYS_ARGV_MUST_NOT_BE_READ'])
+
+    logger = StubBatchLogger()
+    argv = ['re_validate.py', '--batch', str(holdings)]
+    args = Namespace(volume=[str(holdings)], log=str(tmp_path / 'logs'),
+                     batch_status=False, minutes=60, email=[], error_email=[])
+
+    with pytest.raises(SystemExit):
+        re_validate.run_batch(args, ['volumes'], ['checksums'], logger, argv)
+
+    assert (' '.join(argv), None) in logger.opens
+    assert not [o for o in logger.opens if 'SYS_ARGV_MUST_NOT_BE_READ' in o[0]]
+
+
+##########################################################################################
+# The shared log-root helper this tool put into _common
+##########################################################################################
+
+def test_resolve_log_root_keeps_an_explicit_path():
+    """A --log path given on the command line is left alone."""
+
+    args = Namespace(log='/explicit/root')
+    re_validate._common.resolve_log_root(args)
+
+    assert args.log == '/explicit/root'
+
+
+def test_resolve_log_root_falls_back_to_the_environment(monkeypatch):
+    """An unset --log takes the environment variable's value."""
+
+    monkeypatch.setenv(re_validate._common.LOGROOT_ENV, '/from/env')
+    args = Namespace(log='')
+    re_validate._common.resolve_log_root(args)
+
+    assert args.log == '/from/env'
+
+
+def test_resolve_log_root_is_none_when_nothing_is_set(monkeypatch):
+    """With neither --log nor the variable, there is no duplicate log tree."""
+
+    monkeypatch.delenv(re_validate._common.LOGROOT_ENV, raising=False)
+    args = Namespace(log='')
+    re_validate._common.resolve_log_root(args)
+
+    assert args.log is None
 
 
 def test_the_program_exits_1_with_no_arguments():

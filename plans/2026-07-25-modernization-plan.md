@@ -145,7 +145,7 @@ for re-interpretation by the executor:
    a whitespace-only exemption on 2026-08-04 — and the freeze is now lifted
    outright: its internals, including the email and batch logic, may be changed
    like any other module, under the same gates. PR-25 changes it only for the
-   log time-tag race; PR-25a gives it a `main()`, a test module and eleven bug
+   log time-tag race; PR-25a gives it a `main()`, a test module and ten bug
    fixes, and shrinks its `ruff check` per-file-ignore entry to the two codes
    that are permanent everywhere else in the tree.
    **Sync shell scripts are document-only** (no port, no rewrite).
@@ -814,15 +814,18 @@ pdsfile.holdings_maintenance.pds3.re_validate` stays the only invocation. It doe
 positional is `nargs='*'`, and its driver loop is nothing like `run_main`'s — so
 what it shares with `_common.py` is the four things that were genuinely duplicated:
 `LOGROOT_ENV`, `LOG_HELP`, `QUIET_HELP`, and a new `resolve_log_root()` extracted
-from `run_main` and called by both. **Eleven bugs fixed, each with a test**, four of
-them forced by the move into a function scope because they read module globals that
-a function scope does not supply. New `tests/holdings_maintenance/test_re_validate.py`,
-marked `holdings_free` and run in-process. The ruff entry shrinks from ten codes to
-two. **Two `--help` lines change**, both because the hand-copied help text is
-replaced by the `_common` constant it duplicated, and **six log message sites**
-lose the misspelling `re-validatation` -- 18 rendered lines in a default run,
-since each site is reached once per applicable volume type. Every changed line is
-enumerated and attributed in `critiques/pr-25a-validation.md`.
+from `run_main` and called by both. **Ten bugs fixed, each with a test**, two of
+them forced by the move into a function scope because they read module globals a
+function scope does not supply; an eleventh finding, a constant read nowhere, is
+recorded rather than removed, because ground rule 9 forbids deleting it. New
+`tests/holdings_maintenance/test_re_validate.py`, marked `holdings_free` and run
+in-process. The ruff entry shrinks from ten codes to two. **Two `--help` lines are
+reworded**, because the hand-copied help text is replaced by the `_common` constant
+it near-duplicated, and **six log message sites** lose the misspelling
+`re-validatation`. How many rendered lines that is depends on the tree: each firing
+of a site renders two lines carrying the text, and on a full five-volume-type tree
+with archive tarballs the six sites fire 28 times. Every changed line is enumerated
+and attributed in `critiques/pr-25a-validation.md`.
 
 **PR-26 (L)** `refactor: migrate checksums and infoshelf pairs onto the core`
 Fix the pds3 bugs, each with a test — but **decide the intended semantics; do

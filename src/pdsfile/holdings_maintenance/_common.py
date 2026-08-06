@@ -131,9 +131,9 @@ def resolve_log_root(args):
     """Settle where the duplicate log tree goes, in place on the parsed command line.
 
     An unset --log falls back to the environment variable, and an unset variable
-    leaves no log root at all. The three states the rest of a tool reads are a
-    path, or None for "no duplicate tree"; the empty string the parser defaults to
-    never survives this call.
+    leaves no log root at all. Either way the rest of a tool reads one of two
+    states: a path, or None for "no duplicate tree". The empty string the parser
+    defaults to never survives this call.
 
     Args:
         args: The parsed command line. Its log attribute is overwritten.
