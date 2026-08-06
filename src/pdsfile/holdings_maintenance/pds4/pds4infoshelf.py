@@ -20,10 +20,10 @@ import pdslogger
 from PIL import Image
 
 import pdsfile
-from pdsfile.holdings_maintenance import _common
+from pdsfile.holdings_maintenance import _common, _shelf_common
 from pdsfile.holdings_maintenance.pds4 import pds4checksums
 
-LOGNAME = _common.INFOSHELF_LOGNAME
+LOGNAME = _shelf_common.INFOSHELF_LOGNAME
 LOGROOT_ENV = 'PDS_LOG_ROOT'
 
 PREVIEW_EXTS = {'.jpg', '.png', '.gif', '.tif', '.tiff',
@@ -471,7 +471,7 @@ def reinitialize(pdsdir, selection=None, logger=None):
 
     # Move old file if necessary
     if os.path.exists(info_path):
-        _common.move_old(info_path, _common.INFO_SHELF, logger=logger)
+        _shelf_common.move_old(info_path, _shelf_common.INFO_SHELF, logger=logger)
 
     # Save info file
     write_infodict(pdsdir, infodict, logger=logger)
@@ -564,7 +564,7 @@ def repair(pdsdir, selection=None, logger=None):
         return
 
     # Move files and write new info
-    _common.move_old(info_path, _common.INFO_SHELF, logger=logger)
+    _shelf_common.move_old(info_path, _shelf_common.INFO_SHELF, logger=logger)
     write_infodict(pdsdir, dir_infodict, logger=logger)
 
 def update(pdsdir, selection=None, logger=None):
@@ -597,7 +597,7 @@ def update(pdsdir, selection=None, logger=None):
         return
 
     # Write checksum file
-    _common.move_old(info_path, _common.INFO_SHELF, logger=logger)
+    _shelf_common.move_old(info_path, _shelf_common.INFO_SHELF, logger=logger)
     write_infodict(pdsdir, dir_infodict, logger=logger)
 
 ################################################################################
@@ -803,7 +803,7 @@ def main():
 
             # Create all the handlers for this level in the logger
             local_handlers = []
-            _common.set_log_dirs(logfiles)
+            _shelf_common.set_log_dirs(logfiles)
             for logfile in logfiles:
                 local_handlers.append(pdslogger.file_handler(logfile))
                 logdir = os.path.split(logfile)[0]

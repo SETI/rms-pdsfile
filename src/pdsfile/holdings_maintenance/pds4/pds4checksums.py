@@ -19,9 +19,9 @@ import sys
 import pdslogger
 
 import pdsfile
-from pdsfile.holdings_maintenance import _common
+from pdsfile.holdings_maintenance import _common, _shelf_common
 
-LOGNAME = _common.CHECKSUMS_LOGNAME
+LOGNAME = _shelf_common.CHECKSUMS_LOGNAME
 LOGROOT_ENV = 'PDS_LOG_ROOT'
 
 # Default limits
@@ -97,7 +97,7 @@ def generate_checksums(pdsdir, selection=None, oldpairs=None, *, regardless=True
                     logger.invisible('Invisible file', abspath)
 
                 if regardless and selection:
-                    md5 = _common.hashfile(abspath)
+                    md5 = _shelf_common.hashfile(abspath)
                     newtuples.append((abspath, md5, file))
                     logger.normal('Selected MD5=%s' % md5, abspath)
 
@@ -106,7 +106,7 @@ def generate_checksums(pdsdir, selection=None, oldpairs=None, *, regardless=True
                     logger.debug('MD5 copied', abspath)
 
                 else:
-                    md5 = _common.hashfile(abspath)
+                    md5 = _shelf_common.hashfile(abspath)
                     newtuples.append((abspath, md5, file))
                     logger.normal('MD5=%s' % md5, abspath)
 
@@ -406,7 +406,7 @@ def reinitialize(pdsdir, selection=None, logger=None):
         return False
 
     # Write new checksum file
-    _common.move_old(check_path, _common.CHECKSUM_FILE, logger=logger)
+    _shelf_common.move_old(check_path, _shelf_common.CHECKSUM_FILE, logger=logger)
     write_checksums(check_path, pairs, logger=logger)
     return True
 
@@ -504,7 +504,7 @@ def repair(pdsdir, selection=None, logger=None):
         return True
 
     # Write checksum file
-    _common.move_old(check_path, _common.CHECKSUM_FILE, logger=logger)
+    _shelf_common.move_old(check_path, _shelf_common.CHECKSUM_FILE, logger=logger)
     write_checksums(check_path, dirpairs, logger=logger)
     return True
 
@@ -545,7 +545,7 @@ def update(pdsdir, selection=None, logger=None):
         return True
 
     # Write checksum file
-    _common.move_old(check_path, _common.CHECKSUM_FILE, logger=logger)
+    _shelf_common.move_old(check_path, _shelf_common.CHECKSUM_FILE, logger=logger)
     write_checksums(check_path, dirpairs, logger=logger)
     return True
 
@@ -758,7 +758,7 @@ def main():
 
             # Create all the handlers for this level in the logger
             local_handlers = []
-            _common.set_log_dirs(logfiles)
+            _shelf_common.set_log_dirs(logfiles)
             for logfile in logfiles:
                 local_handlers.append(pdslogger.file_handler(logfile))
                 logdir = os.path.split(logfile)[0]

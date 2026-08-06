@@ -3,7 +3,7 @@
 #
 # The one copy of the versioning step the checksum and shelf tools share.
 #
-# _common.move_old() copies the file a task is about to replace into every directory
+# _shelf_common.move_old() copies the file a task is about to replace into every directory
 # the run is logging into, numbering it <name>_v###<ext> one past the highest already
 # there, carrying the kind's companion files along, and logging two lines saying so.
 # What differs between a checksum file, an info shelf and a link shelf is a
@@ -21,7 +21,7 @@
 import pdslogger
 import pytest
 
-from pdsfile.holdings_maintenance import _common
+from pdsfile.holdings_maintenance import _shelf_common
 from pdsfile.holdings_maintenance.pds3 import pdschecksums, pdsinfoshelf, pdslinkshelf
 from pdsfile.holdings_maintenance.pds4 import pds4checksums, pds4infoshelf, pds4linkshelf
 
@@ -32,11 +32,11 @@ pytestmark = pytest.mark.holdings_free
 # companion and the shelf file *is* the `.pickle`, so that one is copied twice to the
 # one destination; its versioned extensions are still `.pickle` and `.py`.
 KINDS = [
-    pytest.param(_common.CHECKSUM_FILE, 'CHECK_0001_md5.txt', (), ('.txt',),
+    pytest.param(_shelf_common.CHECKSUM_FILE, 'CHECK_0001_md5.txt', (), ('.txt',),
                  id='checksums'),
-    pytest.param(_common.INFO_SHELF, 'SHELF_0001_info.pickle', ('.py',),
+    pytest.param(_shelf_common.INFO_SHELF, 'SHELF_0001_info.pickle', ('.py',),
                  ('.pickle', '.py'), id='info'),
-    pytest.param(_common.LINK_SHELF, 'SHELF_0001_links.pickle', ('.py',),
+    pytest.param(_shelf_common.LINK_SHELF, 'SHELF_0001_links.pickle', ('.py',),
                  ('.pickle', '.py'), id='links'),
 ]
 
@@ -83,7 +83,7 @@ def version_once(kind, basename, extra_exts, tmp_path, monkeypatch, *,
     holdings.mkdir()
     logdir = tmp_path / 'logs'
     logdir.mkdir()
-    monkeypatch.setattr(_common, 'LOGDIRS', [str(logdir)])
+    monkeypatch.setattr(_shelf_common, 'LOGDIRS', [str(logdir)])
 
     target = build_target(holdings, basename, extra_exts)
     logger, logfile = capture(tmp_path)
@@ -91,7 +91,7 @@ def version_once(kind, basename, extra_exts, tmp_path, monkeypatch, *,
         logger.replace_root(root)
 
     logger.open('task', limits=limits or {})
-    _common.move_old(str(target), kind, logger=logger)
+    _shelf_common.move_old(str(target), kind, logger=logger)
     logger.close()
 
     return logfile.read_text(), logdir, target
@@ -112,14 +112,14 @@ def test_the_three_kinds_share_one_function():
     """The per-kind functions are gone; what is left is data."""
 
     for gone in ('move_old_checksums', 'move_old_info', 'move_old_links'):
-        assert not hasattr(_common, gone), f'{gone} came back'
+        assert not hasattr(_shelf_common, gone), f'{gone} came back'
 
-    assert _common.CHECKSUM_FILE.noun == 'Checksum file'
-    assert _common.INFO_SHELF.noun == 'Info shelf file'
-    assert _common.LINK_SHELF.noun == 'Link shelf file'
-    assert _common.CHECKSUM_FILE.companions == ()
-    assert _common.INFO_SHELF.companions == ('.py',)
-    assert _common.LINK_SHELF.companions == ('.py', '.pickle')
+    assert _shelf_common.CHECKSUM_FILE.noun == 'Checksum file'
+    assert _shelf_common.INFO_SHELF.noun == 'Info shelf file'
+    assert _shelf_common.LINK_SHELF.noun == 'Link shelf file'
+    assert _shelf_common.CHECKSUM_FILE.companions == ()
+    assert _shelf_common.INFO_SHELF.companions == ('.py',)
+    assert _shelf_common.LINK_SHELF.companions == ('.py', '.pickle')
 
 
 ##########################################################################################
@@ -134,14 +134,14 @@ def test_each_call_versions_one_past_the_highest_already_there(kind, basename,
     holdings.mkdir()
     logdir = tmp_path / 'logs'
     logdir.mkdir()
-    monkeypatch.setattr(_common, 'LOGDIRS', [str(logdir)])
+    monkeypatch.setattr(_shelf_common, 'LOGDIRS', [str(logdir)])
 
     target = build_target(holdings, basename, extra_exts)
     logger, _logfile = capture(tmp_path)
     stem = basename.rpartition('.')[0]
 
     for version in ('v001', 'v002', 'v003'):
-        _common.move_old(str(target), kind, logger=logger)
+        _shelf_common.move_old(str(target), kind, logger=logger)
         for ext in versioned_exts:
             assert (logdir / f'{stem}_{version}{ext}').exists()
 
@@ -170,11 +170,11 @@ def test_a_file_that_does_not_exist_is_not_versioned(kind, basename, extra_exts,
 
     logdir = tmp_path / 'logs'
     logdir.mkdir()
-    monkeypatch.setattr(_common, 'LOGDIRS', [str(logdir)])
+    monkeypatch.setattr(_shelf_common, 'LOGDIRS', [str(logdir)])
     logger, logfile = capture(tmp_path)
 
     logger.open('task')
-    _common.move_old(str(tmp_path / 'holdings' / basename), kind, logger=logger)
+    _shelf_common.move_old(str(tmp_path / 'holdings' / basename), kind, logger=logger)
     logger.close()
 
     assert list(logdir.iterdir()) == []
@@ -190,13 +190,13 @@ def test_nothing_is_versioned_when_no_log_directory_is_recorded(kind, basename,
 
     holdings = tmp_path / 'holdings'
     holdings.mkdir()
-    monkeypatch.setattr(_common, 'LOGDIRS', [])
+    monkeypatch.setattr(_shelf_common, 'LOGDIRS', [])
 
     target = build_target(holdings, basename, extra_exts)
     logger, logfile = capture(tmp_path)
 
     logger.open('task')
-    _common.move_old(str(target), kind, logger=logger)
+    _shelf_common.move_old(str(target), kind, logger=logger)
     logger.close()
 
     assert 'moved' not in logfile.read_text()

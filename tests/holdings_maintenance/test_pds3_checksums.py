@@ -167,8 +167,8 @@ def test_reinitialize_versions_the_checksum_file_it_replaces(fresh_tree):
     _common.move_old_checksums() versions the file the task is about to overwrite,
     as <name>_v###.txt beside the run's own log file, one past the highest version
     already there. It reads the shared LOGDIRS list that main() fills in through
-    _common.set_log_dirs(), so a tool that leaves that list empty versions nothing;
-    this test is what makes that visible, here and in the pds4 twin.
+    _shelf_common.set_log_dirs(), so a tool that leaves that list empty versions
+    nothing; this test is what makes that visible, here and in the pds4 twin.
     """
 
     support.initialize(fresh_tree, 'pdschecksums', fresh_tree.path(VOLUME_DIR))

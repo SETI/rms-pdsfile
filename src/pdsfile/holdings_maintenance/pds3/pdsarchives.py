@@ -16,7 +16,7 @@ import zlib
 import pdslogger
 
 import pdsfile
-from pdsfile.holdings_maintenance import _common
+from pdsfile.holdings_maintenance import _archives_common, _common
 
 LOGNAME = 'pds.validation.archives'
 
@@ -42,7 +42,7 @@ def read_archive_info(tarpath, *, logger=None, limits=None):
         logger.critical('File does not exist', tarpath)
         return []
 
-    merged_limits = _common.READ_ARCHIVE_INFO_LIMITS.copy()
+    merged_limits = _archives_common.READ_ARCHIVE_INFO_LIMITS.copy()
     merged_limits.update(limits)
     logger.open('Reading archive file', tarpath, limits=merged_limits)
 
@@ -95,9 +95,9 @@ def write_archive(pdsdir, *, clobber=True, archive_invisibles=True,
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsdir.root_)
-    archive_filter = _common.make_archive_filter(SPEC, logger, archive_invisibles)
+    archive_filter = _archives_common.make_archive_filter(SPEC, logger, archive_invisibles)
 
-    merged_limits = _common.WRITE_ARCHIVE_LIMITS.copy()
+    merged_limits = _archives_common.WRITE_ARCHIVE_LIMITS.copy()
     merged_limits.update(limits)
     logger.open('Writing .tar.gz file for', dirpath, limits=merged_limits)
 
@@ -146,13 +146,13 @@ def reinitialize(pdsdir, *, logger=None, limits=None):
 def validate(pdsdir, *, logger=None, limits=None):
     if limits is None:
         limits = {}
-    dir_tuples = _common.load_directory_info(SPEC, pdsdir, logger=logger,
+    dir_tuples = _archives_common.load_directory_info(SPEC, pdsdir, logger=logger,
                                              limits=limits)
 
     tarpath = pdsdir.archive_path_and_lskip()[0]
     tar_tuples = read_archive_info(tarpath, logger=logger, limits=limits)
 
-    return _common.validate_tuples(SPEC, dir_tuples, tar_tuples, logger=logger,
+    return _archives_common.validate_tuples(SPEC, dir_tuples, tar_tuples, logger=logger,
                                    limits=limits)
 
 def repair(pdsdir, *, logger=None, limits=None):
@@ -168,7 +168,7 @@ def repair(pdsdir, *, logger=None, limits=None):
         return True
 
     tar_tuples = read_archive_info(tarpath, logger=logger, limits=limits)
-    dir_tuples = _common.load_directory_info(SPEC, pdsdir, logger=logger,
+    dir_tuples = _archives_common.load_directory_info(SPEC, pdsdir, logger=logger,
                                              limits=limits)
 
     # Compare
@@ -214,7 +214,7 @@ def archive_lskip(pdsdir):
 def archive_targets(pdsf, path):
     """Return the volume directories one command-line path names."""
 
-    _common.reject_checksum_and_archive_paths(pdsf, path)
+    _archives_common.reject_checksum_and_archive_paths(pdsf, path)
 
     pdsdir = pdsf.volume_pdsfile()
     if pdsdir and pdsdir.isdir:
@@ -233,9 +233,9 @@ SPEC = _common.ToolSpec(
     holdings_sentinel='/holdings/',
     index_ext='.tab',
     file_log_level='info',
-    description=_common.ARCHIVE_DESCRIPTION,
-    task_help=_common.ARCHIVE_TASK_HELP,
-    positional_help=_common.ARCHIVE_POSITIONAL_HELP,
+    description=_archives_common.ARCHIVE_DESCRIPTION,
+    task_help=_archives_common.ARCHIVE_TASK_HELP,
+    positional_help=_archives_common.ARCHIVE_POSITIONAL_HELP,
     log_path_method='log_path_for_volume',
     log_suffix='_links',
     expand_target=archive_targets,
