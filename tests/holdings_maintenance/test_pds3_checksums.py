@@ -197,3 +197,106 @@ def test_reinitialize_versions_the_checksum_file_it_replaces(fresh_tree):
     versions = sorted(p.name for p in logs.rglob(f'{subsets.PDS3_VOLUME}_md5_v*.txt'))
     assert versions == [f'{subsets.PDS3_VOLUME}_md5_v001.txt',
                         f'{subsets.PDS3_VOLUME}_md5_v002.txt'], run.describe()
+
+
+##########################################################################################
+# The --infoshelf chain
+#
+# pdschecksums --infoshelf re-runs its own command line as a pdsinfoshelf command,
+# which it builds by rewriting argv[0]. That only resolves to the other tool when
+# argv[0] is a console script, so these tests invoke it as an install would.
+##########################################################################################
+
+@pytest.fixture
+def scripts(tmp_path):
+    """Console scripts for the two tools the chain involves."""
+
+    return support.console_scripts(tmp_path / 'bin', 'pdschecksums', 'pdsinfoshelf')
+
+
+def test_infoshelf_chain_runs_the_infoshelf_tool(fresh_tree, scripts):
+    """--initialize --infoshelf writes the checksum file and then the info shelf."""
+
+    run = support.run_console_script(fresh_tree, scripts / 'pdschecksums',
+                                     '--initialize', '--infoshelf',
+                                     fresh_tree.path(VOLUME_DIR))
+    assert run.returncode == 0, run.describe()
+    assert fresh_tree.path(CHECKSUM_FILE).exists(), run.describe()
+
+    shelf = fresh_tree.path(
+        f'_infoshelf-volumes/{subsets.PDS3_VOLSET}/{subsets.PDS3_VOLUME}_info.pickle')
+    assert shelf.exists(), run.describe()
+
+    # Both tools logged, the second one under its own logger name.
+    assert 'pds.validation.checksums' in run.output, run.describe()
+    assert 'pds.validation.fileinfo' in run.output, run.describe()
+
+
+def test_infoshelf_chain_reports_the_chained_run_exit_code(fresh_tree, scripts):
+    """The chained command's exit code is the exit code of the whole run.
+
+    The chained run is executed as an argument list, so its status arrives intact.
+    Handing the command to a shell instead returns a wait status -- the exit code
+    shifted left by eight -- and passing that to sys.exit() truncates it to the low
+    byte, turning every failure into a success.
+    """
+
+    support.initialize(fresh_tree, 'pdschecksums', fresh_tree.path(VOLUME_DIR))
+
+    # Checksums validate cleanly, so the chain runs; the info shelf does not exist,
+    # so the chained pdsinfoshelf --validate fails with exit 1.
+    run = support.run_console_script(fresh_tree, scripts / 'pdschecksums',
+                                     '--validate', '--infoshelf',
+                                     fresh_tree.path(VOLUME_DIR))
+    assert run.returncode == 1, run.describe()
+    assert any('Info shelf file does not exist' in line for line in run.error_lines), \
+        run.describe()
+
+
+def test_infoshelf_chain_passes_a_path_containing_spaces(tool_tree, tmp_path, scripts):
+    """A holdings path with spaces in it reaches the chained run in one piece.
+
+    The chained command is passed as an argument list rather than joined into a
+    shell command line, so nothing in it is word-split or otherwise interpreted.
+    A holdings root under a directory whose name contains spaces is not
+    hypothetical: real deployments have them.
+
+    A shell would split this path into four words, and the chained tool would
+    reject each fragment as "Not a holdings subdirectory" before it opened a log.
+    So the chained run's logger name appearing in the output is what says the path
+    arrived whole.
+    """
+
+    disk = tmp_path / 'a directory with spaces'
+    tree = support.build_tree(disk, tool_tree.source_dir, 'pds3',
+                              SOURCE_PATHS, SOURCE_MTIMES)
+    assert ' ' in str(tree.path(VOLUME_DIR))
+
+    support.initialize(tree, 'pdschecksums', tree.path(VOLUME_DIR))
+
+    run = support.run_console_script(tree, scripts / 'pdschecksums',
+                                     '--validate', '--infoshelf',
+                                     tree.path(VOLUME_DIR))
+    assert 'Not a holdings subdirectory' not in run.output, run.describe()
+    assert 'pds.validation.fileinfo' in run.output, run.describe()
+    assert any('Info shelf file does not exist' in line for line in run.error_lines), \
+        run.describe()
+    assert run.returncode == 1, run.describe()
+
+
+def test_no_targets_leaves_no_unbound_state(fresh_tree, scripts):
+    """A volume set with no volumes in it completes instead of raising.
+
+    Expanding the command-line path can legitimately yield nothing, and the run
+    then has no task result to decide the chain on. It reports success and does
+    not chain, rather than failing on a variable that was never assigned.
+    """
+
+    empty = fresh_tree.holdings / 'volumes' / 'EMPTYx_xxxx'
+    empty.mkdir(parents=True, exist_ok=True)
+
+    run = support.run_console_script(fresh_tree, scripts / 'pdschecksums',
+                                     '--validate', '--infoshelf', empty)
+    assert run.returncode == 0, run.describe()
+    assert 'UnboundLocalError' not in run.stderr, run.describe()
+    assert 'Traceback' not in run.stderr, run.describe()

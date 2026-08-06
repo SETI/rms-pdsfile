@@ -305,6 +305,57 @@ def run_tool(tree, tool, *args):
                    proc.stderr.decode('utf-8', errors='replace'))
 
 
+def console_scripts(directory, *tools):
+    """Write executable console scripts for some tools, and return the directory.
+
+    An installed tool is reached through a small executable on PATH whose name is
+    the tool's; `python -m <module>` reaches the same main() but leaves a module
+    file path in argv[0]. pdschecksums --infoshelf builds the command for its
+    chained run by rewriting its own argv[0], so it can only be exercised the first
+    way. These scripts are what `pip install` would have put there.
+
+    Args:
+        directory: Where to write them. Created if it does not exist.
+        *tools: Keys of TOOL_MODULES.
+
+    Returns:
+        pathlib.Path: The directory, so a caller can name a script inside it.
+    """
+
+    directory = Path(directory)
+    directory.mkdir(parents=True, exist_ok=True)
+    for tool in tools:
+        script = directory / tool
+        script.write_text(f'#!{sys.executable}\n'
+                          f'import sys\n'
+                          f'from {TOOL_MODULES[tool]} import main\n'
+                          f'sys.exit(main())\n')
+        script.chmod(0o755)
+
+    return directory
+
+
+def run_console_script(tree, script, *args):
+    """Run one tool through its console script, the way an install invokes it.
+
+    Args:
+        tree: The ToolTree to run against.
+        script: Path to a script console_scripts() wrote.
+        *args: Command-line arguments, path-like or str.
+
+    Returns:
+        ToolRun: The exit code and both streams.
+    """
+
+    argv = [str(script)] + [str(a) for a in args]
+    proc = subprocess.run(argv, cwd=str(tree.disk), env=tree.env,
+                          capture_output=True, timeout=TOOL_TIMEOUT, check=False)
+
+    return ToolRun(argv, proc.returncode,
+                   proc.stdout.decode('utf-8', errors='replace'),
+                   proc.stderr.decode('utf-8', errors='replace'))
+
+
 def initialize(tree, tool, target):
     """Run a tool's --initialize task and assert it succeeded.
 

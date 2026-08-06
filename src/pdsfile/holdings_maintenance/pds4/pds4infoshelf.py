@@ -369,10 +369,6 @@ def validate_infodict(pdsdir, dirdict, shelfdict, selection,
                 (bytes1, count1, modtime1, checksum1, size1) = dirinfo
                 (bytes2, count2, modtime2, checksum2, size2) = shelfinfo
 
-                # Truncate modtimes to seconds
-                modtime1 = modtime1.rpartition('.')[0]
-                modtime2 = modtime2.rpartition('.')[0]
-
                 agreement = True
                 if bytes1 != bytes2:
                     logger.error('File size mismatch %d %d' %
@@ -384,9 +380,11 @@ def validate_infodict(pdsdir, dirdict, shelfdict, selection,
                                     (count1, count2), key)
                     agreement = False
 
-                if modtime1 != modtime2:
+                if not _shelf_common.modtimes_agree(modtime1, modtime2):
+                    # Reported to the second, though compared in full
                     logger.error('Modification time mismatch "%s" "%s"' %
-                        (modtime1, modtime2), key)
+                        (modtime1.rpartition('.')[0],
+                         modtime2.rpartition('.')[0]), key)
                     agreement = False
 
                 if checksum1 != checksum2:
