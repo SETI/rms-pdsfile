@@ -4,18 +4,30 @@
 # Tests for holdings_maintenance/pds3/re_validate.py.
 #
 # These run IN-PROCESS, unlike every other module in this directory, which drives its
-# tool as a subprocess because PdsFile.CACHE is keyed by logical path and the session
-# preloads the real tree. That reason does not apply here: every function under test is
-# pure over text, paths and an argparse namespace, and none of them constructs a
-# PdsFile. Nothing here reads or writes the holdings tree, so the whole module is
-# holdings_free.
+# tool as a subprocess. That convention exists because PdsFile.CACHE is a class-level
+# cache keyed by *logical* path and the test session preloads the real holdings tree, so
+# an in-process call can resolve a temporary-tree path back to the real tree.
 #
-# The two exceptions are the import-inertness tests, which need a Python that has not
-# imported the module yet and so use a subprocess.
+# Running in-process here is safe for a reason that has to be maintained, not for a
+# property of the code: four of the functions under test -- validate_one_volume,
+# run_interactive, run_batch and print_batch_status -- DO construct PdsFile objects, and
+# every test that reaches one of them replaces `re_validate.pdsfile` with a stub first.
+# The `volume_tree` fixture does that. A new test that drives one of those four without
+# stubbing it inherits the cache hazard in full.
 #
-# What is deliberately not covered: validate_one_volume() and the batch driver loop,
-# which call the five sibling tools against a real volume, and send_email(), which
-# opens a socket. The message those two build is covered through format_email().
+# Everything else under test -- option derivation, log parsing, find_modified_volumes,
+# the missing-volume report, format_email, resolve_log_root -- is pure over text, paths
+# and an argparse namespace. Nothing here reads or writes a holdings tree, so the whole
+# module is holdings_free.
+#
+# Five tests use a subprocess: the two import-inertness tests, which need an interpreter
+# that has not imported the module yet, and the three that run the whole program through
+# `python -m`.
+#
+# What is deliberately not covered: the five sibling tools validate_one_volume calls,
+# which their own modules cover; get_volume_info, which globs a real holdings tree; and
+# send_email's socket half. The message send_email builds is covered through
+# format_email.
 ##########################################################################################
 
 import os
@@ -1116,6 +1128,34 @@ def test_batch_status_exits_0(capsys):
     assert capsys.readouterr().out == ''
 
 
+def test_interactive_mode_exits_1_after_an_error(tmp_path, monkeypatch):
+    """Interactive mode reports failure when the run logged a fatal or an error.
+
+    This is the branch batch mode deliberately does not share: there, the status is
+    0 whatever was logged.
+    """
+
+    volume = tmp_path / 'holdings' / 'volumes' / 'VS_1xxx' / 'VOL_0001'
+    volume.mkdir(parents=True)
+    pdsdir = StubPdsdir(str(volume))
+    pdsdir.category_ = 'volumes/'
+    pdsdir.interior = ''
+
+    monkeypatch.setattr(re_validate, 'pdsfile', types.SimpleNamespace(
+        Pds3File=types.SimpleNamespace(from_abspath=lambda p: pdsdir)))
+    monkeypatch.setattr(re_validate, 'validate_one_volume',
+                        lambda *a, **k: ('/logs/x.log', 0, 0))
+
+    # (fatal, errors, warnings, tests) -- one error and no fatal is enough.
+    logger = StubBatchLogger(close_result=(0, 1, 0, 0))
+
+    with pytest.raises(SystemExit) as exc:
+        re_validate.run_interactive(Namespace(volume=[str(volume)]), ['volumes'],
+                                    ['checksums'], logger, ['re_validate.py'])
+
+    assert exc.value.code == 1
+
+
 def test_batch_mode_exits_0_even_after_a_fatal(tmp_path, monkeypatch, capsys):
     """Batch mode reports success whatever the run logged.
 
@@ -1334,6 +1374,10 @@ def test_resolve_log_root_is_none_when_nothing_is_set(monkeypatch):
 
     assert args.log is None
 
+
+##########################################################################################
+# The whole program, through `python -m`
+##########################################################################################
 
 def test_the_program_exits_1_with_no_arguments():
     """The whole program, run as `python -m`, refuses an empty command line."""

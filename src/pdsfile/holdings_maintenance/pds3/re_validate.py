@@ -786,7 +786,9 @@ def print_batch_status(modified_holdings, current_logs):
     """Print what a batch run would do now, then exit.
 
     Raises:
-        SystemExit: Always, with status 0.
+        SystemExit: Always, raised by sys.exit() with no argument. Its code is None
+            and its process status is 0, which is not the same call as sys.exit(0)
+            at the end of a batch run.
     """
 
     fmt = '%4d %20s%-11s  modified %s, not previously validated'

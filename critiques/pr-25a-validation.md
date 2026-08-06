@@ -27,7 +27,7 @@ applies.
 |---|---|
 | `src/pdsfile/holdings_maintenance/pds3/re_validate.py` | rewritten around `main(argv=None)`; ten bugs fixed, an eleventh finding recorded |
 | `src/pdsfile/holdings_maintenance/_common.py` | `resolve_log_root()` extracted from `run_main`, and `run_main` now calls it |
-| `tests/holdings_maintenance/test_re_validate.py` | new, 84 test ids, `holdings_free` |
+| `tests/holdings_maintenance/test_re_validate.py` | new, 85 test ids, `holdings_free` |
 | `tests/holdings_maintenance/__init__.py` | the "deliberately not covered" note, which said the file was frozen |
 | `pyproject.toml` | ratchet entry ten codes → two, and the header prose it falsified |
 | `.cursor/rules/pdsfile_overrides.mdc` | deviations (4) and (6) |
@@ -44,7 +44,8 @@ is the one the tests drive.
 The brief supplied ten hypotheses found by reading. Each was reproduced before
 being acted on; the reproduction script is quoted with each. Measurement also
 found an eleventh the brief did not predict (B11), and corrected the brief's
-classification of three others.
+classification of two others — B4 and B5, which it called forced by the refactor
+and which are not.
 
 **Ten of the eleven are fixed.** The eleventh, B8, is a constant read nowhere; the
 first draft deleted it and ground rule 9 forbids that, so it is recorded and kept.
@@ -52,11 +53,13 @@ Two of the ten — B3 and B6 — are forced by the move into a function scope, b
 they read module globals a function scope does not supply. The brief said four;
 §2.4 and §2.5 show why B4 and B5 are not among them.
 
-Two controls back the claims below, both in §2.12: `scratchpad/negative_control.py`
-asserts all eleven findings are still present in the base module, and
-`scratchpad/mutate.sh` reinstates each one in a copy of the head tree and shows
-which test catches it. The second is the one that establishes the tests are not
-vacuous; the first only establishes that there was something to fix.
+Three controls back the claims below. §2.12's `scratchpad/negative_control.py`
+asserts all eleven findings are still present in the base module — which only
+establishes that there was something to fix. §2.13's `scratchpad/mutate.sh`
+reinstates each one in a copy of the head tree and shows which test catches it.
+§2.14's `scratchpad/mutate2.sh` does the same **one site at a time**, which is what
+finally establishes non-vacuity: §2.13's aggregated misspelling row could not have
+failed, and it was hiding an uncovered site.
 
 ### 2.1 B1 — `--previews` is parsed and never read — **reproduced**
 
@@ -331,9 +334,15 @@ the new test module.
 | `main`: drop the `if argv is None` fallback | 1 failed, 72 passed |
 | G1: drop the `if __name__ == '__main__'` guard | collection dies, `INTERNALERROR> SystemExit: 2` |
 
-**Every mutation is caught.** The first draft of this PR failed three of these
-rows — B4, B5 and B6 left 62/62 green — which is what round 1 found and what the
-`validate_one_volume` test group (§9) was added to fix. B8 has no row: it is a
+**Every mutation is caught.** The counts in this table are the ones measured when
+it was run, at 73 ids; the module is now at 85, so each row's passed count is
+understated by twelve. The table has not been re-run because it cannot change
+direction: adding tests cannot make a failing mutation pass. §2.14, which is the
+table that matters, was run against the current module.
+
+The first draft of this PR failed three of these rows — B4, B5 and B6 left 62/62
+green — which is what round 1 found and what the `validate_one_volume` test group
+(§9) was added to fix. B8 has no row: it is a
 constant now restored rather than removed, so there is nothing to mutate. B10's
 behavior *is* exit site 9, which does have a row.
 
@@ -390,7 +399,7 @@ it is an equivalent mutant rather than an undetected defect.
 | G4 | hand-built `--quiet` help | `:480-481` vs `_common.py:127` | `_common.QUIET_HELP`; §7 |
 | G5 | duplicated log-root block | `:586-590` vs `_common.py:244-248` | extracted; §11 |
 | G6 | header names `re-validate.py` | `:2-9` | rewritten to the module's real name and the `python -m` line |
-| G7 | no test of any kind | `tests/holdings_maintenance/__init__.py:14` | 84 ids |
+| G7 | no test of any kind | `tests/holdings_maintenance/__init__.py:14` | 85 ids |
 | G8 | ten-code ratchet entry, `C405` with no site | `pyproject.toml:238`; 25 findings, no `C405` among them | two codes |
 
 `build_arg_parser`/`run_main`/`ToolSpec` were **not** forced onto this tool, per
@@ -414,13 +423,13 @@ $ cd <tree> && PYTHONPATH=$PWD/src PDS3_HOLDINGS_DIR=/seti/opus/pdsdata/holdings
 
 | | base `02f07a8` | head |
 |---|---|---|
-| `--mode ns` | 935 passed, 34 skipped — **969 ids** | 1019 passed, 34 skipped — **1053 ids** |
+| `--mode ns` | 935 passed, 34 skipped — **969 ids** | 1020 passed, 34 skipped — **1054 ids** |
 | `--mode s` (`tests/pds3file/ tests/rules/pds3/`) | 555 passed, 3 skipped — **558 ids** | 555 passed, 3 skipped — **558 ids** |
 
 Diffing the two `ns` junit id sets:
 
 ```
-added   : 84      all in tests.holdings_maintenance.test_re_validate, all passed
+added   : 85      all in tests.holdings_maintenance.test_re_validate, all passed
 removed : 0
 outcome changed on a shared id: 0
 ```
@@ -431,8 +440,9 @@ the new module adding nothing there is the expected result, not a missing run.
 
 The `--mode s` scope above is the one
 `scripts/automated_tests/pdsfile_main_test.sh` uses. Round 2 of review ran
-`--mode s` over the **whole** tree instead, which the project never does, and
-found five failures. Re-measured here at both commits:
+`--mode s` over the whole `tests/` tree instead, which the project never does, and
+found five failures, all in `tests/pds4file/`. That subset re-measured here at both
+commits:
 
 ```
 $ python -m pytest tests/pds4file/ --mode s
@@ -451,12 +461,12 @@ $ env -u PDS3_HOLDINGS_DIR -u PDS4_HOLDINGS_DIR -u PDSFILE_TEST_HOLDINGS \
 
 | | base `02f07a8` | head |
 |---|---|---|
-| pytest | 165 passed, 804 skipped | **249 passed, 804 skipped** |
+| pytest | 165 passed, 804 skipped | **250 passed, 804 skipped** |
 | pyroma | 10/10 | 10/10 |
 | ruff check, ruff indentation, API freeze, clean-install | pass | pass |
 
 Both rows were measured here, not inherited. The passed count rises by exactly the
-84 new ids and the skipped count does not move, which is what `holdings_free`
+85 new ids and the skipped count does not move, which is what `holdings_free`
 means: the new module runs with no holdings at all.
 
 ### API freeze
@@ -707,12 +717,12 @@ sites, not the eight the brief describes — the brief says "four sites" of
 | 1 | `:614` | interactive, no volume named | 1 | `test_interactive_mode_with_no_path_exits_1` |
 | 2 | `:619` | interactive, volume path does not exist | 1 | `test_interactive_mode_with_a_missing_path_exits_1` |
 | 3 | `:629` | interactive, not a volume path | 1 | not pinned — needs a `Pds3File` (§13) |
-| 4 | `:654` | interactive, end of run | 1 if fatal or errors, else 0 | not pinned — needs a real run (§13) |
+| 4 | `:654` | interactive, end of run | 1 if fatal or errors, else 0 | both directions: `test_interactive_mode_logs_the_command_line_it_was_given` (clean run → 0) and `test_interactive_mode_exits_1_after_an_error` (one logged error → 1). Forcing the expression to a constant 1 fails the first; forcing it to a constant 0 fails the second |
 | 5 | `:664` | batch, no holdings path named | 1 | `test_batch_mode_with_no_path_exits_1`, and `test_the_program_exits_1_in_batch_mode_with_no_holdings` end to end |
 | 6 | `:670` | batch, holdings path does not exist | 1 | `test_batch_mode_with_a_missing_path_exits_1` |
 | 7 | `:677` | batch, not a holdings directory | 1 | `test_batch_mode_with_a_non_holdings_path_exits_1` |
 | 8 | `:741` | `--batch-status`, after printing | bare `sys.exit()` → 0 | `test_batch_status_exits_0` |
-| 9 | `:827` | batch mode, end of run | `sys.exit(0)` always | not pinned — needs a real run (§13) |
+| 9 | `:827` | batch mode, end of run | `sys.exit(0)` always | `test_batch_mode_exits_0_even_after_a_fatal`, which drives a run that logged one fatal and one error |
 
 Every one is unchanged. Site 8 is still a **bare** `sys.exit()` and site 9 still a
 `sys.exit(0)`: the two produce the same status but are not the same call, and both
@@ -727,17 +737,22 @@ and `--help` exits 0 — both pinned.
 ## 9. The test module
 
 `tests/holdings_maintenance/test_re_validate.py`, `pytestmark =
-pytest.mark.holdings_free`, **84 ids, all passing**.
+pytest.mark.holdings_free`, **85 ids, all passing**.
 
-**84 ids**: 62 as first written, eleven added by round 1 of review and eleven by
-round 2. It runs **in-process**,
-which deviates from every sibling module in the directory.
-The sibling convention exists because `PdsFile.CACHE` is keyed by logical path and
-the session preloads the real tree, so an in-process call would resolve a
-temporary-tree path back to the real tree. That reason does not apply here: every
-function under test is pure over text, paths and an argparse namespace, and none
-constructs a `PdsFile`. The module header says so, and so does the directory's
-`__init__.py`.
+**85 ids**: 62 as first written, eleven added by round 1 of review, eleven by
+round 2 and one by round 3. It runs **in-process**, which deviates from every
+sibling module in the directory. The sibling convention exists because
+`PdsFile.CACHE` is keyed by logical path and the session preloads the real tree, so
+an in-process call can resolve a temporary-tree path back to the real tree.
+
+Running in-process here is safe for a reason that has to be **maintained**, and the
+module header says which: four of the functions under test — `validate_one_volume`,
+`run_interactive`, `run_batch` and `print_batch_status` — do construct `PdsFile`
+objects, and every test that reaches one replaces `re_validate.pdsfile` with a stub
+first. Round 3 of review measured what happens without that: deleting the fixture's
+one `monkeypatch.setattr(re_validate, 'pdsfile', …)` line still passes, with real
+`PdsFile` objects built from the temporary tree and nothing noticing. Everything
+else under test is genuinely pure over text, paths and an argparse namespace.
 
 Five tests use a subprocess anyway, and only these five: the two import-inertness
 tests, which need an interpreter that has not imported the module yet, and the
@@ -755,7 +770,7 @@ The group counts below were taken from `pytest --collect-only`, not from reading
 | `validate_one_volume` | 9 | B4 ×2 (plain and `--timeless`), B6, B5, all six misspelling sites with the tarballs that make the last two reachable, each per-volume-type line naming its own directory, the log subdirectory the tool writes under, the order of the returned fatal/error counts, and the closing test count — all driven over a real temporary volume tree with the five sibling tools and the logger stubbed |
 | the email message | 4 | built without a socket: one address as a string, a `str` subclass (B9), a list, and the exact header block |
 | `_common.resolve_log_root` | 3 | the helper this PR extracted: an explicit `--log`, the environment fallback, and neither |
-| exit codes and `main` | 18 | §8; that `main(argv)` parses and forwards the argv it is given and defaults to `sys.argv`; that both modes log *that* argv rather than `sys.argv`; the terminal handler under `--quiet` and without it; and the error handler's directory |
+| exit codes and `main` | 19 | §8, including both directions of interactive mode's end-of-run status; that `main(argv)` parses and forwards the argv it is given and defaults to `sys.argv`; that both modes log *that* argv rather than `sys.argv`; the terminal handler under `--quiet` and without it; and the error handler's directory |
 
 `send_email` was split: `format_email(to_addr, subject, message, date=None)` builds
 the recipients and the message text and is what the tests call; `send_email` opens
@@ -840,11 +855,16 @@ Three, all of them flagged where they appear:
 
 1. The **REST-group** totals in `pyproject.toml`'s ratchet header and in
    `pdsfile_overrides.mdc` (2,258 over 58 entries / 179 code slots before this PR;
-   2,241 / 58 / 171 after) are **inherited** from the PR-24 and PR-25 records. What
-   was measured here is the **delta**: `re_validate.py` alone went from 25 findings
-   to 8 and from 10 code slots to 2, and no other file's entry moved. The group
-   totals follow by arithmetic from a base this PR did not re-derive, because
-   re-deriving them means reconstructing PR-24's file partition.
+   2,241 / 58 / 171 after) were **inherited** from the PR-24 and PR-25 records when
+   this record was written. What I measured was the **delta**: `re_validate.py`
+   alone went from 25 findings to 8 and from 10 code slots to 2, and no other
+   file's entry moved.
+
+   Rounds 2 and 3 of review both re-derived the group totals independently, by
+   reconstructing PR-24's file partition, and both got 2,258 → 2,241. Round 3 also
+   cross-checked it the other way: whole tree 2,280 at head, less CORE's 39, is
+   2,241. So the number is now measured — just not by me, which is why it stays in
+   this section.
 2. The **whole-tree** figures in §6 — 69 entries, 193→185 slots, 2,297→2,280
    findings — **were** measured at both commits, and 69 contradicts the brief's 70.
 3. No line count of any file is cited anywhere in this record, deliberately: the
@@ -855,15 +875,17 @@ Three, all of them flagged where they appear:
 
 ## 13. What is not covered
 
-- `validate_one_volume`'s body and the batch driver loop. They call the five
-  sibling tools against a real volume; those tools have their own test modules, and
-  driving them again from here would duplicate that at high cost. The functions
-  around them — option derivation, log parsing, the missing-volume report, the exit
-  codes — are covered.
+- The five sibling tools `validate_one_volume` calls. Each has its own module in
+  this directory, and driving them again from here would duplicate that at high
+  cost, so they are stubbed. `validate_one_volume`'s own control flow — which tests
+  run against which directory, what each logs, what it returns — **is** covered, by
+  the nine-id group §9 lists; that was not true before round 1 of review.
 - `get_volume_info`. It globs a real holdings tree and builds a `Pds3File` per
   volume, so it cannot run in a `holdings_free` module.
-- Exit-code sites 3, 4 and 9 (§8). Site 3 needs a real `Pds3File`; 4 and 9 need a
-  completed validation run.
+- Exit-code site 3 (§8), the interactive "Not a volume path" refusal. The one test
+  that reaches that branch drives it in the false direction, so the exit itself is
+  unpinned; pinning it needs a `Pds3File` whose `category_` is not `volumes/`.
+  Sites 4 and 9 *are* pinned — see §8.
 - `send_email`'s socket half. Deliberate: no test opens a socket.
 - `scripts/check_runtime_imports.py` still covers seven core modules only and not
   the tool modules. Out of scope by the brief; filed as deferred observation 105.

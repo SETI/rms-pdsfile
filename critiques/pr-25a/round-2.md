@@ -107,6 +107,12 @@ It closed all four of round 1's stated gaps:
   for and that I had only run in `--batch-status` and `--help` form.
 - **`pyroma` and clean-install:** 10/10, pass; hosted gate 238 passed / 804 skipped
   at head, matching my measurement exactly.
+
+Two of this round's figures are of the tree **as the round found it**, before its
+own eleven tests landed: the hosted gate's 238 (now 249) and the whole-tree
+`--mode s` head figure of 1,003 passed (now 1,014). They are left as measured
+rather than restated, because a round record should say what that round saw. The
+current figures are in record §4.
 - **`ruff format` was demonstrably not run:** `ruff format --check` still reports
   all three changed files as "would reformat".
 
