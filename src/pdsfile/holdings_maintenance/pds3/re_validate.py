@@ -30,6 +30,10 @@ from pdsfile.holdings_maintenance.pds3 import (
 
 LOGNAME = 'pds.validation'
 
+# Read nowhere in this module. Whether it should exist at all is a question for
+# whoever owns the batch report, not a cleanup.
+MAX_INFO = 50
+
 # The tool's name: the subdirectory of each log root, and the name in --help.
 PROGNAME = 're-validate'
 
@@ -232,6 +236,16 @@ def key_from_volume_abspath(abspath):
 
     parts = abspath.split('/')
     return '/'.join(parts[-2:])
+
+
+def key_from_log_path(log_path):
+    """Return 'volset/bundlename' from this log path.
+    """
+
+    parts = log_path.split('/')
+    bundlename = parts[-1].split('_re-validate_')[0]
+
+    return parts[-2] + '/' + bundlename
 
 
 def get_log_info(log_path):
@@ -599,8 +613,7 @@ def derive_options(args):
         dependencies = True
 
     dependencies &= ('volumes' in voltypes)
-    linkshelves  &= ('volumes' in voltypes or 'metadata' in voltypes or
-                                              'calibrated' in voltypes)
+    linkshelves  &= any(voltype in voltypes for voltype in LINKSHELF_VOLTYPES)
 
     args.checksums    = checksums
     args.archives     = archives

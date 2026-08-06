@@ -27,7 +27,7 @@ applies.
 |---|---|
 | `src/pdsfile/holdings_maintenance/pds3/re_validate.py` | rewritten around `main(argv=None)`; eleven bugs fixed |
 | `src/pdsfile/holdings_maintenance/_common.py` | `resolve_log_root()` extracted from `run_main`, and `run_main` now calls it |
-| `tests/holdings_maintenance/test_re_validate.py` | new, 62 test ids, `holdings_free` |
+| `tests/holdings_maintenance/test_re_validate.py` | new, 73 test ids, `holdings_free` |
 | `tests/holdings_maintenance/__init__.py` | the "deliberately not covered" note, which said the file was frozen |
 | `pyproject.toml` | ratchet entry ten codes → two, and the header prose it falsified |
 | `.cursor/rules/pdsfile_overrides.mdc` | deviations (4) and (6) |
@@ -46,8 +46,11 @@ being acted on; the reproduction script is quoted with each. Measurement also
 found an eleventh the brief did not predict (B11), and corrected the brief's
 classification of three others.
 
-`negative_control.py` (§2.12) asserts all eleven are still present in the base
-module, and is the evidence that the tests below are not vacuous.
+Two controls back the claims below, both in §2.12: `scratchpad/negative_control.py`
+asserts all eleven bugs are still present in the base module, and
+`scratchpad/mutate.sh` reinstates each one in a copy of the head tree and shows
+which test catches it. The second is the one that establishes the tests are not
+vacuous; the first only establishes that there was something to fix.
 
 ### 2.1 B1 — `--previews` is parsed and never read — **reproduced**
 
@@ -113,10 +116,14 @@ global; called before that point, or from anywhere at all under a `main()`, it
 raises. `grep -rn key_from_log_path` over `src/ tests/ scripts/` returns **only its
 own definition** — nothing in the repository calls it.
 
-**Deleted rather than fixed.** It is unreachable, it has never worked, and no
-caller can exist because every call raises. `holdings_maintenance` is not in the
-API manifest (§5), so no frozen surface covers it. This is a judgement the owner
-could make differently — see §11.
+**Fixed, not deleted.** It was deleted in this PR's first draft, on the reasoning
+that nothing can depend on a function whose every call raises. Round 1 of review
+was right that ground rule 9 says what it says — *"Nothing is deleted for being
+'probably dead'"* — so the function is restored, reading its own `log_path`
+parameter, and pinned by `test_key_from_log_path` and
+`test_key_from_log_path_agrees_with_the_key_get_all_log_info_builds`. The second
+of those is the one that shows the fix is the intended one: it returns the same key
+`get_all_log_info` derives inline for the same log file.
 
 ### 2.4 B4 — the dependency log line names a leaked loop variable — **reproduced**
 
@@ -134,13 +141,15 @@ logger.open('Dependency re-validation for', [])
 — `abspath` holds the **empty list** left by `abspath = glob.glob(abspath)` at
 `:161`. Rendering that through a real `PdsLogger` shows what the log actually said:
 
-| value of `abspath` | rendered line |
-|---|---|
-| `[]` | `Dependency re-validation for` |
-| a `.tar.gz` path | `Dependency re-validation for: …/archives-previews/VS_1xxx/VOL_0001.tar.gz` |
-| `pdsdir.abspath` (the intent) | `Dependency re-validation for: …/volumes/VS_1xxx/VOL_0001` |
+| value of `abspath` | when | rendered line |
+|---|---|---|
+| `[]` | a full run with no archive tarballs present | `Dependency re-validation for` |
+| a `.tar.gz` path | a full run with tarballs present | `Dependency re-validation for: …/archives-previews/VS_1xxx/VOL_0001.tar.gz` |
+| the last existing voltype directory | `-D` alone, so the archive-infoshelf loop never runs | `Dependency re-validation for: …/previews/VS_1xxx/VOL_0001` |
+| `pdsdir.abspath` (the intent) | — | `Dependency re-validation for: …/volumes/VS_1xxx/VOL_0001` |
 
-So the line either named no path at all or named an unrelated archive file. Fixed
+So in all three reachable shapes the line named no path at all, or named a
+different file from the one the test was about. Fixed
 by logging `pdsdir.abspath`. **This changes two log lines**; it is enumerated in
 §7 as a defect fix under ground rule 9, not as a rewording.
 
@@ -264,8 +273,9 @@ INTERNALERROR> SystemExit: 2
 ```
 
 — which is itself the sharpest statement of G1 available. The per-bug negative
-control therefore loads the base module's **library half** (everything above the
-`# Executable program` banner) and asserts each bug is still there:
+control (`scratchpad/negative_control.py`) therefore loads the base module's
+**library half** (everything above the `# Executable program` banner) and asserts
+each bug is still there:
 
 ```
 $ python negative_control.py <base tree>
@@ -284,6 +294,42 @@ B11 PRESENT  listed in both lists: ['/h/holdings/volumes/VS_1xxx/VOL_0001']
 all eleven present at base: True
 ```
 
+### 2.13 The mutation control
+
+Round 1 of review made the right objection to §2.12: showing a bug exists at base
+says nothing about whether the *new tests* catch it. `scratchpad/mutate.sh` answers
+that directly. It copies the head worktree — a copy is required, because
+`pyproject.toml`'s `pythonpath = [".", "src"]` beats `PYTHONPATH`, so editing an
+out-of-tree `src` is silently ignored — reinstates exactly one defect, and reruns
+the new test module.
+
+| mutation applied to the head tree | result |
+|---|---|
+| *(none — the baseline)* | **73 passed** |
+| B1 `if args.previews:` → `if args.calibrated:` | 4 failed, 69 passed |
+| B2 re-indent the two `holdings_for_key` lines under the `continue` | 1 failed, 72 passed |
+| B3 `log_path.split('/')` → `abspath.split('/')` | 2 failed, 71 passed |
+| B4 `pdsdir.abspath` → `abspath` in both dependency lines | 2 failed, 71 passed |
+| B5 `return (logfiles[-1], …)` → `logfiles[0]` | 1 failed, 72 passed |
+| B6 `args.checksums and args.archives` → `checksums and args.archives` | 3 failed, 70 passed |
+| B7 `if len(recs) < 2:` → `< 1` | 2 failed, 71 passed |
+| B9 `isinstance(to_addr, str)` → `type(to_addr) == str` | 1 failed, 72 passed |
+| B11 iterate `modified_holdings` instead of `modified_keys` | 2 failed, 71 passed |
+| the misspelling: `re-validation for` → `re-validatation for` | 4 failed, 69 passed |
+| exit site 8: bare `sys.exit()` → `sys.exit(0)` | 1 failed, 72 passed |
+| exit site 9: `sys.exit(0)` → `sys.exit(1)` | 1 failed, 72 passed |
+| `main`: drop the `if argv is None` fallback | 1 failed, 72 passed |
+| G1: drop the `if __name__ == '__main__'` guard | collection dies, `INTERNALERROR> SystemExit: 2` |
+
+**Every mutation is caught.** The first draft of this PR failed three of these
+rows — B4, B5 and B6 left 62/62 green — which is what round 1 found and what the
+`validate_one_volume` test group (§9) was added to fix. B8 and B10 have no row: B8
+is a constant that is now restored rather than removed, and B10's behavior *is*
+exit site 9.
+
+The two rows that fail four tests rather than one are the ones whose defect is
+visible from more than one angle, which is the intended redundancy.
+
 ---
 
 ## 3. The gaps G1-G8
@@ -296,7 +342,7 @@ all eleven present at base: True
 | G4 | hand-built `--quiet` help | `:480-481` vs `_common.py:127` | `_common.QUIET_HELP`; §7 |
 | G5 | duplicated log-root block | `:586-590` vs `_common.py:244-248` | extracted; §11 |
 | G6 | header names `re-validate.py` | `:2-9` | rewritten to the module's real name and the `python -m` line |
-| G7 | no test of any kind | `tests/holdings_maintenance/__init__.py:14` | 62 ids |
+| G7 | no test of any kind | `tests/holdings_maintenance/__init__.py:14` | 73 ids |
 | G8 | ten-code ratchet entry, `C405` with no site | `pyproject.toml:238`; 25 findings, no `C405` among them | two codes |
 
 `build_arg_parser`/`run_main`/`ToolSpec` were **not** forced onto this tool, per
@@ -320,13 +366,13 @@ $ cd <tree> && PYTHONPATH=$PWD/src PDS3_HOLDINGS_DIR=/seti/opus/pdsdata/holdings
 
 | | base `02f07a8` | head |
 |---|---|---|
-| `--mode ns` | 935 passed, 34 skipped — **969 ids** | 997 passed, 34 skipped — **1031 ids** |
+| `--mode ns` | 935 passed, 34 skipped — **969 ids** | 1008 passed, 34 skipped — **1042 ids** |
 | `--mode s` (`tests/pds3file/ tests/rules/pds3/`) | 555 passed, 3 skipped — **558 ids** | 555 passed, 3 skipped — **558 ids** |
 
 Diffing the two `ns` junit id sets:
 
 ```
-added   : 62      all in tests.holdings_maintenance.test_re_validate, all passed
+added   : 73      all in tests.holdings_maintenance.test_re_validate, all passed
 removed : 0
 outcome changed on a shared id: 0
 ```
@@ -344,12 +390,12 @@ $ env -u PDS3_HOLDINGS_DIR -u PDS4_HOLDINGS_DIR -u PDSFILE_TEST_HOLDINGS \
 
 | | base `02f07a8` | head |
 |---|---|---|
-| pytest | 165 passed, 804 skipped | **227 passed, 804 skipped** |
+| pytest | 165 passed, 804 skipped | **238 passed, 804 skipped** |
 | pyroma | 10/10 | 10/10 |
 | ruff check, ruff indentation, API freeze, clean-install | pass | pass |
 
 Both rows were measured here, not inherited. The passed count rises by exactly the
-62 new ids and the skipped count does not move, which is what `holdings_free`
+73 new ids and the skipped count does not move, which is what `holdings_free`
 means: the new module runs with no holdings at all.
 
 ### API freeze
@@ -415,7 +461,7 @@ scripts`).
 
 ### The two codes kept, and why
 
-- **`RUF005`** — head `:915`, `:917`, both `[batch_prefix] + messages +
+- **`RUF005`** — head `:928`, `:932`, both `[batch_prefix] + messages +
   [batch_suffix]`. Permanent owner-chosen style exclusion; `x + [y]` is the
   spelling this project uses.
 - **`UP031`** — six sites at head, classified against the standing rule
@@ -425,23 +471,23 @@ scripts`).
 
   | head site | what it is | disposition |
   |---|---|---|
-  | `:207` | `logger.info('%d re-validation tests performed' % n, path, force=True)` | **logging call** — permanently excluded |
-  | `:865` | `'%20s%-11s  modified %s, %s' % …` | **hand-aligned column block** — permanently excluded |
-  | `:429` | the email `From:/To:/Subject:/Date:` block | plain `%` expression the rule does not reach |
-  | `:849` | `batch_prefix` | plain `%` expression; feeds both a `print()` and the email body |
-  | `:864` | `ps = 'last validated %s' % …` | plain `%` expression |
-  | `:904` | `batch_suffix` | plain `%` expression; feeds both a `print()` and the email body |
+  | `:211` | `logger.info('%d re-validation tests performed' % n, path, force=True)` | **logging call** — permanently excluded |
+  | `:878` | `'%20s%-11s  modified %s, %s' % …` | **hand-aligned column block** — permanently excluded |
+  | `:443` | the email `From:/To:/Subject:/Date:` block | plain `%` expression the rule does not reach |
+  | `:862` | `batch_prefix` | plain `%` expression; feeds both a `print()` and the email body |
+  | `:877` | `ps = 'last validated %s' % …` | plain `%` expression |
+  | `:917` | `batch_suffix` | plain `%` expression; feeds both a `print()` and the email body |
 
   A seventh site, base `:444`, was the hand-copied `--log` help text and went with
   G3.
 
   The four "plain `%` expression" sites were **left alone deliberately**: converting
-  them buys nothing on the ratchet (the code stays either way, on `:207` and `:865`
+  them buys nothing on the ratchet (the code stays either way, on `:211` and `:878`
   alone) and each one is text that reaches a user, two of them through an emailed
   report this PR is not chartered to redesign. §11 records this as a decision the
   owner might make differently.
 
-`:207` is *not* converted to the lazy form even though the house logging style is
+`:211` is *not* converted to the lazy form even though the house logging style is
 `%`-args. The standing rule excludes logging calls, and the conversion is not free:
 `pdslogger.PdsLogger.log` re-reads a lone positional argument as the keyword-only
 `filepath` **only when the message contains no `%` pattern**, so
@@ -466,22 +512,32 @@ diffed base against head — the complete diff, nothing else moved:
 
 ```
 19,22c19,22
-<   variable "PDS_LOG_ROOT" is used. In addition, logs are
-<   written to the "logs" directory parallel to "holdings".
+<                       variable "PDS_LOG_ROOT" is used. In addition, logs are
+<                       written to the "logs" directory parallel to "holdings".
+<                       Logs are created inside the "re-validate" subdirectory
+<                       of each log root directory.
 ---
->   variable "PDS_LOG_ROOT" is used. In addition, individual
->   logs are written into the "logs" directory parallel to
+>                       variable "PDS_LOG_ROOT" is used. In addition, individual
+>                       logs are written into the "logs" directory parallel to
+>                       "holdings". Logs are created inside the "re-validate"
+>                       subdirectory of each log root directory.
 40c40
 <   --quiet, -q         Do not log to the terminal.
 ---
 >   --quiet, -q         Do not also log to the terminal.
 ```
 
+That is the diff in full — two hunks, four lines against four and one against one.
+
 Both are G3/G4: the tool's hand-built help strings were near-copies of
 `_common.LOG_HELP` and `_common.QUIET_HELP`, and keeping them is exactly the
-duplication the Phase 6 rule permits removing. **Every flag, short option,
-`nargs`, `action`, `default` and `metavar` is unchanged** — the diff above is the
-whole of it.
+duplication the Phase 6 rule permits removing.
+
+Rendered `--help` is a weak test of a parser, so the parser was also compared
+structurally: every `argparse` action at base and at head, dumped as
+`(option_strings, dest, nargs, const, default, type, choices, required, metavar,
+action class, help)` and diffed. **All 22 actions match except the two `help`
+strings above.**
 
 ### 7.2 `--batch-status` against the real test holdings — one line, B11
 
@@ -532,8 +588,20 @@ Two lines; attributed to **B4**; §2.4 has the rendered before/after.
 
 `sys.exit(0)`'s comment no longer asks "Does this help??". Behavior unchanged.
 
-**No other log line, at any level, changed. No event was added, removed or moved
-between levels, and no log file's path or name changed.** `_common.log_paths_for(…,
+### 7.7 What B1 changes about which events are logged
+
+B1 is a fix to *option derivation*, so for the three command lines it corrects it
+also changes which volume types a run walks — and therefore the `Volume types` INFO
+line and the set of per-voltype `logger.open` events. `--previews` alone now opens
+events for the previews tree instead of for all five; `--volumes --previews` now
+opens them for two trees instead of one; `--calibrated` for one instead of two. No
+message text changes; the run is doing what the flags asked for instead of
+something else. Enumerated here because §7 is the section the output rule points
+at, and §2.1 alone was not enough.
+
+**With §7.1 to §7.7 accounted for, no other log line at any level changed. No event
+was added, removed or moved between levels, and no log file's path or name
+changed.** `_common.log_paths_for(…,
 dir=PROGNAME)` with `PROGNAME = 're-validate'`, and the log root subdirectory is
 still `re-validate`, both unchanged.
 
@@ -570,9 +638,10 @@ and `--help` exits 0 — both pinned.
 ## 9. The test module
 
 `tests/holdings_maintenance/test_re_validate.py`, `pytestmark =
-pytest.mark.holdings_free`, **62 ids, all passing**.
+pytest.mark.holdings_free`, **73 ids, all passing**.
 
-It runs **in-process**, which deviates from every sibling module in the directory.
+**73 ids** after round 1 of review, which added eleven. It runs **in-process**,
+which deviates from every sibling module in the directory.
 The sibling convention exists because `PdsFile.CACHE` is keyed by logical path and
 the session preloads the real tree, so an in-process call would resolve a
 temporary-tree path back to the real tree. That reason does not apply here: every
@@ -580,19 +649,22 @@ function under test is pure over text, paths and an argparse namespace, and none
 constructs a `PdsFile`. The module header says so, and so does the directory's
 `__init__.py`.
 
-Three tests use a subprocess anyway, and only these three: the two import-inertness
+Five tests use a subprocess anyway, and only these five: the two import-inertness
 tests, which need an interpreter that has not imported the module yet, and the
 three end-to-end `python -m` cases.
+
+The group counts below were taken from `pytest --collect-only`, not from reading:
 
 | group | ids | what they pin |
 |---|---|---|
 | import inertness | 2 | importing parses no command line and calls no `sys.exit` (G1); importing registers no `pds.validation` logger and sets no log root |
-| option derivation | 17 | B1 ×3; `--all`/`--full` defaults; `--all` overriding a narrower set; one-flag selection; the `dependencies &= 'volumes' in voltypes` and `linkshelves &= …` narrowing; `--timeless` surviving only with `--dependencies`; the derived values landing back on `args`; and that two derivations do not share a list |
-| log parsing | 17 | `get_log_info` on good, error, fatal, truncated, empty, one-line (B7), other-tool and no-modification-line logs; `volume_abspath_from_log` on good and empty; `key_from_volume_abspath`; `get_all_log_info` over a `tmp_path` tree — newest-wins, FATAL fallback, the path-disagreement branch, non-log files, and a malformed log not aborting the scan (B7) |
+| option derivation | 20 | B1 ×3; `--all`/`--full` defaults; `--all` overriding a narrower set; one-flag selection; the `dependencies &= 'volumes' in voltypes` and `linkshelves &= …` narrowing, the latter over each of the three volume types a link shelf exists for; `--timeless` surviving only with `--dependencies`; the derived values landing back on `args`; and that two derivations do not share a list |
+| log parsing | 19 | `get_log_info` on good, error, fatal, truncated, empty, one-line (B7), other-tool and no-modification-line logs; `volume_abspath_from_log` on good and empty; `key_from_volume_abspath`; `key_from_log_path` (B3), including that it agrees with the key the batch scan derives inline; `get_all_log_info` over a `tmp_path` tree — newest-wins, FATAL fallback, the path-disagreement branch, non-log files, and a malformed log not aborting the scan (B7) |
 | `find_modified_volumes` | 6 | modified, unmodified, missing, the tree-relocation redirect, oldest-first ordering, and B11 |
 | missing-volume report | 3 | B2, plus the two controls that keep it honest |
+| `validate_one_volume` | 6 | B4 ×2 (plain and `--timeless`), B6, B5, the six misspelling sites, and the closing test count — all driven over a real temporary volume tree with the five sibling tools and the logger stubbed |
 | the email message | 4 | built without a socket: one address as a string, a `str` subclass (B9), a list, and the exact header block |
-| exit codes | 13 | §8 |
+| exit codes and `main` | 13 | §8, plus that `main(argv)` parses and forwards the argv it is given and defaults to `sys.argv` |
 
 `send_email` was split: `format_email(to_addr, subject, message, date=None)` builds
 the recipients and the message text and is what the tests call; `send_email` opens
@@ -639,10 +711,19 @@ the tool now imports them.
 
 ## 11. Decisions the owner might make differently
 
-1. **`key_from_log_path` was deleted, not fixed** (§2.3). It is uncalled and every
-   call raises `NameError`, so nothing can depend on it, and no manifest covers it.
-   The alternative is to fix its body to use its own `log_path` parameter and keep
-   it. Deleting removes a name; fixing keeps a function nothing calls.
+1. **`key_from_log_path` and `MAX_INFO` are kept, not deleted** (§2.3, §2.8).
+   Both are unreachable — the function raises on every call, the constant is read
+   nowhere — and the first draft deleted both. Ground rule 9 says *"Nothing is
+   deleted for being 'probably dead'"*, so both are restored: the function with its
+   bug fixed and two tests, the constant as it was, with a comment saying it is
+   unread. If the owner reads ground rule 9 as being about *features* rather than
+   about every name, both could go.
+
+   One deletion **is** in the diff and cannot be undone: `roots = set()`, base
+   `:623`, an interactive-mode local that was assigned and never read. At module
+   level ruff does not flag it; as a local of `run_interactive` it is an `F841`,
+   and absorbing a new code would widen the ratchet, which is prohibited. So the
+   refactor forces the choice between deleting it and widening. It is deleted.
 2. **G5 was shared** (§10). The alternative reading of "only a little, put in same
    file" is that five lines are too few to move and the tool should keep its own
    copy. Sharing it means `run_main` — the path all eleven migrated tools take —
@@ -695,3 +776,10 @@ Three, all of them flagged where they appear:
 - `send_email`'s socket half. Deliberate: no test opens a socket.
 - `scripts/check_runtime_imports.py` still covers seven core modules only and not
   the tool modules. Out of scope by the brief; filed as deferred observation 105.
+- The `--batch-status` **output format** is pinned by nothing:
+  `test_batch_status_exits_0` drives `print_batch_status([], [])` and asserts the
+  exit and that nothing is printed, not the two `%`-format column layouts. The
+  base-vs-head run diff in §7.2 is what covers the format for this PR, and it is
+  not a standing regression test. Building one means a `Pds3File` per row, so it
+  belongs with the holdings-backed tool tests rather than in a `holdings_free`
+  module.

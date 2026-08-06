@@ -21,6 +21,7 @@
 import os
 import subprocess
 import sys
+import types
 
 import pytest
 
@@ -30,6 +31,13 @@ from pdsfile.holdings_maintenance.pds3 import re_validate
 pytestmark = pytest.mark.holdings_free
 
 LOGNAME = 'pds.validation'
+
+
+class Namespace:
+    """A stand-in for the parsed command line, holding only what a test sets."""
+
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
 
 
 def subprocess_env():
@@ -420,6 +428,29 @@ def test_key_from_volume_abspath():
         '/h/holdings/volumes/VS_1xxx/VOL_0001') == 'VS_1xxx/VOL_0001')
 
 
+def test_key_from_log_path():
+    """The key is the log's parent directory and the basename up to the time tag.
+
+    This used to read a bare `abspath` that was neither its parameter nor a local,
+    so every call raised NameError; it resolved to a name at all only because the
+    module-level program left one bound as a global.
+    """
+
+    assert (re_validate.key_from_log_path(
+        '/logs/re-validate/VS_1xxx/VOL_0001_re-validate_2026-01-02T03-04-05.log')
+        == 'VS_1xxx/VOL_0001')
+
+
+def test_key_from_log_path_agrees_with_the_key_get_all_log_info_builds(tmp_path):
+    """It returns the same key the batch scan derives inline for the same log."""
+
+    path = write_log(str(tmp_path / 'VS_1xxx'), 'VOL_0001',
+                     abspath='/h/holdings/volumes/VS_1xxx/VOL_0001')
+    (_info, logs_for_key) = re_validate.get_all_log_info(str(tmp_path))
+
+    assert re_validate.key_from_log_path(path) in logs_for_key
+
+
 def test_get_all_log_info_finds_one_log_per_volume(tmp_path):
     """Every volume with a usable log contributes one entry, keyed by volset/volume."""
 
@@ -665,6 +696,198 @@ def test_missing_volume_with_only_empty_logs_is_not_reported(tmp_path):
 
 
 ##########################################################################################
+# validate_one_volume, driven against a temporary tree with the five sibling tools
+# and the logger replaced
+##########################################################################################
+
+class StubLogger:
+    """Records what validate_one_volume logs, instead of logging it."""
+
+    def __init__(self):
+        self.opens = []
+        self.infos = []
+        self.exceptions = []
+
+    def blankline(self):
+        pass
+
+    def open(self, message, path=None, **_kwargs):
+        self.opens.append((message, path))
+
+    def info(self, message, path=None, **_kwargs):
+        self.infos.append((message, path))
+
+    def error(self, message, path=None, **_kwargs):
+        pass
+
+    def close(self):
+        return (0, 0, 0, 0)
+
+    def exception(self, e):
+        self.exceptions.append(e)
+
+
+class StubBatchLogger(StubLogger):
+    """A StubLogger that also answers the calls the batch driver makes."""
+
+    def add_root(self, root):
+        pass
+
+    def add_handler(self, handler):
+        pass
+
+
+class StubPdsdir:
+    """The attributes the tool reads off a volume directory."""
+
+    def __init__(self, abspath):
+        self.abspath = abspath
+        self.date = '2026-01-01'
+        self.root_ = abspath.split('/volumes/')[0] + '/'
+        self.volset_ = 'VS_1xxx/'
+        self.volname = abspath.rstrip('/').rpartition('/')[2]
+
+
+@pytest.fixture
+def volume_tree(tmp_path, monkeypatch):
+    """Return a real volume directory, with everything outside the tool stubbed.
+
+    The directory tree is real, so os.path.exists and glob.glob are the genuine
+    functions answering about genuine paths. What is replaced is only what reaches
+    outside this module: the log-path helper, the pdslogger handler factories, the
+    PdsFile class, and the five sibling tools whose own modules test them.
+    """
+
+    holdings = tmp_path / 'holdings'
+    for voltype in re_validate.ALL_VOLTYPES:
+        (holdings / voltype / 'VS_1xxx' / 'VOL_0001').mkdir(parents=True)
+
+    logfiles = [str(tmp_path / 'a' / 'volumes' / 'VOL_0001_re-validate_x.log'),
+                str(tmp_path / 'b' / 'volumes' / 'VOL_0001_re-validate_x.log')]
+
+    calls = []
+    monkeypatch.setattr(re_validate._common, 'log_paths_for',
+                        lambda *a, **k: list(logfiles))
+    monkeypatch.setattr(re_validate.pdslogger, 'file_handler', lambda p: ('file', p))
+    monkeypatch.setattr(re_validate.pdslogger, 'error_handler', lambda d: ('err', d))
+    monkeypatch.setattr(re_validate, 'pdsfile', types.SimpleNamespace(
+        Pds3File=types.SimpleNamespace(from_abspath=StubPdsdir)))
+    for name in ('pdschecksums', 'pdsarchives', 'pdsinfoshelf', 'pdslinkshelf'):
+        monkeypatch.setattr(re_validate, name, types.SimpleNamespace(
+            validate=lambda *a, **k: calls.append('validate')))
+    monkeypatch.setattr(re_validate, 'pdsdependency', types.SimpleNamespace(
+        test=lambda *a, **k: calls.append('dependency')))
+
+    return types.SimpleNamespace(
+        pdsdir=StubPdsdir(str(holdings / 'volumes' / 'VS_1xxx' / 'VOL_0001')),
+        holdings=holdings, logfiles=logfiles, calls=calls)
+
+
+def run_one_volume(volume_tree, logger, **flags):
+    """Run validate_one_volume over the tree with every test enabled by default."""
+
+    args = Namespace(checksums=True, archives=True, infoshelves=True,
+                     linkshelves=True, dependencies=True, timeless=False)
+    args.__dict__.update(flags)
+
+    return re_validate.validate_one_volume(volume_tree.pdsdir,
+                                           list(re_validate.ALL_VOLTYPES),
+                                           ['checksums'], args, logger)
+
+
+def test_the_dependency_line_names_the_volume(volume_tree):
+    """The dependency test is logged against the volume it is about.
+
+    It used to log a bare `abspath` left over from an earlier per-voltype loop. In
+    the common case -- no archive tarballs present -- that was the empty list
+    glob.glob had just returned, and PdsLogger renders a falsy filepath as no path
+    at all, so the line named nothing.
+    """
+
+    logger = StubLogger()
+    run_one_volume(volume_tree, logger)
+
+    dependency = [o for o in logger.opens if 'ependency re-validation' in o[0]]
+
+    assert dependency == [('Dependency re-validation for',
+                           volume_tree.pdsdir.abspath)]
+
+
+def test_the_timeless_dependency_line_names_the_volume(volume_tree):
+    """The --timeless wording is logged against the volume too."""
+
+    logger = StubLogger()
+    run_one_volume(volume_tree, logger, timeless=True)
+
+    dependency = [o for o in logger.opens if 'ependency re-validation' in o[0]]
+
+    assert dependency == [('Timeless dependency re-validation for',
+                           volume_tree.pdsdir.abspath)]
+
+
+def test_the_archive_checksum_block_runs(volume_tree):
+    """The per-archive checksum pass reads the parsed command line, not a global.
+
+    `if checksums and args.archives` read a module global that only existed
+    because the whole program ran at import. Under a main() the name is a local of
+    main(), so the read raises NameError -- and the bare `except Exception` around
+    this loop swallows it, so the block would simply have stopped running with
+    nothing but a logged traceback to show for it.
+    """
+
+    archives = volume_tree.holdings / 'archives-volumes' / 'VS_1xxx'
+    archives.mkdir(parents=True)
+    (archives / 'VOL_0001.tar.gz').write_bytes(b'')
+
+    logger = StubLogger()
+    run_one_volume(volume_tree, logger)
+
+    assert logger.exceptions == []
+    assert ('Checksum re-validation for',
+            str(archives / 'VOL_0001.tar.gz')) in logger.opens
+
+
+def test_no_log_message_misspells_re_validation(volume_tree):
+    """Every per-test log line says "re-validation"."""
+
+    logger = StubLogger()
+    run_one_volume(volume_tree, logger)
+
+    messages = [o[0] for o in logger.opens]
+
+    assert messages, 'no log lines were captured, so this assertion is vacuous'
+    assert not [m for m in messages if 're-validatation' in m]
+    assert [m for m in messages if 're-validation' in m]
+
+
+def test_the_returned_log_path_is_the_last_one_written(volume_tree):
+    """The returned path is the last log path, with the '/volumes/' level dropped.
+
+    Batch mode prints it in its error messages. It used to be a loop variable that
+    leaked out of the handler loop; it is now taken from the list explicitly, and
+    the value is deliberately unchanged.
+    """
+
+    logger = StubLogger()
+    (log_path, fatal, errors) = run_one_volume(volume_tree, logger)
+
+    assert log_path == volume_tree.logfiles[-1].replace('/volumes/', '/')
+    assert (fatal, errors) == (0, 0)
+
+
+def test_a_test_count_is_logged(volume_tree):
+    """The closing line counts the tests that ran, against the volume."""
+
+    logger = StubLogger()
+    run_one_volume(volume_tree, logger)
+
+    counts = [i for i in logger.infos if 're-validation test' in i[0]]
+
+    assert len(counts) == 1
+    assert counts[0][1] == volume_tree.pdsdir.abspath
+
+
+##########################################################################################
 # The email report
 ##########################################################################################
 
@@ -724,13 +947,6 @@ def format_message(to_addr):
 ##########################################################################################
 # Exit codes
 ##########################################################################################
-
-class Namespace:
-    """A stand-in for the parsed command line, holding only what a test sets."""
-
-    def __init__(self, **kwargs):
-        self.__dict__.update(kwargs)
-
 
 def test_interactive_mode_with_no_path_exits_1(capsys):
     """Naming no volume is an error, reported before anything is logged."""
@@ -804,6 +1020,84 @@ def test_batch_status_exits_0(capsys):
     # sys.exit() with no argument, whose code is None and whose status is 0.
     assert exc.value.code is None
     assert capsys.readouterr().out == ''
+
+
+def test_batch_mode_exits_0_even_after_a_fatal(tmp_path, monkeypatch, capsys):
+    """Batch mode reports success whatever the run logged.
+
+    A nonzero status would cancel the launch daemon that schedules the run, so the
+    exit is 0 even when a volume logged a fatal. This is the deliberate choice the
+    commented-out `sys.exit(status)` used to sit beside.
+    """
+
+    holdings = tmp_path / 'holdings'
+    (holdings / 'volumes' / 'VS_1xxx' / 'VOL_0001').mkdir(parents=True)
+
+    monkeypatch.setattr(re_validate, 'pdsfile', types.SimpleNamespace(
+        Pds3File=types.SimpleNamespace(from_abspath=StubPdsdir)))
+    monkeypatch.setattr(re_validate, 'get_volume_info',
+                        lambda h: [(str(holdings / 'volumes/VS_1xxx/VOL_0001'), 'x')])
+    # One fatal and one error, which in interactive mode would make the status 1.
+    monkeypatch.setattr(re_validate, 'validate_one_volume',
+                        lambda *a, **k: ('/logs/VOL_0001.log', 1, 1))
+
+    args = Namespace(volume=[str(holdings)], log=str(tmp_path / 'logs'),
+                     batch_status=False, minutes=60, email=[], error_email=[])
+
+    with pytest.raises(SystemExit) as exc:
+        re_validate.run_batch(args, ['volumes'], ['checksums'], StubBatchLogger(),
+                              ['re_validate.py', '--batch', str(holdings)])
+
+    assert exc.value.code == 0
+    assert '***** Fatal = 1; Errors = 1; /logs/VOL_0001.log' in capsys.readouterr().out
+
+
+def test_main_uses_the_argv_it_is_given(monkeypatch):
+    """main(argv) parses that argv and hands the same list to the mode it selects.
+
+    Everything main() reaches outside itself is replaced, so this test builds no
+    logger and sets no log root on the real PdsFile class.
+    """
+
+    seen = {}
+    monkeypatch.setattr(re_validate.pdslogger, 'PdsLogger',
+                        lambda *a, **k: StubBatchLogger())
+    monkeypatch.setattr(re_validate, 'pdsfile', types.SimpleNamespace(
+        Pds3File=types.SimpleNamespace(
+            set_log_root=lambda root: seen.__setitem__('log_root', root))))
+    monkeypatch.setattr(re_validate, 'run_interactive',
+                        lambda args, voltypes, tests, logger, argv:
+                        seen.update(args=args, voltypes=voltypes, tests=tests,
+                                    argv=argv))
+    monkeypatch.delenv(re_validate._common.LOGROOT_ENV, raising=False)
+
+    argv = ['re_validate.py', '--quiet', '--previews', '/some/volume']
+    re_validate.main(argv)
+
+    assert seen['argv'] is argv
+    assert seen['args'].volume == ['/some/volume']
+    assert seen['args'].quiet is True
+    assert seen['voltypes'] == ['previews']
+    assert seen['log_root'] is None
+
+
+def test_main_defaults_to_sys_argv(monkeypatch):
+    """With no argument, main() reads sys.argv."""
+
+    seen = {}
+    monkeypatch.setattr(re_validate.pdslogger, 'PdsLogger',
+                        lambda *a, **k: StubBatchLogger())
+    monkeypatch.setattr(re_validate, 'pdsfile', types.SimpleNamespace(
+        Pds3File=types.SimpleNamespace(set_log_root=lambda root: None)))
+    monkeypatch.setattr(re_validate, 'run_batch',
+                        lambda args, voltypes, tests, logger, argv:
+                        seen.update(argv=argv))
+    monkeypatch.delenv(re_validate._common.LOGROOT_ENV, raising=False)
+    monkeypatch.setattr(sys, 'argv', ['re_validate.py', '--batch-status', '/h'])
+
+    re_validate.main()
+
+    assert seen['argv'] == ['re_validate.py', '--batch-status', '/h']
 
 
 def test_the_program_exits_1_with_no_arguments():

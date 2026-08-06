@@ -819,9 +819,10 @@ them forced by the move into a function scope because they read module globals t
 a function scope does not supply. New `tests/holdings_maintenance/test_re_validate.py`,
 marked `holdings_free` and run in-process. The ruff entry shrinks from ten codes to
 two. **Two `--help` lines change**, both because the hand-copied help text is
-replaced by the `_common` constant it duplicated, and **six log lines** lose the
-misspelling `re-validatation`; every one is enumerated in
-`critiques/pr-25a-validation.md`.
+replaced by the `_common` constant it duplicated, and **six log message sites**
+lose the misspelling `re-validatation` -- 18 rendered lines in a default run,
+since each site is reached once per applicable volume type. Every changed line is
+enumerated and attributed in `critiques/pr-25a-validation.md`.
 
 **PR-26 (L)** `refactor: migrate checksums and infoshelf pairs onto the core`
 Fix the pds3 bugs, each with a test — but **decide the intended semantics; do
