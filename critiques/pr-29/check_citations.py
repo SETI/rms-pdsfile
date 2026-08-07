@@ -85,14 +85,26 @@ CITATIONS = [
     ('src/pdsfile/pdscache.py', 1678, 'lost from memcache'),
     ('src/pdsfile/pdscache.py', 1679, "self.mc.set('$CLEAR_COUNT', clear_count, time=0)"),
     ('src/pdsfile/pdscache.py', 1775, 'Permanent object is TooBig'),
-    ('src/pdsfile/pdsviewable.py', 330, 'for sub_viewable in viewable.viewables:'),
-    ('src/pdsfile/pdsviewable.py', 332, 'return'),
-    ('src/pdsfile/pdsviewable.py', 455, 'viewable.for_frame(200,200)'),
-    ('src/pdsfile/pdsviewable.py', 472, 'viewable.for_frame(400,400)'),
-    ('src/pdsfile/pdsviewable.py', 811, "rpartition('/jpg-')"),
-    ('src/pdsfile/pdsviewable.py', 827, "not in ('.png', 'jpg')"),
-    ('src/pdsfile/pdsviewable.py', 835, 'except Image.UnidentifiedImageError:'),
-    ('src/pdsfile/pdsviewable.py', 838, 'continue'),
+    ('src/pdsfile/pdsviewable.py', 92, 'self.width_over_height = float'),
+    ('src/pdsfile/pdsviewable.py', 93, 'self.height_over_width = float'),
+    ('src/pdsfile/pdsviewable.py', 340, 'for sub_viewable in viewable.viewables:'),
+    ('src/pdsfile/pdsviewable.py', 342, 'return'),
+    ('src/pdsfile/pdsviewable.py', 344, 'self.viewables.add(viewable)'),
+    ('src/pdsfile/pdsviewable.py', 347, 'if viewable.name:'),
+    ('src/pdsfile/pdsviewable.py', 465, 'viewable.for_frame(200,200)'),
+    ('src/pdsfile/pdsviewable.py', 482, 'viewable.for_frame(400,400)'),
+    ('src/pdsfile/pdsviewable.py', 675, 'full_viewable = viewable'),
+    ('src/pdsfile/pdsviewable.py', 677, 'viewables.append(viewable)'),
+    ('src/pdsfile/pdsviewable.py', 835, "rpartition('/png-')"),
+    ('src/pdsfile/pdsviewable.py', 837, "rpartition('/jpg-')"),
+    ('src/pdsfile/pdsviewable.py', 853, "not in ('.png', 'jpg')"),
+    ('src/pdsfile/pdsviewable.py', 861, 'except Image.UnidentifiedImageError:'),
+    ('src/pdsfile/pdsviewable.py', 864, 'continue'),
+    ('src/pdsfile/pdsviewable.py', 866, '(width, height) = im.size'),
+    ('src/pdsfile/pdsviewable.py', 888, "key_base.replace('document_', '')"),
+    ('src/pdsfile/pdsviewable.py', 889, "icon_name.replace('folder_', '')"),
+    ('src/pdsfile/pdsviewable.py', 911, 'if (icon_name, True) not in ICON_SET_BY_TYPE:'),
+    ('src/pdsfile/pdsviewable.py', 982, 'return ICON_SET_BY_TYPE[icon_type, is_open]'),
     ('src/pdsfile/pdsfile.py', 304, 'DICTIONARY_CACHE_LIMIT = 200000'),
     ('src/pdsfile/pdsfile.py', 1088, "return ''"),
     ('src/pdsfile/pdsfile.py', 1097, "return ''"),
@@ -233,7 +245,7 @@ def check_scope_table(problems):
 
     # The record's scope table gives base line counts, which this tree cannot answer;
     # these are the head counts the same table carries.
-    expected_lines = {'pdsfile.py': 2360, 'pdscache.py': 1780, 'pdsviewable.py': 954,
+    expected_lines = {'pdsfile.py': 2360, 'pdscache.py': 1780, 'pdsviewable.py': 984,
                       '__init__.py': 39, 'preload_and_cache.py': 46}
     classes = functions = parameters = 0
     for name in IN_SCOPE:

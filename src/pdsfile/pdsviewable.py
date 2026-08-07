@@ -17,10 +17,11 @@ Three things live here:
     on a page by the icon set matching its icon type.
 
 Sizes are in pixels throughout and byte counts are in bytes. A ``PdsViewable`` returned
-by a size lookup is a scaled copy rather than a member of the set: its width and height
-are the numbers asked for, not the dimensions of any file on disk. Its ``abspath`` and
-``url`` still name the file that was chosen, which is the one whose stored size is the
-smallest that is at least as large as the request.
+by a size lookup is a scaled copy rather than a member of the set: the dimension asked
+for is exactly what was asked for, and the other is derived from it, so neither describes
+any file on disk. Its ``abspath`` and ``url`` still name the file that was chosen, which
+is the one whose stored size is the smallest that is at least as large as the request, or
+the largest stored size when every one of them is smaller.
 
 ``REQUIRED_ICONS`` maps an icon file's basename to the icon type it supplies and that
 type's priority. When one icon has to stand for several grouped files, the highest
@@ -116,8 +117,11 @@ class PdsViewable:
     def copy(self):
         """Return a separate viewable carrying all the same values.
 
-        Every attribute is passed on, including the name and the ``PdsFile``. The
-        ``PdsFile`` is shared rather than duplicated.
+        The eight stored attributes are passed on, including the name and the
+        ``PdsFile``, which is shared rather than duplicated. The two aspect ratios are
+        not: they are recomputed from the copied width and height. On an ordinary
+        viewable that makes no difference, but copying a scaled copy replaces the source
+        image's ratios with the scaled copy's own.
 
         Returns:
             PdsViewable: the copy.
@@ -141,8 +145,8 @@ class PdsViewable:
                 ``'url'`` and ``'alt'``.
 
         Returns:
-            dict: the attribute values, keyed by attribute name, except that the byte
-            count is keyed ``'bytes'``.
+            dict: the attribute values, keyed by attribute name. The byte count is
+            therefore keyed ``'bytes'``, not by the constructor's name for it.
         """
 
         d = {'width':  self.width,
@@ -228,10 +232,13 @@ class PdsViewSet:
     indexes in ascending order. ``priority`` ranks one set against another and matters
     only for icon sets.
 
-    A named viewable is indexed by name and, by default, not by size, so it can be
-    requested explicitly but is never returned by a size lookup. That is how a "full"
-    product that does not resemble its own smaller versions -- because the small ones
-    are color-coded and it is not -- stays out of the sizes a page picks from.
+    A named viewable is indexed by name and, by default, not by size. That is how a
+    "full" product that does not resemble its own smaller versions -- because the small
+    ones are color-coded and it is not -- stays out of the sizes a page picks from. It
+    stays out only while there is something else to pick: a size lookup on a set with
+    nothing indexed by size falls back to the member named "full", and failing that to an
+    arbitrary member, so a set holding named viewables alone serves them from every
+    lookup.
 
     Because ``by_width`` and ``by_height`` hold one viewable per distinct dimension, two
     members of the same width leave only one of them reachable by width; an unnamed
@@ -243,7 +250,7 @@ class PdsViewSet:
 
         Parameters:
             viewables: the ``PdsViewable`` objects to append, as any iterable. The
-                default is an empty set.
+                default is an empty list, which gives a set with no members.
             priority (int): rank of this set against other sets. Used when several icon
                 sets could represent the same group of files.
             include_named_in_sizes (bool): if True, a named viewable is indexed by size
@@ -267,8 +274,8 @@ class PdsViewSet:
     def __bool__(self):
         """Report whether this set holds any viewable at all.
 
-        A set holding only named viewables is true even though its lookups by size have
-        nothing to offer.
+        A set holding only named viewables is true and has a length of zero, since the
+        length counts what is indexed by size.
 
         Returns:
             bool: True if the set has at least one member.
@@ -314,7 +321,10 @@ class PdsViewSet:
         slot from a named one; between two unnamed ones, the later call wins.
 
         Passing a ``PdsViewSet`` rather than a ``PdsViewable`` adds exactly one of that
-        set's members, chosen arbitrarily, and ignores the rest.
+        set's members, chosen arbitrarily, and ignores the rest. Passing an *empty*
+        ``PdsViewSet`` is worse: it falls through to the code that indexes a viewable,
+        which puts the set object itself among this set's members and then raises
+        AttributeError. Every later size lookup on the damaged set fails too.
 
         Parameters:
             viewable: the ``PdsViewable`` to add.
@@ -390,8 +400,8 @@ class PdsViewSet:
         Parameters:
             exclude: names of the optional member attributes to leave out, passed
                 through to each member's ``to_dict()``. The default drops the absolute
-                path and the alt text, which leaves a dictionary that describes the
-                images by URL alone.
+                path and the alt text, which leaves the images described by URL, size and
+                byte count, plus the name of any member that has one.
 
         Returns:
             dict: the encoded set.
@@ -510,9 +520,9 @@ class PdsViewSet:
         arbitrary member.
 
         The result is a copy whose width is exactly ``size`` and whose height is
-        ``size`` times the source image's height-to-width ratio, rounded and forced to
-        at least 1. Its byte count and aspect ratios are the source image's and do not
-        describe the scaled dimensions.
+        ``size`` times the source image's height-to-width ratio, rounded half up and
+        forced to at least 1. Its byte count and aspect ratios are the source image's and
+        do not describe the scaled dimensions.
 
         Parameters:
             size (int): the target width in pixels.
@@ -552,9 +562,9 @@ class PdsViewSet:
         an arbitrary member.
 
         The result is a copy whose height is exactly ``size`` and whose width is
-        ``size`` times the source image's width-to-height ratio, rounded and forced to
-        at least 1. Its byte count and aspect ratios are the source image's and do not
-        describe the scaled dimensions.
+        ``size`` times the source image's width-to-height ratio, rounded half up and
+        forced to at least 1. Its byte count and aspect ratios are the source image's and
+        do not describe the scaled dimensions.
 
         Parameters:
             size (int): the target height in pixels.
@@ -625,7 +635,9 @@ class PdsViewSet:
 
         When ``full_is_special`` is True, a file whose logical path contains ``_full.``
         is named "full" and appended after the others, which leaves it reachable by name
-        and out of the lookups by size.
+        and out of the lookups by size. Only one such file survives: each one replaces
+        the one before it, and the replaced ones are not added to the set at all, so a
+        group with two of them keeps the last and loses the first entirely.
 
         Parameters:
             pdsfiles: the ``PdsFile`` objects, as a list or a tuple. A single object may
@@ -762,13 +774,18 @@ def load_icons(path, url, color='blue', logger=None):
     are JPEG files. Each image becomes a ``PdsViewable``, and the images sharing a
     basename become one ``PdsViewSet``.
 
-    An image's nominal size comes from the first path component of the form ``png-<n>``
-    or ``jpg-<n>`` above it; where there is none, the larger of the image's own two
-    dimensions is used instead. A set is stored under the icon type and priority that
-    ``REQUIRED_ICONS`` gives for its basename. A basename that is not listed there
-    supplies its own type, which is the basename uppercased with any leading
-    ``document_`` or ``folder_`` removed, and takes priority 99999, above every listed
-    type.
+    An image's nominal size is what distinguishes two images sharing a basename, and is
+    what ``REQUIRED_SIZES`` is checked against; it is not the size the image is indexed
+    under within its set, which is always the image's own width and height. It is read
+    from the deepest path component of the form ``png-<n>`` above the image, or, only if
+    there is no such component at all, from the deepest ``jpg-<n>``. Where there is
+    neither, the larger of the image's own two dimensions is used.
+
+    A set is stored under the icon type and priority that ``REQUIRED_ICONS`` gives for
+    its basename. A basename that is not listed there supplies its own type, which is the
+    basename uppercased with ``document_`` and ``folder_`` removed -- every occurrence,
+    not just a leading one, so ``page_folder_icon`` supplies ``PAGE_ICON`` -- and takes
+    priority 99999, above every listed type.
 
     A basename ending in ``_open`` supplies the open form of its type. Each set is
     stored under the key ``(icon_type, is_open)``; a closed set is also stored under
@@ -776,13 +793,22 @@ def load_icons(path, url, color='blue', logger=None):
     yet. When ``color`` is given, the set is stored under ``(icon_type, is_open, color)``
     as well, so icons of several colors can be held at once.
 
-    The call may be repeated over different directories. Nothing is removed, but a set
-    read later replaces one read earlier under the same key.
+    The call may be repeated over different directories. Nothing is removed, and a set
+    read later replaces one read earlier under the same key -- except under
+    ``(icon_type, True)``, whose test for an existing entry does not distinguish one
+    left by an earlier call from one left by this call. A directory read second therefore
+    supplies the closed icons and leaves the first directory's open icons in place, which
+    is the key ``iconset_for(..., is_open=True)`` reads.
 
-    With a logger, an unreadable image file is reported and skipped, and a set missing
-    any of ``REQUIRED_SIZES`` is reported. Without one, an unreadable image file is
-    neither reported nor skipped: it is stored, carrying the dimensions of whichever
-    image was read before it.
+    With a logger, an image file that is not a recognizable image is reported and
+    skipped, and a set missing any of ``REQUIRED_SIZES`` is reported. Without one, such a
+    file is neither reported nor skipped: it is stored, carrying the dimensions of
+    whichever image was read before it, and if it is the first image the walk reaches
+    there is no such previous image and the call raises UnboundLocalError.
+
+    Only an unrecognizable image is handled at all. Any other failure to open a file --
+    a broken symlink, a permission error -- propagates out of the call, logger or no
+    logger.
 
     Parameters:
         path (str): path to the directory tree holding the icon files.
@@ -895,12 +921,13 @@ def load_icons(path, url, color='blue', logger=None):
 def _priority_of_icon_type(icon_type, is_open):
     """Return the priority of the icon set for this icon type and open state.
 
-    load_icons() copies the priority out of REQUIRED_ICONS into every PdsViewSet
-    it creates, so the loaded icon sets are the authority on priority. The lookup
-    is keyed on the open state that is actually being requested, so an icon type
-    can only win a comparison if the set that would then be returned exists.
-    A type with no icon set for this open state has no priority and gets zero,
-    the same value as the least descriptive icon.
+    load_icons() puts a priority into every PdsViewSet it creates -- the one
+    REQUIRED_ICONS gives for a listed basename, and 99999 for any other -- so the
+    loaded icon sets are the authority on priority. The lookup is keyed on the open
+    state that is actually being requested, so an icon type can only win a
+    comparison if the set that would then be returned exists. A type with no icon
+    set for this open state has no priority and gets zero, the same value as the
+    least descriptive icon.
 
     Parameters:
         icon_type (str): the icon type, as it appears in ``REQUIRED_ICONS``.
@@ -920,11 +947,14 @@ def iconset_for(pdsfiles, is_open=False):
     """Return the one icon set that best represents a group of files.
 
     Each file offers its own icon type, and the type with the highest priority wins. The
-    comparison starts from ``UNKNOWN``, so that type is returned when the group is empty
-    or when no file offers a type that has been loaded for this open state.
+    comparison starts from ``UNKNOWN``, which is what an empty group leaves standing, and
+    what a group whose every type is unloaded for this open state leaves standing too.
 
-    ``load_icons()`` must have run first. Nothing is loaded by default, so on an
-    untouched ``ICON_SET_BY_TYPE`` this raises KeyError.
+    ``UNKNOWN`` is not checked for existence before it is looked up, so the lookup can
+    fail on the fallback rather than on the group. The requirement is that
+    ``load_icons()`` has loaded a ``document_generic`` icon for the open state being
+    asked for, and not merely that it has run: without one, this raises KeyError for
+    every group whose types are all unloaded, the empty group included.
 
     Parameters:
         pdsfiles: the ``PdsFile`` objects, as a list. A single object may be passed

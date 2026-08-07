@@ -3916,7 +3916,7 @@ of them has a module docstring at all.
 153. **`PdsViewSet.small` and `PdsViewSet.medium` raise `AttributeError` whenever their
      fallback is reached.** Each looks for a member whose path contains `_small` or
      `_med` and, finding none, executes `viewable = viewable.for_frame(200,200)` with
-     `viewable` bound to `None` (`pdsviewable.py:455`, `:472`). Two faults in one line:
+     `viewable` bound to `None` (`pdsviewable.py:465`, `:482`). Two faults in one line:
      the receiver is the value just tested as false, and `for_frame` is a method of
      `PdsViewSet`, not of `PdsViewable`, so `self.for_frame(...)` is what was meant.
      Verified by running: a two-member set with no `_small` in either path answers
@@ -3928,7 +3928,7 @@ of them has a module docstring at all.
 
 154. **`PdsViewSet.append` given a `PdsViewSet` adds exactly one of its members.** The
      recursive branch is `for sub_viewable in viewable.viewables: self.append(sub_viewable);
-     return`, with the `return` inside the loop (`pdsviewable.py:330-332`), so the first
+     return`, with the `return` inside the loop (`pdsviewable.py:340-342`), so the first
      iteration returns. Which member survives depends on the iteration order of a Python
      set, so the result is not even deterministic. Verified by running: appending a
      two-member set to an empty one leaves one member. Moving the `return` out of the loop
@@ -3936,10 +3936,10 @@ of them has a module docstring at all.
      currently mishandles silently. **Owner: a future pdsviewable PR.**
 
 155. **`load_icons` silently skips every JPEG icon.** The extension test is
-     `if ext.lower() not in ('.png', 'jpg'): continue` (`pdsviewable.py:827`) — the second
+     `if ext.lower() not in ('.png', 'jpg'): continue` (`pdsviewable.py:853`) — the second
      entry has no leading dot, and `os.path.splitext` always supplies one, so no file ever
      matches it. The surrounding code plainly expects JPEGs: the nominal-size guess looks
-     for a `jpg-<n>` directory component sixteen lines above, at `:811`. Verified by running: a
+     for a `jpg-<n>` directory component sixteen lines above, at `:835`. Verified by running: a
      directory holding `document_image.jpg` and `document_label.png` yields only the
      `LABEL` icon set. Adding the dot would start loading files that are not loaded today,
      which is a behavior change and not an executor's call. **Owner: a future pdsviewable
@@ -3947,7 +3947,7 @@ of them has a module docstring at all.
 
 156. **`load_icons` without a logger stores an unreadable image under the previous
      image's dimensions.** The handler is `except Image.UnidentifiedImageError:` followed
-     by `if logger:`, and the `continue` sits inside that `if` (`pdsviewable.py:835-838`).
+     by `if logger:`, and the `continue` sits inside that `if` (`pdsviewable.py:861-864`).
      With a logger the file is reported and skipped; without one, execution falls through
      to `(width, height) = im.size`, where `im` is still the last image successfully
      opened. Verified by running: a corrupt `broken.png` beside a valid 50x50 file
@@ -4159,3 +4159,76 @@ of them has a module docstring at all.
      has no such attribute, so it is not part of the shared interface either. It is a
      public attribute name, so removing it is not free. Same shape as entry 164.
      **Owner: a future cleanup PR, or PR-35 when it decides what the stubs declare.**
+
+### Added by the PR-29 adversarial review (round 2, `pdsviewable.py`)
+
+177. **`PdsViewSet.append` given an *empty* `PdsViewSet` puts the set object into the
+     members and then raises.** Entry 154 covers the non-empty case, where the `return`
+     inside the loop (`pdsviewable.py:340`) leaves all but one member behind. With an
+     empty set the loop body never runs at all, so control falls past the recursive
+     branch to `self.viewables.add(viewable)` (`:344`) and then to `if viewable.name:`
+     (`:347`), which raises `AttributeError`. Verified by running:
+     `PdsViewSet().append(PdsViewSet())` raises, and the receiving set is left holding a
+     `PdsViewSet` among its viewables, so every later size lookup on it fails too. The
+     same one-line fix as entry 154 -- moving the `return` out of the loop -- does not
+     address this; the branch needs to return whether or not the loop ran. **Owner: a
+     future pdsviewable PR.**
+
+178. **A second `load_icons` call never replaces the open form of an icon type.** The
+     open-state key is written under `if (icon_name, True) not in ICON_SET_BY_TYPE:`
+     (`pdsviewable.py:911`), and the dictionary it tests is module-global, so an entry
+     left by an *earlier call* blocks the write just as one left by this call does.
+     Verified by running: loading two directories in turn, each holding only
+     `document_label.png`, leaves `('LABEL', False)` and `'LABEL'` pointing at the second
+     directory's set and `('LABEL', True)` still pointing at the first's, checked by
+     object identity. Since `iconset_for(..., is_open=True)` reads exactly that key, a
+     process that reloads icons from a new directory goes on serving the old directory's
+     open icons indefinitely. **Owner: a future pdsviewable PR.**
+
+179. **`load_icons`'s image-open failure handling has two more holes than entry 156
+     recorded.** Entry 156 covers the no-logger fall-through. Two further cases:
+
+     * If the *first* image the walk reaches is unreadable and there is no logger, `im`
+       has never been bound, and `(width, height) = im.size` (`pdsviewable.py:866`)
+       raises `UnboundLocalError` rather than mis-sizing anything. Verified by running
+       against a tree whose only `.png` is a text file.
+     * Only `Image.UnidentifiedImageError` is caught (`:861`). A broken symlink, a
+       missing file or a permission error propagates out of `load_icons` even with a
+       logger. Verified by running: a broken symlink named `document_label.png` gives
+       `FileNotFoundError` with a logger supplied.
+
+     **Owner: a future pdsviewable PR, together with entry 156.**
+
+180. **`iconset_for` raises `KeyError` unless a `document_generic` icon has been loaded
+     for the open state being asked for.** The fallback type `UNKNOWN` is never checked
+     for existence -- `_priority_of_icon_type` answers 0 for a missing key rather than
+     excluding the type -- so the final `ICON_SET_BY_TYPE[icon_type, is_open]`
+     (`pdsviewable.py:982`) can fail on the fallback. Verified by running: after loading
+     a tree holding only `document_cube.png`, both `iconset_for` on a file whose icon
+     type is `TABLE` and `iconset_for([])` raise `KeyError: ('UNKNOWN', False)`. The
+     failure is not confined to a caller who forgot to load icons; it reaches a caller
+     who loaded a partial set. **Owner: a future pdsviewable PR.**
+
+181. **`PdsViewSet.from_pdsfiles` drops every "full" product but the last.**
+     `full_viewable = viewable` (`pdsviewable.py:675`) overwrites on each match, and a
+     viewable named "full" never reaches `viewables.append` (`:677`, the `else` branch),
+     so a replaced one is not in the set at all rather than merely unindexed. Verified by
+     running: a group of `x_full.png`, `y_full.jpg` and `z_small.png` yields a set holding
+     only `y_full.jpg` and `z_small.png`. **Owner: a future pdsviewable PR.**
+
+182. **`PdsViewable.copy` recomputes the aspect ratios, so a copy of a scaled copy is not
+     equivalent to it.** The constructor derives both ratios from the width and height it
+     is given (`pdsviewable.py:92-93`), and `copy` passes the eight stored attributes and
+     nothing else. A viewable from `for_width()` carries the *source image's* ratios by
+     design, which is what makes a second scaling of it correct; copying it replaces them
+     with its own. Verified by running: a 1000x1 source scaled to width 1 has ratios
+     1000.0 and 0.001, and the copy of that has 1.0 and 1.0. **Owner: a future
+     pdsviewable PR.**
+
+183. **`load_icons` strips `document_` and `folder_` from anywhere in an icon basename,
+     not just the front.** `key_base.replace('document_', '')` and the `folder_` line
+     after it (`pdsviewable.py:888-889`) are `str.replace`, which is not anchored.
+     Verified by running: `my_document_thing.png` supplies the icon type `MY_THING` and
+     `x_folder_y.png` supplies `X_Y`. A custom icon named for a folder in the middle of
+     its name gets a type its author would not predict. **Owner: a future pdsviewable
+     PR.**
