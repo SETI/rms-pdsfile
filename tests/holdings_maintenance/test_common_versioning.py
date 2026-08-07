@@ -21,7 +21,7 @@
 import pdslogger
 import pytest
 
-from pdsfile.holdings_maintenance import _shelf_common
+from pdsfile.holdings_maintenance import _common, _shelf_common
 from pdsfile.holdings_maintenance.pds3 import pdschecksums, pdsinfoshelf, pdslinkshelf
 from pdsfile.holdings_maintenance.pds4 import pds4checksums, pds4infoshelf, pds4linkshelf
 
@@ -83,7 +83,7 @@ def version_once(kind, basename, extra_exts, tmp_path, monkeypatch, *,
     holdings.mkdir()
     logdir = tmp_path / 'logs'
     logdir.mkdir()
-    monkeypatch.setattr(_shelf_common, 'LOGDIRS', [str(logdir)])
+    monkeypatch.setattr(_common, 'LOGDIRS', [str(logdir)])
 
     target = build_target(holdings, basename, extra_exts)
     logger, logfile = capture(tmp_path)
@@ -134,7 +134,7 @@ def test_each_call_versions_one_past_the_highest_already_there(kind, basename,
     holdings.mkdir()
     logdir = tmp_path / 'logs'
     logdir.mkdir()
-    monkeypatch.setattr(_shelf_common, 'LOGDIRS', [str(logdir)])
+    monkeypatch.setattr(_common, 'LOGDIRS', [str(logdir)])
 
     target = build_target(holdings, basename, extra_exts)
     logger, _logfile = capture(tmp_path)
@@ -170,7 +170,7 @@ def test_a_file_that_does_not_exist_is_not_versioned(kind, basename, extra_exts,
 
     logdir = tmp_path / 'logs'
     logdir.mkdir()
-    monkeypatch.setattr(_shelf_common, 'LOGDIRS', [str(logdir)])
+    monkeypatch.setattr(_common, 'LOGDIRS', [str(logdir)])
     logger, logfile = capture(tmp_path)
 
     logger.open('task')
@@ -190,7 +190,7 @@ def test_nothing_is_versioned_when_no_log_directory_is_recorded(kind, basename,
 
     holdings = tmp_path / 'holdings'
     holdings.mkdir()
-    monkeypatch.setattr(_shelf_common, 'LOGDIRS', [])
+    monkeypatch.setattr(_common, 'LOGDIRS', [])
 
     target = build_target(holdings, basename, extra_exts)
     logger, logfile = capture(tmp_path)

@@ -7,8 +7,9 @@
 # real edges in both directions (label -> table, table -> label) rather than the
 # empty lists a labels-only subset would produce.
 #
-# The final test pins a known defect: --update raises against any existing shelf,
-# so --repair is the only working path.
+# The last three tests cover --update against an existing shelf, which merges the
+# tuples read back from the shelf with the LinkInfo objects a fresh scan produces,
+# and check that merging agrees with rebuilding.
 #
 # Every test rebuilds the tree first, so each one is independent and order-agnostic.
 ##########################################################################################
@@ -130,13 +131,13 @@ def test_corruption_is_detected_and_repaired(shelved_tree, corruption):
     assert corruption.target.rpartition('/')[2] not in text, text
 
 
-def test_update_is_broken_and_repair_is_the_working_path(shelved_tree):
-    """--update raises against any existing shelf; --repair is what works.
+def test_update_picks_up_a_new_file(shelved_tree):
+    """--update adds an unlinked new file to the shelf and revalidates clean.
 
     generate_links() is handed the loaded shelf as old_links, whose values are the
-    plain tuples that were pickled, and then dereferences info.linktext on them.
-    That is a defect, pinned here as current behaviour; its pds3 twin merges the
-    same data correctly, so this is pds4-only.
+    plain tuples that were pickled rather than the LinkInfo objects a fresh scan
+    produces. It reads the link text of both through one accessor, so an update
+    over an existing shelf merges the two the way the pds3 twin does.
     """
 
     support.add_file(shelved_tree, NEW_FILE, NEW_FILE_BYTES, NEW_FILE_MTIME)
@@ -150,8 +151,20 @@ def test_update_is_broken_and_repair_is_the_working_path(shelved_tree):
 
     run = support.run_tool(shelved_tree, 'pds4linkshelf', '--update',
                            shelved_tree.path(BUNDLE_DIR))
-    assert run.returncode == 1, run.describe()
-    assert "'tuple' object has no attribute 'linktext'" in run.output, run.describe()
+    assert run.returncode == 0, run.describe()
+    assert "'tuple' object has no attribute 'linktext'" not in run.output, run.describe()
+    assert 'extra_added_by_tests' in support.sidecar_text(shelved_tree.path(SIDECAR))
+
+    run = support.run_tool(shelved_tree, 'pds4linkshelf', '--validate',
+                           shelved_tree.path(BUNDLE_DIR))
+    assert run.returncode == 0, run.describe()
+    assert run.error_lines == [], run.describe()
+
+
+def test_repair_also_picks_up_a_new_file(shelved_tree):
+    """--repair rebuilds the whole shelf, which is the other way to take a new file."""
+
+    support.add_file(shelved_tree, NEW_FILE, NEW_FILE_BYTES, NEW_FILE_MTIME)
 
     run = support.run_tool(shelved_tree, 'pds4linkshelf', '--repair',
                            shelved_tree.path(BUNDLE_DIR))
@@ -162,3 +175,30 @@ def test_update_is_broken_and_repair_is_the_working_path(shelved_tree):
                            shelved_tree.path(BUNDLE_DIR))
     assert run.returncode == 0, run.describe()
     assert run.error_lines == [], run.describe()
+
+
+def test_update_and_repair_agree_on_the_shelved_links(shelved_tree):
+    """The merged update and the full rebuild produce the same shelf.
+
+    The point of the merge is that an update need not rescan what is already
+    shelved; the point of this test is that not rescanning does not change the
+    answer. Without it the merge could quietly drop or duplicate an entry and
+    still leave --validate clean, because --validate compares the shelf against a
+    fresh scan of the same tree.
+    """
+
+    support.add_file(shelved_tree, NEW_FILE, NEW_FILE_BYTES, NEW_FILE_MTIME)
+
+    run = support.run_tool(shelved_tree, 'pds4linkshelf', '--update',
+                           shelved_tree.path(BUNDLE_DIR))
+    assert run.returncode == 0, run.describe()
+    updated = support.sidecar_text(shelved_tree.path(SIDECAR))
+
+    shelved_tree.reset()
+    support.initialize(shelved_tree, 'pds4linkshelf', shelved_tree.path(BUNDLE_DIR))
+    support.add_file(shelved_tree, NEW_FILE, NEW_FILE_BYTES, NEW_FILE_MTIME)
+    run = support.run_tool(shelved_tree, 'pds4linkshelf', '--repair',
+                           shelved_tree.path(BUNDLE_DIR))
+    assert run.returncode == 0, run.describe()
+
+    assert updated == support.sidecar_text(shelved_tree.path(SIDECAR))

@@ -44,18 +44,20 @@ class ToolSpec:
     a missing archive file is reported -- the code stays in the tool module and the
     spec says nothing about it.
 
-    index_ext is declared for the indexshelf tools, which are not on this core yet,
-    and so is read nowhere today. Like holdings_sentinel it is a property of the
-    PDS3/PDS4 flavor rather than of one tool, so every spec of that flavor carries
-    the same value, whether or not its own tool reads it.
+    index_ext and holdings_sentinel are properties of the PDS3/PDS4 flavor rather
+    than of one tool, so every spec of that flavor carries the same value whether or
+    not its own tool reads it.
 
     Attributes:
         progname: The tool's name, as it appears in the --help description, in the
-            "Missing task" error, and as the subdirectory of each log root.
+            "Missing task" error, and as the subdirectory of each log root. It is
+            what the tool calls itself, which for the pds4 index and link shelf
+            tools is the pds3 name.
         logname: The PdsLogger name, e.g. 'pds.validation.archives'.
         pdsfile_cls: Pds3File or Pds4File.
-        unit: 'volume' or 'bundle'. Names the command-line positional, and is
-            substituted into the help text.
+        unit: What one command-line target names: 'volume', 'bundle' or 'table'.
+            Names the command-line positional, and is substituted into the help
+            text.
         holdings_sentinel: The directory component that separates the holdings root
             from the rest of a path, '/holdings/' or '/pds4-holdings/'.
         index_ext: The extension of an index table, '.tab' or '.csv'.
@@ -85,6 +87,13 @@ class ToolSpec:
         lskip_for: Callable (pdsdir) returning the number of leading characters
             trimmed from an absolute path to form the archive-relative path. Used
             by the archive tools.
+        generate_links: Callable (dirpath, old_links=None, *, logger, limits)
+            returning the links found in one unit and the latest modification time
+            among the files read. Used by the link shelf tools, whose shared tasks
+            call it: what a link looks like is the one thing the two flavors of
+            that tool do differently, so each keeps its own.
+        link_target_regex: The compiled pattern that recognizes a label's reference
+            to the file it describes. Used by the link shelf tools.
         extra_arguments: Command-line arguments beyond the ones every tool takes,
             as (args, kwargs) pairs passed straight to add_argument. Each help
             string is formatted with {unit} and {units} like the rest.
@@ -111,6 +120,8 @@ class ToolSpec:
     log_path_method: str = ''
     expand_target: Callable | None = None
     lskip_for: Callable | None = None
+    generate_links: Callable | None = None
+    link_target_regex: re.Pattern | None = None
     extra_arguments: tuple = ()
     checksum_path_message: str = ''
     invalid_dir_message: str = ''
@@ -231,6 +242,27 @@ def log_paths_for(pdsf, method, *args, **kwargs):
     return paths
 
 
+# The log directories a superseded checksum or shelf file is versioned into. A run
+# fills this in for each target it is about to work on -- either driver below for a
+# tool on one of them, each remaining tool's own main() for the rest; a process that
+# never calls set_log_dirs leaves it empty, and then _shelf_common.move_old()
+# versions nothing. It lives here, beside the function that builds the paths, so
+# that every driver can record them.
+LOGDIRS = []
+
+
+def set_log_dirs(logfiles):
+    """Record the log directories a superseded file is versioned into.
+
+    Args:
+        logfiles: The log file paths of the target about to be worked on. The
+            directory of each is what a superseded file is copied into.
+    """
+
+    global LOGDIRS
+    LOGDIRS = [os.path.split(logfile)[0] for logfile in logfiles]
+
+
 def run_main(spec, tasks, argv):
     """Run one tool: parse the command line, set up logging, perform the task.
 
@@ -296,6 +328,7 @@ def run_main(spec, tasks, argv):
 
             # Create all the handlers for this level in the logger
             local_handlers = []
+            set_log_dirs(logfiles)
             for logfile in logfiles:
                 local_handlers.append(pdslogger.file_handler(logfile))
                 logdir = os.path.split(logfile)[0]

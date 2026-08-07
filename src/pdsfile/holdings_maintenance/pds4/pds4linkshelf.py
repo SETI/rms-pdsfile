@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 ################################################################################
-# # pdslinkshelf.py library and main program
+# # pds4linkshelf.py library and main program
 #
 # Syntax:
 #   pds4linkshelf.py --task path [path ...]
@@ -8,11 +8,9 @@
 # Enter the --help option to see more information.
 ################################################################################
 
-import argparse
 import csv
 import datetime
 import os
-import pickle
 import re
 import sys
 
@@ -20,16 +18,9 @@ import pdslogger
 import translator
 
 import pdsfile
-from pdsfile.holdings_maintenance import _common, _shelf_common
+from pdsfile.holdings_maintenance import _common, _linkshelf_common, _shelf_common
 
 LOGNAME = _shelf_common.LINKSHELF_LOGNAME
-LOGROOT_ENV = 'PDS_LOG_ROOT'
-
-# Default limits
-GENERATE_LINKS_LIMITS = {'debug':200, 'ds_store':10}
-LOAD_LINKS_LIMITS = {}
-WRITE_LINKDICT_LIMITS = {}
-VALIDATE_LINKS_LIMITS = {}
 
 BACKUP_FILENAME = re.compile(r'.*[-_](20\d\d-\d\d-\d\dT\d\d-\d\d-\d\d'
                              r'|backup|original)\.[\w.]+$')
@@ -38,55 +29,14 @@ REPAIRS = translator.TranslatorByRegex([])
 
 KNOWN_MISSING_LABELS = translator.TranslatorByRegex([])
 
-# Match pattern for any file name, but possibly things that are not file names
-PATTERN = r'\'?\"?([A-Z0-9][-\w]*\.[A-Z0-9][-\w\.]*)\'?\"?'
-
 # Match pattern for the file name in anything of the form
 # "<file_name>file name</file_name>" in the PDS4 label
-TARGET_REGEX1 = re.compile(r'^ *\<file_name\>' + PATTERN + r'\<\/file_name\>', re.I)
-
-# Match pattern for a file name on a line by itself
-TARGET_REGEX2 = re.compile(r'^ *,? *' + PATTERN, re.I)
-
-# Match pattern for one or more file names embedded in a row of a text file.
-# A file name begins with a letter, followed by any number of letters, digits,
-# underscore or dash. Unless the name is "Makefile", it must have one or more
-# extensions, each containing one or more characters. It can also have any
-# number of directory prefixes separate by slashes.
-
-LINK_REGEX = re.compile(r'(?:|.*?[^/@\w\.])/?(?:\.\./)*(([A-Z0-9][-\w]+/)*' +
-                        r'(makefile\.?|[A-Z0-9][\w-]*(\.[\w-]+)+))', re.I)
+TARGET_REGEX1 = re.compile(r'^ *\<file_name\>' + _linkshelf_common.LINK_NAME_PATTERN +
+                           r'\<\/file_name\>', re.I)
 
 EXTS_WO_LABELS = {'.XML', '.LBLX', '.CAT', '.FMT', '.SFD'}
 
 ################################################################################
-
-class LinkInfo:
-    """Used internally to describe a link within a specified record of a file.
-    """
-
-    def __init__(self, recno, linkname, is_target):
-
-        self.recno = recno          # record number
-        self.linktext = linkname    # substring within this record that looks
-                                    # like a link.
-        self.linkname = linkname    # link text after possible repair for known
-                                    # errors.
-        self.is_target = is_target  # True if, based on the local context, this
-                                    # might be a target of a label file
-        self.target = ''            # abspath to target of link, if any.
-                                    # If not blank, this file must exist.
-
-    def remove_path(self):
-        """Remove any leading directory path from this LinkInfo object."""
-
-        if '/' in self.linktext:
-            self.linktext = self.linktext.rpartition('/')[2]
-            self.linkname = self.linktext
-
-    def __str__(self):
-        return ('%d %s %s %s' % (self.recno, self.linktext, str(self.is_target),
-                                 self.target or '[' + self.linkname + ']'))
 
 def generate_links(dirpath, old_links=None, *, logger=None, limits=None):
     """Generate a dictionary keyed by the absolute file path for files in the
@@ -118,7 +68,7 @@ def generate_links(dirpath, old_links=None, *, logger=None, limits=None):
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsdir.root_)
 
-    merged_limits = GENERATE_LINKS_LIMITS.copy()
+    merged_limits = _linkshelf_common.GENERATE_LINKS_LIMITS.copy()
     merged_limits.update(limits)
     logger.open('Finding link shelf files', dirpath, limits=merged_limits)
 
@@ -209,7 +159,8 @@ def generate_links(dirpath, old_links=None, *, logger=None, limits=None):
 
                 # Get list of link info for all possible linked filenames
                 logger.info('*** Get link info and review', abspath)
-                linkinfo_list = read_links(abspath, logger=logger)
+                linkinfo_list = _linkshelf_common.read_links(SPEC, abspath,
+                                                        logger=logger)
 
                 # Apply repairs
                 repairs = REPAIRS.all(abspath)
@@ -296,11 +247,11 @@ def generate_links(dirpath, old_links=None, *, logger=None, limits=None):
 
                         # Search non-locally
                         if '/' in info.linkname:
-                            nonlocal_target = locate_link_with_path(abspath,
-                                                                    info.linkname)
+                            nonlocal_target = _linkshelf_common.locate_link_with_path(
+                                                SPEC, abspath, info.linkname)
                         else:
-                            nonlocal_target = locate_nonlocal_link(abspath,
-                                                                   info.linkname)
+                            nonlocal_target = _linkshelf_common.locate_nonlocal_link(
+                                                SPEC, abspath, info.linkname)
 
                         # Report the outcome
                         if nonlocal_target:
@@ -389,10 +340,11 @@ def generate_links(dirpath, old_links=None, *, logger=None, limits=None):
                         continue
 
                     for info in link_info_list:
-                        if info.linktext == basename and abspath not in label_dict:
+                        linktext = _linkshelf_common.link_text_of(info)
+                        if linktext == basename and abspath not in label_dict:
                             label_dict[abspath] = label_abspath
                             logger.info('Label identified (by file_name tag) for %s' %
-                                        info.linktext, label_abspath)
+                                        linktext, label_abspath)
                             is_label_found = True
                             break
                     if is_label_found:
@@ -499,7 +451,7 @@ def generate_links(dirpath, old_links=None, *, logger=None, limits=None):
                     # Normalize to (recno, basename, abspath)
                     new_list = []
                     for item in values:
-                        if isinstance(item, LinkInfo):
+                        if isinstance(item, _linkshelf_common.LinkInfo):
                             new_list.append((item.recno, item.linktext, item.target))
                         else:
                             new_list.append(item)
@@ -524,701 +476,41 @@ def generate_links(dirpath, old_links=None, *, logger=None, limits=None):
     finally:
         _ = logger.close()
 
-def read_links(abspath, logger=None):
-    """Return a list of LinkInfo objects for anything linked or labeled by this
-    file.
-    """
-
-    with open(abspath, encoding='latin-1') as f:
-        recs = f.readlines()
-
-    links = []
-    multiple_targets = False
-    for recno,rec in enumerate(recs):
-
-        while True:
-
-            # Search for the target of a link
-            is_target = True
-            matchobj = TARGET_REGEX1.match(rec)
-
-            if matchobj:
-                subrec = rec[:matchobj.end()]
-                if '(' in subrec or '{' in subrec:
-                    multiple_targets = True
-
-            # ... on the same line or the next line
-            elif multiple_targets:
-                matchobj = TARGET_REGEX2.match(rec)
-
-            # If not found, search for any other referenced file name or path
-            if not matchobj:
-                if ')' in rec or '}' in rec:
-                    multiple_targets = False
-
-                is_target = False
-                matchobj = LINK_REGEX.match(rec)
-                if matchobj:
-                    multiple_targets = False
-
-            # No more matches in this record
-            if not matchobj:
-                break
-
-            linktext = matchobj.group(1)
-            links.append(LinkInfo(recno, linktext, is_target))
-
-            rec = rec[matchobj.end():]
-
-    return links
-
-def locate_nonlocal_link(abspath, filename):
-    """Return the absolute path associated with a link in a PDS file. This is
-    done by searching up the tree and also by looking inside the LABEL,
-    CATALOG and INCLUDE directories if they exist."""
-
-    filename_uc = filename.upper()
-
-    parts = abspath.split('/')[:-1]
-
-    # parts are [..., 'holdings', 'bundles', bundleset, bundlename, ...]
-    # Therefore, if 'holdings' is in parts[:-3], then there's a bundlename in this
-    # path.
-    while 'pds4-holdings' in parts[:-3]:
-        testpath = '/'.join(parts)
-        basenames = os.listdir(testpath)
-        basenames_uc = [b.upper() for b in basenames]
-        try:
-            k = basenames_uc.index(filename_uc)
-            return testpath + '/' + basenames[k]
-        except ValueError:
-            pass
-
-        for dirname in ['LABEL', 'CATALOG', 'INCLUDE', 'INDEX', 'DOCUMENT',
-                        'DATA', 'CALIB', 'EXTRAS', 'SOFTWARE']:
-            try:
-                k = basenames_uc.index(dirname)
-                subnames = os.listdir(testpath + '/' + basenames[k])
-                subupper = [s.upper() for s in subnames]
-                try:
-                    kk = subupper.index(filename_uc)
-                    return testpath + '/' + basenames[k] + '/' + subnames[kk]
-                except ValueError:
-                    pass
-            except ValueError:
-                pass
-
-        parts = parts[:-1]
-
-    return ''
-
-def locate_link_with_path(abspath, filename):
-    """Return the absolute path associated with a link that contains a leading
-    directory path.
-    """
-
-    parts = filename.split('/')
-    link_path = locate_nonlocal_link(abspath, parts[0])
-    if not link_path:
-        return ''
-
-    for part in parts[1:]:
-        basenames = os.listdir(link_path)
-        if part in basenames:
-            link_path += '/' + part
-        else:
-            basenames_uc = [b.upper() for b in basenames]
-            part_uc = part.upper()
-            if part_uc in basenames_uc:
-                k = basenames_uc.index(part_uc)
-                link_path += '/' + basenames[k]
-            else:
-                return ''
-
-    return link_path
-
+################################################################################
+# Executable program
+#
+# progname is 'pdslinkshelf', not this module's name: the tool announces itself,
+# names its log directory and titles its --help output that way, and every one of
+# those is part of what a run looks like today.
 ################################################################################
 
-def load_links(dirpath, *, logger=None, limits=None):
-    """Load link dictionary from a shelf file, converting interior paths to
-    absolute paths."""
-
-    if limits is None:
-        limits = {}
-
-    dirpath = os.path.abspath(dirpath)
-    pdsdir = pdsfile.Pds4File.from_abspath(dirpath)
-
-    dirpath_ = dirpath.rstrip('/') + '/'
-
-    logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
-    logger.replace_root(pdsdir.root_)
-
-    merged_limits = LOAD_LINKS_LIMITS.copy()
-    merged_limits.update(limits)
-    logger.open('Reading link shelf file for', dirpath, limits=merged_limits)
-
-    try:
-        (link_path, _) = pdsdir.shelf_path_and_lskip('link')
-
-        logger.info('Link shelf file', link_path)
-
-        if not os.path.exists(link_path):
-            raise OSError('File not found: ' + link_path)
-
-        # Read the shelf file and convert to a dictionary
-        with open(link_path, 'rb') as f:
-            interior_dict = pickle.load(f)
-
-        # Convert interior paths to absolute paths
-        link_dict = {}
-        for (key, values) in interior_dict.items():
-            long_key = dirpath_ + key
-
-            if isinstance(values, list):
-                new_list = []
-                for (recno, basename, interior_path) in values:
-                    abspath = dirpath_ + str(interior_path)
-                    if '../' in abspath:
-                        abspath = os.path.abspath(abspath)
-
-                    new_list.append((recno, str(basename), abspath))
-
-                link_dict[long_key] = new_list
-            else:
-                values = str(values)
-                if values == '':
-                    link_dict[long_key] = ''
-                else:
-                    link_dict[long_key] = dirpath_ + values
-
-        return link_dict
-
-    except (Exception, KeyboardInterrupt) as e:
-        logger.exception(e)
-        raise
-
-    finally:
-        _ = logger.close()
-
-################################################################################
-
-def write_linkdict(dirpath, link_dict, *, logger=None, limits=None):
-    """Write a new link shelf file for a directory tree."""
-
-    if limits is None:
-        limits = {}
-
-    # Initialize
-    dirpath = os.path.abspath(dirpath)
-    pdsdir = pdsfile.Pds4File.from_abspath(dirpath)
-
-    logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
-    logger.replace_root(pdsdir.root_)
-
-    merged_limits = WRITE_LINKDICT_LIMITS.copy()
-    merged_limits.update(limits)
-    logger.open('Writing link shelf file for', dirpath, limits=merged_limits)
-
-
-    try:
-        (link_path, lskip) = pdsdir.shelf_path_and_lskip('link')
-        logger.info('Link shelf file', link_path)
-
-        # Create a dictionary using interior paths instead of absolute paths
-        interior_dict = {}
-        prefix = (dirpath + '/')[:lskip]
-        for (key, values) in link_dict.items():
-            if isinstance(values, list):
-                new_list = []
-                for (recno, basename, link_abspath) in values:
-                    if link_abspath[:lskip] == prefix:
-                        new_list.append((recno, basename, link_abspath[lskip:]))
-                    else:      # link outside this bundle
-                        link = pdsfile.Pds4File.from_abspath(link_abspath)
-                        if (link.category_ == pdsdir.category_ and
-                            link.bundleset == pdsdir.bundleset and
-                            link.suffix == pdsdir.suffix):
-                            link_relpath = '../' + link.bundlename_ + link.interior
-                        elif link.category_ == pdsdir.category_:
-                            link_relpath = ('../../' + link.bundleset_ +
-                                            link.bundlename_ + link.interior)
-                        else:
-                            link_relpath = ('../../../' + link.category_ +
-                                            link.bundleset_ +
-                                            link.bundlename_ + link.interior)
-                        new_list.append((recno, basename, link_relpath))
-
-                interior_dict[key[lskip:]] = new_list
-            else:
-                interior_dict[key[lskip:]] = values[lskip:]
-
-        # Create parent directory if necessary
-        parent = os.path.split(link_path)[0]
-        if not os.path.exists(parent):
-            logger.normal('Creating directory', parent)
-            os.makedirs(parent)
-
-        # Write the shelf
-        with open(link_path, 'wb') as f:
-            pickle.dump(interior_dict, f)
-
-    except (Exception, KeyboardInterrupt) as e:
-        logger.exception(e)
-        raise
-
-    finally:
-        _ = logger.close()
-
-    logger.open('Writing Python dictionary', dirpath)
-    try:
-        # Determine the maximum length of the file path and basename
-        len_key = 0
-        len_base = 0
-        for (key, value) in interior_dict.items():
-            len_key = max(len_key, len(key))
-            if isinstance(value, list):
-                tuples = value
-                for (_recno, basename, _interior_path) in tuples:
-                    len_base = max(len_base, len(basename))
-
-        len_key = min(len_key, 60)
-
-        # Write the python dictionary version
-        python_path = link_path.rpartition('.')[0] + '.py'
-        name = os.path.basename(python_path)
-        parts = name.split('_')
-        name = '_'.join(parts[:2]) + '_links'
-        keys = list(interior_dict.keys())
-        keys.sort()
-
-        with open(python_path, 'w', encoding='latin-1') as f:
-            f.write(name + ' = {\n')
-            for valtype in (list, str):
-                for key in keys:
-                    if not isinstance(interior_dict[key], valtype):
-                        continue
-
-                    f.write('  "%s"' % key)
-                    if len(key) < len_key:
-                        f.write((len_key - len(key)) * ' ')
-                    f.write(': ')
-                    tuple_indent = max(len(key),len_key) + 7
-
-                    values = interior_dict[key]
-                    if isinstance(values, str):
-                        f.write('"%s",\n' % values)
-                    elif len(values) == 0:
-                        f.write('[],\n')
-                    else:
-                        f.write('[')
-                        for k in range(len(values)):
-                            (recno, basename, interior_path) = values[k]
-                            f.write('(%4d, ' % recno)
-                            f.write('"%s, ' % (basename + '"' +
-                                               (len_base-len(basename)) * ' '))
-                            f.write('"%s")' % interior_path)
-
-                            if k < len(values) - 1:
-                                f.write(',\n' + tuple_indent * ' ')
-                            else:
-                                f.write('],\n')
-
-            f.write('}\n\n')
-
-    except (Exception, KeyboardInterrupt) as e:
-        logger.exception(e)
-        raise
-
-    finally:
-        _ = logger.close()
-
-################################################################################
-
-def validate_links(dirpath, dirdict, shelfdict, *, logger=None, limits=None):
-
-    if limits is None:
-        limits = {}
-
-    dirpath = os.path.abspath(dirpath)
-    pdsdir = pdsfile.Pds4File.from_abspath(dirpath)
-
-    logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
-    logger.replace_root(pdsdir.root_)
-
-    merged_limits = VALIDATE_LINKS_LIMITS.copy()
-    merged_limits.update(limits)
-    logger.open('Validating link shelf file for', dirpath, limits=merged_limits)
-
-    try:
-        keys = list(dirdict.keys())
-        for key in keys:
-            if key in shelfdict:
-                dirinfo = dirdict[key]
-                shelfinfo = shelfdict[key]
-
-                if isinstance(dirinfo, list):
-                    dirinfo.sort()
-
-                if isinstance(shelfinfo, list):
-                    shelfinfo.sort()
-
-                if dirinfo != shelfinfo:
-                    logger.error('Link target mismatch', key)
-
-                del shelfdict[key]
-                del dirdict[key]
-
-        keys = list(dirdict.keys())
-        keys.sort()
-        for key in keys:
-            logger.error('Missing link shelf file entry for', key)
-
-        keys = list(shelfdict.keys())
-        keys.sort()
-        for key in keys:
-            logger.error('Link shelf file entry found for missing file', key)
-
-    except (Exception, KeyboardInterrupt) as e:
-        logger.exception(e)
-        raise
-
-    finally:
-        result = logger.close()
-
-    return result
-
-################################################################################
-# Simplified functions to perform tasks
-################################################################################
-
-def initialize(pdsdir, logger=None):
-
-    link_path = pdsdir.shelf_path_and_lskip('link')[0]
-
-    # Make sure file does not exist
-    if os.path.exists(link_path):
-        logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
-        logger.error('Link shelf file already exists', link_path)
-        return
-
-    # Generate link info
-    (link_dict, _) = generate_links(pdsdir.abspath, logger=logger)
-
-    # Save link files
-    write_linkdict(pdsdir.abspath, link_dict, logger=logger)
-
-def reinitialize(pdsdir, logger=None):
-
-    link_path = pdsdir.shelf_path_and_lskip('link')[0]
-
-    # Warn if shelf file does not exist
-    if not os.path.exists(link_path):
-        logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
-        logger.warning('Link shelf file does not exist; initializing', link_path)
-        initialize(pdsdir, logger=logger)
-        return
-
-    # Generate link info
-    (link_dict, _) = generate_links(pdsdir.abspath, logger=logger)
-
-    # Move old file if necessary
-    if os.path.exists(link_path):
-        _shelf_common.move_old(link_path, _shelf_common.LINK_SHELF, logger=logger)
-
-    # Save link files
-    write_linkdict(pdsdir.abspath, link_dict, logger=logger)
-
-def validate(pdsdir, logger=None):
-
-    link_path = pdsdir.shelf_path_and_lskip('link')[0]
-
-    # Make sure file exists
-    if not os.path.exists(link_path):
-        logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
-        logger.error('Link shelf file does not exist', link_path)
-        return
-
-    # Read link shelf file
-    shelf_linkdict = load_links(pdsdir.abspath, logger=logger)
-
-    # Generate link dict
-    (dir_linkdict, _) = generate_links(pdsdir.abspath, logger=logger)
-
-    # Validate
-    validate_links(pdsdir.abspath, dir_linkdict, shelf_linkdict, logger=logger)
-
-def repair(pdsdir, logger=None):
-
-    link_path = pdsdir.shelf_path_and_lskip('link')[0]
-
-    # Make sure file exists
-    if not os.path.exists(link_path):
-        logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
-        logger.warning('Link shelf file does not exist; initializing', link_path)
-        initialize(pdsdir, logger=logger)
-        return
-
-    # Read link shelf file
-    shelf_linkdict = load_links(pdsdir.abspath, logger=logger)
-
-    # Generate link dict
-    (dir_linkdict, latest_mtime) = generate_links(pdsdir.abspath, logger=logger)
-
-    # Compare
-    canceled = (dir_linkdict == shelf_linkdict)
-    if canceled:
-        logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
-
-        link_pypath = link_path.replace('.pickle', '.py')
-        link_mtime = min(os.path.getmtime(link_path),
-                         os.path.getmtime(link_pypath))
-        if latest_mtime > link_mtime:
-            logger.info('!!! Link shelf file content is up to date',
-                        link_path, force=True)
-
-            dt = datetime.datetime.fromtimestamp(latest_mtime)
-            logger.info('!!! Latest holdings file modification date',
-                        dt.strftime('%Y-%m-%dT%H-%M-%S'), force=True)
-
-            dt = datetime.datetime.fromtimestamp(link_mtime)
-            logger.info('!!! Link shelf file modification date',
-                        dt.strftime('%Y-%m-%dT%H-%M-%S'), force=True)
-
-            delta = latest_mtime - link_mtime
-            if delta >= 86400/10:
-                logger.info('!!! Link shelf file is out of date %.1f days' %
-                            (delta / 86400.), force=True)
-            else:
-                logger.info('!!! Link shelf file is out of date %.1f minutes' %
-                            (delta / 60.), force=True)
-
-            dt = datetime.datetime.now()
-            os.utime(link_path)
-            os.utime(link_pypath)
-            logger.info('!!! Time tag on link shelf files set to',
-                        dt.strftime('%Y-%m-%dT%H-%M-%S'), force=True)
-        else:
-            logger.info('!!! Link shelf file is up to date; repair canceled',
-                        link_path, force=True)
-        return
-
-    # Move files and write new links
-    _shelf_common.move_old(link_path, _shelf_common.LINK_SHELF, logger=logger)
-    write_linkdict(pdsdir.abspath, dir_linkdict, logger=logger)
-
-def update(pdsdir,  logger=None):
-
-    link_path = pdsdir.shelf_path_and_lskip('link')[0]
-
-    # Make sure link shelf file exists
-    if not os.path.exists(link_path):
-        logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
-        logger.warning('Link shelf file does not exist; initializing', link_path)
-        initialize(pdsdir, logger=logger)
-        return
-
-    # Read link shelf file
-    shelf_linkdict = load_links(pdsdir.abspath, logger=logger)
-
-    # Generate link dict
-    (dir_linkdict, _) = generate_links(pdsdir.abspath, shelf_linkdict, logger=logger)
-
-    # Compare
-    canceled = (dir_linkdict == shelf_linkdict)
-    if canceled:
-        logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
-        logger.info('!!! Link shelf file content is complete; update canceled',
-                    link_path, force=True)
-        return
-
-    # Move files and write new links
-    _shelf_common.move_old(link_path, _shelf_common.LINK_SHELF, logger=logger)
-    write_linkdict(pdsdir.abspath, dir_linkdict, logger=logger)
-
-################################################################################
+def link_targets(pdsf, path):
+    """Return the bundle directories one command-line path names."""
+
+    return _linkshelf_common.link_targets(SPEC, pdsf, path)
+
+SPEC = _common.ToolSpec(
+    progname='pdslinkshelf',
+    logname=LOGNAME,
+    pdsfile_cls=pdsfile.Pds4File,
+    unit='bundle',
+    holdings_sentinel='/pds4-holdings/',
+    index_ext='.csv',
+    file_log_level='normal',
+    description=_linkshelf_common.LINKSHELF_DESCRIPTION,
+    task_help=_linkshelf_common.LINKSHELF_TASK_HELP,
+    positional_help=_linkshelf_common.LINKSHELF_POSITIONAL_HELP,
+    log_path_method=_shelf_common.UNIT_LOG_PATH_METHOD,
+    log_suffix='_links',
+    expand_target=link_targets,
+    handler_factories=(pdslogger.warning_handler, pdslogger.error_handler),
+    generate_links=generate_links,
+    link_target_regex=TARGET_REGEX1)
+
+TASKS = _linkshelf_common.link_tasks(SPEC)
 
 def main():
-
-    # Set up parser
-    parser = argparse.ArgumentParser(
-        description='pdslinkshelf: Create, maintain and validate shelves of '  +
-                    'links between files.')
-
-    parser.add_argument('--initialize', '--init', const='initialize',
-                        default='', action='store_const', dest='task',
-                        help='Create a link shelf file for a bundle. Abort '   +
-                             'if the checksum file already exists.')
-
-    parser.add_argument('--reinitialize', '--reinit', const='reinitialize',
-                        default='', action='store_const', dest='task',
-                        help='Create a link shelf file for a bundle. Replace ' +
-                             'the file if it already exists.')
-
-    parser.add_argument('--validate', const='validate',
-                        default='', action='store_const', dest='task',
-                        help='Validate every link in a bundle directory tree ' +
-                             'against its link shelf file.')
-
-    parser.add_argument('--repair', const='repair',
-                        default='', action='store_const', dest='task',
-                        help='Validate every link in a bundle directory tree ' +
-                             'against its link shelf file. If any '            +
-                             'disagreement  is found, replace the shelf '      +
-                             'file; otherwise leave it unchanged. If any of '  +
-                             'the files checked are newer than the link shelf '+
-                             'file, update shelf file\'s modification date')
-
-    parser.add_argument('--update', const='update',
-                        default='', action='store_const', dest='task',
-                        help='Search a directory for any new files and add '   +
-                             'their links to the link shelf file. Links of '   +
-                             'pre-existing files are not checked.')
-
-    parser.add_argument('bundle', nargs='+', type=str,
-                        help='The path to the root directory of a bundle.')
-
-    parser.add_argument('--log', '-l', type=str, default='',
-                        help='Optional root directory for a duplicate of the ' +
-                             'log files. If not specified, the value of '      +
-                             'environment variable "%s" ' % LOGROOT_ENV        +
-                             'is used. In addition, individual logs are '      +
-                             'written into the "logs" directory parallel to '  +
-                             '"holdings". Logs are created inside the '        +
-                             '"pdslinkshelf" subdirectory of each log root '   +
-                             'directory.'
-                             )
-
-    parser.add_argument('--quiet', '-q', action='store_true',
-                        help='Do not also log to the terminal.')
-
-    # Parse and validate the command line
-    args = parser.parse_args()
-
-    if not args.task:
-        print('pdslinkshelf error: Missing task')
-        sys.exit(1)
-
-    status = 0
-
-    # Define the logging directory
-    if args.log == '':
-        try:
-            args.log = os.environ[LOGROOT_ENV]
-        except KeyError:
-            args.log = None
-
-    # Initialize the logger
-    logger = pdslogger.PdsLogger(LOGNAME)
-    pdsfile.Pds4File.set_log_root(args.log)
-
-    if not args.quiet:
-        logger.add_handler(pdslogger.stdout_handler)
-
-    if args.log:
-        path = os.path.join(args.log, 'pdslinkshelf')
-        warning_handler = pdslogger.warning_handler(path)
-        logger.add_handler(warning_handler)
-
-        error_handler = pdslogger.error_handler(path)
-        logger.add_handler(error_handler)
-
-    # Generate a list of file paths before logging
-    paths = []
-    for path in args.bundle:
-
-        if not os.path.exists(path):
-            print('No such file or directory: ' + path)
-            sys.exit(1)
-
-        path = os.path.abspath(path)
-        pdsf = pdsfile.Pds4File.from_abspath(path)
-
-        if pdsf.checksums_:
-            print('No link shelf files for checksum files: ' + path)
-            sys.exit(1)
-
-        if pdsf.archives_:
-            print('No link shelf files for archive files: ' + path)
-            sys.exit(1)
-
-        if pdsf.is_bundleset_dir:
-            paths += [os.path.join(path, c) for c in pdsf.childnames]
-
-        else:
-            paths.append(os.path.abspath(path))
-
-    # Loop through tuples...
-    logger.open(' '.join(sys.argv))
-    try:
-        for path in paths:
-
-            pdsdir = pdsfile.Pds4File.from_abspath(path)
-            # skip bundleset-level readme files and *_support dirctiory
-            # if not pdsdir.isdir or '_support' in pdsdir.abspath:
-            if not pdsdir.isdir:
-                continue
-
-            # Save logs in up to two places
-            logfiles = _common.log_paths_for(pdsdir, 'log_path_for_bundle', '_links',
-                                             task=args.task, dir='pdslinkshelf')
-
-            # Create all the handlers for this level in the logger
-            local_handlers = []
-            _shelf_common.set_log_dirs(logfiles)
-            for logfile in logfiles:
-                local_handlers.append(pdslogger.file_handler(logfile))
-                logdir = os.path.split(logfile)[0]
-
-                # These handlers are only used if they don't already exist
-                warning_handler = pdslogger.warning_handler(logdir)
-                error_handler = pdslogger.error_handler(logdir)
-                local_handlers += [warning_handler, error_handler]
-
-            # Open the next level of the log
-            if len(paths) > 1:
-                logger.blankline()
-
-            logger.open('Task "' + args.task + '" for', path,
-                        handler=local_handlers)
-
-            try:
-                for logfile in logfiles:
-                    logger.info('Log file', logfile)
-
-                if args.task == 'initialize':
-                    initialize(pdsdir)
-
-                elif args.task == 'reinitialize':
-                    reinitialize(pdsdir)
-
-                elif args.task == 'validate':
-                    validate(pdsdir)
-
-                elif args.task == 'repair':
-                    repair(pdsdir)
-
-                else:       # update
-                    update(pdsdir)
-
-            except (Exception, KeyboardInterrupt) as e:
-                logger.exception(e)
-                raise
-
-            finally:
-                _ = logger.close()
-
-    except (Exception, KeyboardInterrupt) as e:
-        logger.exception(e)
-        status = 1
-        raise
-
-    finally:
-        (fatal, errors, _, _) = logger.close()
-        if fatal or errors:
-            status = 1
-
-    sys.exit(status)
+    _common.run_main(SPEC, TASKS, sys.argv)
 
 if __name__ == '__main__':
     main()
