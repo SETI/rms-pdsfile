@@ -321,11 +321,14 @@ Every one of these is a log or output **text** change except the last three.
 10. **`pdslinkshelf.initialize` loses a dead `move_old` call.** It sat after a
     guard that returns when the shelf file exists, so it could only run if
     `generate_links` had created one; it does not. pds4 had no such call.
-11. **`limits` now reaches the `initialize` fallback in all six places.** When
-    `reinitialize`, `repair` or `update` finds no shelf file it falls back to
-    `initialize`, and three of the six pds3 call sites dropped the caller's `limits`
-    on the way (`pdsindexshelf.reinitialize` and `.repair`, `pdslinkshelf.update`);
-    all four pds4 sites had no `limits` at all. The shared tasks pass it everywhere.
+11. **`limits` now reaches the `initialize` fallback in all six shared places.**
+    When `reinitialize`, `repair` or `update` finds no shelf file it falls back to
+    `initialize`. Counted at the base: **twelve** such call sites, three in each of
+    the four tools, collapsing into the **six** the shared tasks now have. Of the
+    six pds3 sites, three dropped the caller's `limits` on the way
+    (`pdsindexshelf.reinitialize` at `:242`, `pdsindexshelf.repair` at `:291`,
+    `pdslinkshelf.update` at `:1528`) and three passed it; all six pds4 sites had
+    no `limits` parameter to pass. The shared tasks forward it everywhere.
     Invisible from the command line, where the driver never passes limits; visible
     to a library caller that does.
 12. **A command-line path that does not exist is now reported as an absolute path.**

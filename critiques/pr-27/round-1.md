@@ -54,10 +54,11 @@ caller needing either afterwards has to pass a copy.
 
 ### 4 — `limits` dropped on the fallback. Fixed, and wider than reported.
 
-Measured at the base rather than taken as read: **three** of the six pds3
-fallbacks dropped `limits` (`pdsindexshelf.reinitialize`, `pdsindexshelf.repair`,
-`pdslinkshelf.update`) and all four pds4 sites had no `limits` parameter at all.
-All six now forward it. Enumerated as change 11 in `pr-27-validation.md`.
+Measured at the base rather than taken as read: twelve fallback call sites, three
+in each of the four tools. **Three** of the six pds3 ones dropped `limits`
+(`pdsindexshelf.reinitialize`, `pdsindexshelf.repair`, `pdslinkshelf.update`) and
+all six pds4 ones had no `limits` parameter to pass. The six shared tasks now
+forward it. Enumerated as change 11 in `pr-27-validation.md`.
 Invisible from the command line, where the driver never passes limits; visible to
 a library caller that does.
 
@@ -208,9 +209,14 @@ made and that a third would be worth stopping for.
 
 The plan said "six changes" against the record's list; it now says thirteen
 enumerated changes and 594 lines. "78% low" is replaced by the unambiguous form:
-the projection was short of the measurement. (Round 2 found that the replacement
-had missed deferred entry 123, and that the figures themselves were stale; both
-are fixed there.)
+the projection was short of the measurement.
+
+Round 2 then found two things about this fix. The replacement had missed deferred
+entry 123, and the figures it used — 1,329 shared lines, 32.9%, short by 581 —
+were themselves stale, having been taken before this round's own fixes grew both
+family modules. The current figures everywhere are **1,348**, **33.4%**, short by
+**600**; no earlier figure survives in any record, deliberately, because a
+superseded number in a permanent artifact is a trap rather than history.
 
 ### d1, d2 — Deferred, recorded.
 
