@@ -3586,7 +3586,8 @@ these entries are read by the PRs that come after it.
 
 142. **`show_opus_products --narrow-table` has no test at all.** Replacing
      `if not display_narrow_table:` with `if not False:` in the table branch leaves
-     the three tool-test modules at their full 61 passed. The flag is exercised by the out-of-repo tool transcript
+     the three tool-test modules at their full pass count. The flag is exercised by
+     the out-of-repo tool transcript
      (`opus/narrow-table`, byte-identical base to head) and by nothing in the
      repository. It is one of PR-13's gaps rather than a PR-28 regression — PR-13
      covered the default table, `--pprint` and the opus-type filter, and left this
@@ -3604,7 +3605,7 @@ these entries are read by the PRs that come after it.
      `pytest tests/holdings_maintenance/test_crlf.py
      tests/holdings_maintenance/test_shelf_consistency_check.py
      tests/holdings_maintenance/test_show_opus_products.py --mode ns` at its full
-     61 passed. Every
+     pass count. Every
      path the module's tests pass is a PDS3 one, so the second half of the tool's
      two-flavor fallback — try `Pds3File`, then `Pds4File`, each by abspath then by
      logical path — is exercised only for its failure. The tool tests declare a PDS3

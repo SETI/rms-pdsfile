@@ -52,5 +52,6 @@ Two Majors, seven Minors, three Deferred.
 The transcript grew from 75 records to **84** and the differing set from 17 to
 **26** — nine new records, seven of which differ, all in the two argparse classes
 this round surfaced. Added ids went from 25 to **32** (29 test functions, three
-parametrized over two values). The mutation matrix is unchanged at fourteen probes,
-re-run at the new baseline of 61 passed.
+parametrized over two values). The mutation matrix was unchanged at the fourteen
+probes it then held, re-run at that round's baseline; rounds 3 and 4 took it to
+twenty-one.

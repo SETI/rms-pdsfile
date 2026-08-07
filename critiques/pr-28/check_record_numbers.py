@@ -116,6 +116,21 @@ IDS_ADDED = 38
 NUMBER_WORDS = {10: 'ten', 11: 'eleven', 12: 'twelve'}
 
 
+def spelled_small(count):
+    """Return a small count as the deferred entries spell it, digits otherwise."""
+
+    return {1: 'one', 2: 'two', 3: 'three', 4: 'four', 5: 'five',
+            6: 'six', 7: 'seven'}.get(count, str(count))
+
+
+def spelled(count):
+    """Return a count as the records spell it, or as digits if it has moved off the
+    handful this file knows the words for -- which is itself a drift the needle then
+    reports, rather than a crash here."""
+
+    return NUMBER_WORDS.get(count, str(count))
+
+
 def squash(text):
     """Collapse every run of whitespace to one space, so wrapping cannot matter."""
 
@@ -313,9 +328,9 @@ def main():
                      f'**{entries}** |')
     expect('record', f'| code slots | {base_slots} | **{slots}** |')
     expect('record', f'| `[project.scripts]` entries | {base_scripts} | {scripts} |')
-    expect('record', f'had {NUMBER_WORDS[base_scripts]} entries at `{BASE}` and has '
-                     f'{NUMBER_WORDS[scripts]} now')
-    expect('plan', f'still {NUMBER_WORDS[scripts]} entries')
+    expect('record', f'had {spelled(base_scripts)} entries at `{BASE}` and has '
+                     f'{spelled(scripts)} now')
+    expect('plan', f'still {spelled(scripts)} entries')
     # The actual section 8.4 requirement, which a count alone does not express.
     named = set(pyproject['project']['scripts'])
     intruders = named & {'crlf', 'shelf_consistency_check', 'show_opus_products'}
@@ -344,9 +359,10 @@ def main():
         missing.append(('pyproject', f'{crlf_key} should still carry exactly PT028'))
     if shelf_key in ignores:
         missing.append(('pyproject', f'{shelf_key} should carry no entry'))
-    # What a rename of test_crlf would leave behind, stated in deferred 137.
-    expect('deferred', f'to {entries - 1} entries / {slots - len(ignores[crlf_key])} '
-                       f'slots')
+    # What a rename of test_crlf would leave behind, stated in deferred 137. If the
+    # entry is gone the sentence is stale by definition, and the check above says so.
+    expect('deferred', f'to {entries - 1} entries / '
+                       f'{slots - len(ignores.get(crlf_key, ()))} slots')
 
     # --- the callers of crlf.test_crlf, which section 6 and deferred 137 count -
     hits = subprocess.run(['grep', '-rl', r'test_crlf\b', '--include=*.py',
@@ -388,8 +404,8 @@ def main():
                        f'common')
     sizes = ', '.join(str(n) for n in sorted(blocks, reverse=True) if n >= 2)
     isolated = sum(1 for n in blocks if n == 1)
-    expect('deferred', f'the 39 fall into blocks of **{sizes}** lines and '
-                       f'{"five" if isolated == 5 else isolated} isolated lines')
+    expect('deferred', f'the {len(shared)} fall into blocks of **{sizes}** lines '
+                       f'and {spelled_small(isolated)} isolated lines')
     expect('deferred', f'{total} code lines across the three today')
     expect('deferred', f'The {preamble}-line preamble is contiguous')
     expect('deferred', f'takes {100 * preamble / len(shared):.0f}% of the commonality')

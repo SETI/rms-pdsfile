@@ -17,10 +17,11 @@
 #     support.run_tool_in_process(). They import no PdsFile class and read neither
 #     holdings root -- they read or walk exactly the paths on their command line --
 #     so the hazard above cannot arise. support.HOLDINGS_FREE_TOOLS is the list,
-#     and both helpers assert against it. Each still keeps one subprocess test,
-#     through support.run_tool_without_holdings(), because only a subprocess can
-#     show that `python -m <module>` reaches main() and that the process exit code
-#     is what main() returned.
+#     and both helpers assert against it. Each still keeps a subprocess test,
+#     through support.run_tool_without_holdings() -- one for
+#     shelf_consistency_check and two for crlf -- because only a subprocess can
+#     show that `python -m <module>` reaches main(), that the process exit code is
+#     what main() returned, and what an uncaught exception leaves the process at.
 #   * test_re_validate.py runs in-process and needs no holdings at all. Most of
 #     what it covers is pure over text, paths and an argparse namespace; where it
 #     drives a function that builds a PdsFile or writes Pds3File class state, it

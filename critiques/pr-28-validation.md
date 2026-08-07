@@ -20,7 +20,7 @@ had eleven entries at `3d044b2` and has eleven now.
 | `src/pdsfile/holdings_maintenance/pds3/shelf_consistency_check.py` | 90 | 132 | same |
 | `src/pdsfile/tools/show_opus_products.py` | 162 | 199 | same |
 | `tests/holdings_maintenance/support.py` | 710 | 830 | — |
-| `tests/holdings_maintenance/test_crlf.py` | 142 | 394 | — |
+| `tests/holdings_maintenance/test_crlf.py` | 142 | 395 | — |
 | `tests/holdings_maintenance/test_shelf_consistency_check.py` | 189 | 386 | — |
 | `tests/holdings_maintenance/test_show_opus_products.py` | 134 | 259 | — |
 

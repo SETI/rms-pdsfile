@@ -9,8 +9,9 @@ them exact: all three ruff invocations clean, ratchet 67→66 / 181→180, findi
 anywhere, the four frozen files md5-identical, eleven console scripts and none of
 them the three tools, `tests/api` 26 passed. Suite: base 1,097 ids / 1,063 passed,
 head 1,128 / 1,094, **32 added, 1 removed, 0 outcome changes**; holdings-free 281 →
-312. The bug fix's negative control confirmed both ways. All fourteen §5.3 probes
-reproduced row for row.
+312. The bug fix's negative control confirmed both ways. All fourteen §5.3 probes as they
+stood when the round began reproduced row for row; this round added two more, and
+round 4 added five, so the record's table now carries twenty-one.
 
 Two independent constructions are worth recording because they are stronger than
 this PR's own: the reviewer built its **own** 71-invocation base-vs-head transcript

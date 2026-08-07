@@ -9,9 +9,10 @@
 # `holdings_free` marker). The command line is driven in-process, by calling
 # main() through support.run_tool_in_process(); the tool imports no PdsFile class
 # and reads neither holdings root, so the class-level-cache hazard that keeps the
-# other tools on subprocesses (see the package header) cannot arise. One test
-# keeps the subprocess, because only a subprocess shows that `python -m ...`
-# reaches main().
+# other tools on subprocesses (see the package header) cannot arise. Two tests keep
+# the subprocess, for the two things an in-process call cannot show: that
+# `python -m ...` reaches main() at all, and the process exit code of an uncaught
+# exception.
 #
 # Collection trap: crlf.test_crlf is itself named test_*. Doing
 # `from ...crlf import test_crlf` would make pytest collect the *imported*
