@@ -244,11 +244,12 @@ def log_paths_for(pdsf, method, *args, **kwargs):
 
 
 # The log directories a superseded checksum or shelf file is versioned into. A run
-# fills this in for each target it is about to work on -- either driver below for a
-# tool on one of them, each remaining tool's own main() for the rest; a process that
-# never calls set_log_dirs leaves it empty, and then _shelf_common.move_old()
+# fills this in for each target it is about to work on: run_main below, and
+# _shelf_common.run_selection_main, do it for the eight tools between them, and
+# any other tool that versions a file does it in its own main(). A process that
+# never calls set_log_dirs leaves this empty, and then _shelf_common.move_old()
 # versions nothing. It lives here, beside the function that builds the paths, so
-# that every driver can record them.
+# that a driver in any of these modules can record them.
 LOGDIRS = []
 
 

@@ -503,18 +503,19 @@ def index_targets(spec, paths):
 def run_index_main(spec, tasks, argv):
     """Run one index shelf tool: parse the command line, set up logging, do the task.
 
-    A third driver rather than one of the two above, for three reasons that are
-    properties of these tools rather than options: their target is a table file, so
-    a command-line path expands to tables and their log path is built from the
-    table's own logical path with no suffix; they skip backup copies of a table one
-    at a time, inside the log hierarchy, so that the report of the skip is part of
-    the run and reaches the exit status; and their per-target handlers are created
-    in the tool's own log directory rather than in the target's.
+    A third driver, rather than _common.run_main or _shelf_common.
+    run_selection_main, for three reasons that are properties of these tools rather
+    than options: their target is a table file, so a command-line path expands to
+    tables and their log path is built from the table's own logical path with no
+    suffix; they skip backup copies of a table one at a time, inside the log
+    hierarchy, so that the report of the skip is part of the run and reaches the
+    exit status; and their per-target handlers are created in the tool's own log
+    directory rather than in the target's.
 
     Args:
         spec: The tool's ToolSpec.
-        tasks: The tool's task functions, keyed by task name. Each is called with
-            the spec and one index table.
+        tasks: The tool's task functions, keyed by task name, as index_tasks()
+            builds them. Each is called with one index table.
         argv: The full command line, sys.argv.
 
     Raises:
