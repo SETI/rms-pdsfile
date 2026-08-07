@@ -3230,3 +3230,44 @@ these entries are read by the PRs that come after it.
      and could reasonably read it as a copy-paste error. The archives, checksums and
      infoshelf pairs do not share this: each of those names itself.
      **Owner: open — a rename is a CLI-visible change and needs a decision.**
+
+### Added by the CodeRabbit review of PR #125 (2026-08-07)
+
+126. **Two dead branches in the index shelf tasks, preserved rather than removed.**
+     `_indexshelf_common.index_initialize` and `index_validate` both test the
+     dictionary `generate_indexdict()` returned against `None`, and
+     `generate_indexdict()` either returns a two-tuple or raises, so neither test
+     can be true. Both flavors carried the same branch before the migration
+     (`pdsindexshelf.py:224` and `pds4indexshelf.py:221` at `2265393`), so merging
+     them forced no choice and PR-27 kept both. Contrast the one dead branch PR-27
+     did remove — a `move_old()` in `pdslinkshelf.initialize` sitting after a guard
+     that returns when the shelf exists — which only one of the two flavors had, so
+     the merge had to pick. Removing provably-dead code that both flavors carry is a
+     cleanup of its own.
+     **Owner: open.**
+
+127. **`run_index_main` assumes its log path contains the tool's own directory.**
+     It computes the directory for the per-target handlers as
+     `logfile.rpartition('/' + spec.progname + '/')[0] + '/' + spec.progname`, which
+     yields `/pdsindexshelf` if that component is absent. It cannot be absent:
+     `log_paths_for` is called with `dir=spec.progname`, a non-empty constant, and
+     `_derived_paths._log_path_for` appends `[subdir.rstrip('/'), '/']` after a log
+     root that always ends in `/`. This is the two base tools'
+     `logfile.rpartition('/pdsindexshelf/')[0] + '/pdsindexshelf'` generalized, not
+     new. It is deliberately not `os.path.split(logfile)[0]`, which the other two
+     drivers use: `log_path_for_index` builds a path carrying the table's whole
+     logical path, so splitting would put a copy of the tool's error handler in
+     every per-table directory. Recorded because the assumption is implicit.
+     **Owner: open.**
+
+128. **`pds4linkshelf.generate_links` iterates a shelved value without checking it
+     is a list.** In the "identify labels for files" loop, a value taken from
+     `linkinfo_dict` — which starts as a copy of `old_links` — is iterated and each
+     item's link text read. Every key that reaches that loop is filtered to the
+     `.xml`/`.lblx` files of the current directory, and every one of those is put
+     into `linkinfo_dict` with a list value by the loop above and keeps it through
+     the merge, so a string value is not a state this code can produce or read back.
+     Unreachable before PR-27 (`AttributeError` on `.linktext`) and unreachable
+     after it (`IndexError` on `info[1]`). An `isinstance` guard would add a branch
+     no test can reach.
+     **Owner: open.**
