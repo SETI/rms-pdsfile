@@ -651,6 +651,32 @@ records are byte-identical: nothing else these tools write changed.
 - **`bandit` and `vulture` were not run.** They are permanently disabled and not
   installed.
 
+### 7.4 What the gates did not catch, and what now does
+
+The migration left the four thin modules with a task **table** and no task
+**names**, and `re_validate.validate_one_volume()` calls `pdslinkshelf.validate()`
+by name. The full `--mode ns` suite ran green in that state — **1,047 passed, 34
+skipped** — and so did `run-all-checks -c -s`.
+
+Nothing in the suite could have caught it. Every test that drives
+`validate_one_volume` replaces all five sibling tools with `SimpleNamespace` stubs
+(`test_re_validate.py:807`), which is what lets those tests run without holdings and
+is also what makes them silent about whether the real functions exist.
+
+Fixed two ways. Each module binds its five tasks under the names it carries them as
+a library, and `test_re_validate.py` gains
+`test_the_sibling_tools_really_accept_what_this_module_calls_them_with`, which binds
+each of the seven calls `validate_one_volume` makes — `inspect.signature(fn).bind(…)`
+— against the **real** modules rather than the stubs.
+
+Negative control, so the new test is not vacuous: with
+`validate = TASKS['validate']` commented out of `pdslinkshelf.py`,
+`pytest tests/holdings_maintenance/test_re_validate.py` reports `1 failed, 85
+passed`, and the one failure is that test. Restored, it is `86 passed`.
+
+This is the second time a stubbed collaborator has hidden a real break in this
+subsystem; recorded as deferred entry 122.
+
 ## 8. Ratchet
 
 Command lines, at base and at head:
@@ -701,32 +727,6 @@ rather than ratcheted, since a new per-file-ignores key is a widen:
 Two `%s` sites were **not** converted and are the reason `write_linkdict` still has
 `%`-formatting: `'"%s, ' % (basename + '"' + …)` pads inside the quoted field, and
 ruff does not flag it. It stays as the author wrote it.
-
-### 7.4 What the gates did not catch, and what now does
-
-The migration left the four thin modules with a task **table** and no task
-**names**, and `re_validate.validate_one_volume()` calls `pdslinkshelf.validate()`
-by name. The full `--mode ns` suite ran green in that state — **1,047 passed, 34
-skipped** — and so did `run-all-checks -c -s`.
-
-Nothing in the suite could have caught it. Every test that drives
-`validate_one_volume` replaces all five sibling tools with `SimpleNamespace` stubs
-(`test_re_validate.py:807`), which is what lets those tests run without holdings and
-is also what makes them silent about whether the real functions exist.
-
-Fixed two ways. Each module binds its five tasks under the names it carries them as
-a library, and `test_re_validate.py` gains
-`test_the_sibling_tools_really_accept_what_this_module_calls_them_with`, which binds
-each of the seven calls `validate_one_volume` makes — `inspect.signature(fn).bind(…)`
-— against the **real** modules rather than the stubs.
-
-Negative control, so the new test is not vacuous: with
-`validate = TASKS['validate']` commented out of `pdslinkshelf.py`,
-`pytest tests/holdings_maintenance/test_re_validate.py` reports `1 failed, 85
-passed`, and the one failure is that test. Restored, it is `86 passed`.
-
-This is the second time a stubbed collaborator has hidden a real break in this
-subsystem; recorded as deferred entry 122.
 
 ## 9. Decisions the owner might make differently
 
