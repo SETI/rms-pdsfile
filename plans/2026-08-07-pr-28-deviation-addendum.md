@@ -50,7 +50,12 @@ leave `SHELVES_ONLY` set for every test that ran after it — in a suite where
 `--mode` is exactly the knob that sets it. The failure mode is silent: a test that
 measures the wrong tree still passes.
 
-PR-25a hit the same wall for its own new module and documented the same deviation.
+PR-25a met the same wall from the other side: it drove its own new module
+**in-process**, against this package's subprocess convention, on the same reasoning
+about which tools can touch class-level state. It recorded that in its validation
+record rather than in a §6.4 addendum, because departing from a convention is not
+the same as dropping a stated deliverable — which is why this file exists and that
+one did not need to.
 `tests/holdings_maintenance/__init__.py`'s header, `support.HOLDINGS_FREE_TOOLS`,
 and the assertion in both new in-process helpers now carry the criterion, so the
 next person does not have to re-derive it.
@@ -60,7 +65,8 @@ next person does not have to re-derive it.
 An autouse fixture that snapshots and restores `Pds3File`/`Pds4File`
 `LOCAL_PRELOADED`, `SHELVES_ONLY` and the caches around each call — new global-state
 machinery in the test tree, whose correctness is exactly the thing that is hard to
-be sure of, in exchange for the runtime of five subprocesses. The executor judged
+be sure of, in exchange for the runtime of the six tests that drive this tool as a
+subprocess. The executor judged
 that a bad trade for a PR whose subject is three `main()` functions, and this
 addendum exists so the owner can disagree.
 

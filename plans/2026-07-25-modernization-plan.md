@@ -746,14 +746,24 @@ standalone pds3-only tool (it does not fit the five-task `ToolSpec` shape), and 
 three drivers stay three — PR-28 measured whether they collapse now that every
 family has migrated and found they do not (deferred entry 130).
 
-**One question the phase leaves open.** Deferred entry 66 parked three
-over-1000-line maintenance modules until the consolidation had shown how much of
-each was duplication. PR-27 answered two by shrinking them. The third,
-`pdsdependency.py` at 1,165 lines, has no twin to consolidate with, so the
-consolidation never reaches it and the deferral has simply expired: it needs a
-waiver-or-split decision, and no phase currently owns it. `pdsfile_overrides.mdc`
-deviation (3) and entry 66 both say so rather than pointing at a phase that has
-ended.
+**What the phase leaves behind.** Seven deferred observations were routed at
+Phase 6 or at one of its PRs and are not discharged. They are listed here rather
+than re-owned one by one, because deciding where each belongs is a scoping question
+for whoever plans the next phase, not something PR-28 can settle from inside
+Phase 6:
+
+| entry | question |
+|---|---|
+| 6 | `shelf_consistency_check` finds nothing in a modern holdings layout — should the walk learn the current directory names, and what should such a run report? |
+| 11 | `crlf` raises `ZeroDivisionError` on a zero-byte file; what an empty file classifies as is a three-way choice |
+| 14 | `pdsdependency`'s glob tables are unsorted |
+| 43, 46, 50, 51 | four questions about the tools' shared surface that the phase's PRs were expected to reach and did not |
+| 66 | `pdsdependency.py`, **1,165** lines, is the one module in `holdings_maintenance/` still over the limit and not waived. It has no twin to consolidate with, so the consolidation never reaches it and the deferral has expired rather than been discharged: waiver or split, and no phase owns it |
+| 72 | a `return` inside `finally` in `MemcachedCache`, which named PR-28 as the nearest PR licensed to change behavior. PR-28's licence covered one identifier in one maintenance tool; the entry is re-owned as unowned |
+
+Entries 6, 11, 66 and 72 carry that disposition in their own text.
+`pdsfile_overrides.mdc` deviation (3) names `pdsdependency.py` and its size rather
+than pointing at a phase that has ended.
 
 Gates: PR-13's tool tests + a real-holdings validate run of each migrated tool
 against at least one real volume/bundle. The phase record is
@@ -1027,8 +1037,9 @@ Record: `critiques/pr-28-validation.md`.
 - **The bug was reproduced before it was fixed.** The index branch printed its
   `*** Extraneous shelf:` line and *then* died with `NameError`, losing the summary
   and the counts of everything already walked — and exiting 1 either way, which is
-  why nothing downstream could have noticed. `test_an_extraneous_index_shelf_is_counted_like_any_other`
-  replaces the PR-13 test that pinned the crash, and puts a valid info shelf in the
+  why nothing downstream could have noticed.
+  `test_an_extraneous_index_shelf_is_counted_like_any_other` replaces the PR-13
+  test that pinned the crash, and puts a valid info shelf in the
   same tree so that a `try/except` "fix" would still fail it. The file's `F821`
   ratchet entry retires: **67 → 66 entries, 181 → 180 code slots**.
 - **The in-process move was made per tool, not across the board** — a deviation

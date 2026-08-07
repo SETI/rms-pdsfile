@@ -19,8 +19,11 @@
 # only the last one runs against a dogfooded copy of real holdings.
 ##########################################################################################
 
+import sys
+
 import pytest
 
+from pdsfile.holdings_maintenance.pds3 import shelf_consistency_check
 from tests.holdings_maintenance import subsets, support
 
 SOURCE_FLAVOR = 'pds3'
@@ -301,6 +304,39 @@ def test_a_shelf_root_beginning_with_a_dash_is_a_usage_error(tmp_path, monkeypat
     run = support.run_tool_in_process('shelf_consistency_check', '-dashroot')
     assert run.returncode == 2, run.describe()
     assert 'Tests performed:' not in run.output, run.describe()
+
+
+@pytest.mark.holdings_free
+def test_an_explicit_argv_is_what_gets_parsed(legacy_tree, tmp_path, monkeypatch,
+                                              capsys):
+    """main(argv) parses what it is given, not sys.argv.
+
+    Called directly rather than through support.run_tool_in_process(), which sets
+    sys.argv *and* passes argv and so cannot tell the two apart.
+    """
+
+    shelves = legacy_tree.disk / 'shelves' / 'info' / 'volumes' / 'VG_28xx'
+    (shelves / 'VG_9999_info.pickle').write_bytes(b'')
+    empty = tmp_path / 'nothing_here'
+    empty.mkdir()
+    monkeypatch.setattr(sys, 'argv', ['shelf_consistency_check.py', str(empty)])
+
+    assert shelf_consistency_check.main(
+        ['shelf_consistency_check.py', str(legacy_tree.disk)]) == 1
+    assert 'Errors found: 1' in capsys.readouterr().out
+
+
+@pytest.mark.holdings_free
+def test_no_argument_means_sys_argv(legacy_tree, monkeypatch, capsys):
+    """main() with no argument reads sys.argv, the way the __main__ block calls it."""
+
+    shelves = legacy_tree.disk / 'shelves' / 'info' / 'volumes' / 'VG_28xx'
+    (shelves / 'VG_9999_info.pickle').write_bytes(b'')
+    monkeypatch.setattr(sys, 'argv',
+                        ['shelf_consistency_check.py', str(legacy_tree.disk)])
+
+    assert shelf_consistency_check.main() == 1
+    assert 'Errors found: 1' in capsys.readouterr().out
 
 
 @pytest.mark.holdings_free

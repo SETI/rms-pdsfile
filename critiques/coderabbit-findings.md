@@ -42,8 +42,10 @@ failed to post on GitHub; captured here from the two review-summary bodies.)
 3. **`pds3/crlf.py`, in the summary block at the end of `main()` — repaired-files
    summary line skipped when >1 file is repaired.** The nfiles summary only prints
    the repaired message for exactly one repair. Print it for any nonzero repair
-   count; keep the singular/plural
-   wording for exactly one.
+   count; keep the singular/plural wording for exactly one. Still open; pinned as
+   current behaviour by `test_crlf.TestCommandLine.test_two_repairs_print_no_summary_at_all`
+   and held as deferred observation 136, which records why fixing it is an output-text
+   change the Phase-6 rule does not license.
 
 4. **`pds3/pdschecksums.py:367-369` (`validate_pairs`) and
    `pds3/pdslinkshelf.py:1373-1374` (`validate_links`) — `return` inside a

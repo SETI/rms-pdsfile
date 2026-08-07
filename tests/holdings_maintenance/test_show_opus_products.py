@@ -125,6 +125,8 @@ def test_logical_paths_are_accepted(tree):
                                 tree.path(LABEL))
     logical = support.run_tool(tree, 'show_opus_products', '--paths', LOGICAL_LABEL)
     assert logical.returncode == 0, logical.describe()
+    # Both runs producing nothing would satisfy the comparison on its own.
+    assert f'Pdsfile: {LOGICAL_LABEL}' in absolute.stdout, absolute.describe()
     assert logical.stdout == absolute.stdout, logical.describe()
 
 
@@ -195,7 +197,10 @@ def test_the_module_imports_with_neither_holdings_root_set(tmp_path):
     whole holdings tree into a class-level cache as a side effect of an import.
     """
 
-    probe = ('import pdsfile.tools.show_opus_products as m; '
+    probe = ('import os; '
+             "assert 'PDS3_HOLDINGS_DIR' not in os.environ; "
+             "assert 'PDS4_HOLDINGS_DIR' not in os.environ; "
+             'import pdsfile.tools.show_opus_products as m; '
              'assert callable(m.main); assert callable(m.build_arg_parser); '
              "assert not hasattr(m, 'PDS3_HOLDINGS_DIR'); "
              'from pdsfile import Pds3File; '
@@ -203,6 +208,34 @@ def test_the_module_imports_with_neither_holdings_root_set(tmp_path):
              'assert Pds3File.SHELVES_ONLY is False')
     proc = run_without_holdings([sys.executable, '-c', probe], tmp_path)
     assert proc.returncode == 0, proc.stderr.decode('utf-8', errors='replace')
+
+
+@pytest.mark.holdings_free
+def test_main_parses_the_argv_it_is_given_and_sys_argv_otherwise(monkeypatch, capsys):
+    """Both halves of main(argv=None), without needing a holdings root.
+
+    A usage error is answered by the parser before either root is read, so it is
+    the one invocation that reaches main() and comes back on a machine with no
+    holdings. The two calls differ only in where the command line comes from.
+    """
+
+    monkeypatch.delenv('PDS3_HOLDINGS_DIR', raising=False)
+    monkeypatch.delenv('PDS4_HOLDINGS_DIR', raising=False)
+
+    # sys.argv holds a command line the parser accepts, so a main() that read it
+    # instead of its argument would go on to the holdings roots and raise KeyError
+    # rather than exiting 2 here.
+    monkeypatch.setattr(sys, 'argv', ['show_opus_products.py', '--paths', 'a'])
+    with pytest.raises(SystemExit) as explicit:
+        show_opus_products.main(['show_opus_products.py', '--paths'])
+    assert explicit.value.code == 2
+    assert 'expected at least one argument' in capsys.readouterr().err
+
+    monkeypatch.setattr(sys, 'argv', ['show_opus_products.py', '--not-a-flag'])
+    with pytest.raises(SystemExit) as implicit:
+        show_opus_products.main()
+    assert implicit.value.code == 2
+    assert 'the following arguments are required: --paths' in capsys.readouterr().err
 
 
 @pytest.mark.holdings_free

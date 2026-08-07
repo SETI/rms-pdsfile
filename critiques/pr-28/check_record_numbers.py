@@ -77,6 +77,9 @@ ADDED = {
         'test_an_unreadable_file_raises_rather_than_being_reported',
         'test_the_module_is_runnable_as_python_m',
         'test_an_unreadable_file_ends_the_process_with_a_traceback',
+        'test_an_explicit_argv_is_what_gets_parsed',
+        'test_no_argument_means_sys_argv',
+        'test_the_in_process_runner_leaves_sys_argv_as_it_found_it',
     ),
     'tests/holdings_maintenance/test_shelf_consistency_check.py': (
         'test_an_index_shelf_whose_label_exists_is_counted_not_reported',
@@ -88,11 +91,14 @@ ADDED = {
         'test_help_names_the_flag_and_the_positional',
         'test_a_flag_given_a_value_is_a_usage_error',
         'test_a_shelf_root_beginning_with_a_dash_is_a_usage_error',
+        'test_an_explicit_argv_is_what_gets_parsed',
+        'test_no_argument_means_sys_argv',
         'test_the_module_is_runnable_as_python_m',
     ),
     'tests/holdings_maintenance/test_show_opus_products.py': (
         'test_the_parser_is_built_without_touching_the_environment',
         'test_the_module_imports_with_neither_holdings_root_set',
+        'test_main_parses_the_argv_it_is_given_and_sys_argv_otherwise',
         'test_the_module_is_runnable_as_python_m',
     ),
 }
@@ -104,7 +110,7 @@ MIGRATED = ('src/pdsfile/holdings_maintenance/pds3/crlf.py',
 # The id count the full --mode ns run reported as added. Not derivable from the
 # tree -- it comes from running the suite -- so it is checked for consistency with
 # the function count and the parametrization rather than re-derived.
-IDS_ADDED = 32
+IDS_ADDED = 38
 
 # The records spell the console-script count out, so the check has to as well.
 NUMBER_WORDS = {10: 'ten', 11: 'eleven', 12: 'twelve'}
@@ -428,11 +434,11 @@ def main():
     # Section 4's per-module breakdown of how each tool's tests are driven, as
     # counts of *tests*, not of call sites: one test may call a runner twice.
     for path, total, driven in (
-            ('tests/holdings_maintenance/test_shelf_consistency_check.py', 16,
+            ('tests/holdings_maintenance/test_shelf_consistency_check.py', 18,
              {'run_tool_in_process': 15, 'run_tool_without_holdings': 1}),
-            ('tests/holdings_maintenance/test_crlf.py', 32,
-             {'run_tool_in_process': 14, 'run_tool_without_holdings': 2}),
-            ('tests/holdings_maintenance/test_show_opus_products.py', 9,
+            ('tests/holdings_maintenance/test_crlf.py', 35,
+             {'run_tool_in_process': 15, 'run_tool_without_holdings': 2}),
+            ('tests/holdings_maintenance/test_show_opus_products.py', 10,
              {'run_tool': 6, 'run_without_holdings': 2})):
         found = len(test_names(path))
         if found != total:
@@ -452,20 +458,20 @@ def main():
     n_crlf = len(test_names('tests/holdings_maintenance/test_crlf.py'))
     n_opus = len(test_names('tests/holdings_maintenance/test_show_opus_products.py'))
     expect('record', f'{n_shelf} tests: **{shelf["run_tool_in_process"]}** call '
-                     f'`main()` in-process, {shelf["run_tool_without_holdings"]} is '
-                     f'the `python -m` subprocess')
-    expect('record', f'{n_crlf} tests: '
-                     f'{n_crlf - crlf["run_tool_in_process"] - crlf["run_tool_without_holdings"]}'
-                     f' call the classifier directly and always did, '
-                     f'**{crlf["run_tool_in_process"]}** are new in-process '
-                     f'command-line tests, {crlf["run_tool_without_holdings"]} are '
+                     f'`main()` in-process, 2 call it directly to pin its `argv` '
+                     f'parameter, {shelf["run_tool_without_holdings"]} is the '
+                     f'`python -m` subprocess')
+    expect('record', f'{n_crlf} tests: 16 call the classifier directly and always '
+                     f'did, **{crlf["run_tool_in_process"]}** are new in-process '
+                     f'command-line tests, 2 call `main()` directly to pin its '
+                     f'`argv` parameter and one more checks the runner restores '
+                     f'`sys.argv`, and {crlf["run_tool_without_holdings"]} are '
                      f'subprocesses')
     expect('record', f'{n_opus} tests: {opus["run_tool"]} drive the tool as a '
                      f'subprocess against a dogfooded tree, '
                      f'{opus["run_without_holdings"]} are new subprocess probes with '
-                     f'no holdings, '
-                     f'{n_opus - opus["run_tool"] - opus["run_without_holdings"]} '
-                     f'inspects the parser')
+                     f'no holdings, 1 inspects the parser and 1 calls `main()` '
+                     f'directly to pin its `argv` parameter')
 
     # --- the in-process criterion, and deferred 140's premise -----------------
     expect('support',

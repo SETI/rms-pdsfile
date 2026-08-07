@@ -249,7 +249,8 @@ Two further observations, not defects in a single tool:
    in-process `main()` calls, which are measured with no subprocess machinery at
    all. (It leaves `show_opus_products` on subprocesses; that half of this
    sentence was a prediction, and
-   `plans/2026-08-07-pr-28-deviation-addendum.md` says why it did not hold.) If it is taken up, `COVERAGE_CORE=sysmon`
+   `plans/2026-08-07-pr-28-deviation-addendum.md` says why it did not hold.)
+   If it is taken up, `COVERAGE_CORE=sysmon`
    (Python 3.12+) is the lever worth measuring first — and note the coverage
    artifact is uploaded from the 3.13 leg only, so the instrumentation need not be
    paid on every leg. **Owner: PR-37** (Phase 8, "set codecov targets"), which is
@@ -2049,7 +2050,13 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     `pdscache` defects survived to be found by reading. This is a third defect of
     that family.
 
-    **Owner: a PR licensed to change behavior — Phase 6's PR-28 (`errors` fix) is
+    **Re-owned (2026-08-07): Phase 6 has ended and PR-28 did not touch
+    `pdscache.py`.** This entry named it as the nearest PR licensed to change
+    behavior; that PR's licence covered one identifier in one maintenance tool, and
+    reaching into the cache from it would have been a behavior change nothing in
+    that PR's evidence covered. The question is unchanged and unowned.
+    **Owner (superseded): a PR licensed to change behavior — Phase 6's PR-28
+    (`errors` fix) was
     the nearest, or a dedicated follow-up. It must add a regression test first, per
     §2.**
 
@@ -3635,6 +3642,33 @@ these entries are read by the PRs that come after it.
      Sweeping the subsystem is Phase 7's job — it owns docstrings — and doing it
      piecemeal would leave the tree in three states rather than two.
      **Owner: recorded, not open — Phase 7.**
+
+### Added by the PR-28 adversarial review (round 4)
+
+147. **The help *text* of the two new parsers is pinned only by its flag names.**
+     Replacing `crlf`'s whole `description=` literal, or any one help string, with
+     junk leaves the three tool-test modules green: the help tests assert the
+     `usage: crlf.py` prefix and that each flag name appears, and nothing else.
+     That is deliberate for text this PR invented — a golden of a `--help` screen
+     pins argparse's line-wrapping as much as the words, and argparse rewraps to
+     the terminal width — but it means the text is documentation with no gate, and
+     PR-32 is chartered to write a user-guide chapter per program from it. The
+     out-of-repo transcript does capture both screens byte-for-byte at a pinned
+     `COLUMNS`, which is where a reader can see what they currently say.
+     **Owner: open.**
+
+148. **The per-code table in `pdsfile_overrides.mdc` deviation (4) has drifted from
+     the tree.** Spot-measured at PR-28's head with
+     `ruff check --config 'lint.per-file-ignores = {}' --select <code> src/pdsfile
+     tests scripts`: `UP031` 97 against the table's 124, `B006` 12 against 9,
+     `B012` 2 against 3, `RUF015` 3 against 2. The drift is from the Phase-6
+     migrations moving code between files rather than from any entry being wrong —
+     the ratchet itself, which is the enforced copy, is exact. PR-28 removed the
+     two rows that had become false statements (`F821`, and the `RUF059` row whose
+     cited defect no longer exists) and did not re-derive the counts, because a
+     table PR-24 owns is not a thing to half-refresh from inside another PR.
+     **Owner: open — one re-derivation of the whole table, by whoever next edits
+     it.**
 
 ### Amended by the PR-28 executor (2026-08-07) — entry 130
 

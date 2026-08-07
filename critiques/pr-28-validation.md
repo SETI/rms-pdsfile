@@ -20,9 +20,9 @@ had eleven entries at `3d044b2` and has eleven now.
 | `src/pdsfile/holdings_maintenance/pds3/shelf_consistency_check.py` | 90 | 132 | same |
 | `src/pdsfile/tools/show_opus_products.py` | 162 | 199 | same |
 | `tests/holdings_maintenance/support.py` | 710 | 830 | — |
-| `tests/holdings_maintenance/test_crlf.py` | 142 | 352 | — |
-| `tests/holdings_maintenance/test_shelf_consistency_check.py` | 189 | 350 | — |
-| `tests/holdings_maintenance/test_show_opus_products.py` | 134 | 226 | — |
+| `tests/holdings_maintenance/test_crlf.py` | 142 | 397 | — |
+| `tests/holdings_maintenance/test_shelf_consistency_check.py` | 189 | 386 | — |
+| `tests/holdings_maintenance/test_show_opus_products.py` | 134 | 259 | — |
 
 ```
 wc -l src/pdsfile/holdings_maintenance/pds3/crlf.py \
@@ -118,7 +118,8 @@ line is removed from `pyproject.toml`.
 
 The gate is an 84-record transcript of all three tools, captured at base and head
 and diffed record by record. It covers every output mode of each tool, every flag,
-the flag combinations that select output, and the argument *shapes* — `-h`, an abbreviated flag, a flag
+the flag combinations that select output, and the argument *shapes* — `-h`, an
+abbreviated flag, a flag
 given an explicit value, a repeated flag, `--`, a path beginning with `-` — that
 argparse treats differently from argv read literally, on each tool and with the
 holdings roots both set and unset. It is not a proof of completeness; it is 84
@@ -126,9 +127,11 @@ invocations chosen to include everything the three tools' code branches on plus
 everything argparse decides for them.
 
 **Base-vs-base control first: 0 of 84 records differ.** Base-vs-head: **26 of 84
-differ**, +137 / −162 lines. The other 58 records — every successful crlf run, every
-successful shelf run, and all 27 `show_opus_products` records including both
-tables, `--pprint`, `--raw` and an abbreviated `--pat` — are byte-identical.
+differ**, +137 / −162 lines. The other 58 records are byte-identical: every
+successful crlf run, every successful shelf run, and 27 of `show_opus_products`'
+31 — both tables, `--pprint`, `--raw`, an abbreviated `--pat`, and every usage
+error with the holdings roots set. The four that differ are its three no-holdings
+records (change 5) and one traceback (change 3).
 
 Six kinds of change across those twenty-six records.
 
@@ -281,9 +284,9 @@ rather than across the board.
 
 | tool | moved? | how its tests break down | why |
 |---|---|---|---|
-| `shelf_consistency_check` | **yes** | 16 tests: **15** call `main()` in-process, 1 is the `python -m` subprocess. (The one full-holdings test also runs `pdschecksums` and `pdsinfoshelf` as subprocesses to build the tree it then checks in-process.) | imports `argparse`, `os`, `sys`. No PdsFile class, no holdings root, no cwd-relative path — the hazard cannot arise |
-| `crlf` | **yes** | 32 tests: 16 call the classifier directly and always did, **14** are new in-process command-line tests, 2 are subprocesses | imports `argparse`, `sys`. Same |
-| `show_opus_products` | **no** | 9 tests: 6 drive the tool as a subprocess against a dogfooded tree, 2 are new subprocess probes with no holdings, 1 inspects the parser | calls `Pds3File.use_shelves_only(True)` and `Pds3File.preload()` / `Pds4File.preload()` on both roots. In-process it would preload a temporary tree into the same class-level cache the session preloaded the real tree into, and leave shelves-only set for every test that ran after it. Exactly the documented hazard |
+| `shelf_consistency_check` | **yes** | 18 tests: **15** call `main()` in-process, 2 call it directly to pin its `argv` parameter, 1 is the `python -m` subprocess. (The one full-holdings test also runs `pdschecksums` and `pdsinfoshelf` as subprocesses to build the tree it then checks in-process.) | imports `argparse`, `os`, `sys`. No PdsFile class, no holdings root, no cwd-relative path — the hazard cannot arise |
+| `crlf` | **yes** | 35 tests: 16 call the classifier directly and always did, **15** are new in-process command-line tests, 2 call `main()` directly to pin its `argv` parameter and one more checks the runner restores `sys.argv`, and 2 are subprocesses | imports `argparse`, `sys`. Same |
+| `show_opus_products` | **no** | 10 tests: 6 drive the tool as a subprocess against a dogfooded tree, 2 are new subprocess probes with no holdings, 1 inspects the parser and 1 calls `main()` directly to pin its `argv` parameter | calls `Pds3File.use_shelves_only(True)` and `Pds3File.preload()` / `Pds4File.preload()` on both roots. In-process it would preload a temporary tree into the same class-level cache the session preloaded the real tree into, and leave shelves-only set for every test that ran after it. Exactly the documented hazard |
 
 **This last row is a departure from the plan**, which asked for both `main()`-less
 tools to move. `plans/2026-08-07-pr-28-deviation-addendum.md` records it for the
@@ -332,19 +335,19 @@ python -m pytest tests/pds3file/ tests/rules/pds3/ --mode s -rA --junitxml=…
 
 | | base ids | head ids | added | removed | outcome changes |
 |---|---:|---:|---:|---:|---:|
-| `--mode ns` | 1,097 | 1,128 | 32 | 1 | **0** |
+| `--mode ns` | 1,097 | 1,134 | 38 | 1 | **0** |
 | `--mode s` | 558 | 558 | 0 | 0 | **0** |
 
-`--mode ns`: base 1,063 passed / 34 skipped; head 1,094 passed / 34 skipped.
+`--mode ns`: base 1,063 passed / 34 skipped; head 1,100 passed / 34 skipped.
 `--mode s`: base and head both 555 passed / 3 skipped. No id that exists in both
 runs changed outcome, in either mode, and nothing failed or errored in any of the
 four runs.
 
-Every one of the 32 added ids is a test this PR wrote, and every one passes. The
+Every one of the 38 added ids is a test this PR wrote, and every one passes. The
 single removed id is `test_an_extraneous_index_shelf_raises`, the test that pinned
 the bug §2 fixes. The full list is §5.2.
 
-### 5.2 The 29 added test functions, 32 added ids, and the 1 removed
+### 5.2 The 35 added test functions, 38 added ids, and the 1 removed
 
 Removed: `test_shelf_consistency_check.py::test_an_extraneous_index_shelf_raises`
 — the test that pinned the `NameError` as current behaviour, and whose docstring
@@ -354,10 +357,10 @@ Added, by module — **test functions**. Three of them are parametrized over two
 values each (`test_help_names_every_flag` and
 `test_a_store_true_flag_rejects_an_explicit_value` in `test_crlf.py`,
 `test_help_names_the_flag_and_the_positional` in
-`test_shelf_consistency_check.py`), so 29 functions produce the 32 ids §5.1
+`test_shelf_consistency_check.py`), so 35 functions produce the 38 ids §5.1
 counts:
 
-- `test_crlf.py` (16): `TestCommandLine::` `test_only_invalid_files_are_listed`,
+- `test_crlf.py` (19): `TestCommandLine::` `test_only_invalid_files_are_listed`,
   `test_verbose_lists_every_file`, `test_repair_rewrites_the_file_and_reports_it`,
   `test_a_single_file_gets_no_summary_line`,
   `test_two_repairs_print_no_summary_at_all`,
@@ -369,8 +372,10 @@ counts:
   `test_a_path_beginning_with_a_dash_is_reachable_only_after_another_path`,
   `test_an_unreadable_file_raises_rather_than_being_reported`; and, at module
   level, `test_the_module_is_runnable_as_python_m` and
-  `test_an_unreadable_file_ends_the_process_with_a_traceback`.
-- `test_shelf_consistency_check.py` (10):
+  `test_an_unreadable_file_ends_the_process_with_a_traceback`; and `TestArgvContract::`
+  `test_an_explicit_argv_is_what_gets_parsed`, `test_no_argument_means_sys_argv` and
+  `test_the_in_process_runner_leaves_sys_argv_as_it_found_it`.
+- `test_shelf_consistency_check.py` (12):
   `test_an_index_shelf_whose_label_exists_is_counted_not_reported`,
   `test_an_extraneous_index_shelf_is_counted_like_any_other`,
   `test_no_arguments_reports_an_empty_run`,
@@ -380,17 +385,19 @@ counts:
   `test_help_names_the_flag_and_the_positional`,
   `test_a_flag_given_a_value_is_a_usage_error`,
   `test_a_shelf_root_beginning_with_a_dash_is_a_usage_error`,
+  `test_an_explicit_argv_is_what_gets_parsed`, `test_no_argument_means_sys_argv`,
   `test_the_module_is_runnable_as_python_m`.
-- `test_show_opus_products.py` (3):
+- `test_show_opus_products.py` (4):
   `test_the_parser_is_built_without_touching_the_environment`,
   `test_the_module_imports_with_neither_holdings_root_set`,
+  `test_main_parses_the_argv_it_is_given_and_sys_argv_otherwise`,
   `test_the_module_is_runnable_as_python_m`.
 
-### 5.3 Mutation probes: sixteen, all caught
+### 5.3 Mutation probes: twenty-one, all caught
 
 Run against `pytest tests/holdings_maintenance/test_crlf.py
 tests/holdings_maintenance/test_shelf_consistency_check.py
-tests/holdings_maintenance/test_show_opus_products.py --mode ns`, which sits at 61
+tests/holdings_maintenance/test_show_opus_products.py --mode ns`, which sits at 67
 passed. Each mutation was applied to a copy-restored file, never through `git`, and
 **one file at a time**: a probe that changes the same construct in two files can be
 caught by one file's test while the other's goes unguarded, and reads as covered.
@@ -400,7 +407,7 @@ caught by one file's test while the other's goes unguarded, and reads as covered
 | M1 | shelf | `errors += 1` → `error += 1` in the index branch | 1 | `test_an_extraneous_index_shelf_is_counted_like_any_other` |
 | M2a | crlf | `__main__` guard neutralized | 2 | `test_the_module_is_runnable_as_python_m`, `test_an_unreadable_file_ends_the_process_with_a_traceback` |
 | M2b | shelf | `__main__` guard neutralized | 1 | `test_the_module_is_runnable_as_python_m` |
-| M2c | opus | `__main__` guard neutralized | 6 | 5 dogfooded tests **and** `test_the_module_is_runnable_as_python_m`, the holdings-free one |
+| M2c | opus | `__main__` guard neutralized | 7 | 6 dogfooded tests **and** `test_the_module_is_runnable_as_python_m`, the holdings-free one |
 | M3 | opus | holdings roots read at import again | 2 | `test_the_module_imports_with_neither_holdings_root_set`, `test_the_module_is_runnable_as_python_m` |
 | M4a | crlf | `parse_intermixed_args` → `parse_args` | 2 | `test_flags_are_accepted_among_the_paths`, `test_a_path_beginning_with_a_dash_…` |
 | M4b | shelf | `parse_intermixed_args` → `parse_args` | 1 | `test_verbose_is_accepted_between_the_shelf_roots` |
@@ -413,14 +420,25 @@ caught by one file's test while the other's goes unguarded, and reads as covered
 | M9 | — | `run_tool_in_process('pdsinfoshelf', …)` | — | the `HOLDINGS_FREE_TOOLS` assertion |
 | M10 | shelf | the index branch's `if verbose: print(...)` deleted | 1 | `test_an_index_shelf_whose_label_exists_is_counted_not_reported` |
 | M11 | support | `sys.argv = list(argv)` deleted from the in-process runner | 6 | the four help ids and the two usage-error tests, which assert the `usage: <tool>.py` prefix argparse takes from `sys.argv[0]` |
+| M12a | crlf | `main()` parses `sys.argv` instead of its `argv` argument | 1 | `TestArgvContract::test_an_explicit_argv_is_what_gets_parsed` |
+| M12b | shelf | the same substitution | 1 | `test_an_explicit_argv_is_what_gets_parsed` |
+| M12c | opus | `parse_args(argv[1:])` → `parse_args()` | 1 | `test_main_parses_the_argv_it_is_given_and_sys_argv_otherwise` |
+| M13 | crlf | `argv = sys.argv` → a fixed list, when `argv is None` | 3 | `TestArgvContract::test_no_argument_means_sys_argv` and both `python -m` subprocess tests |
+| M14 | support | `sys.argv = saved_argv` deleted, so the runner leaks its argv | 1 | `test_the_in_process_runner_leaves_sys_argv_as_it_found_it` |
+| M15 | support | `no_holdings_env()` stops removing `PDS3_HOLDINGS_DIR` | 1 | `test_the_module_imports_with_neither_holdings_root_set` |
 
 M4, M5 and M8 are the ones that matter: `parse_args`, `nargs='+'` and argparse's
 default `allow_abbrev` are the three spellings a reader would reach for, and each
 silently breaks a command line that works today. M7 matters for a different reason:
 it is the "fix" that stops the crash without counting the error, and the regression
-test rejects it too. M10 and M11 exist because both were live gaps — the index
-branch's verbose line and the in-process runner's own `sys.argv` fidelity were each
-asserted by nothing until a probe said so.
+test rejects it too. M10 through M15 exist because each was a live gap — the index branch's verbose
+line, the in-process runner's own `sys.argv` fidelity in both directions, the
+`no_holdings_env()` scrub list, and, worst of the six, the `argv` parameter of all
+three `main()`s. That last one is the half of the charter that says "testable": the
+in-process runner sets `sys.argv` *and* passes `argv`, so every test that went
+through it would pass whether or not `main()` read its argument at all.
+`TestArgvContract` and its two siblings call `main()` directly, with `sys.argv`
+holding a different command line, which is the only way to tell the two apart.
 
 ### 5.4 The rest
 
@@ -428,8 +446,8 @@ asserted by nothing until a probe said so.
 scripts/run-all-checks.sh -c -s          # with no holdings env vars
 ```
 All checks passed, both trees. Its pytest leg: base **281 passed / 816 skipped**,
-head **312 passed / 816 skipped**. The skip count does not move and the pass count
-moves by exactly +31, which is §5.2's 32 added ids minus the 1 removed: every test this
+head **318 passed / 816 skipped**. The skip count does not move and the pass count
+moves by exactly +37, which is §5.2's 38 added ids minus the 1 removed: every test this
 PR wrote builds its own tree and runs on a machine with no holdings at all, so none
 of them lands in the skipped column.
 
@@ -509,7 +527,8 @@ owner can spend a one-line PR on it if the trade looks different from there.
    this PR **cannot merge without the owner acknowledging**. The alternative — an
    autouse fixture that snapshots and restores `LOCAL_PRELOADED`, `SHELVES_ONLY`
    and the caches around each call — is new global-state machinery in the test tree
-   whose correctness is the hard part, traded for the runtime of five subprocesses.
+   whose correctness is the hard part, traded for the runtime of six tests' worth of
+   subprocesses.
    That judgement is the deviation; the addendum exists so it is the owner's.
 2. **A malformed command line now exits 2 rather than 0 or 1, on all three tools**
    (§3, changes 2, 5 and 6). CLI exit codes are frozen this phase. What is frozen in

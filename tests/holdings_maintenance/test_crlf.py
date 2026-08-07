@@ -19,6 +19,8 @@
 # module and call crlf.test_crlf(...) -- never import the name.
 ##########################################################################################
 
+import sys
+
 import pytest
 
 from pdsfile.holdings_maintenance.pds3 import crlf
@@ -335,6 +337,49 @@ def test_the_module_is_runnable_as_python_m(tmp_path):
     assert run.returncode == 0, run.describe()
     assert f'{bad} REPAIRED' in run.stdout, run.describe()
     assert bad.read_bytes() == b'ONE\r\n'
+
+
+class TestArgvContract:
+    """Both halves of main(argv=None), called directly rather than through a runner.
+
+    support.run_tool_in_process() sets sys.argv *and* passes argv, so it cannot
+    tell the two apart: main() could ignore its parameter, or the runner could
+    stop passing one, and every test that goes through it would still pass. These
+    call main() themselves.
+    """
+
+    def test_an_explicit_argv_is_what_gets_parsed(self, tmp_path, monkeypatch,
+                                                  capsys):
+        bad = write(tmp_path, 'bad.txt', b'ONE\n')
+        other = write(tmp_path, 'other.txt', b'TWO\n')
+        monkeypatch.setattr(sys, 'argv', ['crlf.py', str(other)])
+
+        assert crlf.main(['crlf.py', str(bad)]) == 0
+        captured = capsys.readouterr()
+        assert captured.out == f'{bad} INVALID\n', captured.out
+
+    def test_the_in_process_runner_leaves_sys_argv_as_it_found_it(self, tmp_path):
+        """The runner rebinds sys.argv for the call; nothing may see that after.
+
+        Without the restore, every test that ran later would see a tool's command
+        line in sys.argv, and pytest's own argv would be gone.
+        """
+
+        before = list(sys.argv)
+        support.run_tool_in_process('crlf', write(tmp_path, 'ok.txt', b'ONE\r\n'))
+        assert sys.argv == before
+
+        # ...including when argparse exits out of the call.
+        support.run_tool_in_process('crlf', '--bogus')
+        assert sys.argv == before
+
+    def test_no_argument_means_sys_argv(self, tmp_path, monkeypatch, capsys):
+        bad = write(tmp_path, 'bad.txt', b'ONE\n')
+        monkeypatch.setattr(sys, 'argv', ['crlf.py', str(bad)])
+
+        assert crlf.main() == 0
+        captured = capsys.readouterr()
+        assert captured.out == f'{bad} INVALID\n', captured.out
 
 
 def test_an_unreadable_file_ends_the_process_with_a_traceback(tmp_path):
