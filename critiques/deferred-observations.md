@@ -3839,3 +3839,235 @@ to collapsing. **Owner: recorded, not open.**
      definition of `LOGROOT_ENV = 'PDS_LOG_ROOT'` beside `_common.py`'s. The
      duplicate constant is the part that can drift silently. Out of scope here — this
      PR extracted what was identical, not what is merely similar. **Owner: open.**
+
+## From PR-29 (`docs: Google-style docstrings, the public modules`, Phase 7)
+
+**Line numbers in this block are at PR-29's head**, not at its base, because these
+entries are read by the PRs that come after it.
+
+### Amended by the PR-29 executor (2026-08-07) — entries 23, 24 and 80
+
+Entry **23** is now documented rather than fixed. `DictionaryCache.__init__`'s docstring
+no longer offers `lifetime=0` as "no expiration"; it says that a constant zero cannot be
+told apart from an absent default and that storing without an explicit lifetime then
+raises `TypeError`. `set()`'s own docstring says the same. That makes the trap harder to
+walk into and harder to fix by accident, because a reader who repairs the code now has a
+docstring to repair with it. **The entry is still open**: the fix is still the
+`self.lifetime is not None` test, and it is still a behavior change to a public class.
+
+Two things the entry did not say, found while writing the prose. `MemcachedCache` carries
+the identical trap: `set_local` (`pdscache.py:1389`) tests `if self.lifetime:` in
+exactly the same way, and `MemcachedCache.__init__` documented `lifetime` as "0 for no
+expiration" in exactly the same words. And the two constructors disagree on what counts
+as a lifetime function — `DictionaryCache` accepts `type(lifetime).__name__ == 'function'`
+and `MemcachedCache` accepts `('function', 'method')` — so a bound method is a function to
+one class and a constant to the other. Whatever the owner rules for entry 23 should be
+ruled for both classes at once.
+
+Entry **24** is now documented rather than fixed. `DictionaryCache.set_multi`'s docstring
+says outright that `pause` skips only the single trim that follows the batch and does not
+suppress the trims the individual stores perform. **The entry is still open**: honoring
+the original intent still means either bypassing `resume()`'s trim or giving `set()` a
+real `pause` parameter, and both are still new semantics for a public method.
+
+One thing the entry did not say. `MemcachedCache.set_multi` has no `pause` parameter at
+all, so the two `set_multi` methods that the shared interface presents as
+interchangeable do not have the same signature. Their `lifetime` defaults differ too:
+`DictionaryCache.set_multi` defaults to `0`, which stores permanent entries, and
+`MemcachedCache.set_multi` defaults to `None`, which reuses the lifetimes already
+recorded. A caller that swapped one cache for the other would change what its batch
+stores mean.
+
+Entry **80** is resolved for the four module headers it names and left open for the rest.
+Rewritten here: `pdsfile.py`'s module docstring (all four tells the entry lists — "has
+ever exported", "is now a re-export shim", "What stays here, and why", and the closing
+migration paragraph), and `preload_and_cache.py`'s header, which was a `#` comment block
+and is now a module docstring. `pdscache.py` and `pdsviewable.py` gained module
+docstrings they did not have. Every fact the entry asked to keep is kept: the module map,
+the mixin mechanics and the two tests that check them, the reason the `class PdsFile`
+statement cannot move, and the reason an unreferenced import must not be deleted.
+
+**One claim in the entry does not hold at `4edc7d1`.** It says the "stays"/"still"
+framing also appears "in the re-export blocks of `pdsfile.py`, `pdscache.py` and
+`pdsviewable.py`". The re-export comments in `pdscache.py` (`:4-6` at base) and
+`pdsviewable.py` (`:7-9` at base) read "is not referenced below; it is re-exported for
+callers that reach it as ..." and carry no such framing; both are untouched by this PR
+and remain word for word as they were. The framing was in `pdsfile.py` and
+`preload_and_cache.py` only.
+
+**What entry 80 still covers:** the ten `_*.py` module headers, which PR-29a owns. None
+of them has a module docstring at all.
+
+### Added by the PR-29 executor's own measurements (2026-08-07)
+
+152. **`DictionaryCache.get_multi` and `MemcachedCache.get_multi` disagree about a
+     missing key, and the docstring described the behavior neither of them had.**
+     `DictionaryCache.get_multi` (`pdscache.py:328`) reads each key through `self[key]`
+     at `:348`, so a key that is absent, expired, or holds `None` raises `KeyError` and
+     no partial result comes back. `MemcachedCache.get_multi` (`:1147`) omits such a key
+     and returns the rest. Both carried the same sentence, "Missing keys do not
+     appear in the returned dictionary", which was true of the second and the opposite of
+     the first. Verified by running: `DictionaryCache(lifetime=100).get_multi(['k',
+     'nope'])` raises `KeyError: 'nope'`. Both docstrings now describe what their own
+     class does, so the divergence is visible instead of hidden, but the two methods still
+     cannot be swapped. No caller in this repo uses either. **Owner: a future pdscache
+     PR — which of the two behaviors the shared interface is supposed to have.**
+
+153. **`PdsViewSet.small` and `PdsViewSet.medium` raise `AttributeError` whenever their
+     fallback is reached.** Each looks for a member whose path contains `_small` or
+     `_med` and, finding none, executes `viewable = viewable.for_frame(200,200)` with
+     `viewable` bound to `None` (`pdsviewable.py:455`, `:472`). Two faults in one line:
+     the receiver is the value just tested as false, and `for_frame` is a method of
+     `PdsViewSet`, not of `PdsViewable`, so `self.for_frame(...)` is what was meant.
+     Verified by running: a two-member set with no `_small` in either path answers
+     `AttributeError: 'NoneType' object has no attribute 'for_frame'`. The properties are
+     public and neither is exercised by any test. The docstrings written here say the
+     property raises rather than falling back, which is accurate and is not the fix.
+     **Owner: a future pdsviewable PR; the fix is a behavior change to a public
+     property.**
+
+154. **`PdsViewSet.append` given a `PdsViewSet` adds exactly one of its members.** The
+     recursive branch is `for sub_viewable in viewable.viewables: self.append(sub_viewable);
+     return`, with the `return` inside the loop (`pdsviewable.py:330-332`), so the first
+     iteration returns. Which member survives depends on the iteration order of a Python
+     set, so the result is not even deterministic. Verified by running: appending a
+     two-member set to an empty one leaves one member. Moving the `return` out of the loop
+     is a one-line fix, but it changes what a public method does with an input it
+     currently mishandles silently. **Owner: a future pdsviewable PR.**
+
+155. **`load_icons` silently skips every JPEG icon.** The extension test is
+     `if ext.lower() not in ('.png', 'jpg'): continue` (`pdsviewable.py:827`) — the second
+     entry has no leading dot, and `os.path.splitext` always supplies one, so no file ever
+     matches it. The surrounding code plainly expects JPEGs: the nominal-size guess looks
+     for a `jpg-<n>` directory component sixteen lines above, at `:811`. Verified by running: a
+     directory holding `document_image.jpg` and `document_label.png` yields only the
+     `LABEL` icon set. Adding the dot would start loading files that are not loaded today,
+     which is a behavior change and not an executor's call. **Owner: a future pdsviewable
+     PR.**
+
+156. **`load_icons` without a logger stores an unreadable image under the previous
+     image's dimensions.** The handler is `except Image.UnidentifiedImageError:` followed
+     by `if logger:`, and the `continue` sits inside that `if` (`pdsviewable.py:835-838`).
+     With a logger the file is reported and skipped; without one, execution falls through
+     to `(width, height) = im.size`, where `im` is still the last image successfully
+     opened. Verified by running: a corrupt `broken.png` beside a valid 50x50 file
+     produces a `BROKEN` icon set of 50x50 with the corrupt file's path and byte count.
+     The two-line fix is to dedent the `continue`, which changes what the no-logger path
+     does. **Owner: a future pdsviewable PR.**
+
+157. **`MemcachedCache.delete_multi` calls a method that does not exist.** The loop reads
+     `_ = self._del_local(key)` (`pdscache.py:1483`); the method is `_delete_local`
+     (`pdscache.py:1494`), and `_del_local` is defined nowhere in the package. Any batch
+     with at least one key raises `AttributeError` after the server-side deletion has
+     already happened, which leaves the server and this process's dictionaries
+     disagreeing. The return statement is unreachable for such a batch, and would be
+     wrong if it were reached: `count = len(self) - prev_len` (`:1491`) is negative or zero after a
+     deletion and is compared for equality with `len(keys)`, so only an empty batch can
+     answer `True`. `pylibmc` is not installed here, so this is read from the code rather
+     than run; no caller exists in this repo and no test covers it. **Owner: a future
+     pdscache PR.**
+
+158. **`MemcachedCache.flush`'s general error path raises before it can report.** In the
+     `except pylibmc.Error` handler, `keys = mydict.keys()` (`pdscache.py:1045`) is followed by `keys.sort()` (`:1047`); `dict_keys` has no `sort`, so with a logger present the
+     handler raises `AttributeError` and the flush neither writes the remaining batches
+     nor empties its buffer. Without a logger the handler completes and the values in the
+     failed batch are dropped rather than retried. Eight lines below, the summary counts
+     `len(self.local_keys_by_lifetime) - len(failures)` (`:1055`), which is a count of distinct
+     lifetimes, not of items, so the "N items flushed" message is wrong whenever more
+     than one item shares a lifetime. **Owner: a future pdscache PR.**
+
+159. **Four `MemcachedCache` log calls are not guarded by a logger test, and two error
+     paths are guarded by one that changes what they do.** Unguarded: breaking a stale
+     block (`pdscache.py:765`), losing a race to claim one (`:826`), and the
+     permanent-value-too-big report (`:1686`). Each raises `AttributeError` on a cache
+     built with `logger=None`, which is the default. The other two are worse than
+     unguarded: `unblock`'s refusals read `if not test_pid and self.logger:` and
+     `if test_pid != self.pid and self.logger:` (`:842`, `:848`), so a cache with no
+     logger does not refuse — it goes on to clear a block that another process holds.
+     **Owner: a future pdscache PR.**
+
+160. **`MemcachedCache.replicate_clear` writes `None` back to the shared clear counter.**
+     The branch reading `if clear_count is None: # lost from memcache!` responds with
+     `self.mc.set('$CLEAR_COUNT', clear_count, time=0)` (`pdscache.py:1591-1592`), which
+     stores the `None` it was just given rather than the count this process knows. The
+     key is then held at a value no comparison can use, and `was_cleared()`, which
+     evaluates `clear_count > self.clear_count`, raises `TypeError` from then on.
+     **Owner: a future pdscache PR.**
+
+161. **`PdsFile._from_absolute_or_logical_path` drops all four of its options.** The
+     signature is `(cls, path, fix_case=False, must_exist=False, caching='default',
+     lifetime=None)` and both branches call the constructor with those four names bound
+     to literals rather than to the arguments (`pdsfile.py:1872`, with the two calls at
+     `:1897` and `:1901`). Passing
+     `must_exist=True` therefore does not make the call insist on anything. Because the
+     literals equal the declared defaults, no caller passing defaults can tell; a caller
+     passing anything else is silently ignored. The docstring written here says the
+     options are dropped, which is accurate and is not the fix. **Owner: a future
+     pdsfile PR; forwarding them is a behavior change to a method with callers.**
+
+162. **`PdsFile.parent` accepts `caching` and `lifetime` and passes neither on.** Both
+     branches call `from_logical_path` or `from_abspath` with `must_exist` alone
+     (`pdsfile.py:1579` and `:1583`), so the parent is built with whatever caching defaults
+     those constructors apply. Same shape as entry 161 and same reason for not fixing it
+     here. **Owner: a future pdsfile PR.**
+
+163. **`is_preloading()` reads a cache key that nothing in the package ever writes.**
+     `_preload.py:91` is `return cls.CACHE.get_now('$PRELOADING')`, and `$PRELOADING`
+     appears nowhere else in `src/` or `tests/`. The call therefore answers `None` for
+     every caller, which reads as "not preloading" and cannot become anything else
+     without an external writer. The name is public: it is re-exported by
+     `preload_and_cache` and by `pdsfile.pdsfile`. Either `preload()` should set the key
+     around its work or the function should go; both are decisions. `_preload.py` belongs
+     to PR-29a, so its own docstring is not written here. **Owner: a future preload PR.**
+
+164. **Two exported names are read by nothing.** `_preload.DICTIONARY_CACHE_LIMIT`
+     (`_preload.py:60`) is re-exported by `preload_and_cache` and by `pdsfile.pdsfile`,
+     but every cache in the package is built with `cls.DICTIONARY_CACHE_LIMIT`, a class
+     attribute defined separately and identically in `pdsfile.py:304`,
+     `pds3file/__init__.py:59` and `pds4file/__init__.py:48`. Rebinding the module
+     constant changes nothing. `pdscache.MEMCACHED_LOADED` (`pdscache.py:52`) is read
+     nowhere; the flag the code actually consults is `_preload.HAS_PYLIBMC`, set by a
+     second `try: import pylibmc` in a second module. Both names are in the frozen API,
+     so neither can simply go. **Owner: a future cleanup PR, or PR-35 when it decides
+     what the stubs declare.**
+
+165. **`PdsFile.from_relative_path`'s empty-path branch is unreachable.** After
+     `path = path.rstrip('/')` and `parts = path.split('/')`, the guard is
+     `if len(parts) == 0` (`pdsfile.py:1851`). `''.split('/')` is `['']`, of length
+     one, so the branch never runs and an empty relative path instead calls
+     `self.child('')`. **Owner: a future pdsfile PR.**
+
+166. **`PdsFile.bundle_abspath` and `PdsFile.bundleset_abspath` return different things
+     for the same kind of non-answer.** `bundle_abspath` returns `''` when this file
+     belongs to no bundle and again when the category is a checksums-of-archives category
+     (`pdsfile.py:1088`, `:1097`); `bundleset_abspath` returns `None` when this file
+     belongs to no bundleset (`:1141`). Both are public, both are consumed by
+     `bundle_pdsfile` and `bundleset_pdsfile`, which test the result for truth and so
+     cannot tell the two apart -- but a caller that tests `is None` can. The docstrings
+     written here state each method's own answer. **Owner: a future pdsfile PR.**
+
+167. **`cache_lifetime_for_class`'s docstring gives the wrong default for `cls`.**
+     `_preload.py:62` is `def cache_lifetime_for_class(arg, cls=None)` and the docstring
+     two lines below says "cls -- the class calling the method (default True)". The
+     function is public, re-exported by `preload_and_cache` and by `pdsfile.pdsfile`.
+     `_preload.py` is PR-29a's file, so the correction belongs there. **Owner: PR-29a.**
+
+168. **Docstrings written here use inline literals for API symbols, not Sphinx
+     cross-reference roles, and PR-31 will have to revisit that.** `doc_python.mdc`
+     section 5 wants every mention of a code object to carry a role; section 6 wants the
+     tree to build clean under `-n`, which fails any role that does not resolve. Only
+     five modules have autodoc pages today, so a role naming anything else -- `Pds3File`,
+     `PdsLogger`, `preload`, every mixin -- would resolve to nothing and fail the gate.
+     Double backticks satisfy the build and cost a reader only a hyperlink. When PR-31
+     publishes the full API reference the roles become resolvable and these docstrings
+     should be swept. **Owner: PR-31.**
+
+169. **A trailing underscore inside a docstring is a reStructuredText reference, and
+     this package's attribute names are full of them.** At base, `sphinx-build -n` over
+     the five modules reported `Unknown target name: "log_root"` from `pdsfile.py`'s
+     mention of `LOG_ROOT_,` and `Unknown target name: "document"` and `"folder"` from
+     `load_icons`'s mention of `"document_"` and `"folder_"`. The path attributes
+     (`category_`, `bundleset_`, `bundlename_`, `checksums_`, `archives_`, `root_`,
+     `disk_`) all carry the same hazard, as does `LOG_ROOT_`. Wrapping the name in double
+     backticks removes it. PR-30 writes several hundred more docstrings over files full
+     of the same names. **Owner: PR-30 and PR-31, as advance warning.**
