@@ -744,7 +744,8 @@ and awaits only that merge. All five pds3/pds4 tool-pairs are on the shared core
 Two things the phase did **not** do, deliberately: `pdsdependency` stays a
 standalone pds3-only tool (it does not fit the five-task `ToolSpec` shape), and the
 three drivers stay three — PR-28 measured whether they collapse now that every
-family has migrated and found they do not (deferred entry 130).
+family has migrated and found they do not (deferred entry 130). What that
+measurement did point at, the preamble the three drivers shared, is PR-28a below.
 
 **What the phase leaves behind.** **Nine deferred observations** — counted by
 observation number, grouped into six rows below because four of them are one
@@ -1083,6 +1084,30 @@ touched by this PR. PR-25a is the one that modernizes it. Record:
   re-create one tool's task-header wording. Measured, not acted on. What the
   measurement does point at is extracting the 15-line preamble, which would be its
   own small PR.
+
+**PR-28a (S)** `refactor: one shared preamble for the three tool drivers`
+The small PR the entry above points at, authorized by the owner after Phase 6
+closed. `_common.run_main`, `_shelf_common.run_selection_main` and
+`_indexshelf_common.run_index_main` opened with the same 25-line block — verified
+identical at `b8b9703`, modulo the `_common.` qualifier on two lines. It becomes
+`_common.setup_run(spec, argv)`, returning `(args, logger)`; each driver keeps its
+own `status = 0`. **Not a driver merge**: the seven forced variation points deferred
+entry 130 measured are untouched. Record: `critiques/pr-28a-validation.md`.
+
+**As executed:**
+- **Byte-identical, not merely attributed.** A 158-scenario capture — every tool
+  that reaches each driver, every task, `--help`, a missing task, an unknown flag, a
+  nonexistent path, an unreadable target, two task flags at once — differs on **0
+  lines** between base and head, against a base-versus-base control that also
+  differs on 0.
+- **One input class where the new frame shows.** A `--log` root the process cannot
+  write into raises inside the preamble, and that traceback now names `setup_run`.
+  Found by a deliberate 20-scenario probe rather than by the gate, and recorded as
+  deferred entry 149 for the owner to rule on.
+- **One test added**, the only id that moves in either mode:
+  `test_driver_setup.py::test_a_log_root_gets_every_handler_the_spec_declares`. It
+  closes a gap the extraction exposed — no test drove a maintenance tool with
+  `--log`, so the handler wiring was pinned by nothing.
 
 ### Phase 7 — Docstrings and documentation
 

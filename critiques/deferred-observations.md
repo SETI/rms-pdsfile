@@ -3773,3 +3773,52 @@ and the `status = 0` stays behind — 14 lines move, not 15.
 not act.
 **Owner: recorded, not open — unless the owner wants the 15-line preamble
 extraction, which would be its own PR.**
+
+## From PR-28a (extract the drivers' shared preamble, Phase 6 follow-on)
+
+### Amended by the PR-28a executor (2026-08-07) — entry 130
+
+**The preamble extraction happened; the driver merge did not.** The owner took the
+last paragraph above and authorized it as its own PR. `_common.setup_run(spec, argv)`
+now holds the block and returns `(args, logger)`; each driver calls it and keeps its
+own `status = 0`, exactly as the paragraph predicted — 14 lines move, not 15.
+
+Two corrections to what that paragraph said, both measured rather than reasoned
+about:
+
+- The block is **25 lines** as it stands in each driver, 15 of them code. The
+  paragraph's "15-line preamble" counted the code lines; the contiguous block a
+  reader sees is 25.
+- The three copies differ on **two** lines, not one: `build_arg_parser` carries the
+  `_common.` qualifier as well as `resolve_log_root`. Both are the qualifier, so
+  the substance is unchanged.
+
+**What this PR deliberately did not do.** It did not touch the three loops, the
+seven forced variation points, the task headers, or `RunResult`. The measurement
+above stands: the drivers still do not collapse, and nothing here makes them closer
+to collapsing. **Owner: recorded, not open.**
+
+### Added by the PR-28a executor's own measurements (2026-08-07)
+
+149. **A traceback raised inside the preamble now names `setup_run`.** Extracting a
+     function adds a stack frame, and one input class reaches it: a `--log` root the
+     process cannot write into raises `PermissionError` from
+     `logger.add_handler(make_handler(path))`, the preamble's last line. On all ten
+     driver-backed tools the traceback gains three lines — the call site, its caret
+     row, and a `_common.py … in setup_run` frame — beneath the frame that still
+     names the driver. Nothing else moves: the 158-scenario tool-run capture
+     covering every tool, every task and the failure paths is byte-identical between
+     base and head. This is a change to what a tool prints, on an input no test and
+     no golden covers, so it is recorded rather than normalized away. Whether a
+     traceback's shape is part of the CLI contract at all is the owner's call.
+     **Owner: open.**
+
+150. **`--log` is still only half pinned.** Before this PR no test drove a
+     maintenance tool with `--log` at all, so the preamble's handler wiring was
+     pinned by nothing, in triplicate. `test_driver_setup.py` now pins it for
+     `pds4checksums`, whose spec declares two handler factories. Two things it does
+     not reach: a pds3 spec, which declares one factory, so the ordering of the
+     tuple is pinned only where there are two of them; and the `PDS_LOG_ROOT`
+     fallback arriving at a real tool — `resolve_log_root` itself is unit-tested in
+     `test_re_validate.py`, but no test sets the variable and runs a tool.
+     **Owner: open.**
