@@ -34,10 +34,12 @@ module functions.
     ``construct_category_list``, ``formatted_file_size``, ``selected_path_from_path``,
     the three ``_clean_*`` primitives and ``_needs_glob``, plus ``FILE_BYTE_UNITS`` and
     ``_GLOB_CACHE_SIZE``. Not a mixin.
-  * ``_preload.py`` -- ``_PreloadMixin``: ``preload`` and the cache it fills, plus the
+  * ``_preload.py`` -- ``_PreloadMixin``: ``preload`` and the cache it fills, along with
+    ``get_permanent_values``, ``load_volume_info``, ``cache_lifetime`` and
+    ``cache_category_merged_dirs``, which is the call at the foot of this file; plus the
     module-level ``cache_lifetime_for_class``, ``is_preloading``, ``pause_caching``,
-    ``resume_caching``, the four cache-lifetime constants,
-    ``DICTIONARY_CACHE_LIMIT`` and ``HAS_PYLIBMC``.
+    ``resume_caching``, the four cache-lifetime constants, ``DICTIONARY_CACHE_LIMIT``
+    and ``HAS_PYLIBMC``.
   * ``_properties.py`` -- ``_PropertiesMixin``: the largest group. 64 properties, of
     which 40 are lazy (they fill a private slot on first access and then, in 39 of the
     40, call ``_recache()`` so the cached object keeps the filled value) and 24 are
@@ -184,15 +186,24 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
     tree's taxonomy: ``category_``, made of ``checksums_``, ``archives_`` and
     ``bundletype_``; then ``bundleset_`` with its ``bundleset`` and version ``suffix``;
     then ``bundlename_``; then ``interior``, the part below the bundle directory. An
-    attribute whose name ends in an underscore either is empty or ends in a slash, so the
-    pieces concatenate into a path without any separator logic.
+    attribute whose name ends in an underscore is empty or ends in a slash, so the pieces
+    concatenate into a path without any separator logic -- with one exception:
+    ``new_merged_dir()`` sets ``disk_``, ``root_`` and ``html_root_`` to None, and
+    concatenating one of those raises rather than producing a path.
 
     Most of what an instance can answer is a property, computed on first access and
-    stored. The answers can be expensive -- a directory listing, a shelf lookup, a label
-    parse -- which is why instances are cached: an object completed through
-    ``_complete()`` goes into the shared class-level ``CACHE``, keyed by its lowercased
-    logical path, and a later request for the same path gets the same object back rather
-    than repeating the work. ``preload()`` fills that cache in bulk from a holdings tree.
+    stored on the object. Some of those answers are cached beyond the object: an object
+    completed through ``_complete()`` may go into the class-level ``CACHE``, keyed by its
+    lowercased logical path, and a later request for the same path then gets the same
+    object back rather than repeating the work. Which objects those are depends on
+    ``DEFAULT_CACHING``, and under its default of ``'dir'`` an ordinary data file is not
+    among them: two constructor calls for the same file give two objects, each of which
+    recomputes its own properties. ``preload()`` fills the cache in bulk from a holdings
+    tree.
+
+    The cache is per class rather than per package. ``Pds3File`` and ``Pds4File`` each
+    define their own ``CACHE``, so the two PDS versions share nothing, and neither shares
+    with ``PdsFile``.
 
     The class is not used directly. ``Pds3File`` and ``Pds4File`` subclass it, one per PDS
     version, and each fills in the configuration tables and the regular expressions that
@@ -638,8 +649,11 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
         """Set ``LOGGER`` on every direct subclass of the class this is called on.
 
         Called on ``PdsFile``, that means ``Pds3File`` and ``Pds4File``. The class it is
-        called on keeps the logger it had, so the ``CACHE`` that ``PdsFile`` built with
-        its own logger continues to use that one.
+        called on keeps the logger it had.
+
+        A cache is unaffected either way. Each holds a direct reference to the logger it
+        was constructed with, so nothing done to a class's ``LOGGER`` reaches the logger
+        that class's ``CACHE`` writes to.
 
         Parameters:
             logger: the PdsLogger to install. A false value installs a null logger,
@@ -679,9 +693,13 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
         logical path but no absolute path, no disk and no root, and its children are
         accumulated from every physical copy as those copies are visited.
 
-        The object is returned filled in and marked permanent, with every lazy property
-        already set to the value a category directory has, so nothing about it is ever
-        computed from a filesystem.
+        The object is returned mostly filled in, with the lazy properties a category
+        directory can answer already set, so those are never computed from a filesystem.
+        Seven storage slots are left unset, and the properties behind them do not
+        degrade gracefully: ``html_path`` and ``url`` raise IndexError,
+        ``all_version_abspaths`` raises TypeError on the None ``root_``, and
+        ``iconset_open`` and ``iconset_closed`` read the icon directory out of the
+        holdings tree.
 
         Parameters:
             basename (str): the category name, which must be one of ``CATEGORIES``.
@@ -873,9 +891,15 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
     def __repr__(self):
         """Return the object's printable form, which quotes the path it stands for.
 
-        An object with no absolute path -- a merged category directory, or one built
-        from a logical path alone -- is shown by its logical path and marked as logical.
-        A subclass instance names its class.
+        An object whose absolute path is None -- a merged category directory, or one
+        built from a logical path alone -- is shown by its logical path and marked as
+        logical, with no class name on it. The test is against None specifically, so a
+        blank object, whose absolute path is the empty string, takes the other branch and
+        prints an empty absolute path instead.
+
+        On the absolute-path branch an instance of a subclass names its class. Neither
+        shipped subclass reaches this method, though: ``Pds3File`` and ``Pds4File`` each
+        define their own.
 
         Returns:
             str: the text ``PdsFile("<abspath>")``, ``PdsFile.<subclass>("<abspath>")``
@@ -1019,8 +1043,10 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
     def is_bundleset_dir(self):
         """Whether this is a bundleset's own top-level directory.
 
-        Reading it consults the filesystem or the shelves, because it has to know
-        whether the path is a directory.
+        Reading it can consult the filesystem or the shelves, because it may have to know
+        whether the path is a directory. That test is last and the conjunction
+        short-circuits, so an object that names no bundleset, or that names a bundle,
+        answers without asking.
 
         Returns:
             bool: True if this is a bundleset directory.
@@ -1032,8 +1058,10 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
         """Whether this is a file that sits at bundleset level rather than in a bundle.
 
         That is a bundleset's checksum file, or a description file such as an AAREADME.
-        Reading it consults the filesystem or the shelves, because it has to know
-        whether the path is a directory.
+        Reading it can consult the filesystem or the shelves, because it may have to know
+        whether the path is a directory. That test is last and the conjunction
+        short-circuits, so an object that names no bundleset, or that names a bundle,
+        answers without asking.
 
         Returns:
             bool: True if this is a bundleset-level file.
@@ -1176,15 +1204,17 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
         things and this one is kept.
 
         Whether this object is cached depends on the caching mode. ``'all'`` caches
-        everything, ``'dir'`` caches directories and index files only, and any other
-        value caches nothing. A checksums-of-archives path is cached whatever the mode,
-        because it is the only path from which the bundleset it belongs to can be
-        recorded. Nothing above category level is cached, and neither is a path that
-        does not exist.
+        everything below category level, ``'dir'`` caches directories and index files
+        only, and any other value caches nothing. A checksums-of-archives path is cached
+        whatever the mode, because it is the only path from which the bundleset it
+        belongs to can be recorded. Three things are never cached whatever the mode: a
+        path above category level, a path *at* category level, and a path that does not
+        exist.
 
-        The capitalization of the path must already be correct. This does not repair it,
-        and a path that differs from the real one in case will not match the cache entry
-        made under the real one.
+        The capitalization of the path must already be correct, because this does not
+        repair it. It does not have to match the cache, though: the key is the logical
+        path lowercased, so two spellings that differ only in case reach the same entry
+        and get back the same object.
 
         Parameters:
             must_exist (bool): if True, insist that the file exists.
@@ -1271,10 +1301,12 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
         survive any trim.
 
         Only bundleset-level and bundle-level objects contribute; anything above or
-        below is ignored. An object that does contribute is marked permanent, so the
-        cache never evicts a path these dictionaries point at. Nothing is recorded at
-        all until a preload has run, since without one there is no tree to be
-        authoritative about.
+        below is ignored. An object that does contribute has its ``permanent`` attribute
+        set, which nothing in the package reads: the cache entry for such an object was
+        already written by the caller with an ordinary lifetime, so the paths these
+        dictionaries point at can be evicted like any others. Nothing is recorded at all
+        until a preload has run, since without one there is no tree to be authoritative
+        about.
         """
 
         # cls.CACHE['$RANKS-category_'] is keyed by [bundle set or name] and returns
@@ -1325,8 +1357,11 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
         with this object about being merged or physical; an object the cache never held
         is not added here.
 
-        The entry is rewritten with the cache's default lifetime rather than the one it
-        had, so an entry stored as permanent becomes an expiring one.
+        The entry is rewritten without a lifetime, and what that means depends on which
+        cache the class holds. A dictionary cache resolves it to the cache's default, so
+        an entry stored as permanent becomes an expiring one. A memcached cache instead
+        reuses the lifetime already recorded for the key, so a permanent entry stays
+        permanent.
         """
 
         cls = type(self)
@@ -1352,10 +1387,12 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
         that bundleset's rule class.
 
         An index file has no real children, and asking one for a child gives a row of the
-        table instead unless ``allow_index_row`` says otherwise.
+        table instead unless ``allow_index_row`` says otherwise. That is the one path
+        that returns before anything below happens.
 
-        The cache is paused for the duration and resumed however the call ends, so a
-        traversal several levels deep trims or flushes once rather than at every level.
+        On every other path the cache is paused for the duration and resumed however the
+        call ends, so a traversal several levels deep trims or flushes once rather than
+        at every level.
 
         Parameters:
             basename (str): the name of the entry. A trailing slash is ignored.
@@ -1376,8 +1413,8 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
             OSError: if ``must_exist`` is True and the entry does not exist.
             ValueError: if the name cannot fill the piece of the taxonomy it would have
                 to fill -- a category child that is not a legal bundleset name, a
-                category name that is not a category, a voltype that is not one of
-                ``VOLTYPES``, or a child asked for below the PDS root.
+                category name that is not a category, or a voltype that is not one of
+                ``VOLTYPES``.
         """
 
         basename = basename.rstrip('/')
@@ -1563,9 +1600,13 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
             lifetime: accepted and unused.
 
         Returns:
-            PdsFile: the parent object. A merged category directory has no parent and
-            answers None, and so does an object whose parent's logical path would be
-            empty.
+            PdsFile: the parent object, or None if this is a merged category directory,
+            which has no parent.
+
+        Raises:
+            ValueError: if this is a *physical* category directory. Walking up from one
+                asks for the holdings directory itself, which has no logical path, and
+                the conversion refuses it. The exception comes from ``from_abspath()``.
         """
 
         if self.is_merged:      # merged pdsdir
@@ -1596,6 +1637,10 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
             lid_str (str): the identifier, in the form
                 ``dataset_id:bundle_id:directory_path:file_name``.
 
+        The path lookup is ``from_path()``, so an identifier naming a bundle no preload
+        recorded fails the way that call fails: with an UnboundLocalError rather than
+        anything this method names.
+
         Returns:
             PdsFile: the object the identifier names.
 
@@ -1625,15 +1670,21 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
         """Return the object for a logical path, the path below the holdings directory.
 
         The cache is tried first, for the path itself and then for each of its ancestors
-        in turn. Where an ancestor is found, the rest of the path is walked down from it
-        with ``child()``, which fills in the taxonomy and picks the right subclass. Where
-        nothing is found -- which is the situation before a preload -- the logical path
-        is converted to an absolute path against the class's holdings root and
-        ``from_abspath()`` is used instead.
+        in turn. Where an ancestor is found *and it has an absolute path*, the rest of
+        the path is walked down from it with ``child()``, which fills in the taxonomy and
+        picks the right subclass. Otherwise the logical path is converted to an absolute
+        path against the class's holdings root and ``from_abspath()`` is used instead.
 
         On the ancestor path, the arguments are passed on to every ``child()`` call. On
         the fallback path, none of them is: the absolute-path constructor is called with
-        its own defaults, so ``must_exist`` is not enforced there.
+        its own defaults, so ``must_exist`` is not enforced there, and a path that does
+        not exist comes back as an object rather than as an error.
+
+        The fallback is not confined to a tree with no preload. A merged category
+        directory has no absolute path, so any path whose deepest cached ancestor is one
+        -- which is what a preloaded tree is left with once the bundleset entry below it
+        expires or is trimmed -- takes the fallback too, and silently loses
+        ``must_exist`` with it.
 
         Parameters:
             path (str): the logical path, such as
@@ -1728,6 +1779,11 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
 
         Raises:
             ValueError: if the path is not absolute, or has no ``holdings`` component.
+                Also, before either of those is tested, if the path names the holdings
+                directory itself or anything else with nothing below that component,
+                which the logical-path conversion refuses; and afterwards, if a
+                component below it is not a legal category, bundleset or voltype, which
+                comes from ``child()``.
             OSError: if ``must_exist`` is True and the path does not exist. With
                 ``fix_case`` also True, a disk or root whose case cannot be repaired
                 raises it first.
@@ -1873,8 +1929,9 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
                                        caching='default', lifetime=None):
         """Return the object for a path, whichever of the two kinds of path it is.
 
-        A path containing a ``holdings`` component is taken as absolute and anything
-        else as logical.
+        A path containing the holdings directory name with a slash on each side is taken
+        as absolute and anything else as logical, with the same case sensitivity and the
+        same need for a following component as ``is_logical_path()``.
 
         The four options below are accepted and then dropped: the constructor this
         forwards to is called with the same four names bound to their default values,
@@ -1906,11 +1963,15 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
         """Return the object for anything that roughly resembles a path.
 
         Where the other constructors need a well-formed path, this one takes a
-        description of a file and fills in what is missing. The category, the version
-        suffix and the bundleset can each be written in several ways or left out, and
-        the pieces may appear in any order at either end of the path; what is left over
-        after they are recognized is taken as the bundle name and the interior path. A
-        missing category is assumed to be the class's own bundle directory name.
+        description of a file and fills in what is missing. The category and the version
+        suffix can each be written in several ways or left out, and they are recognized
+        at the *front* of the description, in any order; what is left over is taken as
+        the bundleset, the bundle name and the interior path. A missing category is
+        assumed to be the class's own bundle directory name.
+
+        Only the front is scanned. A category or version written after the bundleset --
+        ``COISS_2xxx/archives`` rather than ``archives/COISS_2xxx`` -- is not recognized
+        and becomes part of the interior path.
 
         The bundleset and version are resolved through the rank and path dictionaries
         that a preload fills, which is why a preload is required. Where the version
@@ -1947,11 +2008,20 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
         Returns:
             PdsFile: the object the description resolves to.
 
+        A description the preload dictionaries cannot answer does not fail cleanly. A
+        bundle*set* they do not hold gives KeyError; a bundle *name* they do not hold
+        gives UnboundLocalError instead, because the recovery path that follows the
+        KeyError leaves the version rank unassigned when no bundleset matches the name.
+        A bundle name with no underscore in it gives ValueError, and a bundleset whose
+        rank list is empty gives IndexError. None of the four is caught here, and the
+        last three reach a caller who is watching for KeyError unhandled.
+
         Raises:
             OSError: if no preload has been performed.
-            ValueError: if the version asked for exists under no rank that was found.
-            KeyError: if the bundleset or bundle is not one a preload recorded, or if
-                the category has no entry of its own. It comes from the item lookups,
+            ValueError: if the version asked for exists under no rank that was found, or
+                if a bundle name has no underscore in it.
+            KeyError: if a bundleset is not one a preload recorded, or if the category
+                has no entry of its own. It comes from the item lookups,
                 ``__getitem__()``, on the preload dictionaries.
         """
 
@@ -2332,8 +2402,13 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
         """Report whether a path is a logical path rather than an absolute one.
 
         The test is entirely textual: a path is logical unless it contains the holdings
-        directory name as a component. Nothing is looked up, and a path that names no
-        real file is classified just the same.
+        directory name with a slash on each side. Nothing is looked up, and a path that
+        names no real file is classified just the same.
+
+        Two consequences of that exact spelling. The match is case-sensitive, unlike the
+        one ``from_abspath()`` uses to find the same component, so a path spelling it in
+        capitals reads as logical. And it needs a component *after* the holdings
+        directory, so the holdings directory itself reads as logical too.
 
         Parameters:
             path (str): the path to classify.

@@ -4,10 +4,13 @@ It reports, per file, the line count, whether the module has a docstring, and ho
 classes and functions do not; and, over all the files together, how many docstrings exist
 and how many carry a Google-style section.
 
-A section is counted only if its name is one of the Google section names. `Note:`,
-`Example:`, `Format:` and the like are not sections for this purpose: they appear in this
-package's older docstrings as ordinary prose headings, and counting them would inflate
-the "already sectioned" figure without any parameter having been documented.
+A section is counted only if a whole line of the docstring is one of the Google section
+names. Two things that rules out. `Note:`, `Example:` and `Format:` are not sections for
+this purpose: they appear in this package's older docstrings as ordinary prose headings,
+and counting them would inflate the "already sectioned" figure without any parameter
+having been documented. And a section name written mid-sentence -- prose that happens to
+contain the word `Returns:` -- is not a section either, which a substring test would
+miscount.
 
 Usage:
     python measure.py FILE [FILE ...]
@@ -19,6 +22,21 @@ import sys
 
 SECTIONS = ('Parameters:', 'Args:', 'Arguments:', 'Returns:', 'Return:', 'Yields:',
             'Raises:', 'Input:')
+
+
+def sections_in(doc):
+    """Return the Google section names a docstring uses.
+
+    A name counts only when it is the whole of a line, apart from indentation.
+
+    Parameters:
+        doc (str): the docstring text.
+
+    Returns:
+        set: the section names found.
+    """
+
+    return {line.strip() for line in doc.split('\n')} & set(SECTIONS)
 
 
 def definitions(path):
@@ -83,14 +101,14 @@ def main(argv):
               f'params={count:4d}')
 
     present = [d for d in docstrings if d]
-    sectioned = [d for d in present if any(word in d for word in SECTIONS)]
+    sectioned = [d for d in present if sections_in(d)]
 
     print()
     print(f'docstrings that exist            : {len(present)}')
     print(f'  carrying a Google section      : {len(sectioned)}')
     print(f'  carrying none                  : {len(present) - len(sectioned)}')
     for word in SECTIONS:
-        count = sum(1 for d in present if word in d)
+        count = sum(1 for d in present if word in sections_in(d))
         if count:
             print(f'  using {word:16s}         : {count}')
     print(f'parameters, excluding self/cls   : {parameters}')

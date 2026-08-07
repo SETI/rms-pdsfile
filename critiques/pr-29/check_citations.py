@@ -105,16 +105,32 @@ CITATIONS = [
     ('src/pdsfile/pdsviewable.py', 889, "icon_name.replace('folder_', '')"),
     ('src/pdsfile/pdsviewable.py', 911, 'if (icon_name, True) not in ICON_SET_BY_TYPE:'),
     ('src/pdsfile/pdsviewable.py', 982, 'return ICON_SET_BY_TYPE[icon_type, is_open]'),
-    ('src/pdsfile/pdsfile.py', 304, 'DICTIONARY_CACHE_LIMIT = 200000'),
-    ('src/pdsfile/pdsfile.py', 1088, "return ''"),
-    ('src/pdsfile/pdsfile.py', 1097, "return ''"),
-    ('src/pdsfile/pdsfile.py', 1141, 'return None'),
-    ('src/pdsfile/pdsfile.py', 1579, 'return cls.from_logical_path(logical_path,'),
-    ('src/pdsfile/pdsfile.py', 1583, 'return cls.from_abspath(abspath,'),
-    ('src/pdsfile/pdsfile.py', 1851, 'if len(parts) == 0:'),
-    ('src/pdsfile/pdsfile.py', 1872, 'def _from_absolute_or_logical_path'),
-    ('src/pdsfile/pdsfile.py', 1897, 'fix_case=False, must_exist=False,'),
-    ('src/pdsfile/pdsfile.py', 1901, 'fix_case=False, must_exist=False,'),
+    ('src/pdsfile/pdsfile.py', 315, 'DICTIONARY_CACHE_LIMIT = 200000'),
+    ('src/pdsfile/pdsfile.py', 490, 'self.permanent    = False'),
+    ('src/pdsfile/pdsfile.py', 723, 'this.disk_        = None'),
+    ('src/pdsfile/pdsfile.py', 748, 'this.permanent    = True'),
+    ('src/pdsfile/pdsfile.py', 1116, "return ''"),
+    ('src/pdsfile/pdsfile.py', 1125, "return ''"),
+    ('src/pdsfile/pdsfile.py', 1169, 'return None'),
+    ('src/pdsfile/pdsfile.py', 1287, "if '/' in self.logical_path:"),
+    ('src/pdsfile/pdsfile.py', 1330, 'self.permanent = True'),
+    ('src/pdsfile/pdsfile.py', 1580, "raise ValueError('Cannot define child from PDS root: '"),
+    ('src/pdsfile/pdsfile.py', 1619, 'if logical_path in cls.CATEGORIES'),
+    ('src/pdsfile/pdsfile.py', 1620, 'return cls.from_logical_path(logical_path,'),
+    ('src/pdsfile/pdsfile.py', 1624, 'return cls.from_abspath(abspath,'),
+    ('src/pdsfile/pdsfile.py', 1733, 'if ancestor and ancestor.abspath:'),
+    ('src/pdsfile/pdsfile.py', 1907, 'if len(parts) == 0:'),
+    ('src/pdsfile/pdsfile.py', 1928, 'def _from_absolute_or_logical_path'),
+    ('src/pdsfile/pdsfile.py', 1954, 'fix_case=False, must_exist=False,'),
+    ('src/pdsfile/pdsfile.py', 1958, 'fix_case=False, must_exist=False,'),
+    ('src/pdsfile/pdsfile.py', 2108, 'part = parts[0].lower()'),
+    ('src/pdsfile/pdsfile.py', 2136, 'parts = parts[:-1]'),
+    ('src/pdsfile/pdsfile.py', 2238, "['$RANKS-' + this.category_][bundlename][-1]"),
+    ('src/pdsfile/pdsfile.py', 2243, "idx = bundlename.index('_') + 1"),
+    ('src/pdsfile/pdsfile.py', 2272, 'this_abspath = cls.CACHE'),
+    ('src/pdsfile/pdsfile.py', 2278, 'except KeyError:'),
+    ('src/pdsfile/pdsfile.py', 2321, "['$RANKS-' + this.category_][bundleset][-1]"),
+    ('src/pdsfile/_preload.py', 485, 'pdsdir.permanent = True'),
     ('src/pdsfile/_preload.py', 60, 'DICTIONARY_CACHE_LIMIT = 200000'),
     ('src/pdsfile/_preload.py', 62, 'def cache_lifetime_for_class(arg, cls=None):'),
     ('src/pdsfile/_preload.py', 91, "get_now('$PRELOADING')"),
@@ -138,7 +154,6 @@ BARE_PREFIXES = ('src/pdsfile/pdscache.py', 'src/pdsfile/pdsviewable.py',
 # Citations the documents make against the base tree, which this tree cannot answer.
 # Each is marked "at base" where it appears, and each is checked by hand once.
 AT_BASE = {('preload_and_cache.py', 4)}
-AT_BASE_FILES = {name for name, _ in AT_BASE}
 
 
 def lines_of(path):
@@ -187,15 +202,18 @@ def check_every_citation_is_listed(problems):
     for label, document in (('deferred', block), ('record', RECORD.read_text())):
         for match in CITED_PATTERN.finditer(document):
             name = match.group(1)
-            if name.rpartition('/')[2] in AT_BASE_FILES:
+            base = name.rpartition('/')[2]
+            numbers = [int(n) for n in (match.group(2), match.group(3))
+                       if n is not None]
+            if all((base, n) in AT_BASE for n in numbers):
                 continue
-            if name.rpartition('/')[2] not in listed_files:
+            if base not in listed_files:
                 problems.append(f'[{label}] cites {name}, which no entry covers')
                 continue
-            for number in (match.group(2), match.group(3)):
-                if number is None or (name, int(number)) in AT_BASE:
+            for number in numbers:
+                if (base, number) in AT_BASE:
                     continue
-                if not any(path.endswith(name) and line == int(number)
+                if not any(path.endswith(name) and line == number
                            for path, line in listed):
                     problems.append(f'[{label}] cites {name}:{number}, '
                                     'which no entry covers')
@@ -245,8 +263,8 @@ def check_scope_table(problems):
 
     # The record's scope table gives base line counts, which this tree cannot answer;
     # these are the head counts the same table carries.
-    expected_lines = {'pdsfile.py': 2360, 'pdscache.py': 1780, 'pdsviewable.py': 984,
-                      '__init__.py': 39, 'preload_and_cache.py': 46}
+    expected_lines = {'pdsfile.py': 2435, 'pdscache.py': 1780, 'pdsviewable.py': 984,
+                      '__init__.py': 39, 'preload_and_cache.py': 48}
     classes = functions = parameters = 0
     for name in IN_SCOPE:
         path = SRC / name

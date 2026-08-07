@@ -17,11 +17,11 @@ Five files, and only these:
 
 | file | lines at base | at head | module docstring at base | classes without one | functions without one / total | parameters |
 |---|---:|---:|---|---:|---:|---:|
-| `src/pdsfile/pdsfile.py` | 1,949 | 2,360 | present | 1 | 2 / 37 | 56 |
+| `src/pdsfile/pdsfile.py` | 1,949 | 2,435 | present | 1 | 2 / 37 | 56 |
 | `src/pdsfile/pdscache.py` | 1,047 | 1,780 | absent | 3 | 2 / 60 | 58 |
 | `src/pdsfile/pdsviewable.py` | 587 | 984 | absent | 0 | 8 / 26 | 36 |
 | `src/pdsfile/__init__.py` | 15 | 39 | absent | 0 | 0 / 0 | 0 |
-| `src/pdsfile/preload_and_cache.py` | 16 | 46 | absent | 0 | 0 / 0 | 0 |
+| `src/pdsfile/preload_and_cache.py` | 16 | 48 | absent | 0 | 0 / 0 | 0 |
 
 Measured with `wc -l` and with a walk of each file's AST; the four counted columns are
 at base. Totals: 123 functions,
@@ -106,10 +106,18 @@ text. The fifth row is the blind spot that section 3.2 closes.
 
 ### 3.2 The comment enumeration, which the AST cannot see
 
-Comments are not AST nodes, so section 3.1 would not notice one being deleted. The five
-files' comment tokens were extracted with `tokenize` at base and at head and diffed:
+Comments are not AST nodes, so section 3.1 would not notice one being deleted, moved or
+reworded. The five files' comments were extracted with `tokenize` at base and at head and
+diffed:
 
     python critiques/pr-29/check_comments.py <base tree> <head tree>
+
+Each comment is compared as a triple: its exact text, trailing whitespace included; its
+column; and the nearest preceding line of *code*. String tokens are excluded from being
+anchors, because rewriting a docstring is the whole point of this change and anchoring on
+one would report every comment below a rewritten docstring as moved. Anchoring on code
+instead is what makes the check specific, since the code cannot move without section
+3.1's hash noticing.
 
 | file | comment lines at base | at head | removed | added |
 |---|---:|---:|---:|---:|
@@ -131,8 +139,16 @@ exported still resolves here"). The rule for that module is a module *docstring*
 comment could not stay where it was. Every fact it carried is in the docstring that
 replaced it: where the implementation lives, and why the redundant `as` alias is there.
 
-Every other comment in all five files is byte-identical to base, including all 325 in
-`pdsfile.py`.
+Every other comment in all five files is byte-identical to base and in the same place,
+including all 325 in `pdsfile.py`.
+
+**The check is not vacuous.** Two mutations of head, each of which the text-only version
+of this check would have passed:
+
+| mutation | measured |
+|---|---|
+| `# Core properties of a viewable` moved one line down, past the statement below it, leaving the comment sequence in the same order | reported: removed after `name='', pdsf=None):`, added after `self.abspath = abspath` |
+| trailing whitespace added to that same comment | reported: removed and re-added under the same anchor |
 
 ## 4. The mechanical docstring checks
 
@@ -459,7 +475,79 @@ inherited, and two did not survive it.
 Everything else reproduced exactly: the five-file table, the 150 parameters, PR-29a's 156
 functions and 131 parameters, and all four ratchet numbers.
 
+## 10a. CodeRabbit
+
+CodeRabbit reviewed the first push, which was before the three review rounds, and posted
+15 comments. Seven of them name defects rounds 1 to 3 had already found and fixed --
+`DictionaryCache`'s stale trim keys, `del_multi`, `new_merged_dir`'s unfilled slots, the
+category-level cache guard, `parent()`, the empty nested `PdsViewSet`, and
+`load_icons`'s `UnboundLocalError`. Each of those threads was answered with the entry
+number and the commit that fixed it.
+
+Six were new and are fixed here:
+
+* **`_recache`'s lifetime claim is class-dependent.** It said flatly that a permanent
+  entry becomes an expiring one. That is true of a dictionary cache, whose `set()`
+  resolves a None lifetime to the cache default, and false of a memcached cache, whose
+  `set()` reuses the lifetime already recorded for the key. `PdsFile.CACHE` can be
+  either. **All three review rounds missed this**, and it is the best single argument in
+  this PR for running a tool alongside the readers rather than instead of them.
+* **`check_comments.py` compared text without position**, and stripped trailing
+  whitespace. Section 3.2 records the strengthened check and its two mutations.
+* **`measure.py` matched section names as substrings**, so prose containing the word
+  `Returns:` would have counted as a section. It now matches whole lines. Re-measured at
+  base, every figure in section 1.1 is unchanged, so the defect was real and its effect
+  on this record was nil.
+* **`check_citations.py` skipped every citation naming a base-tree file**, not just the
+  one base-tree line. Narrowed to the exact file-and-line pair.
+* **Deferred entry 159 said "Four" unguarded log calls and listed three.** Corrected to
+  three; three is what round 1 verified.
+* **`preload_and_cache.py` named the four lifetime constants and their values in
+  separate sentences.** Each constant now carries its own value.
+
+One was declined. The plan's PR-29a line says "156 functions, 131 parameters"; CodeRabbit
+read that as a count of `Parameters:` sections. It is a count of parameters, measured with
+`critiques/pr-29/measure.py`, and it is the right metric for scoping PR-29a, which has to
+write one description per parameter. The thread carries that reply.
+
 ## 10. Review
 
-Three rounds, each over a different slice, run by fresh reviewer subagents with no
-context from this session. Round records are in `critiques/pr-29/`.
+Three rounds, each over a different slice, each run by a fresh reviewer subagent with no
+context from this session or from the rounds before it. Records:
+`critiques/pr-29/review-round-1.md`, `-2`, `-3`.
+
+| round | slice | surface | findings | new deferred entries |
+|---|---|---|---:|---|
+| 1 | `pdscache.py` | 3 classes, 60 functions | 15 | 170-176, and 157 rewritten |
+| 2 | `pdsviewable.py` | 2 classes, 26 functions | 11 | 177-183 |
+| 3 | `pdsfile.py` | 1 class, 37 functions, the module map | 18 | 184-190 |
+
+Forty-four findings, every one re-verified by the executor before acting on it. Only one
+re-verification disagreed with the reviewer, and only in degree: round 1's finding 7
+reproduced with a different key count than the reviewer reported, because trimming had
+fired during their setup; the claim itself held and the entry records the cleaner
+one-key reproduction.
+
+**Round 3 found more than round 1, and round 1 more than round 2, so the rounds did not
+converge.** The reason to stop at three is the brief's cap and the fact that the three
+rounds have now covered all three substantial files -- not that the surface is exhausted.
+An honest reading of the trend is that a fourth reader would find more.
+
+What the rounds hunted was what the checker in section 4 cannot: prose that is wrong
+about the code. The three highest-value classes of finding, all of which recurred across
+rounds:
+
+* **A described failure whose mechanism is wrong.** `delete_multi` fails one statement
+  earlier than written, `_wait_for_ok` breaks the block before raising rather than
+  instead of it, `from_path` raises `UnboundLocalError` where the entry said `KeyError`.
+  These read as correct to anyone who does not re-derive them, which is exactly why they
+  needed a reader who did.
+* **A claim that is true of the common case and false of the case the sentence exists
+  for.** A named viewable "is never returned by a size lookup" -- except by a set that
+  holds nothing else; instances "are cached" -- except the data files the sentence's own
+  examples name.
+* **A statement inverted.** `_complete`'s case claim said the opposite of what the code
+  does.
+
+Twenty-one defects that no deferred entry had recorded came out of the three rounds,
+entries 170-190.

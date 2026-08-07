@@ -20,12 +20,14 @@ outside the package has set it.
 package is built with. Given the object about to be stored, it returns the number of
 seconds that object should live: a string lives ``DEFAULT_FILE_CACHE_LIFETIME``; an
 object that is not an instance of ``cls`` -- the bookkeeping dictionaries a preload
-stores, when ``cls`` is supplied -- lives ``FOEVER_FILE_CACHE_LIFETIME``, which is zero
-and means forever; a bundleset or bundle, and a data directory inside a bundle, live
-``LONG_FILE_CACHE_LIFETIME``; any other directory lives
-``SHORT_FILE_CACHE_LIFETIME``; and anything else lives
-``DEFAULT_FILE_CACHE_LIFETIME``. The four constants are 12 hours, 7 days, 2 days and
-zero.
+stores, when ``cls`` is supplied -- lives ``FOEVER_FILE_CACHE_LIFETIME``; a bundleset or
+bundle, and a data directory inside a bundle, live ``LONG_FILE_CACHE_LIFETIME``; any
+other directory lives ``SHORT_FILE_CACHE_LIFETIME``; and anything else lives
+``DEFAULT_FILE_CACHE_LIFETIME``.
+
+The four constants are ``DEFAULT_FILE_CACHE_LIFETIME``, 12 hours;
+``LONG_FILE_CACHE_LIFETIME``, 7 days; ``SHORT_FILE_CACHE_LIFETIME``, 2 days; and
+``FOEVER_FILE_CACHE_LIFETIME``, zero, which means the entry never expires.
 
 ``DICTIONARY_CACHE_LIMIT`` is 200000, the item limit a dictionary cache is built with.
 The value each class actually passes is its own class attribute of the same name, so

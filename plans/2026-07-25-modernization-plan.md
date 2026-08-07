@@ -1145,10 +1145,16 @@ Three things that shaped the result and bind the PRs after it:
     trailing underscore in a docstring is an RST reference, and cross-reference
     roles cannot be used until the full API reference exists, so PR-31 must sweep
     the inline literals these docstrings use instead.
-  * **Sixteen defects found by reading the code against its own prose**, deferred
-    entries 152–167, and two notes for the documentation PRs that follow it, 168
-    and 169. Entries 23, 24 and 80 are amended. That list, not the prose, is the
-    evidence the docstrings were verified rather than paraphrased.
+  * **Thirty-seven defects found by reading the code against its own prose** —
+    sixteen by the executor (deferred entries 152–167) and twenty-one by the three
+    review rounds (170–190) — plus two notes for the documentation PRs that follow
+    it, 168 and 169. Entries 23, 24 and 80 are amended. That list, not the prose,
+    is the evidence the docstrings were verified rather than paraphrased.
+  * **Three review rounds, one per substantial file, and they did not converge.**
+    Round 3 found more than round 1 and round 1 more than round 2. Three is the
+    cap, and all three files have now been read, but the trend says a fourth
+    reader would find more — which is the argument for PR-29a keeping the same
+    one-round-per-file shape rather than a single pass.
 
 **PR-29a (L)** `docs: Google-style docstrings — the private modules`
 The ten `_*.py` mixin and extracted modules: 156 functions, 131 parameters, and

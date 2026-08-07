@@ -3985,7 +3985,7 @@ of them has a module docstring at all.
      distinct lifetimes, not of items, so the "N items flushed" message is wrong whenever
      more than one item shares a lifetime. **Owner: a future pdscache PR.**
 
-159. **Four `MemcachedCache` log calls are not guarded by a logger test, and two error
+159. **Three `MemcachedCache` log calls are not guarded by a logger test, and two error
      paths are guarded by one that changes what they do.** Unguarded: breaking a stale
      block (`pdscache.py:828`), losing a race to claim one (`:889`), and the
      permanent-value-too-big report (`:1775`). Each raises `AttributeError` on a cache
@@ -4006,8 +4006,8 @@ of them has a module docstring at all.
 161. **`PdsFile._from_absolute_or_logical_path` drops all four of its options.** The
      signature is `(cls, path, fix_case=False, must_exist=False, caching='default',
      lifetime=None)` and both branches call the constructor with those four names bound
-     to literals rather than to the arguments (`pdsfile.py:1872`, with the two calls at
-     `:1897` and `:1901`). Passing
+     to literals rather than to the arguments (`pdsfile.py:1928`, with the two calls at
+     `:1954` and `:1958`). Passing
      `must_exist=True` therefore does not make the call insist on anything. Because the
      literals equal the declared defaults, no caller passing defaults can tell; a caller
      passing anything else is silently ignored. The docstring written here says the
@@ -4016,7 +4016,7 @@ of them has a module docstring at all.
 
 162. **`PdsFile.parent` accepts `caching` and `lifetime` and passes neither on.** Both
      branches call `from_logical_path` or `from_abspath` with `must_exist` alone
-     (`pdsfile.py:1579` and `:1583`), so the parent is built with whatever caching defaults
+     (`pdsfile.py:1620` and `:1624`), so the parent is built with whatever caching defaults
      those constructors apply. Same shape as entry 161 and same reason for not fixing it
      here. **Owner: a future pdsfile PR.**
 
@@ -4032,7 +4032,7 @@ of them has a module docstring at all.
 164. **Two exported names are read by nothing.** `_preload.DICTIONARY_CACHE_LIMIT`
      (`_preload.py:60`) is re-exported by `preload_and_cache` and by `pdsfile.pdsfile`,
      but every cache in the package is built with `cls.DICTIONARY_CACHE_LIMIT`, a class
-     attribute defined separately and identically in `pdsfile.py:304`,
+     attribute defined separately and identically in `pdsfile.py:315`,
      `pds3file/__init__.py:59` and `pds4file/__init__.py:48`. Rebinding the module
      constant changes nothing. `pdscache.MEMCACHED_LOADED` (`pdscache.py:60`) is read
      nowhere; the flag the code actually consults is `_preload.HAS_PYLIBMC`, set by a
@@ -4042,15 +4042,15 @@ of them has a module docstring at all.
 
 165. **`PdsFile.from_relative_path`'s empty-path branch is unreachable.** After
      `path = path.rstrip('/')` and `parts = path.split('/')`, the guard is
-     `if len(parts) == 0` (`pdsfile.py:1851`). `''.split('/')` is `['']`, of length
+     `if len(parts) == 0` (`pdsfile.py:1907`). `''.split('/')` is `['']`, of length
      one, so the branch never runs and an empty relative path instead calls
      `self.child('')`. **Owner: a future pdsfile PR.**
 
 166. **`PdsFile.bundle_abspath` and `PdsFile.bundleset_abspath` return different things
      for the same kind of non-answer.** `bundle_abspath` returns `''` when this file
      belongs to no bundle and again when the category is a checksums-of-archives category
-     (`pdsfile.py:1088`, `:1097`); `bundleset_abspath` returns `None` when this file
-     belongs to no bundleset (`:1141`). Both are public, both are consumed by
+     (`pdsfile.py:1116`, `:1125`); `bundleset_abspath` returns `None` when this file
+     belongs to no bundleset (`:1169`). Both are public, both are consumed by
      `bundle_pdsfile` and `bundleset_pdsfile`, which test the result for truth and so
      cannot tell the two apart -- but a caller that tests `is None` can. The docstrings
      written here state each method's own answer. **Owner: a future pdsfile PR.**
@@ -4067,9 +4067,11 @@ of them has a module docstring at all.
      tree to build clean under `-n`, which fails any role that does not resolve. Only
      five modules have autodoc pages today, so a role naming anything else -- `Pds3File`,
      `PdsLogger`, `preload`, every mixin -- would resolve to nothing and fail the gate.
-     Double backticks satisfy the build and cost a reader only a hyperlink. When PR-31
-     publishes the full API reference the roles become resolvable and these docstrings
-     should be swept. **Owner: PR-31.**
+     Double backticks satisfy the build; what they cost is the links, which is the whole
+     point of section 5's rule, so this is a deliberate trade of cross-references for a
+     build that passes. When PR-31 publishes the full API reference the roles become
+     resolvable and every one of these literals should be swept into a role.
+     **Owner: PR-31.**
 
 169. **A trailing underscore inside a docstring is a reStructuredText reference, and
      this package's attribute names are full of them.** At base, `sphinx-build -n` over
@@ -4232,3 +4234,85 @@ of them has a module docstring at all.
      `x_folder_y.png` supplies `X_Y`. A custom icon named for a folder in the middle of
      its name gets a type its author would not predict. **Owner: a future pdsviewable
      PR.**
+
+### Added by the PR-29 adversarial review (round 3, `pdsfile.py`)
+
+184. **`from_path` raises `UnboundLocalError` for a bundle name no preload recorded, and
+     `from_lid` inherits it.** The rank lookup at `pdsfile.py:2238` raises `KeyError` for
+     an unrecorded bundle name; the recovery block that follows searches the recorded
+     bundlesets for one whose pattern the name matches, and assigns `rank` only inside
+     `if bundleset.startswith(updated_bundleset_prefix):`. When no bundleset matches,
+     `rank` is never bound, and `:2272` reads it. The `except KeyError` at `:2278` does
+     not catch that. Verified by running against the real holdings tree with a preload:
+     `Pds3File.from_path('COISS_9999')` and `Pds3File.from_path('NOSUCH_2001')` both give
+     `UnboundLocalError: cannot access local variable 'rank'`, and
+     `Pds3File.from_lid('X:NOSUCH_0001:a:b')` gives the same. The bundle*set* branch
+     (`:2321`) does raise `KeyError`, so a caller guarding one of the two spellings is
+     protected and a caller guarding the other is not. Two smaller ones in the same
+     block: `bundlename.index('_')` at `:2243` raises `ValueError` for a bundle name with
+     no underscore, and the `[-1]` at `:2238` raises `IndexError` on an empty rank list.
+     **Owner: a future pdsfile PR.**
+
+185. **`PdsFile.parent()` raises `ValueError` on a physical category directory.** The
+     branch test is `if logical_path in cls.CATEGORIES or not self.abspath:`
+     (`pdsfile.py:1619`). For a physical category directory the parent's logical path is
+     the empty string, which is not in `CATEGORIES`, and the absolute path is truthy, so
+     control reaches `from_abspath()` at `:1624` with the holdings directory itself --
+     which has no logical path, and which `logical_path_from_abspath` refuses. Verified
+     by running: `Pds3File.from_abspath('<holdings>/volumes').parent()` gives
+     `ValueError: ('Not compatible with a logical path: ', '<holdings>')`. The *merged*
+     category directory returns None as intended; it is the physical one that fails.
+     **Owner: a future pdsfile PR.**
+
+186. **`new_merged_dir` leaves seven storage slots unset, and the properties behind them
+     do not degrade gracefully.** Unset: `_iconset_filled`, `_volume_info_filled`,
+     `_all_version_abspaths`, `_html_path_filled`, `_description_and_icon_filled`,
+     `_associated_parallels_filled` and `_index_pdslabel`. `new_index_row_pdsfile`, the
+     other constructor of the same shape, sets all of them. Verified by running on
+     `Pds3File.new_merged_dir('volumes')`: `html_path` and `url` raise
+     `IndexError: list index out of range`, `all_version_abspaths` raises `TypeError`
+     because `root_` is None (`pdsfile.py:723`), and `iconset_open` reads the icon
+     directory out of the holdings tree, which is the one thing a merged directory is
+     built never to do. **Owner: a future pdsfile PR.**
+
+187. **`from_path`'s second scanning loop can never take effect.** The loop commented
+     "among the trailing items of the pseudo-path" reads `part = parts[0].lower()`
+     (`pdsfile.py:2108`) but pops from the other end, `parts = parts[:-1]` (`:2136`). The
+     loop before it can only exit by failing to classify `parts[0]`, so this one re-tests
+     the same element, fails the same way, and breaks on its first iteration every time.
+     Verified by tracing eight inputs with `sys.settrace`: none of the loop's effect
+     lines is ever reached. Behaviorally, `from_path('archives/COISS_2xxx')` gives
+     `archives-volumes/COISS_2xxx` and `from_path('COISS_2xxx/archives')` gives
+     `volumes/COISS_2xxx/archives`, taking the trailing word as an interior name. Either
+     the loop should read `parts[-1]` or it should go. **Owner: a future pdsfile PR.**
+
+188. **`child`'s last `raise ValueError` is unreachable.** `raise ValueError('Cannot
+     define child from PDS root: ' ...)` sits at `pdsfile.py:1580`, after two blocks
+     guarded by `if self.category_:` and `if not self.category_:` that are exact
+     complements and each end in an unconditional `return`. Verified behaviorally: a
+     blank object routes into the category branch, so `PdsFile().child('volumes')`
+     succeeds and `PdsFile().child('nonsense')` raises the *voltype* ValueError from
+     inside that branch rather than this one. **Owner: a future pdsfile PR.**
+
+189. **`PdsFile.permanent` is written in four places and read in none.** It is
+     initialized False at `pdsfile.py:490`, set True at `:748` (`new_merged_dir`), at
+     `:1330` (`_update_ranks_and_vols`) and at `_preload.py:485`, and read nowhere in
+     `src/` or `tests/`. Its comment says "If True, never to be removed from cache",
+     which nothing implements: `_complete` has already written the cache entry with an
+     ordinary lifetime by the time `_update_ranks_and_vols` sets the flag. The
+     `$RANKS`/`$VOLS` dictionaries themselves really are stored permanently, so the
+     bookkeeping survives; the objects it points at do not. **Owner: a future pdsfile
+     PR.**
+
+190. **`from_logical_path` skips `must_exist` whenever the deepest cached ancestor has no
+     absolute path.** The guard is `if ancestor and ancestor.abspath:`
+     (`pdsfile.py:1733`), and the fallback below it calls `from_abspath()` with literal
+     defaults. Merged category directories are permanent cache entries and have no
+     absolute path, so a preloaded tree takes the fallback for any path whose bundleset
+     entry has expired or been trimmed. Verified by running: after deleting the
+     `volumes/coiss_2xxx` cache entry,
+     `Pds3File.from_logical_path('volumes/COISS_2xxx/NOPE_0001', must_exist=True)`
+     returns an object rather than raising, and that object's `exists` is False. This is
+     the same class of defect as entries 161 and 162 -- an argument accepted and dropped
+     -- but here it is conditional on cache state, so it is not reproducible from the
+     signature alone. **Owner: a future pdsfile PR.**

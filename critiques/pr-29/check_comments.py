@@ -22,23 +22,40 @@ FILES = ('pdsfile.py', 'pdscache.py', 'pdsviewable.py', '__init__.py',
 
 
 def comments(path):
-    """Return the comment lines of one file, in order.
+    """Return the comments of one file, each paired with the code it is attached to.
 
-    Trailing whitespace is stripped so that a difference in it does not read as a
-    changed comment.
+    A comment's text alone does not say where it sits, so a comment moved to a different
+    block could keep its position in the sequence and compare equal. Each comment is
+    therefore paired with the nearest preceding line of code and with its own column, so
+    a comment that moves, or that is re-indented, reads as changed.
+
+    String tokens are not anchors. A docstring is a string statement, and rewriting one
+    is the whole point of the change this is used to check, so anchoring on it would
+    report every comment below a rewritten docstring as moved. Anchoring on the code
+    around it is what makes the check specific: the code cannot move without the AST
+    hash noticing, so a stable code anchor plus a stable column is a stable position.
+
+    The comment text is compared exactly, trailing whitespace included, so a whitespace
+    edit is a change like any other.
 
     Parameters:
         path (pathlib.Path): the file to tokenize.
 
     Returns:
-        list: the comment token texts.
+        list: triples of anchor, column and comment text.
     """
 
+    skip = (tokenize.NL, tokenize.NEWLINE, tokenize.INDENT, tokenize.DEDENT,
+            tokenize.ENCODING, tokenize.ENDMARKER, tokenize.STRING, tokenize.COMMENT)
+
     found = []
+    anchor = '<start of file>'
     with open(path, 'rb') as handle:
         for token in tokenize.tokenize(handle.readline):
             if token.type == tokenize.COMMENT:
-                found.append(token.string.rstrip())
+                found.append((anchor, token.start[1], token.string))
+            elif token.type not in skip:
+                anchor = token.line.rstrip()
 
     return found
 
@@ -65,11 +82,11 @@ def main(argv):
         for tag, i1, i2, j1, j2 in matcher.get_opcodes():
             if tag == 'equal':
                 continue
-            for line in before[i1:i2]:
-                print('   REMOVED:', line)
+            for anchor, column, text in before[i1:i2]:
+                print(f'   REMOVED: col {column} after {anchor!r}: {text}')
                 removed += 1
-            for line in after[j1:j2]:
-                print('   ADDED  :', line)
+            for anchor, column, text in after[j1:j2]:
+                print(f'   ADDED  : col {column} after {anchor!r}: {text}')
                 added += 1
 
     print()
