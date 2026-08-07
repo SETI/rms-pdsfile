@@ -158,7 +158,14 @@ than normalized away. Deferred entry 149.
 
 ## 4. Test id sets
 
-Full data, `PDSFILE_TEST_HOLDINGS=full`, both modes, per-id outcome diffed:
+Full data, `PDSFILE_TEST_HOLDINGS=full`, both modes, per-id outcome diffed.
+
+**Both rows are the whole tree.** `scripts/automated_tests/pdsfile_main_test.sh:75`
+scopes its `--mode s` pass to `tests/pds3file/ tests/rules/pds3/`, which earlier PRs
+reported as 558 ids; this run applied `--mode s` to every directory instead, so the
+row below is a superset of that pass and its count is not comparable with theirs.
+The five failures are a consequence: they are tests outside the script's
+shelves-only scope, failing identically at both trees.
 
 | | base | head |
 |---|---|---|
