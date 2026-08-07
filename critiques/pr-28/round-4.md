@@ -48,3 +48,27 @@ Added ids 32 → **38** (35 test functions), the mutation matrix sixteen → **t
 and the three tool-test modules 61 → **67 passed**. The transcript is unchanged at
 84 records and 26 differing — this round found no unenumerated behavior, which two
 independent transcripts now agree on.
+
+## After the round: what CI found that four rounds of review could not
+
+The 3.13 leg of `Lint and holdings-free tests` failed on
+`test_a_path_beginning_with_a_dash_is_reachable_only_after_another_path`. The
+assertion it failed is one this PR added and one the round-4 reviewer, the three
+before it and every local run had confirmed: `crlf -- -dash.txt` exits 2.
+
+It exits 2 on Python 3.10 through 3.12 and **0** from 3.13.
+`parse_intermixed_args` splits argv at the first `--` and re-parses the remainder;
+through 3.12 the remainder is read with the optionals still live and the command
+line is rejected, and from 3.13 it is not. Measured directly on 3.12.3 and 3.14.5.
+
+Nothing in the review loop could have caught it: every reviewer, and every run of
+the transcript and the suite, used the one interpreter the worktrees have. Only the
+CI matrix runs four. The test is now
+`test_a_path_beginning_with_a_dash_needs_a_path_and_a_separator_before_it` and
+asserts only the two outcomes that hold on every supported version; the record's §3
+and deferred entry 141 both carry the split and say which interpreter the transcript
+was captured on.
+
+This is the one finding of the whole PR that came from a gate rather than a reader,
+and it is worth the note: a single-interpreter measurement is silent about a
+version-dependent library behaviour, however adversarially it is read.

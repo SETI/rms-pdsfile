@@ -287,18 +287,17 @@ class TestCommandLine:
         assert run.returncode == 0, run.describe()
         assert f'{bad} INVALID' in run.stdout, run.describe()
 
-    def test_a_path_beginning_with_a_dash_is_reachable_only_after_another_path(
+    def test_a_path_beginning_with_a_dash_needs_a_path_and_a_separator_before_it(
             self, tmp_path, monkeypatch):
-        """Pin what `--` does here, which is not what `--` usually does.
+        """argparse reads a leading `-` as an option, so such a path needs `--`.
 
-        argparse reads a leading `-` as an option, so a path that starts with one
-        is a usage error. The usual answer is the `--` separator, and under
-        `parse_intermixed_args` it works only when a plain positional comes
-        first: `crlf -- -dash.txt` is a usage error, while
-        `crlf ok.txt -- -dash.txt` checks both. That asymmetry is argparse's, not
-        a choice; it is pinned as current behaviour rather than endorsed, and a
-        switch to plain `parse_args` has to invert these three assertions
-        deliberately.
+        Only the two outcomes that hold on every supported interpreter are
+        asserted. What `crlf -- -dash.txt` does -- `--` in first position, with no
+        plain positional in front of it -- depends on the Python version, because
+        `parse_intermixed_args` splits argv at the first `--` and re-parses the
+        remainder: through 3.12 the remainder is read with the optionals still
+        live and the command line is rejected, and from 3.13 it is not. Asserting
+        either answer would pin one interpreter's, so neither is asserted here.
         """
 
         write(tmp_path, '-dash.txt', b'ONE\n')
@@ -307,9 +306,7 @@ class TestCommandLine:
 
         bare = support.run_tool_in_process('crlf', '-dash.txt')
         assert bare.returncode == 2, bare.describe()
-
-        separated = support.run_tool_in_process('crlf', '--', '-dash.txt')
-        assert separated.returncode == 2, separated.describe()
+        assert '-dash.txt' not in bare.stdout, bare.describe()
 
         after = support.run_tool_in_process('crlf', 'ok.txt', '--', '-dash.txt')
         assert after.returncode == 0, after.describe()

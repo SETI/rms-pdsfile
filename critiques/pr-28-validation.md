@@ -20,7 +20,7 @@ had eleven entries at `3d044b2` and has eleven now.
 | `src/pdsfile/holdings_maintenance/pds3/shelf_consistency_check.py` | 90 | 132 | same |
 | `src/pdsfile/tools/show_opus_products.py` | 162 | 199 | same |
 | `tests/holdings_maintenance/support.py` | 710 | 830 | — |
-| `tests/holdings_maintenance/test_crlf.py` | 142 | 397 | — |
+| `tests/holdings_maintenance/test_crlf.py` | 142 | 394 | — |
 | `tests/holdings_maintenance/test_shelf_consistency_check.py` | 189 | 386 | — |
 | `tests/holdings_maintenance/test_show_opus_products.py` | 134 | 259 | — |
 
@@ -232,7 +232,7 @@ than simply becoming errors:
 | `crlf/repeated-repair` (`--repair --repair f`) | exit 1, `FileNotFoundError: '--repair'`, **file untouched** | exit 0, **file repaired** |
 | `crlf/dash-file-bare` (`-dash.txt`) | **exit 0, `-dash.txt INVALID`** | **exit 2** |
 | `shelf/dash-root` (`-dashroot`) | **exit 0**, walked it, `Tests performed: 0` | **exit 2** |
-| `crlf/dash-file-after-separator` (`-- -dash.txt`) | exit 1, `FileNotFoundError: '--'` | exit 2 |
+| `crlf/dash-file-after-separator` (`-- -dash.txt`) | exit 1, `FileNotFoundError: '--'` | exit 2 on Python ≤ 3.12, exit 0 from 3.13 — see below |
 | `crlf/dash-file-after-a-path` (`ok.txt -- -dash.txt`) | exit 1, `FileNotFoundError: '--'` | exit 0, both checked |
 
 **A repeated flag now means the flag.** `crlf --repair --repair f` is the one that
@@ -244,15 +244,22 @@ than folded into "argparse accepts more".
 
 **`crlf/dash-file-bare` and `shelf/dash-root` are the base-working invocations this
 PR breaks.** An argument beginning with `-` was a path and is now an option. The
-usual answer is `--`, and it half-works: under `parse_intermixed_args`, `--` is
-honoured only when a plain positional precedes it, so `crlf -- -dash.txt` is still a
-usage error while `crlf ok.txt -- -dash.txt` checks both. That is argparse's
-behaviour, not a design; it is pinned by
-`test_a_path_beginning_with_a_dash_is_reachable_only_after_another_path` and
-`test_a_shelf_root_beginning_with_a_dash_is_a_usage_error`, and recorded as deferred
-entry 141. No file in either holdings root begins with `-`
+usual answer is `--`, and under `parse_intermixed_args` it works only when a plain
+positional precedes it: `crlf ok.txt -- -dash.txt` checks both, everywhere.
+
+**`crlf -- -dash.txt`, with nothing in front of the separator, is the one row in
+this record whose head value depends on the interpreter.** `parse_intermixed_args`
+splits argv at the first `--` and re-parses the remainder; through Python 3.12 the
+remainder is read with the optionals still live and the command line is rejected
+(exit 2), and from 3.13 it is not (exit 0). Measured on 3.12.3 — which is what the
+transcript above was captured on — and on 3.14.5, and confirmed by CI's 3.13 leg,
+which is where it was found: **every local run and all four review rounds used one
+interpreter and could not have seen it.** The tests assert only the two outcomes
+that hold on every supported version, and deferred entry 141 carries the split.
+
+No file in either holdings root begins with `-`
 (`find $PDS3_HOLDINGS_DIR $PDS4_HOLDINGS_DIR -name '-*'` finds none), which is why
-it is recorded rather than treated as a blocker.
+all of this is recorded rather than treated as a blocker.
 
 ### What did not change, and was checked
 
@@ -369,7 +376,7 @@ counts:
   `test_an_abbreviated_flag_is_a_usage_error_and_rewrites_nothing`,
   `test_a_store_true_flag_rejects_an_explicit_value`,
   `test_a_repeated_flag_is_accepted`,
-  `test_a_path_beginning_with_a_dash_is_reachable_only_after_another_path`,
+  `test_a_path_beginning_with_a_dash_needs_a_path_and_a_separator_before_it`,
   `test_an_unreadable_file_raises_rather_than_being_reported`; and, at module
   level, `test_the_module_is_runnable_as_python_m` and
   `test_an_unreadable_file_ends_the_process_with_a_traceback`; and `TestArgvContract::`

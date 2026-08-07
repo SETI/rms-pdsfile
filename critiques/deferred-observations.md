@@ -3556,20 +3556,28 @@ these entries are read by the PRs that come after it.
      an error path that changed shape.
 
      The usual answer is the `--` separator, and under `parse_intermixed_args` it
-     works only when a plain positional comes first: `crlf -- -dash.txt` is still a
-     usage error, `crlf ok.txt -- -dash.txt` checks both, and `crlf -- --verbose`
-     turns verbose *on* rather than checking a file of that name.
-     `parse_intermixed_args` parses the argv before the first `--` with
-     `parse_known_args` and re-parses the remainder, so a `--` in first position
-     leaves nothing in front of it and the remainder is read with the optionals
-     still live. Plain `parse_args` handles `--` correctly and rejects a flag
-     between two positionals; the two cannot both be had.
+     works only when a plain positional comes first: `crlf ok.txt -- -dash.txt`
+     checks both, and `crlf -- --verbose` turns verbose *on* rather than checking a
+     file of that name. `parse_intermixed_args` parses the argv before the first
+     `--` with `parse_known_args` and re-parses the remainder, so a `--` in first
+     position leaves nothing in front of it and the remainder is read with the
+     optionals still live. Plain `parse_args` handles `--` correctly and rejects a
+     flag between two positionals; the two cannot both be had.
+
+     **And `--` in first position is not even stable across the versions this
+     package supports.** `crlf -- -dash.txt` exits 2 on Python 3.10 through 3.12
+     and exits 0, checking the file, from 3.13 — measured on 3.12.3 and 3.14.5 and
+     confirmed by CI's 3.13 leg, which is the only place it showed up: every local
+     run and all four adversarial review rounds used a single interpreter. The
+     tests assert only the two outcomes that hold everywhere (a bare leading-`-`
+     argument is a usage error; a path, a `--` and then the dashed file works), so
+     the suite does not pin one interpreter's answer to the third.
 
      The trade was made toward the flags: `crlf a --verbose b` is a plausible
      command line and a file named `-something` is not — `find` over both holdings
      roots for `-*` returns nothing. Pinned by
-     `test_a_path_beginning_with_a_dash_is_reachable_only_after_another_path`, which
-     asserts all three outcomes so a later switch to `parse_args` has to invert
+     `test_a_path_beginning_with_a_dash_needs_a_path_and_a_separator_before_it`,
+     which asserts both so a later switch to `parse_args` has to invert
      them. `shelf_consistency_check` has the same property, pinned by
      `test_a_shelf_root_beginning_with_a_dash_is_a_usage_error` and by transcript
      record `shelf/dash-root`, where the base run walked the directory and reported

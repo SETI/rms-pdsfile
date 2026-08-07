@@ -73,7 +73,7 @@ ADDED = {
         'test_an_abbreviated_flag_is_a_usage_error_and_rewrites_nothing',
         'test_a_store_true_flag_rejects_an_explicit_value',
         'test_a_repeated_flag_is_accepted',
-        'test_a_path_beginning_with_a_dash_is_reachable_only_after_another_path',
+        'test_a_path_beginning_with_a_dash_needs_a_path_and_a_separator_before_it',
         'test_an_unreadable_file_raises_rather_than_being_reported',
         'test_the_module_is_runnable_as_python_m',
         'test_an_unreadable_file_ends_the_process_with_a_traceback',
