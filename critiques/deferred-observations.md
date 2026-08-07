@@ -3773,3 +3773,69 @@ and the `status = 0` stays behind — 14 lines move, not 15.
 not act.
 **Owner: recorded, not open — unless the owner wants the 15-line preamble
 extraction, which would be its own PR.**
+
+## From PR-28a (extract the drivers' shared preamble, Phase 6 follow-on)
+
+### Amended by the PR-28a executor (2026-08-07) — entry 130
+
+**The preamble extraction happened; the driver merge did not.** The owner took the
+last paragraph above and authorized it as its own PR. `_common.setup_run(spec, argv)`
+now holds the block and returns `(args, logger)`; each driver calls it and keeps its
+own `status = 0`, exactly as the paragraph predicted — 14 lines move, not 15.
+
+Two corrections to what that paragraph said, both measured rather than reasoned
+about:
+
+- The block is **25 lines** as it stands in each driver, 15 of them code. The
+  paragraph's "15-line preamble" counted the code lines; the contiguous block a
+  reader sees is 25.
+- The three copies differ on **two** lines, not one: `build_arg_parser` carries the
+  `_common.` qualifier as well as `resolve_log_root`. Both are the qualifier, so
+  the substance is unchanged.
+
+**What this PR deliberately did not do.** It did not touch the three loops, the
+seven forced variation points, the task headers, or `RunResult`. The measurement
+above stands: the drivers still do not collapse, and nothing here makes them closer
+to collapsing. **Owner: recorded, not open.**
+
+### Added by the PR-28a executor's own measurements (2026-08-07)
+
+149. **A traceback raised inside the preamble now names `setup_run`.** Extracting a
+     function adds a stack frame, and one input class reaches it: a `--log` root the
+     process cannot write into raises `PermissionError` from
+     `logger.add_handler(make_handler(path))`, the preamble's last line. On all ten
+     driver-backed tools the traceback gains three lines — the call site, its caret
+     row, and a `_common.py … in setup_run` frame — beneath the frame that still
+     names the driver. Nothing else moves: the 158-scenario tool-run capture
+     covering every tool, every task and the failure paths is byte-identical between
+     base and head. This is a change to what a tool prints, on an input no test and
+     no golden covers, so it is recorded rather than normalized away. Whether a
+     traceback's shape is part of the CLI contract at all is the owner's call.
+     **Owner: open.**
+
+150. **Two lines of the preamble are pinned by no test at all.** Before this PR no
+     test drove a driver-backed tool with `--log`, so the handler wiring was pinned
+     by nothing, in triplicate; `test_driver_setup.py` now pins it. What no test
+     reaches, measured at `356e055` by deleting each line from `setup_run` and
+     running `pytest tests/holdings_maintenance` against the full holdings, which
+     reports the same count green as the unmutated tree:
+     `spec.pdsfile_cls.set_log_root(args.log)`, whose absence silently empties the
+     duplicate log tree; and the `if not args.quiet:` guard — `--quiet` is passed to
+     none of the ten driver-backed tools anywhere in the suite. Both are covered by
+     this PR's tool-run capture, which is not a thing the repository runs. Also
+     unreached by any test: the `PDS_LOG_ROOT` fallback arriving at a tool.
+     `resolve_log_root` itself is unit-tested, but no test sets the variable and
+     runs one. **Owner: open.**
+
+151. **Two more near-copies of the preamble exist, and neither is a `setup_run`
+     caller.** `re_validate.main` (`pds3/re_validate.py`) and
+     `pdsdependency.main` (`pds3/pdsdependency.py`) each open with the same shape —
+     build a parser, resolve the log root, build a `PdsLogger`, add the stdout
+     handler unless `--quiet`, add an error handler under `<log>/<progname>` — and
+     neither can call `setup_run` as it stands. `re_validate` builds its logger with
+     a `limits=` argument and has no task flag to refuse; `pdsdependency` interleaves
+     its own path validation between the two halves, re-inlines
+     `resolve_log_root`'s body rather than calling it, and carries a second
+     definition of `LOGROOT_ENV = 'PDS_LOG_ROOT'` beside `_common.py`'s. The
+     duplicate constant is the part that can drift silently. Out of scope here — this
+     PR extracted what was identical, not what is merely similar. **Owner: open.**
