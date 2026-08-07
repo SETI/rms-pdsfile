@@ -393,7 +393,7 @@ pytest tests/pds3file/ tests/rules/pds3/ --mode s -rA --junitxml=…
 
 | | base | head |
 |---|---|---|
-| `--mode ns` | 1,079 ids — 1,045 passed, 34 skipped | 1,082 ids — 1,048 passed, 34 skipped |
+| `--mode ns` | 1,079 ids — 1,045 passed, 34 skipped | 1,090 ids — 1,056 passed, 34 skipped |
 | `--mode s` | 558 ids — 555 passed, 3 skipped | 558 ids — 555 passed, 3 skipped |
 
 The comparison is of the per-test **id-to-outcome map**, parsed out of the two
@@ -406,12 +406,14 @@ The comparison is of the per-test **id-to-outcome map**, parsed out of the two
 - **1 id removed**, deliberate:
   `test_pds4_linkshelf::test_update_is_broken_and_repair_is_the_working_path`, the
   entry-4 pin, inverted in §4.
-- **4 ids added**, all passing: the inverted pin as
+- **12 ids added**, all passing: the inverted pin as
   `test_update_picks_up_a_new_file`, the two tests added beside it
   (`test_repair_also_picks_up_a_new_file`,
-  `test_update_and_repair_agree_on_the_shelved_links`), and
+  `test_update_and_repair_agree_on_the_shelved_links`),
   `test_re_validate::test_the_sibling_tools_really_accept_what_this_module_calls_them_with`
-  (§7.4).
+  (§7.4), and eight parameter cases of the two `test_shelf_common.py` tests over
+  the four migrated tools that came out of the CodeRabbit round
+  (`critiques/pr-27/round-1.md`, finding 5).
 
 The base figures were measured here, not inherited; they match the ones PR-26
 reported (1,079 and 558) exactly.
@@ -578,3 +580,16 @@ subsystem; recorded as deferred entry 122.
 6. **`BACKUP_FILENAME` is still defined in both link shelf tools** even though
    `_common.py` has the same constant. That is deferred entry 113's sweep, which the
    owner has left open; this PR did not start it.
+
+
+## 10. When each record was taken
+
+`critiques/pr-27/round-1.md`'s findings 3 and 4 changed source under
+`src/pdsfile/`, so §6.6's regeneration rule applies: the `--mode ns` run, the
+`--mode s` run and the 78-record tool transcript above were **all re-taken at the
+head that carries those fixes**, not carried forward. The transcript's attribution
+is unchanged from the pre-fix capture — 30 of 78 records, 576 lines, the same
+eleven causes, none unattributed — which is what a `limits` argument that only
+matters to a library caller and a docstring should do to a command-line transcript.
+The `--mode ns` id count moved from 1,082 to 1,090 with the eight new parameter
+cases, still with zero outcome changes.
