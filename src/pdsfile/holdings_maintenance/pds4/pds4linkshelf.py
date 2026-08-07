@@ -509,6 +509,14 @@ SPEC = _common.ToolSpec(
 
 TASKS = _linkshelf_common.link_tasks(SPEC)
 
+# The task functions, under the names this module carries them as a library.
+# Each is the shared task with this tool's spec bound in.
+initialize = TASKS['initialize']
+reinitialize = TASKS['reinitialize']
+validate = TASKS['validate']
+repair = TASKS['repair']
+update = TASKS['update']
+
 def main():
     _common.run_main(SPEC, TASKS, sys.argv)
 
