@@ -561,7 +561,7 @@ records are byte-identical: nothing else these tools write changed.
 
 - **`scripts/run-all-checks.sh -c -s`, with no holdings variables set** and
   `VENV=/seti/all_repos/rms-pdsfile/venv`: all checks passed. The pytest gate
-  reported `no holdings: holdings-free subset only` and `268 passed, 814 skipped`;
+  reported `no holdings: holdings-free subset only` and `280 passed, 814 skipped`;
   ruff check, ruff indentation, pyroma, API freeze and the clean-install gate all
   passed.
 - **`pytest tests/api --mode ns`: 26 passed.** The four frozen files are
