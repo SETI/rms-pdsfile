@@ -206,8 +206,9 @@ def test_the_pds3_log_path_aliases_agree_with_the_bundle_names():
 # The task names the migrated tools carry
 ##########################################################################################
 
-# The four tools whose tasks live in a family module, with that module's prefix for
-# a task name: _indexshelf_common.index_validate, _linkshelf_common.link_validate.
+# The four tools whose tasks live in a family module, with that module and its
+# prefix for a task name: _indexshelf_common.index_validate,
+# _linkshelf_common.link_validate.
 MIGRATED_TOOLS = [
     pytest.param(pdsindexshelf, _indexshelf_common, 'index_', id='pdsindexshelf'),
     pytest.param(pds4indexshelf, _indexshelf_common, 'index_', id='pds4indexshelf'),
@@ -215,11 +216,15 @@ MIGRATED_TOOLS = [
     pytest.param(pds4linkshelf, _linkshelf_common, 'link_', id='pds4linkshelf'),
 ]
 
+# The same four, for the test that needs only the tool.
+MIGRATED_TOOL_MODULES = [pytest.param(case.values[0], id=case.id)
+                         for case in MIGRATED_TOOLS]
+
 TASK_NAMES = ('initialize', 'reinitialize', 'validate', 'repair', 'update')
 
 
-@pytest.mark.parametrize(('tool', 'family', 'prefix'), MIGRATED_TOOLS)
-def test_each_migrated_tool_still_carries_its_five_task_names(tool, family, prefix):
+@pytest.mark.parametrize('tool', MIGRATED_TOOL_MODULES)
+def test_each_migrated_tool_still_carries_its_five_task_names(tool):
     """A tool module is a library as well as a main program.
 
     re_validate reaches pdslinkshelf.validate() by attribute, and nothing else in
@@ -303,3 +308,41 @@ class TestLinkTextOf:
         info.linkname = 'REPAIRED.TAB'
 
         assert _linkshelf_common.link_text_of(info) == 'ALPHA.TAB'
+
+
+##########################################################################################
+# What validate_links does with an exception
+##########################################################################################
+
+def test_validate_links_propagates_an_exception_raised_inside_it(tmp_path,
+                                                                 monkeypatch):
+    """It logs and re-raises; it does not swallow.
+
+    The pds3 flavor used to end `finally: return logger.close()`, and a `return` in
+    a `finally` discards whatever the `except` clause re-raised — so a failure
+    inside this function ended the run with status 0 and no traceback. The merged
+    function takes the pds4 form, which propagates. Nothing in a real run reaches
+    this branch, which is exactly why it needs a test rather than a scenario: the
+    body only sorts and compares dictionaries, so the raise has to be arranged.
+    """
+
+    class Exploding(list):
+        """A shelved value whose sort raises, which is where the try block can fail."""
+
+        def sort(self, *args, **kwargs):
+            raise RuntimeError('sorting a link list failed')
+
+    spec = pdsindexshelf.SPEC     # any spec: only pdsfile_cls and logname are read
+    monkeypatch.setattr(spec.pdsfile_cls, 'from_abspath',
+                        classmethod(lambda cls, path: _StubPdsdir()))
+
+    key = str(tmp_path / 'A.LBL')
+    with pytest.raises(RuntimeError, match='sorting a link list failed'):
+        _linkshelf_common.validate_links(spec, str(tmp_path),
+                                         {key: Exploding()}, {key: Exploding()})
+
+
+class _StubPdsdir:
+    """Just enough of a PdsFile for validate_links: a root to log relative to."""
+
+    root_ = '/'

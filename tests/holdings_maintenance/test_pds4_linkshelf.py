@@ -14,6 +14,7 @@
 # Every test rebuilds the tree first, so each one is independent and order-agnostic.
 ##########################################################################################
 
+import pickle
 from collections import namedtuple
 
 import pytest
@@ -185,6 +186,10 @@ def test_update_and_repair_agree_on_the_shelved_links(shelved_tree):
     answer. Without it the merge could quietly drop or duplicate an entry and
     still leave --validate clean, because --validate compares the shelf against a
     fresh scan of the same tree.
+
+    Both artifacts are compared, not just the sidecar: the `.py` is what a person
+    reads and the `.pickle` is what every consumer reads, and two unequal shelves
+    could in principle render the same text.
     """
 
     support.add_file(shelved_tree, NEW_FILE, NEW_FILE_BYTES, NEW_FILE_MTIME)
@@ -192,7 +197,8 @@ def test_update_and_repair_agree_on_the_shelved_links(shelved_tree):
     run = support.run_tool(shelved_tree, 'pds4linkshelf', '--update',
                            shelved_tree.path(BUNDLE_DIR))
     assert run.returncode == 0, run.describe()
-    updated = support.sidecar_text(shelved_tree.path(SIDECAR))
+    updated_text = support.sidecar_text(shelved_tree.path(SIDECAR))
+    updated_shelf = pickle.loads(shelved_tree.path(PICKLE).read_bytes())
 
     shelved_tree.reset()
     support.initialize(shelved_tree, 'pds4linkshelf', shelved_tree.path(BUNDLE_DIR))
@@ -201,4 +207,9 @@ def test_update_and_repair_agree_on_the_shelved_links(shelved_tree):
                            shelved_tree.path(BUNDLE_DIR))
     assert run.returncode == 0, run.describe()
 
-    assert updated == support.sidecar_text(shelved_tree.path(SIDECAR))
+    assert updated_text == support.sidecar_text(shelved_tree.path(SIDECAR))
+    assert updated_shelf == pickle.loads(shelved_tree.path(PICKLE).read_bytes())
+
+    # And the shelf really carries the new file, so an equality that held because
+    # both sides were empty would not pass.
+    assert any('extra_added_by_tests' in key for key in updated_shelf), updated_shelf

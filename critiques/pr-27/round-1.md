@@ -207,8 +207,10 @@ made and that a third would be worth stopping for.
 ### m10 — plan/record mismatch. Fixed.
 
 The plan said "six changes" against the record's list; it now says thirteen
-enumerated changes and 594 lines. "78% low" is replaced in both places by the
-unambiguous form: the projection was short by 581 lines, 44% of the measurement.
+enumerated changes and 594 lines. "78% low" is replaced by the unambiguous form:
+the projection was short of the measurement. (Round 2 found that the replacement
+had missed deferred entry 123, and that the figures themselves were stale; both
+are fixed there.)
 
 ### d1, d2 — Deferred, recorded.
 

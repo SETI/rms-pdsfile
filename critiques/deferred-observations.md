@@ -1635,7 +1635,7 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     **Two of the three are answered by PR-27: shrunk, not waived.**
     `pdslinkshelf.py` is **471** lines and `pds4linkshelf.py` is **524**, from 1,730
     and 1,224 at PR-27's base — the shared code went into `_linkshelf_common.py`
-    (712) and the 536-line `REPAIRS` table into `pds3/linkshelf_repairs.py` (555).
+    (729) and the 536-line `REPAIRS` table into `pds3/linkshelf_repairs.py` (555).
     Both are now comfortably under the limit and neither needs a waiver.
     `pdsdependency.py` is untouched at **1,165** and is the only module left in
     `holdings_maintenance/` over the limit; it has no pds3/pds4 twin, so the
@@ -3008,8 +3008,8 @@ these entries are read by the PRs that come after it.
 
      **Re-measured by PR-27.** With both of this PR's families in it,
      `_shelf_common.py` measured 1,827 lines, so entry 98's rule fired and it split
-     by family: `_shelf_common.py` 523, `_indexshelf_common.py` 617,
-     `_linkshelf_common.py` 712. The two disjoint audiences are still there and the
+     by family: `_shelf_common.py` 523, `_indexshelf_common.py` 619,
+     `_linkshelf_common.py` 729. The two disjoint audiences are still there and the
      file is smaller than when this entry was written: 523 lines holding the
      versioning helpers six tools reach regardless of driver, plus
      `run_selection_main` and its two path helpers, which four tools use. The link
@@ -3208,13 +3208,14 @@ these entries are read by the PRs that come after it.
      Entry 98 projected family-specific shared code at 18.5% of a pair's combined
      line count and used that to decide where `_common.py` would split. Measured
      across the three Phase-6 migrations: 18.5% (archives, the entry's own basis),
-     12.0% (checksums + infoshelf, PR-26), 32.9% (indexshelf + linkshelf, PR-27).
-     It ran high for one PR and 78% low for the next — entry 98 projected 748 lines
-     for PR-27's two pairs and the measurement is 1,329.
+     12.0% (checksums + infoshelf, PR-26), 33.4% (indexshelf + linkshelf, PR-27).
+     It ran high for one PR and short for the next — entry 98 projected 748 lines
+     for PR-27's two pairs and the measurement is 1,348, so the projection missed by
+     600 lines, 45% of what was there.
 
      The reason is visible in the two pairs PR-27 migrated: the index shelf pair was
-     almost identical between flavors (56.8% of its 1,086 lines became shared code),
-     and the link shelf pair was not (24.1% of 2,954), because `generate_links` is
+     almost identical between flavors (57.0% of its 1,086 lines became shared code),
+     and the link shelf pair was not (24.7% of 2,954), because `generate_links` is
      the one function where a PDS3 label and a PDS4 label genuinely say different
      things. How much of a pair can be shared depends on how alike its two flavors
      happen to be, which is not something a rate carries. Entry 98's *rule* — split
@@ -3325,3 +3326,17 @@ these entries are read by the PRs that come after it.
      same trade PR-26 made for `run_selection_main`, and it is now the second time
      it has been made. A third instance would be worth stopping for.
      **Owner: recorded, not open.**
+
+### Added by the PR-27 adversarial review (round 2)
+
+131. **The entry-4 fix left an eager `%` inside a logging call.** In
+     `pds4linkshelf.generate_links`, the label-identification loop logs
+     `logger.info('Label identified (by file_name tag) for %s' % linktext,
+     label_abspath)` — the message is formatted before the call rather than passed
+     as a lazy argument, which the standing logging rule is against. It is base
+     code that PR-27's one-line fix edited in place rather than logging PR-27
+     wrote, so converting it there would have been gratuitous churn inside an
+     otherwise verbatim function. It is now a line this PR touched, though, and it
+     belongs with the `UP031` residue still ratcheted in both `generate_links`
+     functions — one sweep, not two.
+     **Owner: open.**

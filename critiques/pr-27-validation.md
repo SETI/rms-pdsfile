@@ -284,12 +284,12 @@ Every one of these is a log or output **text** change except the last three.
    archives pair, and keeping both would need a format flag. The unquoted form was
    chosen over changing `run_main` because the archives tools are already migrated
    and validated, and `test_task_flags.task_announced()` already strips quotes so
-   both forms parse. **226 lines of the transcript.**
+   both forms parse. **242 lines of the transcript.**
 2. **`pdsindexshelf` stops emitting a blank line before each target's header.** It
    passed `blankline=True` to `logger.open()`, which emits unconditionally; every
    other tool, including `pds4indexshelf`, emits one only when there is more than
    one target. The shared driver does the latter. Visible only in single-target runs,
-   which is most of them. **16 lines.**
+   which is most of them. **10 lines.**
 3. **`pdsindexshelf` adopts `pds4indexshelf`'s `Validation failed for:` line.** The
    pds4 flavor logged an ERROR naming the file before listing the per-key
    disagreements; the pds3 flavor did not. One shared `validate_indexdict` means one
@@ -310,7 +310,7 @@ Every one of these is a log or output **text** change except the last three.
 7. **A traceback inside any of these four tools names the shared driver's frames.**
    Unavoidable, and the same class PR-25 and PR-26 enumerated. **118 frame lines,
    92 source lines under them, 38 caret rows, 2 traceback headers.**
-8. **`pds4linkshelf --update` succeeds where it raised** (entry 4). **67 lines**,
+8. **`pds4linkshelf --update` succeeds where it raised** (entry 4). **73 lines**,
    including three `exit=1 → exit=0`.
 9. **`pdslinkshelf.validate_links` no longer swallows an exception raised inside
    it.** pds3 ended `finally: return logger.close()`; a `return` in a `finally`
@@ -368,6 +368,16 @@ Every one of these is a log or output **text** change except the last three.
     reports. This is the same trade `pdsarchives.archive_targets()` has made since
     PR-25.
 
+**These items and §7.2's table are the same measurement.** The line counts above are
+242 + 10 + (2 + 6) + 0 + 6 + 3 + (118 + 92 + 38 + 2) + 73 + 0 + 0 + 0 + 0 + 2 =
+**594** — §7.2's total, and its per-cause rows, item by item (item 3 carries both
+its own 2 lines and the 6 message-count lines that follow them). The two are generated from one
+run and reconciled deliberately, because an earlier draft of this section carried
+226 / 16 / 67 where the table said 242 / 10 / 73: the 226 and 67 predated the
+metadata scenario, and the 16 predated splitting the blank lines by cause. A
+line-by-line enumeration that does not add up to the measurement is not an
+enumeration.
+
 ### Four more differences in merged code, all measured to be no-ops
 
 Enumerated for completeness, since "every changed line" is the rule:
@@ -392,6 +402,17 @@ Enumerated for completeness, since "every changed line" is the rule:
   `logger.error(f'not in shelf: {key}')` produce the same line. Probed, not
   assumed — the six lines were emitted side by side through a real `PdsLogger` and
   compared.
+- `run_main` now calls `set_log_dirs()` for the archives pair as well, since the
+  call is in the driver rather than in each `main()`. `LOGDIRS` is read only by
+  `move_old`, and nothing in an archives run calls it, so the list is written and
+  never read there — the same shape as the call that was dropped from
+  `run_index_main` below, kept here because the link shelf tools on the same driver
+  do read it.
+- Three parameters disappear from the index shelf library surface: `repair`'s
+  `op='repair'` and `update`'s `selection=None`, neither of which was read
+  anywhere, and `logger` becomes keyword-only on all ten tasks (base pds3
+  `initialize` and `update` accepted it positionally). Nothing in the tree passes
+  any of them; `holdings_maintenance` carries no frozen API surface.
 - `_common.set_log_dirs` is **not** called by `run_index_main`. It was, briefly;
   nothing in the index shelf family calls `move_old` — `write_indexdict` writes
   directly — so the list would have been written and never read. Dropped as dead.
@@ -478,7 +499,7 @@ pytest tests/pds3file/ tests/rules/pds3/ --mode s -rA --junitxml=…
 
 | | base | head |
 |---|---|---|
-| `--mode ns` | 1,079 ids — 1,045 passed, 34 skipped | 1,094 ids — 1,060 passed, 34 skipped |
+| `--mode ns` | 1,079 ids — 1,045 passed, 34 skipped | 1,095 ids — 1,061 passed, 34 skipped |
 | `--mode s` | 558 ids — 555 passed, 3 skipped | 558 ids — 555 passed, 3 skipped |
 
 The comparison is of the per-test **id-to-outcome map**, parsed out of the two
@@ -491,15 +512,16 @@ The comparison is of the per-test **id-to-outcome map**, parsed out of the two
 - **1 id removed**, deliberate:
   `test_pds4_linkshelf::test_update_is_broken_and_repair_is_the_working_path`, the
   entry-4 pin, inverted in §4.
-- **16 ids added**, all passing: the inverted pin as
+- **17 ids added**, all passing: the inverted pin as
   `test_update_picks_up_a_new_file`, the two tests added beside it
   (`test_repair_also_picks_up_a_new_file`,
   `test_update_and_repair_agree_on_the_shelved_links`),
   `test_re_validate::test_the_sibling_tools_really_accept_what_this_module_calls_them_with`
   (§7.4), eight parameter cases of the two `test_shelf_common.py` tests over the
-  four migrated tools, and the four `TestLinkTextOf` tests. The last twelve came
-  out of the round-1 reviews (`critiques/pr-27/round-1.md`, CodeRabbit finding 5
-  and reviewer finding m3).
+  four migrated tools, the four `TestLinkTextOf` tests, and
+  `test_validate_links_propagates_an_exception_raised_inside_it`. The last thirteen
+  came out of the two review rounds (`critiques/pr-27/round-1.md` CodeRabbit
+  finding 5 and reviewer m3; `critiques/pr-27/round-2.md` m5).
 
 The base figures were measured here, not inherited; they match the ones PR-26
 reported (1,079 and 558) exactly.
@@ -552,6 +574,51 @@ in the scratch harness and prints its own residue; the residue is zero.
 | 2 | the blank line a link shelf run drops for a unit set with one unit and a file (change 13) |
 | 2 | traceback headers, gone with the exception they reported |
 
+**Which record each of the 594 lines is in**, so the table above can be checked
+against something other than the classifier:
+
+| record | changed lines |
+|---|---:|
+| `pds4-link-update.SCENARIO` | 143 |
+| `pds4-index-initialize.SCENARIO` | 98 |
+| `pds4-index-backup.SCENARIO` | 43 |
+| `pds4-link-cycle.SCENARIO` | 36 |
+| `pds3-link-cycle.SCENARIO` | 36 |
+| `pds4-link-update.LOGFILES` | 32 |
+| `pds3-link-update.SCENARIO` | 20 |
+| `pds4-index-initialize.LOGFILES` | 17 |
+| `pds4-link-cycle.LOGFILES` | 16 |
+| `pds3-link-cycle.LOGFILES` | 16 |
+| `pds3-index-cycle.SCENARIO` | 14 |
+| `pds4-index-backup.LOGFILES` | 12 |
+| `pds3-link-update.LOGFILES` | 12 |
+| `pds3-link-metadata-volset.SCENARIO` | 10 |
+| `pds4-link-bundleset.SCENARIO` | 8 |
+| `pds4-link-bundleset.LOGFILES` | 8 |
+| `pds3-link-volset.SCENARIO` | 8 |
+| `pds3-link-volset.LOGFILES` | 8 |
+| `pds3-link-metadata-volset.LOGFILES` | 8 |
+| `pds4-link-update.ARTIFACTS` | 7 |
+| `pds4-link-twoflags.SCENARIO` | 4 |
+| `pds4-link-twoflags.LOGFILES` | 4 |
+| `pds4-link-badpaths.SCENARIO` | 4 |
+| `pds4-link-badpaths.LOGFILES` | 4 |
+| `pds3-link-twoflags.SCENARIO` | 4 |
+| `pds3-link-twoflags.LOGFILES` | 4 |
+| `pds3-link-badpaths.SCENARIO` | 4 |
+| `pds3-link-badpaths.LOGFILES` | 4 |
+| `pds4-index-help.SCENARIO` | 3 |
+| `pds3-index-help.SCENARIO` | 3 |
+| `pds3-index-cycle.LOGFILES` | 3 |
+| `pds3-index-twoflags.SCENARIO` | 1 |
+
+Anyone can reproduce a row with
+`diff base/<record> head/<record> | grep -c '^[<>]'`, and the column sums to 594.
+The classifier's rules are the causes named in the table above, applied in that
+order, with a "traceback source line" defined as a line following a moved frame or
+matching a call expression at traceback indentation; it prints its own residue and
+the residue is zero.
+
 An earlier pass of this classifier put all 16 blank-line differences under change
 2. Six of them are in the `pds4-link-update` record, where the run stops raising
 and so runs to the end, and two more are change 13 — so the honest split is 10 / 6
@@ -570,7 +637,7 @@ records are byte-identical: nothing else these tools write changed.
 
 - **`scripts/run-all-checks.sh -c -s`, with no holdings variables set** and
   `VENV=/seti/all_repos/rms-pdsfile/venv`: all checks passed. The pytest gate
-  reported `no holdings: holdings-free subset only` and `280 passed, 814 skipped`;
+  reported `no holdings: holdings-free subset only` and `281 passed, 814 skipped`;
   ruff check, ruff indentation, pyroma, API freeze and the clean-install gate all
   passed.
 - **`pytest tests/api --mode ns`: 26 passed.** The four frozen files are
@@ -615,11 +682,22 @@ the tool modules.
 **The three shared modules and the new data module carry no entry at all**:
 `_common.py`, `_shelf_common.py`, `_indexshelf_common.py`, `_linkshelf_common.py`
 and `pds3/linkshelf_repairs.py` each report 0 findings with the ignores disabled.
-Five `%`-format sites that moved into shared modules were rewritten as f-strings
-rather than ratcheted, since a new per-file-ignores key is a widen: three `%d`
-writes in `write_indexdict`, `LinkInfo.__str__`, and one `%4d` write in
-`write_linkdict`. Each was checked to render identically — the row indices are
-Python `int`s, measured, not assumed.
+Eight `%`-format sites that moved into shared modules were rewritten as f-strings
+rather than ratcheted, since a new per-file-ignores key is a widen:
+
+- three `%d` row-number writes in `write_indexdict` and one `%4d` record-number
+  write in `write_linkdict`. `%d` and `:d` differ on a non-integer, so the operand
+  type was measured rather than assumed: `table.row_indices_by_filename_key()`
+  returns a `list` of Python `int`, and `recno` is `enumerate()`'s index.
+- `LinkInfo.__str__`, whose `'%d %s %s %s'` became an f-string plus one
+  concatenation; the two forms were rendered side by side and compared.
+- three `%s` writes in `write_linkdict` — `'  "%s"' % key`, `'"%s",\n' % values`
+  and `'"%s")' % interior_path`. `%s` and an f-string both call `str()`, so these
+  are no-ops for every operand.
+
+Two `%s` sites were **not** converted and are the reason `write_linkdict` still has
+`%`-formatting: `'"%s, ' % (basename + '"' + …)` pads inside the quoted field, and
+ruff does not flag it. It stays as the author wrote it.
 
 ### 7.4 What the gates did not catch, and what now does
 
@@ -682,9 +760,9 @@ subsystem; recorded as deferred entry 122.
 ## 10. When each record was taken
 
 Round 1 changed source under `src/pdsfile/` twice — CodeRabbit's findings 3 and 4,
-then the adversarial reviewer's m5 and m6 — so §6.6's regeneration rule applies
-twice. The `--mode ns` run, the `--mode s` run and the 81-record tool transcript
+then the adversarial reviewer's m5 and m6 — and round 2 changed it once more
+(m3's docstring). §6.6's regeneration rule applies each time. The `--mode ns` run, the `--mode s` run and the 81-record tool transcript
 above were **all re-taken at the final head**, not carried forward, and the
 base-versus-base control was re-run with them.
-The `--mode ns` id count moved from 1,079 at the base to 1,094 with the sixteen
+The `--mode ns` id count moved from 1,079 at the base to 1,095 with the seventeen
 added tests, still with zero outcome changes for any id present in both runs.

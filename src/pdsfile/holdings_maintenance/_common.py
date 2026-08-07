@@ -9,8 +9,8 @@
 # differs, as data.
 #
 # This module holds what every family shares: the specification, the command line,
-# and the driver. What one family shares lives beside it, in _archives_common.py
-# and _shelf_common.py.
+# and the driver. What one family shares lives beside it, in _archives_common.py,
+# _shelf_common.py, _indexshelf_common.py and _linkshelf_common.py.
 ##########################################################################################
 
 import argparse
@@ -44,9 +44,10 @@ class ToolSpec:
     a missing archive file is reported -- the code stays in the tool module and the
     spec says nothing about it.
 
-    index_ext and holdings_sentinel are properties of the PDS3/PDS4 flavor rather
-    than of one tool, so every spec of that flavor carries the same value whether or
-    not its own tool reads it.
+    holdings_sentinel, index_ext and file_log_level are properties of the PDS3/PDS4
+    flavor rather than of one tool, so every spec of that flavor carries the same
+    value whether or not its own tool reads it. The index shelf tools read none of
+    the three directly; index_ext reaches them through their target expansion.
 
     Attributes:
         progname: The tool's name, as it appears in the --help description, in the
