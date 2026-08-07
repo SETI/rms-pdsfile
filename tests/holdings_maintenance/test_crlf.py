@@ -228,11 +228,28 @@ class TestCommandLine:
         assert run.returncode == 0, run.describe()
         assert run.stdout == '', run.describe()
 
-    def test_help_names_every_flag(self):
-        run = support.run_tool_in_process('crlf', '--help')
+    @pytest.mark.parametrize('flag', ['--help', '-h'])
+    def test_help_names_every_flag(self, flag):
+        run = support.run_tool_in_process('crlf', flag)
         assert run.returncode == 0, run.describe()
-        for flag in ('--repair', '--verbose'):
-            assert flag in run.stdout, run.describe()
+        for named in ('--repair', '--verbose'):
+            assert named in run.stdout, run.describe()
+
+    @pytest.mark.parametrize('argument', ['--verbose=1', '--repair=yes'])
+    def test_a_store_true_flag_rejects_an_explicit_value(self, tmp_path, argument):
+        """`--repair=yes` is a usage error, and rewrites nothing.
+
+        Neither flag takes a value, so argparse rejects the whole command line
+        rather than reading the value as truthy. The tool took the argument for a
+        path before it had a parser and died on the open.
+        """
+
+        bad = write(tmp_path, 'bad.txt', b'ONE\n')
+
+        run = support.run_tool_in_process('crlf', argument, bad)
+        assert run.returncode == 2, run.describe()
+        assert 'ignored explicit argument' in run.output, run.describe()
+        assert bad.read_bytes() == b'ONE\n'
 
     def test_an_unrecognized_flag_is_a_usage_error(self, tmp_path):
         ok = write(tmp_path, 'ok.txt', b'ONE\r\n')

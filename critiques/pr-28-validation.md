@@ -19,10 +19,10 @@ had eleven entries at `3d044b2` and has eleven now.
 | `src/pdsfile/holdings_maintenance/pds3/crlf.py` | 121 | 170 | `build_arg_parser()`, `main(argv=None)`, `__main__` |
 | `src/pdsfile/holdings_maintenance/pds3/shelf_consistency_check.py` | 90 | 132 | same |
 | `src/pdsfile/tools/show_opus_products.py` | 162 | 199 | same |
-| `tests/holdings_maintenance/support.py` | 710 | 805 | — |
-| `tests/holdings_maintenance/test_crlf.py` | 142 | 333 | — |
-| `tests/holdings_maintenance/test_shelf_consistency_check.py` | 189 | 296 | — |
-| `tests/holdings_maintenance/test_show_opus_products.py` | 134 | 227 | — |
+| `tests/holdings_maintenance/support.py` | 710 | 830 | — |
+| `tests/holdings_maintenance/test_crlf.py` | 142 | 350 | — |
+| `tests/holdings_maintenance/test_shelf_consistency_check.py` | 189 | 336 | — |
+| `tests/holdings_maintenance/test_show_opus_products.py` | 134 | 226 | — |
 
 ```
 wc -l src/pdsfile/holdings_maintenance/pds3/crlf.py \
@@ -114,44 +114,66 @@ line is removed from `pyproject.toml`.
 
 ## 3. Behavior changes, enumerated
 
-The gate is a 75-record transcript of all three tools, captured at base and head
+The gate is an 84-record transcript of all three tools, captured at base and head
 and diffed record by record. It covers every output mode of each tool, every flag
-and flag combination, and the argument *shapes* — an abbreviated flag, a repeated
-flag, `--`, a path beginning with `-` — that argparse treats differently from argv
-read literally. It is not a proof of completeness; it is 75 invocations chosen to
-include everything the three tools' code branches on plus everything argparse
-decides for them.
+and flag combination, and the argument *shapes* — `-h`, an abbreviated flag, a flag
+given an explicit value, a repeated flag, `--`, a path beginning with `-` — that
+argparse treats differently from argv read literally, on each tool and with the
+holdings roots both set and unset. It is not a proof of completeness; it is 84
+invocations chosen to include everything the three tools' code branches on plus
+everything argparse decides for them.
 
-**Base-vs-base control first: 0 of 75 records differ.** Base-vs-head: **17 of 75
-differ**, +92 / −100 lines. The other 58 records — every successful crlf run, every
+**Base-vs-base control first: 0 of 84 records differ.** Base-vs-head: **26 of 84
+differ**, +137 / −162 lines. The other 58 records — every successful crlf run, every
 successful shelf run, and all 27 `show_opus_products` records including both
 tables, `--pprint`, `--raw` and an abbreviated `--pat` — are byte-identical.
 
-Six kinds of change across those seventeen records.
+Six kinds of change across those twenty-six records.
 
-### 1. `--help` answers, on the two tools that had no parser (2 records)
+### 1. `--help` and `-h` answer, on the two tools that had no parser (4 records)
 
-`crlf/help`: base treated `--help` as a file path and died with
+`crlf/help`, `crlf/short-help`: base treated the flag as a file path and died with
 `FileNotFoundError`, exit 1. Head prints the help and exits 0.
-`shelf/help`: base treated it as a directory to walk, found nothing, and printed
-`Tests performed: 0 / Errors found: 0`, exit 0. Head prints the help and exits 0.
+`shelf/help`, `shelf/short-help`: base treated it as a directory to walk, found
+nothing, and printed `Tests performed: 0 / Errors found: 0`, exit 0. Head prints the
+help and exits 0.
 
 Attribution: this is what having a parser *is*. Neither line of base output was a
 message the tool meant to emit; both were an accident of a path that did not exist.
+`-h` is argparse's, not a flag this PR chose to add; the tests cover both
+spellings.
 
-### 2. An unrecognized option is a usage error, exit 2 (2 records)
+### 2. A command line the parser cannot classify is a usage error, exit 2 (8 records)
 
-`crlf/unknown-flag`: exit 1 with a `FileNotFoundError` traceback for a file called
-`--bogus` → exit 2 with `crlf.py: error: unrecognized arguments: --bogus`.
-`shelf/unknown-flag`: exit **0**, having walked the other, valid root and reported
-`Tests performed: 2 / Errors found: 0` as though the command line were fine →
-exit 2 with the same argparse error.
+Three shapes, on both migrated tools: an unrecognized option, an abbreviated one,
+and one given an explicit value.
+
+| record | base | head |
+|---|---|---|
+| `crlf/unknown-flag` (`--bogus`) | exit 1, `FileNotFoundError: '--bogus'` | exit 2, `unrecognized arguments: --bogus` |
+| `crlf/abbreviated-repair` (`--rep`) | exit 1, file untouched | exit 2, file untouched |
+| `crlf/abbreviated-verbose` (`--verb`) | exit 1 | exit 2 |
+| `crlf/flag-with-a-value` (`--verbose=1`) | exit 1 | exit 2, `argument --verbose: ignored explicit argument '1'` |
+| `crlf/repair-with-a-value` (`--repair=yes`) | exit 1, file untouched | exit 2, file untouched |
+| `shelf/unknown-flag` (`--bogus`) | exit **0**, walked the other, valid root and reported `Tests performed: 2 / Errors found: 0` as though the command line were fine | exit 2 |
+| `shelf/abbreviated-verbose` (`--verb`) | exit 0, ran non-verbose | exit 2 |
+| `shelf/flag-with-a-value` (`--verbose=1`) | exit 0, ran non-verbose | exit 2 |
 
 Attribution: unavoidable with a parser, and 2 is what the other eleven tools already
-return for a usage error. The shelf case is the one worth naming: base *accepted* a
+return for a usage error. The shelf rows are the ones worth naming: base *accepted* a
 typo'd flag and reported a clean run, so a mistyped `--verbsoe` produced a
 successful-looking check. **This is an exit-code change on a surface the plan calls
 frozen; §7 records it as an owner decision.**
+
+**The abbreviations are a choice, and the choice is `allow_abbrev=False`.** With
+argparse's default, `crlf --rep f` would mean `--repair` and **rewrite every file
+named after it**, where the base tool refused the command line outright. A
+misspelling that silently modifies holdings is the worst outcome available here, so
+both new parsers turn abbreviation off. Two tests pin it, and dropping either
+`allow_abbrev=False` fails exactly one of them (§5.3, M8). `show_opus_products` is
+**not** changed: its parser is the one that was already there, abbreviations and
+all, and record `opus/abbreviated-paths` (`--pat …`) is byte-identical base to head,
+which is what confines this to the two new parsers.
 
 ### 3. An uncaught exception gains one stack frame (4 records)
 
@@ -168,53 +190,62 @@ none of these tools grew an exception handler.
 
 `shelf/index-extraneous`, §2 above. This is the bug fix.
 
-### 5. `show_opus_products --help` works with no holdings roots set (1 record)
+### 5. `show_opus_products` reaches its parser before it reads the environment (3 records)
 
-`opus/help-without-holdings-env`: exit 1 with a `KeyError: 'PDS3_HOLDINGS_DIR'`
-traceback from module import → exit 0 with the help text.
+With either holdings root unset, the base module died at import, before argparse
+existed, whatever the command line was. Now the parser answers first.
+
+| record | base | head |
+|---|---|---|
+| `opus/help-without-holdings-env` (`--help`) | exit 1, `KeyError: 'PDS3_HOLDINGS_DIR'` | exit 0, the help text |
+| `opus/usage-error-without-holdings-env` (`--bogus`) | exit 1, the same `KeyError` | exit **2**, `the following arguments are required: --paths` |
+| `opus/no-arguments-without-holdings-env` | exit 1, the same `KeyError` | exit **2**, the same message |
 
 Attribution: the two `os.environ[…]` lookups moved from module level into `main()`,
 after `parse_args`. Keeping them at module level would mean the module cannot be
 imported without both variables — so no in-process test could reach `main()`, no
-autodoc build could document it, and an entry point could not load it. A real run
-still raises the same `KeyError` from the same two lookups (record
-`opus/no-holdings-env`, change 3 above).
+autodoc build could document it, and an entry point could not load it.
 
-### 6. argparse decides what an argument *is*, where argv used to be literal (7 records)
+**This is a third tool whose exit code moves**, and it is confined to the
+no-holdings environment: with both roots set, base and head agree on `--bogus`, on
+no arguments, on `-h` and on a bare `--paths` (records `opus/unknown-flag`,
+`opus/no-paths`, `opus/help`, `opus/empty-paths`, all byte-identical). A real run
+with a root missing still raises the same `KeyError` from the same two lookups,
+exit 1 (record `opus/no-holdings-env`, change 3 above). Deferred entry 135 names all
+three tools.
+
+### 6. An argument's *meaning* changes, not just its acceptance (6 records)
 
 The two migrated tools handled their flags by searching `sys.argv` for the exact
 string and calling `remove()`. Every other argument was a path, whatever it looked
-like. A parser classifies arguments instead, and that changes four shapes:
+like. A parser classifies arguments instead, and two shapes change meaning rather
+than simply becoming errors:
 
 | record | base | head |
 |---|---|---|
-| `crlf/abbreviated-repair` (`--rep f`) | exit 1, `FileNotFoundError: '--rep'`, **file untouched** | exit 2, `unrecognized arguments: --rep`, file untouched |
-| `crlf/abbreviated-verbose` (`--verb f`) | exit 1, `FileNotFoundError` | exit 2 |
-| `shelf/abbreviated-verbose` (`--verb root`) | exit 0, walked `--verb` as a path (nothing) and the root, non-verbose | exit 2 |
-| `crlf/repeated-flag` (`--verbose --verbose f`) | exit 1, `FileNotFoundError: '--verbose'` — `remove()` takes one | exit 0, verbose |
+| `crlf/repeated-flag` (`--verbose --verbose f`) | exit 1, `FileNotFoundError: '--verbose'` — `remove()` takes one occurrence and the other became a path | exit 0, verbose |
+| `crlf/repeated-repair` (`--repair --repair f`) | exit 1, `FileNotFoundError: '--repair'`, **file untouched** | exit 0, **file repaired** |
 | `crlf/dash-file-bare` (`-dash.txt`) | **exit 0, `-dash.txt INVALID`** | **exit 2** |
+| `shelf/dash-root` (`-dashroot`) | **exit 0**, walked it, `Tests performed: 0` | **exit 2** |
 | `crlf/dash-file-after-separator` (`-- -dash.txt`) | exit 1, `FileNotFoundError: '--'` | exit 2 |
 | `crlf/dash-file-after-a-path` (`ok.txt -- -dash.txt`) | exit 1, `FileNotFoundError: '--'` | exit 0, both checked |
 
-**The abbreviations are a choice, and the choice is `allow_abbrev=False`.** With
-argparse's default, `crlf --rep f` would mean `--repair` and **rewrite every file
-named after it**, where the base tool refused the command line outright. A
-misspelling that silently modifies holdings is the worst outcome available here, so
-both new parsers turn abbreviation off, which folds these three records into change
-2 above: an option that is not spelled out is not an option. Two tests pin it, and
-dropping either `allow_abbrev=False` fails exactly one of them (§5.3, M8).
-`show_opus_products` is **not** changed: its parser is the one that was already
-there, abbreviations and all, and record `opus/abbreviated-paths` (`--pat …`) is
-byte-identical base to head, which is what confines this to the two new parsers.
+**A repeated flag now means the flag.** `crlf --repair --repair f` is the one that
+matters: at base the second `--repair` became a path and the run died before
+touching anything, and now the file is rewritten. It is the intended effect of the
+command line either way — nobody types `--repair` twice meaning *do not repair* —
+but it is a run that writes where the base run did not, so it is named here rather
+than folded into "argparse accepts more".
 
-**`crlf/dash-file-bare` is the one base-working invocation this PR breaks.** A file
-whose name begins with `-` was a path and is now an option. The usual answer is
-`--`, and it half-works: under `parse_intermixed_args`, `--` is honoured only when a
-plain positional precedes it, so `crlf -- -dash.txt` is still a usage error while
-`crlf ok.txt -- -dash.txt` checks both. That is argparse's behaviour, not a design;
-it is pinned by
+**`crlf/dash-file-bare` and `shelf/dash-root` are the base-working invocations this
+PR breaks.** An argument beginning with `-` was a path and is now an option. The
+usual answer is `--`, and it half-works: under `parse_intermixed_args`, `--` is
+honoured only when a plain positional precedes it, so `crlf -- -dash.txt` is still a
+usage error while `crlf ok.txt -- -dash.txt` checks both. That is argparse's
+behaviour, not a design; it is pinned by
 `test_a_path_beginning_with_a_dash_is_reachable_only_after_another_path` and
-recorded as deferred entry 141. No file in either holdings root begins with `-`
+`test_a_shelf_root_beginning_with_a_dash_is_a_usage_error`, and recorded as deferred
+entry 141. No file in either holdings root begins with `-`
 (`find $PDS3_HOLDINGS_DIR $PDS4_HOLDINGS_DIR -name '-*'` finds none), which is why
 it is recorded rather than treated as a blocker.
 
@@ -226,6 +257,7 @@ it is recorded rather than treated as a blocker.
 | naming no path at all succeeds silently | `crlf/no-arguments`, `shelf/no-arguments` | `nargs='*'`, not `'+'` |
 | a misspelled flag does not become a real one | `crlf/abbreviated-repair`, `shelf/abbreviated-verbose` | `allow_abbrev=False` on the two new parsers |
 | `--verbose --verbose root` reports the same as one | `shelf/repeated-verbose` | byte-identical: base removed one occurrence and walked the other as a path that does not exist |
+| `show_opus_products`' usage errors, with the roots set | `opus/unknown-flag`, `opus/no-paths`, `opus/empty-paths`, `opus/help` | byte-identical: its parser is untouched, so only the no-holdings environment moves |
 | a run that repairs 2+ files prints no summary | `crlf/repair-two-of-three` | left as it is; see deferred 136 |
 | `show_opus_products --help` text | `opus/help` | byte-identical, though the description literal is re-indented — argparse collapses whitespace in a description |
 | `show_opus_products` accepts an abbreviated flag | `opus/abbreviated-paths` | its parser is untouched, `allow_abbrev` included |
@@ -247,8 +279,8 @@ rather than across the board.
 
 | tool | moved? | how its tests break down | why |
 |---|---|---|---|
-| `shelf_consistency_check` | **yes** | 13 tests: **12** call `main()` in-process, 1 is the `python -m` subprocess. (The one full-holdings test also runs `pdschecksums` and `pdsinfoshelf` as subprocesses to build the tree it then checks in-process.) | imports `argparse`, `os`, `sys`. No PdsFile class, no holdings root, no cwd-relative path — the hazard cannot arise |
-| `crlf` | **yes** | 31 tests: 16 call the classifier directly and always did, **13** are new in-process command-line tests, 2 are subprocesses | imports `argparse`, `sys`. Same |
+| `shelf_consistency_check` | **yes** | 16 tests: **15** call `main()` in-process, 1 is the `python -m` subprocess. (The one full-holdings test also runs `pdschecksums` and `pdsinfoshelf` as subprocesses to build the tree it then checks in-process.) | imports `argparse`, `os`, `sys`. No PdsFile class, no holdings root, no cwd-relative path — the hazard cannot arise |
+| `crlf` | **yes** | 32 tests: 16 call the classifier directly and always did, **14** are new in-process command-line tests, 2 are subprocesses | imports `argparse`, `sys`. Same |
 | `show_opus_products` | **no** | 9 tests: 6 drive the tool as a subprocess against a dogfooded tree, 2 are new subprocess probes with no holdings, 1 inspects the parser | calls `Pds3File.use_shelves_only(True)` and `Pds3File.preload()` / `Pds4File.preload()` on both roots. In-process it would preload a temporary tree into the same class-level cache the session preloaded the real tree into, and leave shelves-only set for every test that ran after it. Exactly the documented hazard |
 
 **This last row is a departure from the plan**, which asked for both `main()`-less
@@ -298,45 +330,54 @@ python -m pytest tests/pds3file/ tests/rules/pds3/ --mode s -rA --junitxml=…
 
 | | base ids | head ids | added | removed | outcome changes |
 |---|---:|---:|---:|---:|---:|
-| `--mode ns` | 1,097 | 1,121 | 25 | 1 | **0** |
+| `--mode ns` | 1,097 | 1,128 | 32 | 1 | **0** |
 | `--mode s` | 558 | 558 | 0 | 0 | **0** |
 
-`--mode ns`: base 1,063 passed / 34 skipped; head 1,087 passed / 34 skipped.
+`--mode ns`: base 1,063 passed / 34 skipped; head 1,094 passed / 34 skipped.
 `--mode s`: base and head both 555 passed / 3 skipped. No id that exists in both
 runs changed outcome, in either mode, and nothing failed or errored in any of the
 four runs.
 
-Every one of the 25 added ids is a test this PR wrote, and every one passes. The
+Every one of the 32 added ids is a test this PR wrote, and every one passes. The
 single removed id is `test_an_extraneous_index_shelf_raises`, the test that pinned
 the bug §2 fixes. The full list is §5.2.
 
-### 5.2 The 25 added ids and the 1 removed
+### 5.2 The 29 added test functions, 32 added ids, and the 1 removed
 
 Removed: `test_shelf_consistency_check.py::test_an_extraneous_index_shelf_raises`
 — the test that pinned the `NameError` as current behaviour, and whose docstring
 said a fix has to invert it.
 
-Added, by module:
+Added, by module — **test functions**. Three of them are parametrized over two
+values each (`test_help_names_every_flag` and
+`test_a_store_true_flag_rejects_an_explicit_value` in `test_crlf.py`,
+`test_help_names_the_flag_and_the_positional` in
+`test_shelf_consistency_check.py`), so 29 functions produce the 32 ids §5.1
+counts:
 
-- `test_crlf.py` (15): `TestCommandLine::` `test_only_invalid_files_are_listed`,
+- `test_crlf.py` (16): `TestCommandLine::` `test_only_invalid_files_are_listed`,
   `test_verbose_lists_every_file`, `test_repair_rewrites_the_file_and_reports_it`,
   `test_a_single_file_gets_no_summary_line`,
   `test_two_repairs_print_no_summary_at_all`,
   `test_flags_are_accepted_among_the_paths`, `test_no_arguments_prints_nothing`,
   `test_help_names_every_flag`, `test_an_unrecognized_flag_is_a_usage_error`,
   `test_an_abbreviated_flag_is_a_usage_error_and_rewrites_nothing`,
+  `test_a_store_true_flag_rejects_an_explicit_value`,
   `test_a_repeated_flag_is_accepted`,
   `test_a_path_beginning_with_a_dash_is_reachable_only_after_another_path`,
   `test_an_unreadable_file_raises_rather_than_being_reported`; and, at module
   level, `test_the_module_is_runnable_as_python_m` and
   `test_an_unreadable_file_ends_the_process_with_a_traceback`.
-- `test_shelf_consistency_check.py` (7):
+- `test_shelf_consistency_check.py` (10):
   `test_an_index_shelf_whose_label_exists_is_counted_not_reported`,
   `test_an_extraneous_index_shelf_is_counted_like_any_other`,
   `test_no_arguments_reports_an_empty_run`,
   `test_verbose_is_accepted_between_the_shelf_roots`,
   `test_an_unrecognized_flag_is_a_usage_error`,
   `test_an_abbreviated_flag_is_a_usage_error`,
+  `test_help_names_the_flag_and_the_positional`,
+  `test_a_flag_given_a_value_is_a_usage_error`,
+  `test_a_shelf_root_beginning_with_a_dash_is_a_usage_error`,
   `test_the_module_is_runnable_as_python_m`.
 - `test_show_opus_products.py` (3):
   `test_the_parser_is_built_without_touching_the_environment`,
@@ -347,7 +388,7 @@ Added, by module:
 
 Run against `pytest tests/holdings_maintenance/test_crlf.py
 tests/holdings_maintenance/test_shelf_consistency_check.py
-tests/holdings_maintenance/test_show_opus_products.py --mode ns`, which sits at 54
+tests/holdings_maintenance/test_show_opus_products.py --mode ns`, which sits at 61
 passed. Each mutation was applied to a copy-restored file, never through `git`, and
 **one file at a time**: a probe that changes the same construct in two files can be
 caught by one file's test while the other's goes unguarded, and reads as covered.
@@ -381,8 +422,8 @@ test rejects it too.
 scripts/run-all-checks.sh -c -s          # with no holdings env vars
 ```
 All checks passed, both trees. Its pytest leg: base **281 passed / 816 skipped**,
-head **305 passed / 816 skipped**. The skip count does not move and the pass count
-moves by exactly +24, which is §5.2's 25 added minus the 1 removed: every test this
+head **312 passed / 816 skipped**. The skip count does not move and the pass count
+moves by exactly +31, which is §5.2's 32 added ids minus the 1 removed: every test this
 PR wrote builds its own tree and runs on a machine with no holdings at all, so none
 of them lands in the skipped column.
 
@@ -464,23 +505,28 @@ owner can spend a one-line PR on it if the trade looks different from there.
    and the caches around each call — is new global-state machinery in the test tree
    whose correctness is the hard part, traded for the runtime of five subprocesses.
    That judgement is the deviation; the addendum exists so it is the owner's.
-2. **An unrecognized or abbreviated option now exits 2 rather than 0 or 1** (§3,
-   changes 2 and 6). CLI exit codes are frozen this phase. What is frozen in
+2. **A malformed command line now exits 2 rather than 0 or 1, on all three tools**
+   (§3, changes 2, 5 and 6). CLI exit codes are frozen this phase. What is frozen in
    practice is what a *valid* invocation returns, and none of the base values was
-   designed — one was an uncaught `FileNotFoundError`, the other was the tool
-   cheerfully reporting a clean run after silently swallowing a typo'd flag. 2 is
-   argparse's, and the eleven console scripts' already. Reverting would mean not
-   using argparse for the flags, which is the PR.
+   designed — one was an uncaught `FileNotFoundError`, one was the tool cheerfully
+   reporting a clean run after silently swallowing a typo'd flag, and the third was
+   `show_opus_products` dying at import before it could look at the command line at
+   all. 2 is argparse's, and the eleven console scripts' already. Reverting would
+   mean not using argparse for the flags, which is the PR. The
+   `show_opus_products` case is narrower than the other two: it only arises with a
+   holdings root unset, because that tool's parser is otherwise untouched.
 3. **`allow_abbrev=False` on the two new parsers, and not on `show_opus_products`.**
    The asymmetry is deliberate: the two new parsers get to choose, and `--rep`
    silently meaning `--repair` would let a misspelling rewrite files;
    `show_opus_products`' parser already existed with abbreviation on, so turning it
    off there would be a behaviour change this PR invented rather than inherited.
    If the owner wants one rule, it should be one rule applied in a PR that says so.
-4. **`crlf` can no longer be given a path beginning with `-`** (§3, change 6, and
-   deferred 141). This is the only base-working invocation the PR breaks. No file
-   in either holdings root has such a name, and `crlf f -- -dash.txt` still reaches
-   one, but it is a loss and not a wash.
+4. **Neither migrated tool can be given a path beginning with `-`** (§3, change 6,
+   and deferred 141). These are the only base-working invocations the PR breaks. No
+   file in either holdings root has such a name, and `crlf f -- -dash.txt` still
+   reaches one, but it is a loss and not a wash. `crlf --repair --repair f` also
+   now rewrites a file the base run left alone, having died on the second
+   `--repair` as a path.
 5. **`nargs='*'`, not `'+'`, on both positionals.** The documented syntax of
    `shelf_consistency_check` is `shelf_root [shelf_root ...]` — at least one — but
    the module as written prints an empty summary and exits 0 when given none, so
@@ -540,15 +586,22 @@ much smaller PR, and it is the owner's to authorise.
 this file, in PR-28's entries in `critiques/deferred-observations.md` and in the
 plan's PR-28 entry **that the tree can answer**: the line-count table (both columns
 — the base column comes from `git show 3d044b2:…`, not from a constant); the ratchet
-and `[project.scripts]` counts at base and head and the arithmetic on them; the
-finding count, by running `ruff` (if `ruff` is absent it says so rather than
-passing); every driver figure in §8 and entry 130, including the block structure;
-§4's per-module test breakdown, counted off the AST and cross-checked against the
-prose; and the presence of every test id §5.2 names plus the absence of the one it
-says was removed. What it cannot re-derive is a number that comes from running the
-suite or the transcript; those carry their command lines above instead. Needles are
-matched with whitespace collapsed, so a number that sits across a line break still
-matches.
+and `[project.scripts]` counts at base and head and the arithmetic on them, plus the
+fact §8.4 actually asks for — that no console-script entry names any of the three
+tools, which a count alone does not express; the finding count **at head**, by
+running `ruff`, and if `ruff` is absent it says so rather than passing; every driver
+figure in §8 and entry 130, including the block structure; §4's per-module test
+breakdown, counted off the AST and cross-checked against the prose; and the presence
+of every test function §5.2 names plus the absence of the one it says was removed,
+with the function count reconciled against the id count through the three
+parametrized cases.
+
+**Two numbers are recorded constants, not derivations**: the base finding count
+(2,250) and the base id counts, because neither can be read out of the head tree.
+Both carry their command lines above, and both were re-measured at `3d044b2` for
+this record. What the gate cannot re-derive at all is a number that comes from
+running the suite or the transcript. Needles are matched with whitespace collapsed,
+so a number that sits across a line break still matches.
 
 **The gate has its own negative control**: ten perturbations, spread across all
 four documents it reads and across every kind of number — a line count, the

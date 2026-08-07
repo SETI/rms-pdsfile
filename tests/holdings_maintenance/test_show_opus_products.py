@@ -16,7 +16,6 @@
 # Every test rebuilds the tree first, so each one is independent and order-agnostic.
 ##########################################################################################
 
-import os
 import subprocess
 import sys
 
@@ -40,7 +39,12 @@ EXPECTED_OPUS_TYPES = ('hst_text', 'hst_calib', 'hst_ima', 'hst_raw', 'hst_tiff'
 
 
 def run_without_holdings(argv, cwd):
-    """Run a command with neither holdings root set, and this checkout on the path.
+    """Run any command with neither holdings root set, and this checkout on the path.
+
+    Not support.run_tool_without_holdings(): that one asserts its tool is in
+    HOLDINGS_FREE_TOOLS, which this tool is deliberately not, and it only knows how
+    to run `python -m <tool>`. The environment comes from the same builder, so the
+    two cannot disagree about what a no-holdings run is.
 
     Args:
         argv: The command line to run.
@@ -50,14 +54,9 @@ def run_without_holdings(argv, cwd):
         subprocess.CompletedProcess: With both streams captured as bytes.
     """
 
-    env = dict(os.environ)
-    env['PYTHONPATH'] = str(support.REPO_ROOT / 'src')
-    for name in ('PDS3_HOLDINGS_DIR', 'PDS4_HOLDINGS_DIR', 'PDSFILE_TEST_HOLDINGS',
-                 'PDSFILE_TEST_DATA_DIR'):
-        env.pop(name, None)
-
-    return subprocess.run(argv, cwd=str(cwd), env=env, capture_output=True,
-                          timeout=support.TOOL_TIMEOUT, check=False)
+    return subprocess.run(argv, cwd=str(cwd), env=support.no_holdings_env(),
+                          capture_output=True, timeout=support.TOOL_TIMEOUT,
+                          check=False)
 
 
 @pytest.fixture

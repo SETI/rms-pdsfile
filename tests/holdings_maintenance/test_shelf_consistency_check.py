@@ -250,6 +250,46 @@ def test_an_abbreviated_flag_is_a_usage_error(legacy_tree):
 
 
 @pytest.mark.holdings_free
+@pytest.mark.parametrize('flag', ['--help', '-h'])
+def test_help_names_the_flag_and_the_positional(flag):
+    """Both spellings of help answer; the tool had neither before argparse."""
+
+    run = support.run_tool_in_process('shelf_consistency_check', flag)
+    assert run.returncode == 0, run.describe()
+    assert '--verbose' in run.stdout, run.describe()
+    assert 'shelf_root' in run.stdout, run.describe()
+    assert 'Tests performed:' not in run.stdout, run.describe()
+
+
+@pytest.mark.holdings_free
+def test_a_flag_given_a_value_is_a_usage_error(legacy_tree):
+    """--verbose takes no value, so `--verbose=1` is rejected outright."""
+
+    run = support.run_tool_in_process('shelf_consistency_check', '--verbose=1',
+                                      legacy_tree.disk)
+    assert run.returncode == 2, run.describe()
+    assert 'ignored explicit argument' in run.output, run.describe()
+    assert 'Tests performed:' not in run.output, run.describe()
+
+
+@pytest.mark.holdings_free
+def test_a_shelf_root_beginning_with_a_dash_is_a_usage_error(tmp_path, monkeypatch):
+    """argparse reads a leading `-` as an option here too.
+
+    The same loss `crlf` takes, on a root rather than a file: the walk accepted
+    any string before, and a directory named `-something` is now unreachable
+    except after another root and a `--` separator.
+    """
+
+    (tmp_path / '-dashroot').mkdir()
+    monkeypatch.chdir(tmp_path)
+
+    run = support.run_tool_in_process('shelf_consistency_check', '-dashroot')
+    assert run.returncode == 2, run.describe()
+    assert 'Tests performed:' not in run.output, run.describe()
+
+
+@pytest.mark.holdings_free
 def test_the_module_is_runnable_as_python_m(legacy_tree, tmp_path):
     """`python -m ...` reaches main(), and the process exit code is its return value.
 

@@ -71,6 +71,7 @@ ADDED = {
         'test_help_names_every_flag',
         'test_an_unrecognized_flag_is_a_usage_error',
         'test_an_abbreviated_flag_is_a_usage_error_and_rewrites_nothing',
+        'test_a_store_true_flag_rejects_an_explicit_value',
         'test_a_repeated_flag_is_accepted',
         'test_a_path_beginning_with_a_dash_is_reachable_only_after_another_path',
         'test_an_unreadable_file_raises_rather_than_being_reported',
@@ -84,6 +85,9 @@ ADDED = {
         'test_verbose_is_accepted_between_the_shelf_roots',
         'test_an_unrecognized_flag_is_a_usage_error',
         'test_an_abbreviated_flag_is_a_usage_error',
+        'test_help_names_the_flag_and_the_positional',
+        'test_a_flag_given_a_value_is_a_usage_error',
+        'test_a_shelf_root_beginning_with_a_dash_is_a_usage_error',
         'test_the_module_is_runnable_as_python_m',
     ),
     'tests/holdings_maintenance/test_show_opus_products.py': (
@@ -96,6 +100,11 @@ REMOVED = 'test_an_extraneous_index_shelf_raises'
 
 MIGRATED = ('src/pdsfile/holdings_maintenance/pds3/crlf.py',
             'src/pdsfile/holdings_maintenance/pds3/shelf_consistency_check.py')
+
+# The id count the full --mode ns run reported as added. Not derivable from the
+# tree -- it comes from running the suite -- so it is checked for consistency with
+# the function count and the parametrization rather than re-derived.
+IDS_ADDED = 32
 
 # The records spell the console-script count out, so the check has to as well.
 NUMBER_WORDS = {10: 'ten', 11: 'eleven', 12: 'twelve'}
@@ -232,6 +241,26 @@ def tests_calling(path):
     return counts
 
 
+def is_parametrized(path, name):
+    """True if a test function carries a parametrize marker over two values."""
+
+    tree = ast.parse(pathlib.Path(path).read_text(encoding='utf-8'))
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.FunctionDef) and node.name == name):
+            continue
+        for decorator in node.decorator_list:
+            if not isinstance(decorator, ast.Call):
+                continue
+            target = decorator.func
+            if getattr(target, 'attr', None) != 'parametrize':
+                continue
+            values = decorator.args[-1]
+            if isinstance(values, (ast.List, ast.Tuple)):
+                return len(values.elts) == 2
+
+    return False
+
+
 def test_names(path):
     """Return every test function name a test module defines, methods included."""
 
@@ -281,6 +310,15 @@ def main():
     expect('record', f'had {NUMBER_WORDS[base_scripts]} entries at `{BASE}` and has '
                      f'{NUMBER_WORDS[scripts]} now')
     expect('plan', f'still {NUMBER_WORDS[scripts]} entries')
+    # The actual section 8.4 requirement, which a count alone does not express.
+    named = set(pyproject['project']['scripts'])
+    intruders = named & {'crlf', 'shelf_consistency_check', 'show_opus_products'}
+    if intruders:
+        missing.append(('pyproject', f'[project.scripts] names {sorted(intruders)}; '
+                                     f'section 8.4 says python -m only'))
+    if named != set(base_toml['project']['scripts']):
+        missing.append(('pyproject', '[project.scripts] does not name the same '
+                                     'console scripts as the base'))
     expect('plan', f'**{entries + 1} → {entries} entries, {slots + 1} → {slots} '
                    f'code slots**')
 
@@ -367,11 +405,22 @@ def main():
             expect('record', name)
         if REMOVED in present:
             missing.append(('tree', f'{REMOVED} is still defined in {path}'))
+    # Functions, not ids: three of them are parametrized over two values, so the
+    # id count the suite reports is larger. IDS_ADDED is that measured number.
     counted = sum(len(v) for v in ADDED.values())
-    expect('record', f'The {counted} added ids and the 1 removed')
-    expect('record', f'| `--mode ns` | 1,097 | {1097 + counted - 1:,} | {counted} | '
-                     f'1 | **0** |')
-    expect('record', f'Every one of the {counted} added ids')
+    parametrized = sum(1 for path, added in ADDED.items() for name in added
+                       if is_parametrized(path, name))
+    if counted + parametrized != IDS_ADDED:
+        missing.append(('tree', f'{counted} added functions, {parametrized} of them '
+                                f'parametrized over two values, gives '
+                                f'{counted + parametrized} ids; the record says '
+                                f'{IDS_ADDED}'))
+    expect('record', f'The {counted} added test functions, {IDS_ADDED} added ids, '
+                     f'and the 1 removed')
+    expect('record', f'so {counted} functions produce the {IDS_ADDED} ids')
+    expect('record', f'| `--mode ns` | 1,097 | {1097 + IDS_ADDED - 1:,} | '
+                     f'{IDS_ADDED} | 1 | **0** |')
+    expect('record', f'Every one of the {IDS_ADDED} added ids')
     for path, added in ADDED.items():
         module = path.rpartition('/')[2]
         expect('record', f'`{module}` ({len(added)}):')
@@ -379,10 +428,10 @@ def main():
     # Section 4's per-module breakdown of how each tool's tests are driven, as
     # counts of *tests*, not of call sites: one test may call a runner twice.
     for path, total, driven in (
-            ('tests/holdings_maintenance/test_shelf_consistency_check.py', 13,
-             {'run_tool_in_process': 12, 'run_tool_without_holdings': 1}),
-            ('tests/holdings_maintenance/test_crlf.py', 31,
-             {'run_tool_in_process': 13, 'run_tool_without_holdings': 2}),
+            ('tests/holdings_maintenance/test_shelf_consistency_check.py', 16,
+             {'run_tool_in_process': 15, 'run_tool_without_holdings': 1}),
+            ('tests/holdings_maintenance/test_crlf.py', 32,
+             {'run_tool_in_process': 14, 'run_tool_without_holdings': 2}),
             ('tests/holdings_maintenance/test_show_opus_products.py', 9,
              {'run_tool': 6, 'run_without_holdings': 2})):
         found = len(test_names(path))

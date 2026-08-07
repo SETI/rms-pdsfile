@@ -38,8 +38,11 @@ conflicts with a rule below, follow the rule below. See
    - the per-dataset rule files, `src/pdsfile/pds{3,4}file/rules/*.py`
 
    Modules not on this list are held to the 1000-line limit. The maintenance
-   tools under `src/pdsfile/holdings_maintenance/` are **not** waived; Phase 6
-   consolidates them, so their sizes are expected to change.
+   tools under `src/pdsfile/holdings_maintenance/` are **not** waived. The Phase 6
+   consolidation brought every pds3/pds4 tool pair under the limit; the one module
+   left over it is `src/pdsfile/holdings_maintenance/pds3/pdsdependency.py` at
+   1,165 lines, which has no twin to consolidate with and so needs a decision of
+   its own — waiver or split. Deferred observation 66 holds it.
 4. **Rule modules and specific files carry permanent `ruff check` exemptions.**
    Rule modules carry permanent per-file-ignores; core files and the subpackage
    `__init__`s carry a smaller frozen set. (`ruff format` does not run at all —

@@ -733,13 +733,26 @@ the method (deleting the method would change behavior and the manifest kind).
 
 ### Phase 6 — Maintenance tools consolidation
 
-**Complete.** PR-25, PR-25a, PR-26, PR-27 and PR-28 are merged or open against
-`rewrite`; PR-28 is the last of them. All five pds3/pds4 tool-pairs are on the
-shared core, `re_validate` is modernized, and the three scripts that had no
-`main()` have one. Two things the phase did **not** do, deliberately: `pdsdependency`
-stays a standalone pds3-only tool (it does not fit the five-task `ToolSpec` shape),
-and the three drivers stay three — PR-28 measured whether they collapse now that
-every family has migrated and found they do not (deferred entry 130).
+**Complete on PR-28's merge.** PR-25, PR-25a, PR-26 and PR-27 are merged into
+`rewrite`; PR-28 is the last of them and is open. It cannot merge until the owner
+acknowledges `plans/2026-08-07-pr-28-deviation-addendum.md`, so the phase is closed
+in substance and not yet in fact. All five pds3/pds4 tool-pairs are on the shared
+core, `re_validate` is modernized, and the three scripts that had no `main()` have
+one.
+
+Two things the phase did **not** do, deliberately: `pdsdependency` stays a
+standalone pds3-only tool (it does not fit the five-task `ToolSpec` shape), and the
+three drivers stay three — PR-28 measured whether they collapse now that every
+family has migrated and found they do not (deferred entry 130).
+
+**One question the phase leaves open.** Deferred entry 66 parked three
+over-1000-line maintenance modules until the consolidation had shown how much of
+each was duplication. PR-27 answered two by shrinking them. The third,
+`pdsdependency.py` at 1,165 lines, has no twin to consolidate with, so the
+consolidation never reaches it and the deferral has simply expired: it needs a
+waiver-or-split decision, and no phase currently owns it. `pdsfile_overrides.mdc`
+deviation (3) and entry 66 both say so rather than pointing at a phase that has
+ended.
 
 Gates: PR-13's tool tests + a real-holdings validate run of each migrated tool
 against at least one real volume/bundle. The phase record is
@@ -1028,15 +1041,16 @@ Record: `critiques/pr-28-validation.md`.
   and both new runners assert against it. Each migrated tool keeps **one**
   subprocess test, because an in-process call passes whether or not the module has
   a `__main__` block.
-- **Behavior: 17 of 75 tool-run records differ**, in six kinds, all enumerated in
-  the record — `--help` answers on the two tools that had no parser; an
-  unrecognized option is a usage error exiting 2 (deferred 135 — an exit-code
-  change on a frozen surface, and the one thing here the owner is most likely to
-  rule differently); an uncaught exception's traceback gains a `main` frame; the
-  index shelf bug fix; `show_opus_products --help` works with no holdings roots
-  set; and argparse's argument conventions replace argv taken literally, which is
-  where the one base-working invocation that stops working lives (a path beginning
-  with `-`, deferred 141). Base-versus-base control: 0 of 75.
+- **Behavior: 26 of 84 tool-run records differ**, in six kinds, all enumerated in
+  the record — `--help` and `-h` answer on the two tools that had no parser; a
+  command line argparse cannot classify is a usage error exiting 2, on all three
+  tools (deferred 135 — an exit-code change on a frozen surface, and the one thing
+  here the owner is most likely to rule differently); an uncaught exception's
+  traceback gains a `main` frame; the index shelf bug fix; `show_opus_products`
+  reaches its parser before it reads the environment, so it answers with no
+  holdings roots set; and an argument's meaning changes where argv used to be
+  literal, which is where the base-working invocations that stop working live
+  (a path beginning with `-`, deferred 141). Base-versus-base control: 0 of 84.
 - **Preserved deliberately, each pinned by a mutation probe:** flags are still
   accepted anywhere among the positionals (`parse_intermixed_args`, not
   `parse_args`), naming no path still succeeds silently (`nargs='*'`, not `'+'`),

@@ -1639,9 +1639,20 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     Both are now comfortably under the limit and neither needs a waiver.
     `pdsdependency.py` is untouched at **1,165** and is the only module left in
     `holdings_maintenance/` over the limit; it has no pds3/pds4 twin, so the
-    consolidation this entry was waiting on will never reach it, and PR-28 is the
-    next PR to touch it.
-    **Owner: `pdsdependency.py` only, from PR-28.**
+    consolidation this entry was waiting on will never reach it.
+
+    **The third is answered by PR-28 only in the sense that the wait is over.**
+    PR-28 closes Phase 6 without touching `pdsdependency.py`, which is still 1,165
+    lines: its subject is three scripts that had no `main()`, and splitting a
+    1,165-line tool is neither in that subject nor a thing to do on the way past.
+    What PR-28 does settle is that the deferral has expired — this entry parked the
+    question until the consolidation had shown how much of each file was
+    duplication, and for this file the answer is none, because there is nothing to
+    consolidate it against. So it is a live question rather than a waiting one:
+    waive it, or split it in a later phase. `pdsfile_overrides.mdc` deviation (3)
+    now says the same rather than pointing at a phase that has ended.
+    **Owner: open — `pdsdependency.py` needs a waiver-or-split decision, and no
+    phase currently owns it.**
 
 ## From PR-23 (ruff-clean the core modules, Phase 5)
 
@@ -3327,6 +3338,11 @@ these entries are read by the PRs that come after it.
      wrote at the base, and passing the logger to the task explicitly. This is the
      same trade PR-26 made for `run_selection_main`, and it is now the second time
      it has been made. A third instance would be worth stopping for.
+
+     **Answered once all five families had migrated — see the amendment to this
+     entry at the end of this file.** The pairwise figures above are this entry's
+     original measurement and are superseded there; the answer is that the three
+     drivers do not collapse.
      **Owner: recorded, not open.**
 
 ### Added by the PR-27 adversarial review (round 2)
@@ -3400,12 +3416,19 @@ these entries are read by the PRs that come after it.
      as of this PR — this is the last of them.
      **Owner: recorded, not open.**
 
-135. **Two usage-error exit codes moved, on a surface the plan calls frozen.** An
-     unrecognized option now exits **2** on both migrated tools, where `crlf` exited
-     1 (uncaught `FileNotFoundError`) and `shelf_consistency_check` exited 0 (entry
-     134). Neither base value was designed, 2 is argparse's and the eleven console
-     scripts' already, and reverting would mean not giving these tools a parser,
-     which is the PR. Recorded because §6.4 freezes CLI exit codes without
+135. **Usage-error exit codes moved on all three tools, on a surface the plan calls
+     frozen.** A command line argparse cannot classify now exits **2**, where `crlf`
+     exited 1 (uncaught `FileNotFoundError`), `shelf_consistency_check` exited 0
+     having reported a clean run (entry 134), and `show_opus_products` exited 1 —
+     the third is the one that is easy to miss, because that tool's parser is
+     untouched: it moves only when a holdings root is unset, since the base module
+     died at import on `os.environ[…]` before argparse existed, and the roots are
+     now read inside `main()` after `parse_args`. With both roots set,
+     `show_opus_products`' usage errors are byte-identical base to head.
+
+     None of the three base values was designed, 2 is argparse's and the eleven
+     console scripts' already, and reverting would mean not giving these tools a
+     parser, which is the PR. Recorded because §6.4 freezes CLI exit codes without
      distinguishing a valid invocation's status from what a malformed one happens to
      produce, and this PR read that distinction into it rather than being given it.
      **Owner: open — a ruling on whether the freeze covers usage errors would settle
@@ -3506,8 +3529,10 @@ these entries are read by the PRs that come after it.
      roots for `-*` returns nothing. Pinned by
      `test_a_path_beginning_with_a_dash_is_reachable_only_after_another_path`, which
      asserts all three outcomes so a later switch to `parse_args` has to invert
-     them. `shelf_consistency_check` has the same property and no test, because a
-     shelf root named `-something` is further-fetched still.
+     them. `shelf_consistency_check` has the same property, pinned by
+     `test_a_shelf_root_beginning_with_a_dash_is_a_usage_error` and by transcript
+     record `shelf/dash-root`, where the base run walked the directory and reported
+     on it.
      **Owner: open.**
 
 142. **`show_opus_products --narrow-table` has no test at all.** Replacing
@@ -3522,6 +3547,33 @@ these entries are read by the PRs that come after it.
      against a list of one-element lists, which is always true and so is dead as
      written. Deferred 139 records the flag's other quirk, that `--pprint` and
      `--raw` accept and ignore it.
+     **Owner: open.**
+
+### Added by the PR-28 adversarial review (round 2)
+
+143. **`show_opus_products` never resolves a PDS4 path in any test.** Commenting out
+     `Pds4File.preload(pds4_holdings_dir)` leaves
+     `pytest tests/holdings_maintenance/test_crlf.py
+     tests/holdings_maintenance/test_shelf_consistency_check.py
+     tests/holdings_maintenance/test_show_opus_products.py --mode ns` green. Every
+     path the module's tests pass is a PDS3 one, so the second half of the tool's
+     two-flavor fallback — try `Pds3File`, then `Pds4File`, each by abspath then by
+     logical path — is exercised only for its failure. The tool tests declare a PDS3
+     source subset (`subsets.PDS3_VOLUME_SOURCES`) and a PDS4 one exists, so the
+     missing piece is a fixture that stages both under one tree, not new source
+     data. Same class as entry 142: a PR-13 coverage gap in a tool PR-28
+     restructured but did not otherwise change.
+     **Owner: open.**
+
+144. **`run_tool_in_process` captures into `io.StringIO`, which has no encoding.** A
+     real `python -m` run writes through an encoded stream, so a byte the
+     subprocess's locale cannot encode raises `UnicodeEncodeError` there and cannot
+     here — an in-process test would pass where the tool it stands for would die.
+     Neither migrated tool can reach that state in this repository's tests: `crlf`
+     prints only paths the test itself created and four ASCII status words, and
+     `shelf_consistency_check` prints only paths. It is written down because the
+     runner's docstring lists its other fidelity caveats — the working directory,
+     and that `sys.argv` is rebound for the call — and this is the third.
      **Owner: open.**
 
 ### Amended by the PR-28 executor (2026-08-07) — entry 130

@@ -325,6 +325,29 @@ def run_tool(tree, tool, *args):
                    proc.stderr.decode('utf-8', errors='replace'))
 
 
+def no_holdings_env():
+    """Return an environment with this checkout on the path and no holdings roots.
+
+    One builder rather than one per caller: a second copy of the list of variables
+    to remove is a second thing to keep current, and a variable missing from one
+    copy is invisible -- the subprocess just quietly has a root it was meant not to
+    have.
+
+    Returns:
+        dict[str, str]: A copy of os.environ, with PYTHONPATH naming this
+        checkout's src/ and both holdings roots and the three test-selector
+        variables removed.
+    """
+
+    env = dict(os.environ)
+    env['PYTHONPATH'] = str(REPO_ROOT / 'src')
+    for name in ('PDS3_HOLDINGS_DIR', 'PDS4_HOLDINGS_DIR', 'PDS_LOG_ROOT',
+                 'PDSFILE_TEST_HOLDINGS', 'PDSFILE_TEST_DATA_DIR'):
+        env.pop(name, None)
+
+    return env
+
+
 def run_tool_in_process(tool, *args):
     """Run one holdings-free tool by calling its main() in this process.
 
@@ -335,6 +358,13 @@ def run_tool_in_process(tool, *args):
     argparse takes the program name in its usage and error messages from
     sys.argv[0]; without it the messages would name pytest. It is restored
     afterwards.
+
+    Third fidelity caveat, after the working directory and sys.argv: output is
+    captured into io.StringIO, which has no encoding, where a real process writes
+    through an encoded stream. A byte the subprocess's locale could not encode
+    would raise there and cannot here. Neither tool driven this way can produce
+    one -- they print paths the caller supplied and ASCII status words -- but a
+    tool that formatted arbitrary file content would need the subprocess.
 
     Args:
         tool: A key of TOOL_MODULES that is also in HOLDINGS_FREE_TOOLS.
@@ -394,14 +424,9 @@ def run_tool_without_holdings(tool, *args, cwd=None):
         f'{tool} is not holdings-free; drive it with run_tool() instead')
 
     argv = [sys.executable, '-m', TOOL_MODULES[tool]] + [str(a) for a in args]
-    env = dict(os.environ)
-    env['PYTHONPATH'] = str(REPO_ROOT / 'src')
-    for name in ('PDS3_HOLDINGS_DIR', 'PDS4_HOLDINGS_DIR', 'PDS_LOG_ROOT',
-                 'PDSFILE_TEST_HOLDINGS', 'PDSFILE_TEST_DATA_DIR'):
-        env.pop(name, None)
-
-    proc = subprocess.run(argv, cwd=None if cwd is None else str(cwd), env=env,
-                          capture_output=True, timeout=TOOL_TIMEOUT, check=False)
+    proc = subprocess.run(argv, cwd=None if cwd is None else str(cwd),
+                          env=no_holdings_env(), capture_output=True,
+                          timeout=TOOL_TIMEOUT, check=False)
 
     return ToolRun(argv, proc.returncode,
                    proc.stdout.decode('utf-8', errors='replace'),
