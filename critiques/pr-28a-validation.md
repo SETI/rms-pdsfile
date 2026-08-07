@@ -43,9 +43,10 @@ later, not part of setup.
 | `src/pdsfile/holdings_maintenance/_indexshelf_common.py` | 620 | 598 |
 | `tests/holdings_maintenance/test_driver_setup.py` | — | 52 |
 
-14 code lines move; the function costs a `def` line and a docstring, so the three
-source files net 19 lines shorter. Nothing else changed: no rename, no signature
-change, no driver merge. Deferred entry 130's seven forced variation points stand.
+14 of the block's 15 code lines move — `status = 0` is the one that stays — and the
+function costs a `def` line and a docstring, so the three source files net **18
+lines shorter**. Nothing else changed: no rename, no signature change, no driver
+merge. Deferred entry 130's seven forced variation points stand.
 
 ## 3. The tool-run capture
 

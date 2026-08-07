@@ -77,6 +77,9 @@ def at_base(path):
 
 
 def check_line_counts():
+    """Check each file's base and head counts, and the net the record draws from them."""
+
+    delta = 0
     for path in COUNTED:
         head = len(pathlib.Path(path).read_text(encoding='utf-8').splitlines())
         expect(f'| {head} |', f'{path} head line count')
@@ -85,6 +88,10 @@ def check_line_counts():
         except subprocess.CalledProcessError:
             continue                    # the file did not exist at BASE
         expect(f'| {base} |', f'{path} base line count')
+        if path.startswith('src/'):
+            delta += head - base
+
+    expect(f'**{-delta}\nlines shorter**', 'the net change across the three sources')
 
 
 def check_the_block_was_identical():
