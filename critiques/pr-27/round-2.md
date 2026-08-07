@@ -94,3 +94,21 @@ Both Majors were real and both were in the evidence rather than the code, which 
 the failure mode this PR was briefed to watch for. M1 in particular was created by
 round 1's own fix: correcting a measurement without re-deriving what depended on
 it is the same defect one level up.
+
+## CodeRabbit (PR #125, second pass)
+
+Two findings, both on the records' internal consistency, both fixed in `d81c136`
+and answered on their threads.
+
+| # | finding | resolution |
+|---|---|---|
+| 1 | `pr-27-validation.md:330` — the limit-forwarding site count does not reconcile | **fixed**: it is twelve base sites, six shared, three pds3 droppers, six pds4 with no parameter — counted, with line citations |
+| 2 | `pr-27-validation.md:463` — the shared-code measurement differs between records | **fixed**: the superseded 1,329 / 32.9% / short-by-581 figures are gone from `round-1.md` |
+
+Finding 1 was a real miscount: "all four pds4 sites had no `limits`" should have
+been six, three in each pds4 tool. Finding 2 is the same defect round 2's M2
+named, one level further out — round 2 re-measured and updated the validation
+record, the plan and three deferred entries, and left the old figures standing in
+the round-1 record. There is now exactly one live measurement of each quantity,
+and the only surviving mentions of the old ones are the two sentences that say
+explicitly which figures were stale and when.
