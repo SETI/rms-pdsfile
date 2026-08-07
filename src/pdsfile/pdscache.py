@@ -1,3 +1,44 @@
+"""Caches that hold PdsFile objects and the bookkeeping a preload builds.
+
+Two working classes share one interface, so a caller can be handed either:
+
+  * ``DictionaryCache`` keeps everything in a dictionary inside one process. Nothing is
+    shared, nothing is serialized, and the cache disappears with the process.
+  * ``MemcachedCache`` keeps everything in a memcached server, so several processes see
+    one cache. Values are buffered locally and written in batches.
+
+``PdsCache`` is their common base. It declares nothing, so it records the kinship of the
+two classes rather than enforcing an interface; the interface is whatever both classes
+happen to implement.
+
+That interface is dictionary-like -- ``get()``, ``set()``, ``delete()``, the ``in``
+test, ``len()``, and item syntax for all three -- plus batch forms ``get_multi()``,
+``set_multi()`` and ``delete_multi()``, a ``clear()``, and three accessors that say
+where an answer may come from: ``get_local()`` reads only what this process holds,
+``get_now()`` reads only the shared store, and ``set_local()`` writes only locally.
+
+Every entry has a lifetime in seconds. Zero means the entry never expires. None means
+"use this cache's default", which is either the constant or the function the cache was
+built with; a function is called with the value being stored and returns its lifetime.
+A cache built with a *constant* default of zero cannot resolve a lifetime of None,
+because the test that picks between the constant and the function is a truth test on
+the constant: such a call raises TypeError instead of storing a permanent entry.
+
+Both classes count nested pauses. ``pause()`` and ``resume()`` bracket bulk work;
+``is_paused`` reports the state. What a pause defers differs: a paused
+``DictionaryCache`` does not trim, and a paused ``MemcachedCache`` does not flush.
+Resuming to a count of zero performs the deferred work at once.
+
+``MemcachedCache`` alone offers the cross-process facilities: ``wait_and_block()`` and
+``unblock()`` claim and release exclusive use through a key every process consults,
+``was_cleared()`` and ``replicate_clear()`` propagate one process's ``clear()`` to the
+others, and ``flush()`` writes the local buffer out. ``DictionaryCache`` accepts all of
+those calls and does nothing, since a cache one process owns needs no coordination.
+
+``MEMCACHED_LOADED`` records whether ``pylibmc`` imported. Where it did not, the name
+``pylibmc`` is unbound and constructing a ``MemcachedCache`` raises NameError.
+"""
+
 import os
 import random
 
@@ -17,6 +58,13 @@ except ImportError:
 ################################################################################
 
 class PdsCache:
+    """Common base of the cache classes.
+
+    It has no attributes and no methods, so it constrains nothing: it exists so that
+    ``DictionaryCache`` and ``MemcachedCache`` share a type, and so that a caller can
+    test for a cache with one ``isinstance()``. The methods the two classes share are
+    described in the module docstring; each class implements them independently.
+    """
 
     pass
 
@@ -25,18 +73,41 @@ class PdsCache:
 ################################################################################
 
 class DictionaryCache(PdsCache):
+    """A cache held in one process's memory, in a plain dictionary.
+
+    Values are stored as they are, not serialized, so a caller gets back the same object
+    it stored. Nothing is shared with another process and nothing survives this one.
+
+    An entry with a non-zero lifetime expires. Expiry is lazy: an entry past its time
+    stays in the dictionary until something asks for it, so it still counts toward
+    ``len()`` and still answers the ``in`` test, and it is ``get()`` that notices and
+    removes it. An entry with a lifetime of zero is permanent -- it never expires and
+    never counts against the size limit.
+
+    The size limit is enforced by trimming. Once the number of expiring entries exceeds
+    the limit by a margin of the larger of 20 and a tenth of the limit, the entries
+    closest to expiring are discarded until the limit is met. Trimming happens after a
+    ``set()`` and is deferred while the cache is paused.
+
+    The blocking, flushing and clear-replication calls are accepted and do nothing,
+    since one process owns the whole cache.
+    """
 
     def __init__(self, lifetime=86400, limit=1000, logger=None):
-        """Constructor.
+        """Construct an empty cache.
 
-        Input:
-            lifetime        default lifetime in seconds; 0 for no expiration.
-                            Can be a constant or a function; if the latter, then
-                            the default lifetime must be returned by this call:
-                                lifetime(value)
-            limit           limit on the number of items in the cache. Permanent
-                            objects do not count against this limit.
-            logger          PdsLogger to use, optional.
+        Parameters:
+            lifetime: the default lifetime of an entry, used whenever a call passes no
+                lifetime of its own. Either a number of seconds, where zero means the
+                entry never expires, or a function taking the value being stored and
+                returning that number. Only a plain function or a lambda is recognized
+                as a function; a bound method is taken for a constant. A constant zero
+                is a trap: it cannot be told apart from an absent default, so storing
+                without an explicit lifetime then raises TypeError.
+            limit (int): the number of expiring entries to keep. Permanent entries do
+                not count toward it.
+            logger: optional PdsLogger, which receives a message each time the cache
+                trims, pauses or resumes.
         """
 
         self.dict = {}              # returns (value, expiration) by key
@@ -58,7 +129,13 @@ class DictionaryCache(PdsCache):
         self.preload_eligible = True
 
     def _trim(self):
-        """Trim the dictionary if it is too big."""
+        """Discard the entries closest to expiring, if the cache has grown too large.
+
+        Nothing happens until the number of expiring entries exceeds the limit by the
+        margin fixed at construction. Once it does, entries are discarded in order of
+        expiration, soonest first, until exactly the limit remains. Permanent entries
+        are never candidates.
+        """
 
         if len(self.keys) > self.limit + self.slop:
             expirations = [(self.dict[k][1], k) for k in self.keys if
@@ -74,34 +151,70 @@ class DictionaryCache(PdsCache):
                                   len(pairs))
 
     def _trim_if_necessary(self):
+        """Trim the cache unless it is paused.
+
+        A paused cache is left alone, however far over the limit it has grown; the
+        ``resume()`` that returns the pause count to zero trims it.
+        """
+
         if self.pauses == 0:
             self._trim()
 
     def flush(self):
-        """Flush any buffered items. Not used for DictionaryCache."""
+        """Do nothing.
+
+        A dictionary cache buffers nothing, so there is nothing to write out. The call
+        exists so that a caller can flush either kind of cache.
+        """
         return
 
     def wait_for_unblock(self, funcname=''):
-        """Pause until another process stops blocking, or until timeout."""
+        """Do nothing and return at once.
+
+        Only a shared cache can be blocked, so there is never anything to wait for.
+
+        Parameters:
+            funcname (str): ignored. It names the calling function in the messages the
+                shared cache logs while it waits.
+        """
         return
 
     def wait_and_block(self, funcname=''):
-        """Pause until another process stops blocking, or until timeout, and
-        then obtain the block."""
+        """Do nothing and return at once.
+
+        Only a shared cache can be blocked, so there is no block to claim.
+
+        Parameters:
+            funcname (str): ignored. It names the calling function in the messages the
+                shared cache logs while it waits.
+        """
         return
 
     def unblock(self, flush=True):
-        """Un-block processes from touching the cache. Not used by
-        DictionaryCache."""
+        """Do nothing.
+
+        Only a shared cache can be blocked, so there is no block to release.
+
+        Parameters:
+            flush (bool): ignored. It tells the shared cache whether to write its buffer
+                out as it unblocks.
+        """
         return
 
     def is_blocked(self):
-        """Status of blocking. Not used by DictionaryCache."""
+        """Report that the cache is not blocked, which it never is.
+
+        Returns:
+            bool: False, always.
+        """
         return False
 
     def pause(self):
-        """Increment the pause count. Trimming will resume when the count
-        returns to zero."""
+        """Defer trimming until the matching resume.
+
+        Pauses nest: this increments a count, and only the ``resume()`` that returns the
+        count to zero trims.
+        """
 
         self.pauses += 1
         if self.pauses == 1 and self.logger:
@@ -109,13 +222,21 @@ class DictionaryCache(PdsCache):
 
     @property
     def is_paused(self):
-        """Report on status of automatic trimming."""
+        """Whether trimming is currently deferred.
+
+        Returns:
+            bool: True while at least one pause is outstanding.
+        """
 
         return self.pauses > 0
 
     def resume(self):
-        """Decrement the pause count. Trimming will resume when the count
-        returns to zero."""
+        """Release one pause, and trim if that was the last one.
+
+        A call on a cache that is not paused is harmless: the count does not go
+        negative, and the cache is trimmed as though the last pause had just been
+        released.
+        """
 
         if self.pauses > 0:
             self.pauses -= 1
@@ -126,19 +247,47 @@ class DictionaryCache(PdsCache):
                 self.logger.debug('DictionaryCache trimming resumed')
 
     def __contains__(self, key):
-        """Enable the "in" operator."""
+        """Report whether a key has an entry, expired or not.
+
+        Expiry is not considered, so a key whose entry has expired but has not yet been
+        read is still reported as present. Reading it through ``get()`` removes it, and
+        the same test then answers False.
+
+        Parameters:
+            key: the key to test.
+
+        Returns:
+            bool: True if the key has an entry.
+        """
         return (key in self.dict)
 
     def __len__(self):
-        """Enable len() operator."""
+        """Report how many entries the cache holds, expired or not.
+
+        Permanent and expiring entries are counted alike, and an expired entry is
+        counted until something reads it.
+
+        Returns:
+            int: the number of entries.
+        """
 
         return len(self.dict)
 
     ######## Get methods
 
     def get(self, key):
-        """Return the value associated with a key. Return None if the key is
-        missing."""
+        """Return the value stored under a key.
+
+        An entry found to have expired is deleted, and the answer is None as though it
+        had never been there. A stored value of None is therefore indistinguishable from
+        a missing key.
+
+        Parameters:
+            key: the key to read.
+
+        Returns:
+            The stored value, or None if the key is absent or its entry has expired.
+        """
 
         if key not in self.dict:
             return None
@@ -155,7 +304,20 @@ class DictionaryCache(PdsCache):
         return value
 
     def __getitem__(self, key):
-        """Enable dictionary syntax. Raise KeyError if the key is missing."""
+        """Return the value stored under a key, insisting that there is one.
+
+        A key whose stored value is None is treated the same as a missing key, because
+        the two are indistinguishable to ``get()``.
+
+        Parameters:
+            key: the key to read.
+
+        Returns:
+            The stored value.
+
+        Raises:
+            KeyError: if the key is absent, its entry has expired, or its value is None.
+        """
 
         value = self.get(key)
         if value is None:
@@ -164,8 +326,22 @@ class DictionaryCache(PdsCache):
         return value
 
     def get_multi(self, keys):
-        """Return a dictionary of multiple values based on a list of keys.
-        Missing keys do not appear in the returned dictionary."""
+        """Return the values stored under several keys, insisting that all are present.
+
+        Every key must resolve. The first that does not -- because it is absent, has
+        expired, or holds None -- stops the call with KeyError, so a partial result is
+        never returned.
+
+        Parameters:
+            keys: the keys to read, as any iterable.
+
+        Returns:
+            dict: the value stored under each key, keyed by that key.
+
+        Raises:
+            KeyError: if any key is absent, expired, or holds None. It comes from the
+                item lookup, ``__getitem__()``, that each key is read through.
+        """
 
         mydict = {}
         for key in keys:
@@ -176,22 +352,48 @@ class DictionaryCache(PdsCache):
         return mydict
 
     def get_local(self, key):
-        """Return the value associated with a key, only using the local dict."""
+        """Return the value stored under a key, reading only what this process holds.
+
+        Everything a dictionary cache holds is local, so this is ``get()``, expiry check
+        included.
+
+        Parameters:
+            key: the key to read.
+
+        Returns:
+            The stored value, or None if the key is absent or its entry has expired.
+        """
 
         return self.get(key)
 
     def get_now(self, key):
-        """Return the non-local value associated with a key."""
+        """Return the value stored under a key, bypassing any local buffer.
+
+        A dictionary cache has no buffer to bypass, so this is ``get()``, expiry check
+        included.
+
+        Parameters:
+            key: the key to read.
+
+        Returns:
+            The stored value, or None if the key is absent or its entry has expired.
+        """
 
         return self.get(key)
 
     ######## Set methods
 
     def set(self, key, value, lifetime=None):
-        """Set the value associated with a key.
+        """Store a value under a key, replacing any entry already there.
 
-        lifetime    the lifetime of this item in seconds; 0 for no expiration;
-                    None to use the default lifetime.
+        The cache is trimmed afterwards unless it is paused.
+
+        Parameters:
+            key: the key to store under.
+            value: the value to store. It is kept as it is, not copied.
+            lifetime: how long the entry should last, in seconds. Zero makes it
+                permanent. None means use the cache's default, which raises TypeError
+                if that default is the constant zero.
         """
 
         # Determine the expiration time
@@ -216,12 +418,36 @@ class DictionaryCache(PdsCache):
             self._trim_if_necessary()
 
     def __setitem__(self, key, value):
-        """Enable dictionary syntax."""
+        """Store a value under a key, with the cache's default lifetime.
+
+        Parameters:
+            key: the key to store under.
+            value: the value to store.
+        """
 
         self.set(key, value)
 
     def set_multi(self, mydict, lifetime=0, pause=False):
-        """Set multiple values at one time based on a dictionary."""
+        """Store several values at once.
+
+        Each entry is stored exactly as ``set()`` would store it, so the cache may trim
+        between one key and the next. The default lifetime here is zero rather than
+        None, so entries stored without an explicit lifetime are permanent and are
+        exempt from the size limit.
+
+        Parameters:
+            mydict (dict): the values to store, keyed by the key to store each under.
+            lifetime: the lifetime to give every entry, in seconds. Zero, the default,
+                makes them permanent. None means use the cache's default, which raises
+                TypeError if that default is the constant zero.
+            pause (bool): if True, skip the single trim that would otherwise follow the
+                batch. It does not suppress the trims the individual stores perform, so
+                a cache that is not already paused still trims during the batch.
+
+        Returns:
+            list: empty, always. The shared cache returns the keys it failed to store,
+            and this returns the same shape so a caller can treat the two alike.
+        """
 
         for (key, value) in mydict.items():
             self.set(key, value, lifetime)
@@ -232,15 +458,33 @@ class DictionaryCache(PdsCache):
         return []
 
     def set_local(self, key, value, lifetime=None):
-        """Just like set() but always goes to the local dictionary without
-        touching the cache."""
+        """Store a value under a key without writing to any shared store.
+
+        A dictionary cache has no shared store, so this is ``set()``.
+
+        Parameters:
+            key: the key to store under.
+            value: the value to store.
+            lifetime: how long the entry should last, in seconds. Zero makes it
+                permanent. None means use the cache's default.
+
+        Returns:
+            Nothing. The value passed on from ``set()`` is None.
+        """
 
         return self.set(key, value, lifetime=lifetime)
 
     ######## Delete methods
 
     def delete(self, key):
-        """Delete one key. Return true if it was deleted, false otherwise."""
+        """Remove one entry, if it is there.
+
+        Parameters:
+            key: the key to remove.
+
+        Returns:
+            bool: True if an entry was removed, False if the key was absent.
+        """
 
         if key in self.dict:
             del self.dict[key]
@@ -249,7 +493,17 @@ class DictionaryCache(PdsCache):
         return False
 
     def __delitem__(self, key):
-        """Enable the "del" operator. Raise KeyError if the key is absent."""
+        """Remove one entry, insisting that it is there.
+
+        An expired entry that has not yet been read still counts as present and is
+        removed without complaint.
+
+        Parameters:
+            key: the key to remove.
+
+        Raises:
+            KeyError: if the key is absent.
+        """
 
         if key in self.dict:
             del self.dict[key]
@@ -258,8 +512,14 @@ class DictionaryCache(PdsCache):
         raise KeyError(key)
 
     def delete_multi(self, keys):
-        """Delete multiple items based on a list of keys. Keys not found in
-        the cache are ignored. Returns True if all keys were deleted."""
+        """Remove several entries, skipping the keys that are not there.
+
+        Parameters:
+            keys: the keys to remove, as any iterable.
+
+        Returns:
+            bool: True if every key named had an entry to remove, False if any did not.
+        """
 
         status = True
         for key in keys:
@@ -271,26 +531,55 @@ class DictionaryCache(PdsCache):
         return status
 
     def clear(self, block=False):
-        """Clear all contents of the cache."""
+        """Remove every entry, permanent ones included.
+
+        The pause count and the size limit are left as they are.
+
+        Parameters:
+            block (bool): ignored. It tells the shared cache to keep other processes out
+                while it clears.
+        """
 
         self.dict.clear()
         self.keys = set()
 
     def replicate_clear(self, clear_count):
-        """Clear the local cache if clear_count was incremented.
+        """Do nothing and report that nothing was cleared.
 
-        Return True if cache was cleared; False otherwise.
+        Only a shared cache can be cleared by somebody else, so there is never anything
+        to replicate.
+
+        Parameters:
+            clear_count: ignored. It is the count another process would have
+                incremented by clearing.
+
+        Returns:
+            bool: False, always.
         """
 
         return False
 
     def replicate_clear_if_necessary(self):
-        """Clear the local cache only if MemCache was cleared."""
+        """Do nothing and report that nothing was cleared.
+
+        Only a shared cache can be cleared by somebody else, so there is never anything
+        to replicate.
+
+        Returns:
+            bool: False, always.
+        """
 
         return False
 
     def was_cleared(self):
-        """Returns True if the cache has been cleared."""
+        """Report that nobody else has cleared the cache, which nobody else can.
+
+        A ``clear()`` this process performed is not reported either; the question is
+        about another process.
+
+        Returns:
+            bool: False, always.
+        """
 
         return False
 
@@ -301,19 +590,54 @@ class DictionaryCache(PdsCache):
 MAX_BLOCK_SECONDS = 120.
 
 class MemcachedCache(PdsCache):
+    """A cache held in a memcached server, so that several processes share one copy.
+
+    Values are pickled by the client, so a caller gets back an equal object rather than
+    the one it stored. Each entry is stored as the pair ``(value, lifetime)``, which is
+    how a process that did not write an entry can still learn how long it was meant to
+    last.
+
+    Writes are buffered. A ``set()`` records the value locally and then flushes unless
+    the cache is paused, and a flush groups the buffered keys by lifetime and writes one
+    batch per group. Until a flush happens, this process reads its own writes and no
+    other process sees them.
+
+    Three local dictionaries back that buffer, and two more outlive it.
+    ``permanent_values`` keeps a copy of every entry stored with a lifetime of zero, and
+    restores the whole set to the server if one of them is ever found missing.
+    ``toobig_dict`` keeps any value the server refused as too large; a key that lands
+    there is served locally from then on and is never asked of the server again.
+
+    Because the cache is shared, it can be blocked and it can be cleared out from under
+    this process. ``wait_and_block()`` claims exclusive use by writing this process's ID
+    to a key every process consults, and the other calls wait on that key before
+    touching the server; a block older than ``MAX_BLOCK_SECONDS`` is broken by whoever
+    is waiting. ``clear()`` increments a shared counter, and every other process notices
+    the change on its next read and empties its own local dictionaries to match.
+
+    A pause here defers flushing rather than trimming. Size is the server's business, so
+    this class has no limit of its own.
+    """
 
     def __init__(self, port=11211, lifetime=86400, logger=None):
-        """Constructor.
+        """Connect to a memcached server and prepare the local buffers.
 
-        Input:
-            port            port number for the memcache, which must already
-                            have been established. Alternatively, the absolute
-                            path to a Unix socket.
-            lifetime        default lifetime in seconds; 0 for no expiration.
-                            Can be a constant or a function; if the latter, then
-                            the default lifetime must be returned by
-                                lifetime(self)
-            logger          PdsLogger to use, optional.
+        The server must already be running. The connection is tested by storing and
+        deleting one randomly named key, so a construction that returns has proved the
+        server reachable and writable. The shared bookkeeping keys are created if this
+        is the first process to arrive.
+
+        Parameters:
+            port: the memcached port on the local host, as an integer, or the absolute
+                path to a Unix socket, as a string.
+            lifetime: the default lifetime of an entry, used whenever a call passes no
+                lifetime of its own. Either a number of seconds, rounded up to a whole
+                second and with zero meaning the entry never expires, or a function
+                taking the value being stored and returning that number. A constant zero
+                is a trap: it cannot be told apart from an absent default, so storing
+                without an explicit lifetime then raises TypeError.
+            logger: optional PdsLogger, which receives a message for each flush, block,
+                clear and oversized value.
         """
 
         self.port = port
@@ -391,7 +715,24 @@ class MemcachedCache(PdsCache):
         # to clear its own contents.
 
     def _wait_for_ok(self, funcname='', try_to_block=False):
-        """Pause until another process stops blocking, or until timeout."""
+        """Wait until no other process is blocking the cache, then optionally block it.
+
+        A block held longer than ``MAX_BLOCK_SECONDS`` is broken: the blocking process's
+        ID is overwritten, with this process's ID if it wants the block and zero
+        otherwise, and the call returns at once.
+
+        Breaking a block writes a warning without first testing for a logger, so a cache
+        built without one raises AttributeError at that point rather than breaking the
+        block.
+
+        Parameters:
+            funcname (str): name of the calling method, used in the log messages.
+            try_to_block (bool): if True, claim the block once the wait ends.
+
+        Returns:
+            bool: True if any waiting was necessary, False if the cache was free
+            immediately.
+        """
 
         was_blocked = False
         while True:
@@ -432,8 +773,17 @@ class MemcachedCache(PdsCache):
         return was_blocked
 
     def wait_for_unblock(self, funcname=''):
-        """Pause until another process stops blocking, or until timeout. True if
-        any wait was required."""
+        """Wait until no other process is blocking the cache, and claim nothing.
+
+        A block this process holds itself does not count, so the call returns at once.
+
+        Parameters:
+            funcname (str): name of the calling method, used in the log messages.
+
+        Returns:
+            bool: True if any waiting was necessary, False if the cache was free
+            immediately.
+        """
 
         was_blocked = self._wait_for_ok(funcname=funcname, try_to_block=False)
         if was_blocked and self.logger:
@@ -443,8 +793,23 @@ class MemcachedCache(PdsCache):
         return was_blocked
 
     def wait_and_block(self, funcname=''):
-        """Pause until another process stops blocking, or until timeout, and
-        then obtain the block. True if any wait was required."""
+        """Wait until the cache is free, then claim it for this process alone.
+
+        Two processes can finish waiting at the same moment, in which case only one wins
+        the claim; the loser logs the fact and waits again, so the call does not return
+        until this process holds the block. Losing the race writes a warning without
+        first testing for a logger, so a cache built without one raises AttributeError
+        at that point.
+
+        The block stays until ``unblock()`` or a ``clear()`` that does not keep it.
+
+        Parameters:
+            funcname (str): name of the calling method, used in the log messages.
+
+        Returns:
+            bool: True if any waiting was necessary, False if the cache was free
+            immediately.
+        """
 
         was_blocked = False
         while True:
@@ -462,7 +827,16 @@ class MemcachedCache(PdsCache):
                              'while waiting to block')
 
     def unblock(self, flush=True):
-        """Remove block preventing processes from touching the cache."""
+        """Release this process's block, letting other processes touch the cache again.
+
+        A cache that is not blocked, or one blocked by another process, is an error: the
+        call logs it and returns without changing anything. Both of those refusals are
+        conditioned on a logger being present, so a cache built without one goes ahead
+        and clears the block in either case, including a block another process holds.
+
+        Parameters:
+            flush (bool): if True, write the local buffer out after releasing the block.
+        """
 
         test_pid = self.mc.get('$OK_PID')
         if not test_pid and self.logger:
@@ -486,8 +860,15 @@ class MemcachedCache(PdsCache):
             self.flush()
 
     def is_blocked(self):
-        """Status of blocking. 0 if unblocked; otherwise ID of process that is
-        now blocking."""
+        """Report which other process, if any, is blocking the cache.
+
+        A block this process holds itself does not count. A missing bookkeeping key is
+        repaired by writing it back as unblocked.
+
+        Returns:
+            int: the process ID of the process holding the block, or 0 if the cache is
+            free or this process holds it.
+        """
 
         test_pid = self.mc.get('$OK_PID')
         if test_pid is None:                    # repair a missing $OK_PID
@@ -500,8 +881,12 @@ class MemcachedCache(PdsCache):
             return test_pid
 
     def pause(self):
-        """Increment the pause count. Flushing will resume when this count
-        returns to zero."""
+        """Defer flushing until the matching resume.
+
+        Pauses nest: this increments a count, and only the ``resume()`` that returns the
+        count to zero flushes. Values stored while paused stay visible to this process
+        and invisible to every other one.
+        """
         self.pauses += 1
 
         if self.pauses == 1 and self.logger:
@@ -510,13 +895,21 @@ class MemcachedCache(PdsCache):
 
     @property
     def is_paused(self):
-        """Report on status of automatic flushing for this thread."""
+        """Whether flushing is currently deferred.
+
+        Returns:
+            bool: True while at least one pause is outstanding.
+        """
 
         return self.pauses > 0
 
     def resume(self):
-        """Decrement the pause count. Flushing of this thread will resume when
-        the count returns to zero."""
+        """Release one pause, and flush if that was the last one.
+
+        A call on a cache that is not paused is harmless: the count does not go
+        negative, and the buffer is written out as though the last pause had just been
+        released.
+        """
 
         if self.pauses > 0:
             self.pauses -= 1
@@ -528,7 +921,18 @@ class MemcachedCache(PdsCache):
             self.flush()
 
     def __contains__(self, key):
-        """Enable the "in" operator."""
+        """Report whether a key has an entry anywhere this process can see.
+
+        The oversized values, the unflushed buffer and the permanent copies are
+        consulted before the server, so a key is reported present even when the server
+        has never been told about it or has let it expire.
+
+        Parameters:
+            key: the key to test.
+
+        Returns:
+            bool: True if the key has an entry.
+        """
 
         if key in self.toobig_dict:
             return True
@@ -539,7 +943,15 @@ class MemcachedCache(PdsCache):
         return key in self.mc
 
     def __len__(self):
-        """Enable len() operator."""
+        """Report how many entries this process can see.
+
+        The count starts from everything the server holds -- for every process, not just
+        this one -- and adds this process's oversized and unflushed entries that the
+        server does not already have.
+
+        Returns:
+            int: the number of entries.
+        """
 
         items = self.len_mc()
 
@@ -554,12 +966,39 @@ class MemcachedCache(PdsCache):
         return items
 
     def len_mc(self):
+        """Report how many entries the memcached server holds.
+
+        The count covers every process using the server, and the bookkeeping keys as
+        well. It comes from the first server in the client's list, so a client
+        configured with more than one server undercounts.
+
+        Returns:
+            int: the server's current item count.
+        """
+
         return int(self.mc.get_stats()[0][1]['curr_items'])
 
     ######## Flush methods
 
     def flush(self):
-        """Flush any buffered items into the cache."""
+        """Write the buffered values to the server and empty the buffer.
+
+        An empty buffer returns at once. So does a flush that discovers another process
+        has cleared the cache, since replicating that clear has already emptied the
+        buffer. Otherwise the call waits for any block to lift, copies the entries whose
+        lifetime is zero into the permanent set, and writes one batch per distinct
+        lifetime.
+
+        A value the server rejects as too large is retried on its own and, on a second
+        rejection, moved to the oversized dictionary, where this process serves it from
+        then on; the buffer is emptied as usual, so the remaining batches still go out.
+
+        Any other server error takes a path that does not complete: with a logger, the
+        reporting step raises AttributeError, and the buffer is left unwritten and
+        unemptied. Without a logger, the batch's keys are counted as failures, the
+        remaining batches go out, and the buffer is emptied, so the values the failed
+        batch held are lost rather than retried.
+        """
 
         # Nothing to do if local cache is empty
         if len(self.local_value_by_key) == 0:
@@ -636,8 +1075,20 @@ class MemcachedCache(PdsCache):
     ######## Get methods
 
     def get(self, key):
-        """Return the value associated with a key. Return None if the key is
-        missing."""
+        """Return the value stored under a key.
+
+        A clear performed by another process is replicated first, so a value this
+        process buffered before that clear is gone by the time the lookup runs. The
+        oversized values are consulted first, then the unflushed buffer, then the
+        server. A permanent entry the server has lost is served from the permanent copy,
+        and every permanent entry is written back to the server at that point.
+
+        Parameters:
+            key: the key to read.
+
+        Returns:
+            The stored value, or None if no source has it.
+        """
 
         self.replicate_clear_if_necessary()
 
@@ -672,7 +1123,20 @@ class MemcachedCache(PdsCache):
         return value
 
     def __getitem__(self, key):
-        """Enable dictionary syntax. Raise KeyError if the key is missing."""
+        """Return the value stored under a key, insisting that there is one.
+
+        A key whose stored value is None is treated the same as a missing key, because
+        the two are indistinguishable to ``get()``.
+
+        Parameters:
+            key: the key to read.
+
+        Returns:
+            The stored value.
+
+        Raises:
+            KeyError: if no source has the key, or its value is None.
+        """
 
         value = self.get(key)
         if value is None:
@@ -681,8 +1145,21 @@ class MemcachedCache(PdsCache):
         return value
 
     def get_multi(self, keys):
-        """Return a dictionary of multiple values based on a list or set of
-        keys. Missing keys do not appear in the returned dictionary."""
+        """Return the values stored under several keys, skipping the ones with none.
+
+        A clear performed by another process is replicated first. The keys are split
+        between the oversized values, the unflushed buffer and the server, and the
+        server is asked for its share one key at a time rather than in a batch. If any
+        of the requested keys is a permanent entry the server has lost, every permanent
+        entry is written back to the server.
+
+        Parameters:
+            keys: the keys to read, as a list or a set.
+
+        Returns:
+            dict: the value found for each key, keyed by that key. A key with no value
+            anywhere is absent from the result.
+        """
 
         self.replicate_clear_if_necessary()
 
@@ -733,7 +1210,17 @@ class MemcachedCache(PdsCache):
         return mydict
 
     def get_local(self, key):
-        """Return the value associated with a key, only using the local dict."""
+        """Return the value stored under a key, reading only what this process holds.
+
+        The oversized values and the unflushed buffer are consulted; the server is not,
+        and neither is the permanent copy.
+
+        Parameters:
+            key: the key to read.
+
+        Returns:
+            The stored value, or None if this process holds none.
+        """
 
         # Return from local cache if found
         if key in self.toobig_dict:
@@ -745,7 +1232,18 @@ class MemcachedCache(PdsCache):
         return None
 
     def get_now(self, key):
-        """Return the non-local value associated with a key, even if blocked."""
+        """Return the value the server holds under a key, ignoring everything local.
+
+        The call does not wait for a block to lift and does not replicate another
+        process's clear, so it answers even while the cache is blocked. A value this
+        process has buffered but not flushed is not visible to it.
+
+        Parameters:
+            key: the key to read.
+
+        Returns:
+            The value the server holds, or None if the server has none.
+        """
 
         result = self.mc.get(key)
         if result is None:
@@ -757,8 +1255,26 @@ class MemcachedCache(PdsCache):
     ######## Set methods
 
     def set(self, key, value, lifetime=None):
-        """Set a single value. Preserve a previously-defined lifetime if
-        lifetime is None."""
+        """Store a value under a key, and flush unless the cache is paused.
+
+        A key already in the oversized dictionary is updated there and nowhere else; the
+        server is not told, and the call returns without flushing.
+
+        With no lifetime given and none already buffered for this key, the lifetime
+        recorded on the server for that key is looked up and reused, which lets a
+        process that did not write an entry replace its value without shortening its
+        life. A key the server does not have falls through to the cache's default.
+
+        Parameters:
+            key: the key to store under.
+            value: the value to store.
+            lifetime: how long the entry should last, in seconds. Zero makes it
+                permanent. None means keep the lifetime this key already has, and
+                failing that use the cache's default.
+
+        Returns:
+            bool: True, except on the oversized path, which returns None.
+        """
 
         if key in self.toobig_dict:
             self.toobig_dict[key] = value
@@ -778,13 +1294,38 @@ class MemcachedCache(PdsCache):
         return True
 
     def __setitem__(self, key, value):
-        """Enable dictionary syntax."""
+        """Store a value under a key, keeping the lifetime that key already has.
+
+        Parameters:
+            key: the key to store under.
+            value: the value to store.
+        """
 
         _ = self.set(key, value, lifetime=None)
 
     def set_multi(self, mydict, lifetime=None):
-        """Set multiple values at one time based on a dictionary. Preserve a
-        previously-defined lifetime (and reset the clock) if lifetime is None.
+        """Store several values at once, and flush unless the cache is paused.
+
+        Keys already in the oversized dictionary are updated there and nowhere else.
+
+        With no lifetime given, the lifetimes recorded on the server are looked up for
+        the keys the server has, in one batch. One lifetime is then applied to the whole
+        batch: the loop that reads them leaves a single value behind, and that value is
+        what every key is stored with, whether or not the server had a different one for
+        it. Keys already buffered locally are excluded from the lookup and, when the
+        lookup finds nothing at all, keep their buffered lifetime.
+
+        Storing resets the clock on every key, so an entry keeps its length of life but
+        not its remaining life.
+
+        Parameters:
+            mydict (dict): the values to store, keyed by the key to store each under.
+            lifetime: the lifetime to give every entry, in seconds. Zero makes them
+                permanent. None means take the lifetimes from the server as described
+                above.
+
+        Returns:
+            list: empty, always. The keys a flush fails to store are not reported here.
         """
 
         # Separate keys into local, toobig, and non-local (in memcache)
@@ -815,9 +1356,23 @@ class MemcachedCache(PdsCache):
         return []
 
     def set_local(self, key, value, lifetime=None):
-        """Set or update a single value in the local cache. If lifetime is None,
-        it preserves the lifetime of any value already in the local cache. The
-        nonlocal cache is not checked."""
+        """Buffer a value under a key without writing to the server.
+
+        The value waits in the buffer until a flush. A key already in the oversized
+        dictionary is updated there instead and never enters the buffer.
+
+        The key is recorded both by lifetime and by key, so a flush can group the keys
+        that share a lifetime into one batch. Changing a key's lifetime moves it between
+        those groups.
+
+        Parameters:
+            key: the key to store under.
+            value: the value to store.
+            lifetime: how long the entry should last, in seconds, rounded up to a whole
+                second. Zero makes it permanent. None means keep the lifetime this key
+                already has in the buffer, and failing that use the cache's default; the
+                server is not consulted either way.
+        """
 
         if key in self.toobig_dict:
             self.toobig_dict[key] = value
@@ -858,7 +1413,18 @@ class MemcachedCache(PdsCache):
     ######## Delete methods
 
     def delete(self, key):
-        """Delete one key. Return True if it was deleted, False otherwise."""
+        """Remove one entry from the server and from every local dictionary.
+
+        The permanent copy and the oversized value are dropped too, so the key does not
+        come back on the next lookup.
+
+        Parameters:
+            key: the key to remove.
+
+        Returns:
+            bool: True if the server or this process had something to remove, False if
+            neither did.
+        """
 
         self.wait_for_unblock('delete')
         status1 = self.mc.delete(key)
@@ -873,7 +1439,14 @@ class MemcachedCache(PdsCache):
         return status1 or status2
 
     def __delitem__(self, key):
-        """Enable the "del" operator. Raise KeyError if the key is absent."""
+        """Remove one entry, insisting that it is there.
+
+        Parameters:
+            key: the key to remove.
+
+        Raises:
+            KeyError: if neither the server nor this process had anything to remove.
+        """
 
         status = self.delete(key)
         if status:
@@ -882,8 +1455,22 @@ class MemcachedCache(PdsCache):
         raise KeyError(key)
 
     def delete_multi(self, keys):
-        """Delete multiple items based on a list of keys. Keys not found in
-        the cache are ignored. Returns True if all keys were deleted."""
+        """Remove several entries from the server and from every local dictionary.
+
+        The server is told first, and then each key is removed locally through a helper
+        this class does not define, so any non-empty batch raises AttributeError at its
+        first key. The server-side deletion has already happened by then, and the local
+        dictionaries and the permanent copies are left holding whatever they held.
+
+        Parameters:
+            keys: the keys to remove, as a list.
+
+        Returns:
+            bool: reached only by an empty batch, which removes nothing and answers
+            True. The test compares a count that any real deletion drives negative
+            against the number of keys, so it could not answer True for a batch that had
+            work to do.
+        """
 
         self.wait_for_unblock('delete_multi')
         _ = self.mc.del_multi(keys)
@@ -905,8 +1492,18 @@ class MemcachedCache(PdsCache):
         return (count == len(keys))
 
     def _delete_local(self, key):
-        """Delete a single key from the local cache, if present. The nonlocal
-        cache is not checked. Return True if deleted, False otherwise."""
+        """Remove one key from this process's dictionaries, leaving the server alone.
+
+        The oversized value and the buffered value are both removed, along with the
+        key's lifetime bookkeeping. The permanent copy is not touched.
+
+        Parameters:
+            key: the key to remove.
+
+        Returns:
+            bool: True if anything was removed, False if this process held nothing under
+            that key.
+        """
 
         deleted = False
         if key in self.toobig_dict:
@@ -927,7 +1524,18 @@ class MemcachedCache(PdsCache):
         return deleted
 
     def clear(self, block=False):
-        """Clear all contents of the cache."""
+        """Empty the server and every local dictionary, for every process.
+
+        The shared clear counter is incremented, which is how the other processes learn
+        to empty their own dictionaries on their next read. The cache is blocked for the
+        duration whether or not ``block`` was asked for; ``block`` decides only whether
+        the block is kept afterwards.
+
+        Parameters:
+            block (bool): if True, keep the block after clearing, so this process can
+                repopulate the cache before anything else reads it. The caller is then
+                responsible for calling ``unblock()``.
+        """
 
         if block:
             self.wait_and_block('clear')
@@ -960,9 +1568,21 @@ class MemcachedCache(PdsCache):
             self.unblock()
 
     def replicate_clear(self, clear_count):
-        """Clear the local cache if clear_count was incremented.
+        """Empty this process's dictionaries if the shared clear counter has moved.
 
-        Return True if cache was cleared; False otherwise.
+        A counter matching the one this process last saw means nothing has happened and
+        nothing is done. Otherwise every local dictionary is emptied, permanent copies
+        and oversized values included, and the new counter is remembered.
+
+        A counter of None means the server has lost the bookkeeping key. That case
+        writes the None straight back to the server rather than restoring the count this
+        process knows, which leaves the key holding a value no comparison can use.
+
+        Parameters:
+            clear_count: the shared counter's current value, as read from the server.
+
+        Returns:
+            bool: True if the local dictionaries were emptied, False otherwise.
         """
 
         if clear_count == self.clear_count:
@@ -985,21 +1605,45 @@ class MemcachedCache(PdsCache):
         return True
 
     def replicate_clear_if_necessary(self):
-        """Clear the local cache if MemCache was cleared by another process."""
+        """Read the shared clear counter and replicate any clear it reports.
+
+        This is what the read and write paths call so that a clear by another process
+        takes effect here before anything else happens.
+
+        Returns:
+            bool: True if the local dictionaries were emptied, False otherwise.
+        """
 
         clear_count = self.mc.get('$CLEAR_COUNT')
         return self.replicate_clear(clear_count)
 
     def was_cleared(self):
-        """Returns True if the cache has been cleared."""
+        """Report whether the cache has been cleared since this process last noticed.
+
+        Nothing is emptied here; the answer is a comparison only. A server that has lost
+        the bookkeeping key makes the comparison raise TypeError.
+
+        Returns:
+            bool: True if the shared clear counter is ahead of the one this process
+            last saw.
+        """
 
         clear_count = self.mc.get('$CLEAR_COUNT')
         return clear_count > self.clear_count
 
     def _restore_permanent_to_cache(self):
-        """Write every permanent value to the cache. This is triggered if any
-        permanent value disappears from memcache. It ensures that permanent
-        values are always in memcache."""
+        """Write every permanent entry back to the server.
+
+        This runs when a permanent entry is found missing from the server, which should
+        not happen but does. Each permanent key is read back one at a time, so a value
+        the server still has refreshes this process's copy rather than being overwritten
+        by it; only the ones the server has actually lost are written.
+
+        A permanent value the server rejects as too large is moved to the oversized
+        dictionary and dropped from the permanent set, so the next lost entry does not
+        try it again. That report is written without first testing for a logger, so a
+        cache built without one raises AttributeError at that point.
+        """
 
         if self.logger:
             self.logger.warn(f'Process {self.pid} is restoring permanent ' +
