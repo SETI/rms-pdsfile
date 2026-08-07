@@ -392,7 +392,7 @@ pytest tests/pds3file/ tests/rules/pds3/ --mode s -rA --junitxml=…
 
 | | base | head |
 |---|---|---|
-| `--mode ns` | 1,054 ids — 1,020 passed, 34 skipped | 1,074 ids — 1,040 passed, 34 skipped |
+| `--mode ns` | 1,054 ids — 1,020 passed, 34 skipped | 1,076 ids — 1,042 passed, 34 skipped |
 | `--mode s` | 558 ids — 555 passed, 3 skipped | 558 ids — 555 passed, 3 skipped |
 
 The comparison is of the **per-test id-to-outcome map**, not of counts:
@@ -407,9 +407,14 @@ The comparison is of the **per-test id-to-outcome map**, not of counts:
   and `[label_mtime_plus_100]`. These are the two PR-13 wrote to be inverted; the
   same two corruptions now appear as
   `test_corruption_is_detected_and_repaired[…]`, asserting the opposite.
-- **22 ids added**, all passing: 14 in the new `test_shelf_common.py`, 4 chain and
+- **24 ids added**, all passing: 14 in the new `test_shelf_common.py`, 4 chain and
   no-target tests in `test_pds3_checksums.py`, 4 in `test_pds3_infoshelf.py` (the
-  two re-homed corruptions plus two new modification-time tests).
+  two re-homed corruptions plus two modification-time tests), 1 in
+  `test_pds4_checksums.py` and 1 in `test_pds4_infoshelf.py` (the two the review
+  rounds added).
+
+Re-measured at this PR's **final** head, after both review rounds, not at the head
+that first passed. The base figures are unchanged from the brief's.
 
 The base figures match the ones the brief inherited (1,054 and 558) exactly.
 
