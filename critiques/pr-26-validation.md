@@ -8,16 +8,22 @@ the tree under measurement was proved rather than assumed (see §8).
 
 ## 1. What changed
 
-Four commits, in this order:
+Four logical steps, committed in this order and followed by the review rounds'
+own commits (`git log --oneline 56b8823..HEAD` is the authority on the count):
 
 1. `refactor: split _common into per-family modules` — `_common.py`'s archive
    section and its checksum/shelf section move out verbatim into
    `_archives_common.py` and `_shelf_common.py`. No behavior.
 2. `refactor: migrate the checksums and infoshelf pairs onto the core` — the four
-   tools' hand-rolled `main()` becomes `SPEC` + `TASKS` + a two-line `main()`.
+   tools' hand-rolled `main()` becomes `SPEC` + `TASKS` + a short `main()`.
 3. `fix: the info shelf comparison, and how a chained run is executed` — six
    defects, each with a test.
 4. `chore: pdsinfoshelf no longer needs the RUF059 ignore` — ratchet shrink.
+
+Then one commit per review round, each recorded in `critiques/pr-26/round-N.md`:
+the CodeRabbit round, and the two-reviewer round that followed it. What those
+changed is summarized in the round files and folded into the sections below rather
+than left as an addendum, so every number here is the number at the final head.
 
 ## 2. The plan's bug list, verified at this PR's base before anything was touched
 
