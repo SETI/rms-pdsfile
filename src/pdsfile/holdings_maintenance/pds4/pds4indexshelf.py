@@ -36,6 +36,7 @@ SPEC = _common.ToolSpec(
     description=_indexshelf_common.INDEXSHELF_DESCRIPTION,
     task_help=_indexshelf_common.INDEXSHELF_TASK_HELP,
     positional_help=_indexshelf_common.INDEXSHELF_POSITIONAL_HELP,
+    log_path_method='log_path_for_index',
     log_suffix='',
     handler_factories=(pdslogger.warning_handler, pdslogger.error_handler))
 

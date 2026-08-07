@@ -35,8 +35,11 @@ table goes into a data module of its own.
 | `pds3/linkshelf_repairs.py` | — | 555 |
 | **total** | **5,158** | **4,122** |
 
-The four tool modules go from 4,040 lines to 1,103, and no module is over
-deviation (3)'s 1,000-line limit.
+The four tool modules go from 4,040 lines to 1,103. Every module in the table is
+under deviation (3)'s 1,000-line limit; one module in `holdings_maintenance/` is
+still over it and this PR does not touch it — `pds3/pdsdependency.py`, 1,165 lines
+at both revisions. Deferred entry 66 named three modules over the limit; two of the
+three are `pdslinkshelf.py` and `pds4linkshelf.py`, and this PR brings both under.
 
 ## 2. Three drivers, and why the index shelf tools needed the third
 
@@ -56,8 +59,8 @@ their four differences are data and one is not:
 | difference | data? |
 |---|---|
 | the positional is `table`, not a unit | yes — `ToolSpec.unit` |
-| `log_path_for_index` takes no suffix | yes — `log_suffix=''` and the driver passes none |
-| per-target handlers go in the tool's own log directory, not the target's | yes — but only as a rule the driver states |
+| `log_path_for_index` takes no suffix | yes — the driver reads `spec.log_path_method` and passes `spec.log_suffix` only when it is non-empty |
+| per-target handlers go in the tool's own log directory, not the target's | no field — a rule this driver states, and the reason it is a driver rather than a flag |
 | a backup copy of a table is logged and skipped, per target | **no** |
 
 The last one is the one that decides it. The skip has to happen **inside** the log
@@ -73,7 +76,19 @@ of reason.
 
 `ToolSpec.index_ext`, declared by PR-25 and read nowhere, is now read: it is what
 makes one `index_targets()` serve both flavors (`*.tab` / `*.csv`, and the
-`No .tab files in directory:` message).
+`No .tab files in directory:` message). So are `log_path_method` and `log_suffix`,
+which this driver honours rather than hardcoding.
+
+**What the third driver costs, measured.** With docstrings stripped,
+`run_index_main` is 67 lines against `run_main`'s 66, and 45 of them are
+line-identical — 67% duplication, the same trade PR-26 made for
+`run_selection_main`. Of the four ways the two drivers differ, two are forced (the
+backup skip, and the log directory) and **two are preservation**: the index tools
+write `Task "initialize" for` with quotes, which is what both of them wrote at the
+base and what `run_main` does not write, and they pass the logger to the task
+explicitly, which is what `pds4indexshelf` did. Unifying either would have cost a
+log line these tools have always written, or a `run_main` change reaching the
+archives pair. Recorded so the count is four rather than one.
 
 ## 3. What is shared, and what stayed in the tools
 
@@ -105,7 +120,7 @@ proved two ways:
 ```
 $ sed -n '36,571p' <base>/src/.../pds3/pdslinkshelf.py | md5sum
 f2ba87b0154b970a7249411e6c653869
-$ sed -n '18,553p' <head>/src/.../pds3/linkshelf_repairs.py | md5sum
+$ sed -n '20,555p' <head>/src/.../pds3/linkshelf_repairs.py | md5sum
 f2ba87b0154b970a7249411e6c653869
 ```
 
@@ -185,6 +200,23 @@ route to the same shelf, and `test_update_and_repair_agree_on_the_shelved_links`
 asserts the merged shelf equals the rebuilt one. Without the third, the merge could
 drop or duplicate an entry and still leave `--validate` clean, because `--validate`
 compares the shelf against a fresh scan of the same tree.
+
+**Those three tests pin that the update completes and agrees with a rebuild; they
+do not pin what the accessor returns.** Probed rather than assumed: with
+`link_text_of` replaced by `return ''`, all three still pass. The loop that reads
+it only assigns a label when a *newly appeared* file's basename matches a link in
+an *already shelved* label — and every file a shelved label links to is itself
+already shelved, so on `--update` it is skipped before the loop is reached. The
+loop is *entered* for every candidate basename, which is why the `AttributeError`
+fired; its assignment is not reachable from any state the declared PDS4 subset can
+produce.
+
+So the accessor's value is pinned directly, in
+`test_shelf_common.TestLinkTextOf` — a freshly found link reads as its link text, a
+shelved tuple reads as its link text, the two shapes of one link read the same, and
+a repaired `linkname` does not change what is read (what gets pickled is
+`linktext`). Negative control: `return ''` fails three of those four, and the fourth
+is the one that compares the two shapes and so cannot discriminate a constant.
 
 ### Entry 3 — scoped, not fixed, and its diagnosis corrected
 
@@ -302,16 +334,59 @@ Every one of these is a log or output **text** change except the last three.
     path that does not exist. This is the behaviour PR-25 already gave the archives
     pair.
 
-### One that was measured and did not happen
+13. **A link shelf run over a unit set whose only other child is a file loses one
+    blank line.** `link_targets()` filters a unit set's non-directory children out
+    of the target list, where the old `main()`s kept them in the list and skipped
+    them in the loop; the blank line between targets is emitted when there is more
+    than one target, so a set holding one unit directory plus a readme drops from
+    two targets to one and the line goes. **2 lines** of the transcript, in the
+    `pds3-link-metadata-volset` scenario.
 
-`link_targets()` filters a unit set's non-directory children out of the target list,
-where the old `main()`s kept them in the list and skipped them in the loop. The
-`logger.blankline()` between targets is emitted when there is more than one target,
-so a unit set holding one unit directory plus a readme would have lost its blank
-line. Measured over both real holdings roots: **0 of 54 unit sets have a
-non-directory child**, so no line of the transcript moves. Recorded because a
-production tree that does have volset-level readme files would differ by one blank
-line — the same trade `pdsarchives.archive_targets()` already makes.
+    **This was first measured over the wrong population and reported as a
+    non-event.** The first count — "0 of 54 unit sets have a non-directory child" —
+    covered `volumes`, `calibrated` and pds4 `bundles`. It left out `metadata`,
+    which is one of the three voltypes a link shelf run is pointed at
+    (`re_validate.py:44` `LINKSHELF_VOLTYPES`, and
+    `update_holdings_for_new_metadata.sh:40` runs `pdslinkshelf --initialize` on
+    `metadata/$VOLSET` directly). Re-measured over every category `link_targets`
+    accepts, on the same two roots:
+
+    | category | unit sets | with a non-directory child | where the blank line moves |
+    |---|---:|---:|---:|
+    | `holdings/volumes` | 52 | 0 | 0 |
+    | `holdings/calibrated` | 6 | 0 | 0 |
+    | `holdings/metadata` | 96 | 96 | 17 |
+    | `pds4-holdings/bundles` | 2 | 0 | 0 |
+    | `pds4-holdings/metadata` | 2 | 0 | 0 |
+    | **total** | **158** | **96** | **17** |
+
+    Every `metadata/*` unit set carries an `AAREADME.txt`, and 17 of them hold
+    exactly one unit directory beside it, so the change happens on 17 real targets
+    of a documented workflow in this tree. The transcript did not cover a metadata
+    unit set at all; a 27th scenario was added (`pds3-link-metadata-volset`, an
+    `AAREADME.txt` beside the unit directory), and the two lines above are what it
+    reports. This is the same trade `pdsarchives.archive_targets()` has made since
+    PR-25.
+
+### Four more differences in merged code, all measured to be no-ops
+
+Enumerated for completeness, since "every changed line" is the rule:
+
+- `validate_links` uses `isinstance(dirinfo, list)` where pds3 wrote
+  `type(dirinfo) is list`. Both values are plain `list`s built by `load_links` and
+  `generate_links`, never a subclass, so the two tests agree on every value this
+  code sees. pds4 already wrote `isinstance`.
+- `validate_infodict` is renamed `validate_indexdict`. It never validated an info
+  dict; it is called from `index_validate` only, and `holdings_maintenance` carries
+  no frozen API surface.
+- `run_index_main` passes `logger=logger` to the task where the base
+  `pdsindexshelf.main()` passed none. `PdsLogger.get_logger(LOGNAME)` returns the
+  instance `PdsLogger(LOGNAME)` registered, and both use the same name, so the task
+  received the same object either way. Verified:
+  `PdsLogger('x') is PdsLogger.get_logger('x')` is `True`.
+- `_common.set_log_dirs` is **not** called by `run_index_main`. It was, briefly;
+  nothing in the index shelf family calls `move_old` — `write_indexdict` writes
+  directly — so the list would have been written and never read. Dropped as dead.
 
 ## 6. The split, by measurement
 
@@ -354,7 +429,8 @@ PR-26's numbers are inherited from entry 98 and `critiques/pr-26-validation.md`
 (`_common.py` 666 → 1,081 with the shared code in it). PR-27's are `wc -l` above.
 
 Entry 98's rate projected **748** lines for these two pairs; the measurement is
-**1,329**, 78% higher. It ran high for PR-26 and low for PR-27, which is the point:
+**1,329** — the projection is short by 581 lines, 44% of the measurement. It ran
+high for PR-26 and short for PR-27, which is the point:
 the fraction of a pair that can be shared is not a property of the migration, it is a
 property of how alike the two flavors of that particular tool happen to be. The index
 shelf pair was almost identical (56.8% of its 1,086 lines became shared code); the
@@ -393,7 +469,7 @@ pytest tests/pds3file/ tests/rules/pds3/ --mode s -rA --junitxml=…
 
 | | base | head |
 |---|---|---|
-| `--mode ns` | 1,079 ids — 1,045 passed, 34 skipped | 1,090 ids — 1,056 passed, 34 skipped |
+| `--mode ns` | 1,079 ids — 1,045 passed, 34 skipped | 1,094 ids — 1,060 passed, 34 skipped |
 | `--mode s` | 558 ids — 555 passed, 3 skipped | 558 ids — 555 passed, 3 skipped |
 
 The comparison is of the per-test **id-to-outcome map**, parsed out of the two
@@ -406,69 +482,79 @@ The comparison is of the per-test **id-to-outcome map**, parsed out of the two
 - **1 id removed**, deliberate:
   `test_pds4_linkshelf::test_update_is_broken_and_repair_is_the_working_path`, the
   entry-4 pin, inverted in §4.
-- **12 ids added**, all passing: the inverted pin as
+- **16 ids added**, all passing: the inverted pin as
   `test_update_picks_up_a_new_file`, the two tests added beside it
   (`test_repair_also_picks_up_a_new_file`,
   `test_update_and_repair_agree_on_the_shelved_links`),
   `test_re_validate::test_the_sibling_tools_really_accept_what_this_module_calls_them_with`
-  (§7.4), and eight parameter cases of the two `test_shelf_common.py` tests over
-  the four migrated tools that came out of the CodeRabbit round
-  (`critiques/pr-27/round-1.md`, finding 5).
+  (§7.4), eight parameter cases of the two `test_shelf_common.py` tests over the
+  four migrated tools, and the four `TestLinkTextOf` tests. The last twelve came
+  out of the round-1 reviews (`critiques/pr-27/round-1.md`, CodeRabbit finding 5
+  and reviewer finding m3).
 
 The base figures were measured here, not inherited; they match the ones PR-26
 reported (1,079 and 558) exactly.
 
 ### 7.2 Real runs of all four tools
 
-78 records — three per scenario (`SCENARIO`, `LOGFILES`, `ARTIFACTS`) over 26
+81 records — three per scenario (`SCENARIO`, `LOGFILES`, `ARTIFACTS`) over 27
 scenarios, covering every task of every one of the four tools against a disposable
 copy of the byte-verified subsets `tests/holdings_maintenance/subsets.py` declares:
 `--initialize`, a second `--initialize`, `--validate` clean, `--validate` over a
 corrupted target, `--repair`, `--validate` again, a cancelled `--repair`, a
 `--repair` after the source is touched, `--reinitialize`, `--update` with a new
 file, a cancelled `--update`, `--update` over a whole metadata directory, two task
-flags at once, a unit-set target, a metadata-directory target, a backup-named copy
-of a table, `--help`, a missing task, a checksums path, an archives path, a
-non-metadata path, a non-table file, and a nonexistent path.
+flags at once, a unit-set target, a **metadata** unit-set target carrying a
+readme, a metadata-directory target, a backup-named copy of a table, `--help`, a
+missing task, a checksums path, an archives path, a non-metadata path, a non-table
+file, and a nonexistent path.
 
 Normalization: temporary paths, the tree path, wall-clock timestamps, log-file time
 tags, elapsed times, the "out of date N days/minutes" delta, traceback **line
 numbers**, and the address inside `<traceback object at 0x…>`. Traceback **file
 names** were deliberately left alone.
 
-**A base-versus-base control was run first.** The first attempt found 2 of 78
+**A base-versus-base control was run first.** The first attempt found 2 of the
 records differing — both `SCENARIO` records of `pds4indexshelf`, and both because
 `print(sys.exc_info()[2])` writes a traceback object's `repr`, which carries its
 memory address. That is not a code difference; it is the line change 6 above,
 found by the control rather than by reading. With that address normalized:
 
 ```
-base run 1 vs base run 2 :   0 of 78 records differ
-base      vs head        :  30 of 78 records differ
+base run 1 vs base run 2 :   0 of 81 records differ
+base      vs head        :  32 of 81 records differ
 ```
 
-**Every changed line attributed — 576 lines, none unattributed.** The classifier is
+**Every changed line attributed — 594 lines, none unattributed.** The classifier is
 in the scratch harness and prints its own residue; the residue is zero.
 
 | lines | cause |
 |---:|---|
-| 226 | the link shelf task header loses its quotes (change 1) |
+| 242 | the link shelf task header loses its quotes (change 1) |
 | 118 | traceback frame naming the shared core (change 7) |
 | 92 | the source line a traceback shows under one of those frames |
-| 67 | `pds4linkshelf --update` merges instead of raising (entry 4) |
+| 73 | `pds4linkshelf --update` merges instead of raising (entry 4) |
 | 38 | caret rows under those frames |
-| 16 | the blank line `pdsindexshelf` no longer emits (change 2) |
+| 10 | the blank line `pdsindexshelf` no longer emits (change 2) |
 | 6 | message counts following a line above |
 | 6 | the index shelf `--log` help naming its real directory (change 5) |
 | 3 | the removed `print(sys.exc_info()[2])` (change 6) |
 | 2 | `pdsindexshelf` adopting `Validation failed for:` (change 3) |
+| 2 | the blank line a link shelf run drops for a unit set with one unit and a file (change 13) |
 | 2 | traceback headers, gone with the exception they reported |
 
-**`ARTIFACTS`: 1 of 26 records differs, and it is the fix.**
+An earlier pass of this classifier put all 16 blank-line differences under change
+2. Six of them are in the `pds4-link-update` record, where the run stops raising
+and so runs to the end, and two more are change 13 — so the honest split is 10 / 6
+/ 2 rather than 16 / 0 / 0. Corrected here rather than left standing, because a
+blank line attributed to the wrong cause is exactly the kind of defect this table
+exists to prevent.
+
+**`ARTIFACTS`: 1 of 27 records differs, and it is the fix.**
 `pds4-link-update.ARTIFACTS` gains the new file's entry in the sidecar
 (`"data/rings/u0_kao_91cm_extra.txt" : "",`), the shelf grows from 914 to 952 bytes
 and its sidecar from 961 to 1,029, and the superseded pair is versioned into the
-log directory as `…_links_v001.pickle` / `…_links_v001.py`. The other 25 artifact
+log directory as `…_links_v001.pickle` / `…_links_v001.py`. The other 26 artifact
 records are byte-identical: nothing else these tools write changed.
 
 ### 7.3 The rest
@@ -578,18 +664,18 @@ subsystem; recorded as deferred entry 122.
    `linkshelf_repairs.py`. The plan names only `REPAIRS`, and 45 lines does not earn
    a file on the owner's volume rule, so it stayed.
 6. **`BACKUP_FILENAME` is still defined in both link shelf tools** even though
-   `_common.py` has the same constant. That is deferred entry 113's sweep, which the
-   owner has left open; this PR did not start it.
+   `_common.py` has the same constant, because each tool's own `generate_links`
+   reads it. Two of entry 113's ten copies did go — both index shelf tools defined
+   one and neither thin module does — so that entry is at eight, not ten. The sweep
+   itself is still open and this PR did not do it.
 
 
 ## 10. When each record was taken
 
-`critiques/pr-27/round-1.md`'s findings 3 and 4 changed source under
-`src/pdsfile/`, so §6.6's regeneration rule applies: the `--mode ns` run, the
-`--mode s` run and the 78-record tool transcript above were **all re-taken at the
-head that carries those fixes**, not carried forward. The transcript's attribution
-is unchanged from the pre-fix capture — 30 of 78 records, 576 lines, the same
-eleven causes, none unattributed — which is what a `limits` argument that only
-matters to a library caller and a docstring should do to a command-line transcript.
-The `--mode ns` id count moved from 1,082 to 1,090 with the eight new parameter
-cases, still with zero outcome changes.
+Round 1 changed source under `src/pdsfile/` twice — CodeRabbit's findings 3 and 4,
+then the adversarial reviewer's m5 and m6 — so §6.6's regeneration rule applies
+twice. The `--mode ns` run, the `--mode s` run and the 81-record tool transcript
+above were **all re-taken at the final head**, not carried forward, and the
+base-versus-base control was re-run with them.
+The `--mode ns` id count moved from 1,079 at the base to 1,094 with the sixteen
+added tests, still with zero outcome changes for any id present in both runs.

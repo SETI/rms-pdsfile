@@ -563,13 +563,15 @@ def run_index_main(spec, tasks, argv):
                 logger.error('Backup file skipped', pdsf.abspath)
                 continue
 
-            # Save logs in up to two places
-            logfiles = _common.log_paths_for(pdsf, 'log_path_for_index',
+            # Save logs in up to two places. The suffix is passed only when there
+            # is one: log_path_for_index has no suffix argument, and an empty
+            # log_suffix is how a spec says its log path takes none.
+            suffix = (spec.log_suffix,) if spec.log_suffix else ()
+            logfiles = _common.log_paths_for(pdsf, spec.log_path_method, *suffix,
                                              task=args.task, dir=spec.progname)
 
             # Create all the handlers for this level in the logger
             local_handlers = []
-            _common.set_log_dirs(logfiles)
             for logfile in logfiles:
                 local_handlers.append(pdslogger.file_handler(logfile))
 

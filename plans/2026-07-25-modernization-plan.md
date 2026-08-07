@@ -945,9 +945,10 @@ module, `pds3/linkshelf_repairs.py`, imported by the thin linkshelf tool.
   code in it, `_shelf_common.py` measured **1,827** lines against deviation (3)'s
   1,000-line limit, so it split by family: `_shelf_common.py` (523),
   `_indexshelf_common.py` (617), `_linkshelf_common.py` (712). Entry 98's *rate*
-  projected 748 lines for these two pairs and the measurement is 1,329 — it ran high
-  for PR-26 and 78% low here, because how much of a pair can be shared depends on
-  how alike its two flavors happen to be, not on a rate. The four tool modules go
+  projected 748 lines for these two pairs and the measurement is 1,329 — the
+  projection was short by 581 lines, 44% of the measurement, having run high for
+  PR-26, because how much of a pair can be shared depends on how alike its two
+  flavors happen to be, not on a rate. The four tool modules go
   from 4,040 lines to 1,103.
 - **Deferred entry 4 is fixed and its pin inverted;** `pds4linkshelf --update` no
   longer raises against an existing shelf. **Deferred entry 3 is re-scoped and left
@@ -962,14 +963,16 @@ module, `pds3/linkshelf_repairs.py`, imported by the thin linkshelf tool.
 - **`LOGDIRS` and `set_log_dirs` moved to `_common.py`**, because `run_main` now
   serves a family that versions the file it replaces and `_common.py` cannot import
   `_shelf_common.py`.
-- **Log and output text: six changes, 576 transcript lines, all attributed.** The
-  link shelf task header loses its quotes (`run_main`'s form); `pdsindexshelf` stops
-  emitting an unconditional blank line and adopts pds4's `Validation failed for:`
-  line; `pds4indexshelf` adopts pds3's key-mismatch indentation; both index tools'
-  `--log` help now names the directory they actually write into; and both stop
-  printing the `repr` of a traceback object. The base-versus-base control was 0 of
-  78 records, and 25 of 26 artifact records are byte-identical — the one that
-  differs is entry 4's fix.
+- **Log and output text: thirteen enumerated changes, 594 transcript lines, all
+  attributed.** The link shelf task header loses its quotes (`run_main`'s form);
+  `pdsindexshelf` stops emitting an unconditional blank line and adopts pds4's
+  `Validation failed for:` line; `pds4indexshelf` adopts pds3's key-mismatch
+  indentation; both index tools' `--log` help now names the directory they actually
+  write into; both stop printing the `repr` of a traceback object; and a link shelf
+  run over a unit set holding one unit directory beside a file drops one blank line
+  — which happens on 17 `metadata/*` unit sets in the reference tree. The
+  base-versus-base control was 0 of 81 records, and 26 of 27 artifact records are
+  byte-identical — the one that differs is entry 4's fix.
 - **Ratchet:** 69 → **67** entries, 184 → **181** code slots. Both index tools'
   `UP031` entries and `pdslinkshelf`'s `B012` retire; the three shared modules and
   the new data module carry no entry at all.

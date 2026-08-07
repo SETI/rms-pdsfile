@@ -1631,7 +1631,17 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     Whether they end up waived, split, or shrunk by the consolidation is a
     Phase-6 question, answerable once PR-25 has established how much of each file
     is duplication.
-    **Owner: Phase 6 (PR-25 onward).**
+
+    **Two of the three are answered by PR-27: shrunk, not waived.**
+    `pdslinkshelf.py` is **471** lines and `pds4linkshelf.py` is **524**, from 1,730
+    and 1,224 at PR-27's base — the shared code went into `_linkshelf_common.py`
+    (712) and the 536-line `REPAIRS` table into `pds3/linkshelf_repairs.py` (555).
+    Both are now comfortably under the limit and neither needs a waiver.
+    `pdsdependency.py` is untouched at **1,165** and is the only module left in
+    `holdings_maintenance/` over the limit; it has no pds3/pds4 twin, so the
+    consolidation this entry was waiting on will never reach it, and PR-28 is the
+    next PR to touch it.
+    **Owner: `pdsdependency.py` only, from PR-28.**
 
 ## From PR-23 (ruff-clean the core modules, Phase 5)
 
@@ -2971,6 +2981,10 @@ these entries are read by the PRs that come after it.
      not a side effect of migrating four `main()`s. The risk it carries is the usual
      one for a duplicated constant — nine of the ten can be updated and the tenth
      left behind, with no gate that would notice.
+
+     **Eight, not ten, from PR-27.** Both index shelf tools defined one and neither
+     thin module does; the two link shelf tools still do, because each tool's own
+     `generate_links` reads it. The sweep itself is still owed.
      **Owner: open.**
 
 114. **`_shelf_common.py` serves two audiences, which is the question entry 98
@@ -3213,11 +3227,23 @@ these entries are read by the PRs that come after it.
      target list, where the two link shelf `main()`s kept them in and skipped them
      in the loop.** The blank line between targets is emitted when there is more
      than one target, so a unit set holding one unit directory plus a readme file
-     loses that blank line. Measured over both real holdings roots at PR-27's base:
-     0 of 54 unit sets have a non-directory child, so no line of the 78-record tool
-     transcript moves. A production tree that does carry volset-level readme files
-     would differ by one blank line. This is the same trade
-     `pdsarchives.archive_targets()` has made since PR-25.
+     loses that blank line.
+
+     **Measured over the wrong population first.** The original count here — "0 of
+     54 unit sets have a non-directory child, so no line of the transcript moves" —
+     covered `volumes`, `calibrated` and pds4 `bundles`, and left out `metadata`,
+     which is one of the three voltypes a link shelf run is pointed at
+     (`re_validate.py:44`, and `update_holdings_for_new_metadata.sh:40` runs
+     `pdslinkshelf --initialize` on `metadata/$VOLSET`). Re-measured over every
+     category `link_targets` accepts, on both roots: **158 unit sets, 96 with a
+     non-directory child, 17 where the blank line moves** — every `metadata/*` set
+     carries an `AAREADME.txt`, and 17 of them hold exactly one unit directory
+     beside it. So this happens on 17 real targets of a documented workflow in this
+     tree, not hypothetically.
+
+     PR-27 added a 27th transcript scenario for a metadata unit set and enumerated
+     the two lines it produces as change 13 in `critiques/pr-27-validation.md`. This
+     is the same trade `pdsarchives.archive_targets()` has made since PR-25.
      **Owner: recorded, not open.**
 
 125. **`pdsindexshelf` and `pds4indexshelf` both call themselves `pdsindexshelf`,
@@ -3268,6 +3294,34 @@ these entries are read by the PRs that come after it.
      into `linkinfo_dict` with a list value by the loop above and keeps it through
      the merge, so a string value is not a state this code can produce or read back.
      Unreachable before PR-27 (`AttributeError` on `.linktext`) and unreachable
-     after it (`IndexError` on `info[1]`). An `isinstance` guard would add a branch
-     no test can reach.
+     after it. What it would do after it depends on the string: iterating a `str`
+     yields one-character strings, so `info[1]` raises `IndexError` on every
+     character — but a value that was a longer sequence of longer strings would
+     return a character rather than raising, which is the worse of the two failure
+     modes and the reason this is written down. An `isinstance` guard would add a
+     branch no test can reach.
      **Owner: open.**
+
+
+### Added by the PR-27 adversarial review (round 1)
+
+129. **`pdsarchives` logs under a `_links` suffix.** `pds3/pdsarchives.py`'s spec
+     carries `log_suffix='_links'` where `pds4/pds4archives.py` carries
+     `'_archives'`, so a pds3 archive run writes
+     `logs/pdsarchives/<category>/<set>/<unit>_links_<tag>.log`. Not a PR-25 slip:
+     the tool wrote `pdsdir.log_path_for_volume('_links', …)` before PR-25 as well,
+     so PR-25 preserved it faithfully and PR-27 does not touch it. Changing it moves
+     a log file name, which is exactly the kind of thing a sync script or a log
+     rotation rule can be written against.
+     **Owner: open.**
+
+130. **The `run_index_main` driver is 67% a copy of `run_main`.** With docstrings
+     stripped, `run_index_main` is 67 lines against `run_main`'s 66 and 45 of them
+     are line-identical. Two of the four differences are forced — the per-target
+     backup skip, which has to sit inside the log hierarchy to reach the exit
+     status, and the log directory, which is the tool's own rather than the
+     target's — and two are preservation: the quoted task header both index tools
+     wrote at the base, and passing the logger to the task explicitly. This is the
+     same trade PR-26 made for `run_selection_main`, and it is now the second time
+     it has been made. A third instance would be worth stopping for.
+     **Owner: recorded, not open.**

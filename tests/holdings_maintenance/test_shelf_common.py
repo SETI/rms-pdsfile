@@ -251,3 +251,55 @@ def test_each_migrated_tool_binds_its_own_spec_into_its_tasks(tool, family, pref
 
     assert tool.SPEC.pdsfile_cls is (pdsfile.Pds4File if tool.__name__.rpartition('.')[2]
                                      .startswith('pds4') else pdsfile.Pds3File)
+
+
+##########################################################################################
+# Reading a shelved link
+##########################################################################################
+
+class TestLinkTextOf:
+    """The one accessor that lets an update merge a loaded shelf with a fresh scan.
+
+    A link a run has just found is a LinkInfo; one read back from a shelf is the
+    plain tuple that was pickled. generate_links() sees both in the same dictionary
+    during an update and reads the text of each through this function.
+
+    Tested here rather than through a tool because no scenario in the declared PDS4
+    subset makes the value observable in what a tool writes: the loop that reads it
+    only assigns a label when a *newly appeared* file's basename matches a link in
+    an *already shelved* label, and every file a shelved label links to is itself
+    already shelved. The tool tests pin that an update completes and agrees with a
+    rebuild; this pins what the accessor returns.
+    """
+
+    def test_a_freshly_found_link_reads_as_its_link_text(self):
+        info = _linkshelf_common.LinkInfo(233, 'ALPHA.TAB', True)
+        assert _linkshelf_common.link_text_of(info) == 'ALPHA.TAB'
+
+    def test_a_shelved_link_reads_as_its_link_text(self):
+        # (recno, linktext, target), which is what write_linkdict pickles.
+        assert _linkshelf_common.link_text_of((233, 'ALPHA.TAB', 'data/ALPHA.TAB')) \
+            == 'ALPHA.TAB'
+
+    def test_the_two_shapes_of_one_link_read_the_same(self):
+        """The point of the accessor: the same link, either way round."""
+
+        info = _linkshelf_common.LinkInfo(233, 'ALPHA.TAB', True)
+        info.target = 'data/ALPHA.TAB'
+        shelved = (info.recno, info.linktext, info.target)
+
+        assert _linkshelf_common.link_text_of(info) \
+            == _linkshelf_common.link_text_of(shelved)
+
+    def test_repairing_a_link_does_not_change_what_is_read(self):
+        """linkname is the repaired text; linktext is what the file actually said.
+
+        generate_links() rewrites linkname when the REPAIRS table has an entry for a
+        known-bad link, and leaves linktext alone. What gets pickled, and so what an
+        update reads back, is linktext.
+        """
+
+        info = _linkshelf_common.LinkInfo(233, 'ALPHA.TAB', True)
+        info.linkname = 'REPAIRED.TAB'
+
+        assert _linkshelf_common.link_text_of(info) == 'ALPHA.TAB'
