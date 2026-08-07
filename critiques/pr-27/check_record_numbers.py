@@ -6,7 +6,9 @@ per-cause table that had drifted from the enumeration explaining it, a duplicati
 figure restated after the function it measures had moved. The code had five gates
 and the record had none. This is the record's gate.
 
-Run from the repository root with the tree's own interpreter:
+Run from the repository root with the tree's own interpreter, which must be 3.11 or
+newer -- this reads pyproject.toml through tomllib. The package itself supports 3.10,
+so this is a constraint on running the check, not on the tree it checks:
 
     python critiques/pr-27/check_record_numbers.py
 
@@ -19,6 +21,7 @@ import pathlib
 import re
 import subprocess
 import sys
+
 import tomllib
 
 HOLDINGS = 'src/pdsfile/holdings_maintenance/'
