@@ -845,9 +845,22 @@ not blindly inherit pds4's version:**
   original bug and a naïve `str - str` "fix" are wrong. Implementable fix
   (the intended semantics, owner-defaulted): parse the two **untruncated**
   modtime strings with `datetime.fromisoformat` and compare
-  `abs((t1 - t2).total_seconds()) > 1`; drop the now-unneeded
-  second-truncation lines. Pin the 1-second tolerance with a test. Whichever
-  is chosen, pds3 and pds4 share it via `_common.py`.
+  `abs((t1 - t2).total_seconds()) >= 1`; drop the now-unneeded
+  second-truncation lines. Pin the 1-second tolerance with a test, in both
+  directions across the boundary. Whichever is chosen, pds3 and pds4 share it
+  via `_common.py`.
+  **The boundary is exclusive** (owner, 2026-08-07): a difference of exactly one
+  second is a difference. An earlier draft of this entry prescribed `> 1`, by
+  analogy with `validate_tuples()`, which allows a full second inclusively. The
+  analogy does not hold, because the operands differ. `validate_tuples()` compares
+  a tarfile's whole-second modification time against a filesystem time carrying a
+  fraction, so up to a second of slack is unavoidable and inclusive is right there.
+  Both operands here come from one generator at microsecond precision
+  (`dt.strftime('%Y-%m-%d %H:%M:%S.%f')`), so the only discrepancy to forgive is a
+  sub-second one — and on a filesystem that stores whole seconds, a one-second
+  change is the smallest real change there is rather than an edge case. The two
+  boundaries differ because the operand pairs differ; that is a justified
+  difference and not an inconsistency.
 Preserve the pds3 `--infoshelf` chaining behavior (modernize `os.system` →
 `subprocess.run` as pds4 already does — flagged behavior change, tested).
 CLI surface and exit codes asserted unchanged by PR-13's tests; log text held to
@@ -856,6 +869,56 @@ duplication or a shrug-flag, and every changed line is enumerated and attributed
 **Note:** PR-25 already made the `LOGDIRS` fix listed above, and already merged
 `hashfile()` and the three `move_old_<kind>()` functions into one, so those
 items are done rather than owed here.
+
+**What PR-26 actually did**, measured in `critiques/pr-26-validation.md`:
+
+- **Six defects, not three.** The plan's three were all live and are fixed. Two
+  more were found in the same functions and fixed with them: the child-count
+  message formatted `(count1, count1)`, reporting one number twice; and
+  `pdschecksums`/`pds4checksums` read a `proceed` flag that is assigned only
+  inside the target loop, so a command-line path expanding to **no** targets — an
+  empty volume set directory — ended the run in `UnboundLocalError`.
+- **`os.system` → `subprocess.run` is two behavior changes, not a
+  modernization.** `os.system` returns a wait status (the exit code shifted left
+  by eight) and `sys.exit()` truncates it to the low byte, so every nonzero exit
+  code of a chained `pdsinfoshelf` run was reported as success; and
+  `' '.join(new_list)` passed the command through a shell unquoted, word-splitting
+  any holdings path containing a space. Both are pinned by tests.
+- **The modtime fix changes pds4's results too**, which this entry did not say.
+  Both flavors truncated to the second before comparing, so pds4's "working"
+  comparison was string equality on quantized values. The owner approved the
+  change on 2026-08-06, conditional on the new results being more accurate: the
+  new mismatch set is a strict subset of the old, so the change removes false
+  positives only — pairs **strictly under** a second apart that straddled a second
+  boundary. That claim is true because the boundary is exclusive; with the
+  inclusive `<= 1` first implemented, the removed class also contained real
+  one-second changes, which is why the owner ruled the boundary strict.
+  Implemented once as `_shelf_common.modtimes_agree()` and shared. The report
+  still renders whole seconds; only what is *compared* changed, and no artifact
+  these tools write changed at all.
+- **The `_common.py` split triggered here**, as deferred entry 98 projected —
+  but on its own measurement, not on the projection. With the shared code added,
+  `_common.py` measured **1,081** lines against deviation (3)'s 1,000-line limit,
+  so it split: `_common.py` (339) keeps the specification, the command line and
+  `run_main`; `_archives_common.py` (241) and `_shelf_common.py` (529) take one
+  family each. Entry 98's *rate*-based projection was too high — these pairs are
+  mostly domain functions that stay in their tool modules — so PR-27 should
+  re-derive it rather than reuse it.
+- **These four tools do not run on `run_main`.** Their targets carry a file
+  selection, their log path is one of two methods chosen per target, and the two
+  kinds of tool finish differently — an infoshelf run's status is its exit code,
+  a checksums run may still have a chained command to execute and deliberately
+  does *not* report its own errors in its exit code (`TOOLS_WITHOUT_EXIT_STATUS`).
+  So they run on a second driver, `_shelf_common.run_selection_main`, which
+  **returns** rather than exits and leaves each tool its own epilogue. Making one
+  driver serve both would have needed exactly the shrug-flags the data-only
+  `ToolSpec` rule forbids.
+- **Log and output text: two lines.** A traceback inside one of these tools names
+  the shared driver's frames (the unavoidable one PR-25 already enumerated), and
+  the two infoshelf tools no longer `print(sys.exc_info()[2])` — the repr of a
+  traceback object — to stdout. All four tools' `--help` output is byte-identical.
+- **Ratchet:** 69 entries unchanged, **185 → 184** code slots (`pdsinfoshelf`
+  retires `RUF059`); the two new modules carry no entry at all.
 
 **PR-27 (L)** `refactor: migrate indexshelf and linkshelf pairs onto the core`
 Migrate `pdsindexshelf`/`pds4indexshelf` and `pdslinkshelf`/`pds4linkshelf`

@@ -5,18 +5,11 @@
 # pdsinfoshelf reads the checksum file written by pdschecksums, so every test
 # dogfoods pdschecksums first (the `tree` fixture).
 #
-# Two of the scenarios below pin corruptions that pdsinfoshelf --validate does NOT
-# report today, and one pins a wrong log message. All three come from the same
-# defective comparison: it tests `checksum1 != checksum1`, it tests
-# `abs(modtime1 != modtime2) > 1`, and its child-count message formats
-# `(count1, count1)`. They are pinned here rather than fixed. Its pds4 twin
-# compares correctly, which is why test_pds4_infoshelf.py expects the opposite
-# outcome.
-#
 # Every test rebuilds the tree first, so each one is independent and order-agnostic.
 ##########################################################################################
 
 import datetime
+import os
 from collections import namedtuple
 
 import pytest
@@ -43,16 +36,12 @@ NEW_FILE_MTIME = subsets.PDS3_MTIMES[LABEL] + 1000
 
 Corruption = namedtuple('Corruption', 'name description target damage expected')
 
-# Fixed corruption scenarios that pdsinfoshelf --validate does detect.
+# Fixed corruption scenarios that pdsinfoshelf --validate detects.
 DETECTED_CORRUPTIONS = (
     Corruption('ascii_truncated',
                'truncate the ASCII table to 100 bytes',
                ASCII_TABLE, lambda path: support.truncate_file(path, 100),
                'File size mismatch'),
-)
-
-# Fixed corruption scenarios pdsinfoshelf --validate does NOT detect today.
-UNDETECTED_CORRUPTIONS = (
     Corruption('label_byte0_same_size',
                'overwrite byte 0 of the label, keeping its size and mtime',
                LABEL, support.overwrite_first_byte, 'Checksum mismatch'),
@@ -169,26 +158,57 @@ def test_corruption_is_detected_and_repaired(shelved_tree, corruption):
     assert str(shelved_tree.path(corruption.target).stat().st_size) in line, line
 
 
-@pytest.mark.parametrize('corruption', UNDETECTED_CORRUPTIONS,
-                         ids=[c.name for c in UNDETECTED_CORRUPTIONS])
-def test_known_undetected_corruption(shelved_tree, corruption):
-    """These corruptions pass --validate today; the comparison is defective.
+def test_modification_time_mismatch_reports_both_times(shelved_tree):
+    """The modification-time report names the on-disk time and the shelved one.
 
-    A content change goes unreported because the checksum test compares a value
-    to itself, and modification-time drift goes unreported because abs() of a
-    bool is 0 or 1 and never greater than 1. When the comparison is fixed these
-    assertions must be inverted -- that is the point of pinning them.
+    The two are compared at full precision and reported to the second, so a
+    mismatch always renders two different strings: times more than the tolerance
+    apart cannot fall in the same second.
     """
 
-    corruption.damage(shelved_tree.path(corruption.target))
+    support.shift_mtime(shelved_tree.path(LABEL), 100)
     refresh_checksums(shelved_tree)
 
     run = support.run_tool(shelved_tree, 'pdsinfoshelf', '--validate',
                            shelved_tree.path(VOLUME_DIR))
-    assert run.returncode == 0, f'{corruption.description}\n{run.describe()}'
-    assert run.error_lines == [], f'{corruption.description}\n{run.describe()}'
-    assert corruption.expected not in run.output, \
-        f'{corruption.description}\n{run.describe()}'
+    assert run.returncode == 1, run.describe()
+
+    reported = [line for line in run.error_lines
+                if 'Modification time mismatch' in line and 'N4BI01L4Q.LBL' in line]
+    assert len(reported) == 1, run.describe()
+
+    shelved = datetime.datetime.fromtimestamp(
+        SOURCE_MTIMES[LABEL], tz=datetime.timezone.utc)
+    on_disk = shelved + datetime.timedelta(seconds=100)
+    fmt = '%Y-%m-%d %H:%M:%S'
+    assert f'"{on_disk.strftime(fmt)}" "{shelved.strftime(fmt)}"' in reported[0], \
+        reported[0]
+
+
+def test_modification_time_within_one_second_agrees(shelved_tree):
+    """A sub-second difference across a second boundary is not a mismatch.
+
+    The comparison is a one-second tolerance on the parsed times, not a string
+    test on times truncated to the second. The two differ exactly here: 0.6 s
+    apart, but on opposite sides of a boundary, so truncation would call them
+    different and the tolerance calls them the same.
+    """
+
+    label = shelved_tree.path(LABEL)
+    straddle = float(int(SOURCE_MTIMES[LABEL])) + 0.8
+    os.utime(label, (straddle, straddle))
+    refresh_checksums(shelved_tree)
+    support.run_tool(shelved_tree, 'pdsinfoshelf', '--repair',
+                     shelved_tree.path(VOLUME_DIR))
+
+    # Now move it 0.6 s forward, over the next whole second.
+    os.utime(label, (straddle + 0.6, straddle + 0.6))
+    refresh_checksums(shelved_tree)
+
+    run = support.run_tool(shelved_tree, 'pdsinfoshelf', '--validate',
+                           shelved_tree.path(VOLUME_DIR))
+    assert run.error_lines == [], run.describe()
+    assert run.returncode == 0, run.describe()
 
 
 def test_extra_file_is_reported(shelved_tree):
@@ -208,9 +228,10 @@ def test_update_picks_up_a_new_file(shelved_tree):
     """--update adds the new file's info to an existing shelf.
 
     --update is deliberately additive: it fills in only the keys the shelf lacks,
-    so the aggregate byte counts already recorded for the parent directories are
-    left stale and the following --validate reports them. --repair is what
-    rewrites the whole shelf.
+    so the aggregates already recorded for the parent directories -- their byte
+    counts, their child counts and their modification times -- are left stale, and
+    the following --validate reports them. --repair is what rewrites the whole
+    shelf.
     """
 
     support.add_file(shelved_tree, NEW_FILE, NEW_FILE_BYTES, NEW_FILE_MTIME)
@@ -231,12 +252,13 @@ def test_update_picks_up_a_new_file(shelved_tree):
                            shelved_tree.path(VOLUME_DIR))
     assert run.returncode == 1, run.describe()
     assert all('File size mismatch' in line or 'Child count mismatch' in line
+               or 'Modification time mismatch' in line
                for line in run.error_lines), run.describe()
     assert not any('N4BI01L4Q_EXTRA.TXT' in line for line in run.error_lines), \
         run.describe()
-    # The message formats (count1, count1), so it reports the on-disk count (7)
-    # twice instead of on-disk versus shelved (6). Pinned as current behaviour.
-    assert any('Child count mismatch 7 7' in line for line in run.error_lines), \
+    # The message names the on-disk count and then the shelved one, which is what
+    # makes it worth logging: seven files on disk against the six the shelf knows.
+    assert any('Child count mismatch 7 6' in line for line in run.error_lines), \
         run.describe()
 
     run = support.run_tool(shelved_tree, 'pdsinfoshelf', '--repair',
@@ -252,10 +274,11 @@ def test_update_picks_up_a_new_file(shelved_tree):
 def test_update_versions_the_shelf_file_it_replaces(shelved_tree):
     """--update copies the superseded info shelf into the log directory.
 
-    _common.move_old_info() versions the shelf the task is about to rewrite, as
+    _shelf_common.move_old() versions the shelf the task is about to rewrite, as
     <name>_v###<ext> beside the run's own log file, and copies the `.py` sidecar
-    alongside it. It reads the shared LOGDIRS list that main() fills in through
-    _common.set_log_dirs(), so a tool that leaves that list empty versions nothing.
+    alongside it. It reads the shared LOGDIRS list that the run fills in through
+    _shelf_common.set_log_dirs(), so a tool that leaves that list empty versions
+    nothing.
     """
 
     support.add_file(shelved_tree, NEW_FILE, NEW_FILE_BYTES, NEW_FILE_MTIME)

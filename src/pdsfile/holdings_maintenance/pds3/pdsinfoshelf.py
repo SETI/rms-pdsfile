@@ -8,9 +8,7 @@
 # Enter the --help option to see more information.
 ################################################################################
 
-import argparse
 import datetime
-import glob
 import os
 import pickle
 import re
@@ -20,11 +18,10 @@ import pdslogger
 from PIL import Image
 
 import pdsfile
-from pdsfile.holdings_maintenance import _common
+from pdsfile.holdings_maintenance import _common, _shelf_common
 from pdsfile.holdings_maintenance.pds3 import pdschecksums
 
-LOGNAME = _common.INFOSHELF_LOGNAME
-LOGROOT_ENV = 'PDS_LOG_ROOT'
+LOGNAME = _shelf_common.INFOSHELF_LOGNAME
 
 PREVIEW_EXTS = {'.jpg', '.png', '.gif', '.tif', '.tiff',
                 '.jpeg', '.jpeg_small'}
@@ -369,10 +366,6 @@ def validate_infodict(pdsdir, dirdict, shelfdict, selection, *, logger=None,
                 (bytes1, count1, modtime1, checksum1, size1) = dirinfo
                 (bytes2, count2, modtime2, checksum2, size2) = shelfinfo
 
-                # Truncate modtimes to seconds
-                modtime1 = modtime1.rpartition('.')[0]
-                modtime2 = modtime2.rpartition('.')[0]
-
                 agreement = True
                 if bytes1 != bytes2:
                     logger.error('File size mismatch %d %d' %
@@ -381,15 +374,17 @@ def validate_infodict(pdsdir, dirdict, shelfdict, selection, *, logger=None,
 
                 if count1 != count2:
                     logger.error('Child count mismatch %d %d' %
-                                    (count1, count1), key)
+                                    (count1, count2), key)
                     agreement = False
 
-                if abs(modtime1 != modtime2) > 1:
+                if not _shelf_common.modtimes_agree(modtime1, modtime2):
+                    # Reported to the second, though compared in full
                     logger.error('Modification time mismatch "%s" "%s"' %
-                        (modtime1, modtime2), key)
+                        (modtime1.rpartition('.')[0],
+                         modtime2.rpartition('.')[0]), key)
                     agreement = False
 
-                if checksum1 != checksum1:
+                if checksum1 != checksum2:
                     logger.error('Checksum mismatch', key)
                     agreement = False
 
@@ -477,7 +472,7 @@ def reinitialize(pdsdir, selection=None, logger=None, limits=None):
 
     # Move old file if necessary
     if os.path.exists(info_path):
-        _common.move_old(info_path, _common.INFO_SHELF, logger=logger)
+        _shelf_common.move_old(info_path, _shelf_common.INFO_SHELF, logger=logger)
 
     # Save info file
     write_infodict(pdsdir, infodict, logger=logger, limits=limits)
@@ -580,7 +575,7 @@ def repair(pdsdir, selection=None, logger=None, limits=None):
         return
 
     # Move files and write new info
-    _common.move_old(info_path, _common.INFO_SHELF, logger=logger)
+    _shelf_common.move_old(info_path, _shelf_common.INFO_SHELF, logger=logger)
     write_infodict(pdsdir, dir_infodict, logger=logger, limits=limits)
 
 def update(pdsdir, selection=None, logger=None, limits=None):
@@ -618,271 +613,39 @@ def update(pdsdir, selection=None, logger=None, limits=None):
         return
 
     # Write checksum file
-    _common.move_old(info_path, _common.INFO_SHELF, logger=logger)
+    _shelf_common.move_old(info_path, _shelf_common.INFO_SHELF, logger=logger)
     write_infodict(pdsdir, dir_infodict, logger=logger, limits=limits)
 
 ################################################################################
 ################################################################################
 
+SPEC = _common.ToolSpec(
+    progname='pdsinfoshelf',
+    logname=LOGNAME,
+    pdsfile_cls=pdsfile.Pds3File,
+    unit='volume',
+    holdings_sentinel='/holdings/',
+    index_ext='.tab',
+    file_log_level='info',
+    description=_shelf_common.INFOSHELF_DESCRIPTION,
+    task_help=_shelf_common.INFOSHELF_TASK_HELP,
+    positional_help=_shelf_common.INFOSHELF_POSITIONAL_HELP,
+    log_suffix='_info',
+    handler_factories=(pdslogger.error_handler,),
+    extra_arguments=(_shelf_common.ARCHIVES_ARGUMENT,),
+    checksum_path_message='No infoshelves for checksum files: ',
+    invalid_dir_message='Invalid directory for an infoshelf: ',
+    invalid_file_message='Invalid file for an infoshelf: ')
+
+TASKS = {'initialize': initialize,
+         'reinitialize': reinitialize,
+         'validate': validate,
+         'repair': repair,
+         'update': update}
+
 def main():
-
-    # Set up parser
-    parser = argparse.ArgumentParser(
-        description='pdsinfoshelf: Create, maintain and validate shelf files ' +
-                    'containing basic information about each file.')
-
-    parser.add_argument('--initialize', '--init', const='initialize',
-                        default='', action='store_const', dest='task',
-                        help='Create an infoshelf file for a volume. Abort '   +
-                             'if the file already exists.')
-
-    parser.add_argument('--reinitialize', '--reinit', const='reinitialize',
-                        default='', action='store_const', dest='task',
-                        help='Create an infoshelf file for a volume. Replace ' +
-                             'the file if it already exists. If a single '     +
-                             'file is specified, such as one archive file in ' +
-                             'a volume set, then only information about that ' +
-                             'file is re-initialized.')
-
-    parser.add_argument('--validate', const='validate',
-                        default='', action='store_const', dest='task',
-                        help='Validate every file in a volume against the '    +
-                             'contents of its infoshelf file. If a single '    +
-                             'file is specified, such as an archive file in '  +
-                             'a volume set, then only information about that ' +
-                             'file is validated')
-
-    parser.add_argument('--repair', const='repair',
-                        default='', action='store_const', dest='task',
-                        help='Validate every file in a volume against the '    +
-                             'contents of its infoshelf file. If any file '    +
-                             'has changed, the infoshelf file is replaced. '   +
-                             'If a single file is specified, such as an '      +
-                             'archive file in a volume set, then only '        +
-                             'information about that file is repaired. If any '+
-                             'of the files checked are newer than the shelf '  +
-                             'file, update the shelf file\'s modification '    +
-                             'date.')
-
-    parser.add_argument('--update', const='update',
-                        default='', action='store_const', dest='task',
-                        help='Search a directory for any new files and add '   +
-                             'their information to the infoshelf file. '       +
-                             'Information about pre-existing files is not '    +
-                             'updated. If any of the files checked are newer ' +
-                             'than the shelf file, update the shelf file\'s '  +
-                             'modification date.')
-
-    parser.add_argument('volume', nargs='+', type=str,
-                        help='The path to the root of the volume or volume '   +
-                             'set. For a volume set, all the volume '          +
-                             'directories inside it are handled in sequence.')
-
-    parser.add_argument('--log', '-l', type=str, default='',
-                        help='Optional root directory for a duplicate of the ' +
-                             'log files. If not specified, the value of '      +
-                             'environment variable "%s" ' % LOGROOT_ENV        +
-                             'is used. In addition, individual logs are '      +
-                             'written into the "logs" directory parallel to '  +
-                             '"holdings". Logs are created inside the '        +
-                             '"pdsinfoshelf" subdirectory of each log root '   +
-                             'directory.'
-                             )
-
-    parser.add_argument('--quiet', '-q', action='store_true',
-                        help='Do not also log to the terminal.')
-
-    parser.add_argument('--archives', '-a', default=False, action='store_true',
-                        help='Instead of referring to a volume, refer to the ' +
-                             'the archive file for that volume.')
-
-
-    # Parse and validate the command line
-    args = parser.parse_args()
-
-    if not args.task:
-        print('pdsinfoshelf error: Missing task')
-        sys.exit(1)
-
-    status = 0
-
-    # Define the logging directory
-    if args.log == '':
-        try:
-            args.log = os.environ[LOGROOT_ENV]
-        except KeyError:
-            args.log = None
-
-    # Initialize the logger
-    logger = pdslogger.PdsLogger(LOGNAME)
-    pdsfile.Pds3File.set_log_root(args.log)
-
-    if not args.quiet:
-        logger.add_handler(pdslogger.stdout_handler)
-
-    if args.log:
-        path = os.path.join(args.log, 'pdsinfoshelf')
-        error_handler = pdslogger.error_handler(path)
-        logger.add_handler(error_handler)
-
-    # Prepare the list of paths
-    abspaths = []
-    for path in args.volume:
-
-        # Make sure path makes sense
-        path = os.path.abspath(path)
-        parts = path.partition('/holdings/')
-        if not parts[1]:
-            print('Not a holdings subdirectory: ' + path)
-            sys.exit(1)
-
-        if parts[2].startswith('checksums-'):
-            print('No infoshelves for checksum files: ' + path)
-            sys.exit(1)
-
-        # Convert to an archives path if necessary
-        if args.archives and not parts[2].startswith('archives-'):
-            path = parts[0] + '/holdings/archives-' + parts[2]
-
-        # Convert to a list of absolute paths that exist (volsets or volumes)
-        try:
-            pdsf = pdsfile.Pds3File.from_abspath(path, must_exist=True)
-            abspaths.append(pdsf.abspath)
-
-        except (ValueError, OSError):
-            # Allow a volume name to stand in for a .tar.gz archive
-            (dirname, basename) = os.path.split(path)
-            pdsdir = pdsfile.Pds3File.from_abspath(dirname)
-            if pdsdir.archives_ and '.' not in basename:
-                if pdsdir.voltype_ == 'volumes/':
-                    basename += '.tar.gz'
-                else:
-                    basename += '_%s.tar.gz' % pdsdir.voltype_[:-1]
-
-                newpaths = glob.glob(os.path.join(dirname, basename))
-                if len(newpaths) == 0:
-                    raise
-
-                abspaths += newpaths
-                continue
-            else:
-                raise
-
-    # Generate a list of tuples (pdsfile, selection)
-    info = []
-    for path in abspaths:
-        pdsf = pdsfile.Pds3File.from_abspath(path)
-
-        if pdsf.is_volset_dir:
-            # Info about archive directories is stored by volset
-            if pdsf.archives_:
-                info.append((pdsf, None))
-
-            # Others are checksumed by volume
-            else:
-                children = [pdsf.child(c) for c in pdsf.childnames]
-                info += [(c, None) for c in children if c.isdir]
-                        # "if c.isdir" is False for volset level readme files
-
-        elif pdsf.is_volume_dir:
-            # Shelve one volume
-            info.append((pdsf, None))
-
-        elif pdsf.isdir:
-            print('Invalid directory for an infoshelf: ' + pdsf.logical_path)
-            sys.exit(1)
-
-        else:
-            pdsdir = pdsf.parent()
-            if pdsf.is_volume_file:
-                # Shelve one archive file
-                info.append((pdsdir, pdsf.basename))
-            elif pdsdir.is_volume_dir:
-                # Shelve one top-level file in volume
-                info.append((pdsdir, pdsf.basename))
-            else:
-                print('Invalid file for an infoshelf: ' + pdsf.logical_path)
-                sys.exit(1)
-
-    # Open logger and loop through tuples...
-    logger.open(' '.join(sys.argv))
-    try:
-        for (pdsdir, selection) in info:
-
-            if selection:
-                pdsf = pdsdir.child(os.path.basename(selection))
-            else:
-                pdsf = pdsdir
-
-            # Save logs in up to two places
-            method = ('log_path_for_volume' if pdsf.volname
-                      else 'log_path_for_volset')
-            logfiles = _common.log_paths_for(pdsf, method, '_info',
-                                             task=args.task, dir='pdsinfoshelf')
-
-            # Create all the handlers for this level in the logger
-            local_handlers = []
-            _common.set_log_dirs(logfiles)
-            for logfile in logfiles:
-                local_handlers.append(pdslogger.file_handler(logfile))
-                logdir = os.path.split(logfile)[0]
-
-                # These handlers are only used if they don't already exist
-                error_handler = pdslogger.error_handler(logdir)
-                local_handlers += [error_handler]
-
-            # Open the next level of the log
-            if len(info) > 1:
-                logger.blankline()
-
-            if selection:
-                logger.open('Task "' + args.task + '" for selection ' +
-                            selection, pdsdir.abspath, handler=local_handlers)
-            else:
-                logger.open('Task "' + args.task + '" for', pdsdir.abspath,
-                            handler=local_handlers)
-
-            try:
-                for logfile in logfiles:
-                    logger.info('Log file', logfile)
-
-                if args.task == 'initialize':
-                    initialize(pdsdir, selection)
-
-                elif args.task == 'reinitialize':
-                    if selection:       # don't erase everything else!
-                        update(pdsdir, selection)
-                    else:
-                        reinitialize(pdsdir, selection)
-
-                elif args.task == 'validate':
-                    validate(pdsdir, selection)
-
-                elif args.task == 'repair':
-                    repair(pdsdir, selection)
-
-                else:   # update
-                    update(pdsdir, selection)
-
-            except (Exception, KeyboardInterrupt) as e:
-                logger.exception(e)
-                raise
-
-            finally:
-                _ = logger.close()
-
-    except (Exception, KeyboardInterrupt) as e:
-        logger.exception(e)
-        print(sys.exc_info()[2])
-        status = 1
-        raise
-
-    finally:
-        (fatal, errors, _warnings, _tests) = logger.close()
-        if fatal or errors:
-            status = 1
-
-    sys.exit(status)
+    result = _shelf_common.run_selection_main(SPEC, TASKS, sys.argv)
+    sys.exit(result.status)
 
 if __name__ == '__main__':
     main()

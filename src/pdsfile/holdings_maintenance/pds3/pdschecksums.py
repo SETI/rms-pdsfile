@@ -8,20 +8,18 @@
 # Enter the --help option to see more information.
 ################################################################################
 
-import argparse
 import datetime
-import glob
 import os
 import re
+import subprocess
 import sys
 
 import pdslogger
 
 import pdsfile
-from pdsfile.holdings_maintenance import _common
+from pdsfile.holdings_maintenance import _common, _shelf_common
 
-LOGNAME = _common.CHECKSUMS_LOGNAME
-LOGROOT_ENV = 'PDS_LOG_ROOT'
+LOGNAME = _shelf_common.CHECKSUMS_LOGNAME
 
 # Default limits
 GENERATE_CHECKSUMS_LIMITS = {'info': -1}
@@ -96,7 +94,7 @@ def generate_checksums(pdsdir, selection=None, oldpairs=[], *, regardless=True,
                     logger.invisible('Invisible file', abspath)
 
                 if regardless and selection:
-                    md5 = _common.hashfile(abspath)
+                    md5 = _shelf_common.hashfile(abspath)
                     newtuples.append((abspath, md5, file))
                     logger.info('Selected MD5=%s' % md5, abspath)
 
@@ -105,7 +103,7 @@ def generate_checksums(pdsdir, selection=None, oldpairs=[], *, regardless=True,
                     logger.debug('MD5 copied', abspath)
 
                 else:
-                    md5 = _common.hashfile(abspath)
+                    md5 = _shelf_common.hashfile(abspath)
                     newtuples.append((abspath, md5, file))
                     logger.info('MD5=%s' % md5, abspath)
 
@@ -417,7 +415,7 @@ def reinitialize(pdsdir, selection=None, *, logger=None, limits=None):
         return False
 
     # Write new checksum file
-    _common.move_old(check_path, _common.CHECKSUM_FILE, logger=logger)
+    _shelf_common.move_old(check_path, _shelf_common.CHECKSUM_FILE, logger=logger)
 
     new_limits = WRITE_CHECKSUMS_LIMITS.copy()
     new_limits.update(limits)
@@ -531,7 +529,7 @@ def repair(pdsdir, selection=None, *, logger=None, limits=None):
         return True
 
     # Write checksum file
-    _common.move_old(check_path, _common.CHECKSUM_FILE, logger=logger)
+    _shelf_common.move_old(check_path, _shelf_common.CHECKSUM_FILE, logger=logger)
     write_checksums(check_path, dirpairs, logger=logger)
     return True
 
@@ -576,7 +574,7 @@ def update(pdsdir, selection=None, *, logger=None, limits=None):
         return True
 
     # Write checksum file
-    _common.move_old(check_path, _common.CHECKSUM_FILE, logger=logger)
+    _shelf_common.move_old(check_path, _shelf_common.CHECKSUM_FILE, logger=logger)
     write_checksums(check_path, dirpairs, logger=logger)
     return True
 
@@ -584,274 +582,40 @@ def update(pdsdir, selection=None, *, logger=None, limits=None):
 # Executable program
 ################################################################################
 
+SPEC = _common.ToolSpec(
+    progname='pdschecksums',
+    logname=LOGNAME,
+    pdsfile_cls=pdsfile.Pds3File,
+    unit='volume',
+    holdings_sentinel='/holdings/',
+    index_ext='.tab',
+    file_log_level='info',
+    description=_shelf_common.CHECKSUMS_DESCRIPTION,
+    task_help=_shelf_common.CHECKSUMS_TASK_HELP,
+    positional_help=_shelf_common.CHECKSUMS_POSITIONAL_HELP,
+    log_suffix='_md5',
+    handler_factories=(pdslogger.error_handler,),
+    extra_arguments=(_shelf_common.ARCHIVES_ARGUMENT,
+                     _shelf_common.INFOSHELF_ARGUMENT),
+    checksum_path_message='No checksums for checksum files: ',
+    invalid_dir_message='Invalid directory for checksumming: ',
+    invalid_file_message='Invalid file for checksumming: ')
+
+TASKS = {'initialize': initialize,
+         'reinitialize': reinitialize,
+         'validate': validate,
+         'repair': repair,
+         'update': update}
+
 def main():
-
-    # Set up parser
-    parser = argparse.ArgumentParser(
-        description='pdschecksums: Create, maintain and validate MD5 '         +
-                    'checksum files for PDS volumes and volume sets.')
-
-    parser.add_argument('--initialize', '--init', const='initialize',
-                        default='', action='store_const', dest='task',
-                        help='Create an MD5 checksum file for a volume or '    +
-                             'volume set. Abort if the checksum file '         +
-                             'already exists.')
-
-    parser.add_argument('--reinitialize', '--reinit', const='reinitialize',
-                        default='', action='store_const', dest='task',
-                        help='Create an MD5 checksum file for a volume or '    +
-                             'volume set. Replace the checksum file if it '    +
-                             'already exists. If a single file is specified, ' +
-                             'such as one archive file in a volume set, only ' +
-                             'single checksum is re-initialized.')
-
-    parser.add_argument('--validate', const='validate',
-                        default='', action='store_const', dest='task',
-                        help='Validate every file in a volume directory tree ' +
-                             'against its MD5 checksum. If a single file '     +
-                             'is specified, such as one archive file in a '    +
-                             'volume set, only that single checksum is '       +
-                             'validated.')
-
-    parser.add_argument('--repair', const='repair',
-                        default='', action='store_const', dest='task',
-                        help='Validate every file in a volume directory tree ' +
-                             'against its MD5 checksum. If any disagreement '  +
-                             'is found, the checksum file is replaced; '       +
-                             'otherwise it is unchanged. If a single file is ' +
-                             'specified, such as one archive file of a '       +
-                             'volume set, then only that single checksum is '  +
-                             'repaired. If any of the files checked are newer' +
-                             'than the checksum file, update shelf file\'s '   +
-                             'modification date')
-
-    parser.add_argument('--update', const='update',
-                        default='', action='store_const', dest='task',
-                        help='Search a directory for any new files and add '   +
-                             'their MD5 checksums to the checksum file. '      +
-                             'Checksums of pre-existing files are not checked.')
-
-    parser.add_argument('volume', nargs='+', type=str,
-                        help='The path to the root directory of a volume or '  +
-                             'volume set. For a volume set, all the volume '   +
-                             'directories inside it are handled in sequence. ' +
-                             'Note that, for archive directories, checksums '  +
-                             'are grouped into one file for the entire '       +
-                             'volume set.')
-
-    parser.add_argument('--log', '-l', type=str, default='',
-                        help='Optional root directory for a duplicate of the ' +
-                             'log files. If not specified, the value of '      +
-                             'environment variable "%s" ' % LOGROOT_ENV        +
-                             'is used. In addition, individual logs are '      +
-                             'written into the "logs" directory parallel to '  +
-                             '"holdings". Logs are created inside the '        +
-                             '"pdschecksums" subdirectory of each log root '   +
-                             'directory.')
-
-    parser.add_argument('--quiet', '-q', action='store_true',
-                        help='Do not also log to the terminal.')
-
-    parser.add_argument('--archives', '-a', default=False, action='store_true',
-                        help='Instead of referring to a volume, refer to the ' +
-                             'the archive file for that volume.')
-
-    parser.add_argument('--infoshelf', '-i', dest='infoshelf',
-                        default=False, action='store_true',
-                        help='After a successful run, also execute the '       +
-                             'equivalent pdsinfoshelf command.')
-
-
-    # Parse and validate the command line
-    args = parser.parse_args()
-
-    if not args.task:
-        print('pdschecksums error: Missing task')
-        sys.exit(1)
-
-    # Define the logging directory
-    if args.log == '':
-        try:
-            args.log = os.environ[LOGROOT_ENV]
-        except KeyError:
-            args.log = None
-
-    # Initialize the logger
-    logger = pdslogger.PdsLogger(LOGNAME)
-    pdsfile.Pds3File.set_log_root(args.log)
-
-    if not args.quiet:
-        logger.add_handler(pdslogger.stdout_handler)
-
-    if args.log:
-        path = os.path.join(args.log, 'pdschecksums')
-        error_handler = pdslogger.error_handler(path)
-        logger.add_handler(error_handler)
-
-    # Prepare the list of paths
-    abspaths = []
-    for path in args.volume:
-
-        # Make sure path makes sense
-        path = os.path.abspath(path)
-        parts = path.partition('/holdings/')
-        if not parts[1]:
-            print('Not a holdings subdirectory: ' + path)
-            sys.exit(1)
-
-        if parts[2].startswith('checksums-'):
-            print('No checksums for checksum files: ' + path)
-            sys.exit(1)
-
-        # Convert to an archives path if necessary
-        if args.archives and not parts[2].startswith('archives-'):
-            path = parts[0] + '/holdings/archives-' + parts[2]
-
-        # Convert to a list of absolute paths that exist (volsets or volumes)
-        try:
-            pdsf = pdsfile.Pds3File.from_abspath(path, must_exist=True)
-            abspaths.append(pdsf.abspath)
-
-        except (ValueError, OSError):
-            # Allow a volume name to stand in for a .tar.gz archive
-            (dirname, basename) = os.path.split(path)
-            pdsdir = pdsfile.Pds3File.from_abspath(dirname)
-            if pdsdir.archives_ and '.' not in basename:
-                if pdsdir.voltype_ == 'volumes/':
-                    basename += '.tar.gz'
-                else:
-                    basename += '_%s.tar.gz' % pdsdir.voltype_[:-1]
-
-                newpaths = glob.glob(os.path.join(dirname, basename))
-                if len(newpaths) == 0:
-                    raise
-
-                abspaths += newpaths
-                continue
-            else:
-                raise
-
-    # Generate a list of tuples (pdsfile, selection)
-    info = []
-    for path in abspaths:
-        pdsf = pdsfile.Pds3File.from_abspath(path)
-
-        if pdsf.is_volset_dir:
-            # Archive directories are checksumed by volset
-            if pdsf.archives_:
-                info.append((pdsf, None))
-
-            # Others are checksumed by volume
-            else:
-                children = [pdsf.child(c) for c in pdsf.childnames]
-                info += [(c, None) for c in children if c.isdir]
-                        # "if c.isdir" is False for volset level readme files
-
-        elif pdsf.is_volume_dir:
-            # Checksum one volume
-            info.append((pdsf, None))
-
-        elif pdsf.isdir:
-            print('Invalid directory for checksumming: ' + pdsf.logical_path)
-            sys.exit(1)
-
-        else:
-            pdsdir = pdsf.parent()
-            if pdsf.is_volume_file:
-                # Checksum one archive file
-                info.append((pdsdir, pdsf.basename))
-            elif pdsdir.is_volume_dir:
-                # Checksum one top-level file in volume
-                info.append((pdsdir, pdsf.basename))
-            else:
-                print('Invalid file for checksumming: ' + pdsf.logical_path)
-                sys.exit(1)
-
-    # Begin logging and loop through tuples...
-    logger.open(' '.join(sys.argv))
-    try:
-        for (pdsdir, selection) in info:
-            path = pdsdir.abspath
-
-            if selection:
-                pdsf = pdsdir.child(os.path.basename(selection))
-            else:
-                pdsf = pdsdir
-
-            # Save logs in up to two places
-            method = ('log_path_for_bundle' if pdsf.volname
-                      else 'log_path_for_bundleset')
-            logfiles = _common.log_paths_for(pdsf, method, '_md5',
-                                             task=args.task, dir='pdschecksums')
-
-            # Create all the handlers for this level in the logger
-            local_handlers = []
-            _common.set_log_dirs(logfiles)
-            for logfile in logfiles:
-                local_handlers.append(pdslogger.file_handler(logfile))
-                logdir = os.path.split(logfile)[0]
-
-                # These handlers are only used if they don't already exist
-                error_handler = pdslogger.error_handler(logdir)
-                local_handlers += [error_handler]
-
-            # Open the next level of the log
-            if len(info) > 1:
-                logger.blankline()
-
-            if selection:
-                logger.open('Task "' + args.task + '" for selection ' +
-                            selection, path, handler=local_handlers)
-            else:
-                logger.open('Task "' + args.task + '" for', path,
-                            handler=local_handlers)
-
-            try:
-                for logfile in logfiles:
-                    logger.info('Log file', logfile)
-
-                if args.task == 'initialize':
-                    proceed = initialize(pdsdir, selection)
-
-                elif args.task == 'reinitialize':
-                    if selection:           # don't erase everything else!
-                        proceed = update(pdsdir, selection)
-                    else:
-                        proceed = reinitialize(pdsdir, selection)
-
-                elif args.task == 'validate':
-                    proceed = validate(pdsdir, selection)
-
-                elif args.task == 'repair':
-                    proceed = repair(pdsdir, selection)
-
-                else:   # update
-                    proceed = update(pdsdir, selection)
-
-            except (Exception, KeyboardInterrupt) as e:
-                logger.exception(e)
-                proceed = False
-                raise
-
-            finally:
-                _ = logger.close()
-
-    except (Exception, KeyboardInterrupt) as e:
-        logger.exception(e)
-        proceed = False
-        raise
-
-    finally:
-        (fatal, errors, _warnings, _tests) = logger.close()
-        if fatal or errors:
-            proceed = False
+    result = _shelf_common.run_selection_main(SPEC, TASKS, sys.argv)
 
     # If everything went well, execute pdsinfoshelf too
-    if proceed and args.infoshelf:
+    if result.proceed and result.args.infoshelf:
         new_list = [a.replace('pdschecksums', 'pdsinfoshelf') for a in sys.argv]
         new_list = [a for a in new_list if a not in ('--infoshelf', '-i')]
-        status = os.system(' '.join(new_list))
-        sys.exit(status)
+        completed = subprocess.run(new_list, check=False)
+        sys.exit(completed.returncode)
 
 if __name__ == '__main__':
     main()

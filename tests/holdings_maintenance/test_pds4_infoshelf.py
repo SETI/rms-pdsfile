@@ -5,16 +5,14 @@
 # pds4infoshelf reads the checksum file written by pds4checksums, so every test
 # dogfoods pds4checksums first (the `tree` fixture).
 #
-# Note the deliberate contrast with test_pds3_infoshelf.py: pds4infoshelf compares
-# modification times and checksums correctly, so the two corruptions its pds3 twin
-# silently accepts are reported here. The opposite expectations are deliberate --
-# the pds3 twin pins its defective comparison -- and when the pair is folded onto a
-# shared core, both modules must agree.
+# Both halves of the pair now share one comparison, so this module and its pds3
+# twin expect the same outcomes for the same corruptions.
 #
 # Every test rebuilds the tree first, so each one is independent and order-agnostic.
 ##########################################################################################
 
 import datetime
+import os
 from collections import namedtuple
 
 import pytest
@@ -203,3 +201,30 @@ def test_update_picks_up_a_new_file(shelved_tree):
                            shelved_tree.path(BUNDLE_DIR))
     assert run.returncode == 0, run.describe()
     assert run.error_lines == [], run.describe()
+
+
+def test_modification_time_within_one_second_agrees(shelved_tree):
+    """A sub-second difference across a second boundary is not a mismatch.
+
+    This is the flavor where the check discriminates. pds4 compared modification
+    times as strings truncated to the second, so it called these two times
+    different because they fall in different seconds. The comparison is a
+    one-second tolerance now, so it calls them the same -- which is the pds4
+    behavior change this PR enumerates.
+    """
+
+    label = shelved_tree.path(ALPHA_LABEL)
+    straddle = float(int(SOURCE_MTIMES[ALPHA_LABEL])) + 0.8
+    os.utime(label, (straddle, straddle))
+    refresh_checksums(shelved_tree)
+    support.run_tool(shelved_tree, 'pds4infoshelf', '--repair',
+                     shelved_tree.path(BUNDLE_DIR))
+
+    # 0.6 s later, which is over the next whole second but inside the tolerance.
+    os.utime(label, (straddle + 0.6, straddle + 0.6))
+    refresh_checksums(shelved_tree)
+
+    run = support.run_tool(shelved_tree, 'pds4infoshelf', '--validate',
+                           shelved_tree.path(BUNDLE_DIR))
+    assert run.error_lines == [], run.describe()
+    assert run.returncode == 0, run.describe()

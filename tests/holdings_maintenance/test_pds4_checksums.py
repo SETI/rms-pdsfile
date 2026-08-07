@@ -178,11 +178,11 @@ def test_update_picks_up_a_new_file(fresh_tree):
 def test_reinitialize_versions_the_checksum_file_it_replaces(fresh_tree):
     """--reinitialize copies the superseded checksum file into the log directory.
 
-    _common.move_old_checksums() versions the file the task is about to overwrite,
+    _shelf_common.move_old() versions the file the task is about to overwrite,
     as <name>_v###.txt beside the run's own log file, one past the highest version
-    already there. It reads the shared LOGDIRS list that main() fills in through
-    _common.set_log_dirs(), so a tool that leaves that list empty versions nothing;
-    this test is what makes that visible, here and in the pds3 twin.
+    already there. It reads the shared LOGDIRS list that the run fills in through
+    _shelf_common.set_log_dirs(), so a tool that leaves that list empty versions
+    nothing; this test is what makes that visible, here and in the pds3 twin.
     """
 
     support.initialize(fresh_tree, 'pds4checksums', fresh_tree.path(BUNDLE_DIR))
@@ -211,3 +211,29 @@ def test_reinitialize_versions_the_checksum_file_it_replaces(fresh_tree):
     versions = sorted(p.name for p in logs.rglob(f'{subsets.PDS4_BUNDLE}_md5_v*.txt'))
     assert versions == [f'{subsets.PDS4_BUNDLE}_md5_v001.txt',
                         f'{subsets.PDS4_BUNDLE}_md5_v002.txt'], run.describe()
+
+
+def test_no_targets_leaves_no_unbound_state(fresh_tree):
+    """A bundle set with no bundles in it completes instead of raising.
+
+    Expanding the command-line path can legitimately yield nothing, and the run
+    then has no task result to decide the --infoshelf chain on. Both checksums
+    tools share the driver that used to leave that result unassigned; this is the
+    pds4 half of the pds3 test of the same name.
+
+    The bundle set has to be one PDS4 recognizes, so this empties the declared one
+    rather than inventing a name: a bundle set directory with its bundles removed
+    is the state a fresh mirror is in before anything has been synced into it.
+    """
+
+    import shutil
+
+    bundleset = fresh_tree.holdings / 'bundles' / subsets.PDS4_BUNDLESET
+    shutil.rmtree(bundleset / subsets.PDS4_BUNDLE, ignore_errors=True)
+    assert bundleset.is_dir()
+    assert not any(bundleset.iterdir())
+
+    run = support.run_tool(fresh_tree, 'pds4checksums', '--validate', bundleset)
+    assert run.returncode == 0, run.describe()
+    assert 'UnboundLocalError' not in run.stderr, run.describe()
+    assert 'Traceback' not in run.stderr, run.describe()

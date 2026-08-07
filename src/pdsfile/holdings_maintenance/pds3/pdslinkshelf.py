@@ -19,9 +19,9 @@ import pdslogger
 import translator
 
 import pdsfile
-from pdsfile.holdings_maintenance import _common
+from pdsfile.holdings_maintenance import _common, _shelf_common
 
-LOGNAME = _common.LINKSHELF_LOGNAME
+LOGNAME = _shelf_common.LINKSHELF_LOGNAME
 LOGROOT_ENV = 'PDS_LOG_ROOT'
 
 # Default limits
@@ -1394,7 +1394,7 @@ def initialize(pdsdir, *, logger=None, limits=None):
 
     # Move old file if necessary
     if os.path.exists(link_path):
-        _common.move_old(link_path, _common.LINK_SHELF, logger=logger)
+        _shelf_common.move_old(link_path, _shelf_common.LINK_SHELF, logger=logger)
 
     # Save link files
     write_linkdict(pdsdir.abspath, link_dict, logger=logger, limits=limits)
@@ -1420,7 +1420,7 @@ def reinitialize(pdsdir, *, logger=None, limits=None):
 
     # Move old file if necessary
     if os.path.exists(link_path):
-        _common.move_old(link_path, _common.LINK_SHELF, logger=logger)
+        _shelf_common.move_old(link_path, _shelf_common.LINK_SHELF, logger=logger)
 
     # Save link files
     write_linkdict(pdsdir.abspath, link_dict, logger=logger, limits=limits)
@@ -1510,7 +1510,7 @@ def repair(pdsdir, *, logger=None, limits=None):
         return
 
     # Move files and write new links
-    _common.move_old(link_path, _common.LINK_SHELF, logger=logger)
+    _shelf_common.move_old(link_path, _shelf_common.LINK_SHELF, logger=logger)
     write_linkdict(pdsdir.abspath, dir_linkdict, logger=logger, limits=limits)
 
 def update(pdsdir, *, logger=None, limits=None):
@@ -1545,7 +1545,7 @@ def update(pdsdir, *, logger=None, limits=None):
         return
 
     # Move files and write new links
-    _common.move_old(link_path, _common.LINK_SHELF, logger=logger)
+    _shelf_common.move_old(link_path, _shelf_common.LINK_SHELF, logger=logger)
     write_linkdict(pdsdir.abspath, dir_linkdict, logger=logger, limits=limits)
 
 ################################################################################
@@ -1672,7 +1672,7 @@ def main():
 
             # Create all the handlers for this level in the logger
             local_handlers = []
-            _common.set_log_dirs(logfiles)
+            _shelf_common.set_log_dirs(logfiles)
             for logfile in logfiles:
                 local_handlers.append(pdslogger.file_handler(logfile))
                 logdir = os.path.split(logfile)[0]

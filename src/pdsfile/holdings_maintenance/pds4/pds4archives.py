@@ -16,7 +16,7 @@ import zlib
 import pdslogger
 
 import pdsfile
-from pdsfile.holdings_maintenance import _common
+from pdsfile.holdings_maintenance import _archives_common, _common
 
 LOGNAME = 'pds.validation.archives'
 
@@ -37,7 +37,7 @@ def read_archive_info(tarpath, *, logger=None, limits=None):
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdstar.root_)
 
-    merged_limits = _common.READ_ARCHIVE_INFO_LIMITS.copy()
+    merged_limits = _archives_common.READ_ARCHIVE_INFO_LIMITS.copy()
     merged_limits.update(limits)
     logger.open('Reading archive file', tarpath, limits=merged_limits)
 
@@ -90,9 +90,9 @@ def write_archive(pdsdir, *, clobber=True, archive_invisibles=True,
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     logger.replace_root(pdsdir.root_)
-    archive_filter = _common.make_archive_filter(SPEC, logger, archive_invisibles)
+    archive_filter = _archives_common.make_archive_filter(SPEC, logger, archive_invisibles)
 
-    merged_limits = _common.WRITE_ARCHIVE_LIMITS.copy()
+    merged_limits = _archives_common.WRITE_ARCHIVE_LIMITS.copy()
     merged_limits.update(limits)
     logger.open('Writing .tar.gz file for', dirpath, limits=merged_limits)
 
@@ -148,7 +148,7 @@ def reinitialize(pdsdir, logger=None):
 
 def validate(pdsdir, logger=None):
 
-    dir_tuples = _common.load_directory_info(SPEC, pdsdir, logger=logger)
+    dir_tuples = _archives_common.load_directory_info(SPEC, pdsdir, logger=logger)
 
     archive_paths = pdsdir.archive_paths()
     archive_dirs = pdsdir.archive_dirs()
@@ -162,7 +162,7 @@ def validate(pdsdir, logger=None):
             if any(t[0] == root or t[0].startswith(root + '/') for root in roots)
         ]
 
-        valid = _common.validate_tuples(SPEC, actual_dir_tuples, tar_tuples,
+        valid = _archives_common.validate_tuples(SPEC, actual_dir_tuples, tar_tuples,
                                         logger=logger)
 
         if not valid:
@@ -174,7 +174,7 @@ def repair(pdsdir, logger=None):
 
     archive_paths = pdsdir.archive_paths()
     archive_dirs = pdsdir.archive_dirs()
-    dir_tuples = _common.load_directory_info(SPEC, pdsdir, logger=logger)
+    dir_tuples = _archives_common.load_directory_info(SPEC, pdsdir, logger=logger)
 
     for tarpath in archive_paths:
         if not os.path.exists(tarpath):
@@ -239,7 +239,7 @@ def archive_lskip(pdsdir):
 def archive_targets(pdsf, path):
     """Return the bundle directories one command-line path names."""
 
-    _common.reject_checksum_and_archive_paths(pdsf, path)
+    _archives_common.reject_checksum_and_archive_paths(pdsf, path)
 
     # pdsdirs: a list, each element is the path of a bundle set, bundle, or a bundle
     # collection
@@ -253,9 +253,9 @@ SPEC = _common.ToolSpec(
     holdings_sentinel='/pds4-holdings/',
     index_ext='.csv',
     file_log_level='normal',
-    description=_common.ARCHIVE_DESCRIPTION,
-    task_help=_common.ARCHIVE_TASK_HELP,
-    positional_help=_common.ARCHIVE_POSITIONAL_HELP,
+    description=_archives_common.ARCHIVE_DESCRIPTION,
+    task_help=_archives_common.ARCHIVE_TASK_HELP,
+    positional_help=_archives_common.ARCHIVE_POSITIONAL_HELP,
     log_path_method='log_path_for_bundle',
     log_suffix='_archives',
     expand_target=archive_targets,
