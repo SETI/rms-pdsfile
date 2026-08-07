@@ -384,6 +384,14 @@ Enumerated for completeness, since "every changed line" is the rule:
   instance `PdsLogger(LOGNAME)` registered, and both use the same name, so the task
   received the same object either way. Verified:
   `PdsLogger('x') is PdsLogger.get_logger('x')` is `True`.
+- `validate_indexdict`'s three per-key ERROR lines are `%`-style with lazy
+  arguments, where both base flavors wrote f-strings. That is the owner's logging
+  style, and it renders identically here: `PdsLogger` substitutes `*args` into a
+  title that contains a `%` pattern rather than treating a lone second positional
+  as a filepath, so `logger.error('not in shelf: %s', key)` and
+  `logger.error(f'not in shelf: {key}')` produce the same line. Probed, not
+  assumed — the six lines were emitted side by side through a real `PdsLogger` and
+  compared.
 - `_common.set_log_dirs` is **not** called by `run_index_main`. It was, briefly;
   nothing in the index shelf family calls `move_old` — `write_indexdict` writes
   directly — so the list would have been written and never read. Dropped as dead.

@@ -248,14 +248,14 @@ def validate_indexdict(spec, pdsf, tabdict, shelfdict, *, logger=None):
     logger.error('Validation failed for', pdsf.abspath)
     for key, value in tabdict.items():
         if key not in shelfdict:
-            logger.error(f'not in shelf: {key}')
+            logger.error('not in shelf: %s', key)
         elif (shelfval := shelfdict[key]) != value:
-            logger.error(f'key mismatch: {key}\n'
-                         f'    table: {value}\n'
-                         f'    shelf: {shelfval}')
+            logger.error('key mismatch: %s\n'
+                         '    table: %s\n'
+                         '    shelf: %s', key, value, shelfval)
     for key in shelfdict:
         if key not in tabdict:
-            logger.error(f'not in table: {key}')
+            logger.error('not in table: %s', key)
 
 
 ##########################################################################################
