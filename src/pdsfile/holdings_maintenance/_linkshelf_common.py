@@ -426,7 +426,24 @@ def write_linkdict(spec, dirpath, link_dict, *, logger=None, limits=None):
 
 
 def validate_links(spec, dirpath, dirdict, shelfdict, *, logger=None, limits=None):
-    """Report every way the links found in a unit and the shelved links disagree."""
+    """Report every way the links found in a unit and the shelved links disagree.
+
+    Both dictionaries are emptied as it goes: a key present in both is compared and
+    then deleted from both, so what is left in each at the end is what the other
+    lacks, and that is what the last two loops report. A caller that still needs
+    either dictionary afterwards has to pass a copy.
+
+    Args:
+        spec: The tool's ToolSpec.
+        dirpath: The unit the links were found in.
+        dirdict: The links a fresh scan found. Emptied.
+        shelfdict: The links the shelf file holds. Emptied.
+        logger: The logger to report through. Defaults to the tool's own.
+        limits: Message limits for this scope, merged over the defaults.
+
+    Returns:
+        tuple: What closing this scope's log level reported.
+    """
 
     if limits is None:
         limits = {}
@@ -634,7 +651,7 @@ def link_update(spec, pdsdir, *, logger=None, limits=None):
     if not os.path.exists(link_path):
         logger = logger or pdslogger.PdsLogger.get_logger(spec.logname)
         logger.warning('Link shelf file does not exist; initializing', link_path)
-        link_initialize(spec, pdsdir, logger=logger)
+        link_initialize(spec, pdsdir, logger=logger, limits=limits)
         return
 
     # Read link shelf file

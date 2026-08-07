@@ -1,19 +1,23 @@
 ##########################################################################################
 # tests/holdings_maintenance/test_shelf_common.py
 #
-# The pieces of _shelf_common.py that every checksum and shelf tool runs on, tested
-# directly rather than through a tool: the modification-time comparison, and the
-# pair of log-path method names the driver picks between.
+# The pieces of the shared maintenance-tool core that a tool runs on, tested
+# directly rather than through a tool: the modification-time comparison, the pair
+# of log-path method names the driver picks between, and the task names the four
+# migrated tools carry.
 #
 # Holdings-free and in-process; nothing here touches a holdings tree.
 ##########################################################################################
 
 import datetime
+import inspect
 
 import pytest
 
 import pdsfile
-from pdsfile.holdings_maintenance import _shelf_common
+from pdsfile.holdings_maintenance import _indexshelf_common, _linkshelf_common, _shelf_common
+from pdsfile.holdings_maintenance.pds3 import pdsindexshelf, pdslinkshelf
+from pdsfile.holdings_maintenance.pds4 import pds4indexshelf, pds4linkshelf
 
 pytestmark = pytest.mark.holdings_free
 
@@ -196,3 +200,54 @@ def test_the_pds3_log_path_aliases_agree_with_the_bundle_names():
     pdsf.log_path_for_bundle('_md5', task='update', dir='pdschecksums')
     pdsf.log_path_for_bundleset('_md5', task='update', dir='pdschecksums')
     assert pdsf.calls[0] != pdsf.calls[1]
+
+
+##########################################################################################
+# The task names the migrated tools carry
+##########################################################################################
+
+# The four tools whose tasks live in a family module, with that module's prefix for
+# a task name: _indexshelf_common.index_validate, _linkshelf_common.link_validate.
+MIGRATED_TOOLS = [
+    pytest.param(pdsindexshelf, _indexshelf_common, 'index_', id='pdsindexshelf'),
+    pytest.param(pds4indexshelf, _indexshelf_common, 'index_', id='pds4indexshelf'),
+    pytest.param(pdslinkshelf, _linkshelf_common, 'link_', id='pdslinkshelf'),
+    pytest.param(pds4linkshelf, _linkshelf_common, 'link_', id='pds4linkshelf'),
+]
+
+TASK_NAMES = ('initialize', 'reinitialize', 'validate', 'repair', 'update')
+
+
+@pytest.mark.parametrize(('tool', 'family', 'prefix'), MIGRATED_TOOLS)
+def test_each_migrated_tool_still_carries_its_five_task_names(tool, family, prefix):
+    """A tool module is a library as well as a main program.
+
+    re_validate reaches pdslinkshelf.validate() by attribute, and nothing else in
+    the suite would notice one of these names disappearing: the tool tests drive
+    each tool as a subprocess through main(), which reads the task table rather
+    than the module namespace.
+    """
+
+    for name in TASK_NAMES:
+        task = getattr(tool, name, None)
+        assert callable(task), f'{tool.__name__} does not carry {name}'
+        assert task is tool.TASKS[name], f'{tool.__name__}.{name} is not its own task'
+        # One target, plus the two keyword arguments a library caller passes.
+        inspect.signature(task).bind('target', logger=None, limits={})
+
+
+@pytest.mark.parametrize(('tool', 'family', 'prefix'), MIGRATED_TOOLS)
+def test_each_migrated_tool_binds_its_own_spec_into_its_tasks(tool, family, prefix):
+    """The task table is the family's functions with this tool's own spec bound in.
+
+    Without the binding being the tool's own, the pds4 half of a pair could run
+    against the pds3 half's PdsFile class and shelve the wrong tree.
+    """
+
+    for name in TASK_NAMES:
+        task = tool.TASKS[name]
+        assert task.args == (tool.SPEC,), f'{tool.__name__}.TASKS[{name!r}]'
+        assert task.func is getattr(family, prefix + name), name
+
+    assert tool.SPEC.pdsfile_cls is (pdsfile.Pds4File if tool.__name__.rpartition('.')[2]
+                                     .startswith('pds4') else pdsfile.Pds3File)

@@ -289,7 +289,14 @@ Every one of these is a log or output **text** change except the last three.
 10. **`pdslinkshelf.initialize` loses a dead `move_old` call.** It sat after a
     guard that returns when the shelf file exists, so it could only run if
     `generate_links` had created one; it does not. pds4 had no such call.
-11. **A command-line path that does not exist is now reported as an absolute path.**
+11. **`limits` now reaches the `initialize` fallback in all six places.** When
+    `reinitialize`, `repair` or `update` finds no shelf file it falls back to
+    `initialize`, and three of the six pds3 call sites dropped the caller's `limits`
+    on the way (`pdsindexshelf.reinitialize` and `.repair`, `pdslinkshelf.update`);
+    all four pds4 sites had no `limits` at all. The shared tasks pass it everywhere.
+    Invisible from the command line, where the driver never passes limits; visible
+    to a library caller that does.
+12. **A command-line path that does not exist is now reported as an absolute path.**
     `run_main` calls `os.path.abspath()` before the existence check; the two link
     shelf `main()`s checked the raw string first. Reachable only with a relative
     path that does not exist. This is the behaviour PR-25 already gave the archives
