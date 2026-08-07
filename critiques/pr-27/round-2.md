@@ -52,9 +52,10 @@ invalidated.
 
 - **m1** — the record said five `%`-format sites were converted to f-strings; it
   is eight. All eight are now enumerated, split into the four numeric ones (where
-  `%d` and `:d` differ on a non-integer, so the operand type was measured) and the
-  three `%s` ones (where both forms call `str()`), plus the two sites that were
-  **not** converted and why.
+  `%d` and `:d` differ on a non-integer, so the operand type was measured),
+  `LinkInfo.__str__` (whose `'%d %s %s %s'` mixes both, so the two forms were
+  rendered side by side and compared), and the three `%s` ones (where both forms
+  call `str()`), plus the two sites that were **not** converted and why.
 - **m2** — round-1's "78% low" replacement had missed deferred entry 123.
 - **m3** — `file_log_level` is declared by both index specs and read by neither.
   `ToolSpec`'s flavor-property carve-out now names all three such fields and says

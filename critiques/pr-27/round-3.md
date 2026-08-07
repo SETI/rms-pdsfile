@@ -5,8 +5,10 @@ third round: confirm the prior rounds' findings are resolved, and raise only **n
 Major** findings.
 
 **Verdict: `goal not met` — "narrowly, and in the evidence rather than the code,
-for the third round running."** One Major, five Deferred. The finding was accepted;
-nothing was rebutted.
+for the third round running."** One Major, and five the reviewer classified as
+Deferred. The finding was accepted; nothing was rebutted, and nothing stayed
+deferred either — the five are recorded below under the reviewer's own heading,
+and every one was fixed or had already been corrected.
 
 The reviewer confirmed **every** prior finding resolved except one, and did so by
 re-measuring rather than reading: it independently reproduced the 158 / 96 / 17
@@ -55,6 +57,8 @@ has to be the last thing written. It now is, and it is checked mechanically agai
 `wc -l`, the ratchet and the split arithmetic rather than re-read.
 
 ## Deferred
+
+The reviewer's classification, kept as it filed them. None was in fact deferred.
 
 1. **The propagation test asserted less than its docstring claimed** — "logs and
    re-raises", with only the re-raise asserted. Fixed rather than deferred: it now
