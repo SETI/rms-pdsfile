@@ -293,7 +293,7 @@ been built in this tree either.
 
 ## 5. Behavior changes, enumerated
 
-Every one of these is a log or output **text** change except the last three.
+Items **8 to 11** are behavior changes; the other nine are log or output **text**.
 
 1. **The link shelf task header loses its quotes.** `Task "validate" for:` becomes
    `Task validate for:`, in the `HEADER` line and the matching `SUMMARY | Completed:`
@@ -391,10 +391,10 @@ Every one of these is a log or output **text** change except the last three.
 **These items and §7.2's table are the same measurement.** The line counts above are
 242 + 10 + (2 + 6) + 0 + 6 + 3 + (118 + 92 + 38 + 2) + 73 + 0 + 0 + 0 + 0 + 2 =
 **594** — §7.2's total, and its per-cause rows, item by item (item 3 carries both
-its own 2 lines and the 6 message-count lines that follow them). The two are generated from one
-run and reconciled deliberately, because an earlier draft of this section carried
-226 / 16 / 67 where the table said 242 / 10 / 73: the 226 and 67 predated the
-metadata scenario, and the 16 predated splitting the blank lines by cause. A
+its own 2 lines and the 6 message-count lines that follow them). The two come from
+one run and are reconciled deliberately, because an earlier draft of this section
+carried 226 / 16 / 67 where the table said 242 / 10 / 73: the 226 and 67 predated
+the metadata scenario, and the 16 predated splitting the blank lines by cause. A
 line-by-line enumeration that does not add up to the measurement is not an
 enumeration.
 
@@ -780,10 +780,23 @@ quoted field. Ruff flags neither, and both stay as the author wrote them.
 
 ## 10. When each record was taken
 
-Round 1 changed source under `src/pdsfile/` twice — CodeRabbit's findings 3 and 4,
-then the adversarial reviewer's m5 and m6 — and round 2 changed it once more
-(m3's docstring). §6.6's regeneration rule applies each time. The `--mode ns` run, the `--mode s` run and the 81-record tool transcript
-above were **all re-taken at the final head**, not carried forward, and the
-base-versus-base control was re-run with them.
+Source under `src/pdsfile/` changed in every review round: CodeRabbit's findings 3
+and 4 and the adversarial reviewer's m5 and m6 in round 1, m3's docstring in round
+2, and nothing in round 3, whose fixes were to the records and one test. §6.6's
+regeneration rule applies each time, so the `--mode ns` run, the `--mode s` run and
+the 81-record tool transcript above were **all re-taken at the final head** rather
+than carried forward, and the base-versus-base control was re-run with them.
+
 The `--mode ns` id count moved from 1,079 at the base to 1,095 with the seventeen
 added tests, still with zero outcome changes for any id present in both runs.
+
+**The line tables are written last, on purpose.** Three rounds running, a record
+edit invalidated a count in the same document — a `wc -l` table taken before the
+commit that changed a module, or a duplication figure restated after the function
+it measures had moved. The order that fixes it is: source, then the gates, then the
+tables, then a mechanical re-check of every reproducible number in this record, the
+plan's PR-27 entry and deferred entries 66, 114, 123 and 130 against the tree.
+Every number in the list below was produced that way and re-checked at this head:
+the ten line counts and their total, the four-tool total, the shared-code figure
+and its projection gap, the split addition, the `pdsdependency` exception, the
+ratchet entries, slots and findings, and both driver duplication measurements.
