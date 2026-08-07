@@ -44,18 +44,45 @@ def test_the_recorded_format_parses():
 @pytest.mark.parametrize(('delta', 'agree'), [
     (0.0, True),
     (0.5, True),
-    (1.0, True),           # the tolerance is inclusive
+    (0.999999, True),
+    (1.0, False),
     (1.000001, False),
     (2.0, False),
-    (-1.0, True),          # and symmetric
+    (-0.999999, True),     # and symmetric
+    (-1.0, False),
     (-2.0, False),
 ])
 def test_tolerance(delta, agree):
-    """Times agree when they are no more than MODTIME_TOLERANCE seconds apart."""
+    """Times agree when they are less than MODTIME_TOLERANCE seconds apart."""
 
     assert _shelf_common.MODTIME_TOLERANCE == 1
     base = 1600000000.25
     assert _shelf_common.modtimes_agree(stamp(base), stamp(base + delta)) is agree
+
+
+def test_the_boundary_is_exclusive():
+    """Exactly one second apart is a difference; a microsecond less is not.
+
+    Pinned in both directions and outside the table above, because it is the one
+    value where a reader could reasonably expect either answer, and because it is a
+    deliberate departure from validate_tuples(), which allows a full second
+    inclusively. The operands are what differ: validate_tuples() compares a
+    tarfile's whole-second time against a filesystem time, where up to a second of
+    slack is unavoidable, while both times here come from one generator at
+    microsecond precision, so only a sub-second discrepancy is noise. On a
+    filesystem storing whole seconds a one-second change is the smallest real change
+    there is, and reporting it is the point of the comparison.
+    """
+
+    base = 1600000000.25
+    assert _shelf_common.modtimes_agree(stamp(base), stamp(base + 0.999999))
+    assert not _shelf_common.modtimes_agree(stamp(base), stamp(base + 1.0))
+    assert not _shelf_common.modtimes_agree(stamp(base + 1.0), stamp(base))
+
+    # A whole-second shift of a whole-second time, which is the case a coarse
+    # filesystem actually produces.
+    whole = 1600000000.0
+    assert not _shelf_common.modtimes_agree(stamp(whole), stamp(whole + 1.0))
 
 
 def test_a_boundary_straddle_is_not_a_mismatch():
@@ -72,8 +99,12 @@ def test_a_boundary_straddle_is_not_a_mismatch():
     assert _shelf_common.modtimes_agree(before, after)
 
 
-def test_a_whole_second_apart_inside_the_tolerance():
-    """Times 0.9 s apart agree wherever they fall, which truncation cannot promise."""
+def test_nine_tenths_of_a_second_agrees_wherever_it_falls():
+    """Times 0.9 s apart agree whether or not they share a second.
+
+    Truncation cannot promise that: it agrees or not depending on where the second
+    boundary happens to fall between them.
+    """
 
     assert _shelf_common.modtimes_agree('2020-09-13 12:26:40.001',
                                         '2020-09-13 12:26:40.901')
@@ -90,8 +121,8 @@ def test_every_reported_mismatch_renders_two_different_seconds():
     """
 
     base = 1600000000.0
-    for offset in (0.01, 0.25, 0.5, 0.75, 0.99):
-        for delta in (1.0001, 1.5, 2.0, 60.0, 100.0):
+    for offset in (0.0, 0.01, 0.25, 0.5, 0.75, 0.99):
+        for delta in (1.0, 1.0001, 1.5, 2.0, 60.0, 100.0):
             one, two = stamp(base + offset), stamp(base + offset + delta)
             assert not _shelf_common.modtimes_agree(one, two)
             assert one.rpartition('.')[0] != two.rpartition('.')[0], (one, two)

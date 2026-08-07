@@ -3039,13 +3039,14 @@ these entries are read by the PRs that come after it.
 
 ### Added by the PR-26 adversarial review (round 2)
 
-120. **The modification-time tolerance is inclusive, so an exactly-one-second
-     change is reported as no change.** `_shelf_common.modtimes_agree()` returns
-     True when `abs((t1 - t2).total_seconds()) <= MODTIME_TOLERANCE`, and the
-     tolerance is 1. That is the form the plan prescribes (`> 1` is an error) and
-     the form `_archives_common.validate_tuples` has always used on epoch seconds,
-     so PR-26 implemented it as specified. Measured end to end on a pds3 tree, a
-     label whose modification time moved by exactly 1.0 s:
+120. **The modification-time tolerance was inclusive, so an exactly-one-second
+     change was reported as no change.** As PR-26 first implemented it,
+     `_shelf_common.modtimes_agree()` returned True when
+     `abs((t1 - t2).total_seconds()) <= MODTIME_TOLERANCE`, with the tolerance at 1.
+     That was the form the plan prescribed (`> 1` is an error) and the form
+     `_archives_common.validate_tuples` has always used on epoch seconds. Measured
+     end to end on a pds3 tree at that point, a label whose modification time moved
+     by exactly 1.0 s:
 
      ```
      shift +1.0 s   exit 0, no modification-time error
@@ -3059,15 +3060,34 @@ these entries are read by the PRs that come after it.
      which is mostly boundary-straddle noise but includes exact whole-second
      shifts.
 
-     Whether that matters depends on how a real one-second shift arises. The
-     justification for a tolerance at all is that tar and some filesystems carry
-     whole-second modification times, and that quantization produces differences
-     **strictly** below one second — which would argue for `<`. Against that,
-     `< 1` and `<= 1` differ only on an exact-microsecond coincidence, and
-     changing it would make `modtimes_agree` disagree with `validate_tuples`, which
-     is the convention it was written to match. Not decided here because the plan
-     specifies the inclusive form and the owner approved that formula.
-     **Owner: open.**
+     **RESOLVED (owner, 2026-08-07): the boundary is strict.** `modtimes_agree()`
+     returns True only when the difference is **less than** the tolerance, so a
+     change of exactly one second is a mismatch again. Implemented in PR-26 before
+     it merged; the parametrized boundary cases flip and
+     `test_the_boundary_is_exclusive` pins it in both directions.
+
+     The reasoning is not "strict is tidier", and it disposes of the consistency
+     argument above rather than overruling it. That argument was that
+     `validate_tuples()` allows a full second inclusively and the two should agree.
+     But the two compare **different operands**. `validate_tuples()` puts a
+     tarfile's whole-second modification time against a filesystem time carrying a
+     fraction, so up to a second of slack genuinely exists and must be forgiven.
+     Both operands in `modtimes_agree()` come from one generator at microsecond
+     precision — `dt.strftime('%Y-%m-%d %H:%M:%S.%f')` — so the only discrepancy to
+     forgive is sub-second. Strict forgives all of that and still catches a real
+     one-second change, which on a filesystem storing whole seconds is the
+     **typical** size of a real change rather than an edge case. The two boundaries
+     differ because their operand pairs differ; that is a justified difference, not
+     an inconsistency, and both the code comment and the plan now say so.
+
+     The change also repairs a claim that was overstated in PR-26's brief and
+     inherited by its record: that the new mismatch set was a strict subset of the
+     old containing only false positives. Under `<=` the removed class was
+     "one second apart **or less**", which included real one-second changes. Under
+     `<` it is "strictly under one second apart", and the claim is true as stated.
+     Measured over 300,000 random pairs at the strict head: 0 subset violations,
+     and the largest difference among the reports the change removes is 0.999992 s.
+     **Owner: resolved, not open.**
 
 121. **A subprocess-based tool test used to exercise whichever `pdsfile` was
      installed, so a green run proved nothing about the tree it ran in.** Entry 110

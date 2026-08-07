@@ -845,9 +845,22 @@ not blindly inherit pds4's version:**
   original bug and a naïve `str - str` "fix" are wrong. Implementable fix
   (the intended semantics, owner-defaulted): parse the two **untruncated**
   modtime strings with `datetime.fromisoformat` and compare
-  `abs((t1 - t2).total_seconds()) > 1`; drop the now-unneeded
-  second-truncation lines. Pin the 1-second tolerance with a test. Whichever
-  is chosen, pds3 and pds4 share it via `_common.py`.
+  `abs((t1 - t2).total_seconds()) >= 1`; drop the now-unneeded
+  second-truncation lines. Pin the 1-second tolerance with a test, in both
+  directions across the boundary. Whichever is chosen, pds3 and pds4 share it
+  via `_common.py`.
+  **The boundary is exclusive** (owner, 2026-08-07): a difference of exactly one
+  second is a difference. An earlier draft of this entry prescribed `> 1`, by
+  analogy with `validate_tuples()`, which allows a full second inclusively. The
+  analogy does not hold, because the operands differ. `validate_tuples()` compares
+  a tarfile's whole-second modification time against a filesystem time carrying a
+  fraction, so up to a second of slack is unavoidable and inclusive is right there.
+  Both operands here come from one generator at microsecond precision
+  (`dt.strftime('%Y-%m-%d %H:%M:%S.%f')`), so the only discrepancy to forgive is a
+  sub-second one — and on a filesystem that stores whole seconds, a one-second
+  change is the smallest real change there is rather than an edge case. The two
+  boundaries differ because the operand pairs differ; that is a justified
+  difference and not an inconsistency.
 Preserve the pds3 `--infoshelf` chaining behavior (modernize `os.system` →
 `subprocess.run` as pds4 already does — flagged behavior change, tested).
 CLI surface and exit codes asserted unchanged by PR-13's tests; log text held to
@@ -876,7 +889,10 @@ items are done rather than owed here.
   comparison was string equality on quantized values. The owner approved the
   change on 2026-08-06, conditional on the new results being more accurate: the
   new mismatch set is a strict subset of the old, so the change removes false
-  positives only — pairs under a second apart that straddled a second boundary.
+  positives only — pairs **strictly under** a second apart that straddled a second
+  boundary. That claim is true because the boundary is exclusive; with the
+  inclusive `<= 1` first implemented, the removed class also contained real
+  one-second changes, which is why the owner ruled the boundary strict.
   Implemented once as `_shelf_common.modtimes_agree()` and shared. The report
   still renders whole seconds; only what is *compared* changed, and no artifact
   these tools write changed at all.

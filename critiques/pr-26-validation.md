@@ -180,28 +180,51 @@ it changes pds4's results too:
   forces the floors to differ. Every mismatch the new comparison reports,
   truncation reported too, so over the produced values the new mismatch set is a
   **subset** of the old.
-- What changes: a pair **no more than** a second apart that straddles a second
+- What changes: a pair **strictly under** a second apart that straddles a second
   boundary was reported as a mismatch and is not any more. `12:26:40.999999`
   versus `12:26:41.000001` — two microseconds apart, called different by
-  truncation — is the archetype.
-- **That class is mostly, but not only, false positives, and the difference is
-  worth naming.** The tolerance is inclusive (`<= 1`, the form the plan
-  prescribes and the form `validate_tuples` already uses), so a file whose
-  modification time moved by **exactly** one second is now reported as matching.
-  Measured end to end on a pds3 tree: a label shifted by exactly 1.0 s validates
-  clean, the same label shifted by 1.5 s reports the mismatch. On pds4 that is a
-  detection the old truncation would have made, since the two floors differ. It is
-  a narrow class — an exact whole-second shift — and it is the price of a
-  symmetric tolerance, but it is not a false positive and the record should not
-  imply the change removes only those. Recorded as deferred observation 120 so the
-  owner can revisit `<=` versus `<` on its merits.
+  truncation — is the archetype. Every member of that class is a false positive:
+  two times less than a second apart, called different because a quantization
+  boundary happened to fall between them.
+- **The boundary is exclusive, and that is what makes the sentence above true.**
+  `modtimes_agree()` agrees only when the difference is **less than** the
+  tolerance, so a change of exactly one second is a mismatch. It did not start
+  that way: PR-26 first implemented `<= 1`, following the plan's `> 1` and
+  `validate_tuples`'s long-standing convention, and under that form the removed
+  class was "a second apart **or less**" and contained real one-second changes as
+  well as false positives. The owner ruled the boundary strict on 2026-08-07.
+
+  The consistency argument for `<=` was answered rather than overruled, and the
+  answer is that **the two comparisons have different operands**.
+  `validate_tuples()` puts a tarfile's whole-second modification time against a
+  filesystem time carrying a fraction, so up to a second of slack genuinely exists
+  and inclusive is correct there. Both operands here come from one generator at
+  microsecond precision, `dt.strftime('%Y-%m-%d %H:%M:%S.%f')`, so the only
+  discrepancy to forgive is sub-second — and on a filesystem storing whole seconds
+  a one-second change is the *typical* size of a real change, not an edge case.
+  The two boundaries differ because their operand pairs differ; the code comment
+  on `MODTIME_TOLERANCE` and the plan's PR-26 entry both say so, so a later reader
+  does not conclude one of them is wrong. Deferred observation 120 is resolved
+  rather than open.
+
+Measured at the strict head, over 300,000 random pairs generated the way
+`generate_infodict` generates them:
+
+```
+subset violations (old agreed, new mismatches) : 0
+reports removed (old mismatched, new agrees)   : 56,444
+largest difference among removed reports       : 0.999992 s
+```
+
+Nothing the old comparison accepted is now rejected, and every report the change
+removes is strictly under a second — which is the claim, now true as stated.
 
 A mutation probe confirms the new tests discriminate rather than merely pass:
 
 | implementation | pinned cases it gets wrong |
 |---|---|
 | new (`modtimes_agree`) | 0 of 7 |
-| old pds4 (truncated string equality) | 2 of 7 — the inclusive tolerance, and the boundary straddle |
+| old pds4 (truncated string equality) | 2 of 7 — the sub-second tolerance, and the boundary straddle |
 | old pds3 (`abs(bool) > 1`) | 3 of 7 — over-tolerance, a minute apart, sentinel vs a real time |
 
 ## 4. Behavior changes, enumerated
@@ -370,7 +393,7 @@ re-deriving it.
 |---|---|
 | Full-data `--mode ns` | see §7 |
 | Full-data `--mode s` | see §7 |
-| `run-all-checks.sh -c -s`, no holdings env vars | **All checks passed** (ruff, pytest 264 passed / 812 skipped, pyroma 10/10, API freeze, clean-install) |
+| `run-all-checks.sh -c -s`, no holdings env vars | **All checks passed** (ruff, pytest 267 passed / 812 skipped, pyroma 10/10, API freeze, clean-install) |
 | `tests/api` | 26 passed |
 | The four frozen files | byte-identical to `56b8823` (§8) |
 | `ruff check .` (configured) | All checks passed |
@@ -381,13 +404,13 @@ re-deriving it.
 
 The hosted lint/no-holdings figure moved from the baseline of 250 passed / 804
 skipped, which was **re-measured at base and confirmed exactly** rather than
-inherited. Head is 264 passed / 812 skipped, and the whole difference is
-accounted for by an id-set diff of the two runs: 2 ids removed, 24 added, **zero
-outcome changes**. Of the 24 added, 14 pass — all of `test_shelf_common.py`, which
+inherited. Head is 267 passed / 812 skipped, and the whole difference is
+accounted for by an id-set diff of the two runs: 2 ids removed, 27 added, **zero
+outcome changes**. Of the 27 added, 17 pass — all of `test_shelf_common.py`, which
 is holdings-free — and 10 skip for want of a tree: four in
 `test_pds3_checksums.py`, four in `test_pds3_infoshelf.py`, one in
 `test_pds4_checksums.py`, one in `test_pds4_infoshelf.py`. The 2 removed were
-skipping, so the net is +14 passed and +8 skipped.
+skipping, so the net is +17 passed and +8 skipped.
 
 ## 7. Data runs
 
@@ -404,7 +427,7 @@ pytest tests/pds3file/ tests/rules/pds3/ --mode s -rA --junitxml=…
 
 | | base | head |
 |---|---|---|
-| `--mode ns` | 1,054 ids — 1,020 passed, 34 skipped | 1,076 ids — 1,042 passed, 34 skipped |
+| `--mode ns` | 1,054 ids — 1,020 passed, 34 skipped | 1,079 ids — 1,045 passed, 34 skipped |
 | `--mode s` | 558 ids — 555 passed, 3 skipped | 558 ids — 555 passed, 3 skipped |
 
 The comparison is of the **per-test id-to-outcome map**, not of counts:
@@ -419,14 +442,30 @@ The comparison is of the **per-test id-to-outcome map**, not of counts:
   and `[label_mtime_plus_100]`. These are the two PR-13 wrote to be inverted; the
   same two corruptions now appear as
   `test_corruption_is_detected_and_repaired[…]`, asserting the opposite.
-- **24 ids added**, all passing: 14 in the new `test_shelf_common.py`, 4 chain and
+- **27 ids added**, all passing: 17 in the new `test_shelf_common.py`, 4 chain and
   no-target tests in `test_pds3_checksums.py`, 4 in `test_pds3_infoshelf.py` (the
   two re-homed corruptions plus two modification-time tests), 1 in
-  `test_pds4_checksums.py` and 1 in `test_pds4_infoshelf.py` (the two the review
-  rounds added).
+  `test_pds4_checksums.py` and 1 in `test_pds4_infoshelf.py`.
 
-Re-measured at this PR's **final** head, after both review rounds, not at the head
-that first passed. The base figures are unchanged from the brief's.
+Re-measured at this PR's **final** head, after all three review rounds and the
+owner's strict-boundary ruling, not at the head that first passed. The base
+figures are unchanged from the brief's.
+
+**The strict boundary changed no existing test's outcome.** Diffing the strict head
+against the inclusive one directly: `--mode ns` 1,076 → 1,079 ids with **0 outcome
+changes**, `--mode s` identical at 558. The six added and three removed ids are all
+in `test_shelf_common.py` — the `1.0` and `-1.0` parameter cases flip from `True`
+to `False` and so change id, `test_the_boundary_is_exclusive` is new, and
+`test_a_whole_second_apart_inside_the_tolerance` was renamed to
+`test_nine_tenths_of_a_second_agrees_wherever_it_falls` because its old name
+described a case it never tested.
+
+That invariance is a **coverage** statement, not a safety one: nothing in the
+1,079-id suite, and nothing in the 122-record tool transcript, moves a modification
+time by exactly one second. Before this ruling, nothing anywhere exercised the
+boundary value; it was decided by a `<=` nobody's test would have caught changing.
+It is now pinned in both directions by `test_the_boundary_is_exclusive` and by four
+parameter cases at ±0.999999 and ±1.0.
 
 The base figures match the ones the brief inherited (1,054 and 558) exactly.
 
@@ -495,6 +534,19 @@ mismatch and exits 1 at head.
 **`ARTIFACTS`: 0 of the artifact records differ.** Nothing about what these tools
 *write* changed — not one md5 table, not one `.py` sidecar byte. That is the check
 the brief's second modtime trap asks for.
+
+**The transcript is invariant under the tolerance boundary, which is a statement
+about its coverage rather than about the change.** Re-captured after the boundary
+was made strict, the 122 records are byte-identical to the inclusive capture — 0 of
+122 differ — and the attribution is the same 170 lines with the same 12
+modification-time lines. That is because no scenario here moves a modification time
+by *exactly* one second: the shifts are 0.6 s, 5,000 s and 7,000 s, chosen to
+exercise the tolerance and the boundary straddle rather than the boundary value
+itself. So the exclusive boundary is pinned by `test_the_boundary_is_exclusive` and
+the parametrized cases in `test_shelf_common.py`, and by nothing in this
+transcript. Recorded rather than papered over: a reader comparing the two captures
+should not conclude the boundary change is unobservable, only that these scenarios
+do not observe it.
 
 ## 8. Proving which tree was measured
 

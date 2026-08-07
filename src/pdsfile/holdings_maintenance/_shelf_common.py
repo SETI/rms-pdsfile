@@ -35,8 +35,13 @@ UNIT_LOG_PATH_METHOD = 'log_path_for_bundle'
 UNITSET_LOG_PATH_METHOD = 'log_path_for_bundleset'
 
 # How far apart two modification times may be and still count as the same time.
-# Seconds. A tar file and some filesystems carry whole-second modification times, so
-# the same file read two ways can differ by up to a second without having changed.
+# Seconds, exclusive: a difference of one second is a difference. Both times here
+# come from the same generator at microsecond precision, so the only discrepancy to
+# forgive is a sub-second one; on a filesystem that stores whole seconds, one second
+# is the smallest change there is rather than an edge case, and reporting it is the
+# point. validate_tuples() compares a tarfile's whole-second time against a
+# filesystem time and so allows a full second inclusively; that difference between
+# the two is deliberate, and follows from what each pair of operands is.
 MODTIME_TOLERANCE = 1
 
 
@@ -44,10 +49,10 @@ def modtimes_agree(modtime1, modtime2, tolerance=MODTIME_TOLERANCE):
     """Return whether two modification times are the same time.
 
     The two are strings as generate_infodict() builds them,
-    '%Y-%m-%d %H:%M:%S.%f'. They agree when they are no further apart than the
-    tolerance, which makes the comparison symmetric and monotone in the real
-    difference between them: two times a millisecond apart agree wherever they fall,
-    and two times a minute apart never do.
+    '%Y-%m-%d %H:%M:%S.%f'. They agree when they are less than the tolerance apart,
+    which makes the comparison symmetric and monotone in the real difference between
+    them: two times a millisecond apart agree wherever they fall, and two times a
+    second or more apart never do.
 
     An empty string is the sentinel for a directory with nothing in it, and no
     sentinel parses as a time. Anything the two cannot be compared as times --
@@ -59,7 +64,8 @@ def modtimes_agree(modtime1, modtime2, tolerance=MODTIME_TOLERANCE):
     Args:
         modtime1: One modification time.
         modtime2: The other.
-        tolerance: How many seconds apart they may be, default MODTIME_TOLERANCE.
+        tolerance: How many seconds apart they must stay within, exclusive.
+            Default MODTIME_TOLERANCE.
 
     Returns:
         bool: True if they are the same time.
@@ -72,7 +78,7 @@ def modtimes_agree(modtime1, modtime2, tolerance=MODTIME_TOLERANCE):
     except (TypeError, ValueError):
         return modtime1 == modtime2
 
-    return difference <= tolerance
+    return difference < tolerance
 
 
 @dataclass(kw_only=True)
