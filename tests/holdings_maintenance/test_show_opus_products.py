@@ -1,9 +1,13 @@
 ##########################################################################################
 # tests/holdings_maintenance/test_show_opus_products.py
 #
-# show_opus_products has no main() yet, so it is driven here as a subprocess
-# (`python -m ...`) -- the same interface an in-process main() will replace later
-# without changing what is asserted.
+# The tool is driven as a subprocess (`python -m ...`) even though it now has a
+# main(), and it is the one tool with a main() here that stays that way. It calls
+# Pds3File.use_shelves_only(True) and preloads both holdings roots itself, and
+# PdsFile.CACHE is a class-level cache keyed by logical path: called in-process it
+# would preload the temporary tree into the same cache the session preloaded the
+# real tree into, and leave shelves-only set for every test that followed. See the
+# package header.
 #
 # The tool runs Pds3File.use_shelves_only(True), so it answers entirely out of the
 # info shelves. This module therefore dogfoods pdschecksums and pdsinfoshelf onto
@@ -12,8 +16,13 @@
 # Every test rebuilds the tree first, so each one is independent and order-agnostic.
 ##########################################################################################
 
+import os
+import subprocess
+import sys
+
 import pytest
 
+from pdsfile.tools import show_opus_products
 from tests.holdings_maintenance import subsets, support
 
 pytestmark = pytest.mark.full_holdings
@@ -132,3 +141,53 @@ def test_a_nonexistent_path_warns_rather_than_failing(tree):
     run = support.run_tool(tree, 'show_opus_products', '--paths', missing)
     assert run.returncode == 0, run.describe()
     assert "doesn't exist" in run.output, run.describe()
+
+
+@pytest.mark.holdings_free
+def test_the_parser_is_built_without_touching_the_environment():
+    """build_arg_parser() reads no environment and no PdsFile state.
+
+    The parser is what --help and every usage error come out of, so it has to be
+    reachable before either holdings root is looked at.
+    """
+
+    parser = show_opus_products.build_arg_parser()
+    args = parser.parse_args(['--paths', 'a', 'b', '--opus-types', 'hst_tiff'])
+    assert args.paths == ['a', 'b']
+    assert args.opus_types == ['hst_tiff']
+    assert (args.table, args.narrow_table, args.pprint, args.raw, args.debug) == \
+        (False, False, False, False, False)
+
+    with pytest.raises(SystemExit) as exit_info:
+        parser.parse_args(['--help'])
+    assert exit_info.value.code == 0
+
+
+@pytest.mark.holdings_free
+def test_the_module_imports_with_neither_holdings_root_set(tmp_path):
+    """Importing the module must not read the environment or preload anything.
+
+    Measured in a subprocess with both variables removed, because this test
+    session sets them: the roots are read inside main(), so the import itself
+    succeeds without them. That is what lets --help work on a machine with no
+    holdings, and what any importer -- an autodoc build, a console script's entry
+    point -- would need. The import must also not preload, which would put a
+    whole holdings tree into a class-level cache as a side effect of an import.
+    """
+
+    env = dict(os.environ)
+    env['PYTHONPATH'] = str(support.REPO_ROOT / 'src')
+    for name in ('PDS3_HOLDINGS_DIR', 'PDS4_HOLDINGS_DIR', 'PDSFILE_TEST_HOLDINGS',
+                 'PDSFILE_TEST_DATA_DIR'):
+        env.pop(name, None)
+
+    probe = ('import pdsfile.tools.show_opus_products as m; '
+             'assert callable(m.main); assert callable(m.build_arg_parser); '
+             "assert not hasattr(m, 'PDS3_HOLDINGS_DIR'); "
+             'from pdsfile import Pds3File; '
+             'assert Pds3File.LOCAL_PRELOADED == []; '
+             'assert Pds3File.SHELVES_ONLY is False')
+    proc = subprocess.run([sys.executable, '-c', probe], cwd=str(tmp_path), env=env,
+                          capture_output=True, timeout=support.TOOL_TIMEOUT,
+                          check=False)
+    assert proc.returncode == 0, proc.stderr.decode('utf-8', errors='replace')
