@@ -1,11 +1,17 @@
 ##########################################################################################
 # tests/holdings_maintenance/test_crlf.py
 #
-# Unit tests for the pure line-terminator classifier in holdings_maintenance/pds3/crlf.py.
+# Unit tests for holdings_maintenance/pds3/crlf.py: its pure line-terminator
+# classifier, and the command line that drives it.
 #
 # These are holdings-free: they build their own tiny files in tmp_path and run
 # everywhere, including on runners with no holdings at all (hence the
-# `holdings_free` marker).
+# `holdings_free` marker). The command line is driven in-process, by calling
+# main() through support.run_tool_in_process(); the tool imports no PdsFile class
+# and reads neither holdings root, so the class-level-cache hazard that keeps the
+# other tools on subprocesses (see the package header) cannot arise. One test
+# keeps the subprocess, because only a subprocess shows that `python -m ...`
+# reaches main().
 #
 # Collection trap: crlf.test_crlf is itself named test_*. Doing
 # `from ...crlf import test_crlf` would make pytest collect the *imported*
@@ -16,6 +22,7 @@
 import pytest
 
 from pdsfile.holdings_maintenance.pds3 import crlf
+from tests.holdings_maintenance import support
 
 pytestmark = pytest.mark.holdings_free
 
@@ -140,3 +147,119 @@ def test_non_asciis_translation_table():
     assert crlf.NON_ASCIIS[ord('A')] is None
     for char in ('\t', '\r', '\n'):
         assert crlf.NON_ASCIIS[ord(char)] is None
+
+
+class TestCommandLine:
+    """What main() reports for a command line, and what it leaves on disk."""
+
+    def test_only_invalid_files_are_listed(self, tmp_path):
+        ok = write(tmp_path, 'ok.txt', b'ONE\r\n')
+        bad = write(tmp_path, 'bad.txt', b'ONE\n')
+
+        run = support.run_tool_in_process('crlf', ok, bad)
+        assert run.returncode == 0, run.describe()
+        assert f'{bad} INVALID' in run.stdout, run.describe()
+        assert 'ok.txt' not in run.stdout, run.describe()
+        assert '1/2 files invalid' in run.stdout, run.describe()
+
+    def test_verbose_lists_every_file(self, tmp_path):
+        ok = write(tmp_path, 'ok.txt', b'ONE\r\n')
+        binary = write(tmp_path, 'binary.dat', b'\x00' * 10 + b'A' * 90)
+
+        run = support.run_tool_in_process('crlf', '--verbose', ok, binary)
+        assert run.returncode == 0, run.describe()
+        assert f'{ok} OK' in run.stdout, run.describe()
+        assert f'{binary} BINARY' in run.stdout, run.describe()
+        assert '2 files tested' in run.stdout, run.describe()
+
+    def test_repair_rewrites_the_file_and_reports_it(self, tmp_path):
+        ok = write(tmp_path, 'ok.txt', b'ONE\r\n')
+        bad = write(tmp_path, 'bad.txt', b'ONE\nTWO\r\n')
+
+        run = support.run_tool_in_process('crlf', '--repair', ok, bad)
+        assert run.returncode == 0, run.describe()
+        assert f'{bad} REPAIRED' in run.stdout, run.describe()
+        assert '1/2 files repaired' in run.stdout, run.describe()
+        assert bad.read_bytes() == b'ONE\r\nTWO\r\n'
+        assert ok.read_bytes() == b'ONE\r\n'
+
+    def test_a_single_file_gets_no_summary_line(self, tmp_path):
+        bad = write(tmp_path, 'bad.txt', b'ONE\n')
+
+        run = support.run_tool_in_process('crlf', bad)
+        assert run.returncode == 0, run.describe()
+        assert run.stdout == f'{bad} INVALID\n', run.describe()
+
+    def test_two_repairs_print_no_summary_at_all(self, tmp_path):
+        """Pin the summary gap: the count is reported only when it is exactly one.
+
+        The repaired branch is guarded by `if repairs == 1`, so a run that fixes
+        two or more files lists them and then says nothing about how many. Pinned
+        as current behaviour, not endorsed: a fix has to invert this assertion
+        deliberately.
+        """
+
+        ok = write(tmp_path, 'ok.txt', b'ONE\r\n')
+        first = write(tmp_path, 'first.txt', b'ONE\n')
+        second = write(tmp_path, 'second.txt', b'TWO\n')
+
+        run = support.run_tool_in_process('crlf', '--repair', ok, first, second)
+        assert run.returncode == 0, run.describe()
+        assert f'{first} REPAIRED' in run.stdout, run.describe()
+        assert f'{second} REPAIRED' in run.stdout, run.describe()
+        assert 'files repaired' not in run.stdout, run.describe()
+        assert 'files invalid' not in run.stdout, run.describe()
+        assert 'files tested' not in run.stdout, run.describe()
+
+    def test_flags_are_accepted_among_the_paths(self, tmp_path):
+        """The flags are positional-order-independent, as they were before argparse."""
+
+        ok = write(tmp_path, 'ok.txt', b'ONE\r\n')
+        bad = write(tmp_path, 'bad.txt', b'ONE\n')
+
+        run = support.run_tool_in_process('crlf', ok, '--verbose', bad, '--repair')
+        assert run.returncode == 0, run.describe()
+        assert f'{ok} OK' in run.stdout, run.describe()
+        assert f'{bad} REPAIRED' in run.stdout, run.describe()
+        assert bad.read_bytes() == b'ONE\r\n'
+
+    def test_no_arguments_prints_nothing(self):
+        run = support.run_tool_in_process('crlf')
+        assert run.returncode == 0, run.describe()
+        assert run.stdout == '', run.describe()
+
+    def test_help_names_every_flag(self):
+        run = support.run_tool_in_process('crlf', '--help')
+        assert run.returncode == 0, run.describe()
+        for flag in ('--repair', '--verbose'):
+            assert flag in run.stdout, run.describe()
+
+    def test_an_unrecognized_flag_is_a_usage_error(self, tmp_path):
+        ok = write(tmp_path, 'ok.txt', b'ONE\r\n')
+
+        run = support.run_tool_in_process('crlf', '--bogus', ok)
+        assert run.returncode == 2, run.describe()
+        assert 'unrecognized arguments: --bogus' in run.output, run.describe()
+
+    def test_an_unreadable_file_raises_rather_than_being_reported(self, tmp_path):
+        """A path that cannot be opened kills the run; nothing catches it."""
+
+        with pytest.raises(FileNotFoundError):
+            support.run_tool_in_process('crlf', tmp_path / 'no_such_file.txt')
+
+
+def test_the_module_is_runnable_as_python_m(tmp_path):
+    """`python -m ...` reaches main(), and the process exit code is its return value.
+
+    Driven as a subprocess with neither holdings variable set, which the
+    in-process cases above cannot show: they call main() by name, so they would
+    pass whether or not the module has a `__main__` block, and they inherit this
+    process's environment.
+    """
+
+    bad = write(tmp_path, 'bad.txt', b'ONE\n')
+
+    run = support.run_tool_without_holdings('crlf', '--repair', bad, cwd=tmp_path)
+    assert run.returncode == 0, run.describe()
+    assert f'{bad} REPAIRED' in run.stdout, run.describe()
+    assert bad.read_bytes() == b'ONE\r\n'
