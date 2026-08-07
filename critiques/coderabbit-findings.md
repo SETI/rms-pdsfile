@@ -21,23 +21,28 @@ failed to post on GitHub; captured here from the two review-summary bodies.)
 
 ### 🔴 Critical
 
-1. **`pds3/shelf_consistency_check.py:60-64` — `NameError` on the exact
-   condition the script detects.** The missing-`.lbl` branch does `error += 1`,
-   but the counter used everywhere else is `errors`. The undefined name raises
-   `NameError` and aborts the whole traversal the moment an index shelf without a
-   matching `.lbl` is found — i.e. it crashes precisely when it should report.
-   Fix: use `errors`.
+1. ~~**`pds3/shelf_consistency_check.py` — `NameError` on the exact condition the
+   script detects.** The missing-`.lbl` branch did `error += 1`, where the counter
+   used everywhere else is `errors`.~~ **Fixed**, in the `main()` PR for this tool:
+   the branch reads `errors`, and
+   `test_shelf_consistency_check.test_an_extraneous_index_shelf_is_counted_like_any_other`
+   fails both if the error is not counted and if an exception truncates the walk.
+   The file's `F821` ratchet entry retired with it.
 
 ### 🟠 Major
 
-2. **`pds3/crlf.py:51-61` — unguarded division by `len(content)` crashes on
-   empty files.** The binary-file threshold check divides by the decoded length
+2. **`pds3/crlf.py`, in `test_crlf` — unguarded division by `len(content)` crashes
+   on empty files.** The binary-file threshold check divides by the decoded length
    with no empty-content guard → `ZeroDivisionError`. Guard the empty case before
-   dividing; keep non-empty classification unchanged.
+   dividing; keep non-empty classification unchanged. Still open; pinned as current
+   behaviour by `test_crlf.TestArgumentValidation.test_an_empty_file_raises_zerodivisionerror`
+   and held as deferred observation 11, which records why the choice of what an
+   empty file classifies as is not obvious.
 
-3. **`pds3/crlf.py:114-121` — repaired-files summary line skipped when >1 file
-   is repaired.** The nfiles summary only prints the repaired message for exactly
-   one repair. Print it for any nonzero repair count; keep the singular/plural
+3. **`pds3/crlf.py`, in the summary block at the end of `main()` — repaired-files
+   summary line skipped when >1 file is repaired.** The nfiles summary only prints
+   the repaired message for exactly one repair. Print it for any nonzero repair
+   count; keep the singular/plural
    wording for exactly one.
 
 4. **`pds3/pdschecksums.py:367-369` (`validate_pairs`) and
@@ -78,7 +83,7 @@ failed to post on GitHub; captured here from the two review-summary bodies.)
 11. **`pds3/pdschecksums.py:289-307` — checksum file not closed via context
     manager.** Use `with open(check_path, 'w')`; drop the manual `f.close()`.
 
-12. **`pds3/crlf.py:51-61` — use `latin_1`, not `latin8`, for byte-identity
+12. **`pds3/crlf.py`, in `test_crlf` — use `latin_1`, not `latin8`, for byte-identity
     decode/encode.** `latin_1` maps bytes 0–255 to code points directly;
     `latin8` (ISO-8859-14) does not, so byte classification and round-trip are
     subtly wrong.

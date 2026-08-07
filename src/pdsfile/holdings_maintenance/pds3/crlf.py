@@ -98,9 +98,8 @@ def build_arg_parser():
         --verbose.
     """
 
-    # No abbreviations: the flags used to be matched in full and removed from
-    # sys.argv, so an option that is not spelled out is not one, and a misspelled
-    # --repair must not be read as a request to rewrite files.
+    # No abbreviations: an option has to be spelled out, so that a misspelled
+    # --repair is rejected rather than read as a request to rewrite files.
     parser = argparse.ArgumentParser(
         allow_abbrev=False,
         description='crlf: Validate, and optionally repair, the CRLF line terminators '
@@ -135,7 +134,7 @@ def main(argv=None):
         argv = sys.argv
 
     parser = build_arg_parser()
-    # Intermixed, because the flags are accepted anywhere among the file paths.
+    # Intermixed, so that the flags are accepted anywhere among the file paths.
     args = parser.parse_intermixed_args(argv[1:])
 
     task = 'repair' if args.repair else 'test'

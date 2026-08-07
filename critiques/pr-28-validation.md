@@ -16,12 +16,12 @@ had eleven entries at `3d044b2` and has eleven now.
 
 | file | base | head | today's entry point |
 |---|---:|---:|---|
-| `src/pdsfile/holdings_maintenance/pds3/crlf.py` | 121 | 170 | `build_arg_parser()`, `main(argv=None)`, `__main__` |
+| `src/pdsfile/holdings_maintenance/pds3/crlf.py` | 121 | 169 | `build_arg_parser()`, `main(argv=None)`, `__main__` |
 | `src/pdsfile/holdings_maintenance/pds3/shelf_consistency_check.py` | 90 | 132 | same |
 | `src/pdsfile/tools/show_opus_products.py` | 162 | 199 | same |
 | `tests/holdings_maintenance/support.py` | 710 | 830 | — |
-| `tests/holdings_maintenance/test_crlf.py` | 142 | 350 | — |
-| `tests/holdings_maintenance/test_shelf_consistency_check.py` | 189 | 336 | — |
+| `tests/holdings_maintenance/test_crlf.py` | 142 | 352 | — |
+| `tests/holdings_maintenance/test_shelf_consistency_check.py` | 189 | 350 | — |
 | `tests/holdings_maintenance/test_show_opus_products.py` | 134 | 226 | — |
 
 ```
@@ -98,10 +98,12 @@ if the error is not counted and if the exception truncates the walk — the seco
 what the old behaviour actually did and what a `try/except` "fix" would have left
 in place.
 
-Two more tests were added around the same branch, because the branch had one test
-and now has three: `test_an_index_shelf_whose_label_exists_is_counted_not_reported`
-covers the other side of the same `if` (an index shelf is matched against a
-holdings `.lbl`, not a directory), which nothing covered before.
+The index branch had one test and now has two.
+`test_an_index_shelf_whose_label_exists_is_counted_not_reported` covers the other
+side of the same `if` — an index shelf is matched against a holdings `.lbl`, not a
+directory — which nothing covered before, and runs the branch under `--verbose` as
+well, because that branch prints the mapped path from its own line rather than the
+one the info and link branches share.
 
 ### 2.3 `F821` retired — confirmed, not assumed
 
@@ -115,8 +117,8 @@ line is removed from `pyproject.toml`.
 ## 3. Behavior changes, enumerated
 
 The gate is an 84-record transcript of all three tools, captured at base and head
-and diffed record by record. It covers every output mode of each tool, every flag
-and flag combination, and the argument *shapes* — `-h`, an abbreviated flag, a flag
+and diffed record by record. It covers every output mode of each tool, every flag,
+the flag combinations that select output, and the argument *shapes* — `-h`, an abbreviated flag, a flag
 given an explicit value, a repeated flag, `--`, a path beginning with `-` — that
 argparse treats differently from argv read literally, on each tool and with the
 holdings roots both set and unset. It is not a proof of completeness; it is 84
@@ -384,7 +386,7 @@ counts:
   `test_the_module_imports_with_neither_holdings_root_set`,
   `test_the_module_is_runnable_as_python_m`.
 
-### 5.3 Mutation probes: fourteen, all caught
+### 5.3 Mutation probes: sixteen, all caught
 
 Run against `pytest tests/holdings_maintenance/test_crlf.py
 tests/holdings_maintenance/test_shelf_consistency_check.py
@@ -409,12 +411,16 @@ caught by one file's test while the other's goes unguarded, and reads as covered
 | M8a | crlf | `allow_abbrev=False` dropped | 1 | `test_an_abbreviated_flag_is_a_usage_error_and_rewrites_nothing` |
 | M8b | shelf | `allow_abbrev=False` dropped | 1 | `test_an_abbreviated_flag_is_a_usage_error` |
 | M9 | — | `run_tool_in_process('pdsinfoshelf', …)` | — | the `HOLDINGS_FREE_TOOLS` assertion |
+| M10 | shelf | the index branch's `if verbose: print(...)` deleted | 1 | `test_an_index_shelf_whose_label_exists_is_counted_not_reported` |
+| M11 | support | `sys.argv = list(argv)` deleted from the in-process runner | 6 | the four help ids and the two usage-error tests, which assert the `usage: <tool>.py` prefix argparse takes from `sys.argv[0]` |
 
 M4, M5 and M8 are the ones that matter: `parse_args`, `nargs='+'` and argparse's
 default `allow_abbrev` are the three spellings a reader would reach for, and each
 silently breaks a command line that works today. M7 matters for a different reason:
 it is the "fix" that stops the crash without counting the error, and the regression
-test rejects it too.
+test rejects it too. M10 and M11 exist because both were live gaps — the index
+branch's verbose line and the in-process runner's own `sys.argv` fidelity were each
+asserted by nothing until a probe said so.
 
 ### 5.4 The rest
 

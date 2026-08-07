@@ -143,7 +143,6 @@ conflicts with a rule below, follow the rule below. See
    | `RUF022` | 2 | `pds3file/rules/__init__.py`, `pds4file/rules/__init__.py` | aligned | `__all__` is hand-aligned with padding before the commas; the sort rewrites the block |
    | `PT015`, `B011` | 2 + 2 | `test_pds3file_blackbox.py` | behavior | the same two `assert False` lines, the unreachable arm of the `PT017` blocks |
    | `RUF100` | 1 | `scripts/dump_public_api.py` | prohibited | that file may not be edited at all (2), so this entry is permanent **by prohibition**, not by freeze |
-   | `F821` | 1 | `shelf_consistency_check.py` | behavior — **PR-28 owns it** | a genuine undefined name (`error` for `errors`); fixing it changes behavior (deferred observation 6) |
    | `N805` | 1 | `COVIMS_0xxx.py` | frozen | `OPUS_ID_TO_PRIMARY_LOGICAL_PATH(opus_id)` takes no `self`; `@staticmethod` changes the manifest kind |
    | `B007` | 1 | `uranus_occs_earthbased.py` | frozen | the loop runs at module level, so the control variable stays bound as a module attribute that is part of the frozen surface. `re_validate.py`'s two went with PR-25a |
    | `PT012` | 1 | `test_pds3file_whitebox.py` | behavior | narrowing the `pytest.raises` block changes what is asserted |

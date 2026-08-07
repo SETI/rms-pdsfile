@@ -400,14 +400,15 @@ across machines because the limited copy is a copy of the complete set.
   fixture — import the **module** and call `crlf.test_crlf(...)`, never
   import the name.
 - `shelf_consistency_check` and `show_opus_products` had no `main()` when PR-13
-  ran, so it tested them **via `subprocess`** invoking `python -m <module>`
-  against the copied tree's dogfooded shelves — a stable interface that survived
-  the PR-28 refactor. This entry used to say PR-28 would switch **both** to
-  in-process calls; it moved `shelf_consistency_check` and **left
+  ran, so it tested them **via `subprocess`** against the copied tree's dogfooded
+  shelves — a stable interface that survived the PR-28 refactor. (This entry
+  specified `python <path>.py`; PR-13 used `python -m <module>` instead, which is
+  the invocation the two tools kept.) This entry also said PR-28 would switch
+  **both** to in-process calls. PR-28 moved `shelf_consistency_check` and **left
   `show_opus_products`' tests on subprocesses**, because that tool preloads both
   holdings roots into a class-level cache. That is a departure from what was
-  planned, and it is recorded in
-  `plans/2026-08-07-pr-28-deviation-addendum.md` for the owner.
+  planned, and `plans/2026-08-07-pr-28-deviation-addendum.md` records it for the
+  owner.
 - `pdsdependency` tests: run against the copied tree with deliberately
   removed derived files; assert the emitted "Steps required" commands.
 - the shell scripts: explicitly out of scope (ground rule 7). `re_validate` was

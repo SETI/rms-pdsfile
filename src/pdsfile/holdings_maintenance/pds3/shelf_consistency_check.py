@@ -22,8 +22,8 @@ def build_arg_parser():
         --verbose.
     """
 
-    # No abbreviations: --verbose used to be matched in full and removed from
-    # sys.argv, so an option that is not spelled out is not one.
+    # No abbreviations: an option has to be spelled out, so that a misspelling is
+    # rejected rather than quietly turning --verbose on.
     parser = argparse.ArgumentParser(
         allow_abbrev=False,
         description='shelf_consistency_check: Confirm that every shelf file has a '
@@ -53,7 +53,7 @@ def main(argv=None):
         argv = sys.argv
 
     parser = build_arg_parser()
-    # Intermixed, because --verbose is accepted anywhere among the shelf roots.
+    # Intermixed, so that --verbose is accepted anywhere among the shelf roots.
     args = parser.parse_intermixed_args(argv[1:])
 
     paths = args.shelf_root

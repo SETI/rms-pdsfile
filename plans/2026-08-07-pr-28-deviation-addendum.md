@@ -72,12 +72,21 @@ already resets `LOCAL_PRELOADED`, which is where such a fixture would start.
 
 ## What was changed in the plan, and what this replaces
 
-PR-28 edited the plan's PR-13 note and PR-28 entry to describe what happened. That
-edit is what this addendum covers: without it, the requirement would have
-disappeared from the record with nothing marking the departure.
-`plans/2026-07-25-pr-13-subplan.md` still carries the original sentence and is
-left alone — a sub-plan is a record of what its own PR was told, and this file is
-where the change of direction lives.
+Four passages predicted the move. PR-28 corrected three of them and left the
+fourth:
 
-`critiques/pr-28-validation.md` §4 carries the measurement and §7 lists this as a
-decision the owner might make differently.
+| where | what it said | now |
+|---|---|---|
+| the plan's PR-28 entry | "**Update the PR-13 subprocess tests** for these two tools" | says only `shelf_consistency_check`'s moved, and points here |
+| the plan's PR-13 note | "which then switches these tests to call `main()` in-process" | says the same, and points here |
+| `critiques/deferred-observations.md` entry 8 | a coverage note assuming both tools would be measured with no subprocess machinery | corrected, and points here |
+| `plans/2026-07-25-pr-13-subplan.md` | "PR-28 will still convert the two `main()`-less tools to in-process calls as the parent plan says" | **left alone** — a sub-plan records what its own PR was told, and this file is where the change of direction lives |
+
+`critiques/deferred-observations.md` entry 13 is a fifth passage, and it is not a
+prediction: it required PR-28 to **re-derive** the single-`--mode`-pass
+justification for whichever tools it converted. That re-derivation is written into
+entry 13 and holds — neither migrated tool imports a PdsFile class, so neither can
+observe `use_shelves_only`.
+
+`critiques/pr-28-validation.md` §4 carries the measurement and §7 lists this as the
+decision the owner is most likely to make differently.

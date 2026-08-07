@@ -148,7 +148,11 @@ def test_verbose_lists_the_holdings_path_of_every_shelf(legacy_tree):
 
 @pytest.mark.holdings_free
 def test_an_index_shelf_whose_label_exists_is_counted_not_reported(legacy_tree):
-    """An index shelf is matched against the holdings *label*, not a directory."""
+    """An index shelf is matched against the holdings *label*, not a directory.
+
+    --verbose as well as the default, because the index branch prints the mapped
+    path from its own line rather than the one the info and link branches share.
+    """
 
     index_dir = legacy_tree.disk / 'shelves' / 'index' / 'metadata' / 'VG_28xx'
     index_dir.mkdir(parents=True)
@@ -161,6 +165,13 @@ def test_an_index_shelf_whose_label_exists_is_counted_not_reported(legacy_tree):
     assert run.returncode == 0, run.describe()
     assert counts(run) == (1, 0), run.describe()
     assert '***' not in run.output, run.describe()
+
+    verbose = support.run_tool_in_process('shelf_consistency_check', '--verbose',
+                                          legacy_tree.disk)
+    assert verbose.returncode == 0, verbose.describe()
+    # The mapped path is the label without its extension, not the label itself.
+    assert str(label / 'VG_2801_index') in verbose.stdout, verbose.describe()
+    assert counts(verbose) == (1, 0), verbose.describe()
 
 
 @pytest.mark.holdings_free
@@ -200,11 +211,11 @@ def test_no_arguments_reports_an_empty_run():
 
 @pytest.mark.holdings_free
 def test_verbose_is_accepted_between_the_shelf_roots(legacy_tree, tmp_path):
-    """The flag is positional-order-independent, as it was before argparse.
+    """The flag may sit anywhere among the shelf roots, not only in front of them.
 
-    The flag sits *between* two roots, which is the placement plain
-    `parse_args` rejects; a flag trailing the last positional is accepted by
-    either spelling, so it would not tell the two apart.
+    It sits *between* two roots here, which is the placement plain `parse_args`
+    rejects; a flag trailing the last positional is accepted by either spelling,
+    so it would not tell the two apart.
     """
 
     shelves = legacy_tree.disk / 'shelves' / 'info' / 'volumes' / 'VG_28xx'
@@ -227,7 +238,8 @@ def test_an_unrecognized_flag_is_a_usage_error(legacy_tree):
     run = support.run_tool_in_process('shelf_consistency_check', '--bogus',
                                       legacy_tree.disk)
     assert run.returncode == 2, run.describe()
-    assert 'unrecognized arguments: --bogus' in run.output, run.describe()
+    assert 'shelf_consistency_check.py: error: unrecognized arguments: --bogus' \
+        in run.stderr, run.describe()
     assert 'Tests performed:' not in run.output, run.describe()
 
 
@@ -252,10 +264,13 @@ def test_an_abbreviated_flag_is_a_usage_error(legacy_tree):
 @pytest.mark.holdings_free
 @pytest.mark.parametrize('flag', ['--help', '-h'])
 def test_help_names_the_flag_and_the_positional(flag):
-    """Both spellings of help answer; the tool had neither before argparse."""
+    """Both spellings of help print the usage and exit 0."""
 
     run = support.run_tool_in_process('shelf_consistency_check', flag)
     assert run.returncode == 0, run.describe()
+    # The program name argparse prints is taken from sys.argv[0], which the
+    # in-process runner sets: without that it would name pytest.
+    assert run.stdout.startswith('usage: shelf_consistency_check.py'), run.describe()
     assert '--verbose' in run.stdout, run.describe()
     assert 'shelf_root' in run.stdout, run.describe()
     assert 'Tests performed:' not in run.stdout, run.describe()
@@ -276,9 +291,8 @@ def test_a_flag_given_a_value_is_a_usage_error(legacy_tree):
 def test_a_shelf_root_beginning_with_a_dash_is_a_usage_error(tmp_path, monkeypatch):
     """argparse reads a leading `-` as an option here too.
 
-    The same loss `crlf` takes, on a root rather than a file: the walk accepted
-    any string before, and a directory named `-something` is now unreachable
-    except after another root and a `--` separator.
+    The same property `crlf` has, on a root rather than a file: a directory named
+    `-something` is reachable only after another root and a `--` separator.
     """
 
     (tmp_path / '-dashroot').mkdir()

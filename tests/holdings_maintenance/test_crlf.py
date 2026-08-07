@@ -212,7 +212,7 @@ class TestCommandLine:
         assert 'files tested' not in run.stdout, run.describe()
 
     def test_flags_are_accepted_among_the_paths(self, tmp_path):
-        """The flags are positional-order-independent, as they were before argparse."""
+        """The flags may sit anywhere among the paths, not only in front of them."""
 
         ok = write(tmp_path, 'ok.txt', b'ONE\r\n')
         bad = write(tmp_path, 'bad.txt', b'ONE\n')
@@ -232,6 +232,9 @@ class TestCommandLine:
     def test_help_names_every_flag(self, flag):
         run = support.run_tool_in_process('crlf', flag)
         assert run.returncode == 0, run.describe()
+        # The program name argparse prints is taken from sys.argv[0], which the
+        # in-process runner sets: without that it would name pytest.
+        assert run.stdout.startswith('usage: crlf.py'), run.describe()
         for named in ('--repair', '--verbose'):
             assert named in run.stdout, run.describe()
 
@@ -240,8 +243,7 @@ class TestCommandLine:
         """`--repair=yes` is a usage error, and rewrites nothing.
 
         Neither flag takes a value, so argparse rejects the whole command line
-        rather than reading the value as truthy. The tool took the argument for a
-        path before it had a parser and died on the open.
+        rather than reading the value as truthy.
         """
 
         bad = write(tmp_path, 'bad.txt', b'ONE\n')
@@ -256,15 +258,15 @@ class TestCommandLine:
 
         run = support.run_tool_in_process('crlf', '--bogus', ok)
         assert run.returncode == 2, run.describe()
-        assert 'unrecognized arguments: --bogus' in run.output, run.describe()
+        assert 'crlf.py: error: unrecognized arguments: --bogus' in run.stderr, \
+            run.describe()
 
     def test_an_abbreviated_flag_is_a_usage_error_and_rewrites_nothing(self, tmp_path):
         """`--rep` is not `--repair`: an option has to be spelled out.
 
         The parser sets allow_abbrev=False. With argparse's default, `--rep`
-        would mean `--repair` and rewrite every file named after it, where the
-        tool used to reject the whole command line -- so this is the assertion
-        that keeps a misspelling from silently modifying holdings.
+        would mean `--repair` and rewrite every file named after it, so this is
+        the assertion that keeps a misspelling from modifying holdings.
         """
 
         bad = write(tmp_path, 'bad.txt', b'ONE\n')
@@ -287,14 +289,14 @@ class TestCommandLine:
             self, tmp_path, monkeypatch):
         """Pin what `--` does here, which is not what `--` usually does.
 
-        The tool took every argument literally before it had a parser, so
-        `crlf -dash.txt` worked; argparse reads a leading `-` as an option, so it
-        is a usage error now. The usual answer is the `--` separator, and under
+        argparse reads a leading `-` as an option, so a path that starts with one
+        is a usage error. The usual answer is the `--` separator, and under
         `parse_intermixed_args` it works only when a plain positional comes
-        first: `crlf -- -dash.txt` is still a usage error, while
-        `crlf ok.txt -- -dash.txt` checks both. That is an argparse quirk, not a
-        choice, and it is pinned rather than endorsed -- see the deferred
-        observations.
+        first: `crlf -- -dash.txt` is a usage error, while
+        `crlf ok.txt -- -dash.txt` checks both. That asymmetry is argparse's, not
+        a choice; it is pinned as current behaviour rather than endorsed, and a
+        switch to plain `parse_args` has to invert these three assertions
+        deliberately.
         """
 
         write(tmp_path, '-dash.txt', b'ONE\n')

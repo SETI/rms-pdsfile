@@ -188,8 +188,18 @@ Two further observations, not defects in a single tool:
    valid shelves it reports "Tests performed: 0, Errors found: 0". Its
    `error += 1` / `errors` typo (already on PR-15's list, fixed in PR-28) is only
    reachable through the legacy layout. Both are pinned in
-   `test_shelf_consistency_check.py`. **PR-28**, which gives this tool a `main()`,
-   is where the layout question has to be answered.
+   `test_shelf_consistency_check.py`. This entry named **PR-28**, which gives this
+   tool a `main()`, as where the layout question had to be answered.
+
+   **PR-28 fixed the typo and left the layout question open.** The two are not the
+   same size: the typo is one identifier with a regression test, and teaching the
+   walk about `_infoshelf-volumes/` and its siblings is a rewrite of what the tool
+   looks for, on a tool nothing in this repository or in the sync scripts currently
+   runs. Making that change inside a PR whose subject is three `main()` functions
+   would have put the interesting decision — what a modern-layout run should
+   *report* — under a heading nobody would look for it under.
+   **Owner: open — the layout question needs a PR of its own, and no phase owns
+   it.**
 7. **Info-shelf sidecars are local-time dependent.** `pdsinfoshelf` /
    `pds4infoshelf` format modification times with
    `datetime.fromtimestamp(...).strftime(...)`, so the same tree shelved in two
@@ -235,9 +245,11 @@ Two further observations, not defects in a single tool:
    `scripts/automated_tests/pdsfile_main_test.sh` — the data-gate driver.
 
    Two things make waiting cheap: coverage numbers stay informational until the
-   targets are set, and PR-28 converts the `shelf_consistency_check` and
-   `show_opus_products` tests to in-process `main()` calls, which are measured
-   with no subprocess machinery at all. If it is taken up, `COVERAGE_CORE=sysmon`
+   targets are set, and PR-28 converts the `shelf_consistency_check` tests to
+   in-process `main()` calls, which are measured with no subprocess machinery at
+   all. (It leaves `show_opus_products` on subprocesses; that half of this
+   sentence was a prediction, and
+   `plans/2026-08-07-pr-28-deviation-addendum.md` says why it did not hold.) If it is taken up, `COVERAGE_CORE=sysmon`
    (Python 3.12+) is the lever worth measuring first — and note the coverage
    artifact is uploaded from the 3.13 leg only, so the instrumentation need not be
    paid on every leg. **Owner: PR-37** (Phase 8, "set codecov targets"), which is
@@ -276,8 +288,16 @@ Two further observations, not defects in a single tool:
     file, so `crlf --repair` over a tree containing one dies instead of reporting
     it. Pinned by
     `test_crlf.TestArgumentValidation.test_an_empty_file_raises_zerodivisionerror`.
-    **Owner: PR-28**, which gives `crlf` a `main()`; deciding what an empty file
-    should classify as ('OK'? 'BINARY'?) is part of that work.
+    This entry named **PR-28**, which gives `crlf` a `main()`, as where deciding
+    what an empty file should classify as ('OK'? 'BINARY'?) belonged.
+
+    **PR-28 preserved it.** The decision is a behaviour change on a frozen surface
+    with no obviously right answer — 'OK' says an empty file has no bad
+    terminators, 'BINARY' says it is not text, and a third reading is that the
+    tool should report it and move on — and the Phase-6 rule lets output move only
+    where keeping it would force duplication or a flag, which this does not. The
+    pin is unchanged and inverting it is still what a fix has to do.
+    **Owner: open — one of three answers, and no phase owns the choice.**
 
 ### Added by the PR-13 coordinator review
 
@@ -333,6 +353,20 @@ Two further observations, not defects in a single tool:
     PR-28** (re-derive for the two tools it converts), with **PR-14** noting the
     same coupling if it changes how the suite is invoked. Entry 12 above is the
     related question of what mode a `--mode`-less run selects at all.
+
+    **Re-derived by PR-28, and the single pass still holds.** PR-28 converted
+    `crlf` and `shelf_consistency_check`, not `show_opus_products` (see
+    `plans/2026-08-07-pr-28-deviation-addendum.md`), so two tools now run inside
+    the pytest process where the original justification assumed none did. The
+    justification survives on its merits rather than by inheritance: neither
+    migrated tool imports a PdsFile class at all — `crlf` imports `argparse` and
+    `sys`, `shelf_consistency_check` adds `os` — so neither can read
+    `use_shelves_only`, and `--mode` cannot change what either does. A second pass
+    over them would execute byte-identical work, which is what the original
+    argument claimed for the subprocess case. `support.HOLDINGS_FREE_TOOLS` is
+    that property written down, and it is asserted by both in-process runners.
+    The claim expires again if a tool that does read `use_shelves_only` is ever
+    moved in-process.
 
     **PR-14 note (2026-07-26).** PR-14 leaves
     `scripts/automated_tests/pdsfile_main_test.sh` untouched, so the two-pass
@@ -3537,8 +3571,7 @@ these entries are read by the PRs that come after it.
 
 142. **`show_opus_products --narrow-table` has no test at all.** Replacing
      `if not display_narrow_table:` with `if not False:` in the table branch leaves
-     `pytest tests/holdings_maintenance/test_{crlf,shelf_consistency_check,show_opus_products}.py`
-     at 54 passed. The flag is exercised by the out-of-repo tool transcript
+     the three tool-test modules at their full 61 passed. The flag is exercised by the out-of-repo tool transcript
      (`opus/narrow-table`, byte-identical base to head) and by nothing in the
      repository. It is one of PR-13's gaps rather than a PR-28 regression — PR-13
      covered the default table, `--pprint` and the opus-type filter, and left this
@@ -3555,7 +3588,8 @@ these entries are read by the PRs that come after it.
      `Pds4File.preload(pds4_holdings_dir)` leaves
      `pytest tests/holdings_maintenance/test_crlf.py
      tests/holdings_maintenance/test_shelf_consistency_check.py
-     tests/holdings_maintenance/test_show_opus_products.py --mode ns` green. Every
+     tests/holdings_maintenance/test_show_opus_products.py --mode ns` at its full
+     61 passed. Every
      path the module's tests pass is a PDS3 one, so the second half of the tool's
      two-flavor fallback — try `Pds3File`, then `Pds4File`, each by abspath then by
      logical path — is exercised only for its failure. The tool tests declare a PDS3
@@ -3575,6 +3609,32 @@ these entries are read by the PRs that come after it.
      runner's docstring lists its other fidelity caveats — the working directory,
      and that `sys.argv` is rebound for the call — and this is the third.
      **Owner: open.**
+
+### Added by the PR-28 adversarial review (round 3)
+
+145. **`pdsfile.tools.show_opus_products` is importable now, and it imports
+     `tabulate` at module scope — a `dev`-only extra.** The module has always
+     imported `tabulate`, so `python -m pdsfile.tools.show_opus_products` has always
+     needed the dev extra; what changed is that the module can now be *imported*
+     without running, which is what an autodoc build or a console-script entry point
+     would do. `scripts/check_runtime_imports.py` walks the frozen public module set
+     and does not reach `src/pdsfile/tools/`, and CI installs `.[dev]`, so the
+     clean-install gate is green and stays green. The question this leaves is which
+     way to settle it: move `tabulate` to the runtime dependencies, or import it
+     inside the branch that renders a table so the other three output modes work in
+     a bare install. Both are behaviour decisions about a shipped module rather than
+     tidying.
+     **Owner: open.**
+
+146. **The maintenance tools' docstrings say `Args:` where the rules say
+     `Parameters:`.** `python.mdc` and `doc_python.mdc` both call for
+     `Parameters:`; every module under `holdings_maintenance/` uses `Args:`, and the
+     three `main()`s and `build_arg_parser()`s PR-28 wrote follow their neighbours
+     rather than the rule. `crlf.py` now carries both styles in one file, because
+     `test_crlf`'s own docstring predates the convention and uses `Parameters:`.
+     Sweeping the subsystem is Phase 7's job — it owns docstrings — and doing it
+     piecemeal would leave the tree in three states rather than two.
+     **Owner: recorded, not open — Phase 7.**
 
 ### Amended by the PR-28 executor (2026-08-07) — entry 130
 
