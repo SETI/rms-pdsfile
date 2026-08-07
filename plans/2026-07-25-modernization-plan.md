@@ -402,9 +402,12 @@ across machines because the limited copy is a copy of the complete set.
 - `shelf_consistency_check` and `show_opus_products` had no `main()` when PR-13
   ran, so it tested them **via `subprocess`** invoking `python -m <module>`
   against the copied tree's dogfooded shelves — a stable interface that survived
-  the PR-28 refactor. PR-28 then moved `shelf_consistency_check`'s tests
-  in-process and **left `show_opus_products`' on subprocesses**, because it
-  preloads both holdings roots into a class-level cache; see PR-28's entry.
+  the PR-28 refactor. This entry used to say PR-28 would switch **both** to
+  in-process calls; it moved `shelf_consistency_check` and **left
+  `show_opus_products`' tests on subprocesses**, because that tool preloads both
+  holdings roots into a class-level cache. That is a departure from what was
+  planned, and it is recorded in
+  `plans/2026-08-07-pr-28-deviation-addendum.md` for the owner.
 - `pdsdependency` tests: run against the copied tree with deliberately
   removed derived files; assert the emitted "Steps required" commands.
 - the shell scripts: explicitly out of scope (ground rule 7). `re_validate` was
@@ -999,9 +1002,12 @@ Proper argparse + `main()` so they are testable and runnable via
 `python -m pdsfile.…`. **No new console-script names** (§8.4 — `python -m`
 only; `[project.scripts]` is not extended — still eleven entries). Also fixes the
 `shelf_consistency_check` undefined-`error` bug (should be `errors`, noted in
-PR-15's bug list) with a regression test. `re_validate.py`: not touched by this PR.
-PR-25a is the one that modernizes it. Record:
-`critiques/pr-28-validation.md`.
+PR-15's bug list) with a regression test. This entry also required the PR-13
+subprocess tests of **both** `main()`-less tools to be switched to in-process
+calls; only `shelf_consistency_check`'s were, and
+`plans/2026-08-07-pr-28-deviation-addendum.md` records why and awaits the owner.
+`re_validate.py`: not touched by this PR. PR-25a is the one that modernizes it.
+Record: `critiques/pr-28-validation.md`.
 
 **As executed:**
 - **The bug was reproduced before it was fixed.** The index branch printed its
@@ -1011,26 +1017,31 @@ PR-25a is the one that modernizes it. Record:
   replaces the PR-13 test that pinned the crash, and puts a valid info shelf in the
   same tree so that a `try/except` "fix" would still fail it. The file's `F821`
   ratchet entry retires: **67 → 66 entries, 181 → 180 code slots**.
-- **The in-process move was made per tool, not across the board.**
-  `shelf_consistency_check` and `crlf` import no PdsFile class and read neither
-  holdings root, so their tests call `main()` in-process. `show_opus_products`
-  **stays on subprocesses**: it calls `Pds3File.use_shelves_only(True)` and preloads
-  both roots itself, which in-process would preload a temporary tree into the same
-  class-level cache the session preloaded the real tree into. `support.HOLDINGS_FREE_TOOLS`
-  is that criterion, and both new runners assert against it. Each migrated tool
-  keeps **one** subprocess test, because an in-process call passes whether or not
-  the module has a `__main__` block.
-- **Behavior: 10 of 65 tool-run records differ**, in five kinds, all enumerated in
+- **The in-process move was made per tool, not across the board** — a deviation
+  from what this entry asked for, covered by
+  `plans/2026-08-07-pr-28-deviation-addendum.md`. `shelf_consistency_check` and
+  `crlf` import no PdsFile class and read neither holdings root, so their tests
+  call `main()` in-process. `show_opus_products` **stays on subprocesses**: it calls
+  `Pds3File.use_shelves_only(True)` and preloads both roots itself, which in-process
+  would preload a temporary tree into the same class-level cache the session
+  preloaded the real tree into. `support.HOLDINGS_FREE_TOOLS` is that criterion,
+  and both new runners assert against it. Each migrated tool keeps **one**
+  subprocess test, because an in-process call passes whether or not the module has
+  a `__main__` block.
+- **Behavior: 17 of 75 tool-run records differ**, in six kinds, all enumerated in
   the record — `--help` answers on the two tools that had no parser; an
   unrecognized option is a usage error exiting 2 (deferred 135 — an exit-code
-  change on a frozen surface, and the one thing here the owner might rule
-  differently); an uncaught exception's traceback gains a `main` frame; the index
-  shelf bug fix; and `show_opus_products --help` works with no holdings roots set.
-  Base-versus-base control: 0 of 65.
+  change on a frozen surface, and the one thing here the owner is most likely to
+  rule differently); an uncaught exception's traceback gains a `main` frame; the
+  index shelf bug fix; `show_opus_products --help` works with no holdings roots
+  set; and argparse's argument conventions replace argv taken literally, which is
+  where the one base-working invocation that stops working lives (a path beginning
+  with `-`, deferred 141). Base-versus-base control: 0 of 75.
 - **Preserved deliberately, each pinned by a mutation probe:** flags are still
   accepted anywhere among the positionals (`parse_intermixed_args`, not
-  `parse_args`), and naming no path still succeeds silently (`nargs='*'`, not
-  `'+'`).
+  `parse_args`), naming no path still succeeds silently (`nargs='*'`, not `'+'`),
+  and a misspelled flag cannot be read as a request to rewrite files
+  (`allow_abbrev=False`).
 - **Deferred entry 130 answered.** The three drivers do **not** collapse: 39 of 181
   code lines are common, but only 15 of those are a contiguous block, and merging
   would need eight variation points — one of them a flag whose only job is to

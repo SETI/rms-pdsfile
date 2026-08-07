@@ -241,6 +241,59 @@ class TestCommandLine:
         assert run.returncode == 2, run.describe()
         assert 'unrecognized arguments: --bogus' in run.output, run.describe()
 
+    def test_an_abbreviated_flag_is_a_usage_error_and_rewrites_nothing(self, tmp_path):
+        """`--rep` is not `--repair`: an option has to be spelled out.
+
+        The parser sets allow_abbrev=False. With argparse's default, `--rep`
+        would mean `--repair` and rewrite every file named after it, where the
+        tool used to reject the whole command line -- so this is the assertion
+        that keeps a misspelling from silently modifying holdings.
+        """
+
+        bad = write(tmp_path, 'bad.txt', b'ONE\n')
+
+        run = support.run_tool_in_process('crlf', '--rep', bad)
+        assert run.returncode == 2, run.describe()
+        assert 'unrecognized arguments: --rep' in run.output, run.describe()
+        assert bad.read_bytes() == b'ONE\n'
+
+    def test_a_repeated_flag_is_accepted(self, tmp_path):
+        """Naming a flag twice is a flag, not a path."""
+
+        bad = write(tmp_path, 'bad.txt', b'ONE\n')
+
+        run = support.run_tool_in_process('crlf', '--verbose', '--verbose', bad)
+        assert run.returncode == 0, run.describe()
+        assert f'{bad} INVALID' in run.stdout, run.describe()
+
+    def test_a_path_beginning_with_a_dash_is_reachable_only_after_another_path(
+            self, tmp_path, monkeypatch):
+        """Pin what `--` does here, which is not what `--` usually does.
+
+        The tool took every argument literally before it had a parser, so
+        `crlf -dash.txt` worked; argparse reads a leading `-` as an option, so it
+        is a usage error now. The usual answer is the `--` separator, and under
+        `parse_intermixed_args` it works only when a plain positional comes
+        first: `crlf -- -dash.txt` is still a usage error, while
+        `crlf ok.txt -- -dash.txt` checks both. That is an argparse quirk, not a
+        choice, and it is pinned rather than endorsed -- see the deferred
+        observations.
+        """
+
+        write(tmp_path, '-dash.txt', b'ONE\n')
+        write(tmp_path, 'ok.txt', b'ONE\r\n')
+        monkeypatch.chdir(tmp_path)
+
+        bare = support.run_tool_in_process('crlf', '-dash.txt')
+        assert bare.returncode == 2, bare.describe()
+
+        separated = support.run_tool_in_process('crlf', '--', '-dash.txt')
+        assert separated.returncode == 2, separated.describe()
+
+        after = support.run_tool_in_process('crlf', 'ok.txt', '--', '-dash.txt')
+        assert after.returncode == 0, after.describe()
+        assert '-dash.txt INVALID' in after.stdout, after.describe()
+
     def test_an_unreadable_file_raises_rather_than_being_reported(self, tmp_path):
         """A path that cannot be opened kills the run; nothing catches it."""
 
@@ -263,3 +316,18 @@ def test_the_module_is_runnable_as_python_m(tmp_path):
     assert run.returncode == 0, run.describe()
     assert f'{bad} REPAIRED' in run.stdout, run.describe()
     assert bad.read_bytes() == b'ONE\r\n'
+
+
+def test_an_unreadable_file_ends_the_process_with_a_traceback(tmp_path):
+    """A file that cannot be opened exits 1 with the traceback, uncaught.
+
+    A subprocess, because that is the only place the *process* exit code of an
+    uncaught exception is observable; the in-process case above can only see the
+    exception. Nothing in either tool catches one, and this is what says so.
+    """
+
+    run = support.run_tool_without_holdings('crlf', tmp_path / 'no_such_file.txt',
+                                            cwd=tmp_path)
+    assert run.returncode == 1, run.describe()
+    assert 'FileNotFoundError' in run.stderr, run.describe()
+    assert run.stdout == '', run.describe()

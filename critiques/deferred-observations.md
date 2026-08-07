@@ -3482,6 +3482,48 @@ these entries are read by the PRs that come after it.
      set self-checking, and is not written here.
      **Owner: open.**
 
+### Added by the PR-28 adversarial review (round 1)
+
+141. **`crlf` can no longer be given a path that begins with `-`, and `--` only
+     half-rescues it.** The tool took every argument literally before it had a
+     parser, so `crlf -dash.txt` checked that file; argparse reads a leading `-` as
+     an option, so it is now a usage error exiting 2. This is the only invocation
+     that worked at the base and does not work now — every other changed record is
+     an error path that changed shape.
+
+     The usual answer is the `--` separator, and under `parse_intermixed_args` it
+     works only when a plain positional comes first: `crlf -- -dash.txt` is still a
+     usage error, `crlf ok.txt -- -dash.txt` checks both, and `crlf -- --verbose`
+     turns verbose *on* rather than checking a file of that name.
+     `parse_intermixed_args` parses the argv before the first `--` with
+     `parse_known_args` and re-parses the remainder, so a `--` in first position
+     leaves nothing in front of it and the remainder is read with the optionals
+     still live. Plain `parse_args` handles `--` correctly and rejects a flag
+     between two positionals; the two cannot both be had.
+
+     The trade was made toward the flags: `crlf a --verbose b` is a plausible
+     command line and a file named `-something` is not — `find` over both holdings
+     roots for `-*` returns nothing. Pinned by
+     `test_a_path_beginning_with_a_dash_is_reachable_only_after_another_path`, which
+     asserts all three outcomes so a later switch to `parse_args` has to invert
+     them. `shelf_consistency_check` has the same property and no test, because a
+     shelf root named `-something` is further-fetched still.
+     **Owner: open.**
+
+142. **`show_opus_products --narrow-table` has no test at all.** Replacing
+     `if not display_narrow_table:` with `if not False:` in the table branch leaves
+     `pytest tests/holdings_maintenance/test_{crlf,shelf_consistency_check,show_opus_products}.py`
+     at 54 passed. The flag is exercised by the out-of-repo tool transcript
+     (`opus/narrow-table`, byte-identical base to head) and by nothing in the
+     repository. It is one of PR-13's gaps rather than a PR-28 regression — PR-13
+     covered the default table, `--pprint` and the opus-type filter, and left this
+     one — and it is worth a test of its own: the narrow branch builds its rows in a
+     different shape, with an `if opus_type not in rows` guard comparing a string
+     against a list of one-element lists, which is always true and so is dead as
+     written. Deferred 139 records the flag's other quirk, that `--pprint` and
+     `--raw` accept and ignore it.
+     **Owner: open.**
+
 ### Amended by the PR-28 executor (2026-08-07) — entry 130
 
 **Entry 130's question, answered.** PR-27 recorded that a third copy of the driver
@@ -3501,13 +3543,17 @@ Common to all three, as an ordered common subsequence: **39 lines** — 68.4% of
 bodies (comments kept, qualifier kept) the same three are 66 / 78 / 69 lines with
 43 common, which is where PR-27's 64% and PR-26's 59% pairwise figures came from.
 
-**The 39 is not one block.** Only **15** consecutive lines are identical in all
-three: the preamble, from `build_arg_parser(spec)` through the `args.log` handler
-loop. Everything after `logger.open(' '.join(argv))` is try/except/finally
-scaffolding and handler construction interleaved line by line with statements that
-differ in all three drivers. Nothing at the tail is contiguous either: the three
-share only `status = 1`, because `run_selection_main` carries three `proceed =
-False` assignments through the same `except`/`finally` blocks.
+**The 39 is not one block.** Scanning `run_main` left to right and taking, at each
+position, the longest block of consecutive lines that also occurs consecutively in
+both other drivers, the 39 fall into blocks of **15, 5, 5, 3, 2, 2, 2** lines and
+five isolated lines. The 15 are one thing: the preamble, from
+`build_arg_parser(spec)` through the `args.log` handler loop, and it is the only
+block that is a stretch of the drivers' *work*. The other six are
+try/except/finally scaffolding and two lines of handler construction — the `try:`
+and its `logger.info('Log file', …)` loop, the `except`/`raise`/`finally`/
+`logger.close()` pairs — wrapped around bodies that differ in all three. They are
+identical because every driver has to open a log scope and close it, not because
+the drivers agree on anything inside.
 
 **What one driver would need, eight variation points:**
 
@@ -3524,8 +3570,14 @@ False` assignments through the same `except`/`finally` blocks.
    interchangeable. A hook — clean.
 5. **The task header.** `Task X for` (`run_main`), `Task "X" for`
    (`run_index_main`), and `Task "X" for selection S` / `Task "X" for`
-   (`run_selection_main`). A flag whose only job is to re-create one side's wording
-   — the test the data-only `ToolSpec` rule sets, failed.
+   (`run_selection_main`). This is the one variation point a merger would **not**
+   have to keep: the owner's 2026-08-05 output-text ruling says text may move where
+   keeping it would force a flag whose one job is to re-create one side's wording,
+   which is exactly this, and PR-25 has already moved a log line on that basis.
+   Unifying it is a log-text change on four tools, enumerable. So this is not a
+   reason not to merge — it is a cost, not an obstacle, and the case rests on the
+   other seven. (Note that once the header is unified, the `for selection S`
+   variant remains, inside variation point 7.)
 6. **The backup skip.** `run_index_main` only, and entry 132 records why it has to
    sit inside the log hierarchy rather than in the target list: the skip is reported
    as an error and has to reach the exit status. A guard hook or a flag.
@@ -3539,10 +3591,11 @@ False` assignments through the same `except`/`finally` blocks.
    of all eleven tools.
 
 **Line arithmetic.** 181 code lines across the three today. A merged driver would be
-the 39 shared lines plus the calls into eight hooks; the 64 residue lines do not
+the 39 shared lines plus the calls into seven hooks; the 64 residue lines do not
 disappear, they become per-family functions with `def` lines and docstrings, and
-`ToolSpec` grows six or more fields. The saving is on the order of 20%, bought with
-eight variation points, one of which is a pure wording flag.
+`ToolSpec` grows five or more fields. The saving is on the order of 20%, bought
+with seven variation points at the seams of a loop whose every semantic line
+differs, plus a log-text change on four tools to retire the eighth.
 
 **The measurement points somewhere else.** The 15-line preamble is contiguous,
 identical in all three, and carries no per-family variation at all: it parses,
@@ -3550,7 +3603,9 @@ guards the missing task, resolves the log root, builds the logger and adds the
 root handlers. Extracting it as a fourth `_common` helper takes 38% of the
 commonality with **zero** new variation points and leaves the three loops alone.
 That is a small PR with a small tool-run diff, and it is a different PR from the one
-entry 130 was asking about.
+entry 130 was asking about. Its one wrinkle is `status = 0`, which sits inside the
+block and is a local each driver reads later, so the helper returns `(args, logger)`
+and the `status = 0` stays behind — 14 lines move, not 15.
 
 **Answer: they do not collapse cleanly; do not merge them.** PR-28 measured and did
 not act.

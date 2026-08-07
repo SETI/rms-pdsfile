@@ -98,7 +98,11 @@ def build_arg_parser():
         --verbose.
     """
 
+    # No abbreviations: the flags used to be matched in full and removed from
+    # sys.argv, so an option that is not spelled out is not one, and a misspelled
+    # --repair must not be read as a request to rewrite files.
     parser = argparse.ArgumentParser(
+        allow_abbrev=False,
         description='crlf: Validate, and optionally repair, the CRLF line terminators '
                     'of one or more files. Files with invalid terminators are listed.')
 

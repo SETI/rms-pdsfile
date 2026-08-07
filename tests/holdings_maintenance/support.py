@@ -340,7 +340,8 @@ def run_tool_in_process(tool, *args):
         tool: A key of TOOL_MODULES that is also in HOLDINGS_FREE_TOOLS.
         *args: Command-line arguments, path-like or str. Give paths as absolute:
             this call inherits pytest's working directory rather than running in
-            a tree of its own.
+            a tree of its own. A test that needs a relative path should set the
+            working directory itself, with monkeypatch.chdir.
 
     Returns:
         ToolRun: main()'s return value as the exit code, and both streams. A

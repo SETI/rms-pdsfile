@@ -22,7 +22,10 @@ def build_arg_parser():
         --verbose.
     """
 
+    # No abbreviations: --verbose used to be matched in full and removed from
+    # sys.argv, so an option that is not spelled out is not one.
     parser = argparse.ArgumentParser(
+        allow_abbrev=False,
         description='shelf_consistency_check: Confirm that every shelf file has a '
                     'corresponding file or directory in holdings/.')
 

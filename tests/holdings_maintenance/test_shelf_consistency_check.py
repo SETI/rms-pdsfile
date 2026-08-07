@@ -199,15 +199,23 @@ def test_no_arguments_reports_an_empty_run():
 
 
 @pytest.mark.holdings_free
-def test_verbose_is_accepted_after_the_shelf_roots(legacy_tree):
-    """The flag is positional-order-independent, as it was before argparse."""
+def test_verbose_is_accepted_between_the_shelf_roots(legacy_tree, tmp_path):
+    """The flag is positional-order-independent, as it was before argparse.
+
+    The flag sits *between* two roots, which is the placement plain
+    `parse_args` rejects; a flag trailing the last positional is accepted by
+    either spelling, so it would not tell the two apart.
+    """
 
     shelves = legacy_tree.disk / 'shelves' / 'info' / 'volumes' / 'VG_28xx'
     (shelves / 'VG_2801_info.pickle').write_bytes(b'')
+    second = tmp_path / 'second_root'
+    second.mkdir()
 
     run = support.run_tool_in_process('shelf_consistency_check', legacy_tree.disk,
-                                      '--verbose')
+                                      '--verbose', second)
     assert run.returncode == 0, run.describe()
+    assert counts(run) == (1, 0), run.describe()
     assert str(legacy_tree.disk / 'holdings' / 'volumes' / 'VG_28xx' / 'VG_2801') \
         in run.output, run.describe()
 
@@ -220,6 +228,24 @@ def test_an_unrecognized_flag_is_a_usage_error(legacy_tree):
                                       legacy_tree.disk)
     assert run.returncode == 2, run.describe()
     assert 'unrecognized arguments: --bogus' in run.output, run.describe()
+    assert 'Tests performed:' not in run.output, run.describe()
+
+
+@pytest.mark.holdings_free
+def test_an_abbreviated_flag_is_a_usage_error(legacy_tree):
+    """`--verb` is not `--verbose`: an option has to be spelled out.
+
+    The parser sets allow_abbrev=False, so a misspelling is rejected rather
+    than quietly turning an option on.
+    """
+
+    shelves = legacy_tree.disk / 'shelves' / 'info' / 'volumes' / 'VG_28xx'
+    (shelves / 'VG_2801_info.pickle').write_bytes(b'')
+
+    run = support.run_tool_in_process('shelf_consistency_check', '--verb',
+                                      legacy_tree.disk)
+    assert run.returncode == 2, run.describe()
+    assert 'unrecognized arguments: --verb' in run.output, run.describe()
     assert 'Tests performed:' not in run.output, run.describe()
 
 

@@ -70,26 +70,35 @@ ADDED = {
         'test_no_arguments_prints_nothing',
         'test_help_names_every_flag',
         'test_an_unrecognized_flag_is_a_usage_error',
+        'test_an_abbreviated_flag_is_a_usage_error_and_rewrites_nothing',
+        'test_a_repeated_flag_is_accepted',
+        'test_a_path_beginning_with_a_dash_is_reachable_only_after_another_path',
         'test_an_unreadable_file_raises_rather_than_being_reported',
         'test_the_module_is_runnable_as_python_m',
+        'test_an_unreadable_file_ends_the_process_with_a_traceback',
     ),
     'tests/holdings_maintenance/test_shelf_consistency_check.py': (
         'test_an_index_shelf_whose_label_exists_is_counted_not_reported',
         'test_an_extraneous_index_shelf_is_counted_like_any_other',
         'test_no_arguments_reports_an_empty_run',
-        'test_verbose_is_accepted_after_the_shelf_roots',
+        'test_verbose_is_accepted_between_the_shelf_roots',
         'test_an_unrecognized_flag_is_a_usage_error',
+        'test_an_abbreviated_flag_is_a_usage_error',
         'test_the_module_is_runnable_as_python_m',
     ),
     'tests/holdings_maintenance/test_show_opus_products.py': (
         'test_the_parser_is_built_without_touching_the_environment',
         'test_the_module_imports_with_neither_holdings_root_set',
+        'test_the_module_is_runnable_as_python_m',
     ),
 }
 REMOVED = 'test_an_extraneous_index_shelf_raises'
 
 MIGRATED = ('src/pdsfile/holdings_maintenance/pds3/crlf.py',
             'src/pdsfile/holdings_maintenance/pds3/shelf_consistency_check.py')
+
+# The records spell the console-script count out, so the check has to as well.
+NUMBER_WORDS = {10: 'ten', 11: 'eleven', 12: 'twelve'}
 
 
 def squash(text):
@@ -102,13 +111,19 @@ def lines(path):
     return len(pathlib.Path(path).read_text(encoding='utf-8').splitlines())
 
 
-def base_lines(path):
-    """Return a file's line count at the PR's base commit."""
+def base_text(path):
+    """Return a file's contents at the PR's base commit."""
 
     out = subprocess.run(['git', 'show', f'{BASE}:{path}'], capture_output=True,
                          check=True)
 
-    return len(out.stdout.decode('utf-8').splitlines())
+    return out.stdout.decode('utf-8')
+
+
+def base_lines(path):
+    """Return a file's line count at the PR's base commit."""
+
+    return len(base_text(path).splitlines())
 
 
 def function_body(path, name, *, drop_comments=False, strip_qualifier=False):
@@ -151,14 +166,30 @@ def common_subsequence(first, second):
     return out
 
 
-def leading_identical(sequences):
-    """Return the length of the longest identical leading run of every sequence."""
+def common_blocks(sequences):
+    """Return the block lengths that are consecutive in every sequence.
 
-    n = 0
-    while all(n < len(s) for s in sequences) and len({s[n] for s in sequences}) == 1:
-        n += 1
+    Scans the first sequence left to right, taking at each position the longest
+    block of consecutive lines that also occurs consecutively in all the others.
+    Greedy, so it is a lower bound on the ideal partition -- but it is the measure
+    the records quote, and it re-derives exactly.
+    """
 
-    return n
+    first, rest = sequences[0], sequences[1:]
+    lengths = []
+    start = 0
+    while start < len(first):
+        for size in range(len(first) - start, 0, -1):
+            block = first[start:start + size]
+            if all(any(other[k:k + size] == block
+                       for k in range(len(other) - size + 1)) for other in rest):
+                lengths.append(size)
+                start += size
+                break
+        else:                                                # pragma: no cover
+            start += 1
+
+    return lengths
 
 
 def ruff_findings():
@@ -175,6 +206,30 @@ def ruff_findings():
     found = re.search(r'Found (\d+) errors?\.', out.stdout.decode('utf-8'))
 
     return None if found is None else int(found.group(1))
+
+
+def tests_calling(path):
+    """Return, per runner name, how many test functions call it at least once."""
+
+    src = pathlib.Path(path).read_text(encoding='utf-8')
+    tree = ast.parse(src)
+    counts = {}
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.FunctionDef) and node.name.startswith('test_')):
+            continue
+        called = set()
+        for call in ast.walk(node):
+            if not isinstance(call, ast.Call):
+                continue
+            func = call.func
+            name = func.attr if isinstance(func, ast.Attribute) else getattr(
+                func, 'id', None)
+            if name:
+                called.add(name)
+        for name in called:
+            counts[name] = counts.get(name, 0) + 1
+
+    return counts
 
 
 def test_names(path):
@@ -214,9 +269,18 @@ def main():
     entries = len(ignores)
     slots = sum(len(v) for v in ignores.values())
     scripts = len(pyproject['project']['scripts'])
-    expect('record', f'| per-file-ignores entries | 67 | **{entries}** |')
-    expect('record', f'| code slots | 181 | **{slots}** |')
-    expect('record', f'| `[project.scripts]` entries | {scripts} | {scripts} |')
+    base_toml = tomllib.loads(base_text('pyproject.toml'))
+    base_ignores = base_toml['tool']['ruff']['lint']['per-file-ignores']
+    base_slots = sum(len(v) for v in base_ignores.values())
+    base_scripts = len(base_toml['project']['scripts'])
+
+    expect('record', f'| per-file-ignores entries | {len(base_ignores)} | '
+                     f'**{entries}** |')
+    expect('record', f'| code slots | {base_slots} | **{slots}** |')
+    expect('record', f'| `[project.scripts]` entries | {base_scripts} | {scripts} |')
+    expect('record', f'had {NUMBER_WORDS[base_scripts]} entries at `{BASE}` and has '
+                     f'{NUMBER_WORDS[scripts]} now')
+    expect('plan', f'still {NUMBER_WORDS[scripts]} entries')
     expect('plan', f'**{entries + 1} → {entries} entries, {slots + 1} → {slots} '
                    f'code slots**')
 
@@ -258,7 +322,8 @@ def main():
                                 code[names[2]])
     raw_shared = common_subsequence(common_subsequence(raw[names[0]], raw[names[1]]),
                                     raw[names[2]])
-    preamble = leading_identical([code[n] for n in names])
+    blocks = common_blocks([code[n] for n in names])
+    preamble = blocks[0]
     total = sum(len(code[n]) for n in names)
     percent = {n: f'{100 * len(shared) / len(code[n]):.1f}%' for n in names}
 
@@ -277,7 +342,10 @@ def main():
                        f'{len(raw["run_selection_main"])} / '
                        f'{len(raw["run_index_main"])} lines with {len(raw_shared)} '
                        f'common')
-    expect('deferred', f'Only **{preamble}** consecutive lines are identical')
+    sizes = ', '.join(str(n) for n in sorted(blocks, reverse=True) if n >= 2)
+    isolated = sum(1 for n in blocks if n == 1)
+    expect('deferred', f'the 39 fall into blocks of **{sizes}** lines and '
+                       f'{"five" if isolated == 5 else isolated} isolated lines')
     expect('deferred', f'{total} code lines across the three today')
     expect('deferred', f'The {preamble}-line preamble is contiguous')
     expect('deferred', f'takes {100 * preamble / len(shared):.0f}% of the commonality')
@@ -301,7 +369,54 @@ def main():
             missing.append(('tree', f'{REMOVED} is still defined in {path}'))
     counted = sum(len(v) for v in ADDED.values())
     expect('record', f'The {counted} added ids and the 1 removed')
-    expect('record', f'| `--mode ns` | 1,097 | 1,115 | {counted} | 1 | **0** |')
+    expect('record', f'| `--mode ns` | 1,097 | {1097 + counted - 1:,} | {counted} | '
+                     f'1 | **0** |')
+    expect('record', f'Every one of the {counted} added ids')
+    for path, added in ADDED.items():
+        module = path.rpartition('/')[2]
+        expect('record', f'`{module}` ({len(added)}):')
+
+    # Section 4's per-module breakdown of how each tool's tests are driven, as
+    # counts of *tests*, not of call sites: one test may call a runner twice.
+    for path, total, driven in (
+            ('tests/holdings_maintenance/test_shelf_consistency_check.py', 13,
+             {'run_tool_in_process': 12, 'run_tool_without_holdings': 1}),
+            ('tests/holdings_maintenance/test_crlf.py', 31,
+             {'run_tool_in_process': 13, 'run_tool_without_holdings': 2}),
+            ('tests/holdings_maintenance/test_show_opus_products.py', 9,
+             {'run_tool': 6, 'run_without_holdings': 2})):
+        found = len(test_names(path))
+        if found != total:
+            missing.append(('tree', f'{path} defines {found} tests, section 4 '
+                                    f'says {total}'))
+        counted = tests_calling(path)
+        for runner, expected in driven.items():
+            if counted.get(runner, 0) != expected:
+                missing.append(('tree', f'{path}: {counted.get(runner, 0)} tests call '
+                                        f'{runner}, section 4 says {expected}'))
+
+    # ...and section 4's prose, so the tree and the table cannot drift apart.
+    shelf = tests_calling('tests/holdings_maintenance/test_shelf_consistency_check.py')
+    crlf = tests_calling('tests/holdings_maintenance/test_crlf.py')
+    opus = tests_calling('tests/holdings_maintenance/test_show_opus_products.py')
+    n_shelf = len(test_names('tests/holdings_maintenance/test_shelf_consistency_check.py'))
+    n_crlf = len(test_names('tests/holdings_maintenance/test_crlf.py'))
+    n_opus = len(test_names('tests/holdings_maintenance/test_show_opus_products.py'))
+    expect('record', f'{n_shelf} tests: **{shelf["run_tool_in_process"]}** call '
+                     f'`main()` in-process, {shelf["run_tool_without_holdings"]} is '
+                     f'the `python -m` subprocess')
+    expect('record', f'{n_crlf} tests: '
+                     f'{n_crlf - crlf["run_tool_in_process"] - crlf["run_tool_without_holdings"]}'
+                     f' call the classifier directly and always did, '
+                     f'**{crlf["run_tool_in_process"]}** are new in-process '
+                     f'command-line tests, {crlf["run_tool_without_holdings"]} are '
+                     f'subprocesses')
+    expect('record', f'{n_opus} tests: {opus["run_tool"]} drive the tool as a '
+                     f'subprocess against a dogfooded tree, '
+                     f'{opus["run_without_holdings"]} are new subprocess probes with '
+                     f'no holdings, '
+                     f'{n_opus - opus["run_tool"] - opus["run_without_holdings"]} '
+                     f'inspects the parser')
 
     # --- the in-process criterion, and deferred 140's premise -----------------
     expect('support',

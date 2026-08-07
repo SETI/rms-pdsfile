@@ -39,6 +39,27 @@ LOGICAL_LABEL = LABEL
 EXPECTED_OPUS_TYPES = ('hst_text', 'hst_calib', 'hst_ima', 'hst_raw', 'hst_tiff')
 
 
+def run_without_holdings(argv, cwd):
+    """Run a command with neither holdings root set, and this checkout on the path.
+
+    Args:
+        argv: The command line to run.
+        cwd: The working directory for the subprocess.
+
+    Returns:
+        subprocess.CompletedProcess: With both streams captured as bytes.
+    """
+
+    env = dict(os.environ)
+    env['PYTHONPATH'] = str(support.REPO_ROOT / 'src')
+    for name in ('PDS3_HOLDINGS_DIR', 'PDS4_HOLDINGS_DIR', 'PDSFILE_TEST_HOLDINGS',
+                 'PDSFILE_TEST_DATA_DIR'):
+        env.pop(name, None)
+
+    return subprocess.run(argv, cwd=str(cwd), env=env, capture_output=True,
+                          timeout=support.TOOL_TIMEOUT, check=False)
+
+
 @pytest.fixture
 def tree(fresh_tree):
     """The module tree with checksums and info shelves generated.
@@ -175,19 +196,32 @@ def test_the_module_imports_with_neither_holdings_root_set(tmp_path):
     whole holdings tree into a class-level cache as a side effect of an import.
     """
 
-    env = dict(os.environ)
-    env['PYTHONPATH'] = str(support.REPO_ROOT / 'src')
-    for name in ('PDS3_HOLDINGS_DIR', 'PDS4_HOLDINGS_DIR', 'PDSFILE_TEST_HOLDINGS',
-                 'PDSFILE_TEST_DATA_DIR'):
-        env.pop(name, None)
-
     probe = ('import pdsfile.tools.show_opus_products as m; '
              'assert callable(m.main); assert callable(m.build_arg_parser); '
              "assert not hasattr(m, 'PDS3_HOLDINGS_DIR'); "
              'from pdsfile import Pds3File; '
              'assert Pds3File.LOCAL_PRELOADED == []; '
              'assert Pds3File.SHELVES_ONLY is False')
-    proc = subprocess.run([sys.executable, '-c', probe], cwd=str(tmp_path), env=env,
-                          capture_output=True, timeout=support.TOOL_TIMEOUT,
-                          check=False)
+    proc = run_without_holdings([sys.executable, '-c', probe], tmp_path)
     assert proc.returncode == 0, proc.stderr.decode('utf-8', errors='replace')
+
+
+@pytest.mark.holdings_free
+def test_the_module_is_runnable_as_python_m(tmp_path):
+    """`python -m ...` reaches main() and exits with what it returned.
+
+    A subprocess, and the only test here that shows the module has a `__main__`
+    block at all: every other test in this file needs holdings, so on a runner
+    without them nothing would notice the block's absence. --help is the one
+    invocation that gets through main() with no holdings root set, and argparse's
+    exit is a SystemExit(0) that the block has to let through.
+    """
+
+    proc = run_without_holdings(
+        [sys.executable, '-m', support.TOOL_MODULES['show_opus_products'], '--help'],
+        tmp_path)
+    stdout = proc.stdout.decode('utf-8', errors='replace')
+    assert proc.returncode == 0, proc.stderr.decode('utf-8', errors='replace')
+    assert 'usage: show_opus_products.py' in stdout, stdout
+    for flag in ('--paths', '--opus-types', '--narrow-table', '--debug'):
+        assert flag in stdout, stdout
