@@ -746,11 +746,12 @@ standalone pds3-only tool (it does not fit the five-task `ToolSpec` shape), and 
 three drivers stay three — PR-28 measured whether they collapse now that every
 family has migrated and found they do not (deferred entry 130).
 
-**What the phase leaves behind.** Seven deferred observations were routed at
-Phase 6 or at one of its PRs and are not discharged. They are listed here rather
-than re-owned one by one, because deciding where each belongs is a scoping question
-for whoever plans the next phase, not something PR-28 can settle from inside
-Phase 6:
+**What the phase leaves behind.** **Nine deferred observations** — counted by
+observation number, grouped into six rows below because four of them are one
+question — were routed at Phase 6 or at one of its PRs and are not discharged. They
+are listed here rather than re-owned one by one, because deciding where each
+belongs is a scoping question for whoever plans the next phase, not something PR-28
+can settle from inside Phase 6:
 
 | entry | question |
 |---|---|
