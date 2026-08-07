@@ -3813,12 +3813,28 @@ to collapsing. **Owner: recorded, not open.**
      traceback's shape is part of the CLI contract at all is the owner's call.
      **Owner: open.**
 
-150. **`--log` is still only half pinned.** Before this PR no test drove a
-     maintenance tool with `--log` at all, so the preamble's handler wiring was
-     pinned by nothing, in triplicate. `test_driver_setup.py` now pins it for
-     `pds4checksums`, whose spec declares two handler factories. Two things it does
-     not reach: a pds3 spec, which declares one factory, so the ordering of the
-     tuple is pinned only where there are two of them; and the `PDS_LOG_ROOT`
-     fallback arriving at a real tool — `resolve_log_root` itself is unit-tested in
-     `test_re_validate.py`, but no test sets the variable and runs a tool.
-     **Owner: open.**
+150. **Two lines of the preamble are pinned by no test at all.** Before this PR no
+     test drove a driver-backed tool with `--log`, so the handler wiring was pinned
+     by nothing, in triplicate; `test_driver_setup.py` now pins it. What no test
+     reaches, measured by deleting each line and running the whole
+     `tests/holdings_maintenance` suite, which reports 337 passed either way:
+     `spec.pdsfile_cls.set_log_root(args.log)`, whose absence silently empties the
+     duplicate log tree; and the `if not args.quiet:` guard — `--quiet` is passed to
+     none of the ten driver-backed tools anywhere in the suite. Both are covered by
+     this PR's tool-run capture, which is not a thing the repository runs. Also
+     unreached by any test: the `PDS_LOG_ROOT` fallback arriving at a tool.
+     `resolve_log_root` itself is unit-tested, but no test sets the variable and
+     runs one. **Owner: open.**
+
+151. **Two more near-copies of the preamble exist, and neither is a `setup_run`
+     caller.** `re_validate.main` (`pds3/re_validate.py`) and
+     `pdsdependency.main` (`pds3/pdsdependency.py`) each open with the same shape —
+     build a parser, resolve the log root, build a `PdsLogger`, add the stdout
+     handler unless `--quiet`, add an error handler under `<log>/<progname>` — and
+     neither can call `setup_run` as it stands. `re_validate` builds its logger with
+     a `limits=` argument and has no task flag to refuse; `pdsdependency` interleaves
+     its own path validation between the two halves, re-inlines
+     `resolve_log_root`'s body rather than calling it, and carries a second
+     definition of `LOGROOT_ENV = 'PDS_LOG_ROOT'` beside `_common.py`'s. The
+     duplicate constant is the part that can drift silently. Out of scope here — this
+     PR extracted what was identical, not what is merely similar. **Owner: open.**

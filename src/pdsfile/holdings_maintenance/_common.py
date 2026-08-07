@@ -254,7 +254,7 @@ def setup_run(spec, argv):
         for make_handler in spec.handler_factories:
             logger.add_handler(make_handler(path))
 
-    return args, logger
+    return (args, logger)
 
 
 def log_paths_for(pdsf, method, *args, **kwargs):

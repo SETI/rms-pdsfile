@@ -10,8 +10,9 @@ that happens to sit across a line break still matches.
 
 What it cannot check: numbers that come from running something rather than from
 reading the tree -- the suite id counts, the capture's scenario and line counts.
-Those carry their commands in the record. It does check that the one test id the
-record names exists.
+Those carry their commands in the record, and nothing here re-derives them, so a
+needle for one of them would only be this file asserting its own literal. It does
+check that the one test id the record names exists.
 
 Run from the repository root with the tree's own interpreter, 3.11 or newer (this
 reads pyproject.toml through tomllib):
@@ -125,7 +126,7 @@ def check_the_named_test_exists():
 
 
 def check_the_tool_counts():
-    """Ten tools reach the three drivers; eleven console scripts exist."""
+    """Ten of the console scripts reach one of the three drivers."""
 
     data = tomllib.loads(pathlib.Path('pyproject.toml').read_text(encoding='utf-8'))
     reached = 0
@@ -137,7 +138,7 @@ def check_the_tool_counts():
 
     if reached != 10:
         failures.append(f'{reached} console scripts reach a driver, not 10')
-    expect('**158 scenarios**', 'the capture scenario count')
+    expect('Ten tools reach the three drivers', 'the count of driver-backed tools')
 
 
 check_line_counts()

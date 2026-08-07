@@ -41,7 +41,7 @@ later, not part of setup.
 | `src/pdsfile/holdings_maintenance/_common.py` | 372 | 397 |
 | `src/pdsfile/holdings_maintenance/_shelf_common.py` | 523 | 501 |
 | `src/pdsfile/holdings_maintenance/_indexshelf_common.py` | 620 | 598 |
-| `tests/holdings_maintenance/test_driver_setup.py` | — | 47 |
+| `tests/holdings_maintenance/test_driver_setup.py` | — | 52 |
 
 14 code lines move; the function costs a `def` line and a docstring, so the three
 source files net 19 lines shorter. Nothing else changed: no rename, no signature
@@ -62,9 +62,21 @@ inventory and log-file lines are recorded after its sequence.
 
 Normalized: temporary tree and repo paths, wall-clock times, log-file time tags,
 elapsed times, and traceback **line** numbers. Traceback **file** names and
-function names are compared verbatim, which is the point. `.tar.gz` files are
-compared as their member lists rather than their compressed size, because the
-archive carries a directory entry whose modification time is the run's own.
+function names are compared verbatim, which is the point.
+
+Two records are compared less than verbatim, both because two runs of the same tree
+differ there and neither difference is about the code:
+
+- `ARTIFACTS` compares a `.tar.gz` by its **member list**, not its compressed size.
+  The archive carries a directory entry whose modification time is the run's own,
+  so the size moves between runs — measured, 143,816 against 143,828.
+- `LOGFILES` compares a tool's log lines as a **set**, unioned over every log file
+  it wrote, because which file a line lands in and how many files there are both
+  depend on which second a run started. Measured on the control before the raw
+  total was added: the same 292 lines arrived as 10 files in one run and 11 in the
+  next. The **raw line total** is recorded beside the set, so the failure
+  `log_paths_for`'s docstring names — one run's log written twice — is still
+  visible, which a set alone cannot show.
 
 **Base versus base first**, two independent runs of the same tree:
 
@@ -75,17 +87,38 @@ base      vs head        :   0 differing lines of 6,893
 
 Byte-identical. Not "attributed" — identical.
 
-### 3.1 One input class where the extraction is visible, found deliberately
+**The capture can fail**, checked against a throwaway worktree at head. Changing the
+"Missing task" message to "No task" moves **20 gate lines**, ten tools × one line
+each way; making the preamble ignore `--quiet` moves **410**; attaching only the
+first of a spec's handler factories moves **4 probe lines**. All three mutations
+live inside `setup_run`, so a capture blind to them would be blind to the change
+this PR makes.
 
-Any extracted function adds a stack frame, so a traceback raised *inside* the
-preamble would name it. Nothing in the 158 scenarios raises there, so a separate
-**20-scenario probe** went looking: each tool run twice with `--log`, once at a
-writable root and once at a root the process cannot write into. The unwritable case
-raises `PermissionError` from `logger.add_handler(make_handler(path))` — the
-preamble's last line — on all ten tools.
+The third is four lines rather than five because `pds4indexshelf`'s root
+`ERRORS.log` survives it: `run_index_main` creates its per-target handlers in the
+tool's own log directory rather than the target's, so that file gets written
+whether or not the preamble made it.
 
-Base-versus-base control on the probe: 0 differing lines. Base versus head: **30
-added lines, none removed, none changed**, three per tool and one cause:
+### 3.1 The `--log` probe, and the one input class where the extraction is visible
+
+No scenario above passes `--log`, so the gate reaches the preamble's last four
+lines — the ones that build the root handlers — but sees nothing they produce. A
+separate **20-scenario probe** covers them: each tool run twice, once with a
+writable `--log` root and once with a root the process cannot write into, on a tree
+nothing has initialized so that the run logs an error and the handlers have
+something to write. Each writable run records the whole log root, every path and
+each file's line count, so a handler that was created and never attached — which
+leaves the same file behind — is told apart from one that was attached.
+
+Those `LOGROOT` records are identical between base and head. The probe's base
+versus base is 0 differing lines, and base versus head is **30 added lines, none
+removed, none changed** — three per tool, one cause, and all of it in the
+unwritable run.
+
+A traceback raised *inside* the preamble names the extracted function, because any
+extracted function adds a stack frame. Nothing in the 158 gate scenarios raises
+there; the unwritable `--log` root does, from
+`logger.add_handler(make_handler(path))`, on all ten tools:
 
 ```
    File "$REPO/.../_common.py", line <N>, in run_main
@@ -114,13 +147,21 @@ Full data, `PDSFILE_TEST_HOLDINGS=full`, both modes, per-id outcome diffed:
 The five `--mode s` failures are the same five ids at both trees; they are the
 tree's existing shelves-only failures, untouched here.
 
-The new test is the one addition §5 permits, and it closes a real gap: no test in
-the suite drove a maintenance tool with `--log`, so the preamble's handler wiring
-was pinned by nothing — in triplicate before this PR, and in one place after it. It
-uses `pds4checksums`, which declares two handler factories, and asserts both
-`WARNINGS.log` and `ERRORS.log` appear under the log root. **Negative control:**
-with `spec.handler_factories[:1]` substituted in `setup_run`, the test fails; the
-mutation was reverted before anything else was run.
+The new test is the one addition §5 permits, and it closes a real gap: no test drove
+a **driver-backed** tool with `--log`, so the preamble's handler wiring was pinned
+by nothing — in triplicate before this PR, and in one place after it.
+(`test_re_validate.py` does pass `--log`, to a tool with its own `main()` that
+reaches none of the three drivers.) The test uses `pds4checksums`, which declares
+two handler factories, and asserts that the tool's directory under the log root
+holds **exactly** `ERRORS.log` and `WARNINGS.log` and that **both have content**
+after a run that logs an error — creation and attachment are different properties,
+and each handler opens its file when it is created, so existence alone cannot tell
+them apart.
+
+**Negative controls, three mutations of `setup_run`,** each reverted before anything
+else was run: `handler_factories[:1]` fails the exact-list assertion; creating the
+handlers without `logger.add_handler` leaves both files empty and fails the content
+assertions; dropping the `if args.log:` branch leaves the directory absent.
 
 ## 5. Standing gates
 
