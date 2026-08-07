@@ -23,7 +23,7 @@ table goes into a data module of its own.
 
 | module | base | head |
 |---|---:|---:|
-| `_common.py` | 337 | 370 |
+| `_common.py` | 337 | 371 |
 | `_archives_common.py` | 242 | 242 |
 | `_shelf_common.py` | 539 | 523 |
 | `_indexshelf_common.py` | — | 619 |
@@ -33,7 +33,7 @@ table goes into a data module of its own.
 | `pds3/pdslinkshelf.py` | 1,730 | 471 |
 | `pds4/pds4linkshelf.py` | 1,224 | 524 |
 | `pds3/linkshelf_repairs.py` | — | 555 |
-| **total** | **5,158** | **4,143** |
+| **total** | **5,158** | **4,144** |
 
 The four tool modules go from 4,040 lines to 1,105. Every module in the table is
 under deviation (3)'s 1,000-line limit; one module in `holdings_maintenance/` is
@@ -436,7 +436,7 @@ $ wc -l src/pdsfile/holdings_maintenance/_shelf_common.py
 ```
 $ wc -l src/pdsfile/holdings_maintenance/_*.py
    242 _archives_common.py
-   370 _common.py
+   371 _common.py
    619 _indexshelf_common.py
    729 _linkshelf_common.py
    523 _shelf_common.py
