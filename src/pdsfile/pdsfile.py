@@ -3,82 +3,90 @@
 # General pdsfile package & PdsFile class
 ##########################################################################################
 
-"""The PdsFile class and the modules its method groups live in.
+"""The ``PdsFile`` class, and the map of the modules its methods live in.
 
-This module holds the `class PdsFile` statement, everything that is about a
-PdsFile *object* rather than about one subject area, and re-exports every name it
-has ever exported. Ten private modules beside it hold the rest -- nine of them
-mixin bases of PdsFile, the tenth (_path_utils) plain module functions:
+A ``PdsFile`` stands for one file or directory in a PDS holdings tree. It knows where
+that file sits in the tree's taxonomy -- which category, bundleset, bundle and interior
+path it belongs to -- and answers questions about it: its metadata, the files associated
+with it, the images that display it, and the paths of its checksum, archive and log
+counterparts.
 
-    _associations.py    _AssociationsMixin -- the four associated_* methods that
-                        map a file to its counterparts in the other voltypes
-    _derived_paths.py   _DerivedPathsMixin -- checksum, archive and log path
-                        builders, and set_log_root
-    _index_rows.py      _IndexRowsMixin -- index shelves and the pseudo-children
-                        that stand for rows of an index table
-    _local_fs.py        _LocalFsMixin -- the case-repairing, SHELVES_ONLY-aware
-                        filesystem layer (os_path_exists, os_path_isdir,
-                        os_listdir, glob_glob and _non_checksum_abspath) and
-                        PATH_EXISTS_CACHE_SIZE
-    _opus.py            _OpusMixin -- opus_products, and the two constructors
-                        that resolve an OPUS ID (from_opus_id) or a bundle-name
-                        file specification (from_filespec)
-    _path_utils.py      the path helpers that take no PdsFile object:
-                        repair_case, abspath_for_logical_path,
-                        logical_path_from_abspath, construct_category_list,
-                        formatted_file_size, selected_path_from_path, the
-                        _clean_* primitives and _needs_glob, plus
-                        FILE_BYTE_UNITS and _GLOB_CACHE_SIZE. Not a mixin
-    _preload.py         _PreloadMixin -- preload and the cache it fills, plus the
-                        module-level cache_lifetime_for_class, is_preloading,
-                        pause_caching, resume_caching, the four cache-lifetime
-                        constants, DICTIONARY_CACHE_LIMIT and HAS_PYLIBMC
-    _properties.py      _PropertiesMixin -- the largest group: 64 properties, 40
-                        of them lazy (fill an _X_filled slot, then -- in 39 of the
-                        40 -- _recache() so the cache keeps the filled object) and
-                        24 recomputed on every access, plus version_info,
-                        all_versions, viewset_lookup and _repair_width_height
-    _shelves.py         _ShelfMixin -- opening, caching and reading the shelf
-                        files that hold precomputed metadata, with the eval of a
-                        .py sidecar isolated in one named function
-    _sorting.py         _SortingMixin -- the sort rules, the childname selectors,
-                        and the twelve conversions among abspaths, logical paths,
-                        basenames and PdsFile objects
+This module holds the ``class PdsFile`` statement, everything that is about a
+``PdsFile`` *object* rather than about one subject area, and the imports that put the
+package's public names in this module's namespace. Ten private modules beside it hold
+the rest. Nine are mixin bases of ``PdsFile``; the tenth, ``_path_utils``, is plain
+module functions.
 
-`preload_and_cache.py` is public and stays public; it is now a re-export shim
-over _preload.py.
+  * ``_associations.py`` -- ``_AssociationsMixin``: the four ``associated_*`` methods,
+    which map a file to its counterparts in the other voltypes.
+  * ``_derived_paths.py`` -- ``_DerivedPathsMixin``: the checksum, archive and log path
+    builders, and ``set_log_root``.
+  * ``_index_rows.py`` -- ``_IndexRowsMixin``: index shelves, and the pseudo-children
+    that stand for rows of an index table.
+  * ``_local_fs.py`` -- ``_LocalFsMixin``: the case-repairing filesystem layer that
+    honors ``SHELVES_ONLY`` (``os_path_exists``, ``os_path_isdir``, ``os_listdir``,
+    ``glob_glob`` and ``_non_checksum_abspath``), and ``PATH_EXISTS_CACHE_SIZE``.
+  * ``_opus.py`` -- ``_OpusMixin``: ``opus_products``, and the two constructors that
+    resolve an OPUS ID (``from_opus_id``) or a bundle-name file specification
+    (``from_filespec``).
+  * ``_path_utils.py`` -- the path helpers that take no ``PdsFile`` object:
+    ``repair_case``, ``abspath_for_logical_path``, ``logical_path_from_abspath``,
+    ``construct_category_list``, ``formatted_file_size``, ``selected_path_from_path``,
+    the three ``_clean_*`` primitives and ``_needs_glob``, plus ``FILE_BYTE_UNITS`` and
+    ``_GLOB_CACHE_SIZE``. Not a mixin.
+  * ``_preload.py`` -- ``_PreloadMixin``: ``preload`` and the cache it fills, plus the
+    module-level ``cache_lifetime_for_class``, ``is_preloading``, ``pause_caching``,
+    ``resume_caching``, the four cache-lifetime constants,
+    ``DICTIONARY_CACHE_LIMIT`` and ``HAS_PYLIBMC``.
+  * ``_properties.py`` -- ``_PropertiesMixin``: the largest group. 64 properties, of
+    which 40 are lazy (they fill a private slot on first access and then, in 39 of the
+    40, call ``_recache()`` so the cached object keeps the filled value) and 24 are
+    recomputed on every access; plus ``version_info``, ``all_versions``,
+    ``viewset_lookup`` and ``_repair_width_height``.
+  * ``_shelves.py`` -- ``_ShelfMixin``: opening, caching and reading the shelf files
+    that hold precomputed metadata, with the ``eval`` of a ``.py`` sidecar isolated in
+    one named function.
+  * ``_sorting.py`` -- ``_SortingMixin``: the sort rules, the childname selectors, and
+    the twelve conversions among absolute paths, logical paths, basenames and
+    ``PdsFile`` objects.
 
-What stays here, and why:
+``preload_and_cache.py`` is the public module for the preload subsystem; ``_preload.py``
+is where that subsystem is implemented.
 
-  * The `class PdsFile` statement. Pickled PdsFile instances -- Viewmaster's
-    memcached cache holds live ones -- record `pdsfile.pdsfile` as the class's
-    module, so moving the statement would invalidate them.
-  * Every class attribute: the configuration tables, the translator registries,
-    the shared CACHE and LOGGER, SHELF_CACHE and friends, LOG_ROOT_,
-    LATEST_VERSION_RANKS. A mixin carries behavior only, so the data a mixin
-    reads is defined here and reached as cls.X at run time.
-  * __init__ and the _X_filled slots it creates, _complete,
-    _update_ranks_and_vols and _recache -- the object's own lifecycle, which the
-    properties in _properties.py drive through self.
-  * The constructors: child, parent, from_abspath, from_logical_path, from_path,
-    from_lid, from_relative_path, _from_absolute_or_logical_path, new_pdsfile,
-    new_merged_dir, new_index_row_pdsfile, copy, __repr__.
-  * The bundle and bundleset utilities, the sort-order setters, the
-    use_shelves_only / require_shelves / set_logger / set_easylogger class
-    configuration, and is_logical_path.
+What this module holds, and why:
 
-Mechanics that hold for all nine modules: a mixin defines no __init__ and no new
-state; it never imports pdsfile.pdsfile at module level (pdsfile.py imports the
-mixins, so that would be a cycle -- a method needing the class object uses a
-function-local import instead); and the bases below are listed alphabetically.
-tests/api/test_mixin_collisions.py checks that the mixins are disjoint, that
-nothing shadows them, that they hold no state and that the order is alphabetical;
-tests/api/test_mixin_import_isolation.py checks the no-back-import rule by
-loading each module in a fresh interpreter.
+  * The ``class PdsFile`` statement. Pickled ``PdsFile`` instances -- Viewmaster's
+    memcached cache holds live ones -- record ``pdsfile.pdsfile`` as the class's module,
+    so moving the statement would invalidate them.
+  * Every class attribute: the configuration tables, the translator registries, the
+    shared ``CACHE`` and ``LOGGER``, ``SHELF_CACHE`` and its companions, ``LOG_ROOT_``
+    and ``LATEST_VERSION_RANKS``. A mixin carries behavior only, so the data a mixin
+    reads is defined here and reached as ``cls.X`` at run time.
+  * ``__init__`` and the private slots it creates, ``_complete``,
+    ``_update_ranks_and_vols`` and ``_recache`` -- the object's own lifecycle, which the
+    properties in ``_properties.py`` drive through ``self``.
+  * The constructors: ``child``, ``parent``, ``from_abspath``, ``from_logical_path``,
+    ``from_path``, ``from_lid``, ``from_relative_path``,
+    ``_from_absolute_or_logical_path``, ``new_pdsfile``, ``new_merged_dir``,
+    ``new_index_row_pdsfile``, ``copy`` and ``__repr__``.
+  * The bundle and bundleset utilities, the sort-order setters, the class configuration
+    (``use_shelves_only``, ``require_shelves``, ``set_logger``, ``set_easylogger``) and
+    ``is_logical_path``.
 
-The split is invisible to a caller's code: pdsfile.pdsfile.<name> still resolves
-for every name it resolved for before, and nothing a caller imports or calls has
-moved or been renamed. It does show in __module__, __qualname__ and __mro__.
+Mechanics that hold for all nine mixins: a mixin defines no ``__init__`` and no state of
+its own; it never imports ``pdsfile.pdsfile`` at module level, because this module
+imports the mixins and that would be a cycle, so a method needing the class object uses
+a function-local import instead; and the bases in the class statement are listed
+alphabetically. ``tests/api/test_mixin_collisions.py`` checks that the mixins are
+disjoint, that nothing shadows them, that they hold no state and that the order is
+alphabetical. ``tests/api/test_mixin_import_isolation.py`` checks the no-back-import
+rule by loading each module in a fresh interpreter.
+
+Every public name of the package resolves as ``pdsfile.pdsfile.<name>``, which is what
+the import block below is for: several of its imports are referenced nowhere in this
+file and exist only to keep a name on that surface, so deleting one because it looks
+unused removes the name. Where a symbol is really defined shows in ``__module__``,
+``__qualname__`` and ``__mro__``.
 """
 
 import os
@@ -163,6 +171,40 @@ from ._preload import (HAS_PYLIBMC as HAS_PYLIBMC,
 
 class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsMixin,
               _OpusMixin, _PreloadMixin, _PropertiesMixin, _ShelfMixin, _SortingMixin):
+    """One file or directory in a PDS holdings tree.
+
+    An instance is created through one of the alternative constructors --
+    ``from_abspath()``, ``from_logical_path()``, ``from_path()``, ``child()``,
+    ``parent()`` and their relatives -- never by calling the class, which returns a blank
+    object with no path in it.
+
+    A path is held twice. The logical path starts below the ``holdings/`` directory and
+    identifies a file no matter which disk holds it; the absolute path names the file on
+    this machine. The logical path is split across attributes that name the pieces of the
+    tree's taxonomy: ``category_``, made of ``checksums_``, ``archives_`` and
+    ``bundletype_``; then ``bundleset_`` with its ``bundleset`` and version ``suffix``;
+    then ``bundlename_``; then ``interior``, the part below the bundle directory. An
+    attribute whose name ends in an underscore either is empty or ends in a slash, so the
+    pieces concatenate into a path without any separator logic.
+
+    Most of what an instance can answer is a property, computed on first access and
+    stored. The answers can be expensive -- a directory listing, a shelf lookup, a label
+    parse -- which is why instances are cached: an object completed through
+    ``_complete()`` goes into the shared class-level ``CACHE``, keyed by its lowercased
+    logical path, and a later request for the same path gets the same object back rather
+    than repeating the work. ``preload()`` fills that cache in bulk from a holdings tree.
+
+    The class is not used directly. ``Pds3File`` and ``Pds4File`` subclass it, one per PDS
+    version, and each fills in the configuration tables and the regular expressions that
+    make path parsing work; the per-bundleset rule modules subclass those in turn and are
+    selected through ``SUBCLASSES`` and ``VOLSET_TRANSLATOR``. Class attributes are read
+    as ``cls.X`` throughout, so a subclass changes behavior by redefining them.
+
+    Three class-level switches change how the tree is read. ``SHELVES_ONLY`` answers
+    existence and listing questions from the shelf files instead of the filesystem;
+    ``SHELVES_REQUIRED`` turns a missing shelf into an error rather than a warning; and
+    ``DEFAULT_CACHING`` decides which objects ``_complete()`` caches.
+    """
 
     # Configuration
     VOLTYPES = ['volumes', 'calibrated', 'diagrams', 'metadata', 'previews',
@@ -333,48 +375,57 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
     }
 
     def sort_labels_after(self, labels_after):
-        """If True, all label files will appear after their associated data
-        files when sorted.
+        """Choose whether a label file sorts after the data file it describes.
 
-        Keyword arguments:
-            labels_after -- a flag used to determine if all label files should appear
-                            after the associated data files when sorted.
+        The setting is stored on this object alone, over a copy of the sort order the
+        class supplies, so other objects of the same class are unaffected.
+
+        Parameters:
+            labels_after (bool): if True, a label file follows its data file in a sorted
+                listing. If False, it sorts by name like any other file.
         """
 
         self.SORT_ORDER = self.SORT_ORDER.copy()
         self.SORT_ORDER['labels_after'] = labels_after
 
     def sort_dirs_first(self, dirs_first):
-        """If True, directories will appear before all files in a sorted list.
+        """Choose whether directories sort before files.
 
-        Keyword arguments:
-            dirs_first -- a flag used to determine if directories should appear before
-                          all files when sorted.
+        The setting is stored on this object alone, over a copy of the sort order the
+        class supplies, so other objects of the same class are unaffected.
+
+        Parameters:
+            dirs_first (bool): if True, every directory precedes every file in a sorted
+                listing.
         """
 
         self.SORT_ORDER = self.SORT_ORDER.copy()
         self.SORT_ORDER['dirs_first'] = dirs_first
 
     def sort_dirs_last(self, dirs_last):
-        """If True, directories will appear after all files in a sorted list.
+        """Choose whether directories sort after files.
 
-        Keyword arguments:
-            dirs_last -- a flag used to determine if directories should appear after all
-                         files when sorted.
+        The setting is stored on this object alone, over a copy of the sort order the
+        class supplies, so other objects of the same class are unaffected.
+
+        Parameters:
+            dirs_last (bool): if True, every directory follows every file in a sorted
+                listing.
         """
 
         self.SORT_ORDER = self.SORT_ORDER.copy()
         self.SORT_ORDER['dirs_last'] = dirs_last
 
     def sort_info_first(self, info_first):
-        """If True or 1, info files will be listed first in all sorted lists;
-        if False or 0, info files will appear alphabetically;
-        if an integer bigger than 1, put the info file first only if there are
-        at least this many files in the directory.
+        """Choose whether an info file sorts to the top of a listing.
 
-        Keyword arguments:
-            info_first -- a flag used to determine info files will be listed first in all
-                          sorted lists.
+        The setting is stored on this object alone, over a copy of the sort order the
+        class supplies, so other objects of the same class are unaffected.
+
+        Parameters:
+            info_first: True or 1 to put the info file first in every listing, False or
+                0 never to, or an integer above 1 to put it first only in a directory
+                holding at least that many files.
         """
 
         self.SORT_ORDER = self.SORT_ORDER.copy()
@@ -385,7 +436,13 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
     ############################################################################
 
     def __init__(self):
-        """Constructor returns a blank PdsFile object. Not for external use."""
+        """Construct a blank object with every attribute at its empty value.
+
+        Nothing here refers to a file. The path attributes are empty strings, the flags
+        are False, and every lazy property's storage slot is None so that the first
+        access computes it. An alternative constructor is what turns a blank object into
+        one that stands for a file.
+        """
 
         self.basename     = ''
         self.abspath      = ''
@@ -471,15 +528,27 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
         self._index_pdslabel                 = None
 
     def new_pdsfile(self, key=None, copypath=False):
-        """Return an empty PdsFile of the same subclass or a specified subclass.
+        """Return a blank object of this class, or of the subclass a bundleset selects.
 
-        Keyword arguments:
-            key      -- the name of a bundleset that exists in the SUBCLASSES dictionary
-                        or a bundleset pattern that could be matched by VOLSET_TRANSLATOR.
-                        (default None)
-            copypath -- a flag to determine if the returned pdsfile instance should copy
-                        all the attributes from the instance calling the method. (default
-                        False)
+        Selecting a subclass is a two-step lookup: a key that is already a key of
+        ``SUBCLASSES`` picks that entry directly, and any other key is put through
+        ``VOLSET_TRANSLATOR`` first and the result used instead.
+
+        Parameters:
+            key (str): the name of a bundleset registered in ``SUBCLASSES``, or a
+                bundleset name that ``VOLSET_TRANSLATOR`` can map to one. None keeps
+                this object's own class.
+            copypath (bool): if True, copy the path attributes -- everything from the
+                basename down to the interior, and the version fields -- from this
+                object onto the new one. The lazy properties are not copied, so the new
+                object recomputes them.
+
+        Returns:
+            PdsFile: the new object.
+
+        Raises:
+            KeyError: if the translated key is not registered in ``SUBCLASSES``. It comes
+                from the item lookup, ``__getitem__()``, on that dictionary.
         """
         cls = type(self)
         if key is None:
@@ -524,11 +593,19 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
     ############################################################################
     @classmethod
     def use_shelves_only(cls, status=True):
-        """Set SHELVES_ONLY for both Pds3File and Pds4File
+        """Set ``SHELVES_ONLY`` on every direct subclass of the class this is called on.
 
-        Keyword arguments:
-            cls    -- the class with its attribute being updated
-            status -- value for SHELVES_ONLY (default True)
+        Called on ``PdsFile``, that means ``Pds3File`` and ``Pds4File``. The class it is
+        called on is not itself changed, and neither are subclasses further down, which
+        inherit the value instead. ``Pds3File`` and ``Pds4File`` each override this with
+        a version that sets the attribute on themselves.
+
+        Call it before ``preload()``. A file's existence and a directory's contents are
+        then answered from the shelf files, and the filesystem is consulted only where a
+        shelf is missing.
+
+        Parameters:
+            status (bool): the value to set.
         """
 
         subclasses = cls.__subclasses__()
@@ -537,11 +614,18 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
 
     @classmethod
     def require_shelves(cls, status=True):
-        """Set SHELVES_REQUIRED for both Pds3File and Pds4File
+        """Set ``SHELVES_REQUIRED`` on every direct subclass of the class it is called on.
 
-        Keyword arguments:
-            cls    -- the class with its attribute being updated
-            status -- value for SHELVES_REQUIRED (default True)
+        Called on ``PdsFile``, that means ``Pds3File`` and ``Pds4File``. The class it is
+        called on is not itself changed, and neither are subclasses further down, which
+        inherit the value instead. ``Pds3File`` and ``Pds4File`` each override this with
+        a version that sets the attribute on themselves.
+
+        Call it before ``preload()``. A missing or incomplete shelf file is then an
+        error rather than a logged warning.
+
+        Parameters:
+            status (bool): the value to set.
         """
 
         subclasses = cls.__subclasses__()
@@ -551,11 +635,15 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
 
     @classmethod
     def set_logger(cls, logger=None):
-        """Set the PdsLogger for both Pds3File and Pds4File.
+        """Set ``LOGGER`` on every direct subclass of the class this is called on.
 
-        Keyword arguments:
-            logger -- the pdslogger (default None)
-            cls    -- the class with its attribute being updated
+        Called on ``PdsFile``, that means ``Pds3File`` and ``Pds4File``. The class it is
+        called on keeps the logger it had, so the ``CACHE`` that ``PdsFile`` built with
+        its own logger continues to use that one.
+
+        Parameters:
+            logger: the PdsLogger to install. A false value installs a null logger,
+                which discards everything.
         """
 
         if not logger:
@@ -568,10 +656,11 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
 
     @classmethod
     def set_easylogger(cls):
-        """Log all messages directly to stdout.
+        """Send every log message straight to standard output.
 
-        Keyword arguments:
-            cls -- the class calling the other methods inside the function
+        The call is passed down to each direct subclass. ``Pds3File`` and ``Pds4File``
+        override it and install the logger on themselves, which is where the recursion
+        ends.
         """
 
         subclasses = cls.__subclasses__()
@@ -583,12 +672,25 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
     ############################################################################
     @classmethod
     def new_merged_dir(cls, basename):
-        """Return a merged directory with the given basename. Merged directories contain
-        children from multiple physical directories. Examples are volumes/,
-        archives-volumes/, etc.
+        """Return the category-level directory that merges several physical directories.
 
-        Keyword arguments:
-            basename -- the basename of the merged directory.
+        A category directory such as ``volumes/`` or ``archives-volumes/`` can exist on
+        more than one disk. The merged object stands for all of them at once: it has a
+        logical path but no absolute path, no disk and no root, and its children are
+        accumulated from every physical copy as those copies are visited.
+
+        The object is returned filled in and marked permanent, with every lazy property
+        already set to the value a category directory has, so nothing about it is ever
+        computed from a filesystem.
+
+        Parameters:
+            basename (str): the category name, which must be one of ``CATEGORIES``.
+
+        Returns:
+            PdsFile: the merged directory.
+
+        Raises:
+            ValueError: if the basename is not a category name.
         """
 
         if basename not in cls.CATEGORIES:
@@ -667,12 +769,25 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
         return this
 
     def new_index_row_pdsfile(self, filename_key, row_dicts):
-        """Return a PdsFile representing the content of one or more rows of this index
-        file. Used to enable views of individual rows within large index files.
+        """Return an object standing for one or more rows of this index table.
 
-        Keyword arguments:
-            filename_key -- the basename of the PdsFile.
-            row_dicts    -- a dictionary contans the row info of the index file.
+        The result is a pseudo-child of the index file: its paths are this file's with
+        the row key appended, so a large index table can be browsed row by row as though
+        each row were a file. No such file exists, and the object carries
+        ``is_index_row`` set to True to say so.
+
+        The row object reports itself as an existing, non-directory, plain-text file of
+        zero size. It inherits this file's date, version and bundle-level metadata, and
+        it gains ``parent_basename``, an attribute only an index row has.
+
+        Parameters:
+            filename_key (str): the basename to give the row object, which is the value
+                that identifies the row within the table.
+            row_dicts (list): the rows this object stands for, each a dictionary of
+                column name to value.
+
+        Returns:
+            PdsFile: the row object.
         """
 
         this = self.copy()
@@ -737,6 +852,16 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
         return this
 
     def copy(self):
+        """Return a separate object of the same class holding all the same attributes.
+
+        The copy is shallow: the two objects share every attribute value, including the
+        lists and dictionaries that hold childnames, index rows and filled-in property
+        values. Modifying one of those in place is visible through both.
+
+        Returns:
+            PdsFile: the copy.
+        """
+
         cls = type(self)
         this = cls.__new__(cls)
 
@@ -746,6 +871,17 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
         return this
 
     def __repr__(self):
+        """Return the object's printable form, which quotes the path it stands for.
+
+        An object with no absolute path -- a merged category directory, or one built
+        from a logical path alone -- is shown by its logical path and marked as logical.
+        A subclass instance names its class.
+
+        Returns:
+            str: the text ``PdsFile("<abspath>")``, ``PdsFile.<subclass>("<abspath>")``
+            or ``PdsFile-logical("<logical path>")``.
+        """
+
         if self.abspath is None:
             return 'PdsFile-logical("' + self.logical_path + '")'
         elif type(self) is PdsFile:
@@ -767,13 +903,24 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
     ############################################################################
 
     def bundle_pdsfile(self, category=None, rank=None):
-        """Return PdsFile object for the root bundle file or directory associated with
-        this or another category and this or another version. It returns None if the file
-        does not exist.
+        """Return the bundle-level file or directory this file belongs to.
 
-        Keyword arguments:
-            category -- the category of the bundle (default None)
-            rank     -- the version rank of the bundle (default None)
+        The counterpart may be looked up in another category and at another version, so
+        the same call reaches this file's own bundle directory, the bundle's checksum
+        file, its archive file, or an older version of any of them.
+
+        Unlike ``bundle_abspath()``, this insists the target exist and answers None
+        rather than a path when it does not.
+
+        Parameters:
+            category (str): the category to look in, such as ``'volumes'`` or
+                ``'checksums-archives-volumes'``. None uses this file's own category.
+            rank (int): the version rank to look for. None, and any other false value,
+                takes the version implied by the category.
+
+        Returns:
+            PdsFile: the bundle-level object, or None if it does not exist or has no
+            version at the rank asked for.
         """
 
         cls = type(self)
@@ -793,12 +940,24 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
         return pdsf
 
     def bundleset_pdsfile(self, category=None, rank=None):
-        """Return PdsFile object for the root bundle set for this or another category
-        and this or another version. It returns None if the file does not exist.
+        """Return the bundleset-level file or directory this file belongs to.
 
-        Keyword arguments:
-            category -- the category of the bundleset (default None)
-            rank     -- the version rank of the bundleset (default None)
+        The counterpart may be looked up in another category and at another version, so
+        the same call reaches this file's own bundleset directory, the bundleset's
+        checksum file, or an older version of either.
+
+        Unlike ``bundleset_abspath()``, this insists the target exist and answers None
+        rather than a path when it does not.
+
+        Parameters:
+            category (str): the category to look in, such as ``'volumes'`` or
+                ``'checksums-archives-volumes'``. None uses this file's own category.
+            rank (int): the version rank to look for. None, and any other false value,
+                takes the version implied by the category.
+
+        Returns:
+            PdsFile: the bundleset-level object, or None if it does not exist or has no
+            version at the rank asked for.
         """
 
         cls = type(self)
@@ -822,53 +981,107 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
 
     @property
     def is_bundle_dir(self):
-        """Return True if this is the root level directory of a bundle."""
+        """Whether this is a bundle's own top-level directory.
+
+        True for the bundle directory itself and for nothing inside it.
+
+        Returns:
+            bool: True if this is a bundle directory.
+        """
         # The bool() matters: without it a bundle set would yield the empty string
         # the `and` produces, not False.
         return bool(self.bundlename_ and not self.interior)
 
     @property
     def is_bundle_file(self):
-        """Return True if this is a bundle-level checksum or archive file."""
+        """Whether this is a file that stands for a whole bundle.
+
+        That is a bundle's checksum file or its archive file: a path that names a bundle
+        but is not a directory holding one.
+
+        Returns:
+            bool: True if this is a bundle-level file.
+        """
         # The bool() matters: without it a bundle set would yield the empty string
         # the `and` produces, not False.
         return bool(self.bundlename and not self.bundlename_)
 
     @property
     def is_bundle(self):
-        """Return True if this is a bundle-level file, be it a directory or a
-        checksum or archive file."""
+        """Whether this stands for a whole bundle, as a directory or as a file.
+
+        Returns:
+            bool: True if this is a bundle directory or a bundle-level file.
+        """
         return bool(self.is_bundle_dir or self.is_bundle_file)
 
     @property
     def is_bundleset_dir(self):
-        """Return True if this is the root level directory of a bundleset."""
+        """Whether this is a bundleset's own top-level directory.
+
+        Reading it consults the filesystem or the shelves, because it has to know
+        whether the path is a directory.
+
+        Returns:
+            bool: True if this is a bundleset directory.
+        """
         return bool(self.bundleset and not self.bundlename and self.isdir)
 
     @property
     def is_bundleset_file(self):
-        """Return True if this is a bundleset-level checksum or AAREADME file."""
+        """Whether this is a file that sits at bundleset level rather than in a bundle.
+
+        That is a bundleset's checksum file, or a description file such as an AAREADME.
+        Reading it consults the filesystem or the shelves, because it has to know
+        whether the path is a directory.
+
+        Returns:
+            bool: True if this is a bundleset-level file.
+        """
         return bool(self.bundleset and not self.bundlename and not self.isdir)
 
     @property
     def is_bundleset(self):
-        """Return True if this is a bundleset-level directory or file."""
+        """Whether this sits at bundleset level, as a directory or as a file.
+
+        Unlike the two properties it summarizes, this asks nothing of the filesystem.
+
+        Returns:
+            bool: True if this names a bundleset and nothing below it.
+        """
         return bool(self.bundleset and not self.bundlename)
 
     @property
     def is_category_dir(self):
-        """Return True if this is a category-level directory (i.e., above bundleset)."""
+        """Whether this sits above bundleset level, at a category such as ``volumes/``.
+
+        The holdings root itself, which names no category either, also answers True.
+
+        Returns:
+            bool: True if this names no bundleset.
+        """
         return (self.bundleset == '')
 
     def bundle_abspath(self, category=None):
-        """Return the absolute path to the volume file or directory associated with this
-        object. It can be in this category or another. If the category's voltype is the
-        same as that of self, the returned abspath will have the same version rank;
-        otherwise, it will be the abspath of the latest version. The specified file is
-        not required to exist.
+        """Build the absolute path of the bundle-level counterpart in a given category.
 
-        Keyword arguments:
-            category -- the category of the bundle (default None)
+        The path is constructed, not looked up, so it names a file whether or not one is
+        there. Where the category's voltype matches this file's, the version suffix is
+        carried over; where it does not, the path is built without a suffix, which names
+        the most recent version.
+
+        The basename depends on the category: a bundle directory in a plain category, a
+        ``.tar.gz`` archive under ``archives-``, and an ``_md5.txt`` checksum file under
+        ``checksums-``.
+
+        Parameters:
+            category (str): the category to build for, such as ``'volumes'`` or
+                ``'archives-previews'``. None uses this file's own category.
+
+        Returns:
+            str: the absolute path, or an empty string if this file belongs to no bundle
+            or the category is a checksums-of-archives category, which has no
+            bundle-level member.
         """
 
         if not self.bundlename:
@@ -906,14 +1119,22 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
                 self.bundlename + insert + ext)
 
     def bundleset_abspath(self, category=None):
-        """Return the absolute path to a volset file or directory associated with this
-        object. It can be in this category or another. If the category's voltype is the
-        same as that of self, the returned abspath will have the same version rank;
-        otherwise, it will be the abspath of the latest version. The specified file is
-        not required to exist.
+        """Build the absolute path of the bundleset-level counterpart in a given category.
 
-        Keyword arguments:
-            category -- the category of the bundleset (default None)
+        The path is constructed, not looked up, so it names a file whether or not one is
+        there. Where the category's voltype matches this file's, the version suffix is
+        carried over; where it does not, the path is built without a suffix, which names
+        the most recent version.
+
+        A checksums-of-archives category gives a checksum file rather than a directory,
+        so the path gains an ``_md5.txt`` ending.
+
+        Parameters:
+            category (str): the category to build for, such as ``'volumes'`` or
+                ``'checksums-archives-volumes'``. None uses this file's own category.
+
+        Returns:
+            str: the absolute path, or None if this file belongs to no bundleset.
         """
 
         if not self.bundleset:
@@ -946,16 +1167,39 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
     ############################################################################
 
     def _complete(self, must_exist=False, caching='default', lifetime=None):
-        """Return PdsFiles from the cache if available; otherwise it caches this PdsFile
-        if appropriate. This is the general procedure to maintain the cls.CACHE.
+        """Finish an object off: return the cached one for its path, or cache this one.
 
-        If the file exists, then the capitalization must be correct!
+        Every alternative constructor ends here, and this is what keeps one object per
+        logical path. Where the cache already holds an object for this path, that object
+        is returned and this one is discarded -- except when one of the two is a merged
+        category directory and the other is physical, in which case they are different
+        things and this one is kept.
 
-        Keyword arguments:
-            must_exist -- a flag to determine if the file should exist in file system
-                          (default False)
-            caching    -- the caching type, 'dir', 'all' or 'none' (default 'default')
-            lifetime   -- the cache lifetime in seconds (default None)
+        Whether this object is cached depends on the caching mode. ``'all'`` caches
+        everything, ``'dir'`` caches directories and index files only, and any other
+        value caches nothing. A checksums-of-archives path is cached whatever the mode,
+        because it is the only path from which the bundleset it belongs to can be
+        recorded. Nothing above category level is cached, and neither is a path that
+        does not exist.
+
+        The capitalization of the path must already be correct. This does not repair it,
+        and a path that differs from the real one in case will not match the cache entry
+        made under the real one.
+
+        Parameters:
+            must_exist (bool): if True, insist that the file exists.
+            caching (str): ``'all'``, ``'dir'``, or another value for no caching.
+                ``'default'`` takes the class's ``DEFAULT_CACHING``.
+            lifetime: how long the cache entry should last, in seconds. Zero makes it
+                permanent, and None takes the cache's default.
+
+        Returns:
+            PdsFile: the object for this path, which is the cached one where there was
+            one and this one otherwise. An object whose basename is blank answers with
+            its parent instead.
+
+        Raises:
+            OSError: if ``must_exist`` is True and the file does not exist.
         """
 
         cls = type(self)
@@ -1018,8 +1262,19 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
         return self
 
     def _update_ranks_and_vols(self):
-        """Maintains the RANKS and VOLS dictionaries. Must be called for all PdsFile
-        objects down to the volume name level.
+        """Record this object's version in the cache's rank and path dictionaries.
+
+        Those two dictionaries are what lets a bundleset or bundle name be resolved to a
+        path without walking the tree. For each category, one holds the sorted version
+        ranks available under each bundleset or bundle name, and the other holds the
+        absolute path for each name and rank. Both are stored permanently, so they
+        survive any trim.
+
+        Only bundleset-level and bundle-level objects contribute; anything above or
+        below is ignored. An object that does contribute is marked permanent, so the
+        cache never evicts a path these dictionaries point at. Nothing is recorded at
+        all until a preload has run, since without one there is no tree to be
+        authoritative about.
         """
 
         # cls.CACHE['$RANKS-category_'] is keyed by [bundle set or name] and returns
@@ -1063,8 +1318,15 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
             cls.CACHE.set('$VOLS-'  + self.category_, vols_dict, lifetime=0)
 
     def _recache(self):
-        """Update the cache after this object has been modified, e.g., by having a
-        previously empty field filled in.
+        """Write this object back to the cache, so a filled-in value is not recomputed.
+
+        A lazy property calls this after storing its result. The write happens only if
+        the cache already holds an entry for this logical path and that entry agrees
+        with this object about being merged or physical; an object the cache never held
+        is not added here.
+
+        The entry is rewritten with the cache's default lifetime rather than the one it
+        had, so an entry stored as permanent becomes an expiring one.
         """
 
         cls = type(self)
@@ -1080,18 +1342,42 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
 
     def child(self, basename, fix_case=True, must_exist=False,
               caching='default', lifetime=None, allow_index_row=True):
-        """Return a PdsFile of the sproper subclass in this directory.
+        """Return the object for a named entry inside this directory.
 
-        Keyword arguments:
-            basename        -- name of the child
-            fix_case        -- True to fix the case of the child. (If False, it is
-                               permissible but not necessary to fix the case
-                               anyway) (default True)
-            must_exist      -- True to raise an exception if the parent or child
-                               does not exist (default False)
-            caching         -- Type of caching to use (default 'default')
-            lifetime        -- Lifetime parameter for cache (default None)
-            allow_index_row -- True to allow the child to be an index row (default True)
+        This is the step every downward traversal is built from. Which piece of the
+        taxonomy the name fills in depends on what this object already is: a child of the
+        holdings root is a category, a child of a category is a bundleset, a child of a
+        bundleset is a bundle, and anything deeper is interior path. The subclass of the
+        result follows from the bundleset, so descending into a bundleset switches to
+        that bundleset's rule class.
+
+        An index file has no real children, and asking one for a child gives a row of the
+        table instead unless ``allow_index_row`` says otherwise.
+
+        The cache is paused for the duration and resumed however the call ends, so a
+        traversal several levels deep trims or flushes once rather than at every level.
+
+        Parameters:
+            basename (str): the name of the entry. A trailing slash is ignored.
+            fix_case (bool): if True, correct the capitalization of the name against the
+                real directory contents. If False, a name whose case is already right is
+                still accepted.
+            must_exist (bool): if True, insist that the entry exists.
+            caching (str): the caching mode to complete the child with, as
+                ``_complete()`` uses it.
+            lifetime: the cache lifetime to complete the child with, in seconds.
+            allow_index_row (bool): if True, a child of an index file is a row of that
+                file's table. If False, it is treated as an ordinary name.
+
+        Returns:
+            PdsFile: the child object.
+
+        Raises:
+            OSError: if ``must_exist`` is True and the entry does not exist.
+            ValueError: if the name cannot fill the piece of the taxonomy it would have
+                to fill -- a category child that is not a legal bundleset name, a
+                category name that is not a category, a voltype that is not one of
+                ``VOLTYPES``, or a child asked for below the PDS root.
         """
 
         basename = basename.rstrip('/')
@@ -1262,13 +1548,24 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
             cls.CACHE.resume()
 
     def parent(self, must_exist=False, caching='default', lifetime=None):
-        """Return the parent PdsFile of this PdsFile.
+        """Return the object for the directory this one sits in.
 
-        Keyword arguments:
-            must_exist -- True to raise an exception if the parent or child
-                          does not exist (default False)
-            caching    -- Type of caching to use (default 'default')
-            lifetime   -- Lifetime parameter for cache (default None)
+        A parent at category level is the merged category directory rather than the
+        physical one on this file's own disk, so walking up from a bundleset arrives at
+        the category as it appears across every disk.
+
+        The ``caching`` and ``lifetime`` arguments are accepted but not passed on; the
+        parent is built with whatever defaults the constructor it reaches applies.
+
+        Parameters:
+            must_exist (bool): if True, insist that the parent exists.
+            caching (str): accepted and unused.
+            lifetime: accepted and unused.
+
+        Returns:
+            PdsFile: the parent object. A merged category directory has no parent and
+            answers None, and so does an object whose parent's logical path would be
+            empty.
         """
 
         if self.is_merged:      # merged pdsdir
@@ -1288,11 +1585,23 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
 
     @classmethod
     def from_lid(cls, lid_str):
-        """Return the PdsFile from a given LID.
-        lid_str format: dataset_id:volume_id:directory_path:file_name
+        """Return the object a PDS logical identifier names.
 
-        Keyword arguments:
-            lid_str -- the lid string
+        The identifier has four colon-separated fields: the dataset ID, the bundle ID,
+        the directory path within the bundle, and the file name. The last three are
+        joined under ``volumes/`` to give a path, and the dataset ID of the file found
+        there is checked against the one the identifier gave.
+
+        Parameters:
+            lid_str (str): the identifier, in the form
+                ``dataset_id:bundle_id:directory_path:file_name``.
+
+        Returns:
+            PdsFile: the object the identifier names.
+
+        Raises:
+            ValueError: if the identifier does not have exactly four fields, or if the
+                file found does not carry the dataset ID the identifier claimed.
         """
 
         lid_component = lid_str.split(':')
@@ -1313,17 +1622,31 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
     @classmethod
     def from_logical_path(cls, path, fix_case=False, must_exist=False,
                           caching='default', lifetime=None):
-        """Return a PdsFile from a logical path.
+        """Return the object for a logical path, the path below the holdings directory.
 
-        Keyword arguments:
-            path       -- the logical path
-            fix_case   -- True to fix the case of the child. (If False, it is permissible
-                          but not necessary to fix the case anyway) (default False)
-            must_exist -- True to raise an exception if the parent or child does not
-                          exist (default False)
-            caching    -- Type of caching to use (default 'default')
-            lifetime   -- Lifetime parameter for cache (default None)
+        The cache is tried first, for the path itself and then for each of its ancestors
+        in turn. Where an ancestor is found, the rest of the path is walked down from it
+        with ``child()``, which fills in the taxonomy and picks the right subclass. Where
+        nothing is found -- which is the situation before a preload -- the logical path
+        is converted to an absolute path against the class's holdings root and
+        ``from_abspath()`` is used instead.
 
+        On the ancestor path, the arguments are passed on to every ``child()`` call. On
+        the fallback path, none of them is: the absolute-path constructor is called with
+        its own defaults, so ``must_exist`` is not enforced there.
+
+        Parameters:
+            path (str): the logical path, such as
+                ``'volumes/COISS_2xxx/COISS_2001/data'``. A trailing slash is ignored.
+            fix_case (bool): if True, correct the capitalization of each component
+                against the real directory contents.
+            must_exist (bool): if True, insist that each component exists.
+            caching (str): the caching mode to complete each object with, as
+                ``_complete()`` uses it.
+            lifetime: the cache lifetime to complete each object with, in seconds.
+
+        Returns:
+            PdsFile: the object for the path, or None if the path is empty.
         """
 
         path = path.rstrip('/')
@@ -1376,16 +1699,38 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
     @classmethod
     def from_abspath(cls, abspath, fix_case=False, must_exist=False,
                      caching='default', lifetime=None):
-        """Return a PdsFile from an absolute path.
+        """Return the object for an absolute path on this machine.
 
-        Keyword arguments:
-            abspath    -- the absolute path
-            fix_case   -- True to fix the case of the child. (If False, it is permissible
-                          but not necessary to fix the case anyway) (default False)
-            must_exist -- True to raise an exception if the parent or child does not
-                          exist (default False)
-            caching    -- Type of caching to use (default 'default')
-            lifetime   -- Lifetime parameter for cache (default None)
+        The path is split at its ``holdings`` component: everything above it becomes the
+        disk and root, and everything below it is walked down with ``child()``. Paths use
+        forward slashes on every platform; on Windows a leading drive specification is
+        accepted.
+
+        The part of the URL that precedes the logical path is worked out here too. With
+        at most one holdings directory preloaded it is a fixed prefix; with more, the
+        prefix is numbered by the directory's position in the preload list, and a
+        directory absent from that list gets the site root and a logged warning.
+
+        A path already in the cache is returned from it, unless the cached object is a
+        merged category directory, which stands for something else.
+
+        Parameters:
+            abspath (str): the absolute path. A trailing slash is ignored.
+            fix_case (bool): if True, correct the capitalization of the disk, the root
+                and each component below it against the real directory contents.
+            must_exist (bool): if True, insist that the path exists.
+            caching (str): the caching mode to complete each object with, as
+                ``_complete()`` uses it.
+            lifetime: the cache lifetime to complete each object with, in seconds.
+
+        Returns:
+            PdsFile: the object for the path.
+
+        Raises:
+            ValueError: if the path is not absolute, or has no ``holdings`` component.
+            OSError: if ``must_exist`` is True and the path does not exist. With
+                ``fix_case`` also True, a disk or root whose case cannot be repaired
+                raises it first.
         """
 
         abspath = abspath.rstrip('/')
@@ -1480,16 +1825,24 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
 
     def from_relative_path(self, path, fix_case=False, must_exist=False,
                            caching='default', lifetime=None):
-        """Return a PdsFile given a path relative to this one.
+        """Return the object for a path given relative to this directory.
 
-        Keyword arguments:
-            path       -- the relative path
-            fix_case   -- True to fix the case of the child. (If False, it is permissible
-                          but not necessary to fix the case anyway) (default False)
-            must_exist -- True to raise an exception if the parent or child does not
-                          exist (default False)
-            caching    -- Type of caching to use (default 'default')
-            lifetime   -- Lifetime parameter for cache (default None)
+        The path is split on slashes and walked down one component at a time with
+        ``child()``, so it descends only: there is no way to name a parent. The cache is
+        paused for the duration and resumed however the call ends.
+
+        Parameters:
+            path (str): the relative path, such as ``'COISS_2001/data'``. A trailing
+                slash is ignored.
+            fix_case (bool): if True, correct the capitalization of each component
+                against the real directory contents.
+            must_exist (bool): if True, insist that each component exists.
+            caching (str): the caching mode to complete each object with, as
+                ``_complete()`` uses it.
+            lifetime: the cache lifetime to complete each object with, in seconds.
+
+        Returns:
+            PdsFile: the object at the end of the path.
         """
 
         path = path.rstrip('/')
@@ -1518,7 +1871,26 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
     @classmethod
     def _from_absolute_or_logical_path(cls, path, fix_case=False, must_exist=False,
                                        caching='default', lifetime=None):
-        """Return a PdsFile based on either an absolute or a logical path."""
+        """Return the object for a path, whichever of the two kinds of path it is.
+
+        A path containing a ``holdings`` component is taken as absolute and anything
+        else as logical.
+
+        The four options below are accepted and then dropped: the constructor this
+        forwards to is called with the same four names bound to their default values,
+        not to the values passed here. Passing ``must_exist=True`` therefore does not
+        make the call insist on anything.
+
+        Parameters:
+            path (str): the absolute or logical path.
+            fix_case (bool): accepted and dropped.
+            must_exist (bool): accepted and dropped.
+            caching (str): accepted and dropped.
+            lifetime: accepted and dropped.
+
+        Returns:
+            PdsFile: the object for the path.
+        """
 
         if f'/{cls.PDS_HOLDINGS}/' in path:
             return cls.from_abspath(path,
@@ -1531,23 +1903,56 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
 
     @classmethod
     def from_path(cls, path, must_exist=False, caching='default', lifetime=None):
-        """Return the PdsFile, if possible based on anything roughly resembling an
-        actual path in the filesystem, using sensible defaults for missing components.
+        """Return the object for anything that roughly resembles a path.
 
-        Examples:
-          diagrams/checksums/whatever -> checksums-diagrams/whatever
-          checksums/archives/whatever -> checksums-archives-volumes/whatever
-          COISS_2001.targz -> archives-volumes/COISS_2xxx/COISS_2001.tar.gz
-          COISS_2001_previews.targz ->
-                        archives-previews/COISS_2xxx/COISS_2001_previews.tar.gz'
-          COISS_0xxx/v1 -> COISS_0xxx_v1
+        Where the other constructors need a well-formed path, this one takes a
+        description of a file and fills in what is missing. The category, the version
+        suffix and the bundleset can each be written in several ways or left out, and
+        the pieces may appear in any order at either end of the path; what is left over
+        after they are recognized is taken as the bundle name and the interior path. A
+        missing category is assumed to be the class's own bundle directory name.
 
-        Keyword arguments:
-            path       -- the given path
-            must_exist -- True to raise an exception if the parent or child does not
-                          exist (default False)
-            caching    -- Type of caching to use (default 'default')
-            lifetime   -- Lifetime parameter for cache (default None)
+        The bundleset and version are resolved through the rank and path dictionaries
+        that a preload fills, which is why a preload is required. Where the version
+        asked for does not exist, the other versions that count as current are tried in
+        turn before the call gives up.
+
+        The recognized spellings are:
+
+        * ``archives``, ``tar``, ``targz`` and ``tar.gz`` for an archive path, and
+          ``checksums`` or ``md5`` for a checksum path, written as separate components
+          or joined with hyphens.
+        * a file extension, so a name ending ``.tar.gz`` is an archive and one ending
+          ``_md5.txt`` is a checksum, and one containing a voltype names that voltype.
+        * ``.targz`` anywhere, which is read as ``.tar.gz``.
+        * a version as its own component, so ``COISS_0xxx/v1`` means the bundleset
+          ``COISS_0xxx_v1``.
+
+        So ``diagrams/checksums/whatever`` reaches ``checksums-diagrams/whatever``,
+        ``checksums/archives/whatever`` reaches ``checksums-archives-volumes/whatever``,
+        ``COISS_2001.targz`` reaches
+        ``archives-volumes/COISS_2xxx/COISS_2001.tar.gz``, and
+        ``COISS_2001_previews.targz`` reaches
+        ``archives-previews/COISS_2xxx/COISS_2001_previews.tar.gz``.
+
+        Parameters:
+            path: the path-like description. It is converted with ``str()``, so a path
+                object is accepted. A trailing slash is ignored, and an empty
+                description means the ``volumes`` category.
+            must_exist (bool): if True, insist that the file exists.
+            caching (str): the caching mode to complete each object with, as
+                ``_complete()`` uses it.
+            lifetime: the cache lifetime to complete each object with, in seconds.
+
+        Returns:
+            PdsFile: the object the description resolves to.
+
+        Raises:
+            OSError: if no preload has been performed.
+            ValueError: if the version asked for exists under no rank that was found.
+            KeyError: if the bundleset or bundle is not one a preload recorded, or if
+                the category has no entry of its own. It comes from the item lookups,
+                ``__getitem__()``, on the preload dictionaries.
         """
 
         if not cls.LOCAL_PRELOADED:
@@ -1924,11 +2329,17 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
 
     @classmethod
     def is_logical_path(cls, path):
-        """Return True if the given path appears to be a logical path; False
-        otherwise.
+        """Report whether a path is a logical path rather than an absolute one.
 
-        Keyword arguments:
-            path -- the path of a file
+        The test is entirely textual: a path is logical unless it contains the holdings
+        directory name as a component. Nothing is looked up, and a path that names no
+        real file is classified just the same.
+
+        Parameters:
+            path (str): the path to classify.
+
+        Returns:
+            bool: True if the path is logical.
         """
 
         return (f'/{cls.PDS_HOLDINGS}/' not in path)
