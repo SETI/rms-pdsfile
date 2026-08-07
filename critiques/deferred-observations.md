@@ -124,23 +124,50 @@ see the pin fail.
    Pinned by `test_pds4_archives.test_initialize_on_a_bundle_raises`.
    **Owner: PR-25.**
 3. **`pds4indexshelf` cannot shelve any PDS4 metadata table that exists today.**
-   `generate_indexdict()` builds a `pdstable.PdsTable` from `pdsf.label_abspath`
-   (`pds4indexshelf.py:52`), a PDS3 detached-label reader. For
-   `uranus_occs_earthbased` the `.csv` has no PDS3 label, so `label_abspath` is
-   empty and the read raises `FileNotFoundError`; for
-   `cassini_uvis_solarocc_beckerjarmak2023` the `.xml` is misparsed as a PDS3
-   label and raises `ValueError: row count mismatch`. Both PDS4 bundle sets that
-   exist fail. Pinned by
+   Both PDS4 bundle sets fail, one with `FileNotFoundError` and one with
+   `ValueError: row count mismatch`. Pinned by
    `test_pds4_indexshelf.test_initialize_cannot_read_a_pds4_index`.
-   **Owner: PR-27.**
+
+   **Re-scoped by PR-27, which corrected the diagnosis and left it open.** This
+   entry said `pdstable.PdsTable` is "a PDS3 detached-label reader". It is not:
+   `PdsTable.__init__` dispatches on `is_pds4_label(label_file)` and builds a
+   `Pds4TableInfo` for a PDS4 label. There is no wrong reader to replace, and the
+   two failures are two different things, neither of them in this tool.
+
+   * `uranus_occs_earthbased`: the metadata `.csv` files have **no label at all**,
+     so `label_abspath` is `''` and the read raises. Shelving them means deciding
+     that a PDS4 index shelf is built from the `.csv`'s own header row instead of
+     from a label -- a decision about the PDS4 metadata contract. It is also not
+     enough on its own: `_index_rows.child_of_index()` builds
+     `pdstable.PdsTable(label_file=self.label_abspath, ...)` to turn a shelved row
+     number back into a row, so a shelf built without a label could not be read
+     back. Any fix spans the tool and the core.
+   * `cassini_uvis_solarocc_beckerjarmak2023`: `PdsTable` parses its `.xml`
+     correctly as PDS4, and the mismatch is real. The label declares an 885-byte
+     header and 35 fields; the file's header line is 1,074 bytes and carries 41
+     columns. `PdsTable` seeks 885 bytes in, lands inside line 1, and reads 42
+     lines where the label says 41. That is a stale label -- a data repair, or a
+     `pdstable` change, not a `pdsfile` one.
+
+   Corroborating: the PDS4 holdings root has no `_indexshelf-metadata/` directory,
+   so no PDS4 index shelf has ever been built here either.
+   **Owner: open -- a PDS4 metadata-contract decision plus a core change, not a
+   tool repair.**
 4. **`pds4linkshelf --update` raises against any existing shelf.**
    `generate_links()` is handed the *loaded* shelf as `old_links`, whose values are
    the plain tuples that were pickled, and then dereferences `info.linktext` on
-   them (`pds4linkshelf.py:395`) — `AttributeError: 'tuple' object has no
-   attribute 'linktext'`. The pds3 twin merges the same data correctly, so this is
-   pds4-only. Pinned by
-   `test_pds4_linkshelf.test_update_is_broken_and_repair_is_the_working_path`.
-   **Owner: PR-27.**
+   them — `AttributeError: 'tuple' object has no attribute 'linktext'`. The pds3
+   twin merges the same data correctly, so this is pds4-only.
+
+   **RESOLVED by PR-27.** `_linkshelf_common.link_text_of()` reads the link text of
+   either shape, which is the idiom the merge step further down the same function
+   already used. The pin was inverted to
+   `test_pds4_linkshelf.test_update_picks_up_a_new_file`, and two tests were added
+   beside it: `test_repair_also_picks_up_a_new_file` and
+   `test_update_and_repair_agree_on_the_shelved_links`, the second because
+   "`--update` does not raise" is a weak assertion -- `--validate` compares the
+   shelf against a fresh scan of the same tree, so a merge that dropped or
+   duplicated an entry would still validate clean.
 5. **`pdschecksums` and `pds4checksums` never propagate errors into the exit
    code.** Both compute a `proceed` flag from `fatal or errors` and then use it
    only to gate the optional `--infoshelf` chain (`pdschecksums`'s `--infoshelf` chain,
@@ -1604,7 +1631,17 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     Whether they end up waived, split, or shrunk by the consolidation is a
     Phase-6 question, answerable once PR-25 has established how much of each file
     is duplication.
-    **Owner: Phase 6 (PR-25 onward).**
+
+    **Two of the three are answered by PR-27: shrunk, not waived.**
+    `pdslinkshelf.py` is **471** lines and `pds4linkshelf.py` is **524**, from 1,730
+    and 1,224 at PR-27's base — the shared code went into `_linkshelf_common.py`
+    (729) and the 536-line `REPAIRS` table into `pds3/linkshelf_repairs.py` (555).
+    Both are now comfortably under the limit and neither needs a waiver.
+    `pdsdependency.py` is untouched at **1,165** and is the only module left in
+    `holdings_maintenance/` over the limit; it has no pds3/pds4 twin, so the
+    consolidation this entry was waiting on will never reach it, and PR-28 is the
+    next PR to touch it.
+    **Owner: `pdsdependency.py` only, from PR-28.**
 
 ## From PR-23 (ruff-clean the core modules, Phase 5)
 
@@ -2671,7 +2708,17 @@ these entries are read by the PRs that come after it.
      than as code: `LINK_SHELF.companions` is `('.py', '.pickle')`, and the
      `.pickle` entry names the shelf file itself. The `move_old()` docstring says
      so. Still a redundant copy; still not worth removing blind.
-     **Owner: PR-27 (Phase 6), when it migrates the linkshelf pair.**
+
+     **Looked at again by PR-27 and left alone.** The link shelf tasks moved into
+     `_linkshelf_common.py` and still call `move_old(link_path, LINK_SHELF)`; the
+     redundancy is entirely inside `move_old`, which this PR did not touch. The
+     reason not to drop the `.pickle` companion is unchanged and is now the thing
+     the versioned pair is asserted on:
+     `test_pds3_linkshelf.test_update_versions_the_shelf_file_it_replaces` requires
+     both a `_v001.pickle` and a `_v001.py` in the log directory, and the `.py` only
+     gets there through the companion loop. Dropping the `.pickle` entry alone would
+     be safe today and wrong the moment a shelf file is not a `.pickle`.
+     **Owner: open.**
 
 ### Added by the PR-25 adversarial review (round 5)
 
@@ -2934,6 +2981,10 @@ these entries are read by the PRs that come after it.
      not a side effect of migrating four `main()`s. The risk it carries is the usual
      one for a duplicated constant — nine of the ten can be updated and the tenth
      left behind, with no gate that would notice.
+
+     **Eight, not ten, from PR-27.** Both index shelf tools defined one and neither
+     thin module does; the two link shelf tools still do, because each tool's own
+     `generate_links` reads it. The sweep itself is still owed.
      **Owner: open.**
 
 114. **`_shelf_common.py` serves two audiences, which is the question entry 98
@@ -2954,7 +3005,18 @@ these entries are read by the PRs that come after it.
      rule applies unchanged, and the natural seam is the one already visible: the
      versioning and hashing helpers serve six tools regardless of driver, while the
      driver serves four.
-     **Owner: PR-27 re-measures. Not open otherwise.**
+
+     **Re-measured by PR-27.** With both of this PR's families in it,
+     `_shelf_common.py` measured 1,827 lines, so entry 98's rule fired and it split
+     by family: `_shelf_common.py` 523, `_indexshelf_common.py` 620,
+     `_linkshelf_common.py` 729. The two disjoint audiences are still there and the
+     file is smaller than when this entry was written: 523 lines holding the
+     versioning helpers six tools reach regardless of driver, plus
+     `run_selection_main` and its two path helpers, which four tools use. The link
+     shelf tools now reach it for `LINKSHELF_LOGNAME`, `LINK_SHELF`, `move_old` and
+     `UNIT_LOG_PATH_METHOD` only. Nothing forces a second split; the seam this entry
+     named is where it would go.
+     **Owner: recorded, not open.**
 
 115. **`pdschecksums` and `pds4checksums` still exit 0 after logging errors.**
      `support.TOOLS_WITHOUT_EXIT_STATUS` records this and PR-13's tests assert it:
@@ -3115,4 +3177,203 @@ these entries are read by the PRs that come after it.
      is now to run pytest **from** the tree being probed, with the other tree's test
      files copied in — `REPO_ROOT` is derived from the test file's own location, so
      that form pins itself correctly. PR-26's own base probe was redone that way.
+     **Owner: recorded, not open.**
+
+## From PR-27 (migrate the indexshelf and linkshelf pairs, Phase 6)
+
+### Added by the PR-27 executor's own measurements (2026-08-07)
+
+122. **A stubbed collaborator hid a real break, for the second time in this
+     subsystem.** The migration left the four thin tool modules with a task *table*
+     and no task *names*, and `re_validate.validate_one_volume()` reaches
+     `pdslinkshelf.validate()` by attribute. The full `--mode ns` data suite ran
+     green in that state — 1,047 passed, 34 skipped — and so did
+     `run-all-checks -c -s`. Nothing could have caught it: every test that drives
+     `validate_one_volume` replaces all five sibling tools with `SimpleNamespace`
+     stubs, which is what lets those tests run without holdings and is also what
+     makes them silent about whether the real functions exist.
+
+     Fixed here — each module binds its five tasks under the names it carries them
+     as a library, and `test_re_validate.py` gains
+     `test_the_sibling_tools_really_accept_what_this_module_calls_them_with`, which
+     binds each of the seven calls against the real modules. The general shape is
+     what is left open: `re_validate` is not the only module in this tree that
+     stubs a collaborator wholesale, and a stub that outlives its subject is
+     invisible to every gate. Entry 121 is the same failure mode one level down —
+     a subprocess importing a different tree — and the fix is the same in kind: one
+     test that exercises the real thing, however narrowly.
+     **Owner: open.**
+
+123. **The rate deferred entry 98 recorded is not a property of the migration.**
+     Entry 98 projected family-specific shared code at 18.5% of a pair's combined
+     line count and used that to decide where `_common.py` would split. Measured
+     across the three Phase-6 migrations: 18.5% (archives, the entry's own basis),
+     12.0% (checksums + infoshelf, PR-26), 33.4% (indexshelf + linkshelf, PR-27).
+     It ran high for one PR and short for the next — entry 98 projected 748 lines
+     for PR-27's two pairs and the measurement is 1,349, so the projection missed by
+     601 lines, 45% of what was there.
+
+     The reason is visible in the two pairs PR-27 migrated: the index shelf pair was
+     almost identical between flavors (57.1% of its 1,086 lines became shared code),
+     and the link shelf pair was not (24.7% of 2,954), because `generate_links` is
+     the one function where a PDS3 label and a PDS4 label genuinely say different
+     things. How much of a pair can be shared depends on how alike its two flavors
+     happen to be, which is not something a rate carries. Entry 98's *rule* — split
+     when a measurement crosses 1,000 lines — held up both times; its *projection*
+     did not, either time.
+     **Owner: recorded, not open. Whichever PR migrates a pair next measures its
+     own rather than projecting.**
+
+124. **`link_targets()` filters a unit set's non-directory children out of the
+     target list, where the two link shelf `main()`s kept them in and skipped them
+     in the loop.** The blank line between targets is emitted when there is more
+     than one target, so a unit set holding one unit directory plus a readme file
+     loses that blank line.
+
+     **Measured over the wrong population first.** The original count here — "0 of
+     54 unit sets have a non-directory child, so no line of the transcript moves" —
+     covered `volumes`, `calibrated` and pds4 `bundles`, and left out `metadata`,
+     which is one of the three voltypes a link shelf run is pointed at
+     (`re_validate.py:44`, and `update_holdings_for_new_metadata.sh:40` runs
+     `pdslinkshelf --initialize` on `metadata/$VOLSET`). Re-measured over every
+     category `link_targets` accepts, on both roots: **158 unit sets, 96 with a
+     non-directory child, 17 where the blank line moves** — every `metadata/*` set
+     carries an `AAREADME.txt`, and 17 of them hold exactly one unit directory
+     beside it. So this happens on 17 real targets of a documented workflow in this
+     tree, not hypothetically.
+
+     PR-27 added a 27th transcript scenario for a metadata unit set and enumerated
+     the two lines it produces as change 13 in `critiques/pr-27-validation.md`. This
+     is the same trade `pdsarchives.archive_targets()` has made since PR-25.
+     **Owner: recorded, not open.**
+
+125. **`pdsindexshelf` and `pds4indexshelf` both call themselves `pdsindexshelf`,
+     and both link shelf tools call themselves `pdslinkshelf`.** The pds4 flavors'
+     `--help` description, their "Missing task" error and the subdirectory of each
+     log root are all the pds3 name, in both pairs. That is preserved rather than
+     fixed: it is what a run looks like today, and the names of log directories are
+     what a sync script would have been written against. It is recorded because a
+     reader of `pds4indexshelf.py` now sees `progname='pdsindexshelf'` in the spec
+     and could reasonably read it as a copy-paste error. The archives, checksums and
+     infoshelf pairs do not share this: each of those names itself.
+     **Owner: open — a rename is a CLI-visible change and needs a decision.**
+
+### Added by the CodeRabbit review of PR #125 (2026-08-07)
+
+126. **Two dead branches in the index shelf tasks, preserved rather than removed.**
+     `_indexshelf_common.index_initialize` and `index_validate` both test the
+     dictionary `generate_indexdict()` returned against `None`, and
+     `generate_indexdict()` either returns a two-tuple or raises, so neither test
+     can be true. Both flavors carried the same branch before the migration
+     (`pdsindexshelf.py:224` and `pds4indexshelf.py:221` at `2265393`), so merging
+     them forced no choice and PR-27 kept both. Contrast the one dead branch PR-27
+     did remove — a `move_old()` in `pdslinkshelf.initialize` sitting after a guard
+     that returns when the shelf exists — which only one of the two flavors had, so
+     the merge had to pick. Removing provably-dead code that both flavors carry is a
+     cleanup of its own.
+     **Owner: open.**
+
+127. **`run_index_main` assumes its log path contains the tool's own directory.**
+     It computes the directory for the per-target handlers as
+     `logfile.rpartition('/' + spec.progname + '/')[0] + '/' + spec.progname`, which
+     yields `/pdsindexshelf` if that component is absent. It cannot be absent:
+     `log_paths_for` is called with `dir=spec.progname`, a non-empty constant, and
+     `_derived_paths._log_path_for` appends `[subdir.rstrip('/'), '/']` after a log
+     root that always ends in `/`. This is the two base tools'
+     `logfile.rpartition('/pdsindexshelf/')[0] + '/pdsindexshelf'` generalized, not
+     new. It is deliberately not `os.path.split(logfile)[0]`, which the other two
+     drivers use: `log_path_for_index` builds a path carrying the table's whole
+     logical path, so splitting would put a copy of the tool's error handler in
+     every per-table directory. Recorded because the assumption is implicit.
+     **Owner: open.**
+
+128. **`pds4linkshelf.generate_links` iterates a shelved value without checking it
+     is a list.** In the "identify labels for files" loop, a value taken from
+     `linkinfo_dict` — which starts as a copy of `old_links` — is iterated and each
+     item's link text read. Every key that reaches that loop is filtered to the
+     `.xml`/`.lblx` files of the current directory, and every one of those is put
+     into `linkinfo_dict` with a list value by the loop above and keeps it through
+     the merge, so a string value is not a state this code can produce or read back.
+     Unreachable before PR-27 (`AttributeError` on `.linktext`) and unreachable
+     after it. What it would do after it depends on the string: iterating a `str`
+     yields one-character strings, so `info[1]` raises `IndexError` on every
+     character — but a value that was a longer sequence of longer strings would
+     return a character rather than raising, which is the worse of the two failure
+     modes and the reason this is written down. An `isinstance` guard would add a
+     branch no test can reach.
+     **Owner: open.**
+
+
+### Added by the PR-27 adversarial review (round 1)
+
+129. **`pdsarchives` logs under a `_links` suffix.** `pds3/pdsarchives.py`'s spec
+     carries `log_suffix='_links'` where `pds4/pds4archives.py` carries
+     `'_archives'`, so a pds3 archive run writes
+     `logs/pdsarchives/<category>/<set>/<unit>_links_<tag>.log`. Not a PR-25 slip:
+     the tool wrote `pdsdir.log_path_for_volume('_links', …)` before PR-25 as well,
+     so PR-25 preserved it faithfully and PR-27 does not touch it. Changing it moves
+     a log file name, which is exactly the kind of thing a sync script or a log
+     rotation rule can be written against.
+     **Owner: open.**
+
+130. **The `run_index_main` driver is about two thirds a copy of `run_main`.**
+     Measured with each function's docstring, blank lines and `def` line dropped and
+     the longest common subsequence taken: `run_index_main` is 69 lines against
+     `run_main`'s 66, with 44 line-identical — 64%. `run_selection_main`, PR-26's
+     second driver, is 78 lines with 46 identical — 59%. Two of the four differences are forced — the per-target
+     backup skip, which has to sit inside the log hierarchy to reach the exit
+     status, and the log directory, which is the tool's own rather than the
+     target's — and two are preservation: the quoted task header both index tools
+     wrote at the base, and passing the logger to the task explicitly. This is the
+     same trade PR-26 made for `run_selection_main`, and it is now the second time
+     it has been made. A third instance would be worth stopping for.
+     **Owner: recorded, not open.**
+
+### Added by the PR-27 adversarial review (round 2)
+
+131. **The entry-4 fix left an eager `%` inside a logging call.** In
+     `pds4linkshelf.generate_links`, the label-identification loop logs
+     `logger.info('Label identified (by file_name tag) for %s' % linktext,
+     label_abspath)` — the message is formatted before the call rather than passed
+     as a lazy argument, which the standing logging rule is against. It is base
+     code that PR-27's one-line fix edited in place rather than logging PR-27
+     wrote, so converting it there would have been gratuitous churn inside an
+     otherwise verbatim function. It is now a line this PR touched, though, and it
+     belongs with the `UP031` residue still ratcheted in both `generate_links`
+     functions — one sweep, not two.
+
+     **Wider than one line.** Four more eager-`%` logging calls sit in the two new
+     shared modules — the two "Index shelf file is out of date" lines in
+     `_indexshelf_common.index_repair` and the two "Link shelf file is out of date"
+     lines in `_linkshelf_common.link_repair`. Ruff's `UP031` does not flag any of
+     them, because the operand is a parenthesized expression rather than a plain
+     name, so they are outside the ratchet as well: a sweep that follows the ratchet
+     alone would miss them.
+     **Owner: open.**
+
+
+### Added by the PR-27 adversarial review (round 4)
+
+132. **Three behaviours the migration moved are pinned only by the out-of-repo tool
+     transcript.** Probed by mutation against
+     `pytest tests/holdings_maintenance/ --mode ns`, which sat at 297 passed for
+     each: inverting `index_repair`'s `if latest_mtime > shelf_mtime`, which chooses
+     between re-dating an up-to-date shelf and cancelling; and replacing
+     `run_index_main`'s `rpartition`-based log directory with
+     `os.path.split(logfile)[0]`, which is precisely the alternative entry 127
+     rebuts. Both are moved code and pre-existing gaps rather than PR-27
+     regressions, and both are covered by the 81-record transcript, which lives
+     outside the repository. The two mutations PR-27 *did* have to argue for — the
+     backup skip reporting as an error, and `link_targets` filtering a unit set's
+     non-directory children — were in the same state and are now pinned by tests.
+     **Owner: open.**
+
+133. **`index_reinitialize` takes pds4's comment over pds3's.** pds3 wrote
+     `# ing if shelf file does not exist`, a mangling of pds4's
+     `# Warn if shelf file does not exist`; the merged function has pds4's. Like the
+     dead `move_old` call PR-27 enumerates as change 10, this is a difference only
+     one of the two flavors had, so merging had to pick. Recorded because PR-27's
+     enumeration rule covers log and output text and says nothing about comments,
+     and this is the one comment in the migration where the merge made a choice
+     rather than carrying a block along with its code.
      **Owner: recorded, not open.**

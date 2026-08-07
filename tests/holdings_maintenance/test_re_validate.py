@@ -38,6 +38,7 @@
 # format_email.
 ##########################################################################################
 
+import inspect
 import os
 import subprocess
 import sys
@@ -1414,3 +1415,36 @@ def test_the_program_reports_its_own_usage():
     for flag in ('--batch-status', '--error-email', '--timeless', '--previews',
                  '--minutes', '--quiet', '--log'):
         assert flag in done.stdout, flag
+
+
+##########################################################################################
+# The five sibling tools, unstubbed
+##########################################################################################
+
+def test_the_sibling_tools_really_accept_what_this_module_calls_them_with():
+    """The real modules, not the stubs every other test here installs.
+
+    validate_one_volume reaches five other tools by attribute, and every test that
+    drives it replaces all five with SimpleNamespace stubs -- which is what makes
+    those tests run without holdings, and also what makes them silent about
+    whether the real functions exist and take these arguments. A tool that stopped
+    exposing `validate`, or that made `limits` positional-only, would leave every
+    one of them green and break the batch validator in production.
+
+    Each call below is bound, not made: the point is the signature, and calling
+    them for real would need a holdings tree.
+    """
+
+    calls = [
+        (re_validate.pdschecksums.validate, ('pdsdir',), {'limits': {}}),
+        (re_validate.pdschecksums.validate, ('pdsdir', 'basename'), {'limits': {}}),
+        (re_validate.pdsarchives.validate, ('pdsdir',), {'limits': {}}),
+        (re_validate.pdsinfoshelf.validate, ('pdsdir',), {'limits': {}}),
+        (re_validate.pdsinfoshelf.validate, ('pdsdir', 'basename'), {'limits': {}}),
+        (re_validate.pdslinkshelf.validate, ('pdsdir',), {'limits': {}}),
+        (re_validate.pdsdependency.test, ('pdsdir',),
+         {'limits': {}, 'check_newer': True}),
+    ]
+    for function, args, kwargs in calls:
+        assert callable(function), function
+        inspect.signature(function).bind(*args, **kwargs)

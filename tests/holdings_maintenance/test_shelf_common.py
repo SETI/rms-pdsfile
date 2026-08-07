@@ -1,19 +1,24 @@
 ##########################################################################################
 # tests/holdings_maintenance/test_shelf_common.py
 #
-# The pieces of _shelf_common.py that every checksum and shelf tool runs on, tested
-# directly rather than through a tool: the modification-time comparison, and the
-# pair of log-path method names the driver picks between.
+# The pieces of the shared maintenance-tool core that a tool runs on, tested
+# directly rather than through a tool: the modification-time comparison, the pair
+# of log-path method names the driver picks between, and the task names the four
+# migrated tools carry.
 #
 # Holdings-free and in-process; nothing here touches a holdings tree.
 ##########################################################################################
 
 import datetime
+import inspect
 
+import pdslogger
 import pytest
 
 import pdsfile
-from pdsfile.holdings_maintenance import _shelf_common
+from pdsfile.holdings_maintenance import _indexshelf_common, _linkshelf_common, _shelf_common
+from pdsfile.holdings_maintenance.pds3 import pdsindexshelf, pdslinkshelf
+from pdsfile.holdings_maintenance.pds4 import pds4indexshelf, pds4linkshelf
 
 pytestmark = pytest.mark.holdings_free
 
@@ -196,3 +201,160 @@ def test_the_pds3_log_path_aliases_agree_with_the_bundle_names():
     pdsf.log_path_for_bundle('_md5', task='update', dir='pdschecksums')
     pdsf.log_path_for_bundleset('_md5', task='update', dir='pdschecksums')
     assert pdsf.calls[0] != pdsf.calls[1]
+
+
+##########################################################################################
+# The task names the migrated tools carry
+##########################################################################################
+
+# The four tools whose tasks live in a family module, with that module and its
+# prefix for a task name: _indexshelf_common.index_validate,
+# _linkshelf_common.link_validate.
+MIGRATED_TOOLS = [
+    pytest.param(pdsindexshelf, _indexshelf_common, 'index_', id='pdsindexshelf'),
+    pytest.param(pds4indexshelf, _indexshelf_common, 'index_', id='pds4indexshelf'),
+    pytest.param(pdslinkshelf, _linkshelf_common, 'link_', id='pdslinkshelf'),
+    pytest.param(pds4linkshelf, _linkshelf_common, 'link_', id='pds4linkshelf'),
+]
+
+# The same four, for the test that needs only the tool.
+MIGRATED_TOOL_MODULES = [pytest.param(case.values[0], id=case.id)
+                         for case in MIGRATED_TOOLS]
+
+TASK_NAMES = ('initialize', 'reinitialize', 'validate', 'repair', 'update')
+
+
+@pytest.mark.parametrize('tool', MIGRATED_TOOL_MODULES)
+def test_each_migrated_tool_still_carries_its_five_task_names(tool):
+    """A tool module is a library as well as a main program.
+
+    re_validate reaches pdslinkshelf.validate() by attribute, and nothing else in
+    the suite would notice one of these names disappearing: the tool tests drive
+    each tool as a subprocess through main(), which reads the task table rather
+    than the module namespace.
+    """
+
+    for name in TASK_NAMES:
+        task = getattr(tool, name, None)
+        assert callable(task), f'{tool.__name__} does not carry {name}'
+        assert task is tool.TASKS[name], f'{tool.__name__}.{name} is not its own task'
+        # One target, plus the two keyword arguments a library caller passes.
+        inspect.signature(task).bind('target', logger=None, limits={})
+
+
+@pytest.mark.parametrize(('tool', 'family', 'prefix'), MIGRATED_TOOLS)
+def test_each_migrated_tool_binds_its_own_spec_into_its_tasks(tool, family, prefix):
+    """The task table is the family's functions with this tool's own spec bound in.
+
+    Without the binding being the tool's own, the pds4 half of a pair could run
+    against the pds3 half's PdsFile class and shelve the wrong tree.
+    """
+
+    for name in TASK_NAMES:
+        task = tool.TASKS[name]
+        assert task.args == (tool.SPEC,), f'{tool.__name__}.TASKS[{name!r}]'
+        assert task.func is getattr(family, prefix + name), name
+
+    assert tool.SPEC.pdsfile_cls is (pdsfile.Pds4File if tool.__name__.rpartition('.')[2]
+                                     .startswith('pds4') else pdsfile.Pds3File)
+
+
+##########################################################################################
+# Reading a shelved link
+##########################################################################################
+
+class TestLinkTextOf:
+    """The one accessor that lets an update merge a loaded shelf with a fresh scan.
+
+    A link a run has just found is a LinkInfo; one read back from a shelf is the
+    plain tuple that was pickled. generate_links() sees both in the same dictionary
+    during an update and reads the text of each through this function.
+
+    Tested here rather than through a tool because no scenario in the declared PDS4
+    subset makes the value observable in what a tool writes: the loop that reads it
+    only assigns a label when a *newly appeared* file's basename matches a link in
+    an *already shelved* label, and every file a shelved label links to is itself
+    already shelved. The tool tests pin that an update completes and agrees with a
+    rebuild; this pins what the accessor returns.
+    """
+
+    def test_a_freshly_found_link_reads_as_its_link_text(self):
+        info = _linkshelf_common.LinkInfo(233, 'ALPHA.TAB', True)
+        assert _linkshelf_common.link_text_of(info) == 'ALPHA.TAB'
+
+    def test_a_shelved_link_reads_as_its_link_text(self):
+        # (recno, linktext, target), which is what write_linkdict pickles.
+        assert _linkshelf_common.link_text_of((233, 'ALPHA.TAB', 'data/ALPHA.TAB')) \
+            == 'ALPHA.TAB'
+
+    def test_the_two_shapes_of_one_link_read_the_same(self):
+        """The point of the accessor: the same link, either way round."""
+
+        info = _linkshelf_common.LinkInfo(233, 'ALPHA.TAB', True)
+        info.target = 'data/ALPHA.TAB'
+        shelved = (info.recno, info.linktext, info.target)
+
+        assert _linkshelf_common.link_text_of(info) \
+            == _linkshelf_common.link_text_of(shelved)
+
+    def test_repairing_a_link_does_not_change_what_is_read(self):
+        """linkname is the repaired text; linktext is what the file actually said.
+
+        generate_links() rewrites linkname when the REPAIRS table has an entry for a
+        known-bad link, and leaves linktext alone. What gets pickled, and so what an
+        update reads back, is linktext.
+        """
+
+        info = _linkshelf_common.LinkInfo(233, 'ALPHA.TAB', True)
+        info.linkname = 'REPAIRED.TAB'
+
+        assert _linkshelf_common.link_text_of(info) == 'ALPHA.TAB'
+
+
+##########################################################################################
+# What validate_links does with an exception
+##########################################################################################
+
+def test_validate_links_logs_and_reraises_an_exception_raised_inside_it(tmp_path,
+                                                                       monkeypatch):
+    """It logs and re-raises; it does not swallow.
+
+    The pds3 flavor used to end `finally: return logger.close()`, and a `return` in
+    a `finally` discards whatever the `except` clause re-raised — so a failure
+    inside this function ended the run with status 0 and no traceback. The merged
+    function takes the pds4 form, which propagates. Nothing in a real run reaches
+    this branch, which is exactly why it needs a test rather than a scenario: the
+    body only sorts and compares dictionaries, so the raise has to be arranged.
+
+    Both halves are asserted. The `except` clause is the only thing that logs the
+    exception, and the `finally` is the only thing that used to discard it, so a
+    test that checked one and not the other would pass against half the function.
+    """
+
+    class Exploding(list):
+        """A shelved value whose sort raises, which is where the try block can fail."""
+
+        def sort(self, *args, **kwargs):
+            raise RuntimeError('sorting a link list failed')
+
+    spec = pdsindexshelf.SPEC     # any spec: only pdsfile_cls and logname are read
+    monkeypatch.setattr(spec.pdsfile_cls, 'from_abspath',
+                        classmethod(lambda cls, path: _StubPdsdir()))
+
+    logfile = tmp_path / 'run.log'
+    logger = pdslogger.PdsLogger('pds.test.' + tmp_path.name)
+    logger.add_handler(pdslogger.file_handler(str(logfile)))
+
+    key = str(tmp_path / 'A.LBL')
+    with pytest.raises(RuntimeError, match='sorting a link list failed'):
+        _linkshelf_common.validate_links(spec, str(tmp_path),
+                                         {key: Exploding()}, {key: Exploding()},
+                                         logger=logger)
+
+    assert 'sorting a link list failed' in logfile.read_text()
+
+
+class _StubPdsdir:
+    """Just enough of a PdsFile for validate_links: a root to log relative to."""
+
+    root_ = '/'

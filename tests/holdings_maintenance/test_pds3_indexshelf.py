@@ -203,3 +203,32 @@ def test_row_count_disagreeing_with_the_label_is_refused(shelved_tree):
     assert run.returncode == 1, run.describe()
     assert any('row count mismatch' in line for line in run.error_lines), run.describe()
     assert support.sidecar_text(shelved_tree.path(SIDECAR)) == before
+
+
+def test_a_backup_copy_of_a_table_is_skipped_and_reported(fresh_tree):
+    """A backup copy is skipped, and the skip is an ERROR, so the run exits 1.
+
+    That the report is an error rather than a warning is what makes it reach the
+    exit status, and that is the reason these two tools have a driver of their own
+    instead of the one the archive and link shelf tools run on: the check has to
+    happen inside the run's log hierarchy, where an error is counted. Downgrading
+    it to a warning, or moving the check out to where targets are resolved, would
+    leave a run over a directory containing a backup exiting 0.
+    """
+
+    backup = support.add_file(fresh_tree, f'{METADATA_DIR}/{subsets.PDS3_VOLUME}'
+                                          '_index_backup.tab',
+                              fresh_tree.path(INDEX_TABLE).read_bytes(),
+                              SOURCE_MTIMES[INDEX_TABLE])
+
+    run = support.run_tool(fresh_tree, 'pdsindexshelf', '--initialize',
+                           fresh_tree.path(METADATA_DIR))
+    assert run.returncode == 1, run.describe()
+    assert any('Backup file skipped' in line and backup.name in line
+               for line in run.error_lines), run.describe()
+
+    # Skipped, not shelved: the real tables are, and the backup is not.
+    for table in ('index', 'hstfiles'):
+        assert fresh_tree.path(f'{SHELF_DIR}/{subsets.PDS3_VOLUME}_{table}.py').exists()
+    assert not fresh_tree.path(f'{SHELF_DIR}/{subsets.PDS3_VOLUME}'
+                               '_index_backup.py').exists()

@@ -4,7 +4,9 @@
 # What the checksum and shelf file tools share.
 #
 # The generic driver the tools of every family run on is in _common.py; this is
-# the part only the checksums, infoshelf and linkshelf tools use.
+# the part only the checksums, infoshelf, indexshelf and linkshelf tools use.
+# What one of those families shares with nobody else lives beside it, in
+# _indexshelf_common.py and _linkshelf_common.py.
 ##########################################################################################
 
 import argparse
@@ -105,24 +107,6 @@ INFO_SHELF = VersionedFile(noun='Info shelf file', logname=INFOSHELF_LOGNAME,
 LINK_SHELF = VersionedFile(noun='Link shelf file', logname=LINKSHELF_LOGNAME,
                            companions=('.py', '.pickle'))
 
-# The log directories a superseded checksum or shelf file is versioned into. A run
-# fills this in for each target it is about to work on -- run_selection_main() for
-# the tools on that driver, each tool's own main() for the rest; a process that
-# never calls set_log_dirs leaves it empty, and then move_old() versions nothing.
-LOGDIRS = []
-
-
-def set_log_dirs(logfiles):
-    """Record the log directories move_old() versions a superseded file into.
-
-    Args:
-        logfiles: The log file paths of the target about to be worked on. The
-            directory of each is what a superseded file is copied into.
-    """
-
-    global LOGDIRS
-    LOGDIRS = [os.path.split(logfile)[0] for logfile in logfiles]
-
 
 def next_version_dest(log_dir, prefix, ext):
     """Return the unused <prefix>_v###<ext> path in one log directory.
@@ -170,7 +154,7 @@ def move_old(path, kind, *, logger=None):
     stem = path.rpartition('.')[0]
 
     from_logged = False
-    for log_dir in LOGDIRS:
+    for log_dir in _common.LOGDIRS:
         dest = next_version_dest(log_dir, prefix, ext)
         shutil.copy(path, dest)
 
@@ -486,7 +470,7 @@ def run_selection_main(spec, tasks, argv):
 
             # Create all the handlers for this level in the logger
             local_handlers = []
-            set_log_dirs(logfiles)
+            _common.set_log_dirs(logfiles)
             for logfile in logfiles:
                 local_handlers.append(pdslogger.file_handler(logfile))
                 logdir = os.path.split(logfile)[0]
