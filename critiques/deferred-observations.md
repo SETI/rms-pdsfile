@@ -3036,3 +3036,63 @@ these entries are read by the PRs that come after it.
      should be settled together: restricting the substitution to `argv[0]` fixes
      this one, and naming the target tool explicitly per flavor fixes 109.
      **Owner: open.**
+
+### Added by the PR-26 adversarial review (round 2)
+
+120. **The modification-time tolerance is inclusive, so an exactly-one-second
+     change is reported as no change.** `_shelf_common.modtimes_agree()` returns
+     True when `abs((t1 - t2).total_seconds()) <= MODTIME_TOLERANCE`, and the
+     tolerance is 1. That is the form the plan prescribes (`> 1` is an error) and
+     the form `_archives_common.validate_tuples` has always used on epoch seconds,
+     so PR-26 implemented it as specified. Measured end to end on a pds3 tree, a
+     label whose modification time moved by exactly 1.0 s:
+
+     ```
+     shift +1.0 s   exit 0, no modification-time error
+     shift +1.5 s   exit 1, Modification time mismatch "…12:27:01" "…12:27:00"
+     ```
+
+     For **pds4** this is a detection the previous truncation would have made: two
+     times exactly a second apart always fall in different whole seconds. So the
+     class PR-26 stopped reporting is not purely false positives, as the PR
+     description originally implied — it is `|Δ| ≤ 1 ∧ floor(t1) ≠ floor(t2)`,
+     which is mostly boundary-straddle noise but includes exact whole-second
+     shifts.
+
+     Whether that matters depends on how a real one-second shift arises. The
+     justification for a tolerance at all is that tar and some filesystems carry
+     whole-second modification times, and that quantization produces differences
+     **strictly** below one second — which would argue for `<`. Against that,
+     `< 1` and `<= 1` differ only on an exact-microsecond coincidence, and
+     changing it would make `modtimes_agree` disagree with `validate_tuples`, which
+     is the convention it was written to match. Not decided here because the plan
+     specifies the inclusive form and the owner approved that formula.
+     **Owner: open.**
+
+121. **A subprocess-based tool test used to exercise whichever `pdsfile` was
+     installed, so a green run proved nothing about the tree it ran in.** Entry 110
+     records the in-process half of this trap. The subprocess half is worse,
+     because it is silent in both directions: `support.ToolTree.env` passed the
+     ambient environment through without naming a `PYTHONPATH`, so
+     `support.run_tool()` and `run_console_script()` launched tools that imported
+     whatever the interpreter resolved — for an editable install, the tree that was
+     installed rather than the tree under test. Measured in the PR-26 worktree
+     before the fix, with no `PYTHONPATH` set:
+
+     ```
+     $ pytest tests/holdings_maintenance/ -q
+     7 failed, 269 passed        # the installed tree's defects, not this tree's
+     $ PYTHONPATH=$PWD/src pytest tests/holdings_maintenance/ -q
+     276 passed
+     ```
+
+     PR-26 closed it: `ToolTree.env` now sets `PYTHONPATH` to `REPO_ROOT/src`, so a
+     tool subprocess runs the code its tests belong to, and the no-`PYTHONPATH` run
+     above is green. That also makes the in-process and subprocess halves agree,
+     which is what entry 110's split-brain was.
+
+     The consequence for entry 110 is that the **only** reliable differential probe
+     is now to run pytest **from** the tree being probed, with the other tree's test
+     files copied in — `REPO_ROOT` is derived from the test file's own location, so
+     that form pins itself correctly. PR-26's own base probe was redone that way.
+     **Owner: recorded, not open.**

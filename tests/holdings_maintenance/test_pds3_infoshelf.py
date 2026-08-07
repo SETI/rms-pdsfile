@@ -276,7 +276,7 @@ def test_update_versions_the_shelf_file_it_replaces(shelved_tree):
 
     _shelf_common.move_old() versions the shelf the task is about to rewrite, as
     <name>_v###<ext> beside the run's own log file, and copies the `.py` sidecar
-    alongside it. It reads the shared LOGDIRS list that main() fills in through
+    alongside it. It reads the shared LOGDIRS list that the run fills in through
     _shelf_common.set_log_dirs(), so a tool that leaves that list empty versions
     nothing.
     """

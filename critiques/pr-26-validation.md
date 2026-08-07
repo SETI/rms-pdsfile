@@ -86,8 +86,30 @@ A holdings path containing a space is word-split. That is not hypothetical here:
 deferred observation 107 records that this machine's holdings root resolves to a
 path containing three spaces.
 
-So this is **two** behavior changes, not a cosmetic modernization, and both are
-enumerated in §4 and pinned by tests.
+A **third** consequence, found by the round-2 review and not by me: `os.system`
+hands the command to a shell, which *reports* a target it cannot execute and
+returns a wait status, while `subprocess.run` raises. With a `pdsinfoshelf` that
+exists but is not executable:
+
+```
+base  exit 0   sh: 1: .../bin/pdsinfoshelf: Permission denied
+head  exit 1   PermissionError: [Errno 13] ... (uncaught, full traceback)
+```
+
+That is reachable: `python -m ...pdschecksums -i` puts a module *file* path in
+`argv[0]`, whose mode and shebang depend on how the package was installed. The new
+direction is the better one — a silent success becomes a loud failure — but it is
+a behavior change and belongs on the list. Two smaller aspects of the same swap:
+the shell is gone entirely, so `~`, `*`, `$VAR` and quotes in a path are no longer
+interpreted (a superset of the word-splitting above), and `system(3)` ignores
+SIGINT in the caller while `subprocess.run` does not, so Ctrl-C during a chained
+run now propagates.
+
+So this is **four** behavior changes in one line, not a cosmetic modernization.
+The first two are pinned by tests; the third and fourth are enumerated here and in
+§4 without tests, because constructing a non-executable chained target or a
+deterministic SIGINT inside the suite would pin the platform's behavior rather
+than this code's.
 
 ### 2.4 A sixth defect: `proceed` can be unbound
 
@@ -127,23 +149,46 @@ reason.
 
 **The report still renders whole seconds.** The truncation was dropped from the
 *comparison* only; the message keeps its original second-resolution wording. That
-is safe rather than merely conservative: if two times are more than a second
-apart their whole seconds must differ, so the message can never print the same
-string twice. `test_every_reported_mismatch_renders_two_different_seconds` pins
-it over a grid of offsets and separations.
+is safe for every value these tools produce: `generate_infodict` writes
+`strftime('%Y-%m-%d %H:%M:%S.%f')`, `%f` always emits six digits, and for two such
+values more than a second apart the whole seconds must differ — so the message
+cannot print the same string twice.
+`test_every_reported_mismatch_renders_two_different_seconds` pins it over a grid
+of offsets and separations.
+
+**That guarantee is scoped to those values, and deliberately so.** Hand a
+dotless string to the comparison and the property fails: `rpartition('.')[0]` of
+`'2020-09-13 12:26:40'` is `''`, so a mismatch would render `""` twice. The same
+scoping applies to the subset argument below. Neither case is reachable — the only
+producer is `generate_infodict`, and the only non-conforming value it emits is the
+empty-directory sentinel, which the fallback handles — but the claims are about
+the data, not about the function in the abstract.
 
 **The pds4 verdict change, enumerated.** Both flavors truncated before comparing,
 so pds4's working comparison was string equality on quantized values. Replacing
 it changes pds4's results too:
 
-- Nothing that passes today starts failing. If `floor(t1) == floor(t2)` then both
-  lie in `[n, n+1)` so `|t1 - t2| < 1`; contrapositive, `|t1 - t2| > 1` forces
-  the floors to differ. Every mismatch the new comparison reports, truncation
-  reported too — the new mismatch set is a **strict subset** of the old.
-- What changes: a pair less than a second apart that straddles a second boundary
-  was reported as a mismatch and is not any more. `12:26:40.999999` versus
-  `12:26:41.000001` — two microseconds apart, reported as different by
-  truncation. That class is exactly the false positives.
+- Nothing that passes today starts failing. For two values carrying a fractional
+  part — which is all `generate_infodict` writes — if `floor(t1) == floor(t2)`
+  then both lie in `[n, n+1)` so `|t1 - t2| < 1`; contrapositive, `|t1 - t2| > 1`
+  forces the floors to differ. Every mismatch the new comparison reports,
+  truncation reported too, so over the produced values the new mismatch set is a
+  **subset** of the old.
+- What changes: a pair **no more than** a second apart that straddles a second
+  boundary was reported as a mismatch and is not any more. `12:26:40.999999`
+  versus `12:26:41.000001` — two microseconds apart, called different by
+  truncation — is the archetype.
+- **That class is mostly, but not only, false positives, and the difference is
+  worth naming.** The tolerance is inclusive (`<= 1`, the form the plan
+  prescribes and the form `validate_tuples` already uses), so a file whose
+  modification time moved by **exactly** one second is now reported as matching.
+  Measured end to end on a pds3 tree: a label shifted by exactly 1.0 s validates
+  clean, the same label shifted by 1.5 s reports the mismatch. On pds4 that is a
+  detection the old truncation would have made, since the two floors differ. It is
+  a narrow class — an exact whole-second shift — and it is the price of a
+  symmetric tolerance, but it is not a false positive and the record should not
+  imply the change removes only those. Recorded as deferred observation 120 so the
+  owner can revisit `<=` versus `<` on its merits.
 
 A mutation probe confirms the new tests discriminate rather than merely pass:
 
@@ -186,6 +231,30 @@ ERROR | Modification time mismatch "2020-09-13 12:28:31" "2020-09-13 12:28:30"
 Two times 0.6 s apart, on opposite sides of a whole second. The pds3 test is kept
 as a "still agrees" check and is marked below as non-discriminating rather than
 being counted as evidence.
+
+### The fixed comparison reaches a second tool, which the plan does not mention
+
+`pds3/re_validate.py` calls `pdsinfoshelf.validate()` directly, at `:152` and
+`:183`, so behavior changes 1, 2 and 6 change what **`re_validate --infoshelves`**
+reports as well as what `pdsinfoshelf` reports. That matters more than it sounds:
+`re_validate` is the scheduled tool, with `--batch`, `--email` and
+`--error-email`, and it mails whenever `error_messages` is non-empty
+(`re_validate.py:933`). Measured on a sandbox volume whose label was byte-changed
+and mtime-shifted, with checksums refreshed so only the shelf is stale:
+
+```
+$ python -m pdsfile.holdings_maintenance.pds3.re_validate --info --volumes <volume>
+base   no ERROR lines
+head   5 ERROR messages -- Checksum mismatch, plus 4 modification-time mismatches
+```
+
+The fix is the point of the PR, and this is the fix working. What was missing is
+the statement that a first-party consumer inherits it: volumes that a nightly
+`re_validate` reported clean will now generate error mail, on the run after this
+merges, without anything about those volumes having changed. `test_re_validate.py`
+exercises plumbing rather than end-to-end shelf output, which is why nothing in the
+suite flagged it. Recorded here rather than mitigated: suppressing it would mean
+keeping the defect.
 
 ### Log and output text — every changed line
 
@@ -461,15 +530,33 @@ The rendered filename is identical.
 ## 10. Test coverage of the fixes, probed rather than asserted
 
 Every bug fix has a test. To show the tests are not vacuous, the head test files
-were run against **base** source (subprocess tests only — see §8 for why the
-in-process ones cannot be redirected this way):
+were copied into a **base** tree and pytest was run **from there** — the reliable
+form, and after the fix described below the only form that works:
 
 ```
-$ PYTHONPATH=<base>/src:<work> pytest tests/holdings_maintenance/test_pds3_checksums.py \
-      tests/holdings_maintenance/test_pds3_infoshelf.py \
-      tests/holdings_maintenance/test_pds4_infoshelf.py \
-      tests/holdings_maintenance/test_pds4_checksums.py
+$ cp -a <base> <probe> && cp <work>/tests/holdings_maintenance/*.py \
+      <probe>/tests/holdings_maintenance/
+$ cd <probe> && pytest tests/holdings_maintenance/ \
+      --ignore=.../test_shelf_common.py --ignore=.../test_common_versioning.py
+9 failed, 199 passed
 ```
+
+The two ignored modules import `_shelf_common`, which does not exist at base, so
+they cannot be collected there at all; §3's mutation probe is what stands in for
+`test_shelf_common.py`.
+
+**An earlier version of this probe used `PYTHONPATH=<base>/src` and was only half
+valid**, for the reason §8 gives: pytest's own `pythonpath` setting wins for
+in-process imports, so that run exercised head in-process and base in
+subprocesses. It produced the same nine names, but by a mechanism that could not
+be relied on. Both reviewers in round 2 hit the same trap independently, and one
+of them found the sharper form of it: because `ToolTree.env` passed the ambient
+environment through, a subprocess test with **no** `PYTHONPATH` set silently
+exercised whichever `pdsfile` was pip-installed — so `pytest
+tests/holdings_maintenance/` run in this worktree with no environment variable
+reported seven failures that were the *installed base tree's* defects, not this
+tree's. `ToolTree.env` now pins `PYTHONPATH` to the checkout the tests belong to,
+and that run is green.
 
 The nine that fail at base and pass at head, one per fix:
 

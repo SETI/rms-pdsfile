@@ -221,12 +221,20 @@ class ToolTree:
         never resolve a path back to the real holdings. PDS_LOG_ROOT is removed so
         logs land in `<disk>/logs/`, and TZ is pinned so that shelf sidecars --
         which format modification times in local time -- are reproducible.
+
+        PYTHONPATH names this checkout's src/, so a tool subprocess runs the code
+        these tests belong to. Without it the subprocess imports whichever pdsfile
+        its interpreter resolves, which for an editable install is whatever tree
+        was installed -- so a green run would say nothing about the tree it was
+        started in, and a red one could be reporting a different tree's defects.
+        To exercise another tree deliberately, run pytest from that tree.
         """
 
         env = dict(os.environ)
         env['PDS3_HOLDINGS_DIR'] = str(self.disk / 'holdings')
         env['PDS4_HOLDINGS_DIR'] = str(self.disk / 'pds4-holdings')
         env['TZ'] = 'UTC'
+        env['PYTHONPATH'] = str(REPO_ROOT / 'src')
         for name in ('PDS_LOG_ROOT', 'PDSFILE_TEST_HOLDINGS', 'PDSFILE_TEST_DATA_DIR'):
             env.pop(name, None)
 

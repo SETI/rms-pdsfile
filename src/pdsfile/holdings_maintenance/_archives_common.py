@@ -31,6 +31,7 @@ def reject_checksum_and_archive_paths(pdsf, path):
         print('No archives for archive files: ' + path)
         sys.exit(1)
 
+
 # Default limits
 LOAD_DIRECTORY_INFO_LIMITS = {'info': 100}
 READ_ARCHIVE_INFO_LIMITS = {'info': 100}

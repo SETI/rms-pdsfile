@@ -198,8 +198,6 @@ def build_arg_parser(spec):
     return parser
 
 
-
-
 def log_paths_for(pdsf, method, *args, **kwargs):
     """Return the paths one target's run writes its log to, in order.
 

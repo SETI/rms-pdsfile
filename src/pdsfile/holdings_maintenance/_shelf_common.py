@@ -4,7 +4,7 @@
 # What the checksum and shelf file tools share.
 #
 # The generic driver the tools of every family run on is in _common.py; this is
-# the part only the checksums, infoshelf, linkshelf and indexshelf tools use.
+# the part only the checksums, infoshelf and linkshelf tools use.
 ##########################################################################################
 
 import argparse
@@ -50,9 +50,11 @@ def modtimes_agree(modtime1, modtime2, tolerance=MODTIME_TOLERANCE):
     and two times a minute apart never do.
 
     An empty string is the sentinel for a directory with nothing in it, and no
-    sentinel parses as a time. Anything that does not parse falls back to comparing
-    the two strings, so two sentinels agree and a sentinel never agrees with a real
-    time.
+    sentinel parses as a time. Anything the two cannot be compared as times --
+    a sentinel, a value that is not a time at all, or a pair that cannot be
+    subtracted because only one of them carries a time zone -- falls back to
+    comparing the two strings, so two sentinels agree and a sentinel never agrees
+    with a real time.
 
     Args:
         modtime1: One modification time.
@@ -66,10 +68,11 @@ def modtimes_agree(modtime1, modtime2, tolerance=MODTIME_TOLERANCE):
     try:
         time1 = datetime.datetime.fromisoformat(modtime1)
         time2 = datetime.datetime.fromisoformat(modtime2)
-    except ValueError:
+        difference = abs((time1 - time2).total_seconds())
+    except (TypeError, ValueError):
         return modtime1 == modtime2
 
-    return abs((time1 - time2).total_seconds()) <= tolerance
+    return difference <= tolerance
 
 
 @dataclass(kw_only=True)
@@ -96,9 +99,10 @@ INFO_SHELF = VersionedFile(noun='Info shelf file', logname=INFOSHELF_LOGNAME,
 LINK_SHELF = VersionedFile(noun='Link shelf file', logname=LINKSHELF_LOGNAME,
                            companions=('.py', '.pickle'))
 
-# The log directories a superseded checksum or shelf file is versioned into. A tool's
-# main() fills this in for each target it is about to work on; a process that never
-# calls set_log_dirs leaves it empty, and then move_old() versions nothing.
+# The log directories a superseded checksum or shelf file is versioned into. A run
+# fills this in for each target it is about to work on -- run_selection_main() for
+# the tools on that driver, each tool's own main() for the rest; a process that
+# never calls set_log_dirs leaves it empty, and then move_old() versions nothing.
 LOGDIRS = []
 
 

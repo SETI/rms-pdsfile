@@ -119,13 +119,24 @@ def test_the_two_log_path_methods_exist_on_both_flavors():
 
 
 class RecordingPdsFile(pdsfile.Pds3File):
-    """A Pds3File that records what its log-path methods ask _log_path_for for."""
+    """A Pds3File that records what its log-path methods ask _log_path_for for.
+
+    Both the keyword arguments and the path parts are recorded. The parts are the
+    half that distinguishes a bundle log path from a bundle set one, so a test
+    that compared only the keywords would pass even if the two were swapped.
+    """
+
+    category_ = 'volumes/'
+    bundleset_ = 'HSTNx_xxxx/'
+    bundleset = 'HSTNx_xxxx'
+    bundlename = 'HSTN0_7176'
+    suffix = ''
 
     def __init__(self):     # deliberately not super(): no tree is needed
         self.calls = []
 
     def _log_path_for(self, parts, **kwargs):
-        self.calls.append(kwargs)
+        self.calls.append((parts(), kwargs))
         return 'built'
 
 
@@ -134,7 +145,8 @@ def test_the_pds3_log_path_aliases_agree_with_the_bundle_names():
 
     Pinned because the driver stopped calling the volume names when these tools
     moved onto it; if the aliases ever diverged, every PDS3 log would move. The
-    two are compared by what they hand to _log_path_for, so no tree is needed.
+    two are compared by everything they hand to _log_path_for -- the path parts as
+    well as the keywords -- so no tree is needed.
     """
 
     pdsf = RecordingPdsFile()
@@ -146,3 +158,10 @@ def test_the_pds3_log_path_aliases_agree_with_the_bundle_names():
     pdsf.log_path_for_volset('_md5', 'update', 'pdschecksums')
     pdsf.log_path_for_bundleset('_md5', task='update', dir='pdschecksums')
     assert pdsf.calls[0] == pdsf.calls[1]
+
+    # And the two kinds are genuinely different, so the assertions above are not
+    # comparing one thing with itself.
+    pdsf = RecordingPdsFile()
+    pdsf.log_path_for_bundle('_md5', task='update', dir='pdschecksums')
+    pdsf.log_path_for_bundleset('_md5', task='update', dir='pdschecksums')
+    assert pdsf.calls[0] != pdsf.calls[1]
