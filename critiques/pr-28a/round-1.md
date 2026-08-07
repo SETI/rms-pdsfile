@@ -23,11 +23,11 @@ controls, each reverted:
 | the whole `if args.log:` branch dropped | 1 failed |
 
 **2. Minor — two preamble lines are pinned by no test, and entry 150 named neither.
-Fixed in the record.** Measured, not asserted: deleting
+Fixed in the record.** Measured at `356e055`, not asserted: deleting
 `spec.pdsfile_cls.set_log_root(args.log)`, and neutering the `if not args.quiet:`
-guard, each leave `tests/holdings_maintenance` at **337 passed**, the same as
-pristine. Entry 150 now names both, says the capture is what covers them, and keeps
-the `PDS_LOG_ROOT`-through-a-tool gap.
+guard, each leave `pytest tests/holdings_maintenance` against the full holdings at
+**337 passed**, the same as the unmutated tree. Entry 150 now names both, says the
+capture is what covers them, and keeps the `PDS_LOG_ROOT`-through-a-tool gap.
 
 **3. Minor — the capture could not see the handler wiring at all. Fixed in the
 harness.** No gate scenario passes `--log` (`grep -c '^ARGV:.*--log'` → 0 of 158),

@@ -227,7 +227,8 @@ def setup_run(spec, argv):
 
     Raises:
         SystemExit: With status 1 when the command line names no task, so a caller
-        that returns from here has one to run.
+        that returns from here has one to run; or from the parser, with status 0
+        for --help and 2 for a command line it cannot classify.
     """
 
     parser = build_arg_parser(spec)

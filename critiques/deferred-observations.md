@@ -3816,8 +3816,9 @@ to collapsing. **Owner: recorded, not open.**
 150. **Two lines of the preamble are pinned by no test at all.** Before this PR no
      test drove a driver-backed tool with `--log`, so the handler wiring was pinned
      by nothing, in triplicate; `test_driver_setup.py` now pins it. What no test
-     reaches, measured by deleting each line and running the whole
-     `tests/holdings_maintenance` suite, which reports 337 passed either way:
+     reaches, measured at `356e055` by deleting each line from `setup_run` and
+     running `pytest tests/holdings_maintenance` against the full holdings, which
+     reports the same count green as the unmutated tree:
      `spec.pdsfile_cls.set_log_root(args.log)`, whose absence silently empties the
      duplicate log tree; and the `if not args.quiet:` guard — `--quiet` is passed to
      none of the ten driver-backed tools anywhere in the suite. Both are covered by

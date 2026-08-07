@@ -1102,11 +1102,12 @@ entry 130 measured are untouched. Record: `critiques/pr-28a-validation.md`.
   differs on 0.
 - **One input class where the new frame shows.** A `--log` root the process cannot
   write into raises inside the preamble, and that traceback now names `setup_run`.
-  Found by a deliberate 20-scenario probe rather than by the gate, and recorded as
-  deferred entry 149 for the owner to rule on.
+  Found by a deliberate 30-scenario `--log` probe rather than by the gate, and
+  recorded as deferred entry 149 for the owner to rule on. The same probe is what
+  covers the root-handler wiring, which no gate scenario reaches.
 - **One test added**, the only id that moves in either mode:
   `test_driver_setup.py::test_a_log_root_gets_every_handler_the_spec_declares`. It
-  closes a gap the extraction exposed — no test drove a maintenance tool with
+  closes a gap the extraction exposed — no test drove a **driver-backed** tool with
   `--log`, so the handler wiring was pinned by nothing.
 
 ### Phase 7 — Docstrings and documentation

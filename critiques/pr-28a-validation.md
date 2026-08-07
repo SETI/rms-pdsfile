@@ -38,7 +38,7 @@ later, not part of setup.
 
 | file | base | head |
 |---|---:|---:|
-| `src/pdsfile/holdings_maintenance/_common.py` | 372 | 397 |
+| `src/pdsfile/holdings_maintenance/_common.py` | 372 | 398 |
 | `src/pdsfile/holdings_maintenance/_shelf_common.py` | 523 | 501 |
 | `src/pdsfile/holdings_maintenance/_indexshelf_common.py` | 620 | 598 |
 | `tests/holdings_maintenance/test_driver_setup.py` | — | 52 |
@@ -74,9 +74,14 @@ differ there and neither difference is about the code:
   it wrote, because which file a line lands in and how many files there are both
   depend on which second a run started. Measured on the control before the raw
   total was added: the same 292 lines arrived as 10 files in one run and 11 in the
-  next. The **raw line total** is recorded beside the set, so the failure
-  `log_paths_for`'s docstring names — one run's log written twice — is still
-  visible, which a set alone cannot show.
+  next. The **raw line total** is recorded beside the set as a second, cheaper
+  check. It is not load-bearing, and the record says so rather than claiming a
+  safety net it does not provide: removing `log_paths_for`'s `paths[0] == paths[1]`
+  dedup — the duplication its docstring exists to prevent — moves the raw total on
+  all ten tools, but it moves the **set** on all ten too, because each driver logs
+  one `Log file` line per path. The other shape of duplication is unreachable:
+  pdslogger deduplicates handlers by path, so adding a second `file_handler` for
+  the same log leaves the byte count unmoved.
 
 **Base versus base first**, two independent runs of the same tree:
 
@@ -87,28 +92,45 @@ base      vs head        :   0 differing lines of 6,893
 
 Byte-identical. Not "attributed" — identical.
 
-**The capture can fail**, checked against a throwaway worktree at head. Changing the
-"Missing task" message to "No task" moves **20 gate lines**, ten tools × one line
-each way; making the preamble ignore `--quiet` moves **410**; attaching only the
-first of a spec's handler factories moves **4 probe lines**. All three mutations
-live inside `setup_run`, so a capture blind to them would be blind to the change
-this PR makes.
+**The capture can fail**, checked against throwaway worktrees at head. Every
+mutation below is inside `setup_run`, so a capture blind to one would be blind to
+the change this PR makes:
 
-The third is four lines rather than five because `pds4indexshelf`'s root
-`ERRORS.log` survives it: `run_index_main` creates its per-target handlers in the
-tool's own log directory rather than the target's, so that file gets written
-whether or not the preamble made it.
+| mutation | moves |
+|---|---|
+| the "Missing task" message becomes "No task" | 20 gate lines |
+| the preamble ignores `--quiet` | 410 gate lines |
+| `--quiet` ignored only when `--log` is given | 0 gate, **191 probe** |
+| only the first of a spec's handler factories is attached | 4 probe lines |
+| the handlers are created and never attached | 131 probe lines |
+| `spec.pdsfile_cls.set_log_root(args.log)` deleted | 0 gate, 154 probe |
 
 ### 3.1 The `--log` probe, and the one input class where the extraction is visible
 
 No scenario above passes `--log`, so the gate reaches the preamble's last four
 lines — the ones that build the root handlers — but sees nothing they produce. A
-separate **20-scenario probe** covers them: each tool run twice, once with a
-writable `--log` root and once with a root the process cannot write into, on a tree
-nothing has initialized so that the run logs an error and the handlers have
-something to write. Each writable run records the whole log root, every path and
-each file's line count, so a handler that was created and never attached — which
-leaves the same file behind — is told apart from one that was attached.
+separate **30-scenario probe** covers them: each tool run three times, with a
+writable `--log` root, with `--quiet` **and** a writable root, and with a root the
+process cannot write into. The tree is not initialized first, so the run logs an
+error and the handlers have something to write, and each writable run records the
+whole log root — every path, and each file's line count.
+
+The `--quiet`-with-`--log` run is there because it is the one cell of the
+preamble's two log branches nothing else reaches: no gate scenario passes `--log`
+and no other probe scenario passes `--quiet`. Without it, a preamble that honoured
+`--quiet` only when no log root was given produced a byte-identical gate, a
+byte-identical probe and a green suite. With it, that mutation moves 191 probe
+lines.
+
+Recording the log root's contents is what tells a handler that was **attached**
+from one that was merely created, since each opens its file when it is created.
+That control fires on **7 of the 10 tools** — measured, not assumed. It does not
+fire on `pds4archives`, whose probe run succeeds and logs nothing at WARNING or
+above, so its handler files are empty either way; nor on the two index shelf tools,
+because `run_index_main` creates its per-target handlers in the tool's own log
+directory rather than the target's, so those files are written whether or not the
+preamble made them. Seven tools is enough for the control to be a control, and the
+three exceptions are named rather than left for a reader to discover.
 
 Those `LOGROOT` records are identical between base and head. The probe's base
 versus base is 0 differing lines, and base versus head is **30 added lines, none
@@ -153,7 +175,8 @@ by nothing — in triplicate before this PR, and in one place after it.
 (`test_re_validate.py` does pass `--log`, to a tool with its own `main()` that
 reaches none of the three drivers.) The test uses `pds4checksums`, which declares
 two handler factories, and asserts that the tool's directory under the log root
-holds **exactly** `ERRORS.log` and `WARNINGS.log` and that **both have content**
+holds, **at its top level**, exactly `ERRORS.log` and `WARNINGS.log`, and that
+**both have content**
 after a run that logs an error — creation and attachment are different properties,
 and each handler opens its file when it is created, so existence alone cannot tell
 them apart.
