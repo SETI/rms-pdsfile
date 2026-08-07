@@ -18,7 +18,7 @@ Five files, and only these:
 | file | lines at base | at head | module docstring at base | classes without one | functions without one / total | parameters |
 |---|---:|---:|---|---:|---:|---:|
 | `src/pdsfile/pdsfile.py` | 1,949 | 2,360 | present | 1 | 2 / 37 | 56 |
-| `src/pdsfile/pdscache.py` | 1,047 | 1,691 | absent | 3 | 2 / 60 | 58 |
+| `src/pdsfile/pdscache.py` | 1,047 | 1,780 | absent | 3 | 2 / 60 | 58 |
 | `src/pdsfile/pdsviewable.py` | 587 | 954 | absent | 0 | 8 / 26 | 36 |
 | `src/pdsfile/__init__.py` | 15 | 39 | absent | 0 | 0 / 0 | 0 |
 | `src/pdsfile/preload_and_cache.py` | 16 | 46 | absent | 0 | 0 / 0 | 0 |
