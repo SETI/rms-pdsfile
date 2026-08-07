@@ -5,7 +5,7 @@ classes and functions do not; and, over all the files together, how many docstri
 and how many carry a Google-style section.
 
 A section is counted only if a whole line of the docstring is one of the Google section
-names. Two things that rules out. `Note:`, `Example:` and `Format:` are not sections for
+names. That rules out two things. `Note:`, `Example:` and `Format:` are not sections for
 this purpose: they appear in this package's older docstrings as ordinary prose headings,
 and counting them would inflate the "already sectioned" figure without any parameter
 having been documented. And a section name written mid-sentence -- prose that happens to

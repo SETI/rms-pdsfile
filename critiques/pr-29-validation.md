@@ -18,8 +18,8 @@ Five files, and only these:
 | file | lines at base | at head | module docstring at base | classes without one | functions without one / total | parameters |
 |---|---:|---:|---|---:|---:|---:|
 | `src/pdsfile/pdsfile.py` | 1,949 | 2,435 | present | 1 | 2 / 37 | 56 |
-| `src/pdsfile/pdscache.py` | 1,047 | 1,780 | absent | 3 | 2 / 60 | 58 |
-| `src/pdsfile/pdsviewable.py` | 587 | 984 | absent | 0 | 8 / 26 | 36 |
+| `src/pdsfile/pdscache.py` | 1,047 | 1,782 | absent | 3 | 2 / 60 | 58 |
+| `src/pdsfile/pdsviewable.py` | 587 | 986 | absent | 0 | 8 / 26 | 36 |
 | `src/pdsfile/__init__.py` | 15 | 39 | absent | 0 | 0 / 0 | 0 |
 | `src/pdsfile/preload_and_cache.py` | 16 | 48 | absent | 0 | 0 / 0 | 0 |
 
@@ -505,7 +505,23 @@ Six were new and are fixed here:
 * **`preload_and_cache.py` named the four lifetime constants and their values in
   separate sentences.** Each constant now carries its own value.
 
-One was declined. The plan's PR-29a line says "156 functions, 131 parameters"; CodeRabbit
+A second pass over the amended tree brought five more, of which four were right and are
+fixed: `DictionaryCache`'s key set is not "only ever added to" -- a trim does remove from
+it; entry 177's remediation note was wrong, since dedenting the `return` out of the loop
+does fix the empty-set case as well as the non-empty one; `load_icons`'s
+`(icon_type, True)` claim was over-broad, because a later directory that has its own
+`_open` file does replace that key and only the closed-set fallback is blocked; and a
+sentence fragment in `measure.py`.
+
+The fifth was declined on evidence. CodeRabbit read `from_path`'s second scanning loop as
+recognizing trailing components, so that `COISS_2xxx/archives` would be an archive path.
+Run, it is not: that call gives `volumes/COISS_2xxx/archives`, and `COISS_2xxx/checksums`
+and `COISS_2xxx/previews` behave the same way. The loop reads `parts[0]` and pops from the
+other end, so it re-tests the element the loop before it just failed on and breaks
+immediately -- which round 3 established by tracing and this confirmed by running. Entry
+187 records it and the thread carries the reproduction.
+
+One was declined earlier. The plan's PR-29a line says "156 functions, 131 parameters"; CodeRabbit
 read that as a count of `Parameters:` sections. It is a count of parameters, measured with
 `critiques/pr-29/measure.py`, and it is the right metric for scoping PR-29a, which has to
 write one description per parameter. The thread carries that reply.

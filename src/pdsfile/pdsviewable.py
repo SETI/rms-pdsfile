@@ -794,11 +794,13 @@ def load_icons(path, url, color='blue', logger=None):
     as well, so icons of several colors can be held at once.
 
     The call may be repeated over different directories. Nothing is removed, and a set
-    read later replaces one read earlier under the same key -- except under
-    ``(icon_type, True)``, whose test for an existing entry does not distinguish one
-    left by an earlier call from one left by this call. A directory read second therefore
-    supplies the closed icons and leaves the first directory's open icons in place, which
-    is the key ``iconset_for(..., is_open=True)`` reads.
+    read later replaces one read earlier under the same key, with one exception. The
+    ``(icon_type, True)`` entry a *closed* set supplies as a fallback is written only if
+    that key is absent, and the test does not distinguish a key left by an earlier call
+    from one left by this call. So a type whose later directory has no ``_open`` file of
+    its own keeps whatever the earlier call left under that key, which is the key
+    ``iconset_for(..., is_open=True)`` reads. A later directory that does have an
+    ``_open`` file replaces it like any other key.
 
     With a logger, an image file that is not a recognizable image is reported and
     skipped, and a set missing any of ``REQUIRED_SIZES`` is reported. Without one, such a

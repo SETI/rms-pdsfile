@@ -98,8 +98,10 @@ class DictionaryCache(PdsCache):
     limit is met. Trimming happens after a ``set()`` and is deferred while the cache is
     paused.
 
-    That set of keys is only ever added to. Two consequences a caller has to work
-    around, both described again where they arise:
+    The only things that take a key out of that set are a trim, which removes the keys
+    of the entries it discards, and ``clear()``, which rebuilds it empty. Nothing else
+    does, which has two consequences a caller has to work around, both described again
+    where they arise:
 
       * Removing an entry, or reading one that has expired, leaves its key in the set.
         The next trim then looks the key up among the entries, does not find it, and

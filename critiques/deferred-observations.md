@@ -3856,7 +3856,7 @@ docstring to repair with it. **The entry is still open**: the fix is still the
 `self.lifetime is not None` test, and it is still a behavior change to a public class.
 
 Two things the entry did not say, found while writing the prose. `MemcachedCache` carries
-the identical trap: `set_local` (`pdscache.py:1461`) tests `if self.lifetime:` in
+the identical trap: `set_local` (`pdscache.py:1463`) tests `if self.lifetime:` in
 exactly the same way, and `MemcachedCache.__init__` documented `lifetime` as "0 for no
 expiration" in exactly the same words. And the two constructors disagree on what counts
 as a lifetime function — `DictionaryCache` accepts `type(lifetime).__name__ == 'function'`
@@ -3902,9 +3902,9 @@ of them has a module docstring at all.
 
 152. **`DictionaryCache.get_multi` and `MemcachedCache.get_multi` disagree about a
      missing key, and the docstring described the behavior neither of them had.**
-     `DictionaryCache.get_multi` (`pdscache.py:361`) reads each key through `self[key]`
-     at `:381`, so a key that is absent, expired, or holds `None` raises `KeyError` and
-     no partial result comes back. `MemcachedCache.get_multi` (`:1213`) omits such a key
+     `DictionaryCache.get_multi` (`pdscache.py:363`) reads each key through `self[key]`
+     at `:383`, so a key that is absent, expired, or holds `None` raises `KeyError` and
+     no partial result comes back. `MemcachedCache.get_multi` (`:1215`) omits such a key
      and returns the rest. Both carried the same sentence, "Missing keys do not
      appear in the returned dictionary", which was true of the second and the opposite of
      the first. Verified by running: `DictionaryCache(lifetime=100).get_multi(['k',
@@ -3936,10 +3936,10 @@ of them has a module docstring at all.
      currently mishandles silently. **Owner: a future pdsviewable PR.**
 
 155. **`load_icons` silently skips every JPEG icon.** The extension test is
-     `if ext.lower() not in ('.png', 'jpg'): continue` (`pdsviewable.py:853`) — the second
+     `if ext.lower() not in ('.png', 'jpg'): continue` (`pdsviewable.py:855`) — the second
      entry has no leading dot, and `os.path.splitext` always supplies one, so no file ever
      matches it. The surrounding code plainly expects JPEGs: the nominal-size guess looks
-     for a `jpg-<n>` directory component sixteen lines above, at `:835`. Verified by running: a
+     for a `jpg-<n>` directory component sixteen lines above, at `:837`. Verified by running: a
      directory holding `document_image.jpg` and `document_label.png` yields only the
      `LABEL` icon set. Adding the dot would start loading files that are not loaded today,
      which is a behavior change and not an executor's call. **Owner: a future pdsviewable
@@ -3947,7 +3947,7 @@ of them has a module docstring at all.
 
 156. **`load_icons` without a logger stores an unreadable image under the previous
      image's dimensions.** The handler is `except Image.UnidentifiedImageError:` followed
-     by `if logger:`, and the `continue` sits inside that `if` (`pdsviewable.py:861-864`).
+     by `if logger:`, and the `continue` sits inside that `if` (`pdsviewable.py:863-866`).
      With a logger the file is reported and skipped; without one, execution falls through
      to `(width, height) = im.size`, where `im` is still the last image successfully
      opened. Verified by running: a corrupt `broken.png` beside a valid 50x50 file
@@ -3957,7 +3957,7 @@ of them has a module docstring at all.
 
 157. **`MemcachedCache.delete_multi` cannot delete anything: its first statement names a
      client method that does not exist, and two more faults sit behind it.** The call
-     opens with `_ = self.mc.del_multi(keys)` (`pdscache.py:1554`). `self.mc` is a
+     opens with `_ = self.mc.del_multi(keys)` (`pdscache.py:1556`). `self.mc` is a
      `pylibmc.Client`, and pylibmc's batch delete is `delete_multi`; `del_multi` appears
      nowhere in it. Checked against the 1.6.3 source rather than assumed: the C method
      table in `src/_pylibmcmodule.h` registers `delete_multi`, `src/pylibmc/client.py`
@@ -3967,37 +3967,37 @@ of them has a module docstring at all.
      changed.
 
      Behind that fault sit two more. The local removal the loop would reach is spelled
-     `_del_local` (`pdscache.py:1561`) and the method this class defines is
-     `_delete_local` (`pdscache.py:1572`). And the value it would then return compares
-     `count = len(self) - prev_len` (`pdscache.py:1569`), which any real deletion drives
+     `_del_local` (`pdscache.py:1563`) and the method this class defines is
+     `_delete_local` (`pdscache.py:1574`). And the value it would then return compares
+     `count = len(self) - prev_len` (`pdscache.py:1571`), which any real deletion drives
      negative, against `len(keys)`, so only an empty batch could answer `True`. Three
      independent faults in fourteen lines, with no caller and no test anywhere in this
      repo. **Owner: a future pdscache PR.**
 
 158. **`MemcachedCache.flush`'s general error path raises before it can report.** In the
-     `except pylibmc.Error` handler, `keys = mydict.keys()` (`pdscache.py:1111`) is
-     followed by `keys.sort()` (`:1113`); `dict_keys` has no `sort`, so with a logger
+     `except pylibmc.Error` handler, `keys = mydict.keys()` (`pdscache.py:1113`) is
+     followed by `keys.sort()` (`:1115`); `dict_keys` has no `sort`, so with a logger
      present the handler raises `AttributeError`. The batches written before the failing
      one are already on the server, and the failing one and everything after it are left
      in the buffer. Without a logger the handler completes and the values in the failing
      batch are dropped rather than retried. Ten lines below, the summary counts
-     `len(self.local_keys_by_lifetime) - len(failures)` (`:1121`), which is a count of
+     `len(self.local_keys_by_lifetime) - len(failures)` (`:1123`), which is a count of
      distinct lifetimes, not of items, so the "N items flushed" message is wrong whenever
      more than one item shares a lifetime. **Owner: a future pdscache PR.**
 
 159. **Three `MemcachedCache` log calls are not guarded by a logger test, and two error
      paths are guarded by one that changes what they do.** Unguarded: breaking a stale
-     block (`pdscache.py:828`), losing a race to claim one (`:889`), and the
-     permanent-value-too-big report (`:1775`). Each raises `AttributeError` on a cache
+     block (`pdscache.py:830`), losing a race to claim one (`:891`), and the
+     permanent-value-too-big report (`:1777`). Each raises `AttributeError` on a cache
      built with `logger=None`, which is the default. The other two are worse than
      unguarded: `unblock`'s refusals read `if not test_pid and self.logger:` and
-     `if test_pid != self.pid and self.logger:` (`:907`, `:913`), so a cache with no
+     `if test_pid != self.pid and self.logger:` (`:909`, `:915`), so a cache with no
      logger does not refuse — it goes on to clear a block that another process holds.
      **Owner: a future pdscache PR.**
 
 160. **`MemcachedCache.replicate_clear` writes `None` back to the shared clear counter.**
      The branch reading `if clear_count is None: # lost from memcache!` responds with
-     `self.mc.set('$CLEAR_COUNT', clear_count, time=0)` (`pdscache.py:1678-1679`), which
+     `self.mc.set('$CLEAR_COUNT', clear_count, time=0)` (`pdscache.py:1680-1681`), which
      stores the `None` it was just given rather than the count this process knows. The
      key is then held at a value no comparison can use, and `was_cleared()`, which
      evaluates `clear_count > self.clear_count`, raises `TypeError` from then on.
@@ -4087,11 +4087,11 @@ of them has a module docstring at all.
 
 170. **`DictionaryCache`'s trim bookkeeping is only ever added to, so one deletion or one
      lazy expiry leaves the cache permanently unable to trim.** `self.keys`
-     (`pdscache.py:139`) is the set the size limit counts, and `set()` adds to it at
-     `:447`. Nothing removes from it except `_trim` itself (`:177`) and `clear()`
-     (`:591`). `delete` (`:530`), `__delitem__` (`:550`), `delete_multi` (`:570`) and
+     (`pdscache.py:141`) is the set the size limit counts, and `set()` adds to it at
+     `:449`. Nothing removes from it except `_trim` itself (`:179`) and `clear()`
+     (`:593`). `delete` (`:532`), `__delitem__` (`:552`), `delete_multi` (`:572`) and
      `get`'s expiry path all delete the entry and leave the key behind. `_trim` then
-     evaluates `self.dict[k][1]` for every `k in self.keys` (`:171`) and raises
+     evaluates `self.dict[k][1]` for every `k in self.keys` (`:173`) and raises
      `KeyError` on the first stale one -- and `_trim` is reached from `set()`,
      `set_multi()` and `resume()`, so the failure surfaces on an unrelated later call.
 
@@ -4107,16 +4107,16 @@ of them has a module docstring at all.
 
 171. **A `DictionaryCache` entry re-stored as permanent goes on counting against the
      size limit it is exempt from.** `set()` adds the key to `self.keys` when the entry
-     expires (`pdscache.py:446-447`) and never removes it when the same key is stored
+     expires (`pdscache.py:448-449`) and never removes it when the same key is stored
      again with `lifetime=0`. The entry is then filtered out of the trim candidates by
-     the `is not None` test at `:172` while still being counted by the size test at
-     `:170`, so the trigger fires and nothing is discarded. Verified by running: one key
+     the `is not None` test at `:174` while still being counted by the size test at
+     `:172`, so the trigger fires and nothing is discarded. Verified by running: one key
      set with `lifetime=3600` and then with `lifetime=0` leaves `keys == {'k'}` with the
      entry's expiration None, and `_trim()` discards nothing. Same fix and same shape as
      entry 170. **Owner: a future pdscache PR.**
 
 172. **`MemcachedCache.get_multi` restores a lost permanent value and then does not
-     return it.** The branch at `pdscache.py:1265-1268` notices that a requested key is a
+     return it.** The branch at `pdscache.py:1267-1270` notices that a requested key is a
      permanent entry the server no longer has, calls `_restore_permanent_to_cache()`, and
      breaks -- without adding the recovered value to the result. `get()` handles the same
      case at `:1006-1008` by restoring *and* returning it. Verified by running against a
@@ -4127,7 +4127,7 @@ of them has a module docstring at all.
      pdscache PR.**
 
 173. **`MemcachedCache.delete` removes the permanent copy and reports that it removed
-     nothing.** The answer is `status1 or status2` (`pdscache.py:1512`), from the server
+     nothing.** The answer is `status1 or status2` (`pdscache.py:1514`), from the server
      and from `_delete_local`, and `_delete_local` deliberately does not touch the
      permanent copies. The permanent deletion at `:1506-1507` is not folded in. Verified
      by running: with `'p'` in `permanent_values` only, `delete('p')` returns False and
@@ -4135,7 +4135,7 @@ of them has a module docstring at all.
 
 174. **`MemcachedCache.clear(block=False)` empties the server with no block held, and
      raises `TypeError` if the clear counter has been lost.** `wait_for_unblock('clear')`
-     (`:1630`) waits for anyone else's block and claims nothing; `flush_all()` (`:1633`)
+     (`:1632`) waits for anyone else's block and claims nothing; `flush_all()` (`:1635`)
      runs unprotected; only afterwards is this process's ID written to the blocking key,
      to be released a moment later. Verified by recording the client calls a
      `clear(block=False)` makes: `get`, `get`, `flush_all`, `set_multi`, `get`, `set`.
@@ -4146,18 +4146,18 @@ of them has a module docstring at all.
 
 175. **`MAX_BLOCK_SECONDS` bounds one waiter's patience, not a block's age, and the
      clock restarts.** `_wait_for_ok` sets `unblock_time = time.time() + MAX_BLOCK_SECONDS`
-     at `pdscache.py:807`, when this call first notices the block, so a waiter arriving
+     at `pdscache.py:809`, when this call first notices the block, so a waiter arriving
      at a block that is already hours old still waits the full two minutes. The
      assignment is inside the outer loop, and the inner loop exits as soon as the
-     blocking process merely *changes* (`:822`), so a succession of blockers restarts the
+     blocking process merely *changes* (`:824`), so a succession of blockers restarts the
      clock and the wait has no bound. Related, and the reason a probe of this hung for
      two minutes: a missing `$OK_PID` fails the `blocking_pid in (0, self.pid)` test at
-     `:803`, so a server that has lost the key reads as blocked by an unknown process to
+     `:805`, so a server that has lost the key reads as blocked by an unknown process to
      every caller. `is_blocked` repairs that key; nothing on the waiting path does.
      **Owner: a future pdscache PR.**
 
 176. **`DictionaryCache.preload_eligible` has no reader.** It is set True at
-     `pdscache.py:154` and appears nowhere else in `src/` or `tests/`. `MemcachedCache`
+     `pdscache.py:156` and appears nowhere else in `src/` or `tests/`. `MemcachedCache`
      has no such attribute, so it is not part of the shared interface either. It is a
      public attribute name, so removing it is not free. Same shape as entry 164.
      **Owner: a future cleanup PR, or PR-35 when it decides what the stubs declare.**
@@ -4172,29 +4172,38 @@ of them has a module docstring at all.
      (`:347`), which raises `AttributeError`. Verified by running:
      `PdsViewSet().append(PdsViewSet())` raises, and the receiving set is left holding a
      `PdsViewSet` among its viewables, so every later size lookup on it fails too. The
-     same one-line fix as entry 154 -- moving the `return` out of the loop -- does not
-     address this; the branch needs to return whether or not the loop ran. **Owner: a
-     future pdsviewable PR.**
+     same one-line fix as entry 154 -- dedenting the `return` out of the `for` and
+     leaving it inside the `if` -- resolves both cases at once: the loop then appends
+     every member, and an empty set falls straight through to a `return` that keeps the
+     set object out of the members. **Owner: a future pdsviewable PR, together with
+     entry 154.**
 
-178. **A second `load_icons` call never replaces the open form of an icon type.** The
-     open-state key is written under `if (icon_name, True) not in ICON_SET_BY_TYPE:`
-     (`pdsviewable.py:911`), and the dictionary it tests is module-global, so an entry
-     left by an *earlier call* blocks the write just as one left by this call does.
-     Verified by running: loading two directories in turn, each holding only
+178. **A second `load_icons` call does not replace the fallback open form of an icon
+     type.** A closed set is stored under `(icon_name, True)` as a stand-in for a missing
+     open form, guarded by `if (icon_name, True) not in ICON_SET_BY_TYPE:`
+     (`pdsviewable.py:913`). The dictionary it tests is module-global, so an entry left
+     by an *earlier call* blocks the write just as one left by this call does. Verified
+     by running: loading two directories in turn, each holding only
      `document_label.png`, leaves `('LABEL', False)` and `'LABEL'` pointing at the second
      directory's set and `('LABEL', True)` still pointing at the first's, checked by
-     object identity. Since `iconset_for(..., is_open=True)` reads exactly that key, a
-     process that reloads icons from a new directory goes on serving the old directory's
-     open icons indefinitely. **Owner: a future pdsviewable PR.**
+     object identity.
+
+     The scope is exactly that fallback. A directory read second that *does* hold a
+     `document_label_open.png` writes `('LABEL', True)` unconditionally at `:908` and
+     replaces the earlier entry -- verified the same way. So the stale mapping survives
+     only for a type whose later directory supplies no open icon of its own, and what
+     survives is an earlier *closed* set standing in for one. Since
+     `iconset_for(..., is_open=True)` reads that key, such a type goes on being drawn
+     from the old directory. **Owner: a future pdsviewable PR.**
 
 179. **`load_icons`'s image-open failure handling has two more holes than entry 156
      recorded.** Entry 156 covers the no-logger fall-through. Two further cases:
 
      * If the *first* image the walk reaches is unreadable and there is no logger, `im`
-       has never been bound, and `(width, height) = im.size` (`pdsviewable.py:866`)
+       has never been bound, and `(width, height) = im.size` (`pdsviewable.py:868`)
        raises `UnboundLocalError` rather than mis-sizing anything. Verified by running
        against a tree whose only `.png` is a text file.
-     * Only `Image.UnidentifiedImageError` is caught (`:861`). A broken symlink, a
+     * Only `Image.UnidentifiedImageError` is caught (`:863`). A broken symlink, a
        missing file or a permission error propagates out of `load_icons` even with a
        logger. Verified by running: a broken symlink named `document_label.png` gives
        `FileNotFoundError` with a logger supplied.
@@ -4205,7 +4214,7 @@ of them has a module docstring at all.
      for the open state being asked for.** The fallback type `UNKNOWN` is never checked
      for existence -- `_priority_of_icon_type` answers 0 for a missing key rather than
      excluding the type -- so the final `ICON_SET_BY_TYPE[icon_type, is_open]`
-     (`pdsviewable.py:982`) can fail on the fallback. Verified by running: after loading
+     (`pdsviewable.py:984`) can fail on the fallback. Verified by running: after loading
      a tree holding only `document_cube.png`, both `iconset_for` on a file whose icon
      type is `TABLE` and `iconset_for([])` raise `KeyError: ('UNKNOWN', False)`. The
      failure is not confined to a caller who forgot to load icons; it reaches a caller
@@ -4229,7 +4238,7 @@ of them has a module docstring at all.
 
 183. **`load_icons` strips `document_` and `folder_` from anywhere in an icon basename,
      not just the front.** `key_base.replace('document_', '')` and the `folder_` line
-     after it (`pdsviewable.py:888-889`) are `str.replace`, which is not anchored.
+     after it (`pdsviewable.py:890-891`) are `str.replace`, which is not anchored.
      Verified by running: `my_document_thing.png` supplies the icon type `MY_THING` and
      `x_folder_y.png` supplies `X_Y`. A custom icon named for a folder in the middle of
      its name gets a type its author would not predict. **Owner: a future pdsviewable
