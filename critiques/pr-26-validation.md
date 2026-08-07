@@ -206,7 +206,9 @@ A mutation probe confirms the new tests discriminate rather than merely pass:
 
 ## 4. Behavior changes, enumerated
 
-Five, all of them intended, each with a test that fails at base and passes here.
+Five, all of them intended, each with a test that fails at base and passes here —
+plus two further consequences of the same one-line change, which are enumerated
+but not tested, for the reason §2.3 gives.
 
 | # | Change | Tools | Test |
 |---|---|---|---|
@@ -214,6 +216,7 @@ Five, all of them intended, each with a test that fails at base and passes here.
 | 2 | A modification-time change is reported again | pds3 infoshelf | `test_corruption_is_detected_and_repaired[label_mtime_plus_100]`, `test_modification_time_mismatch_reports_both_times` |
 | 3 | The child-count message names both counts | pds3 infoshelf | `test_update_picks_up_a_new_file` |
 | 4 | A chained run's exit code arrives intact, and its arguments are not word-split | pds3 checksums | `test_infoshelf_chain_reports_the_chained_run_exit_code`, `test_infoshelf_chain_passes_a_path_containing_spaces` |
+| 4b | A chained command that cannot be executed now raises rather than being reported by the shell and truncated to exit 0; and SIGINT is no longer ignored in the parent while the child runs | pds3 checksums | none — see §2.3 |
 | 5 | A path expanding to no targets finishes instead of raising | both checksums | `test_no_targets_leaves_no_unbound_state` |
 
 And one that is a **relaxation on the flavor the plan describes as already
