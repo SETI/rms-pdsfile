@@ -399,11 +399,17 @@ across machines because the limited copy is a copy of the complete set.
   pytest collect the *imported* function and fail on a missing `filepath`
   fixture — import the **module** and call `crlf.test_crlf(...)`, never
   import the name.
-- `shelf_consistency_check` and `show_opus_products` have no `main()` yet
-  (that is PR-28), so test them here **via `subprocess`** invoking
-  `python <path>.py` against the copied tree's dogfooded shelves — a stable
-  interface that survives the PR-28 refactor (which then switches these tests
-  to call `main()` in-process).
+- `shelf_consistency_check` and `show_opus_products` had no `main()` when PR-13
+  ran, so it tested them **via `subprocess`** against the copied tree's dogfooded
+  shelves — a stable interface that survived the PR-28 refactor. (This entry
+  specified `python <path>.py`; PR-13 used `python -m <module>` instead, which is
+  the invocation the two tools kept.) This entry also said PR-28 would switch
+  **both** to in-process calls. PR-28 moved `shelf_consistency_check` and **left
+  `show_opus_products`' tests on subprocesses**, because that tool's
+  `use_shelves_only(True)` and two `preload()` calls are class-level and would
+  leave the whole session in shelves-only mode. The owner acknowledged that
+  departure on 2026-08-07;
+  `plans/2026-08-07-pr-28-deviation-addendum.md` is the addendum.
 - `pdsdependency` tests: run against the copied tree with deliberately
   removed derived files; assert the emitted "Steps required" commands.
 - the shell scripts: explicitly out of scope (ground rule 7). `re_validate` was
@@ -729,10 +735,47 @@ the method (deleting the method would change behavior and the manifest kind).
 
 ### Phase 6 — Maintenance tools consolidation
 
+**Complete on PR-28's merge.** PR-25, PR-25a, PR-26 and PR-27 are merged into
+`rewrite`; PR-28 is the last of them and is open with every check green and its
+§6.4 addendum acknowledged (owner, 2026-08-07), so the phase is closed in substance
+and awaits only that merge. All five pds3/pds4 tool-pairs are on the shared core,
+`re_validate` is modernized, and the three scripts that had no `main()` have one.
+
+Two things the phase did **not** do, deliberately: `pdsdependency` stays a
+standalone pds3-only tool (it does not fit the five-task `ToolSpec` shape), and the
+three drivers stay three — PR-28 measured whether they collapse now that every
+family has migrated and found they do not (deferred entry 130).
+
+**What the phase leaves behind.** **Nine deferred observations** — counted by
+observation number, grouped into six rows below because four of them are one
+question — were routed at Phase 6 or at one of its PRs and are not discharged. They
+are listed here rather than re-owned one by one, because deciding where each
+belongs is a scoping question for whoever plans the next phase, not something PR-28
+can settle from inside Phase 6:
+
+| entry | question |
+|---|---|
+| 6 | `shelf_consistency_check` finds nothing in a modern holdings layout — should the walk learn the current directory names, and what should such a run report? |
+| 11 | `crlf` raises `ZeroDivisionError` on a zero-byte file; what an empty file classifies as is a three-way choice |
+| 14 | `pdsdependency`'s glob tables are unsorted |
+| 43, 46, 50, 51 | four questions about the tools' shared surface that the phase's PRs were expected to reach and did not |
+| 66 | `pdsdependency.py`, **1,165** lines, is the one module in `holdings_maintenance/` still over the limit and not waived. It has no twin to consolidate with, so the consolidation never reaches it and the deferral has expired rather than been discharged: waiver or split, and no phase owns it |
+| 72 | a `return` inside `finally` in `MemcachedCache`, which named PR-28 as the nearest PR licensed to change behavior. PR-28's licence covered one identifier in one maintenance tool; the entry is re-owned as unowned |
+
+Entries 6, 11, 66 and 72 carry that disposition in their own text.
+`pdsfile_overrides.mdc` deviation (3) names `pdsdependency.py` and its size rather
+than pointing at a phase that has ended.
+
 Gates: PR-13's tool tests + a real-holdings validate run of each migrated tool
-against at least one real volume/bundle, recorded in
-`critiques/phase6-validation.md`. **CLI names, flags and exit codes are frozen**
-(tests assert them). **Log and output *text* is not** — owner, 2026-08-05:
+against at least one real volume/bundle. The phase record is
+`critiques/phase6-validation.md` for PR-25 and one file per PR thereafter
+(`critiques/pr-25a-validation.md`, `pr-26-`, `pr-27-`, `pr-28-`), which is how the
+phase actually ran once each PR needed its own tool-run enumeration.
+**CLI names, flags and exit codes are frozen**
+(tests assert them) — the exit-code freeze being over what a **valid** invocation
+returns, not over what a malformed command line happens to produce (owner,
+2026-08-07; §6.4 and deferred observation 135). **Log and output *text* is not** —
+owner, 2026-08-05:
 having versions that do and do not render a colon is not worth preserving, a
 small change in logged text is acceptable, and the code should be as common as
 possible rather than shaped by the text it emits.
@@ -985,12 +1028,61 @@ module, `pds3/linkshelf_repairs.py`, imported by the thin linkshelf tool.
 **PR-28 (M)** `refactor: main() for crlf, shelf_consistency_check, show_opus_products`
 Proper argparse + `main()` so they are testable and runnable via
 `python -m pdsfile.…`. **No new console-script names** (§8.4 — `python -m`
-only; `[project.scripts]` is not extended). Also fixes the
+only; `[project.scripts]` is not extended — still eleven entries). Also fixes the
 `shelf_consistency_check` undefined-`error` bug (should be `errors`, noted in
-PR-15's bug list) with a regression test. **Update the PR-13 subprocess
-tests** for these two tools to call `main()` in-process and keep them green
-(the behavior under test is unchanged; only the invocation path moves).
-`re_validate.py`: not touched by this PR. PR-25a is the one that modernizes it.
+PR-15's bug list) with a regression test. **The PR-13 subprocess tests move
+in-process for `shelf_consistency_check` and stay on subprocesses for
+`show_opus_products`** — this entry originally asked for both, and the owner
+acknowledged the departure on 2026-08-07
+(`plans/2026-08-07-pr-28-deviation-addendum.md`, which is the reasoning: that tool's
+`use_shelves_only(True)` and two `preload()` calls are class-level, so an in-process
+run would leave the whole session in shelves-only mode). `re_validate.py`: not
+touched by this PR. PR-25a is the one that modernizes it. Record:
+`critiques/pr-28-validation.md`.
+
+**As executed:**
+- **The bug was reproduced before it was fixed.** The index branch printed its
+  `*** Extraneous shelf:` line and *then* died with `NameError`, losing the summary
+  and the counts of everything already walked — and exiting 1 either way, which is
+  why nothing downstream could have noticed.
+  `test_an_extraneous_index_shelf_is_counted_like_any_other` replaces the PR-13
+  test that pinned the crash, and puts a valid info shelf in the
+  same tree so that a `try/except` "fix" would still fail it. The file's `F821`
+  ratchet entry retires: **67 → 66 entries, 181 → 180 code slots**.
+- **The in-process move was made per tool, not across the board** — a deviation
+  from what this entry originally asked for, acknowledged by the owner 2026-08-07
+  (`plans/2026-08-07-pr-28-deviation-addendum.md`). `shelf_consistency_check` and
+  `crlf` import no PdsFile class and read neither holdings root, so their tests
+  call `main()` in-process. `show_opus_products` **stays on subprocesses**: it calls
+  `Pds3File.use_shelves_only(True)` and preloads both roots itself, and those are
+  class-level, so an in-process run would preload a temporary tree into the cache
+  the session preloaded the real tree into **and leave the session in shelves-only
+  mode** — the mode an `--mode ns` run exists not to be in — for every test after
+  it. `support.HOLDINGS_FREE_TOOLS` is that criterion,
+  and both new runners assert against it. Each migrated tool keeps **one**
+  subprocess test, because an in-process call passes whether or not the module has
+  a `__main__` block.
+- **Behavior: 26 of 84 tool-run records differ**, in six kinds, all enumerated in
+  the record — `--help` and `-h` answer on the two tools that had no parser; a
+  command line argparse cannot classify is a usage error exiting 2, on all three
+  tools (deferred 135 — an exit-code change on a frozen surface, and the one thing
+  here the owner is most likely to rule differently); an uncaught exception's
+  traceback gains a `main` frame; the index shelf bug fix; `show_opus_products`
+  reaches its parser before it reads the environment, so it answers with no
+  holdings roots set; and an argument's meaning changes where argv used to be
+  literal, which is where the base-working invocations that stop working live
+  (a path beginning with `-`, deferred 141). Base-versus-base control: 0 of 84.
+- **Preserved deliberately, each pinned by a mutation probe:** flags are still
+  accepted anywhere among the positionals (`parse_intermixed_args`, not
+  `parse_args`), naming no path still succeeds silently (`nargs='*'`, not `'+'`),
+  and a misspelled flag cannot be read as a request to rewrite files
+  (`allow_abbrev=False`).
+- **Deferred entry 130 answered.** The three drivers do **not** collapse: 39 of 181
+  code lines are common, but only 15 of those are a contiguous block, and merging
+  would need eight variation points — one of them a flag whose only job is to
+  re-create one tool's task-header wording. Measured, not acted on. What the
+  measurement does point at is extracting the 15-line preamble, which would be its
+  own small PR.
 
 ### Phase 7 — Docstrings and documentation
 
@@ -1188,6 +1280,13 @@ line-by-line human review at its boundary.
   only under the Phase 6 rule: it may move where keeping it would force
   duplication or a shrug-flag, every changed line is enumerated and attributed,
   and a change that buys no commonality is still a stop.
+  **The exit-code freeze covers what a *valid* invocation returns** (owner,
+  2026-08-07). It does not cover what a *malformed* command line happens to
+  produce: a status that falls out of an uncaught exception, or out of a tool
+  treating an unrecognized argument as data, was never a designed part of the
+  surface. Deferred observation 135 is the ruling and the case that carried it —
+  PR-28's three tools returned 1, 0 and 1 for a bad flag and now all return
+  argparse's 2, which is what the other eleven have always returned.
 - Any new decision not already settled in §8 or elsewhere in this plan —
   surface it rather than choosing unilaterally.
 
@@ -1370,7 +1469,8 @@ executed inline):
    into `_properties.py` (`_PropertiesMixin`, manifest-neutral), landing core
    at **~1,750 lines**.
 4. **No new console scripts** for `crlf`/`shelf_consistency_check`/
-   `show_opus_products` — `python -m` invocation only (PR-28).
+   `show_opus_products` — `python -m` invocation only (done, PR-28;
+   `[project.scripts]` still has its eleven entries).
 5. **`tabulate`** ships in the **`dev` extra** (done, PR-03).
 6. **Human-review cadence:** full human review on every refactor/test/docs PR
    (the Phase-2 lighter-touch allowance is history — Phase 2 is merged).

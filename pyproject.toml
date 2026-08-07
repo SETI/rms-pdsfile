@@ -190,8 +190,6 @@ extend-ignore = ["PT011", "SIM105", "SIM108"]
 #     raised.
 #   PT017/PT015/PT012/PT014/B011 -- rewriting these changes what a test asserts,
 #     and PT014's duplicate case cannot be dropped without removing a test id.
-#   F821 -- a genuine undefined name, owned by a later PR that gives the script a
-#     main(); fixing it here would change behavior.
 #   RUF005 -- `x + [y]` is the spelling this project uses (owner, 2026-08-03).
 #   RUF100 in scripts/dump_public_api.py -- that file may not be edited at all,
 #     so this entry is permanent by prohibition rather than by freeze.
@@ -201,12 +199,12 @@ extend-ignore = ["PT011", "SIM105", "SIM108"]
 #     are permanent everywhere else in this file -- RUF005 by owner choice, and
 #     UP031 on a logging call, a hand-aligned column block and four plain %
 #     expressions.
-#   A few entries are locked for now rather than for ever -- F821, RUF059 on
-#     pdsinfoshelf, and PT014 -- each because the fix would change behavior or
-#     remove a test id. Deviation (4) names the later PR that owns each one. The
-#     N806 on the three LOGDIRS locals was one of them; the tools now record their
-#     log directories through the one shared list, so the locals, and the code they
-#     made unreachable, are gone.
+#   A few entries are locked for now rather than for ever -- RUF059 on
+#     pdsinfoshelf and PT014 -- each because the fix would change behavior or
+#     remove a test id. Deviation (4) names the later PR that owns each one. Two
+#     have since gone: the N806 on the three LOGDIRS locals, when the tools moved
+#     to one shared list of log directories, and the F821 on
+#     shelf_consistency_check.py, when the undefined name it marked was fixed.
 "scripts/dump_public_api.py" = ["RUF100"]
 # CORE (PR-23) -- the eight entries below plus pdscache.py, pdsfile.py and
 # pdsviewable.py further down, which sort after the rule modules. The fifteen
@@ -229,14 +227,13 @@ extend-ignore = ["PT011", "SIM105", "SIM108"]
 "src/pdsfile/_properties.py" = ["RUF005"]      # x1: style, and _info_filled is a list on two construction paths
 "src/pdsfile/_shelves.py" = ["B904"]           # x1: from err / from None both change the traceback
 "src/pdsfile/_sorting.py" = ["RUF005"]         # x4: owner-chosen style exclusion
-"src/pdsfile/holdings_maintenance/pds3/crlf.py" = ["PT028"]
+"src/pdsfile/holdings_maintenance/pds3/crlf.py" = ["PT028"]  # x2: test_crlf is a tool function, not a pytest test
 "src/pdsfile/holdings_maintenance/pds3/pdsarchives.py" = ["SIM115"]
 "src/pdsfile/holdings_maintenance/pds3/pdschecksums.py" = ["B006", "B012", "SIM115", "UP031"]
 "src/pdsfile/holdings_maintenance/pds3/pdsdependency.py" = ["B006", "PT028", "RUF012", "UP031"]
 "src/pdsfile/holdings_maintenance/pds3/pdsinfoshelf.py" = ["B006", "B012", "RUF005", "RUF015", "UP031"]
 "src/pdsfile/holdings_maintenance/pds3/pdslinkshelf.py" = ["UP031"]
 "src/pdsfile/holdings_maintenance/pds3/re_validate.py" = ["RUF005", "UP031"]  # RUF005 x2, UP031 x6
-"src/pdsfile/holdings_maintenance/pds3/shelf_consistency_check.py" = ["F821"]
 "src/pdsfile/holdings_maintenance/pds4/pds4checksums.py" = ["UP031"]
 "src/pdsfile/holdings_maintenance/pds4/pds4infoshelf.py" = ["RUF005", "RUF015", "UP031"]
 "src/pdsfile/holdings_maintenance/pds4/pds4linkshelf.py" = ["UP031"]

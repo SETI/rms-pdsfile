@@ -4,13 +4,16 @@
 # Program to validate and/or repair the CRLF line terminators in a file.
 #
 # Use:
-#   python crlf.py --repair file(s)     # Repair any files that have invalid terminators
-#   python crlf.py file(s)              # Identify any files with invalid terminators
+#   python -m pdsfile.holdings_maintenance.pds3.crlf --repair file(s)
+#                                       # Repair any files that have invalid terminators
+#   python -m pdsfile.holdings_maintenance.pds3.crlf file(s)
+#                                       # Identify any files with invalid terminators
 #
 # Files that are invalid are listed. Add the "--verbose" option to list all files checked,
 # even if they are OK.
 ##########################################################################################
 
+import argparse
 import sys
 
 # Create a dictionary identifying non-ASCII characters with an "x"
@@ -87,35 +90,80 @@ def test_crlf(filepath, task='test', threshold=0.01):
     return 'OK'
 
 
-if __name__ == '__main__':
+def build_arg_parser():
+    """Return the argument parser for this tool.
 
-    task = 'test'
-    if '--repair' in sys.argv:
-        sys.argv.remove('--repair')
-        task = 'repair'
+    Returns:
+        argparse.ArgumentParser: The parser, holding the file paths, --repair and
+        --verbose.
+    """
 
-    verbose = False
-    if '--verbose' in sys.argv:
-        sys.argv.remove('--verbose')
-        verbose = True
+    # No abbreviations: an option has to be spelled out, so that a misspelled
+    # --repair is rejected rather than read as a request to rewrite files.
+    parser = argparse.ArgumentParser(
+        allow_abbrev=False,
+        description='crlf: Validate, and optionally repair, the CRLF line terminators '
+                    'of one or more files. Files with invalid terminators are listed.')
+
+    parser.add_argument('file', nargs='*', type=str,
+                        help='The path to a file to check. Any number may be given.')
+
+    parser.add_argument('--repair', action='store_true',
+                        help='Rewrite every file whose line terminators are invalid. '
+                             'Without this option, files are only reported.')
+
+    parser.add_argument('--verbose', action='store_true',
+                        help='List every file checked, not just the ones that are '
+                             'invalid or were repaired.')
+
+    return parser
+
+
+def main(argv=None):
+    """Check the files named on the command line and report on each one.
+
+    Args:
+        argv: The full command line, defaulting to sys.argv.
+
+    Returns:
+        int: 0, whatever the files turn out to be. A file that cannot be read
+        raises instead of being reported.
+    """
+
+    if argv is None:
+        argv = sys.argv
+
+    parser = build_arg_parser()
+    # Intermixed, so that the flags are accepted anywhere among the file paths.
+    args = parser.parse_intermixed_args(argv[1:])
+
+    task = 'repair' if args.repair else 'test'
 
     repairs = 0
     invalid = 0
-    for path in sys.argv[1:]:
+    for path in args.file:
         status = test_crlf(path, task=task)
-        if verbose or status in {'REPAIRED', 'INVALID'}:
+        if args.verbose or status in {'REPAIRED', 'INVALID'}:
             print(path, status)
         if status == 'REPAIRED':
             repairs += 1
         if status == 'INVALID':
             invalid += 1
 
-    nfiles = len(sys.argv[1:])
+    nfiles = len(args.file)
     if nfiles > 1:
         if repairs:
+            # A run that repairs two or more files prints no summary at all: the
+            # count is only reported when it is exactly one.
             if repairs == 1:
                 print(f'{repairs}/{nfiles} files repaired')
         elif invalid:
             print(f'{invalid}/{nfiles} files invalid')
         else:
             print(str(nfiles), 'files tested')
+
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

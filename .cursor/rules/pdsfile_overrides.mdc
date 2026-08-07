@@ -38,8 +38,11 @@ conflicts with a rule below, follow the rule below. See
    - the per-dataset rule files, `src/pdsfile/pds{3,4}file/rules/*.py`
 
    Modules not on this list are held to the 1000-line limit. The maintenance
-   tools under `src/pdsfile/holdings_maintenance/` are **not** waived; Phase 6
-   consolidates them, so their sizes are expected to change.
+   tools under `src/pdsfile/holdings_maintenance/` are **not** waived. The Phase 6
+   consolidation brought every pds3/pds4 tool pair under the limit; the one module
+   left over it is `src/pdsfile/holdings_maintenance/pds3/pdsdependency.py` at
+   1,165 lines, which has no twin to consolidate with and so needs a decision of
+   its own — waiver or split. Deferred observation 66 holds it.
 4. **Rule modules and specific files carry permanent `ruff check` exemptions.**
    Rule modules carry permanent per-file-ignores; core files and the subpackage
    `__init__`s carry a smaller frozen set. (`ruff format` does not run at all —
@@ -140,12 +143,10 @@ conflicts with a rule below, follow the rule below. See
    | `RUF022` | 2 | `pds3file/rules/__init__.py`, `pds4file/rules/__init__.py` | aligned | `__all__` is hand-aligned with padding before the commas; the sort rewrites the block |
    | `PT015`, `B011` | 2 + 2 | `test_pds3file_blackbox.py` | behavior | the same two `assert False` lines, the unreachable arm of the `PT017` blocks |
    | `RUF100` | 1 | `scripts/dump_public_api.py` | prohibited | that file may not be edited at all (2), so this entry is permanent **by prohibition**, not by freeze |
-   | `F821` | 1 | `shelf_consistency_check.py` | behavior — **PR-28 owns it** | a genuine undefined name (`error` for `errors`); fixing it changes behavior (deferred observation 6) |
    | `N805` | 1 | `COVIMS_0xxx.py` | frozen | `OPUS_ID_TO_PRIMARY_LOGICAL_PATH(opus_id)` takes no `self`; `@staticmethod` changes the manifest kind |
    | `B007` | 1 | `uranus_occs_earthbased.py` | frozen | the loop runs at module level, so the control variable stays bound as a module attribute that is part of the frozen surface. `re_validate.py`'s two went with PR-25a |
    | `PT012` | 1 | `test_pds3file_whitebox.py` | behavior | narrowing the `pytest.raises` block changes what is asserted |
    | `PT014` | 1 | `test_pds4file_blackbox.py` | behavior — **a test-content PR owns it** | a duplicate parametrize case; dropping it removes a test id, which PR-24's own gate forbids (deferred observation 84) |
-   | `RUF059` | 1 | `pdsinfoshelf.py` | behavior | `re_validate.py`'s five went with PR-25a. `pdsinfoshelf.py:373`'s `checksum2` is unused only because `:395` reads `checksum1 != checksum1`, a defect Phase 6 owns; renaming it `_checksum2` would assert the binding is deliberately unused |
 
    `RUF012` is repo-wide permanent because its only fix (`ClassVar`) is an inline
    type annotation, forbidden by (1).

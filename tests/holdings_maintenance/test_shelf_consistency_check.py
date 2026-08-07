@@ -1,9 +1,12 @@
 ##########################################################################################
 # tests/holdings_maintenance/test_shelf_consistency_check.py
 #
-# shelf_consistency_check has no main() yet, so it is driven here as a subprocess
-# (`python -m ...`) -- the same interface an in-process main() will replace later
-# without changing what is asserted.
+# The tool is driven in-process, by calling main() through
+# support.run_tool_in_process(): it imports no PdsFile class and reads neither
+# holdings root, so the class-level-cache hazard that keeps the other tools on
+# subprocesses (see the package header) cannot arise. One test keeps the
+# subprocess, because only a subprocess shows that `python -m ...` reaches main()
+# and that the process exit code is what main() returned.
 #
 # The tool walks a tree looking for a `shelves/<info|links|index>/...` hierarchy
 # and reports shelf files with no counterpart under `holdings/`. That hierarchy is
@@ -16,8 +19,11 @@
 # only the last one runs against a dogfooded copy of real holdings.
 ##########################################################################################
 
+import sys
+
 import pytest
 
+from pdsfile.holdings_maintenance.pds3 import shelf_consistency_check
 from tests.holdings_maintenance import subsets, support
 
 SOURCE_FLAVOR = 'pds3'
@@ -78,7 +84,7 @@ def test_a_consistent_legacy_tree_is_clean(legacy_tree):
     (shelves / 'VG_2801_info.pickle').write_bytes(b'')
     (shelves / 'VG_2801_info.py').write_bytes(b'')
 
-    run = support.run_tool(legacy_tree, 'shelf_consistency_check', legacy_tree.disk)
+    run = support.run_tool_in_process('shelf_consistency_check', legacy_tree.disk)
     assert run.returncode == 0, run.describe()
     assert counts(run) == (2, 0), run.describe()
     assert '***' not in run.output, run.describe()
@@ -92,7 +98,7 @@ def test_a_shelf_without_its_holdings_directory_is_reported(legacy_tree):
     (shelves / 'VG_2801_info.pickle').write_bytes(b'')
     (shelves / 'VG_9999_info.pickle').write_bytes(b'')
 
-    run = support.run_tool(legacy_tree, 'shelf_consistency_check', legacy_tree.disk)
+    run = support.run_tool_in_process('shelf_consistency_check', legacy_tree.disk)
     assert run.returncode == 1, run.describe()
     assert counts(run) == (2, 1), run.describe()
     assert 'Extraneous shelf' in run.output, run.describe()
@@ -109,7 +115,7 @@ def test_an_unexpected_extension_is_reported(legacy_tree):
     (shelves / 'README.txt').write_bytes(b'')
     (shelves / '.DS_Store').write_bytes(b'')
 
-    run = support.run_tool(legacy_tree, 'shelf_consistency_check', legacy_tree.disk)
+    run = support.run_tool_in_process('shelf_consistency_check', legacy_tree.disk)
     assert run.returncode == 1, run.describe()
     assert counts(run) == (3, 1), run.describe()
     assert 'Extraneous file found' in run.output, run.describe()
@@ -123,7 +129,7 @@ def test_an_unknown_shelves_subdirectory_is_reported(legacy_tree):
 
     (legacy_tree.disk / 'shelves' / 'bogus').mkdir(parents=True)
 
-    run = support.run_tool(legacy_tree, 'shelf_consistency_check', legacy_tree.disk)
+    run = support.run_tool_in_process('shelf_consistency_check', legacy_tree.disk)
     assert run.returncode == 1, run.describe()
     assert 'Not a valid shelves directory' in run.output, run.describe()
     assert counts(run) == (1, 1), run.describe()
@@ -136,31 +142,222 @@ def test_verbose_lists_the_holdings_path_of_every_shelf(legacy_tree):
     shelves = legacy_tree.disk / 'shelves' / 'info' / 'volumes' / 'VG_28xx'
     (shelves / 'VG_2801_info.pickle').write_bytes(b'')
 
-    run = support.run_tool(legacy_tree, 'shelf_consistency_check', '--verbose',
-                           legacy_tree.disk)
+    run = support.run_tool_in_process('shelf_consistency_check', '--verbose',
+                                      legacy_tree.disk)
     assert run.returncode == 0, run.describe()
     assert str(legacy_tree.disk / 'holdings' / 'volumes' / 'VG_28xx' / 'VG_2801') \
         in run.output, run.describe()
 
 
 @pytest.mark.holdings_free
-def test_an_extraneous_index_shelf_raises(legacy_tree):
-    """Pin the known defect: the index branch increments an undefined name.
+def test_an_index_shelf_whose_label_exists_is_counted_not_reported(legacy_tree):
+    """An index shelf is matched against the holdings *label*, not a directory.
 
-    The index branch increments an undefined name where every other branch uses
-    the counter, so the first extraneous *index* shelf kills the run with
-    NameError instead of being counted. Pinned as current behaviour: a fix has to
-    invert these assertions deliberately.
+    --verbose as well as the default, because the index branch prints the mapped
+    path from its own line rather than the one the info and link branches share.
     """
 
     index_dir = legacy_tree.disk / 'shelves' / 'index' / 'metadata' / 'VG_28xx'
     index_dir.mkdir(parents=True)
     (index_dir / 'VG_2801_index.pickle').write_bytes(b'')
+    label = legacy_tree.disk / 'holdings' / 'metadata' / 'VG_28xx'
+    label.mkdir(parents=True)
+    (label / 'VG_2801_index.lbl').write_bytes(b'')
 
-    run = support.run_tool(legacy_tree, 'shelf_consistency_check', legacy_tree.disk)
+    run = support.run_tool_in_process('shelf_consistency_check', legacy_tree.disk)
+    assert run.returncode == 0, run.describe()
+    assert counts(run) == (1, 0), run.describe()
+    assert '***' not in run.output, run.describe()
+
+    verbose = support.run_tool_in_process('shelf_consistency_check', '--verbose',
+                                          legacy_tree.disk)
+    assert verbose.returncode == 0, verbose.describe()
+    # The mapped path is the label without its extension, not the label itself.
+    assert str(label / 'VG_2801_index') in verbose.stdout, verbose.describe()
+    assert counts(verbose) == (1, 0), verbose.describe()
+
+
+@pytest.mark.holdings_free
+def test_an_extraneous_index_shelf_is_counted_like_any_other(legacy_tree):
+    """The index branch counts its error and the walk carries on.
+
+    Regression test for the branch that used to increment an undefined name,
+    where every other branch increments the counter: the first extraneous *index*
+    shelf killed the run with NameError before any summary was printed. The two
+    shelves below are in different `shelves/` subtrees, so an exception in the
+    index branch would also lose the info shelf's count -- which is what the
+    (2, 1) below rules out.
+    """
+
+    index_dir = legacy_tree.disk / 'shelves' / 'index' / 'metadata' / 'VG_28xx'
+    index_dir.mkdir(parents=True)
+    (index_dir / 'VG_9999_index.pickle').write_bytes(b'')
+    shelves = legacy_tree.disk / 'shelves' / 'info' / 'volumes' / 'VG_28xx'
+    (shelves / 'VG_2801_info.pickle').write_bytes(b'')
+
+    run = support.run_tool_in_process('shelf_consistency_check', legacy_tree.disk)
     assert run.returncode == 1, run.describe()
-    assert "NameError: name 'error' is not defined" in run.output, run.describe()
+    assert counts(run) == (2, 1), run.describe()
+    assert 'Extraneous shelf' in run.output, run.describe()
+    assert 'VG_9999_index.pickle' in run.output, run.describe()
+    assert 'NameError' not in run.output, run.describe()
+
+
+@pytest.mark.holdings_free
+def test_no_arguments_reports_an_empty_run():
+    """Naming no shelf root at all walks nothing and succeeds."""
+
+    run = support.run_tool_in_process('shelf_consistency_check')
+    assert run.returncode == 0, run.describe()
+    assert counts(run) == (0, 0), run.describe()
+
+
+@pytest.mark.holdings_free
+def test_verbose_is_accepted_between_the_shelf_roots(legacy_tree, tmp_path):
+    """The flag may sit anywhere among the shelf roots, not only in front of them.
+
+    It sits *between* two roots here, which is the placement plain `parse_args`
+    rejects; a flag trailing the last positional is accepted by either spelling,
+    so it would not tell the two apart.
+    """
+
+    shelves = legacy_tree.disk / 'shelves' / 'info' / 'volumes' / 'VG_28xx'
+    (shelves / 'VG_2801_info.pickle').write_bytes(b'')
+    second = tmp_path / 'second_root'
+    second.mkdir()
+
+    run = support.run_tool_in_process('shelf_consistency_check', legacy_tree.disk,
+                                      '--verbose', second)
+    assert run.returncode == 0, run.describe()
+    assert counts(run) == (1, 0), run.describe()
+    assert str(legacy_tree.disk / 'holdings' / 'volumes' / 'VG_28xx' / 'VG_2801') \
+        in run.output, run.describe()
+
+
+@pytest.mark.holdings_free
+def test_an_unrecognized_flag_is_a_usage_error(legacy_tree):
+    """argparse rejects an unknown option rather than treating it as a path."""
+
+    run = support.run_tool_in_process('shelf_consistency_check', '--bogus',
+                                      legacy_tree.disk)
+    assert run.returncode == 2, run.describe()
+    assert 'shelf_consistency_check.py: error: unrecognized arguments: --bogus' \
+        in run.stderr, run.describe()
     assert 'Tests performed:' not in run.output, run.describe()
+
+
+@pytest.mark.holdings_free
+def test_an_abbreviated_flag_is_a_usage_error(legacy_tree):
+    """`--verb` is not `--verbose`: an option has to be spelled out.
+
+    The parser sets allow_abbrev=False, so a misspelling is rejected rather
+    than quietly turning an option on.
+    """
+
+    shelves = legacy_tree.disk / 'shelves' / 'info' / 'volumes' / 'VG_28xx'
+    (shelves / 'VG_2801_info.pickle').write_bytes(b'')
+
+    run = support.run_tool_in_process('shelf_consistency_check', '--verb',
+                                      legacy_tree.disk)
+    assert run.returncode == 2, run.describe()
+    assert 'unrecognized arguments: --verb' in run.output, run.describe()
+    assert 'Tests performed:' not in run.output, run.describe()
+
+
+@pytest.mark.holdings_free
+@pytest.mark.parametrize('flag', ['--help', '-h'])
+def test_help_names_the_flag_and_the_positional(flag):
+    """Both spellings of help print the usage and exit 0."""
+
+    run = support.run_tool_in_process('shelf_consistency_check', flag)
+    assert run.returncode == 0, run.describe()
+    # The program name argparse prints is taken from sys.argv[0], which the
+    # in-process runner sets: without that it would name pytest.
+    assert run.stdout.startswith('usage: shelf_consistency_check.py'), run.describe()
+    assert '--verbose' in run.stdout, run.describe()
+    assert 'shelf_root' in run.stdout, run.describe()
+    assert 'Tests performed:' not in run.stdout, run.describe()
+
+
+@pytest.mark.holdings_free
+def test_a_flag_given_a_value_is_a_usage_error(legacy_tree):
+    """--verbose takes no value, so `--verbose=1` is rejected outright."""
+
+    run = support.run_tool_in_process('shelf_consistency_check', '--verbose=1',
+                                      legacy_tree.disk)
+    assert run.returncode == 2, run.describe()
+    assert 'ignored explicit argument' in run.output, run.describe()
+    assert 'Tests performed:' not in run.output, run.describe()
+
+
+@pytest.mark.holdings_free
+def test_a_shelf_root_beginning_with_a_dash_is_a_usage_error(tmp_path, monkeypatch):
+    """argparse reads a leading `-` as an option here too.
+
+    The same property `crlf` has, on a root rather than a file: a directory named
+    `-something` is reachable only after another root and a `--` separator.
+    """
+
+    (tmp_path / '-dashroot').mkdir()
+    monkeypatch.chdir(tmp_path)
+
+    run = support.run_tool_in_process('shelf_consistency_check', '-dashroot')
+    assert run.returncode == 2, run.describe()
+    assert 'Tests performed:' not in run.output, run.describe()
+
+
+@pytest.mark.holdings_free
+def test_an_explicit_argv_is_what_gets_parsed(legacy_tree, tmp_path, monkeypatch,
+                                              capsys):
+    """main(argv) parses what it is given, not sys.argv.
+
+    Called directly rather than through support.run_tool_in_process(), which sets
+    sys.argv *and* passes argv and so cannot tell the two apart.
+    """
+
+    shelves = legacy_tree.disk / 'shelves' / 'info' / 'volumes' / 'VG_28xx'
+    (shelves / 'VG_9999_info.pickle').write_bytes(b'')
+    empty = tmp_path / 'nothing_here'
+    empty.mkdir()
+    monkeypatch.setattr(sys, 'argv', ['shelf_consistency_check.py', str(empty)])
+
+    assert shelf_consistency_check.main(
+        ['shelf_consistency_check.py', str(legacy_tree.disk)]) == 1
+    assert 'Errors found: 1' in capsys.readouterr().out
+
+
+@pytest.mark.holdings_free
+def test_no_argument_means_sys_argv(legacy_tree, monkeypatch, capsys):
+    """main() with no argument reads sys.argv, the way the __main__ block calls it."""
+
+    shelves = legacy_tree.disk / 'shelves' / 'info' / 'volumes' / 'VG_28xx'
+    (shelves / 'VG_9999_info.pickle').write_bytes(b'')
+    monkeypatch.setattr(sys, 'argv',
+                        ['shelf_consistency_check.py', str(legacy_tree.disk)])
+
+    assert shelf_consistency_check.main() == 1
+    assert 'Errors found: 1' in capsys.readouterr().out
+
+
+@pytest.mark.holdings_free
+def test_the_module_is_runnable_as_python_m(legacy_tree, tmp_path):
+    """`python -m ...` reaches main(), and the process exit code is its return value.
+
+    Driven as a subprocess with neither holdings variable set, which the
+    in-process cases above cannot show: they call main() by name, so they would
+    pass whether or not the module has a `__main__` block, and they inherit this
+    process's environment.
+    """
+
+    shelves = legacy_tree.disk / 'shelves' / 'info' / 'volumes' / 'VG_28xx'
+    (shelves / 'VG_2801_info.pickle').write_bytes(b'')
+    (shelves / 'VG_9999_info.pickle').write_bytes(b'')
+
+    run = support.run_tool_without_holdings('shelf_consistency_check',
+                                            legacy_tree.disk, cwd=tmp_path)
+    assert run.returncode == 1, run.describe()
+    assert counts(run) == (2, 1), run.describe()
+    assert 'Extraneous shelf' in run.output, run.describe()
 
 
 @pytest.mark.full_holdings
@@ -184,6 +381,6 @@ def test_a_modern_holdings_tree_has_nothing_to_check(fresh_tree):
         f'_infoshelf-volumes/{subsets.PDS3_VOLSET}/'
         f'{subsets.PDS3_VOLUME}_info.pickle').exists()
 
-    run = support.run_tool(fresh_tree, 'shelf_consistency_check', fresh_tree.disk)
+    run = support.run_tool_in_process('shelf_consistency_check', fresh_tree.disk)
     assert run.returncode == 0, run.describe()
     assert counts(run) == (0, 0), run.describe()

@@ -10,8 +10,11 @@
 # is portable; every comparison goes through one of the normalizers below.
 ##########################################################################################
 
+import contextlib
 import difflib
 import hashlib
+import importlib
+import io
 import os
 import shutil
 import subprocess
@@ -31,6 +34,7 @@ GOLDEN_DIR = REPO_ROOT / 'tests' / 'golden' / 'full' / 'holdings_maintenance'
 # console script calls, and which is also the invocation settled on for the three
 # tools that will never get a console script.
 TOOL_MODULES = {
+    'crlf':           'pdsfile.holdings_maintenance.pds3.crlf',
     'pdsarchives':    'pdsfile.holdings_maintenance.pds3.pdsarchives',
     'pdschecksums':   'pdsfile.holdings_maintenance.pds3.pdschecksums',
     'pdsdependency':  'pdsfile.holdings_maintenance.pds3.pdsdependency',
@@ -48,6 +52,14 @@ TOOL_MODULES = {
 }
 
 HOLDINGS_DIRNAME = {'pds3': 'holdings', 'pds4': 'pds4-holdings'}
+
+# The tools that import no PdsFile class and read neither holdings root: they walk
+# or read exactly the paths named on their command line. Only these may be driven
+# by run_tool_in_process() or run_tool_without_holdings(). Every other tool builds
+# PdsFile objects against a class-level cache keyed by logical path, and the test
+# session preloads the real holdings tree, so an in-process call can resolve a
+# temporary-tree path back to the real one.
+HOLDINGS_FREE_TOOLS = frozenset({'crlf', 'shelf_consistency_check'})
 
 # Tools that exit 0 even after logging ERRORs, because main() never feeds its
 # failure flag to sys.exit -- a --validate that reports checksum mismatches still
@@ -307,6 +319,114 @@ def run_tool(tree, tool, *args):
     argv = [sys.executable, '-m', TOOL_MODULES[tool]] + [str(a) for a in args]
     proc = subprocess.run(argv, cwd=str(tree.disk), env=tree.env,
                           capture_output=True, timeout=TOOL_TIMEOUT, check=False)
+
+    return ToolRun(argv, proc.returncode,
+                   proc.stdout.decode('utf-8', errors='replace'),
+                   proc.stderr.decode('utf-8', errors='replace'))
+
+
+def no_holdings_env():
+    """Return an environment with this checkout on the path and no holdings roots.
+
+    One builder rather than one per caller: a second copy of the list of variables
+    to remove is a second thing to keep current, and a variable missing from one
+    copy is invisible -- the subprocess just quietly has a root it was meant not to
+    have.
+
+    Returns:
+        dict[str, str]: A copy of os.environ, with PYTHONPATH naming this
+        checkout's src/ and both holdings roots and the three test-selector
+        variables removed.
+    """
+
+    env = dict(os.environ)
+    env['PYTHONPATH'] = str(REPO_ROOT / 'src')
+    for name in ('PDS3_HOLDINGS_DIR', 'PDS4_HOLDINGS_DIR', 'PDS_LOG_ROOT',
+                 'PDSFILE_TEST_HOLDINGS', 'PDSFILE_TEST_DATA_DIR'):
+        env.pop(name, None)
+
+    return env
+
+
+def run_tool_in_process(tool, *args):
+    """Run one holdings-free tool by calling its main() in this process.
+
+    Only the tools in HOLDINGS_FREE_TOOLS qualify; the assertion below is what
+    keeps a tool that builds PdsFile objects from being driven this way.
+
+    sys.argv is set to the command line for the duration of the call, because
+    argparse takes the program name in its usage and error messages from
+    sys.argv[0]; without it the messages would name pytest. It is restored
+    afterwards.
+
+    Third fidelity caveat, after the working directory and sys.argv: output is
+    captured into io.StringIO, which has no encoding, where a real process writes
+    through an encoded stream. A byte the subprocess's locale could not encode
+    would raise there and cannot here. Neither tool driven this way can produce
+    one -- they print paths the caller supplied and ASCII status words -- but a
+    tool that formatted arbitrary file content would need the subprocess.
+
+    Args:
+        tool: A key of TOOL_MODULES that is also in HOLDINGS_FREE_TOOLS.
+        *args: Command-line arguments, path-like or str. Give paths as absolute:
+            this call inherits pytest's working directory rather than running in
+            a tree of its own. A test that needs a relative path should set the
+            working directory itself, with monkeypatch.chdir.
+
+    Returns:
+        ToolRun: main()'s return value as the exit code, and both streams. A
+        SystemExit -- which is what argparse raises for --help and for a usage
+        error -- is caught and its code reported, so those paths are readable
+        here too. Any other exception propagates, which is what makes a crash
+        visible as a test error rather than as an exit code.
+    """
+
+    assert tool in HOLDINGS_FREE_TOOLS, (
+        f'{tool} is not holdings-free; drive it with run_tool() instead')
+
+    module = importlib.import_module(TOOL_MODULES[tool])
+    argv = [module.__file__] + [str(a) for a in args]
+    out = io.StringIO()
+    err = io.StringIO()
+    saved_argv = sys.argv
+    sys.argv = list(argv)
+    try:
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                returncode = module.main(argv)
+            except SystemExit as exc:
+                returncode = 0 if exc.code is None else exc.code
+    finally:
+        sys.argv = saved_argv
+
+    return ToolRun(argv, returncode, out.getvalue(), err.getvalue())
+
+
+def run_tool_without_holdings(tool, *args, cwd=None):
+    """Run one holdings-free tool as a subprocess, with neither holdings root set.
+
+    What this pins that run_tool_in_process() cannot: that `python -m <module>`
+    reaches main() at all -- an in-process call imports the module and calls the
+    function by name, so it would pass just as well with no `__main__` block --
+    and that the process exit code is main()'s return value. Dropping both
+    holdings variables also pins that these tools need neither.
+
+    Args:
+        tool: A key of TOOL_MODULES that is also in HOLDINGS_FREE_TOOLS.
+        *args: Command-line arguments, path-like or str.
+        cwd: The working directory for the subprocess. Defaults to this process's.
+
+    Returns:
+        ToolRun: The exit code and both streams.
+    """
+
+    assert tool in HOLDINGS_FREE_TOOLS, (
+        f'{tool} is not holdings-free; drive it with run_tool() instead')
+
+    argv = [sys.executable, '-m', TOOL_MODULES[tool]] + [str(a) for a in args]
+    proc = subprocess.run(argv, cwd=None if cwd is None else str(cwd),
+                          env=no_holdings_env(), capture_output=True,
+                          timeout=TOOL_TIMEOUT, check=False)
 
     return ToolRun(argv, proc.returncode,
                    proc.stdout.decode('utf-8', errors='replace'),

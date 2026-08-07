@@ -188,8 +188,18 @@ Two further observations, not defects in a single tool:
    valid shelves it reports "Tests performed: 0, Errors found: 0". Its
    `error += 1` / `errors` typo (already on PR-15's list, fixed in PR-28) is only
    reachable through the legacy layout. Both are pinned in
-   `test_shelf_consistency_check.py`. **PR-28**, which gives this tool a `main()`,
-   is where the layout question has to be answered.
+   `test_shelf_consistency_check.py`. This entry named **PR-28**, which gives this
+   tool a `main()`, as where the layout question had to be answered.
+
+   **PR-28 fixed the typo and left the layout question open.** The two are not the
+   same size: the typo is one identifier with a regression test, and teaching the
+   walk about `_infoshelf-volumes/` and its siblings is a rewrite of what the tool
+   looks for, on a tool nothing in this repository or in the sync scripts currently
+   runs. Making that change inside a PR whose subject is three `main()` functions
+   would have put the interesting decision — what a modern-layout run should
+   *report* — under a heading nobody would look for it under.
+   **Owner: open — the layout question needs a PR of its own, and no phase owns
+   it.**
 7. **Info-shelf sidecars are local-time dependent.** `pdsinfoshelf` /
    `pds4infoshelf` format modification times with
    `datetime.fromtimestamp(...).strftime(...)`, so the same tree shelved in two
@@ -235,9 +245,12 @@ Two further observations, not defects in a single tool:
    `scripts/automated_tests/pdsfile_main_test.sh` — the data-gate driver.
 
    Two things make waiting cheap: coverage numbers stay informational until the
-   targets are set, and PR-28 converts the `shelf_consistency_check` and
-   `show_opus_products` tests to in-process `main()` calls, which are measured
-   with no subprocess machinery at all. If it is taken up, `COVERAGE_CORE=sysmon`
+   targets are set, and PR-28 converts the `shelf_consistency_check` tests to
+   in-process `main()` calls, which are measured with no subprocess machinery at
+   all. (It leaves `show_opus_products` on subprocesses; that half of this
+   sentence was a prediction, and
+   `plans/2026-08-07-pr-28-deviation-addendum.md` says why it did not hold.)
+   If it is taken up, `COVERAGE_CORE=sysmon`
    (Python 3.12+) is the lever worth measuring first — and note the coverage
    artifact is uploaded from the 3.13 leg only, so the instrumentation need not be
    paid on every leg. **Owner: PR-37** (Phase 8, "set codecov targets"), which is
@@ -276,8 +289,16 @@ Two further observations, not defects in a single tool:
     file, so `crlf --repair` over a tree containing one dies instead of reporting
     it. Pinned by
     `test_crlf.TestArgumentValidation.test_an_empty_file_raises_zerodivisionerror`.
-    **Owner: PR-28**, which gives `crlf` a `main()`; deciding what an empty file
-    should classify as ('OK'? 'BINARY'?) is part of that work.
+    This entry named **PR-28**, which gives `crlf` a `main()`, as where deciding
+    what an empty file should classify as ('OK'? 'BINARY'?) belonged.
+
+    **PR-28 preserved it.** The decision is a behaviour change on a frozen surface
+    with no obviously right answer — 'OK' says an empty file has no bad
+    terminators, 'BINARY' says it is not text, and a third reading is that the
+    tool should report it and move on — and the Phase-6 rule lets output move only
+    where keeping it would force duplication or a flag, which this does not. The
+    pin is unchanged and inverting it is still what a fix has to do.
+    **Owner: open — one of three answers, and no phase owns the choice.**
 
 ### Added by the PR-13 coordinator review
 
@@ -333,6 +354,20 @@ Two further observations, not defects in a single tool:
     PR-28** (re-derive for the two tools it converts), with **PR-14** noting the
     same coupling if it changes how the suite is invoked. Entry 12 above is the
     related question of what mode a `--mode`-less run selects at all.
+
+    **Re-derived by PR-28, and the single pass still holds.** PR-28 converted
+    `crlf` and `shelf_consistency_check`, not `show_opus_products` (see
+    `plans/2026-08-07-pr-28-deviation-addendum.md`), so two tools now run inside
+    the pytest process where the original justification assumed none did. The
+    justification survives on its merits rather than by inheritance: neither
+    migrated tool imports a PdsFile class at all — `crlf` imports `argparse` and
+    `sys`, `shelf_consistency_check` adds `os` — so neither can read
+    `use_shelves_only`, and `--mode` cannot change what either does. A second pass
+    over them would execute byte-identical work, which is what the original
+    argument claimed for the subprocess case. `support.HOLDINGS_FREE_TOOLS` is
+    that property written down, and it is asserted by both in-process runners.
+    The claim expires again if a tool that does read `use_shelves_only` is ever
+    moved in-process.
 
     **PR-14 note (2026-07-26).** PR-14 leaves
     `scripts/automated_tests/pdsfile_main_test.sh` untouched, so the two-pass
@@ -1639,9 +1674,20 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     Both are now comfortably under the limit and neither needs a waiver.
     `pdsdependency.py` is untouched at **1,165** and is the only module left in
     `holdings_maintenance/` over the limit; it has no pds3/pds4 twin, so the
-    consolidation this entry was waiting on will never reach it, and PR-28 is the
-    next PR to touch it.
-    **Owner: `pdsdependency.py` only, from PR-28.**
+    consolidation this entry was waiting on will never reach it.
+
+    **The third is answered by PR-28 only in the sense that the wait is over.**
+    PR-28 closes Phase 6 without touching `pdsdependency.py`, which is still 1,165
+    lines: its subject is three scripts that had no `main()`, and splitting a
+    1,165-line tool is neither in that subject nor a thing to do on the way past.
+    What PR-28 does settle is that the deferral has expired — this entry parked the
+    question until the consolidation had shown how much of each file was
+    duplication, and for this file the answer is none, because there is nothing to
+    consolidate it against. So it is a live question rather than a waiting one:
+    waive it, or split it in a later phase. `pdsfile_overrides.mdc` deviation (3)
+    now says the same rather than pointing at a phase that has ended.
+    **Owner: open — `pdsdependency.py` needs a waiver-or-split decision, and no
+    phase currently owns it.**
 
 ## From PR-23 (ruff-clean the core modules, Phase 5)
 
@@ -2004,7 +2050,13 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     `pdscache` defects survived to be found by reading. This is a third defect of
     that family.
 
-    **Owner: a PR licensed to change behavior — Phase 6's PR-28 (`errors` fix) is
+    **Re-owned (2026-08-07): Phase 6 has ended and PR-28 did not touch
+    `pdscache.py`.** This entry named it as the nearest PR licensed to change
+    behavior; that PR's licence covered one identifier in one maintenance tool, and
+    reaching into the cache from it would have been a behavior change nothing in
+    that PR's evidence covered. The question is unchanged and unowned.
+    **Owner (superseded): a PR licensed to change behavior — Phase 6's PR-28
+    (`errors` fix) was
     the nearest, or a dedicated follow-up. It must add a regression test first, per
     §2.**
 
@@ -3327,6 +3379,11 @@ these entries are read by the PRs that come after it.
      wrote at the base, and passing the logger to the task explicitly. This is the
      same trade PR-26 made for `run_selection_main`, and it is now the second time
      it has been made. A third instance would be worth stopping for.
+
+     **Answered once all five families had migrated — see the amendment to this
+     entry at the end of this file.** The pairwise figures above are this entry's
+     original measurement and are superseded there; the answer is that the three
+     drivers do not collapse.
      **Owner: recorded, not open.**
 
 ### Added by the PR-27 adversarial review (round 2)
@@ -3377,3 +3434,342 @@ these entries are read by the PRs that come after it.
      and this is the one comment in the migration where the merge made a choice
      rather than carrying a block along with its code.
      **Owner: recorded, not open.**
+
+## From PR-28 (main() for crlf, shelf_consistency_check, show_opus_products, Phase 6)
+
+### Added by the PR-28 executor's own measurements (2026-08-07)
+
+134. **`shelf_consistency_check` reported a clean run for a mistyped flag, and
+     neither tool could answer `--help`.** Both tools handled their one option by
+     searching `sys.argv` and calling `remove()`, which makes every other argument a
+     path. A path that does not exist walks to nothing, so
+     `shelf_consistency_check --verbsoe <root>` printed `Tests performed: 2 /
+     Errors found: 0` and exited 0 — a successful-looking check of a command line
+     the user got wrong. `crlf --bogus f.txt` degraded differently, dying with
+     `FileNotFoundError: '--bogus'`, and `--help` on each did whichever of those two
+     things its own missing-path handling did. Fixed here, by the argparse both
+     tools now have; the two exit codes that move are entry 135.
+
+     The shape is what is left open. Any tool that treats unrecognized argv as data
+     reports success on a typo, and this repository had two of them because each
+     grew its own two-line flag handling rather than a parser. The eleven console
+     scripts and `re_validate` do not have it. Nothing else in the tree does either,
+     as of this PR — this is the last of them.
+     **Owner: recorded, not open.**
+
+135. **Usage-error exit codes moved on all three tools — accepted by the owner on
+     consistency grounds (2026-08-07).** A command line argparse cannot classify now
+     exits **2**, where the three tools previously did three different things, none
+     of them designed:
+
+     | tool | a bad flag at `3d044b2` | now |
+     |---|---|---|
+     | `crlf` | exit **1** — the flag became a filename and the run died in `FileNotFoundError` | exit 2 |
+     | `shelf_consistency_check` | exit **0** — the flag became a path that does not exist, was walked to nothing, and the run reported clean (entry 134) | exit 2 |
+     | `show_opus_products` | exit **1** — `KeyError` on the holdings environment, at import, before argparse existed. Only with a root unset; with both set its usage errors are byte-identical base to head | exit 2 |
+
+     What carried the ruling was that the eleven already-migrated console scripts
+     all exit 2 on a bad flag today, so this brings the last three **into** line
+     rather than moving them away from anything. The owner's words were "accept
+     consistency change".
+
+     **The general rule the ruling establishes, so the next tool does not
+     re-litigate it: the exit-code freeze covers what a *valid* invocation returns,
+     not what a *malformed* command line happens to produce.** A status that falls
+     out of an uncaught exception, or out of a tool treating an unrecognized
+     argument as data, was never a designed part of the surface and is not what the
+     freeze protects. §6.4's hard-stop list and the Phase 6 preamble both carry that
+     distinction now, so neither reads as contradicting this.
+     **Owner: resolved 2026-08-07, not open.**
+
+136. **`crlf` prints no summary at all when it repairs more than one file.** The
+     summary block reads `if repairs: if repairs == 1: print(f'{repairs}/{nfiles}
+     files repaired')`, so a run over three files that fixes two lists both
+     `REPAIRED` lines and then says nothing, where a run that fixes one says
+     `1/3 files repaired` and a run that fixes none says `2/3 files invalid`. The
+     `elif invalid` branch is unreachable whenever anything was repaired, so a run
+     that repairs one file and finds another invalid does not mention the invalid
+     one either.
+
+     Preserved, not fixed: the Phase-6 rule lets output text move only where keeping
+     it would force duplication or a flag, and keeping this forces neither. Pinned
+     as current behaviour by `test_two_repairs_print_no_summary_at_all` and by
+     transcript record `crlf/repair-two-of-three`, whose docstring says a fix has to
+     invert it.
+     **Owner: open.**
+
+137. **`crlf.test_crlf` keeps its name, and with it the last `PT028` entry that is
+     not `pdsdependency`'s.** `PT028` fires twice on this function, for the `task`
+     and `threshold` defaults, and only because the name matches pytest's collection
+     pattern; it is the tool's line-terminator classifier. Measured before deciding:
+     `grep -rn 'test_crlf\b' --include=*.py .` finds two callers, `crlf.main()` and
+     `tests/holdings_maintenance/test_crlf.py`, so a rename is mechanically safe
+     inside this repository.
+
+     Not done, for three reasons that are judgement rather than obstacle: it is a
+     public name on a shipped module; PR-32 is chartered to document `crlf` as a
+     program, so the tool has a documented surface; and the entry marks a lint false
+     positive rather than a defect. There is a real cost to keeping it —
+     `test_crlf.py`'s header documents a live collection trap, that
+     `from …crlf import test_crlf` makes pytest collect the imported function and
+     fail it on a missing `filepath` fixture — which a rename would delete outright.
+     Renaming would take the ratchet to 65 entries / 179 slots.
+     **Owner: open.**
+
+138. **`crlf` exits 0 whether or not it found anything.** Every transcript record
+     that reaches the end of `main()` exits 0, including the ones that print
+     `INVALID` for every file given. A caller that wants to know whether a tree is
+     clean has to parse stdout; `find … -exec crlf {} +` in a shell script cannot
+     branch on the result. `shelf_consistency_check` does return 1 on errors, and
+     did before this PR, so the two halves of what is nominally the same job report
+     differently. Preserved because an exit code is frozen and this one is
+     load-bearing in the other direction: a tool that started exiting 1 on an
+     invalid file would fail any pipeline that runs it over a tree expecting to read
+     the report.
+     **Owner: open.**
+
+139. **Two `show_opus_products` flag quirks, both preserved.** `--debug` calls
+     `traceback.print_exc()` at a point where the `ValueError` it means to show has
+     already been caught by the `except` clause above it, so there is no active
+     exception and it prints the string `NoneType: None` — the flag has never shown
+     a traceback (transcript record `opus/unresolvable-path-debug`). And
+     `--narrow-table` is read only inside the `if display_table:` branch, so
+     `--narrow-table --pprint` and `--narrow-table --raw` accept the flag and ignore
+     it; `--narrow-table` alone works, because none of the three display flags being
+     set is what turns the table on. Both are base behaviour carried into `main()`
+     verbatim.
+     **Owner: open.**
+
+140. **`support.HOLDINGS_FREE_TOOLS` is a hand-maintained claim, not a derived
+     one.** It is the set that decides which tools may be driven in-process, and
+     both `run_tool_in_process()` and `run_tool_without_holdings()` assert against
+     it — but the assertion only catches a caller naming the wrong tool. It cannot
+     catch the other direction: if `crlf` or `shelf_consistency_check` ever grows an
+     import of a PdsFile class, the set is silently wrong and the in-process tests
+     start resolving temporary-tree paths against the session's preloaded real tree,
+     which is entry 121's failure mode with the subprocess boundary removed. Neither
+     tool imports anything but `argparse`, `os` and `sys` today. A test that asserts
+     that — over the module's own import list, not over behaviour — would make the
+     set self-checking, and is not written here.
+     **Owner: open.**
+
+### Added by the PR-28 adversarial review (round 1)
+
+141. **`crlf` can no longer be given a path that begins with `-`, and `--` only
+     half-rescues it.** The tool took every argument literally before it had a
+     parser, so `crlf -dash.txt` checked that file; argparse reads a leading `-` as
+     an option, so it is now a usage error exiting 2. This is the only invocation
+     that worked at the base and does not work now — every other changed record is
+     an error path that changed shape.
+
+     The usual answer is the `--` separator, and under `parse_intermixed_args` it
+     works only when a plain positional comes first: `crlf ok.txt -- -dash.txt`
+     checks both, and `crlf -- --verbose` turns verbose *on* rather than checking a
+     file of that name. `parse_intermixed_args` parses the argv before the first
+     `--` with `parse_known_args` and re-parses the remainder, so a `--` in first
+     position leaves nothing in front of it and the remainder is read with the
+     optionals still live. Plain `parse_args` handles `--` correctly and rejects a
+     flag between two positionals; the two cannot both be had.
+
+     **And `--` in first position is not even stable across the versions this
+     package supports.** `crlf -- -dash.txt` exits 2 on Python 3.10 through 3.12
+     and exits 0, checking the file, from 3.13 — measured on 3.12.3 and 3.14.5 and
+     confirmed by CI's 3.13 leg, which is the only place it showed up: every local
+     run and all four adversarial review rounds used a single interpreter. The
+     tests assert only the two outcomes that hold everywhere (a bare leading-`-`
+     argument is a usage error; a path, a `--` and then the dashed file works), so
+     the suite does not pin one interpreter's answer to the third.
+
+     The trade was made toward the flags: `crlf a --verbose b` is a plausible
+     command line and a file named `-something` is not — `find` over both holdings
+     roots for `-*` returns nothing. Pinned by
+     `test_a_path_beginning_with_a_dash_needs_a_path_and_a_separator_before_it`,
+     which asserts both so a later switch to `parse_args` has to invert
+     them. `shelf_consistency_check` has the same property, pinned by
+     `test_a_shelf_root_beginning_with_a_dash_is_a_usage_error` and by transcript
+     record `shelf/dash-root`, where the base run walked the directory and reported
+     on it.
+     **Owner: open.**
+
+142. **`show_opus_products --narrow-table` has no test at all.** Replacing
+     `if not display_narrow_table:` with `if not False:` in the table branch leaves
+     the three tool-test modules at their full pass count. The flag is exercised by
+     the out-of-repo tool transcript
+     (`opus/narrow-table`, byte-identical base to head) and by nothing in the
+     repository. It is one of PR-13's gaps rather than a PR-28 regression — PR-13
+     covered the default table, `--pprint` and the opus-type filter, and left this
+     one — and it is worth a test of its own: the narrow branch builds its rows in a
+     different shape, with an `if opus_type not in rows` guard comparing a string
+     against a list of one-element lists, which is always true and so is dead as
+     written. Deferred 139 records the flag's other quirk, that `--pprint` and
+     `--raw` accept and ignore it.
+     **Owner: open.**
+
+### Added by the PR-28 adversarial review (round 2)
+
+143. **`show_opus_products` never resolves a PDS4 path in any test.** Commenting out
+     `Pds4File.preload(pds4_holdings_dir)` leaves
+     `pytest tests/holdings_maintenance/test_crlf.py
+     tests/holdings_maintenance/test_shelf_consistency_check.py
+     tests/holdings_maintenance/test_show_opus_products.py --mode ns` at its full
+     pass count. Every
+     path the module's tests pass is a PDS3 one, so the second half of the tool's
+     two-flavor fallback — try `Pds3File`, then `Pds4File`, each by abspath then by
+     logical path — is exercised only for its failure. The tool tests declare a PDS3
+     source subset (`subsets.PDS3_VOLUME_SOURCES`) and a PDS4 one exists, so the
+     missing piece is a fixture that stages both under one tree, not new source
+     data. Same class as entry 142: a PR-13 coverage gap in a tool PR-28
+     restructured but did not otherwise change.
+     **Owner: open.**
+
+144. **`run_tool_in_process` captures into `io.StringIO`, which has no encoding.** A
+     real `python -m` run writes through an encoded stream, so a byte the
+     subprocess's locale cannot encode raises `UnicodeEncodeError` there and cannot
+     here — an in-process test would pass where the tool it stands for would die.
+     Neither migrated tool can reach that state in this repository's tests: `crlf`
+     prints only paths the test itself created and four ASCII status words, and
+     `shelf_consistency_check` prints only paths. It is written down because the
+     runner's docstring lists its other fidelity caveats — the working directory,
+     and that `sys.argv` is rebound for the call — and this is the third.
+     **Owner: open.**
+
+### Added by the PR-28 adversarial review (round 3)
+
+145. **`pdsfile.tools.show_opus_products` is importable now, and it imports
+     `tabulate` at module scope — a `dev`-only extra.** The module has always
+     imported `tabulate`, so `python -m pdsfile.tools.show_opus_products` has always
+     needed the dev extra; what changed is that the module can now be *imported*
+     without running, which is what an autodoc build or a console-script entry point
+     would do. `scripts/check_runtime_imports.py` walks the frozen public module set
+     and does not reach `src/pdsfile/tools/`, and CI installs `.[dev]`, so the
+     clean-install gate is green and stays green. The question this leaves is which
+     way to settle it: move `tabulate` to the runtime dependencies, or import it
+     inside the branch that renders a table so the other three output modes work in
+     a bare install. Both are behaviour decisions about a shipped module rather than
+     tidying.
+     **Owner: open.**
+
+146. **The maintenance tools' docstrings say `Args:` where the rules say
+     `Parameters:`.** `python.mdc` and `doc_python.mdc` both call for
+     `Parameters:`; every module under `holdings_maintenance/` uses `Args:`, and the
+     three `main()`s and `build_arg_parser()`s PR-28 wrote follow their neighbours
+     rather than the rule. `crlf.py` now carries both styles in one file, because
+     `test_crlf`'s own docstring predates the convention and uses `Parameters:`.
+     Sweeping the subsystem is Phase 7's job — it owns docstrings — and doing it
+     piecemeal would leave the tree in three states rather than two.
+     **Owner: recorded, not open — Phase 7.**
+
+### Added by the PR-28 adversarial review (round 4)
+
+147. **The help *text* of the two new parsers is pinned only by its flag names.**
+     Replacing `crlf`'s whole `description=` literal, or any one help string, with
+     junk leaves the three tool-test modules green: the help tests assert the
+     `usage: crlf.py` prefix and that each flag name appears, and nothing else.
+     That is deliberate for text this PR invented — a golden of a `--help` screen
+     pins argparse's line-wrapping as much as the words, and argparse rewraps to
+     the terminal width — but it means the text is documentation with no gate, and
+     PR-32 is chartered to write a user-guide chapter per program from it. The
+     out-of-repo transcript does capture both screens byte-for-byte at a pinned
+     `COLUMNS`, which is where a reader can see what they currently say.
+     **Owner: open.**
+
+148. **The per-code table in `pdsfile_overrides.mdc` deviation (4) has drifted from
+     the tree.** Spot-measured at PR-28's head with
+     `ruff check --config 'lint.per-file-ignores = {}' --select <code> src/pdsfile
+     tests scripts`: `UP031` 97 against the table's 124, `B006` 12 against 9,
+     `B012` 2 against 3, `RUF015` 3 against 2. The drift is from the Phase-6
+     migrations moving code between files rather than from any entry being wrong —
+     the ratchet itself, which is the enforced copy, is exact. PR-28 removed the
+     two rows that had become false statements (`F821`, and the `RUF059` row whose
+     cited defect no longer exists) and did not re-derive the counts, because a
+     table PR-24 owns is not a thing to half-refresh from inside another PR.
+     **Owner: open — one re-derivation of the whole table, by whoever next edits
+     it.**
+
+### Amended by the PR-28 executor (2026-08-07) — entry 130
+
+**Entry 130's question, answered.** PR-27 recorded that a third copy of the driver
+loop should stop the line, and left the measurement for when all five families had
+migrated. They have, so here it is. Method: each driver's body with its docstring,
+`def` line, blank lines and comments dropped and the `_common.` qualifier
+normalized away, since in one driver those names would be local:
+
+| | code lines | vs `run_main` | vs `run_selection_main` | vs `run_index_main` |
+|---|---:|---:|---:|---:|
+| `_common.run_main` | 57 | — | 42 | 40 |
+| `_shelf_common.run_selection_main` | 69 | 42 | — | 39 |
+| `_indexshelf_common.run_index_main` | 55 | 40 | 39 | — |
+
+Common to all three, as an ordered common subsequence: **39 lines** — 68.4% of
+`run_main`, 56.5% of `run_selection_main`, 70.9% of `run_index_main`. On the raw
+bodies (comments kept, qualifier kept) the same three are 66 / 78 / 69 lines with
+43 common, which is where PR-27's 64% and PR-26's 59% pairwise figures came from.
+
+**The 39 is not one block.** Scanning `run_main` left to right and taking, at each
+position, the longest block of consecutive lines that also occurs consecutively in
+both other drivers, the 39 fall into blocks of **15, 5, 5, 3, 2, 2, 2** lines and
+five isolated lines. The 15 are one thing: the preamble, from
+`build_arg_parser(spec)` through the `args.log` handler loop, and it is the only
+block that is a stretch of the drivers' *work*. The other six are
+try/except/finally scaffolding and two lines of handler construction — the `try:`
+and its `logger.info('Log file', …)` loop, the `except`/`raise`/`finally`/
+`logger.close()` pairs — wrapped around bodies that differ in all three. They are
+identical because every driver has to open a log scope and close it, not because
+the drivers agree on anything inside.
+
+**What one driver would need, eight variation points:**
+
+1. *Target resolution.* `run_main` expands command-line paths itself with an
+   existence check; `run_selection_main` calls `resolve_holdings_paths` +
+   `expand_selection_targets` and gets `(pdsdir, selection)` tuples;
+   `run_index_main` calls `index_targets`. A hook — clean.
+2. *Log-path derivation.* Three forms: a fixed method plus a suffix; a method chosen
+   per target from `pdsf.bundlename`; a method whose suffix is passed only when
+   non-empty. A hook — clean.
+3. *`set_log_dirs(logfiles)`*, called by two of the three. Folds into (2).
+4. *Per-target handler directory.* `os.path.split(logfile)[0]` versus the
+   `rpartition('/' + progname + '/')` form, which entry 127 explains is not
+   interchangeable. A hook — clean.
+5. **The task header.** `Task X for` (`run_main`), `Task "X" for`
+   (`run_index_main`), and `Task "X" for selection S` / `Task "X" for`
+   (`run_selection_main`). This is the one variation point a merger would **not**
+   have to keep: the owner's 2026-08-05 output-text ruling says text may move where
+   keeping it would force a flag whose one job is to re-create one side's wording,
+   which is exactly this, and PR-25 has already moved a log line on that basis.
+   Unifying it is a log-text change on four tools, enumerable. So this is not a
+   reason not to merge — it is a cost, not an obstacle, and the case rests on the
+   other seven. (Note that once the header is unified, the `for selection S`
+   variant remains, inside variation point 7.)
+6. **The backup skip.** `run_index_main` only, and entry 132 records why it has to
+   sit inside the log hierarchy rather than in the target list: the skip is reported
+   as an error and has to reach the exit status. A guard hook or a flag.
+7. *The task call.* `tasks[t](pdsdir)`, `tasks[t](pdsdir, selection)`,
+   `tasks[t](pdsf, logger=logger)` — three signatures — plus
+   `run_selection_main`'s rewrite of `reinitialize` to `update` when a selection is
+   given.
+8. *The return contract.* Two `sys.exit(status)` against one
+   `RunResult(args, status, proceed)`, which exists because `pdschecksums
+   --infoshelf` chains a second run off `proceed`. Unifying it changes the exit path
+   of all eleven tools.
+
+**Line arithmetic.** 181 code lines across the three today. A merged driver would be
+the 39 shared lines plus the calls into seven hooks; the 64 residue lines do not
+disappear, they become per-family functions with `def` lines and docstrings, and
+`ToolSpec` grows five or more fields. The saving is on the order of 20%, bought
+with seven variation points at the seams of a loop whose every semantic line
+differs, plus a log-text change on four tools to retire the eighth.
+
+**The measurement points somewhere else.** The 15-line preamble is contiguous,
+identical in all three, and carries no per-family variation at all: it parses,
+guards the missing task, resolves the log root, builds the logger and adds the
+root handlers. Extracting it as a fourth `_common` helper takes 38% of the
+commonality with **zero** new variation points and leaves the three loops alone.
+That is a small PR with a small tool-run diff, and it is a different PR from the one
+entry 130 was asking about. Its one wrinkle is `status = 0`, which sits inside the
+block and is a local each driver reads later, so the helper returns `(args, logger)`
+and the `status = 0` stays behind — 14 lines move, not 15.
+
+**Answer: they do not collapse cleanly; do not merge them.** PR-28 measured and did
+not act.
+**Owner: recorded, not open — unless the owner wants the 15-line preamble
+extraction, which would be its own PR.**
