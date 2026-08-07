@@ -164,7 +164,7 @@ def test_update_picks_up_a_new_file(fresh_tree):
 def test_reinitialize_versions_the_checksum_file_it_replaces(fresh_tree):
     """--reinitialize copies the superseded checksum file into the log directory.
 
-    _common.move_old_checksums() versions the file the task is about to overwrite,
+    _shelf_common.move_old() versions the file the task is about to overwrite,
     as <name>_v###.txt beside the run's own log file, one past the highest version
     already there. It reads the shared LOGDIRS list that main() fills in through
     _shelf_common.set_log_dirs(), so a tool that leaves that list empty versions

@@ -207,8 +207,8 @@ def test_modification_time_within_one_second_agrees(shelved_tree):
 
     run = support.run_tool(shelved_tree, 'pdsinfoshelf', '--validate',
                            shelved_tree.path(VOLUME_DIR))
-    assert not any('Modification time mismatch' in line and 'N4BI01L4Q.LBL' in line
-                   for line in run.error_lines), run.describe()
+    assert run.error_lines == [], run.describe()
+    assert run.returncode == 0, run.describe()
 
 
 def test_extra_file_is_reported(shelved_tree):
@@ -274,7 +274,7 @@ def test_update_picks_up_a_new_file(shelved_tree):
 def test_update_versions_the_shelf_file_it_replaces(shelved_tree):
     """--update copies the superseded info shelf into the log directory.
 
-    _common.move_old_info() versions the shelf the task is about to rewrite, as
+    _shelf_common.move_old() versions the shelf the task is about to rewrite, as
     <name>_v###<ext> beside the run's own log file, and copies the `.py` sidecar
     alongside it. It reads the shared LOGDIRS list that main() fills in through
     _shelf_common.set_log_dirs(), so a tool that leaves that list empty versions

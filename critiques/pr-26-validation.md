@@ -8,7 +8,7 @@ the tree under measurement was proved rather than assumed (see §8).
 
 ## 1. What changed
 
-Three commits, in this order:
+Four commits, in this order:
 
 1. `refactor: split _common into per-family modules` — `_common.py`'s archive
    section and its checksum/shelf section move out verbatim into
@@ -170,7 +170,22 @@ correct**, called out separately because the plan does not mention it:
 
 | # | Change | Tools | Test |
 |---|---|---|---|
-| 6 | Two modification times under a second apart that straddle a second boundary no longer count as a mismatch | **pds4** infoshelf as well as pds3 | `test_a_boundary_straddle_is_not_a_mismatch`, `test_modification_time_within_one_second_agrees` |
+| 6 | Two modification times under a second apart that straddle a second boundary no longer count as a mismatch | **pds4** infoshelf as well as pds3 | `test_pds4_infoshelf.py::test_modification_time_within_one_second_agrees`, plus `test_a_boundary_straddle_is_not_a_mismatch` |
+
+**Change 6 is pinned on the pds4 tool deliberately, and that placement matters.**
+The pds3 twin of that test cannot discriminate: pds3's comparison was dead at base,
+so *no* modification-time mismatch was ever reported there and an assertion that
+none is reported passes at base too. pds4 is the flavor whose truncation worked, so
+it is the flavor where the change is visible. Run against base source, the pds4
+test fails with exactly the false positive this change removes:
+
+```
+ERROR | Modification time mismatch "2020-09-13 12:28:31" "2020-09-13 12:28:30"
+```
+
+Two times 0.6 s apart, on opposite sides of a whole second. The pds3 test is kept
+as a "still agrees" check and is marked below as non-discriminating rather than
+being counted as evidence.
 
 ### Log and output text — every changed line
 
@@ -332,7 +347,7 @@ base      vs head        :  18 of 122 records differ  (SCENARIO 14, LOGFILES 4,
                                                        ARTIFACTS 0)
 ```
 
-**Every changed line, attributed — 171 lines, none unattributed:**
+**Every changed line, attributed — 170 lines, none unattributed:**
 
 | lines | cause |
 |---|---|
@@ -450,21 +465,31 @@ in-process ones cannot be redirected this way):
 ```
 $ PYTHONPATH=<base>/src:<work> pytest tests/holdings_maintenance/test_pds3_checksums.py \
       tests/holdings_maintenance/test_pds3_infoshelf.py \
-      tests/holdings_maintenance/test_pds4_infoshelf.py
-7 failed, 23 passed
+      tests/holdings_maintenance/test_pds4_infoshelf.py \
+      tests/holdings_maintenance/test_pds4_checksums.py
 ```
 
-The seven that fail at base and pass at head:
+The nine that fail at base and pass at head, one per fix:
 
 ```
 test_pds3_checksums.py::test_infoshelf_chain_reports_the_chained_run_exit_code
 test_pds3_checksums.py::test_infoshelf_chain_passes_a_path_containing_spaces
 test_pds3_checksums.py::test_no_targets_leaves_no_unbound_state
+test_pds4_checksums.py::test_no_targets_leaves_no_unbound_state
 test_pds3_infoshelf.py::test_corruption_is_detected_and_repaired[label_byte0_same_size]
 test_pds3_infoshelf.py::test_corruption_is_detected_and_repaired[label_mtime_plus_100]
 test_pds3_infoshelf.py::test_modification_time_mismatch_reports_both_times
 test_pds3_infoshelf.py::test_update_picks_up_a_new_file
+test_pds4_infoshelf.py::test_modification_time_within_one_second_agrees
 ```
+
+**One test is deliberately kept although it does not discriminate**, and is not
+counted as evidence for anything:
+`test_pds3_infoshelf.py::test_modification_time_within_one_second_agrees` passes at
+base as well, because pds3's comparison was dead there and so reported no
+modification-time mismatch for any input. Its pds4 counterpart is the one that
+carries the weight. Recorded rather than deleted, because "these two times still
+agree" is worth asserting on both flavors now that both share the comparison.
 
 One of these was **vacuous on its first draft and was rewritten**: the
 space-in-the-path test originally aimed at a path that the tool rejected before

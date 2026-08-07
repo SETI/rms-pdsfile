@@ -2977,3 +2977,62 @@ these entries are read by the PRs that come after it.
      each, and `expected_error_exit_code()` is the single point the tests would move
      through.
      **Owner: open.**
+
+### Added by the CodeRabbit review of PR #123 (2026-08-06)
+
+116. **`archive_filter()` archives the backup files `load_directory_info()` skips.**
+     In `_archives_common.py`, `load_directory_info()` skips any name matching
+     `BACKUP_FILENAME` or containing `' copy'`, and `archive_filter()` — the filter
+     the archive writers add members through — does not. So a volume holding
+     `FOO_2021-01-01T00-00-00.LBL` or `BAR copy.TXT` has that file written into the
+     tarball but left out of the directory listing, and `validate_tuples()` then
+     reports it as `Missing from directory`.
+
+     Both functions moved verbatim into `_archives_common.py` in PR-26's split and
+     are otherwise untouched by it; the divergence is at PR-26's base and at its
+     head alike. Not fixed here because it changes what the archive tools *write*,
+     which is neither a PR-26 scope item nor an enumerated behavior change, and
+     because the right repair is not obvious: excluding them changes existing
+     archives' contents on the next `--repair`, while including them in the
+     directory listing changes what `pdschecksums` and `pdsinfoshelf` record.
+     **Owner: open.**
+
+117. **`validate_tuples()` enters its mismatch branch on a `dirpath` difference and
+     then reports nothing.** `_archives_common.py`: the branch is
+     `elif (dirpath, nbytes, modtime) != tardict[abspath]:`, and inside it only
+     `nbytes` and `modtime` are compared. If the archive-relative path is the only
+     thing that differs, the branch runs, logs no error, leaves `valid` True, and
+     `del`etes the entry — so an archive whose member path is wrong validates
+     clean. Moved verbatim in PR-26's split; present at base and head alike.
+     Not fixed here for the same reason as 116: the archive family is not this PR's
+     scope, and adding an error changes the archive tools' observable output.
+     **Owner: open.**
+
+118. **The `--archives` help text reads "refer to the the archive file".** All four
+     tools carried that duplicated word before PR-26, in four hand-copied copies;
+     PR-26 replaced them with one shared constant and **kept the typo deliberately**,
+     because reproducing the help text exactly is what makes all four tools'
+     `--help` output byte-identical to base, which is the check that the shared
+     constants did not quietly reword anything. Now that it is in one place, fixing
+     it is a one-character decision rather than a four-file sweep — but it is a
+     user-visible text change and so wants to be made on purpose rather than folded
+     into a refactor.
+     **Owner: open.**
+
+119. **The chained-run substitution rewrites every argument, not just `argv[0]`.**
+     Both checksums tools build the chained command as
+     `[a.replace('pdschecksums', 'pdsinfoshelf') for a in sys.argv]`. The intent is
+     to name the other tool in `argv[0]`, but the comprehension rewrites the
+     substring wherever it appears — so `--log /var/logs/pdschecksums` becomes
+     `--log /var/logs/pdsinfoshelf`, and any holdings path containing the tool's
+     name is silently redirected. A log root named after the tool is the documented
+     layout: `--help` says logs are created inside the "pdschecksums" subdirectory
+     of each log root.
+
+     Present at PR-26's base and head alike; PR-26 changed how the command is
+     *executed* (`subprocess.run` on a list, an enumerated fix) but deliberately
+     left what is *substituted* alone, since narrowing it changes which directory a
+     chained run reads and writes. This is the same line as entry 109, so both
+     should be settled together: restricting the substitution to `argv[0]` fixes
+     this one, and naming the target tool explicitly per flavor fixes 109.
+     **Owner: open.**
