@@ -526,27 +526,43 @@ is for. The entry now carries the count and the reason as a comment, matching th
 style of the neighbouring lines. Deferred entry 137 records the measurement so the
 owner can spend a one-line PR on it if the trade looks different from there.
 
-## 7. Decisions the owner might make differently
+## 7. Decisions the owner made, and the ones still open
 
-1. **`show_opus_products`' tests were not moved in-process**, though the plan's
-   PR-28 entry required both `main()`-less tools to move. §4 has the measurement
-   and `plans/2026-08-07-pr-28-deviation-addendum.md` is the §6.4 addendum, which
-   this PR **cannot merge without the owner acknowledging**. The alternative — an
-   autouse fixture that snapshots and restores `LOCAL_PRELOADED`, `SHELVES_ONLY`
-   and the caches around each call — is new global-state machinery in the test tree
-   whose correctness is the hard part, traded for the runtime of six tests' worth of
-   subprocesses.
-   That judgement is the deviation; the addendum exists so it is the owner's.
-2. **A malformed command line now exits 2 rather than 0 or 1, on all three tools**
-   (§3, changes 2, 5 and 6). CLI exit codes are frozen this phase. What is frozen in
-   practice is what a *valid* invocation returns, and none of the base values was
-   designed — one was an uncaught `FileNotFoundError`, one was the tool cheerfully
-   reporting a clean run after silently swallowing a typo'd flag, and the third was
-   `show_opus_products` dying at import before it could look at the command line at
-   all. 2 is argparse's, and the eleven console scripts' already. Reverting would
-   mean not using argparse for the flags, which is the PR. The
-   `show_opus_products` case is narrower than the other two: it only arises with a
-   holdings root unset, because that tool's parser is otherwise untouched.
+The first two were put to the owner and **ruled on, 2026-08-07**. Both are recorded
+where the next reader of the rule will be, not only here.
+
+1. **RULED — `show_opus_products` keeps its subprocess tests.** The plan's PR-28
+   entry required both `main()`-less tools to move in-process; only
+   `shelf_consistency_check` did. `plans/2026-08-07-pr-28-deviation-addendum.md` is
+   the §6.4 addendum and is **acknowledged by the owner** ("Yes use subprocces"), so
+   the merge is clear on that count. §4 has the measurement. The reasoning that
+   settled it: the harm is not that the tool would *fail* in-process, it is that it
+   would succeed — `use_shelves_only(True)` and its two `preload()` calls are
+   class-level, so the session would be left in shelves-only mode, which is the mode
+   an `--mode ns` run exists not to be in, and every later test would inherit it.
+   Silent, order-dependent, and green in isolation. The alternative — an autouse
+   fixture snapshotting and restoring `LOCAL_PRELOADED`, `SHELVES_ONLY` and the
+   caches — is new global-state machinery whose correctness is the hard part, for
+   the runtime of six tests' worth of subprocesses.
+2. **RULED — a malformed command line now exits 2 on all three tools** (§3, changes
+   2, 5 and 6), accepted **on consistency grounds** ("accept consistency change").
+   The three tools returned three different things for a bad flag, none of them
+   designed: `crlf` exited 1 by treating the flag as a filename and dying in
+   `FileNotFoundError`; `shelf_consistency_check` exited **0**, having walked the
+   flag as a path that does not exist and reported a clean run; `show_opus_products`
+   exited 1 on a `KeyError` for the holdings environment, at import, before argparse
+   existed — and only with a root unset, since its parser is otherwise untouched.
+   The eleven already-migrated console scripts all exit 2 on a bad flag today, so
+   this brings the last three **into** line rather than away from anything.
+
+   **The general rule the ruling establishes**, now in §6.4 and the Phase 6
+   preamble as well as deferred entry 135: the exit-code freeze covers what a
+   **valid** invocation returns, not what a malformed command line happens to
+   produce. A status that falls out of an uncaught exception, or out of a tool
+   treating an unrecognized argument as data, was never a designed part of the
+   surface.
+
+**Still open**, and the record's own judgements rather than anything ruled:
 3. **`allow_abbrev=False` on the two new parsers, and not on `show_opus_products`.**
    The asymmetry is deliberate: the two new parsers get to choose, and `--rep`
    silently meaning `--repair` would let a misspelling rewrite files;

@@ -405,10 +405,11 @@ across machines because the limited copy is a copy of the complete set.
   specified `python <path>.py`; PR-13 used `python -m <module>` instead, which is
   the invocation the two tools kept.) This entry also said PR-28 would switch
   **both** to in-process calls. PR-28 moved `shelf_consistency_check` and **left
-  `show_opus_products`' tests on subprocesses**, because that tool preloads both
-  holdings roots into a class-level cache. That is a departure from what was
-  planned, and `plans/2026-08-07-pr-28-deviation-addendum.md` records it for the
-  owner.
+  `show_opus_products`' tests on subprocesses**, because that tool's
+  `use_shelves_only(True)` and two `preload()` calls are class-level and would
+  leave the whole session in shelves-only mode. The owner acknowledged that
+  departure on 2026-08-07;
+  `plans/2026-08-07-pr-28-deviation-addendum.md` is the addendum.
 - `pdsdependency` tests: run against the copied tree with deliberately
   removed derived files; assert the emitted "Steps required" commands.
 - the shell scripts: explicitly out of scope (ground rule 7). `re_validate` was
@@ -735,11 +736,10 @@ the method (deleting the method would change behavior and the manifest kind).
 ### Phase 6 — Maintenance tools consolidation
 
 **Complete on PR-28's merge.** PR-25, PR-25a, PR-26 and PR-27 are merged into
-`rewrite`; PR-28 is the last of them and is open. It cannot merge until the owner
-acknowledges `plans/2026-08-07-pr-28-deviation-addendum.md`, so the phase is closed
-in substance and not yet in fact. All five pds3/pds4 tool-pairs are on the shared
-core, `re_validate` is modernized, and the three scripts that had no `main()` have
-one.
+`rewrite`; PR-28 is the last of them and is open with every check green and its
+§6.4 addendum acknowledged (owner, 2026-08-07), so the phase is closed in substance
+and awaits only that merge. All five pds3/pds4 tool-pairs are on the shared core,
+`re_validate` is modernized, and the three scripts that had no `main()` have one.
 
 Two things the phase did **not** do, deliberately: `pdsdependency` stays a
 standalone pds3-only tool (it does not fit the five-task `ToolSpec` shape), and the
@@ -771,7 +771,10 @@ against at least one real volume/bundle. The phase record is
 (`critiques/pr-25a-validation.md`, `pr-26-`, `pr-27-`, `pr-28-`), which is how the
 phase actually ran once each PR needed its own tool-run enumeration.
 **CLI names, flags and exit codes are frozen**
-(tests assert them). **Log and output *text* is not** — owner, 2026-08-05:
+(tests assert them) — the exit-code freeze being over what a **valid** invocation
+returns, not over what a malformed command line happens to produce (owner,
+2026-08-07; §6.4 and deferred observation 135). **Log and output *text* is not** —
+owner, 2026-08-05:
 having versions that do and do not render a colon is not worth preserving, a
 small change in logged text is acceptable, and the code should be as common as
 possible rather than shaped by the text it emits.
@@ -1026,12 +1029,15 @@ Proper argparse + `main()` so they are testable and runnable via
 `python -m pdsfile.…`. **No new console-script names** (§8.4 — `python -m`
 only; `[project.scripts]` is not extended — still eleven entries). Also fixes the
 `shelf_consistency_check` undefined-`error` bug (should be `errors`, noted in
-PR-15's bug list) with a regression test. This entry also required the PR-13
-subprocess tests of **both** `main()`-less tools to be switched to in-process
-calls; only `shelf_consistency_check`'s were, and
-`plans/2026-08-07-pr-28-deviation-addendum.md` records why and awaits the owner.
-`re_validate.py`: not touched by this PR. PR-25a is the one that modernizes it.
-Record: `critiques/pr-28-validation.md`.
+PR-15's bug list) with a regression test. **The PR-13 subprocess tests move
+in-process for `shelf_consistency_check` and stay on subprocesses for
+`show_opus_products`** — this entry originally asked for both, and the owner
+acknowledged the departure on 2026-08-07
+(`plans/2026-08-07-pr-28-deviation-addendum.md`, which is the reasoning: that tool's
+`use_shelves_only(True)` and two `preload()` calls are class-level, so an in-process
+run would leave the whole session in shelves-only mode). `re_validate.py`: not
+touched by this PR. PR-25a is the one that modernizes it. Record:
+`critiques/pr-28-validation.md`.
 
 **As executed:**
 - **The bug was reproduced before it was fixed.** The index branch printed its
@@ -1043,13 +1049,15 @@ Record: `critiques/pr-28-validation.md`.
   same tree so that a `try/except` "fix" would still fail it. The file's `F821`
   ratchet entry retires: **67 → 66 entries, 181 → 180 code slots**.
 - **The in-process move was made per tool, not across the board** — a deviation
-  from what this entry asked for, covered by
-  `plans/2026-08-07-pr-28-deviation-addendum.md`. `shelf_consistency_check` and
+  from what this entry originally asked for, acknowledged by the owner 2026-08-07
+  (`plans/2026-08-07-pr-28-deviation-addendum.md`). `shelf_consistency_check` and
   `crlf` import no PdsFile class and read neither holdings root, so their tests
   call `main()` in-process. `show_opus_products` **stays on subprocesses**: it calls
-  `Pds3File.use_shelves_only(True)` and preloads both roots itself, which in-process
-  would preload a temporary tree into the same class-level cache the session
-  preloaded the real tree into. `support.HOLDINGS_FREE_TOOLS` is that criterion,
+  `Pds3File.use_shelves_only(True)` and preloads both roots itself, and those are
+  class-level, so an in-process run would preload a temporary tree into the cache
+  the session preloaded the real tree into **and leave the session in shelves-only
+  mode** — the mode an `--mode ns` run exists not to be in — for every test after
+  it. `support.HOLDINGS_FREE_TOOLS` is that criterion,
   and both new runners assert against it. Each migrated tool keeps **one**
   subprocess test, because an in-process call passes whether or not the module has
   a `__main__` block.
@@ -1271,6 +1279,13 @@ line-by-line human review at its boundary.
   only under the Phase 6 rule: it may move where keeping it would force
   duplication or a shrug-flag, every changed line is enumerated and attributed,
   and a change that buys no commonality is still a stop.
+  **The exit-code freeze covers what a *valid* invocation returns** (owner,
+  2026-08-07). It does not cover what a *malformed* command line happens to
+  produce: a status that falls out of an uncaught exception, or out of a tool
+  treating an unrecognized argument as data, was never a designed part of the
+  surface. Deferred observation 135 is the ruling and the case that carried it —
+  PR-28's three tools returned 1, 0 and 1 for a bad flag and now all return
+  argparse's 2, which is what the other eleven have always returned.
 - Any new decision not already settled in §8 or elsewhere in this plan —
   surface it rather than choosing unilaterally.
 

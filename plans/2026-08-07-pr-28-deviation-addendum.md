@@ -1,9 +1,10 @@
 # PR-28 deviation addendum — `show_opus_products` keeps its subprocess tests
 
-**Status:** written by the PR-28 executor 2026-08-07. **Needs the owner's
-acknowledgement before PR-28 merges** (§6.4: "Deviations from this plan require an
-addendum file in `plans/` acknowledged by the owner before the deviating PR
-merges").
+**Status: ACKNOWLEDGED BY THE OWNER, 2026-08-07.** The owner's words were "Yes use
+subprocces". This discharges §6.4's requirement that "Deviations from this plan
+require an addendum file in `plans/` acknowledged by the owner before the deviating
+PR merges"; PR-28 is clear to merge on that count. Written by the PR-28 executor
+2026-08-07 and put to the owner the same day.
 
 ## The deliverable this deviates from
 
@@ -44,11 +45,20 @@ the other two:
 | `shelf_consistency_check` | `argparse`, `os`, `sys` | nothing |
 | `show_opus_products` | `Pds3File`, `Pds4File` | `Pds3File.use_shelves_only(True)`, `Pds3File.preload(root)`, `Pds4File.use_shelves_only(False)`, `Pds4File.preload(root)` |
 
-Called in-process, `show_opus_products.main()` would preload a temporary tree into
-the same class-level cache the session preloaded the real tree into, and would
-leave `SHELVES_ONLY` set for every test that ran after it — in a suite where
-`--mode` is exactly the knob that sets it. The failure mode is silent: a test that
-measures the wrong tree still passes.
+**The harm is not that the tool would fail in-process — it is that it would
+succeed, and change the session underneath everything after it.**
+`use_shelves_only(True)` and the two `preload()` calls are class-level, not
+instance-level. An in-process call would preload a temporary tree into the same
+cache the session preloaded the real tree into, and would leave `Pds3File` in
+**shelves-only** mode — which is the mode an `--mode ns` run exists not to be in.
+Every test that ran after it would inherit that, so results would start depending
+on the order tests happen to run in. Silent, order-dependent, and green in
+isolation: the one test you would run to investigate is the one that would pass.
+
+That is what makes it different in kind from a slow test. A test that takes a
+second longer costs a second; a test that leaves the session in the wrong mode
+costs the trustworthiness of every result after it, including the ones that look
+fine.
 
 PR-25a met the same wall from the other side: it drove its own new module
 **in-process**, against this package's subprocess convention, on the same reasoning

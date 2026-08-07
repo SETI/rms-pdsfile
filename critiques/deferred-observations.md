@@ -3457,23 +3457,30 @@ these entries are read by the PRs that come after it.
      as of this PR — this is the last of them.
      **Owner: recorded, not open.**
 
-135. **Usage-error exit codes moved on all three tools, on a surface the plan calls
-     frozen.** A command line argparse cannot classify now exits **2**, where `crlf`
-     exited 1 (uncaught `FileNotFoundError`), `shelf_consistency_check` exited 0
-     having reported a clean run (entry 134), and `show_opus_products` exited 1 —
-     the third is the one that is easy to miss, because that tool's parser is
-     untouched: it moves only when a holdings root is unset, since the base module
-     died at import on `os.environ[…]` before argparse existed, and the roots are
-     now read inside `main()` after `parse_args`. With both roots set,
-     `show_opus_products`' usage errors are byte-identical base to head.
+135. **Usage-error exit codes moved on all three tools — accepted by the owner on
+     consistency grounds (2026-08-07).** A command line argparse cannot classify now
+     exits **2**, where the three tools previously did three different things, none
+     of them designed:
 
-     None of the three base values was designed, 2 is argparse's and the eleven
-     console scripts' already, and reverting would mean not giving these tools a
-     parser, which is the PR. Recorded because §6.4 freezes CLI exit codes without
-     distinguishing a valid invocation's status from what a malformed one happens to
-     produce, and this PR read that distinction into it rather than being given it.
-     **Owner: open — a ruling on whether the freeze covers usage errors would settle
-     this for whatever tool comes next.**
+     | tool | a bad flag at `3d044b2` | now |
+     |---|---|---|
+     | `crlf` | exit **1** — the flag became a filename and the run died in `FileNotFoundError` | exit 2 |
+     | `shelf_consistency_check` | exit **0** — the flag became a path that does not exist, was walked to nothing, and the run reported clean (entry 134) | exit 2 |
+     | `show_opus_products` | exit **1** — `KeyError` on the holdings environment, at import, before argparse existed. Only with a root unset; with both set its usage errors are byte-identical base to head | exit 2 |
+
+     What carried the ruling was that the eleven already-migrated console scripts
+     all exit 2 on a bad flag today, so this brings the last three **into** line
+     rather than moving them away from anything. The owner's words were "accept
+     consistency change".
+
+     **The general rule the ruling establishes, so the next tool does not
+     re-litigate it: the exit-code freeze covers what a *valid* invocation returns,
+     not what a *malformed* command line happens to produce.** A status that falls
+     out of an uncaught exception, or out of a tool treating an unrecognized
+     argument as data, was never a designed part of the surface and is not what the
+     freeze protects. §6.4's hard-stop list and the Phase 6 preamble both carry that
+     distinction now, so neither reads as contradicting this.
+     **Owner: resolved 2026-08-07, not open.**
 
 136. **`crlf` prints no summary at all when it repairs more than one file.** The
      summary block reads `if repairs: if repairs == 1: print(f'{repairs}/{nfiles}
