@@ -26,16 +26,16 @@ table goes into a data module of its own.
 | `_common.py` | 337 | 370 |
 | `_archives_common.py` | 242 | 242 |
 | `_shelf_common.py` | 539 | 523 |
-| `_indexshelf_common.py` | — | 617 |
-| `_linkshelf_common.py` | — | 712 |
-| `pds3/pdsindexshelf.py` | 548 | 52 |
-| `pds4/pds4indexshelf.py` | 538 | 56 |
+| `_indexshelf_common.py` | — | 619 |
+| `_linkshelf_common.py` | — | 729 |
+| `pds3/pdsindexshelf.py` | 548 | 53 |
+| `pds4/pds4indexshelf.py` | 538 | 57 |
 | `pds3/pdslinkshelf.py` | 1,730 | 471 |
 | `pds4/pds4linkshelf.py` | 1,224 | 524 |
 | `pds3/linkshelf_repairs.py` | — | 555 |
-| **total** | **5,158** | **4,122** |
+| **total** | **5,158** | **4,143** |
 
-The four tool modules go from 4,040 lines to 1,103. Every module in the table is
+The four tool modules go from 4,040 lines to 1,105. Every module in the table is
 under deviation (3)'s 1,000-line limit; one module in `holdings_maintenance/` is
 still over it and this PR does not touch it — `pds3/pdsdependency.py`, 1,165 lines
 at both revisions. Deferred entry 66 named three modules over the limit; two of the
@@ -405,13 +405,14 @@ $ wc -l src/pdsfile/holdings_maintenance/_shelf_common.py
 $ wc -l src/pdsfile/holdings_maintenance/_*.py
    242 _archives_common.py
    370 _common.py
-   617 _indexshelf_common.py
-   712 _linkshelf_common.py
+   619 _indexshelf_common.py
+   729 _linkshelf_common.py
    523 _shelf_common.py
 ```
 
-(523 + 617 + 712 = 1,852 rather than 1,827: the two new modules each gained an
-11-line header and an import block.)
+The 1,827 is the figure at the moment the split was decided. 523 + 619 + 729 =
+1,871 today: the two new modules each gained a header and an import block, and the
+round-1 fixes added to both.
 
 ### The re-derived rate, and why it should not be used again
 
@@ -423,18 +424,18 @@ PR-27 to re-derive it. It re-derives to something else again:
 |---|---:|---:|---:|
 | PR-25 (archives) | 1,155 | 214 | 18.5% |
 | PR-26 (checksums + infoshelf) | 3,445 | 415 | 12.0% |
-| PR-27 (indexshelf + linkshelf) | 4,040 | 1,329 | 32.9% |
+| PR-27 (indexshelf + linkshelf) | 4,040 | 1,348 | 33.4% |
 
 PR-26's numbers are inherited from entry 98 and `critiques/pr-26-validation.md`
 (`_common.py` 666 → 1,081 with the shared code in it). PR-27's are `wc -l` above.
 
 Entry 98's rate projected **748** lines for these two pairs; the measurement is
-**1,329** — the projection is short by 581 lines, 44% of the measurement. It ran
+**1,348** — the projection is short by 600 lines, 45% of the measurement. It ran
 high for PR-26 and short for PR-27, which is the point:
 the fraction of a pair that can be shared is not a property of the migration, it is a
 property of how alike the two flavors of that particular tool happen to be. The index
-shelf pair was almost identical (56.8% of its 1,086 lines became shared code); the
-link shelf pair was not (24.1% of 2,954, or 29.4% with the `REPAIRS` table excluded
+shelf pair was almost identical (57.0% of its 1,086 lines became shared code); the
+link shelf pair was not (24.7% of 2,954, or 30.1% with the `REPAIRS` table excluded
 from the denominator, because it moved somewhere else entirely).
 
 **What it means for PR-28:** nothing, and not because the rate is unusable. PR-28
