@@ -179,3 +179,28 @@ def test_update_versions_the_shelf_file_it_replaces(shelved_tree):
     assert next(logs.rglob(versions[0])).read_bytes() == first_pickle
     assert next(logs.rglob(versions[1])).read_bytes() == first_sidecar
     assert shelved_tree.path(PICKLE).exists()
+
+
+def test_a_unit_set_target_shelves_its_units_and_skips_a_file_beside_them(fresh_tree):
+    """A unit set expands to the unit directories inside it, and to nothing else.
+
+    Every metadata unit set in real holdings carries an AAREADME.txt beside its
+    unit directories, and metadata is one of the three voltypes a link shelf run is
+    pointed at, so this is the ordinary case rather than an edge one. The file is
+    not a unit and gets no shelf; anything that stopped filtering would try to
+    build one for it.
+    """
+
+    readme = support.add_file(fresh_tree, f'volumes/{subsets.PDS3_VOLSET}/AAREADME.txt',
+                              b'a unit set level readme\r\n', NEW_FILE_MTIME)
+
+    run = support.run_tool(fresh_tree, 'pdslinkshelf', '--initialize',
+                           fresh_tree.path(f'volumes/{subsets.PDS3_VOLSET}'))
+    assert run.returncode == 0, run.describe()
+    assert run.error_lines == [], run.describe()
+
+    assert fresh_tree.path(SIDECAR).exists(), run.describe()
+    shelves = sorted(p.name for p in fresh_tree.path(SHELF_DIR).iterdir())
+    assert shelves == [f'{subsets.PDS3_VOLUME}_links.pickle',
+                       f'{subsets.PDS3_VOLUME}_links.py'], shelves
+    assert readme.stem not in ' '.join(shelves)

@@ -3341,4 +3341,39 @@ these entries are read by the PRs that come after it.
      otherwise verbatim function. It is now a line this PR touched, though, and it
      belongs with the `UP031` residue still ratcheted in both `generate_links`
      functions — one sweep, not two.
+
+     **Wider than one line.** Four more eager-`%` logging calls sit in the two new
+     shared modules — the two "Index shelf file is out of date" lines in
+     `_indexshelf_common.index_repair` and the two "Link shelf file is out of date"
+     lines in `_linkshelf_common.link_repair`. Ruff's `UP031` does not flag any of
+     them, because the operand is a parenthesized expression rather than a plain
+     name, so they are outside the ratchet as well: a sweep that follows the ratchet
+     alone would miss them.
      **Owner: open.**
+
+
+### Added by the PR-27 adversarial review (round 4)
+
+132. **Three behaviours the migration moved are pinned only by the out-of-repo tool
+     transcript.** Probed by mutation against
+     `pytest tests/holdings_maintenance/ --mode ns`, which sat at 297 passed for
+     each: inverting `index_repair`'s `if latest_mtime > shelf_mtime`, which chooses
+     between re-dating an up-to-date shelf and cancelling; and replacing
+     `run_index_main`'s `rpartition`-based log directory with
+     `os.path.split(logfile)[0]`, which is precisely the alternative entry 127
+     rebuts. Both are moved code and pre-existing gaps rather than PR-27
+     regressions, and both are covered by the 81-record transcript, which lives
+     outside the repository. The two mutations PR-27 *did* have to argue for — the
+     backup skip reporting as an error, and `link_targets` filtering a unit set's
+     non-directory children — were in the same state and are now pinned by tests.
+     **Owner: open.**
+
+133. **`index_reinitialize` takes pds4's comment over pds3's.** pds3 wrote
+     `# ing if shelf file does not exist`, a mangling of pds4's
+     `# Warn if shelf file does not exist`; the merged function has pds4's. Like the
+     dead `move_old` call PR-27 enumerates as change 10, this is a difference only
+     one of the two flavors had, so merging had to pick. Recorded because PR-27's
+     enumeration rule covers log and output text and says nothing about comments,
+     and this is the one comment in the migration where the merge made a choice
+     rather than carrying a block along with its code.
+     **Owner: recorded, not open.**

@@ -215,11 +215,15 @@ enumerated changes and 594 lines. "78% low" is replaced by the unambiguous form:
 the projection was short of the measurement.
 
 Round 2 then found two things about this fix. The replacement had missed deferred
-entry 123, and the figures it used — 1,329 shared lines, 32.9%, short by 581 —
-were themselves stale, having been taken before this round's own fixes grew both
-family modules. The current figures everywhere are **1,348**, **33.4%**, short by
-**600**; no earlier figure survives in any record, deliberately, because a
-superseded number in a permanent artifact is a trap rather than history.
+entry 123, and the figures it used were themselves stale, having been taken before
+this round's own fixes grew both family modules. Round 4 then found that this
+paragraph had restated the corrected figures and gone stale in turn.
+
+**So it does not restate them.** The live measurement of the shared-code total, its
+rate and the projection gap is in `critiques/pr-27-validation.md` §6 and nowhere
+else; the plan's PR-27 entry and deferred entry 123 repeat it and are checked
+against the tree mechanically. A round record that carries its own copy of a number
+the tree can move is a trap, which is the lesson three rounds took to learn.
 
 ### d1, d2 — Deferred, recorded.
 

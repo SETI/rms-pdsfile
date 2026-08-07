@@ -64,9 +64,11 @@ invalidated.
   count for all 32 differing records**, summing to 594, each reproducible with one
   `diff | grep -c`, plus the classifier's rules in prose.
 - **m5** — change 9 is a control-flow change with nothing pinning it.
-  `test_validate_links_propagates_an_exception_raised_inside_it` now pins it, with
+  `test_validate_links_logs_and_reraises_an_exception_raised_inside_it` now pins it,
+  with
   a `sort()` that raises to reach a branch no scenario can. Negative control:
-  restoring the `finally: return` fails that test alone.
+  restoring the `finally: return` fails that test alone. (Round 3 renamed it and
+  made it assert the logging half too.)
 - **m6** — `run_main` now calls `set_log_dirs()` for the archives pair too.
   Enumerated as a no-op, with why it is kept rather than made conditional.
 - **m7** — two parametrize arguments the first `test_shelf_common.py` test never

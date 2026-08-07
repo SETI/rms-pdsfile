@@ -124,10 +124,27 @@ in its spec. So does the pattern that recognizes a label's reference to its data
 file (`ToolSpec.link_target_regex`): `^ *\^?\w+ *= *…` for PDS3,
 `^ *<file_name>…</file_name>` for PDS4.
 
-Measured before any of it was written, with an AST walk over both modules and
-`difflib.SequenceMatcher` on each function's source: every link shelf function
-except `generate_links` scored 0.95 or better between the two flavors, and
-`generate_links` scored 0.82. That is the seam.
+The seam was found with an AST walk over both base modules and
+`difflib.SequenceMatcher` on each function's source, before any of it was written.
+The full distribution, since a summary of it was wrong once:
+
+```
+1.000 locate_link_with_path   1.000 LinkInfo        1.000 read_links
+0.998 load_links              0.998 write_linkdict  0.979 locate_nonlocal_link
+0.947 validate_links          0.905 update          0.894 repair
+0.877 validate                0.825 generate_links  0.760 reinitialize
+0.666 initialize
+```
+
+An earlier draft of this paragraph said "every link shelf function except
+`generate_links` scored 0.95 or better". Six of the thirteen do not, and the five
+task functions sit *below* `generate_links` — which is the ratio being a bad
+discriminator on short functions rather than a seam in a different place. `pds4`'s
+tasks are shorter than `pds3`'s only because they thread no `limits`; `initialize`
+scores 0.666 on 15 lines against 23. What actually settled the seam is the
+line-by-line diff of every function against **both** originals, which §5 and its
+no-op list enumerate: `generate_links` is the only one whose two bodies differ in
+what they do rather than in how much they say.
 
 ### The `REPAIRS` move, and the asymmetry that is deliberate
 
@@ -519,7 +536,7 @@ pytest tests/pds3file/ tests/rules/pds3/ --mode s -rA --junitxml=…
 
 | | base | head |
 |---|---|---|
-| `--mode ns` | 1,079 ids — 1,045 passed, 34 skipped | 1,095 ids — 1,061 passed, 34 skipped |
+| `--mode ns` | 1,079 ids — 1,045 passed, 34 skipped | 1,097 ids — 1,063 passed, 34 skipped |
 | `--mode s` | 558 ids — 555 passed, 3 skipped | 558 ids — 555 passed, 3 skipped |
 
 The comparison is of the per-test **id-to-outcome map**, parsed out of the two
@@ -532,16 +549,17 @@ The comparison is of the per-test **id-to-outcome map**, parsed out of the two
 - **1 id removed**, deliberate:
   `test_pds4_linkshelf::test_update_is_broken_and_repair_is_the_working_path`, the
   entry-4 pin, inverted in §4.
-- **17 ids added**, all passing: the inverted pin as
+- **19 ids added**, all passing: the inverted pin as
   `test_update_picks_up_a_new_file`, the two tests added beside it
   (`test_repair_also_picks_up_a_new_file`,
   `test_update_and_repair_agree_on_the_shelved_links`),
   `test_re_validate::test_the_sibling_tools_really_accept_what_this_module_calls_them_with`
   (§7.4), eight parameter cases of the two `test_shelf_common.py` tests over the
-  four migrated tools, the four `TestLinkTextOf` tests, and
-  `test_validate_links_propagates_an_exception_raised_inside_it`. The last thirteen
-  came out of the two review rounds (`critiques/pr-27/round-1.md` CodeRabbit
-  finding 5 and reviewer m3; `critiques/pr-27/round-2.md` m5).
+  four migrated tools, the four `TestLinkTextOf` tests,
+  `test_validate_links_logs_and_reraises_an_exception_raised_inside_it`, and the two
+  round-4 tests that pin the backup skip's exit code and `link_targets`'s filtering.
+  The last fifteen came out of the review rounds (`round-1.md` CodeRabbit finding 5
+  and reviewer m3; `round-2.md` m5; `round-4.md` Deferred 2 and 3).
 
 The base figures were measured here, not inherited; they match the ones PR-26
 reported (1,079 and 558) exactly.
@@ -657,7 +675,7 @@ records are byte-identical: nothing else these tools write changed.
 
 - **`scripts/run-all-checks.sh -c -s`, with no holdings variables set** and
   `VENV=/seti/all_repos/rms-pdsfile/venv`: all checks passed. The pytest gate
-  reported `no holdings: holdings-free subset only` and `281 passed, 814 skipped`;
+  reported `no holdings: holdings-free subset only` and `281 passed, 816 skipped`;
   ruff check, ruff indentation, pyroma, API freeze and the clean-install gate all
   passed.
 - **`pytest tests/api --mode ns`: 26 passed.** The four frozen files are
@@ -780,14 +798,18 @@ quoted field. Ruff flags neither, and both stay as the author wrote them.
 
 ## 10. When each record was taken
 
-Source under `src/pdsfile/` changed in every review round: CodeRabbit's findings 3
-and 4 and the adversarial reviewer's m5 and m6 in round 1, m3's docstring in round
-2, and nothing in round 3, whose fixes were to the records and one test. §6.6's
-regeneration rule applies each time, so the `--mode ns` run, the `--mode s` run and
-the 81-record tool transcript above were **all re-taken at the final head** rather
-than carried forward, and the base-versus-base control was re-run with them.
+Source under `src/pdsfile/` changed in all four review rounds: CodeRabbit's
+findings 3 and 4 and the adversarial reviewer's m5 and m6 in round 1, m3's
+docstring in round 2, three stale comments in round 3, and nothing in round 4,
+whose fixes were to the records and to `tests/`. §6.6's regeneration rule applies
+each time, so the `--mode ns` run, the `--mode s` run and the 81-record tool
+transcript above were **all re-taken after the last of them** rather than carried
+forward, and the base-versus-base control was re-run with them. The last change
+under `src/pdsfile/` is round 3's, and it is comment- and docstring-only, so no
+transcript line could have moved by it; the transcript was re-taken anyway, which
+is what the rule asks and is why the claim is checkable rather than argued.
 
-The `--mode ns` id count moved from 1,079 at the base to 1,095 with the seventeen
+The `--mode ns` id count moved from 1,079 at the base to 1,097 with the nineteen
 added tests, still with zero outcome changes for any id present in both runs.
 
 **The line tables are written last, on purpose.** Three rounds running, a record
@@ -796,7 +818,18 @@ commit that changed a module, or a duplication figure restated after the functio
 it measures had moved. The order that fixes it is: source, then the gates, then the
 tables, then a mechanical re-check of every reproducible number in this record, the
 plan's PR-27 entry and deferred entries 66, 114, 123 and 130 against the tree.
-Every number in the list below was produced that way and re-checked at this head:
-the ten line counts and their total, the four-tool total, the shared-code figure
-and its projection gap, the split addition, the `pdsdependency` exception, the
-ratchet entries, slots and findings, and both driver duplication measurements.
+The check is `critiques/pr-27/check_record_numbers.py`, which lives beside this
+record so that it is reproducible rather than asserted:
+
+```
+$ python critiques/pr-27/check_record_numbers.py
+0 number(s) do not reproduce
+```
+
+It re-derives, from the tree, the ten line counts and their total, the four-tool
+total, the shared-code figure with its projection gap and all three per-pair rates,
+the split addition, the `pdsdependency` exception, the ratchet entries, slots and
+findings, and both driver duplication measurements — and checks each against this
+record, the plan's PR-27 entry and deferred entries 66, 114, 123 and 130 wherever
+they repeat it. Four rounds running, that is what was missing: the code had five
+gates and the record had none.
