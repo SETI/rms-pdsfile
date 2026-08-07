@@ -210,6 +210,53 @@ def build_arg_parser(spec):
     return parser
 
 
+def setup_run(spec, argv):
+    """Turn a command line into parsed arguments and a logger ready to write.
+
+    Every driver begins here, so the log root, the console handler and the root
+    handlers are wired the same way whichever driver a tool reaches.
+
+    Args:
+        spec: The tool's ToolSpec.
+        argv: The full command line, sys.argv.
+
+    Returns:
+        tuple: The parsed command line, and the PdsLogger with the tool's log root
+        set and its root handlers attached. The exit status is not among them: it
+        belongs to the run the caller is about to make, not to this setup.
+
+    Raises:
+        SystemExit: With status 1 when the command line names no task, so a caller
+        that returns from here has one to run.
+    """
+
+    parser = build_arg_parser(spec)
+
+    # Parse and validate the command line
+    args = parser.parse_args(argv[1:])
+
+    if not args.task:
+        print(spec.progname + ' error: Missing task')
+        sys.exit(1)
+
+    # Define the logging directory
+    resolve_log_root(args)
+
+    # Initialize the logger
+    logger = pdslogger.PdsLogger(spec.logname)
+    spec.pdsfile_cls.set_log_root(args.log)
+
+    if not args.quiet:
+        logger.add_handler(pdslogger.stdout_handler)
+
+    if args.log:
+        path = os.path.join(args.log, spec.progname)
+        for make_handler in spec.handler_factories:
+            logger.add_handler(make_handler(path))
+
+    return args, logger
+
+
 def log_paths_for(pdsf, method, *args, **kwargs):
     """Return the paths one target's run writes its log to, in order.
 
@@ -281,31 +328,9 @@ def run_main(spec, tasks, argv):
             reached.
     """
 
-    parser = build_arg_parser(spec)
-
-    # Parse and validate the command line
-    args = parser.parse_args(argv[1:])
-
-    if not args.task:
-        print(spec.progname + ' error: Missing task')
-        sys.exit(1)
+    (args, logger) = setup_run(spec, argv)
 
     status = 0
-
-    # Define the logging directory
-    resolve_log_root(args)
-
-    # Initialize the logger
-    logger = pdslogger.PdsLogger(spec.logname)
-    spec.pdsfile_cls.set_log_root(args.log)
-
-    if not args.quiet:
-        logger.add_handler(pdslogger.stdout_handler)
-
-    if args.log:
-        path = os.path.join(args.log, spec.progname)
-        for make_handler in spec.handler_factories:
-            logger.add_handler(make_handler(path))
 
     # Generate a list of pdsfiles for the target directories
     pdsdirs = []

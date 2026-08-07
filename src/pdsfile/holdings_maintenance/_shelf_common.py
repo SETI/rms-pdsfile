@@ -420,31 +420,9 @@ def run_selection_main(spec, tasks, argv):
             paths. A task that raises is logged and re-raised.
     """
 
-    parser = _common.build_arg_parser(spec)
-
-    # Parse and validate the command line
-    args = parser.parse_args(argv[1:])
-
-    if not args.task:
-        print(spec.progname + ' error: Missing task')
-        sys.exit(1)
+    (args, logger) = _common.setup_run(spec, argv)
 
     status = 0
-
-    # Define the logging directory
-    _common.resolve_log_root(args)
-
-    # Initialize the logger
-    logger = pdslogger.PdsLogger(spec.logname)
-    spec.pdsfile_cls.set_log_root(args.log)
-
-    if not args.quiet:
-        logger.add_handler(pdslogger.stdout_handler)
-
-    if args.log:
-        path = os.path.join(args.log, spec.progname)
-        for make_handler in spec.handler_factories:
-            logger.add_handler(make_handler(path))
 
     # Prepare the list of paths, then the list of tuples (pdsfile, selection)
     abspaths = resolve_holdings_paths(spec, getattr(args, spec.unit),
