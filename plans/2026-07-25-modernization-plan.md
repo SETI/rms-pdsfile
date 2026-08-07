@@ -944,9 +944,9 @@ module, `pds3/linkshelf_repairs.py`, imported by the thin linkshelf tool.
 - **The split fired again, on its own measurement.** With both families' shared
   code in it, `_shelf_common.py` measured **1,827** lines against deviation (3)'s
   1,000-line limit, so it split by family: `_shelf_common.py` (523),
-  `_indexshelf_common.py` (619), `_linkshelf_common.py` (729). Entry 98's *rate*
-  projected 748 lines for these two pairs and the measurement is 1,348 — the
-  projection was short by 600 lines, 45% of the measurement, having run high for
+  `_indexshelf_common.py` (620), `_linkshelf_common.py` (729). Entry 98's *rate*
+  projected 748 lines for these two pairs and the measurement is 1,349 — the
+  projection was short by 601 lines, 45% of the measurement, having run high for
   PR-26, because how much of a pair can be shared depends on how alike its two
   flavors happen to be, not on a rate. The four tool modules go
   from 4,040 lines to 1,105.

@@ -3008,7 +3008,7 @@ these entries are read by the PRs that come after it.
 
      **Re-measured by PR-27.** With both of this PR's families in it,
      `_shelf_common.py` measured 1,827 lines, so entry 98's rule fired and it split
-     by family: `_shelf_common.py` 523, `_indexshelf_common.py` 619,
+     by family: `_shelf_common.py` 523, `_indexshelf_common.py` 620,
      `_linkshelf_common.py` 729. The two disjoint audiences are still there and the
      file is smaller than when this entry was written: 523 lines holding the
      versioning helpers six tools reach regardless of driver, plus
@@ -3210,11 +3210,11 @@ these entries are read by the PRs that come after it.
      across the three Phase-6 migrations: 18.5% (archives, the entry's own basis),
      12.0% (checksums + infoshelf, PR-26), 33.4% (indexshelf + linkshelf, PR-27).
      It ran high for one PR and short for the next — entry 98 projected 748 lines
-     for PR-27's two pairs and the measurement is 1,348, so the projection missed by
-     600 lines, 45% of what was there.
+     for PR-27's two pairs and the measurement is 1,349, so the projection missed by
+     601 lines, 45% of what was there.
 
      The reason is visible in the two pairs PR-27 migrated: the index shelf pair was
-     almost identical between flavors (57.0% of its 1,086 lines became shared code),
+     almost identical between flavors (57.1% of its 1,086 lines became shared code),
      and the link shelf pair was not (24.7% of 2,954), because `generate_links` is
      the one function where a PDS3 label and a PDS4 label genuinely say different
      things. How much of a pair can be shared depends on how alike its two flavors
@@ -3316,9 +3316,11 @@ these entries are read by the PRs that come after it.
      rotation rule can be written against.
      **Owner: open.**
 
-130. **The `run_index_main` driver is 67% a copy of `run_main`.** With docstrings
-     stripped, `run_index_main` is 67 lines against `run_main`'s 66 and 45 of them
-     are line-identical. Two of the four differences are forced — the per-target
+130. **The `run_index_main` driver is about two thirds a copy of `run_main`.**
+     Measured with each function's docstring, blank lines and `def` line dropped and
+     the longest common subsequence taken: `run_index_main` is 69 lines against
+     `run_main`'s 66, with 44 line-identical — 64%. `run_selection_main`, PR-26's
+     second driver, is 78 lines with 46 identical — 59%. Two of the four differences are forced — the per-target
      backup skip, which has to sit inside the log hierarchy to reach the exit
      status, and the log directory, which is the tool's own rather than the
      target's — and two are preservation: the quoted task header both index tools

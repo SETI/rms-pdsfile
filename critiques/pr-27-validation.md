@@ -23,17 +23,17 @@ table goes into a data module of its own.
 
 | module | base | head |
 |---|---:|---:|
-| `_common.py` | 337 | 371 |
+| `_common.py` | 337 | 372 |
 | `_archives_common.py` | 242 | 242 |
 | `_shelf_common.py` | 539 | 523 |
-| `_indexshelf_common.py` | — | 619 |
+| `_indexshelf_common.py` | — | 620 |
 | `_linkshelf_common.py` | — | 729 |
 | `pds3/pdsindexshelf.py` | 548 | 53 |
 | `pds4/pds4indexshelf.py` | 538 | 57 |
 | `pds3/pdslinkshelf.py` | 1,730 | 471 |
 | `pds4/pds4linkshelf.py` | 1,224 | 524 |
 | `pds3/linkshelf_repairs.py` | — | 555 |
-| **total** | **5,158** | **4,144** |
+| **total** | **5,158** | **4,146** |
 
 The four tool modules go from 4,040 lines to 1,105. Every module in the table is
 under deviation (3)'s 1,000-line limit; one module in `holdings_maintenance/` is
@@ -79,13 +79,30 @@ makes one `index_targets()` serve both flavors (`*.tab` / `*.csv`, and the
 `No .tab files in directory:` message). So are `log_path_method` and `log_suffix`,
 which this driver honours rather than hardcoding.
 
-**What the third driver costs, measured.** With docstrings stripped,
-`run_index_main` is 67 lines against `run_main`'s 66, and 45 of them are
-line-identical — 67% duplication, the same trade PR-26 made for
-`run_selection_main`. Of the four ways the two drivers differ, two are forced (the
-backup skip, and the log directory) and **two are preservation**: the index tools
-write `Task "initialize" for` with quotes, which is what both of them wrote at the
-base and what `run_main` does not write, and they pass the logger to the task
+**What the third driver costs, measured at this PR's final head.** Each function
+extracted by AST, its docstring and blank lines dropped, its `def` line dropped,
+and the longest common subsequence of what is left taken against `run_main`:
+
+```
+run_index_main    : run_main 66 lines, run_index_main 69 lines,
+                    44 line-identical = 64% of run_index_main
+run_selection_main: run_main 66 lines, run_selection_main 78 lines,
+                    46 line-identical = 59% of run_selection_main
+```
+
+So the third driver duplicates about the same fraction of `run_main` as PR-26's
+second one does — the same trade, made a second time. (An earlier draft of this
+paragraph said 67 / 45 / 67%. That was measured before the first review round's
+own fixes changed `run_index_main`: dropping the dead `set_log_dirs` call and
+reading `log_path_method` / `log_suffix` from the spec took it to 69 lines with 44
+identical. The figure was restated three times before being re-derived, which is
+recorded rather than quietly corrected because it is the measurement that
+justifies the driver existing.)
+
+Of the four ways the two drivers differ, two are forced (the backup skip, and the
+log directory) and **two are preservation**: the index tools write
+`Task "initialize" for` with quotes, which is what both of them wrote at the base
+and what `run_main` does not write, and they pass the logger to the task
 explicitly, which is what `pds4indexshelf` did. Unifying either would have cost a
 log line these tools have always written, or a `run_main` change reaching the
 archives pair. Recorded so the count is four rather than one.
@@ -436,14 +453,14 @@ $ wc -l src/pdsfile/holdings_maintenance/_shelf_common.py
 ```
 $ wc -l src/pdsfile/holdings_maintenance/_*.py
    242 _archives_common.py
-   371 _common.py
-   619 _indexshelf_common.py
+   372 _common.py
+   620 _indexshelf_common.py
    729 _linkshelf_common.py
    523 _shelf_common.py
 ```
 
-The 1,827 is the figure at the moment the split was decided. 523 + 619 + 729 =
-1,871 today: the two new modules each gained a header and an import block, and the
+The 1,827 is the figure at the moment the split was decided. 523 + 620 + 729 =
+1,872 today: the two new modules each gained a header and an import block, and the
 round-1 fixes added to both.
 
 ### The re-derived rate, and why it should not be used again
@@ -456,17 +473,17 @@ PR-27 to re-derive it. It re-derives to something else again:
 |---|---:|---:|---:|
 | PR-25 (archives) | 1,155 | 214 | 18.5% |
 | PR-26 (checksums + infoshelf) | 3,445 | 415 | 12.0% |
-| PR-27 (indexshelf + linkshelf) | 4,040 | 1,348 | 33.4% |
+| PR-27 (indexshelf + linkshelf) | 4,040 | 1,349 | 33.4% |
 
 PR-26's numbers are inherited from entry 98 and `critiques/pr-26-validation.md`
 (`_common.py` 666 → 1,081 with the shared code in it). PR-27's are `wc -l` above.
 
 Entry 98's rate projected **748** lines for these two pairs; the measurement is
-**1,348** — the projection is short by 600 lines, 45% of the measurement. It ran
+**1,349** — the projection is short by 601 lines, 45% of the measurement. It ran
 high for PR-26 and short for PR-27, which is the point:
 the fraction of a pair that can be shared is not a property of the migration, it is a
 property of how alike the two flavors of that particular tool happen to be. The index
-shelf pair was almost identical (57.0% of its 1,086 lines became shared code); the
+shelf pair was almost identical (57.1% of its 1,086 lines became shared code); the
 link shelf pair was not (24.7% of 2,954, or 30.1% with the `REPAIRS` table excluded
 from the denominator, because it moved somewhere else entirely).
 
@@ -724,9 +741,10 @@ rather than ratcheted, since a new per-file-ignores key is a widen:
   and `'"%s")' % interior_path`. `%s` and an f-string both call `str()`, so these
   are no-ops for every operand.
 
-Two `%s` sites were **not** converted and are the reason `write_linkdict` still has
-`%`-formatting: `'"%s, ' % (basename + '"' + …)` pads inside the quoted field, and
-ruff does not flag it. It stays as the author wrote it.
+Two `%s` sites were **not** converted, one in each module, and they are why both
+still contain `%`-formatting: `write_linkdict`'s `'"%s, ' % (basename + '"' + …)`
+and `write_indexdict`'s `'    "%s: ' % (key + '"' + …)`, each padding inside a
+quoted field. Ruff flags neither, and both stay as the author wrote them.
 
 ## 9. Decisions the owner might make differently
 

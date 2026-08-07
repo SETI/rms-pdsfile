@@ -12,6 +12,7 @@
 import datetime
 import inspect
 
+import pdslogger
 import pytest
 
 import pdsfile
@@ -314,8 +315,8 @@ class TestLinkTextOf:
 # What validate_links does with an exception
 ##########################################################################################
 
-def test_validate_links_propagates_an_exception_raised_inside_it(tmp_path,
-                                                                 monkeypatch):
+def test_validate_links_logs_and_reraises_an_exception_raised_inside_it(tmp_path,
+                                                                       monkeypatch):
     """It logs and re-raises; it does not swallow.
 
     The pds3 flavor used to end `finally: return logger.close()`, and a `return` in
@@ -324,6 +325,10 @@ def test_validate_links_propagates_an_exception_raised_inside_it(tmp_path,
     function takes the pds4 form, which propagates. Nothing in a real run reaches
     this branch, which is exactly why it needs a test rather than a scenario: the
     body only sorts and compares dictionaries, so the raise has to be arranged.
+
+    Both halves are asserted. The `except` clause is the only thing that logs the
+    exception, and the `finally` is the only thing that used to discard it, so a
+    test that checked one and not the other would pass against half the function.
     """
 
     class Exploding(list):
@@ -336,10 +341,17 @@ def test_validate_links_propagates_an_exception_raised_inside_it(tmp_path,
     monkeypatch.setattr(spec.pdsfile_cls, 'from_abspath',
                         classmethod(lambda cls, path: _StubPdsdir()))
 
+    logfile = tmp_path / 'run.log'
+    logger = pdslogger.PdsLogger('pds.test.' + tmp_path.name)
+    logger.add_handler(pdslogger.file_handler(str(logfile)))
+
     key = str(tmp_path / 'A.LBL')
     with pytest.raises(RuntimeError, match='sorting a link list failed'):
         _linkshelf_common.validate_links(spec, str(tmp_path),
-                                         {key: Exploding()}, {key: Exploding()})
+                                         {key: Exploding()}, {key: Exploding()},
+                                         logger=logger)
+
+    assert 'sorting a link list failed' in logfile.read_text()
 
 
 class _StubPdsdir:

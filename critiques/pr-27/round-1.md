@@ -198,12 +198,15 @@ entry 113 is at eight copies, not ten. Both the entry and §9.6 corrected.
 
 ### m9 — the third driver is 67% duplicated and two of four differences are choices. Fixed by recording.
 
-Measured independently and confirmed: 45 of `run_index_main`'s 67 stripped lines are
-line-identical with `run_main`'s 66. Two differences are forced, two are
-preservation — the quoted task header both index tools wrote at the base, and
-passing the logger explicitly. §2 now gives the count as four and says which is
-which; deferred entry 130 records that this is the second time the trade has been
-made and that a third would be worth stopping for.
+Measured independently and confirmed at the head this round reviewed: 45 of
+`run_index_main`'s 67 stripped lines were line-identical with `run_main`'s 66. This
+round's own m5 and m6 fixes then changed `run_index_main`, and round 3 found the
+figure had not been re-derived; at the final head it is **44 of 69**, 64%. Two
+differences are forced, two are preservation — the quoted task header both index
+tools wrote at the base, and passing the logger explicitly. §2 now gives the count
+as four, says which is which, and carries the re-derived measurement; deferred
+entry 130 records that this is the second time the trade has been made and that a
+third would be worth stopping for.
 
 ### m10 — plan/record mismatch. Fixed.
 
