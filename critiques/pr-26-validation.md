@@ -289,7 +289,7 @@ family, until the first family whose extraction takes `_common.py` past deviatio
 (3)'s 1,000-line limit, which splits it, the driver staying put.
 
 **The measurement crossed, so the split happened.** With the shared checksum and
-infoshelf code added and before any split:
+infoshelf code added to `_common.py` and before any split:
 
 ```
 $ wc -l src/pdsfile/holdings_maintenance/_common.py
@@ -299,16 +299,36 @@ $ wc -l src/pdsfile/holdings_maintenance/_common.py
 1,081 against a limit of 1,000. Deviation (3) names the module-length waiver list
 explicitly and says the maintenance tools are **not** on it.
 
-After the split:
+**That figure is a measurement of an intermediate working state that was never
+committed**, so it cannot be checked out and re-measured; it is stated here as
+what triggered the decision. It is reconstructible from the committed tree to
+within the changes made since. Reconstructing at this PR's final head — the three
+modules' total, less the two new modules' banner headers and import blocks, which
+an unsplit file would not carry twice:
+
+```
+_common.py           337
+_archives_common.py  242   (17-line header + imports)
+_shelf_common.py     533   (23-line header + imports)
+total               1112   1112 - 40 = 1072
+```
+
+1,072 rather than 1,081, the 9-line difference being the round-2 review fixes
+(a widened docstring on `modtimes_agree`, a rewritten `LOGDIRS` comment, and two
+blank lines removed from `_common.py`). Both numbers are over 1,000, which is the
+only thing the decision turned on, and neither is close enough to the limit for
+the difference to matter.
+
+After the split, at this PR's final head:
 
 ```
 $ wc -l src/pdsfile/holdings_maintenance/_common.py \
         src/pdsfile/holdings_maintenance/_archives_common.py \
         src/pdsfile/holdings_maintenance/_shelf_common.py
-  339 _common.py
-  241 _archives_common.py
-  529 _shelf_common.py
- 1109 total
+  337 _common.py
+  242 _archives_common.py
+  533 _shelf_common.py
+ 1112 total
 ```
 
 `_common.py` keeps what every family shares — `ToolSpec`, `TASK_FLAGS`, the help
