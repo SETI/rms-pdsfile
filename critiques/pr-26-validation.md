@@ -322,11 +322,21 @@ _shelf_common.py     533   (23-line header + imports)
 total               1112   1112 - 40 = 1072
 ```
 
-1,072 rather than 1,081, the 9-line difference being the round-2 review fixes
-(a widened docstring on `modtimes_agree`, a rewritten `LOGDIRS` comment, and two
-blank lines removed from `_common.py`). Both numbers are over 1,000, which is the
-only thing the decision turned on, and neither is close enough to the limit for
-the difference to matter.
+1,072 rather than 1,081. **The 9-line residual is not the round-2 review fixes**,
+which was this record's first explanation and was wrong in both size and sign:
+round 2 is a net **+3** lines across the three modules, so backing it out moves
+the reconstruction to 1,069 and widens the gap rather than closing it.
+
+The residual is what the split itself dropped. Base's `_common.py` carried two
+inner section banners — `# Archive tools` at `:341-343` and `# Checksum and shelf
+file tools` at `:555-557`, each three lines plus the blank line after it — and the
+split removed both, because each new module's own header took over that role. The
+reconstruction subtracts those headers as part of each module's preamble, so the
+eight lines do not come back, and the ninth is a blank line normalized around the
+function that moved to `_archives_common.py`.
+
+Both numbers are over 1,000, which is the only thing the decision turned on, and
+neither is close enough to the limit for the difference to matter.
 
 After the split, at this PR's final head:
 
@@ -372,10 +382,12 @@ re-deriving it.
 The hosted lint/no-holdings figure moved from the baseline of 250 passed / 804
 skipped, which was **re-measured at base and confirmed exactly** rather than
 inherited. Head is 264 passed / 812 skipped, and the whole difference is
-accounted for: `test_shelf_common.py` adds 14 holdings-free tests (+14 passed),
-and eight new holdings-dependent tests skip without a tree (+8 skipped) — four in
-`test_pds3_checksums.py`, two in `test_pds3_infoshelf.py`, one in
-`test_pds4_checksums.py` and one in `test_pds4_infoshelf.py`.
+accounted for by an id-set diff of the two runs: 2 ids removed, 24 added, **zero
+outcome changes**. Of the 24 added, 14 pass — all of `test_shelf_common.py`, which
+is holdings-free — and 10 skip for want of a tree: four in
+`test_pds3_checksums.py`, four in `test_pds3_infoshelf.py`, one in
+`test_pds4_checksums.py`, one in `test_pds4_infoshelf.py`. The 2 removed were
+skipping, so the net is +14 passed and +8 skipped.
 
 ## 7. Data runs
 
