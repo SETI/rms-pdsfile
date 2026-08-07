@@ -11,6 +11,19 @@ on:
   schedule:
     - cron: "00 08 * * *"   # 12am PST, 1am PDT
 
+# One run per pull request at a time: a new push cancels the run still going for
+# the previous commit. The data jobs need four of the five self-hosted runners at
+# once, so two live runs on one PR queue behind each other and only the newer one
+# is worth waiting for.
+#
+# Cancelling is limited to pull_request. The nightly schedule, pushes to main and
+# manual dispatches share the same runners but supersede nothing, so they group by
+# ref and are left to finish. The pull_request group keys on the PR number rather
+# than the ref so that it is stable if the branch is renamed.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 defaults:
   run:
     shell: bash
