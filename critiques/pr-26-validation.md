@@ -262,7 +262,7 @@ re-deriving it.
 |---|---|
 | Full-data `--mode ns` | see §7 |
 | Full-data `--mode s` | see §7 |
-| `run-all-checks.sh -c -s`, no holdings env vars | **All checks passed** (ruff, pytest 264 passed / 810 skipped, pyroma 10/10, API freeze, clean-install) |
+| `run-all-checks.sh -c -s`, no holdings env vars | **All checks passed** (ruff, pytest 264 passed / 812 skipped, pyroma 10/10, API freeze, clean-install) |
 | `tests/api` | 26 passed |
 | The four frozen files | byte-identical to `56b8823` (§8) |
 | `ruff check .` (configured) | All checks passed |
@@ -271,11 +271,13 @@ re-deriving it.
 | Four-tool run at base and head | §7 |
 | `bandit`/`vulture` | `ENABLE_*=false` and not installed. **Not run.** Nothing is claimed about them. |
 
-The hosted lint/no-holdings figure moved from the inherited baseline of 250
-passed / 804 skipped, which was re-measured at base and confirmed exactly. Head is
-264 passed / 810 skipped: `test_shelf_common.py` adds 14 holdings-free tests
-(+14 passed) and the six new holdings-dependent tests skip without a tree
-(4 in `test_pds3_checksums.py`, 2 in `test_pds3_infoshelf.py`; +6 skipped).
+The hosted lint/no-holdings figure moved from the baseline of 250 passed / 804
+skipped, which was **re-measured at base and confirmed exactly** rather than
+inherited. Head is 264 passed / 812 skipped, and the whole difference is
+accounted for: `test_shelf_common.py` adds 14 holdings-free tests (+14 passed),
+and eight new holdings-dependent tests skip without a tree (+8 skipped) — four in
+`test_pds3_checksums.py`, two in `test_pds3_infoshelf.py`, one in
+`test_pds4_checksums.py` and one in `test_pds4_infoshelf.py`.
 
 ## 7. Data runs
 
