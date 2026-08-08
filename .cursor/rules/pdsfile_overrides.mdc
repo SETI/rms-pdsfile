@@ -47,6 +47,17 @@ conflicts with a rule below, follow the rule below. See
    total-line limit, documenting a module is a reason to split it, which is
    backwards.
 
+   The cost is not the same for every kind of module, and the spread is wide enough
+   that a projection has to be made per module rather than taken from an average.
+   Measured over the modules already documented, a function docstring runs 15.2
+   lines in the five public modules, 24.5 in the nine private ones and 17.3 across
+   `_properties.py`'s 68 members. What makes that last figure add up to 1,175 lines
+   is the count, not the length: a property's docstring has to say what the value is
+   before first access, which other slots reading it fills, what a non-existent file
+   yields, and whether a merged directory or an index row reaches the body at all,
+   and none of that is visible in a signature that takes no arguments and returns
+   one value.
+
    `critiques/pr-29a/measure_module_lines.py` measures both, so this is checkable
    rather than asserted. **No gate enforces it.** `run-all-checks.sh` has no
    module-length check and neither does CI; wiring one up is a decision nobody has
@@ -59,7 +70,7 @@ conflicts with a rule below, follow the rule below. See
    | file | total | docstring | code | over |
    |---|---:|---:|---:|---|
    | `src/pdsfile/pdsfile.py` | 2,435 | 781 | 1,654 | both |
-   | `src/pdsfile/_properties.py` | 1,689 | 297 | 1,392 | code |
+   | `src/pdsfile/_properties.py` | 2,720 | 1,330 | 1,390 | both |
    | `src/pdsfile/holdings_maintenance/pds3/pdsdependency.py` | 1,165 | 30 | 1,135 | code |
    | `src/pdsfile/pds3file/rules/VG_28xx.py` | 1,019 | 0 | 1,019 | code |
 
@@ -70,8 +81,17 @@ conflicts with a rule below, follow the rule below. See
      87. There is no prose to relocate, and trimming docstrings would not bring
      either number down far enough to matter. The available lever is a tenth
      mixin; whether one exists is open. Deferred observation 199 holds it.
-   - `src/pdsfile/_properties.py` — waived on code lines. The whole lazy-property
-     block lives in one mixin by owner decision (plan §8, settled decision 3).
+   - `src/pdsfile/_properties.py` — **waived on both limits** (owner, 2026-08-08),
+     and it is the first entry waived on total lines, which makes it the precedent
+     `pdsfile.py`'s deferred split will be argued against. The whole lazy-property
+     block lives in one mixin by owner decision (plan §8, settled decision 3), which
+     is the code-lines waiver; the total-lines waiver is what documenting 68
+     properties to the standard of the other twelve modules costs. Measured rather
+     than estimated: ten representative members were documented first, and the
+     per-function cost projected the file at about 2,720 total lines against a
+     ceiling of 2,000. Written out, it landed at 2,720. Half the file is now
+     docstring, and its code lines went **down** by two, so nothing about the
+     complexity this limit exists to bound has changed.
    - the per-dataset rule files, `src/pdsfile/pds{3,4}file/rules/*.py` — waived as
      a class. `VG_28xx.py` is the only one that currently needs it.
 
@@ -121,7 +141,7 @@ conflicts with a rule below, follow the rule below. See
    | `_index_rows.py` `:164` | `RUF005` ×1 | style exclusion |
    | `_opus.py` `:246` | `RUF005` ×1 | style exclusion. `:268` is the same spelling on a subscript operand, which ruff does not flag; both now read alike |
    | `_preload.py` `:325` | `RUF005` ×1 | style exclusion |
-   | `_properties.py` `:609` | `RUF005` ×1 | style exclusion, and independently: `self._info[:4] + (shape,)` where `_info_filled` is a **list** on two construction paths, so `list + tuple` raises today and `(*…, shape)` would silently succeed |
+   | `_properties.py` `:1058` | `RUF005` ×1 | style exclusion, and independently: `self._info[:4] + (shape,)` where `_info_filled` is a **list** on two construction paths, so `list + tuple` raises today and `(*…, shape)` would silently succeed |
    | `_shelves.py` `:172` | `B904` ×1 | `from err` and `from None` both change `__cause__`/`__suppress_context__`, and so the traceback |
    | `_sorting.py` `:188,:196,:200,:205` | `RUF005` ×4 | style exclusion |
    | `pdscache.py` `:622`, `:324` | `RUF015` ×1, `UP031` ×1 | `list(d)[0]` raises `IndexError` where `next(iter(d))` raises `StopIteration`; `'%d' % port` truncates a non-int where an f-string does not. Both sit inside `MemcachedCache`, which ground rule 9 protects and no test here exercises |
