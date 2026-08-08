@@ -4829,19 +4829,27 @@ rediscovery.
      projection starts from a range rather than from an average.
      **Owner: PR-30, as the next module-length question.**
 
-224. **`version_info` truncates a version suffix past its third part, so two distinct
-     versions can share a rank and an id.** `_v2.1.3` and `_v2.1.3.4` both rank 20103 and
-     both report version id `2.1.3`; only the message distinguishes them. Two bundle sets of
-     one stem differing only in a fourth part would therefore collide in the rank
+224. **`version_info`'s rank packing overflows once a version part reaches 100, and two
+     distinct versions then share a rank.** `_v1.100` and `_v2` both rank 20000, because
+     the rank is `major * 10000 + minor * 100 + micro` with nothing bounding the parts. Two
+     bundle sets of one stem on either side of that boundary would collide in the rank
      dictionaries, and `all_versions()` would log "Duplicate version" and keep whichever it
-     saw first. The same packing fails from the other direction once a part reaches 100:
-     `_v1.100` and `_v2` both rank 20000.
+     saw first.
 
-     Measured, this is latent rather than live: a scan of every category directory of the
-     holdings tree computed the rank of every bundle-set suffix present and found no
-     four-part suffix, no part at or above 100, and no rank collision within any stem. The
-     docstring states both limits. A fix changes what `version_info` returns for inputs it
-     currently accepts, so it needs a regression test of its own.
+     `version_info` also truncates a suffix past its third part, so `_v2.1.3` and
+     `_v2.1.3.4` share a rank and an id and differ only in the message. **That one is not
+     reachable through a path**, and round 4 is what established it: `BUNDLESET_PLUS_REGEX`
+     captures at most `_v[0-9]+\.[0-9]+\.[0-9]+`, so a fourth part never becomes a
+     `version_rank`. It is reachable only by calling the static method directly. The first
+     draft of this entry had the two the wrong way round, naming the truncation as the
+     collision mechanism and the arithmetic as an aside; `all_versions`' docstring made the
+     same mistake and both are corrected.
+
+     Measured, both are latent: a scan of every category directory of the holdings tree
+     computed the rank of every bundle-set suffix present and found no four-part suffix, no
+     part at or above 100, and no rank collision within any stem. The docstrings state both
+     limits. A fix changes what `version_info` returns for inputs it currently accepts, so
+     it needs a regression test of its own.
      **Owner: a future pdsfile PR.**
 
 225. **`version_info`'s worked-example comment is arithmetically wrong and is left alone.**
@@ -5014,3 +5022,52 @@ rediscovery.
      reviewer brief should ask for the instrumentation explicitly**, in the same way this
      PR's briefs asked for relationship claims to be checked by reading the other end.
      **Owner: PR-30, as a reviewer-brief instruction.**
+
+### Added by the PR-29b adversarial review (round 4, `_properties.py` re-read)
+
+237. **`local_viewset` stores None where every sibling stores False, and that object
+     re-derives forever.** `PdsViewSet.from_pdsfiles()` returns None when nothing it was
+     handed is displayable, and `PdsViewable.from_pdsfile()` raises ValueError -- which
+     `from_pdsfiles` swallows -- for any object whose width is zero. An existing file whose
+     name is viewable and whose recorded width is zero, which is what
+     `_repair_width_height` writes for an image PIL could not open, therefore stores None.
+     The guard at the top of the property is `is not None`, so it never fires and the whole
+     derivation runs on every access.
+
+     `viewset` has the guard `local_viewset` lacks: it converts a None answer to False
+     before storing. The two properties are written to look symmetric and are not.
+     Measured: forcing the shape to `(0, 0)` on a real preview file makes `local_viewset`
+     return None twice with the slot still None. A scan of 2,086,994 viewable entries in
+     the preview info shelves found no zero-width entry, so reaching it in this tree takes
+     a PIL failure. The docstring states it.
+     **Owner: a future pdsfile PR.**
+
+238. **`_recache()` fills `_isdir_filled` as a side effect, so every "fills these slots"
+     list in `_properties.py` is a lower bound for an object already in the cache.**
+     `_recache` calls `CACHE.set`, whose lifetime is computed by
+     `cache_lifetime_for_class`, which reads `arg.isdir` for any object with a non-empty
+     interior. So a property whose body never mentions `isdir` still fills that slot, by
+     way of the very call that makes the value survive.
+
+     This is worth recording beyond the docstrings it affects, because it is a cost that
+     does not appear anywhere in the module that pays it, and because it cost round 4 a
+     false lead before it was traced. Any future attempt to check the fills lists
+     mechanically -- which entry 236 recommends -- has to account for it or it will report
+     one spurious omission per property.
+     **Owner: PR-30, as a note for the instrumentation entry 236 asks for.**
+
+239. **A second adversarial read must start from a frozen tree, and this one did not.**
+     Round 4 was launched while the executor was still applying round 3's corrections, so
+     sixteen of the forty-four sentences its brief named were absent from the text it first
+     read. The reviewer noticed, re-read all 68 members and re-ran every measurement, and
+     said so in its report. The cost was its time; had it not noticed, its verdicts on those
+     sixteen would have described prose that was never in the branch, and they would have
+     been indistinguishable from verdicts on prose that was.
+
+     The rule this suggests is procedural and cheap: **commit the previous round's
+     corrections, and confirm the corrected phrases are actually in the file, before
+     launching the round that reviews them.** The confirmation matters as much as the
+     commit -- a separate defect in this PR was that a batched edit aborted on its first
+     pair and wrote nothing, so eight of round 3's corrections were claimed by a commit
+     message and were not in the tree until a phrase-by-phrase grep found them.
+     **Owner: PR-30, as a process note.**
