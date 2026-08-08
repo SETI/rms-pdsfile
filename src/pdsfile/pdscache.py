@@ -19,18 +19,34 @@ where an answer may come from: ``get_local()`` reads only what this process hold
 dictionary cache the last three are all the same call, because there is nowhere else for
 an answer to come from.
 
-The two classes are not quite substitutable, and the places where they part company are
-named in the method docstrings rather than smoothed over. ``set_multi()`` is the sharpest:
-the signatures differ, and so do the defaults, so the same call stores permanent entries
-on one class and server-inherited lifetimes on the other. ``get_multi()`` differs on a
-key it cannot find, one class raising where the other omits.
+**The two classes are not substitutable, and the differences are not all small.** They
+are named again in the method docstrings rather than smoothed over here:
 
-Every entry has a lifetime in seconds. Zero means the entry never expires. None means
-"use this cache's default", which is either the constant or the function the cache was
-built with; a function is called with the value being stored and returns its lifetime.
-A cache built with a *constant* default of zero cannot resolve a lifetime of None,
-because the test that picks between the constant and the function is a truth test on
-the constant: such a call raises TypeError instead of storing a permanent entry.
+  * ``delete_multi()`` works on a dictionary cache and cannot work at all on a memcached
+    cache, where every call raises AttributeError. That is the widest gap in the
+    interface: code handed "either" cache and told the interface is shared will break on
+    it.
+  * ``set_multi()`` has different signatures and different defaults, so the same call
+    stores permanent entries on one class and server-inherited lifetimes on the other.
+  * ``get_multi()`` differs on a key it cannot find: one class raises where the other
+    omits.
+  * A lifetime of None means "use this cache's default" on a dictionary cache, and
+    "inherit the lifetime this key already has, and fall back to the default" on a
+    memcached cache.
+  * The two constructors disagree on what a lifetime *function* is: a plain function or
+    lambda counts for both, and a bound or class method counts only for the memcached
+    cache. Handing a dictionary cache a method makes it a constant, and the first store
+    that needs the default then raises TypeError.
+
+Every entry has a lifetime in seconds, and zero means the entry never expires. A cache
+is built with a default lifetime, either a constant or a function called with the value
+being stored, and each class resolves a lifetime of None as the list above describes.
+
+A *constant* default of zero cannot be resolved by either class, because the test that
+picks between the constant and the function is a truth test on the constant: such a call
+raises TypeError instead of storing a permanent entry. On a memcached cache the same trap
+extends to any constant below 0.001, because a lifetime is converted with
+``int(x + 0.999)``, which drops a fractional part that small rather than rounding it up.
 
 Both classes count nested pauses. ``pause()`` and ``resume()`` bracket bulk work;
 ``is_paused`` reports the state. What a pause defers differs: a paused
@@ -39,9 +55,10 @@ Resuming to a count of zero performs the deferred work at once.
 
 ``MemcachedCache`` alone offers the cross-process facilities: ``wait_and_block()`` and
 ``unblock()`` claim and release exclusive use through a key every process consults,
-``was_cleared()`` and ``replicate_clear()`` propagate one process's ``clear()`` to the
-others, and ``flush()`` writes the local buffer out. ``DictionaryCache`` accepts all of
-those calls and does nothing, since a cache one process owns needs no coordination.
+``replicate_clear()`` applies one process's ``clear()`` here, ``was_cleared()`` reports
+whether one has happened without acting on it, and ``flush()`` writes the local buffer
+out. ``DictionaryCache`` accepts all of those calls and does nothing, since a cache one
+process owns needs no coordination.
 
 ``MEMCACHED_LOADED`` records whether ``pylibmc`` imported. Where it did not, the name
 ``pylibmc`` is unbound and constructing a ``MemcachedCache`` raises NameError.
@@ -94,9 +111,14 @@ class DictionaryCache(PdsCache):
 
     The size limit is enforced by trimming. A set of keys is kept alongside the entries
     and is what the limit counts: once it exceeds the limit by a margin of the larger of
-    20 and a tenth of the limit, the entries closest to expiring are discarded until the
-    limit is met. Trimming happens after a ``set()`` and is deferred while the cache is
-    paused.
+    20 and a tenth of the limit, expiring entries are discarded, soonest to expire first,
+    until the limit is met. Trimming happens after a ``set()`` and is deferred while the
+    cache is paused.
+
+    Trimming discards nothing whenever the number of *expiring* entries is already at or
+    below the limit, however far over it the counted set has gone. A limit of zero is the
+    degenerate case of that: it discards nothing ever, so such a cache grows without
+    bound.
 
     The only things that take a key out of that set are a trim, which removes the keys
     of the entries it discards, and ``clear()``, which rebuilds it empty. Nothing else
@@ -108,6 +130,11 @@ class DictionaryCache(PdsCache):
         raises ``KeyError``. A cache that anything deletes from is one trim away from
         that, so in practice the only safe way to empty entries out of one is
         ``clear()``, which rebuilds the set.
+
+        The exception surfaces from whoever trims next, not from whoever deleted:
+        ``set()``, ``set_multi()``, item assignment and ``resume()`` raise it, while
+        ``get()``, ``delete()`` and ``len()`` never do. So a caller that only reads can
+        break the cache for a caller that only writes.
       * Re-storing an existing expiring entry as permanent leaves its key in the set
         too, so the entry counts toward the limit while being exempt from the trimming
         that limit drives.
@@ -126,15 +153,22 @@ class DictionaryCache(PdsCache):
             lifetime: the default lifetime of an entry, used whenever a call passes no
                 lifetime of its own. Either a number of seconds, where zero means the
                 entry never expires, or a function taking the value being stored and
-                returning that number. Only a plain function or a lambda is recognized
-                as a function; a bound method is taken for a constant. A constant zero
-                is a trap: it cannot be told apart from an absent default, so storing
-                without an explicit lifetime then raises TypeError.
+                returning that number. Only a plain function or a lambda is recognized as
+                a function; a bound method or a class method is taken for a constant, and
+                a store that needs the default then evaluates the current time plus that
+                method and raises TypeError. The memcached cache accepts a method here,
+                so a lifetime that works for one class can fail for the other.
+
+                A constant zero is a second trap of the same kind: it cannot be told
+                apart from an absent default, so storing without an explicit lifetime
+                raises TypeError rather than storing a permanent entry.
             limit (int): the number of expiring entries to keep. Permanent entries do
-                not count toward it.
+                not count toward it, and a limit of zero disables trimming rather than
+                keeping nothing.
             logger: optional PdsLogger, which receives a message each time the cache
-                trims something, and one for the outermost pause and the resume that
-                releases it. Nested pauses are silent.
+                reaches its trimming threshold, whether or not anything is discarded,
+                and one for the outermost pause and the resume that releases it. Nested
+                pauses are silent.
         """
 
         self.dict = {}              # returns (value, expiration) by key
@@ -159,14 +193,22 @@ class DictionaryCache(PdsCache):
         """Discard the entries closest to expiring, if the cache has grown too large.
 
         Nothing happens until the key set exceeds the limit by the margin fixed at
-        construction. Once it does, entries are discarded in order of expiration,
-        soonest first, until exactly the limit of them remains. Permanent entries are
-        never candidates, so a key set full of permanent entries is over the limit
-        forever and every trim discards nothing.
+        construction. Once it does, the *expiring* entries are discarded in order of
+        expiration, soonest first, until the limit of them remains.
+
+        Permanent entries are never candidates, and the count the limit is compared
+        against is the whole key set rather than the candidates. So a cache whose
+        expiring entries already number at or below the limit discards nothing on every
+        trim, however far over the limit the key set has gone, and stays that way. With
+        a limit of zero that is unconditional: the slice that selects the discards is
+        empty for any input, so such a cache never trims at all.
 
         A key the set still holds but the entries no longer do -- which is what a
         deletion or an expiry leaves behind -- makes this raise ``KeyError`` on that key
         instead of trimming.
+
+        The logged count is written whenever the threshold is crossed, including when
+        the number discarded is zero.
         """
 
         if len(self.keys) > self.limit + self.slop:
@@ -265,9 +307,11 @@ class DictionaryCache(PdsCache):
     def resume(self):
         """Release one pause, and trim if that was the last one.
 
-        A call on a cache that is not paused is harmless: the count does not go
-        negative, and the cache is trimmed as though the last pause had just been
-        released.
+        A call on a cache that is not paused does not go wrong on its own account: the
+        count does not go negative, and the cache is trimmed as though the last pause had
+        just been released. It is a trim like any other, though, so it raises
+        ``KeyError`` on a cache that anything has deleted from or read an expired entry
+        out of.
         """
 
         if self.pauses > 0:
@@ -428,7 +472,14 @@ class DictionaryCache(PdsCache):
             value: the value to store. It is kept as it is, not copied.
             lifetime: how long the entry should last, in seconds. Zero makes it
                 permanent. None means use the cache's default, which raises TypeError
-                if that default is the constant zero.
+                if that default is the constant zero, and TypeError again if it is a
+                method rather than a plain function.
+
+        Raises:
+            KeyError: from the trim, ``_trim_if_necessary()``, if the cache is over its
+                threshold and something has previously deleted an entry or read an
+                expired one. The value is stored before the trim runs, so the store
+                itself has taken effect.
         """
 
         # Determine the expiration time
@@ -458,6 +509,9 @@ class DictionaryCache(PdsCache):
         Parameters:
             key: the key to store under.
             value: the value to store.
+
+        Raises:
+            KeyError: from a trim, on the same terms as ``set()``.
         """
 
         self.set(key, value)
@@ -486,6 +540,9 @@ class DictionaryCache(PdsCache):
         Returns:
             list: empty, always. The shared cache's batch store returns an empty list
             too, so the shape is common even though nothing is ever reported in it.
+
+        Raises:
+            KeyError: from a trim, on the same terms as ``set()``.
         """
 
         for (key, value) in mydict.items():
@@ -656,9 +713,12 @@ class MemcachedCache(PdsCache):
 
     Three local dictionaries back that buffer, and two more outlive it.
     ``permanent_values`` keeps a copy of every entry stored with a lifetime of zero, and
-    restores the whole set to the server if one of them is ever found missing.
+    restores the whole set to the server if one of them is ever found missing. The copy
+    is taken when the entry is flushed, not when it is stored, so a permanent entry
+    written while the cache is paused is absent from it until the resume.
     ``toobig_dict`` keeps any value the server refused as too large; a key that lands
-    there is served locally from then on and is never asked of the server again.
+    there is answered locally by ``get()`` and by the ``in`` test from then on, though
+    ``get_now()`` still asks the server for it and ``len()`` still probes for it.
 
     Because the cache is shared, it can be blocked and it can be cleared out from under
     this process. ``wait_and_block()`` claims exclusive use by writing this process's ID
@@ -687,11 +747,19 @@ class MemcachedCache(PdsCache):
             port: the memcached port on the local host, as an integer, or the absolute
                 path to a Unix socket, as a string.
             lifetime: the default lifetime of an entry, used whenever a call passes no
-                lifetime of its own. Either a number of seconds, rounded up to a whole
-                second and with zero meaning the entry never expires, or a function
-                taking the value being stored and returning that number. A constant zero
-                is a trap: it cannot be told apart from an absent default, so storing
-                without an explicit lifetime then raises TypeError.
+                lifetime of its own. Either a number of seconds, with zero meaning the
+                entry never expires, or a function -- or a bound or class method, which
+                this class accepts and the dictionary cache does not -- taking the value
+                being stored and returning that number.
+
+                A number is converted with ``int(x + 0.999)``, which is not a ceiling: a
+                fractional part below 0.001 is dropped rather than rounded up, so 1.0005
+                becomes 1 second, and a positive value below 0.001 becomes zero, which
+                this class reads as never expiring.
+
+                A constant zero is a trap: it cannot be told apart from an absent
+                default, so storing without an explicit lifetime then raises TypeError.
+                By the rounding above, so is any constant below 0.001.
             logger: optional PdsLogger, which receives a message for each flush, block,
                 clear and oversized value, and one for the outermost pause and the
                 resume that releases it. Several paths log without first testing for a
@@ -1036,8 +1104,8 @@ class MemcachedCache(PdsCache):
         """Report how many entries the memcached server holds.
 
         The count covers every process using the server, and the bookkeeping keys as
-        well. It comes from the first server in the client's list, so a client
-        configured with more than one server undercounts.
+        well. It is read from the first server in the client's list; the constructor
+        always builds a client with exactly one, so that is the whole count.
 
         Returns:
             int: the server's current item count.
@@ -1061,11 +1129,15 @@ class MemcachedCache(PdsCache):
         then on; the buffer is emptied as usual, so the remaining batches still go out.
 
         Any other server error takes a path that does not complete. With a logger, the
-        reporting step raises AttributeError; the batches written before the failing one
-        are already on the server, and the failing one and everything after it are left
-        in the buffer. Without a logger, the failing batch's keys are counted as
+        reporting step raises AttributeError, and nothing is cleared -- so the batches
+        already written to the server are left in the buffer too, and the next flush
+        writes them again. Without a logger, the failing batch's keys are counted as
         failures, the remaining batches go out, and the buffer is emptied, so the values
         the failing batch held are lost rather than retried.
+
+        The count in the summary message subtracts a number of failed *keys* from a
+        number of lifetime *groups*, so it is wrong whenever a group holds more than one
+        key and can go negative.
         """
 
         # Nothing to do if local cache is empty
@@ -1156,6 +1228,20 @@ class MemcachedCache(PdsCache):
 
         Returns:
             The stored value, or None if no source has it.
+
+        Raises:
+            KeyError: if the key is a permanent entry the server has lost *and* the
+                write-back then finds the value too large for the server. The write-back
+                moves such a value to the oversized dictionary and drops it from the
+                permanent copies, and the read that follows looks for it among the
+                permanent copies it has just left. It comes from the item lookup,
+                ``__getitem__()``, on those copies. The value is not lost -- the same
+                call put it in the oversized dictionary, so the next read answers it --
+                but this one raises.
+            TypeError: if the server holds something under the key that is not the
+                ``(value, lifetime)`` pair this class writes; it comes from unpacking
+                that pair. The bookkeeping keys are like that, so reading one of those
+                through this method raises.
         """
 
         self.replicate_clear_if_necessary()
@@ -1203,7 +1289,11 @@ class MemcachedCache(PdsCache):
             The stored value.
 
         Raises:
-            KeyError: if no source has the key, or its value is None.
+            KeyError: if no source has the key, or its value is None -- and also, from
+                ``get()``, in the narrower case where a permanent entry the server has
+                lost turns out to be too large to write back.
+            TypeError: from ``get()``, if the server holds something under the key that
+                is not the pair this class writes.
         """
 
         value = self.get(key)
@@ -1315,6 +1405,11 @@ class MemcachedCache(PdsCache):
 
         Returns:
             The value the server holds, or None if the server has none.
+
+        Raises:
+            TypeError: if the server holds something under the key that is not the
+                ``(value, lifetime)`` pair this class writes, which the bookkeeping keys
+                are. It comes from unpacking that pair.
         """
 
         result = self.mc.get(key)
@@ -1344,8 +1439,13 @@ class MemcachedCache(PdsCache):
                 permanent. None means keep the lifetime this key already has, and
                 failing that use the cache's default.
 
+        Unless the cache is paused, the flush this performs first replicates any clear
+        another process has made. That clear empties the buffer this call has just
+        written to, so the value is stored nowhere and the call still answers True.
+
         Returns:
-            bool: True, except on the oversized path, which returns None.
+            bool: True, except on the oversized path, which returns None. It does not
+            report whether the value reached the server.
         """
 
         if key in self.toobig_dict:
@@ -1396,6 +1496,10 @@ class MemcachedCache(PdsCache):
                 permanent. None means take the lifetimes from the server as described
                 above.
 
+        Unless the cache is paused, the flush this performs first replicates any clear
+        another process has made, on the same terms as ``set()``: the batch is emptied
+        out of the buffer and stored nowhere.
+
         Returns:
             list: empty, always. The keys a flush fails to store are not reported here.
         """
@@ -1441,11 +1545,13 @@ class MemcachedCache(PdsCache):
             key: the key to store under.
             value: the value to store.
             lifetime: how long the entry should last, in seconds. A value given here is
-                used as it stands, fraction and all; only a lifetime the cache's own
-                lifetime function produces is rounded up to a whole second. Zero makes
-                the entry permanent. None means keep the lifetime this key already has
-                in the buffer, and failing that use the cache's default; the server is
-                not consulted either way.
+                used as it stands, fraction and all. Only a lifetime the cache's own
+                lifetime function produces is converted, with ``int(x + 0.999)``, which
+                drops a fractional part below 0.001 rather than rounding it up and turns
+                any positive value below 0.001 into zero. Zero makes the entry
+                permanent. None means keep the lifetime this key already has in the
+                buffer, and failing that use the cache's default; the server is not
+                consulted either way.
         """
 
         if key in self.toobig_dict:
@@ -1520,7 +1626,9 @@ class MemcachedCache(PdsCache):
             key: the key to remove.
 
         Raises:
-            KeyError: if neither the server nor this process had anything to remove.
+            KeyError: if the deletion underneath reports nothing removed. That report
+                excludes the permanent copies, so a key held only there is removed and
+                this still raises.
         """
 
         status = self.delete(key)
@@ -1532,12 +1640,15 @@ class MemcachedCache(PdsCache):
     def delete_multi(self, keys):
         """Remove several entries from the server and from every local dictionary.
 
-        The call does not get as far as removing anything. Its first statement asks the
-        client for a batch delete under a name the client does not have -- the method is
-        ``delete_multi`` and this asks for ``del_multi`` -- so every call, an empty one
-        included, raises AttributeError before touching the server. Nothing on the
-        server, in the buffer, in the oversized dictionary or among the permanent copies
-        is changed.
+        The call never removes anything, but it is not inert. It first waits for any
+        other process's block to lift, which reads the blocking key and, if the wait runs
+        past ``MAX_BLOCK_SECONDS``, writes that key to break the block. Only then does it
+        ask the client for a batch delete under a name the client does not have -- the
+        method is ``delete_multi`` and this asks for ``del_multi`` -- and raise
+        AttributeError. So every call, an empty one included, raises; the deletions do
+        not happen; and the server may have been written to and another process's
+        exclusive claim stripped before the exception. On a cache with no logger the
+        break path raises even earlier, from its own unguarded log call.
 
         Two further faults sit behind that one and would surface if it were repaired.
         The local removal it would then reach is spelled ``_del_local``, and the method
@@ -1550,6 +1661,11 @@ class MemcachedCache(PdsCache):
 
         Returns:
             bool: unreachable.
+
+        Raises:
+            AttributeError: always, from the ``del_multi()`` the client does not
+                define -- or, on a cache with no logger that has to break a block,
+                earlier still, from the unguarded log call in that path.
         """
 
         self.wait_for_unblock('delete_multi')
@@ -1696,10 +1812,15 @@ class MemcachedCache(PdsCache):
     def replicate_clear_if_necessary(self):
         """Read the shared clear counter and replicate any clear it reports.
 
-        ``get()``, ``get_multi()`` and ``flush()`` call this, so that a clear by another
-        process takes effect here before anything else happens. The other read and write
-        methods do not, so a clear can go unnoticed through any number of ``set()``,
-        ``set_local()``, ``delete()``, ``get_local()`` and ``get_now()`` calls.
+        ``get()``, ``get_multi()`` and ``flush()`` call this directly. ``set()`` and
+        ``set_multi()`` reach it through the ``flush()`` they perform unless the cache is
+        paused, so on an unpaused cache they replicate a clear too -- and the clear
+        empties the buffer holding the value they have just stored, which is therefore
+        written nowhere while ``set()`` still answers True.
+
+        ``set_local()``, ``delete()``, ``get_local()``, ``get_now()``, and ``set()`` or
+        ``set_multi()`` on a paused cache, do not reach it at all, so a clear can go
+        unnoticed through any number of those.
 
         Returns:
             bool: True if the local dictionaries were emptied, False otherwise.
@@ -1730,10 +1851,15 @@ class MemcachedCache(PdsCache):
         the server still has refreshes this process's copy rather than being overwritten
         by it; only the ones the server has actually lost are written.
 
-        A permanent value the server rejects as too large is moved to the oversized
-        dictionary and dropped from the permanent set, so the next lost entry does not
-        try it again. That report is written without first testing for a logger, so a
-        cache built without one raises AttributeError at that point.
+        A permanent value the server rejects as too large is reported, then moved to the
+        oversized dictionary, then dropped from the permanent set, so the next lost entry
+        does not try it again. The report comes first and is written without testing for
+        a logger, so on a cache built without one the call raises AttributeError before
+        either the move or the drop happens, and the value stays where it was.
+
+        That ordering is the opposite of ``_wait_for_ok``'s, which writes its change to
+        the server before logging it. Here nothing has been changed when the call
+        raises.
         """
 
         if self.logger:

@@ -14,8 +14,10 @@ Checks:
     R1  `Returns:` is present if and only if the body has a `return <expr>`, a `yield`
         or a `yield from`. A bare `return` does not count.
     E1  Every class named in a `Raises:` block is raised directly in the body, or its
-        description attributes it to a named call the body makes. Subscript, assignment
-        and deletion syntax count as calls to the corresponding dunder methods.
+        description attributes it to a mechanism the body demonstrably contains: a call
+        it makes, item syntax (which counts as the corresponding dunder method), or
+        tuple unpacking. The attribution is checked against the AST, so naming a
+        mechanism the body does not use fails.
     E2  Every class raised directly in the body appears in `Raises:`.
     D1  No docstring line exceeds 90 columns.
     U1  No unicode smart quote, em-dash, en-dash or arrow anywhere in the file.
@@ -39,7 +41,7 @@ PARAM_ENTRY_RE = re.compile(r'^(?P<indent>\s*)(?P<name>\*{0,2}[A-Za-z_]\w*)'
                             r'(?P<type>\s*\([^)]*\))?:')
 RAISE_ENTRY_RE = re.compile(r'^(?P<indent>\s*)(?P<name>[A-Za-z_][\w.]*)'
                             r'(?P<extra>\s*\([^)]*\))?:')
-CALL_RE = re.compile(r'`?([A-Za-z_][\w.]*)\(\)`?')
+CALL_RE = re.compile(r'`?([A-Za-z_][\w.]*)\(\)`?|\b(unpacking)\b')
 
 BANNED_SECTIONS = ('Args', 'Arguments', 'Keyword arguments', 'Keyword Arguments',
                    'Input', 'Inputs')
@@ -216,19 +218,22 @@ def raised_names(node):
 
 
 def called_names(node):
-    """Return the names of everything a function body invokes.
+    """Return the mechanisms a function body uses that an exception can be blamed on.
 
     A call contributes the name it names: the identifier for a plain call, the attribute
-    for a method call. Subscript, assignment and deletion syntax contribute the dunder
-    method the interpreter reaches for, so an exception a docstring attributes to
-    `__getitem__()` is recognized in a body that writes `self[key]`. Nested definitions
-    are not searched.
+    for a method call. Item syntax contributes the dunder method the interpreter reaches
+    for, so an exception a docstring attributes to `__getitem__()` is recognized in a
+    body that writes `self[key]`. Tuple unpacking contributes `unpacking`, because a
+    `TypeError` from unpacking a value that is not a sequence is raised by no call and by
+    no `raise`, and is exactly the kind of failure a caller needs told about.
+
+    Nested definitions are not searched.
 
     Parameters:
         node (ast.FunctionDef): the function definition.
 
     Returns:
-        set: the invoked names.
+        set: the mechanisms found.
     """
 
     names = set()
@@ -250,6 +255,10 @@ def called_names(node):
                 names.add('__delitem__')
             else:
                 names.add('__getitem__')
+        elif isinstance(item, ast.Assign):
+            for target in item.targets:
+                if isinstance(target, (ast.Tuple, ast.List)):
+                    names.add('unpacking')
         stack.extend(ast.iter_child_nodes(item))
 
     return names
@@ -376,8 +385,10 @@ def check_file(path, findings):
             short = entry.rpartition('.')[2]
             if short in raised:
                 continue
-            attributed = [call for call in CALL_RE.findall(entry_text)
-                          if call.rpartition('.')[2] in called]
+            mentioned = [name for pair in CALL_RE.findall(entry_text)
+                         for name in pair if name]
+            attributed = [name for name in mentioned
+                          if name.rpartition('.')[2] in called]
             if not attributed:
                 findings.append((path, where,
                                  f'E1: Raises: names "{entry}", which the body neither '

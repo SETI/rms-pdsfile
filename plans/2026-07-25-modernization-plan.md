@@ -1145,16 +1145,25 @@ Three things that shaped the result and bind the PRs after it:
     trailing underscore in a docstring is an RST reference, and cross-reference
     roles cannot be used until the full API reference exists, so PR-31 must sweep
     the inline literals these docstrings use instead.
-  * **Thirty-seven defects found by reading the code against its own prose** —
-    sixteen by the executor (deferred entries 152–167) and twenty-one by the three
-    review rounds (170–190) — plus two notes for the documentation PRs that follow
+  * **Forty-five defects found by reading the code against its own prose** —
+    sixteen by the executor (deferred entries 152–167) and twenty-nine by the four
+    review rounds (170–198) — plus two notes for the documentation PRs that follow
     it, 168 and 169. Entries 23, 24 and 80 are amended. That list, not the prose,
     is the evidence the docstrings were verified rather than paraphrased.
-  * **Three review rounds, one per substantial file, and they did not converge.**
-    Round 3 found more than round 1 and round 1 more than round 2. Three is the
-    cap, and all three files have now been read, but the trend says a fourth
-    reader would find more — which is the argument for PR-29a keeping the same
-    one-round-per-file shape rather than a single pass.
+  * **Four review rounds: one per file, then a second read of `pdscache.py`, and
+    the second read did not come back empty.** It found about twenty items where
+    the first read of the same file found fifteen. So the finding rate is a
+    property of how much prose there is to check, not of how much is left — one
+    adversarial read per file does not exhaust a docstring PR of this size.
+    **PR-29a should plan for at least two reads of each module it touches, not one
+    pass per file.**
+  * **The systematic weak point is the relationship claim** — a sentence asserting
+    that one method calls another, that one is safe because another checked first,
+    or that a lifetime or a limit behaves the same way in both cache classes. Six
+    of round 4's thirteen prose defects were of that kind, and so was the only
+    thing CodeRabbit found that three earlier rounds had all missed. A reviewer
+    brief for PR-29a should name that category explicitly; three of PR-29's four
+    did not, and the one that did found the most.
 
 **PR-29a (L)** `docs: Google-style docstrings — the private modules`
 The ten `_*.py` mixin and extracted modules: 156 functions, 131 parameters, and

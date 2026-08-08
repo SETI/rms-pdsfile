@@ -211,13 +211,23 @@ concatenated with strings is `(str)`; one only iterated is left untyped. PR-35 w
 those stubs will be read partly off these docstrings, so a guess here becomes a wrong
 stub there. Section 7 lists every omission as PR-35's queue.
 
-**An exception raised by an operator rather than by a `raise` statement is described in
-prose, not in a `Raises:` section.** `PdsViewable.__init__` raises `ZeroDivisionError` on
-a zero height, and `PdsViewable.from_dict` raises `KeyError` on a dictionary missing
-`width`; neither is a `raise` statement, and a `Raises:` entry for either would fail E1
-or force a contrived attribution. Both are stated in the body of the docstring instead.
-Where an exception does come from a call the body makes, the entry names that call, and
-item syntax counts as a call to `__getitem__`.
+**An exception raised by a mechanism other than a `raise` statement gets a `Raises:`
+entry when the mechanism is one E1 can verify, and prose otherwise.** E1 accepts an
+attribution to a call the body makes, to item syntax (which counts as the corresponding
+dunder method), or to tuple unpacking, and checks each against the AST.
+
+That rule is wider than the one this PR started with, which sent *every* operator-raised
+exception to prose. Round 4 showed that convention was wrong: exceptions from subscripts
+and unpacking -- `MemcachedCache.get()`'s `KeyError` when a rescued permanent value turns
+out to be too large, `get()` and `get_now()`'s `TypeError` on a key that does not hold a
+`(value, lifetime)` pair -- are exactly the failures a caller needs told about, and prose
+buries them. So E1 was widened rather than the prose weakened, and the attribution stays
+falsifiable: deleting it from `get_now`'s entry makes E1 report the entry again.
+
+What still goes in prose is an exception no verifiable mechanism accounts for.
+`PdsViewable.__init__` raises `ZeroDivisionError` on a zero height and
+`PdsViewable.from_dict` raises `KeyError` on a missing `width`; both are stated in the
+body of the docstring.
 
 ## 5. The Sphinx build
 
@@ -528,42 +538,55 @@ write one description per parameter. The thread carries that reply.
 
 ## 10. Review
 
-Three rounds, each over a different slice, each run by a fresh reviewer subagent with no
-context from this session or from the rounds before it. Records:
-`critiques/pr-29/review-round-1.md`, `-2`, `-3`.
+Four rounds, each run by a fresh reviewer subagent with no context from this session or
+from the rounds before it. Records: `critiques/pr-29/review-round-1.md` through `-4`.
 
 | round | slice | surface | findings | new deferred entries |
 |---|---|---|---:|---|
 | 1 | `pdscache.py` | 3 classes, 60 functions | 15 | 170-176, and 157 rewritten |
 | 2 | `pdsviewable.py` | 2 classes, 26 functions | 11 | 177-183 |
 | 3 | `pdsfile.py` | 1 class, 37 functions, the module map | 18 | 184-190 |
+| 4 | `pdscache.py` again | the same 63 | ~20 | 191-198 |
 
-Forty-four findings, every one re-verified by the executor before acting on it. Only one
+Sixty-four findings, every one re-verified by the executor before acting on it. Only one
 re-verification disagreed with the reviewer, and only in degree: round 1's finding 7
-reproduced with a different key count than the reviewer reported, because trimming had
-fired during their setup; the claim itself held and the entry records the cleaner
-one-key reproduction.
+reproduced with a different key count, because trimming had fired during their setup; the
+claim held and the entry records the cleaner reproduction.
 
-**Round 3 found more than round 1, and round 1 more than round 2, so the rounds did not
-converge.** The reason to stop at three is the brief's cap and the fact that the three
-rounds have now covered all three substantial files -- not that the surface is exhausted.
-An honest reading of the trend is that a fourth reader would find more.
+**Rounds 1 to 3 are not a trend.** An earlier draft of this record read 15, 11 and 18 as
+a sequence that failed to converge. That was wrong: they are three independent *first*
+passes over three *different* files, so nothing about them rises or falls, and they say
+nothing about what a second reading of any file returns. What they do establish is
+simpler and more serious -- every file had had exactly one adversarial read, and each of
+those reads found roughly fifteen real defects in prose written for this PR.
 
-What the rounds hunted was what the checker in section 4 cannot: prose that is wrong
-about the code. The three highest-value classes of finding, all of which recurred across
-rounds:
+**Round 4 is the experiment that tested it, and the answer is that a second read does not
+return zero.** A second reader over `pdscache.py`, pointed at the angles round 1 lacked,
+found about twenty items: 13 defects in the new prose and 7 discoveries about the code.
+That is comparable to round 1's yield on the same file.
+
+The angle that paid was claims about a **relationship between two things** -- that one
+method calls another, that one is safe because another checked first, that a lifetime or
+a limit behaves the same way in both cache classes. Six of round 4's 13 prose defects were
+of that kind, and so was the single thing CodeRabbit found that all three earlier rounds
+missed. It is a systematic weak point of this prose, not a run of bad luck, and section
+10a's `_recache` example is the same shape as round 4's finding 2.
+
+The three highest-value classes of finding across all four rounds:
 
 * **A described failure whose mechanism is wrong.** `delete_multi` fails one statement
-  earlier than written, `_wait_for_ok` breaks the block before raising rather than
-  instead of it, `from_path` raises `UnboundLocalError` where the entry said `KeyError`.
-  These read as correct to anyone who does not re-derive them, which is exactly why they
-  needed a reader who did.
+  earlier than written *and* writes to the server first, `_wait_for_ok` breaks the block
+  before raising rather than instead of it, `from_path` raises `UnboundLocalError` where
+  the entry said `KeyError`, `_restore_permanent_to_cache` logs before it acts rather
+  than after. These read as correct to anyone who does not re-derive them.
 * **A claim that is true of the common case and false of the case the sentence exists
   for.** A named viewable "is never returned by a size lookup" -- except by a set that
   holds nothing else; instances "are cached" -- except the data files the sentence's own
-  examples name.
+  examples name; trimming runs "until exactly the limit remains" -- except when it
+  discards nothing.
 * **A statement inverted.** `_complete`'s case claim said the opposite of what the code
-  does.
+  does; `replicate_clear_if_necessary` named `set()` among the methods that do not reach
+  it, when on an unpaused cache it does.
 
-Twenty-one defects that no deferred entry had recorded came out of the three rounds,
-entries 170-190.
+Twenty-nine defects that no deferred entry had recorded came out of the four rounds,
+entries 170-198.
