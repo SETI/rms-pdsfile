@@ -133,7 +133,22 @@ class _PropertiesMixin:
 
     @property
     def exists(self):
-        """Return True if the file exists."""
+        """Whether this file exists.
+
+        The answer is derived on the first access, stored in ``_exists_filled`` and
+        returned unchanged afterwards; ``PdsFile.__init__()`` sets that slot to None, and
+        deriving the value also calls ``_recache()`` so the shared cache holds the filled
+        object. A merged directory and an index row are both born with the slot already
+        set to True, so neither reaches the derivation.
+
+        Where the derivation does run, an object with no absolute path is False and
+        anything else is asked of ``os_path_exists()``, which under SHELVES_ONLY answers
+        from the info shelves rather than from the filesystem and memoizes its answer for
+        the life of the process.
+
+        Returns:
+            bool: True if the file exists.
+        """
         cls = type(self)
 
         if self._exists_filled is not None:
@@ -170,7 +185,16 @@ class _PropertiesMixin:
 
     @property
     def is_documents(self):
-        """Return True if the file is under documents directory."""
+        """Whether this file lies in the documents tree.
+
+        The test is on ``bundletype_``, which is fixed when the object is built, so this
+        is recomputed on every access, holds no slot of its own, and is as true of the
+        ``documents`` category directory as of a file below it. It says nothing about
+        whether the file exists.
+
+        Returns:
+            bool: True if this object's bundle type is ``documents``.
+        """
 
         return self.bundletype_ == 'documents/'
 
@@ -226,8 +250,26 @@ class _PropertiesMixin:
 
     @property
     def html_path(self):
-        """Return the URL to this file after the domain name, starting with "/holdings";
-        alias for property "url".
+        """The path part of this file's URL, starting with the HTML root.
+
+        The value is derived once, stored in ``_html_path_filled`` and returned unchanged
+        afterwards; deriving it calls ``_recache()``. ``url`` returns the same value under
+        another name. Nothing here tests whether the file exists, so a path this
+        installation would serve is returned whether or not anything is there to serve.
+
+        Three cases. An object with no absolute path, which is a merged directory, takes
+        the path of its first child and drops the last component; a merged directory whose
+        child list is still empty therefore raises IndexError rather than answering. A
+        file whose path ends in ``.link`` holds its own URL as its contents, which are
+        read as latin-1 and stripped, and a file that cannot be opened falls back to the
+        third case. Everything else is ``html_root_`` followed by the logical path.
+
+        Returns:
+            str: the URL path.
+
+        Raises:
+            IndexError: raised by ``__getitem__()`` on the child-name list of a merged
+                directory that has no children.
         """
 
         if self._html_path_filled is not None:
@@ -300,7 +342,24 @@ class _PropertiesMixin:
 
     @property
     def extension(self):
-        """Return the extension of this file, after the first dot."""
+        """The third part of this basename as ``split_basename()`` divides it.
+
+        This holds no slot of its own but reads ``split``, so the first access fills
+        ``_split_filled`` and calls ``_recache()`` as a side effect. Under the rule that
+        catches most names the third part is the text from the **last** period onward,
+        including the period, and an empty string for a name with no period; the
+        bundle-set rules put the volume type there instead, so
+        ``COISS_2xxx_previews.tar.gz`` gives ``_previews`` and not an extension at all.
+
+        A merged directory and an index row are born with ``_split_filled`` set to
+        ``(basename, '', '')``, so both report an empty string.
+
+        A class with no split rules, which is a bare PdsFile, makes ``split`` return the
+        basename itself rather than a triple, and this then returns its third character.
+
+        Returns:
+            str: the extension, with its leading period.
+        """
 
         return self.split[2]
 
@@ -442,7 +501,52 @@ class _PropertiesMixin:
 
     @property
     def _info(self):
-        """Return the info from the info shelf file."""
+        """The size, child count, modification time, checksum and shape of this file.
+
+        This is the one derivation behind ``size_bytes``, ``modtime``, ``checksum``,
+        ``date``, ``formatted_size``, ``width`` and ``height``; each of them reads this
+        rather than the filesystem. The value is derived once, stored in ``_info_filled``
+        and returned unchanged afterwards, and deriving it calls ``_recache()``. A merged
+        directory and an index row are born with the slot already filled, with a list
+        rather than a tuple, so neither reaches this body.
+
+        A file that does not exist gets zeros, no modification time and no checksum, which
+        is what makes the seven properties above safe to read on any object.
+
+        Otherwise the info shelf is asked first, wherever ``info_shelf_expected`` says one
+        should cover this file. A shelf that cannot be read logs a warning and re-raises
+        when SHELVES_REQUIRED is set; otherwise the derivation falls through to the
+        filesystem cases below rather than failing. A shelf that answers gives the
+        modification time as text, which is read by fixed offsets into a datetime whose
+        last field is microseconds, and an empty time string, which is what an empty
+        directory gets, becomes None. A checksum written as dashes becomes an empty
+        string.
+
+        Three filesystem cases remain. Anything that is not a directory is measured with
+        ``os.path.getsize()`` and ``os.path.getmtime()``, and a viewable one gets the
+        three-element shape ``(0, 0, 'TBD')``, the marker that ``width`` and ``height``
+        replace by opening the image. A bundle-set directory sums the sizes its bundles'
+        shelves report and takes the latest of their modification times, skipping the
+        names in EXTRA_README_BASENAMES and counting them out of the child count; a bundle
+        whose own shelf is missing contributes this directory's size and time instead of
+        its own, and one whose shelf reports no time or no bytes contributes nothing. Any
+        other directory gets zeros.
+
+        Returns:
+            tuple: the size in bytes, the child count, the modification time or None, the
+            checksum or an empty string, and the shape, which is a pair except on a
+            viewable whose dimensions have not been read.
+
+        Raises:
+            OSError: raised by ``shelf_lookup()`` and re-raised where SHELVES_REQUIRED is
+                set and the shelf file is missing, and by ``os.path.getsize()`` for a file
+                the shelves report as existing that the filesystem does not hold.
+            KeyError: raised by ``shelf_lookup()`` and re-raised under the same setting
+                where the shelf opened but holds no entry for this file.
+            ValueError: raised by ``shelf_lookup()`` and re-raised under the same setting,
+                and by ``int()`` or ``datetime()`` on a shelf time string that is not of
+                the expected shape.
+        """
 
         if self._info_filled is not None:
             return self._info_filled
@@ -748,8 +852,22 @@ class _PropertiesMixin:
 
     @property
     def mime_type(self):
-        """Return a best guess at the MIME type for this file. Blank for not displayable
-        in a browser.
+        """A best guess at the MIME type of this file, or an empty string.
+
+        The value is derived once from the extension, stored in ``_mime_type_filled`` and
+        returned unchanged afterwards; deriving it calls ``_recache()``, and reading
+        ``extension`` fills ``_split_filled`` as well. A merged directory is born with the
+        slot set to an empty string and an index row with ``text/plain``, so neither
+        reaches this body.
+
+        A directory gets an empty string. Otherwise the extension without its leading
+        period, lowercased, is looked for in PLAIN_TEXT_EXTS, which gives ``text/plain``,
+        and then in MIME_TYPES_VS_EXT, which gives the type recorded there. An extension
+        in neither gets an empty string, which callers read as not displayable in a
+        browser rather than as unknown.
+
+        Returns:
+            str: the MIME type, or an empty string.
         """
 
         if self._mime_type_filled is not None:
@@ -1067,8 +1185,32 @@ class _PropertiesMixin:
 
     @property
     def label_basename(self):
-        """Return the basename of the label file associated with this data file. If this
-        is already a label file, it returns an empty string.
+        """The basename of the PDS3 label that describes this data file.
+
+        The value is derived once, stored in ``_label_basename_filled`` and returned
+        unchanged afterwards; deriving it calls ``_recache()``. A merged directory and an
+        index row are born with the slot set to an empty string, and a label file gets an
+        empty string too, because a label has no label of its own.
+
+        Otherwise the name is guessed before it is looked up. The guesses are this
+        basename with its extension replaced by each of LBL_EXT in turn, in both cases,
+        the case of this file's own extension deciding which order is tried first; where
+        PRODUCT_LBL_BASENAME_WO_EXT answers for this basename, its answer is the stem
+        instead. Each guess is tested beside this file with ``os_path_exists()``,
+        insisting on a case-sensitive match, and the first that exists is the answer.
+
+        Where no guess exists the result depends on this file. A file that does not itself
+        exist gets an empty string for the format, catalog and text extensions and its
+        first guess otherwise, so the name returned there is one that need not exist. A
+        file that does exist falls back to the link shelf: where ``internal_link_info``
+        gives a string, which is how the shelf records an external label, the basename of
+        that path is the answer, and anything else gives an empty string.
+
+        A basename whose extension is empty makes the stem empty as well, so the guesses
+        are the bare label extensions.
+
+        Returns:
+            str: the label basename, or an empty string where there is none.
         """
         cls = type(self)
 
@@ -1126,7 +1268,17 @@ class _PropertiesMixin:
 
     @property
     def label_abspath(self):
-        """Return the absolute path to the label if it exists; blank otherwise."""
+        """The absolute path of this file's PDS3 label.
+
+        This holds no slot of its own and is recomputed on every access, but the first
+        access fills ``_label_basename_filled`` through ``label_basename``. The path is
+        that name beside this file, so it exists exactly when ``label_basename`` found an
+        existing name; the one case where it does not is a file that does not itself
+        exist, for which ``label_basename`` returns a guess.
+
+        Returns:
+            str: the absolute path of the label, or an empty string where there is none.
+        """
 
         if self.label_basename:
             parent_path = os.path.split(self.abspath)[0]
@@ -1326,10 +1478,28 @@ class _PropertiesMixin:
 
     @property
     def version_ranks(self):
-        """Return a list of the numeric version ranks associated with the volume on
-        which this file resides.
+        """The version ranks recorded for the bundle or bundle set this file lies in.
 
-        This is an integer that always sorts versions from oldest to newest.
+        A version rank is the integer ``version_info()`` derives from a bundle set suffix,
+        and it sorts versions oldest to newest. The list describes the bundle rather than
+        the file: it holds one entry for each version of the bundle the preload found.
+
+        The value is derived once, stored in ``_version_ranks_filled`` and returned
+        unchanged afterwards; deriving it calls ``_recache()``. A merged directory is born
+        with the slot set to an empty list, and an index row inherits its table's list.
+
+        **A file that does not exist yields None rather than a list.** The derivation
+        leaves the slot at the None it started with and returns that, so a caller that
+        iterates the result without testing it raises TypeError. An object that exists but
+        names neither a bundle nor a bundle set gets an empty list, and so does one whose
+        category has no rank table, which also logs a warning.
+
+        Returns:
+            list: the version ranks, or None for a file that does not exist.
+
+        Raises:
+            KeyError: raised by ``__getitem__()`` on the rank table for an existing file
+                whose bundle or bundle set name the preload did not record.
         """
 
         if self._version_ranks_filled is not None:
@@ -1494,11 +1664,32 @@ class _PropertiesMixin:
 
     @staticmethod
     def version_info(suffix):
-        """Return a tuple of version info (version rank, version message, version id).
-        This is the Procedure to associate a volset suffix with a version rank value.
+        """Read a bundle set suffix as a version.
 
-        Keyword arguments:
-            suffix -- a volset suffix
+        The rank is what orders versions, oldest first, and the current version ranks
+        above every other at 999999. The four suffixes that name a release stage rank
+        between 990100 and 990400, in the order in which a bundle passes through them.
+
+        A numbered suffix ``_v<major>[.<minor>[.<micro>]]`` ranks at ten thousand times
+        the major number plus a hundred times the minor plus the micro, so a version can
+        be compared with any other of its own bundle set by rank alone. Its id is the
+        number without the leading ``_v``, rebuilt from the same parts, so a fourth part
+        is dropped from both the id and the rank while staying in the message.
+
+        Every other suffix is rejected. Only the current version and the four stage
+        suffixes get an empty version id.
+
+        Parameters:
+            suffix: a bundle set suffix. An empty string and None both name the current
+                version.
+
+        Returns:
+            tuple: the version rank, a phrase describing the version, and the version id.
+
+        Raises:
+            ValueError: for a suffix that is neither empty, None, one of the four stage
+                names, nor a numbered version; and raised by ``int()`` for a suffix that
+                begins ``_v`` whose parts are not whole numbers.
         """
 
         version_id = ''
