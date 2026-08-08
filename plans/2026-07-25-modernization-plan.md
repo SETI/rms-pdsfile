@@ -1282,9 +1282,32 @@ Four things that shaped the result:
     freeze the tree before launching it -- this PR did not, and entry 239 records what that
     cost.
 
-**PR-30 (L)** `docs: docstrings — rules, subclasses, maintenance tools`
-Rule modules get a standard header docstring (dataset, what each rule table
-does); tools get module + function docstrings.
+**PR-30 (L)** `docs: docstrings — the 36 rule modules`
+Each rule module gets a header docstring saying which volume set or bundle set it
+serves, what the data is, and what each of its rule tables contributes; the 31 rule
+classes and the 7 functions get theirs. **Scope is the rule modules only**, and the
+split is deliberate: the rest of what this entry originally named is three separate
+surfaces with nothing in common but the phase, and the scarce resource is the review
+budget rather than the writing.
+
+  * **PR-30a** — `src/pdsfile/pds3file/__init__.py` and
+    `src/pdsfile/pds4file/__init__.py`: 2 files, 510 lines, 2 classes, 33 functions,
+    23 of them undocumented. These are the two `PdsFile` subclasses, so their
+    docstrings have to describe class state and the preload path rather than a
+    dataset, which is PR-29a's kind of work and not this one's.
+  * **PR-30b** — `src/pdsfile/holdings_maintenance/`: 23 files, 9,602 lines,
+    5 classes, 152 functions, 57 of them undocumented, plus 34 existing docstrings
+    that use `Args:` and have to be converted. This is the largest remaining
+    surface in the package and larger than PR-29a's whole scope.
+  * **PR-30c** — `src/pdsfile/tools/`: 2 files, 199 lines, 2 functions, both already
+    documented. Small enough to ride with either of the above.
+
+The dataset accuracy problem is what makes the rule modules a PR of their own. There
+is no gate for "this sentence names the right instrument", the holdings tree is the
+only source that can settle it, and a fluent wrong sentence about a NASA dataset is
+worse than a short accurate one because it is published as API reference and read as
+authoritative. `critiques/pr-30-validation.md` sections 9 and 10 record where each
+claim came from and which modules could not be described beyond their tables.
 
 **PR-31 (M)** `docs: Sphinx scaffolding + API reference`
 `docs/` per template: `conf.py` (autodoc/napoleon/intersphinx/mermaid/myst),
