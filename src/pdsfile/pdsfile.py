@@ -59,11 +59,12 @@ is where that subsystem is implemented.
 What this module holds, and why:
 
   * The ``class PdsFile`` statement. A pickled instance records the module of its **own**
-    class, and every object the package hands out is a rule subclass, so what a
-    Viewmaster memcached entry names is ``pdsfile.pds3file.rules.<dataset>`` rather than
-    this module; only an instance of ``PdsFile`` itself would record ``pdsfile.pdsfile``.
-    The statement stays here because the class attributes below it do, not because moving
-    it would invalidate a cache.
+    class, and every object a resolved holdings path produces is a rule subclass, so what
+    a Viewmaster memcached entry names is ``pdsfile.pds3file.rules.<dataset>`` rather than
+    this module. The exception is ``new_merged_dir()``, which builds ``cls()`` and so
+    records this module when it is called on ``PdsFile`` itself. The statement stays here
+    because the class attributes below it do, not because moving it would invalidate a
+    cache.
   * Every class attribute: the configuration tables, the translator registries, the
     shared ``CACHE`` and ``LOGGER``, ``SHELF_CACHE`` and its companions, ``LOG_ROOT_``
     and ``LATEST_VERSION_RANKS``. A mixin carries behavior only, so the data a mixin

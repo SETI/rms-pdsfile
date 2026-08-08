@@ -75,11 +75,17 @@ reads as freshly verified because it was.
 
 * **The pickle rationale for keeping the `class PdsFile` statement in this file is false
   for every instance that is actually cached.** Pickle records the *instance's* class, and
-  every object the package hands out is a rule subclass. Run:
+  every object a resolved holdings path produces is a rule subclass. Run:
   `type(p).__module__` is `pdsfile.pds3file.rules.COISS_xxxx`, and `pdsfile.pdsfile` does
-  not appear in `pickle.dumps(p)` at all. Only an instance of `PdsFile` itself would record
-  it. The constraint may still be right; the reason given for it is not. Deferred
-  observation.
+  not appear in `pickle.dumps(p)` at all. The constraint may still be right; the reason
+  given for it is not. Deferred observation.
+
+  **CodeRabbit narrowed this after the fact, and was right to.** The correction written from
+  this finding said only an instance of `PdsFile` itself would record this module, and
+  `new_merged_dir()` is a constructor that produces one: it builds `cls()`, so calling it on
+  the base class yields an object whose pickle does name `pdsfile.pdsfile`. Reproduced. The
+  finding stands; the sentence written from it was too absolute -- which is this PR's own
+  section 9 failure arriving once more, from a tool rather than from a round.
 * **`IDX_EXT` and `LBL_EXT` are defined only on the subclasses**, which the module map's
   "the data a mixin reads is defined here" denies. Three sibling module docstrings --
   `_local_fs.py`, `_associations.py` and `_properties.py` -- say so explicitly, so this was

@@ -76,9 +76,9 @@ conflicts with a rule below, follow the rule below. See
 
    - `src/pdsfile/pdsfile.py` — **waived on both limits, and the split is
      deferred** (owner, 2026-08-07). This is a code problem and not a
-     documentation one: the file is one class occupying 2,247 of its 2,435 lines,
-     37 methods holding 1,920 lines between them, against a module docstring of
-     87. There is no prose to relocate, and trimming docstrings would not bring
+     documentation one: the file is one class occupying 2,270 of its 2,468 lines,
+     37 methods holding 1,938 lines between them, against a module docstring of
+     97. There is no prose to relocate, and trimming docstrings would not bring
      either number down far enough to matter. The available lever is a tenth
      mixin; whether one exists is open. Deferred observation 199 holds it.
    - `src/pdsfile/_properties.py` — **waived on both limits** (owner, 2026-08-08),
