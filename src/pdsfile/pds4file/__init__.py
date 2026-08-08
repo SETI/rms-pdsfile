@@ -1,7 +1,38 @@
 ##########################################################################################
 # pdsfile/pds4file/__init__.py
-# pds4file subpackage & Pds4File subclass with PdsFile as the parent class
 ##########################################################################################
+
+"""The pds4file subpackage, and the Pds4File class that reads a PDS4 holdings tree.
+
+``Pds4File`` is one of the two subclasses of ``PdsFile`` that a caller instantiates.
+Everything that reads or writes a file is inherited; what this class supplies is
+everything that says the tree is a PDS4 one:
+
+  * **Where the tree is.** ``PDS_HOLDINGS`` is "pds4-holdings", ``BUNDLE_DIR_NAME`` is
+    "bundles", and ``_HOLDINGS_ENV`` names the PDS4_HOLDINGS_DIR environment variable
+    that locates the tree on disk.
+  * **What a name looks like.** A PDS4 bundle set is not a pattern but a list: six names
+    are spelled out in ``BUNDLESET_REGEX``, so a new bundle set has to be added here
+    before it can be read. Bundle names are patterns, one per family of bundles.
+  * **Which rules apply.** Every rule table the base class leaves as None is filled in
+    from ``pds4file.rules``, plus three the PDS3 side has no use for:
+    ``PRODUCT_LBL_BASENAME_WO_EXT``, ``ARCHIVE_PATHS`` and ``ARCHIVE_DIRS``.
+  * **Its own cache and registry.** ``CACHE``, ``LOCAL_PRELOADED`` and ``SUBCLASSES``
+    are assigned here rather than inherited, so a preload of a PDS4 tree does not
+    disturb ``Pds3File``.
+
+The class carries no second vocabulary. The shared code is already written in the PDS4
+terms -- bundle, bundle set -- so the dozen aliases ``Pds3File`` needs have no
+counterpart here, and the two methods this class adds beyond the overrides are the
+archive-path pair at the end of the class body.
+
+The module ends by doing three things in order, and the order is what makes them work:
+the class registers itself as the default subclass, the per-bundle-set rule modules are
+imported -- which is what makes each of them subclass a fully built ``Pds4File`` -- and
+the merged directory of each category is created so that a tree can be read before any
+preload has run. The import is wrapped in a handler for ``AttributeError``, which is
+what a recursive import of ``pdsfile`` raises when a rule module is tested on its own.
+"""
 
 import re
 import pdslogger
@@ -12,6 +43,43 @@ from . import rules
 from pdsfile.preload_and_cache import cache_lifetime_for_class
 
 class Pds4File(PdsFile):
+    """A file or directory in a PDS4 holdings tree.
+
+    Construct one with an inherited constructor -- ``from_abspath()``,
+    ``from_logical_path()`` or one of the OPUS constructors -- rather than by calling
+    the class. What comes back is this class for a path no rule module claims, and a
+    subclass of it, from ``pds4file.rules``, for a path whose bundle set has one; the
+    ``SUBCLASSES`` registry and ``VOLSET_TRANSLATOR`` are what choose.
+
+    **Class state is per class, and this class has its own.** ``CACHE``,
+    ``LOCAL_PRELOADED`` and ``SUBCLASSES`` are assigned in the class body rather than
+    inherited from ``PdsFile``, so preloading a PDS4 tree fills this class's cache and
+    leaves ``Pds3File``'s alone. The four setters below are overridden for the same
+    reason: the base class writes each attribute onto every direct subclass, and these
+    write it onto the class the call names.
+
+    A rule subclass inherits all of it, so a setting made on ``Pds4File`` reaches every
+    bundle set, and one made on a rule subclass reaches that bundle set alone.
+
+    The class-attribute groups are:
+
+      * ``PDS_HOLDINGS``, ``BUNDLE_DIR_NAME`` and ``_HOLDINGS_ENV``, which say the tree
+        is a "pds4-holdings" tree whose data category is "bundles" and which is located
+        by the PDS4_HOLDINGS_DIR environment variable.
+      * Five regular expressions naming a bundle set and a bundle, with a
+        case-insensitive twin of three of them. ``BUNDLESET_REGEX`` enumerates the six
+        bundle sets by name rather than matching a shape, and its "plus" form adds the
+        two forms of version suffix and nothing else, where the PDS3 side's admits an
+        archive extension and a checksum basename too. ``BUNDLENAME_PLUS_REGEX`` extends
+        the bundle pattern to the ``.tar.gz`` and ``_md5.txt`` names that sit beside a
+        bundle.
+      * ``LOGGER`` and ``CACHE``, the second built with the shared cache-lifetime rule
+        and holding a direct reference to the logger, which is why replacing ``LOGGER``
+        later does not change where the cache logs.
+      * The rule tables, every one of them taken from ``pds4file.rules``.
+      * ``IDX_EXT`` and ``LBL_EXT``. A PDS4 index table is a ``.csv``, and ``.tab`` is
+        admitted as well; a PDS4 label is an ``.xml``, and ``.lblx`` as well.
+    """
 
     PDS_HOLDINGS = 'pds4-holdings'
     BUNDLE_DIR_NAME = 'bundles'
@@ -86,36 +154,65 @@ class Pds4File(PdsFile):
     ARCHIVE_DIRS = rules.ARCHIVE_DIRS
 
     def __init__(self):
+        """Return a blank object, with every slot at the value the base class gives it.
+
+        This is not how a caller gets an object. The constructors are the inherited
+        class methods, and each of them builds a blank object this way and then fills it
+        in, so calling the class directly gives something with no path and no contents.
+        """
+
         super().__init__()
 
     @classmethod
     def use_shelves_only(cls, status=True):
-        """Call before preload(). Status=True to identify files based on their
-        presence in the infoshelf files first. Search the file system only if a
-        shelf is missing.
+        """Choose whether file existence is answered from the info shelves.
 
-        Keyword arguments:
-            cls    -- the class with its attribute being updated
-            status -- value for the class attribute (default True)
+        Call it before ``preload()``. With the setting on, a file's existence and a
+        directory's contents come from the info shelf files, and the filesystem is
+        consulted only where a shelf is missing.
+
+        The attribute is written onto the class this is called on, unlike the
+        ``PdsFile`` version, which writes it onto every direct subclass of the class it
+        is called on and not onto that class itself. Subclasses further down inherit
+        the value rather than being written to, so a call on ``Pds4File`` reaches every
+        bundle set and a call on one rule subclass reaches that one.
+
+        Parameters:
+            status (bool): the value to set.
         """
 
         cls.SHELVES_ONLY = status
 
     @classmethod
     def require_shelves(cls, status=True):
-        """Call before preload(). Status=True to raise exceptions when shelf files
-        are missing or incomplete. Otherwise, missing shelf info is only logged as a
-        warning instead.
+        """Choose whether a missing or incomplete shelf file is an error.
 
-        Keyword arguments:
-            cls    -- the class with its attribute being updated
-            status -- value for the class attribute (default True)
+        Call it before ``preload()``. With the setting on, missing shelf information
+        raises; with it off, it is logged as a warning and the run carries on.
+
+        The attribute is written onto the class this is called on, on the same terms as
+        ``use_shelves_only()`` above.
+
+        Parameters:
+            status (bool): the value to set.
         """
 
         cls.SHELVES_REQUIRED = status
 
     # Override functions
     def __repr__(self):
+        """Return a representation naming the class and the path.
+
+        Three forms are produced, and which one appears says what the object is: an
+        object with no absolute path is written as ``Pds4File-logical("...")`` around its
+        logical path; one of this class exactly is written as ``Pds4File("...")`` around
+        its absolute path; and one of a rule subclass names that subclass after a dot,
+        as ``Pds4File.uranus_occs_earthbased("...")``.
+
+        Returns:
+            str: the representation.
+        """
+
         if self.abspath is None:
             return 'Pds4File-logical("' + self.logical_path + '")'
         elif type(self) is Pds4File:
@@ -129,11 +226,19 @@ class Pds4File(PdsFile):
     ######################################################################################
     @classmethod
     def set_logger(cls, logger=None):
-        """Set the PdsLogger.
+        """Install the PdsLogger this class writes through.
 
-        Keyword arguments:
-            logger -- the pdslogger (default None)
-            cls    -- the class with its attribute being updated
+        The logger is written onto the class this is called on, unlike the ``PdsFile``
+        version, which writes it onto every direct subclass of the class it is called on
+        and leaves that class with the logger it had.
+
+        A cache is unaffected either way. Each holds a direct reference to the logger it
+        was constructed with, so replacing this class's ``LOGGER`` does not change where
+        its ``CACHE`` logs.
+
+        Parameters:
+            logger: the PdsLogger to install. A false value installs a null logger,
+                which discards everything.
         """
         if not logger:
             logger = pdslogger.NullLogger()
@@ -142,10 +247,11 @@ class Pds4File(PdsFile):
 
     @classmethod
     def set_easylogger(cls):
-        """Log all messages directly to stdout.
+        """Send every log message straight to standard output.
 
-        Keyword arguments:
-            cls -- the class calling the other methods inside the function
+        This is where the base class's recursion ends. ``PdsFile.set_easylogger()``
+        calls itself on each direct subclass, and this override installs the logger on
+        the class it was called on instead of passing the call further down.
         """
         cls.set_logger(pdslogger.EasyLogger())
 
@@ -153,17 +259,24 @@ class Pds4File(PdsFile):
     # Archive path associations
     ############################################################################
     def archive_paths(self):
-        """Return the absolute paths to archive files associated with this PdsFile.
+        """Return the absolute paths of the archive files that cover this file.
 
-        Determines the archive file paths based on the logical path of this PdsFile
-        instance. The PdsFile can represent a bundle set, a bundle, or a bundle
-        collection. Archive paths are resolved using the ARCHIVE_PATHS translator
-        rules and converted to absolute paths by prepending the root directory.
+        A PDS4 bundle set chooses how to split itself into archives, so there is no
+        structural rule of the kind the PDS3 side has, where one archive covers one
+        volume. The answer is looked up instead: this file's **logical** path is put
+        through the ``ARCHIVE_PATHS`` translator and every logical archive path it
+        returns has this file's root directory put in front of it.
+
+        The table comes from the rule subclass of the bundle set this file belongs to.
+        The one this class carries is empty, so a bundle set whose rule module does not
+        install a table of its own gets nothing back here, and so does a path no rule in
+        the installed table matches.
+
+        Nothing is checked for existence; the paths are what the table names.
 
         Returns:
-            list[str]: A list of absolute paths to archive files (typically .tar.gz
-                files) associated with this PdsFile. Returns an empty list if no
-                archive paths are found for the logical path.
+            list[str]: the absolute paths of the archive files, typically .tar.gz
+            files, or an empty list where no rule matched.
         """
 
         # pdsf = self.bundle_pdsfile()
@@ -175,20 +288,31 @@ class Pds4File(PdsFile):
         return archive_paths
 
     def archive_dirs(self):
-        """Return a mapping of archive paths to directories included in each archive.
+        """Return, for each archive covering this file, the directories inside it.
 
-        For each archive file path associated with this PdsFile, determines which
-        directories are included in that archive. Uses the ARCHIVE_DIRS translator
-        rules to get directory patterns for each archive path, then resolves those
-        patterns to actual existing directory paths using glob matching.
+        This is the inverse of ``archive_paths()`` and is built on top of it: every
+        archive path that method returns becomes a key, and the ``ARCHIVE_DIRS``
+        translator says which directories that archive packages.
+
+        The two translators are fed differently. ``ARCHIVE_PATHS`` is given a logical
+        path and ``ARCHIVE_DIRS`` is given the **absolute** archive path this method
+        already built, so a rule in either table has to allow for whatever precedes the
+        part it matches. Both tables return logical paths, and this method puts the root
+        directory in front of each of those in turn.
+
+        Unlike ``archive_paths()``, the result is filtered by what is there: each
+        directory pattern is globbed, so a pattern matching nothing on disk contributes
+        nothing. The glob is case-sensitive.
+
+        The table comes from the rule subclass of the bundle set this file belongs to.
+        The one this class carries is empty, so a bundle set whose rule module does not
+        install a table of its own maps each of its archive paths, if it has any, to an
+        empty list.
 
         Returns:
-            dict[str, list[str]]: A dictionary where:
-                - Keys are absolute paths to archive files (typically .tar.gz files)
-                - Values are lists of absolute paths to directories included in each
-                  archive file. Each list contains the actual existing directories
-                  that match the archive's directory patterns. Returns an empty list
-                  for an archive path if no matching directories are found.
+            dict[str, list[str]]: the absolute path of each archive that covers this
+            file, mapped to the absolute paths of the directories it packages. An
+            archive whose patterns match nothing that exists maps to an empty list.
         """
 
         archive_paths = self.archive_paths()
