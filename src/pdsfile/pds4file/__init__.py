@@ -26,12 +26,17 @@ terms -- bundle, bundle set -- so the dozen aliases ``Pds3File`` needs have no
 counterpart here, and the two methods this class adds beyond the overrides are the
 archive-path pair at the end of the class body.
 
-The module ends by doing three things in order, and the order is what makes them work:
-the class registers itself as the default subclass, the per-bundle-set rule modules are
-imported -- which is what makes each of them subclass a fully built ``Pds4File`` -- and
-the merged directory of each category is created so that a tree can be read before any
-preload has run. The import is wrapped in a handler for ``AttributeError``, which is
-what a recursive import of ``pdsfile`` raises when a rule module is tested on its own.
+The module ends with three statements. The class registers itself in its own
+``SUBCLASSES`` under "default", which is the entry a path no rule module claims resolves
+to; the per-bundle-set rule modules are imported, and each of them adds its own entry to
+that same registry as it is imported; and the merged directory of each category is
+created, so that a tree can be read before any preload has run.
+
+**One of the three orderings is load-bearing and the file says which.** The import has to
+follow the class body, because every rule module subclasses ``Pds4File`` and so needs a
+class that is already built. It is wrapped in a handler for ``AttributeError``, which is
+what a recursive import of ``pdsfile`` raises when a rule module is tested on its own,
+and a run that takes that path finishes with no rule subclasses registered at all.
 """
 
 import re
