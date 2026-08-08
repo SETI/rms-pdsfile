@@ -4888,3 +4888,47 @@ rediscovery.
      different route, which is the argument for checking that a gate *ran* and not only what
      it *said*.
      **Owner: recorded, no action.**
+
+### Added by the PR-29b adversarial review (round 5, `pdsfile.py` and `pdsviewable.py` re-read)
+
+229. **The pickle rationale for keeping the `class PdsFile` statement in `pdsfile.py` does
+     not hold for the instances that are actually cached.** The module docstring said that
+     pickled `PdsFile` instances record `pdsfile.pdsfile` as the class's module, so moving
+     the statement would invalidate Viewmaster's memcached entries. Pickle records the
+     module of the **instance's own class**, and every object the package hands out is a
+     rule subclass: measured, `type(p).__module__` for an ordinary object is
+     `pdsfile.pds3file.rules.COISS_xxxx`, and the byte string `pdsfile.pdsfile` does not
+     appear anywhere in `pickle.dumps(p)`. Only an instance of `PdsFile` itself would
+     record it, and the class docstring says the class is not used directly.
+
+     The constraint may still be right for other reasons -- the class attributes the mixins
+     read are defined in that statement's body -- and the docstring now gives that reason
+     instead. What is recorded here is that a constraint the plan has treated as
+     load-bearing since Phase 5 was resting on a claim that does not reproduce, and that
+     nobody had run `pickle.dumps` on a real object to check it.
+     **Owner: a future pdsfile PR, if the constraint is ever revisited.**
+
+230. **`from_path('')` hardcodes the PDS3 category.** Every other voltype default in
+     `from_path` uses `cls.BUNDLE_DIR_NAME`, which is `volumes` on `Pds3File` and `bundles`
+     on `Pds4File`; the empty-description branch assigns the literal `'volumes'`. Measured,
+     `Pds4File.from_path('')` returns a logical path of `volumes`, which is not a PDS4
+     category. The docstring describes what happens rather than what was meant, because
+     what happens is what a caller gets.
+     **Owner: a future pdsfile PR.**
+
+231. **A claim stated in more than one place is corrected in one place, and this PR found
+     two more instances of it.** PR-29a's record named the partial fix as a pattern no
+     reviewer brief had asked about. Round 5 found it twice more, and both times the copy
+     left behind was the *summary* rather than the detail. `full_size`'s own docstring
+     correctly said it raises IndexError on a set with nothing indexed by size; the
+     `PdsViewSet` class docstring listed it among the lookups a named-only set is served
+     by. And `IDX_EXT` and `LBL_EXT` being defined only on the subclasses is stated
+     explicitly in `_local_fs.py`, `_associations.py` and `_properties.py`, and was denied
+     by `pdsfile.py`'s module map, which is the fourth copy and the one nobody looked at.
+
+     **The rule this suggests is that a claim should be checked from the summary downward,
+     not from the detail upward**: the detailed docstring is the one whose author had the
+     code in front of them, and the summary is the one that gets stale. Both copies here
+     were found by a reviewer who was told to grep for other copies of a claim it had just
+     checked, which is the practice worth carrying into PR-30.
+     **Owner: PR-30, as a reviewer-brief instruction.**
