@@ -85,10 +85,11 @@ bundle's ``browse/`` collection, which every bundle has.
 
 The class body builds its volume set translator entries by looping over
 ``prefix_mapping``. Those entries map a bundle name to the bundle set name, which
-path resolution never needs: the bundle set name is already a ``SUBCLASSES`` key, so
-``uranus_occ_support``, which is absent from the mapping, resolves to this subclass
-all the same. `uranus_occs_earthbased_primary_filespec.py` holds the list of
-primary labels this bundle set offers, which this module re-exports.
+path resolution never needs: the bundle set name is already a
+``Pds4File.SUBCLASSES`` key, so uranus_occ_support, which is absent from the
+mapping, resolves to this subclass all the same.
+`uranus_occs_earthbased_primary_filespec.py` holds the list of primary labels this
+bundle set offers, which this module re-exports.
 """
 
 import re
@@ -598,9 +599,10 @@ class uranus_occs_earthbased(pds4file.Pds4File):
     "uranus_occs_earthbased".
     The module docstring describes the bundle set and every table.
 
-    Its ``VOLSET_TRANSLATOR`` entries are built by looping over ``prefix_mapping``.
-    Those entries map a bundle name to the bundle set name, which path resolution
-    does not need, because the bundle set name is already a ``SUBCLASSES`` key.
+    Its ``Pds4File.VOLSET_TRANSLATOR`` entries are built by looping over
+    ``prefix_mapping``. Those entries map a bundle name to the bundle set name,
+    which path resolution does not need, because the bundle set name is already a
+    ``Pds4File.SUBCLASSES`` key.
     """
 
     volset_list = []

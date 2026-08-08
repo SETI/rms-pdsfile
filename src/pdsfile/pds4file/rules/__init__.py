@@ -56,7 +56,7 @@ The tables:
   covering the checksum, archive, preview, diagram and metadata trees, the standard
   PDS3 volume subdirectories, SPICE kernel extensions, a block keyed on file
   extension alone and three closing catch-alls. Its category-directory entries are
-  the PDS3 ones, so there is none for ``bundles``: asking a ``Pds4File`` built from
+  the PDS3 ones, so there is none for ``bundles/``: asking a ``Pds4File`` built from
   the logical path "bundles" for its description raises rather than answering, as it
   does for "archives-bundles" and "checksums-bundles".
 * ``GENERIC_VOLSET_DESC`` and ``GENERIC_VOLUME_DESC`` -- the strings "Volume
@@ -113,8 +113,8 @@ The tables:
 
 ``__all__`` lists four bundle set names; the ``from .rules import`` block in
 ``pds4file/__init__.py`` names six, adding
-``cassini_iss_fring_mosaics_rsfrench2025`` and
-``cassini_iss_spokes_hedman_hamilton_2024``. Nothing imports the modules through
+cassini_iss_fring_mosaics_rsfrench2025 and
+cassini_iss_spokes_hedman_hamilton_2024. Nothing imports the modules through
 ``__all__``, so nothing is broken by the gap:
 ``pds4file/__init__.py`` names each one explicitly in a ``from .rules import``
 block, because importing a rule module is what registers its subclass and that has

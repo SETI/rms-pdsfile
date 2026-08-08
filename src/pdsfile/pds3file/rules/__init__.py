@@ -20,8 +20,9 @@ not behave alike. Measured over the 25 dataset modules:
 * An outright assignment replaces the table, so nothing falls through. That is how
   ``OPUS_ID`` (14 modules), ``VIEWABLES`` (17),
   ``OPUS_ID_TO_PRIMARY_LOGICAL_PATH`` (12), ``VIEWABLE_TOOLTIPS`` (3),
-  ``DATA_SET_ID`` (2) and ``FILENAME_KEYLEN`` (5) always arrive. ``OPUS_PRODUCTS`` is
-  the one table that arrives both ways: eleven modules add it and two replace it.
+  ``DATA_SET_ID`` (2) and ``Pds3File.FILENAME_KEYLEN`` (5) always arrive.
+  ``OPUS_PRODUCTS`` is the one table that arrives both ways: eleven modules add it
+  and two replace it.
 * ``FILESPEC_TO_BUNDLESET`` is extended at module level, below the class, in the
   eleven modules that touch it, rather than in a class body at all.
 
@@ -62,7 +63,7 @@ The tables:
   and exactly ``AAREADME.txt`` or ``README.txt``. Every pattern is anchored at both
   ends, so a bare ``INFO.txt`` matches nothing and neither does ``MYREADME.txt``.
 * ``SORT_KEY`` -- the key a basename sorts by. It orders previews largest first,
-  rewriting ``_full`` to ``_1full`` and ``_thumb`` to ``_4thumb``; orders a volume
+  rewriting "_full" to "_1full" and "_thumb" to "_4thumb"; orders a volume
   set's versions with the newest first; sorts a PDS link ahead of everything else;
   and otherwise sorts alphabetically.
 * ``SPLIT_RULES`` -- how a basename splits into an anchor, an optional middle part
@@ -91,7 +92,7 @@ The tables:
   volume_id:directory_tree:filename.
 * ``DATA_SET_ID`` -- the PDS3 data set ID of a product. A null translator here.
 
-``__all__`` lists 24 of this package's 25 dataset modules; ``JNOSRU_xxxx`` is absent
+``__all__`` lists 24 of this package's 25 dataset modules; JNOSRU_xxxx is absent
 from it. Nothing imports them through it, so nothing is broken by the gap:
 ``pds3file/__init__.py`` names all 25 explicitly in a ``from .rules import``
 block, because importing a rule module is what registers its subclass and that has

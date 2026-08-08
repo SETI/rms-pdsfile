@@ -5411,3 +5411,41 @@ rediscovery.
      hazard rather than a defect. A `TranslatorByRegex` returns its first match, so an order
      that varies is an order that could one day matter. Owner: whoever next touches
      `uranus_occs_earthbased.py`.
+
+### Added by the CodeRabbit review of PR-30
+
+273. **A checker whose totals line is not the last line of its output will be read
+     through `tail` and reported as passing.** `critiques/pr-30/check_rule_tables.py`
+     prints its findings, a blank, the totals, the per-code counts, a blank, and the
+     `ALLOWED` list. Every re-run during PR-30's correction batches was read through
+     `| tail -2`, which shows the last blank and `ALLOWED`, so a run reporting 24
+     findings was recorded as reporting none, and stayed that way through a green CI run.
+     `critiques/pr-29/check_docstrings.py` escapes this only because its totals line
+     happens to fall within the last two.
+
+     Two cheap fixes, either of which would have caught it: **print the totals last**, or
+     have the caller read the exit status rather than the tail. The second is already the
+     rule for the Sphinx probe, which appends a line of its own on a nonzero exit for
+     exactly this reason. **Owner: whichever PR next writes or runs a checker of this
+     shape; the ordering fix belongs in `check_rule_tables.py` itself.**
+
+274. **A `Raises:` section is not satisfied by prose elsewhere in the same docstring.**
+     `COUVIS_0xxx.DATA_SET_ID` described the two subscripts in its return expression and
+     said what does not guard them, and listed only `ValueError` and `FileNotFoundError`
+     under `Raises:`. Rounds 2 and 4 both raised the subscripts; neither asked for the
+     section to be amended, and the executor read the prose as discharging the obligation.
+     It does not: the generated API page renders `Raises:` as the contract.
+     `critiques/pr-29/check_docstrings.py` cannot catch this, because E2 covers only
+     classes raised by a `raise` statement in the body -- a subscript that can raise is
+     invisible to it, which is exactly why PR-29 widened the *convention* to cover
+     mechanisms E1 can verify. **The convention was the thing not applied.**
+     **Owner: a reviewer-brief instruction for the next docstring PR -- ask explicitly
+     whether every mechanism the prose names appears in `Raises:`.**
+
+275. **No review round read this PR's own checker.** Four rounds read 36 modules of prose
+     against the code; none was pointed at `critiques/pr-30/check_rule_tables.py`, and the
+     bypass in its `imported_names` (entry 273's sibling, repaired in this PR) was found by
+     an outside reviewer instead. A gate built inside a PR is part of that PR's deliverable
+     and gets no independent read under the current round structure.
+     **Owner: a reviewer-brief instruction -- one round of any PR that ships a checker
+     should review the checker.**

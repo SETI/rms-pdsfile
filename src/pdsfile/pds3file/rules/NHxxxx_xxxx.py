@@ -605,10 +605,11 @@ class NHxxxx_xxxx(pds3file.Pds3File):
             KeyError: raised by the priority lookup, the item read
                 ``__getitem__()`` on ``FILE_CODE_PRIORITY``, for a file code the
                 table does not list.
-            TypeError: raised by ``sort()`` where two copies at one version rank
-                carry the same file code. The priority and the code are then equal
-                and the comparison falls through to the lists of PdsFile objects,
-                which have no ordering.
+            TypeError: raised by ``sort()`` wherever two copies at one version rank
+                are given the same priority and the same file code, which here means
+                the same file code, since the priority is looked up from it. The
+                comparison then falls through to the lists of PdsFile objects, which
+                have no ordering.
         """
 
         headers = list(pdsfile_dict.keys())     # Save keys so we can alter dict

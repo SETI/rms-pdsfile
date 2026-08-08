@@ -105,7 +105,13 @@ def top_level_names(tree):
 
 
 def imported_names(tree):
-    """Return the set of names one module binds by importing them.
+    """Return the set of names one module binds by importing them at module scope.
+
+    Only the module body is read. An import inside a function or a class binds a name
+    in that scope and not in the module's, so counting it here would let a docstring
+    backquote a name the module does not have and pass T3. This is the one direction
+    of error a permission list can take that hides a finding rather than inventing
+    one, which is why the scope is narrowed rather than widened.
 
     Parameters:
         tree (ast.Module): the parsed module.
@@ -116,7 +122,7 @@ def imported_names(tree):
     """
 
     names = set()
-    for node in ast.walk(tree):
+    for node in tree.body:
         if isinstance(node, (ast.Import, ast.ImportFrom)):
             for alias in node.names:
                 names.add(alias.asname or alias.name.split('.')[0])

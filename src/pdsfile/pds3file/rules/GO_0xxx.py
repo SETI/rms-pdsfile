@@ -846,10 +846,10 @@ class GO_0xxx(pds3file.Pds3File):
             IndexError: raised by the item read ``__getitem__()`` on the heading,
                 where the heading is the empty-string key and it holds more than one
                 copy of a product in the volumes tree.
-            TypeError: raised by ``sort()`` where two copies at one version rank are
-                both reprocessed or both superseded. The priority is then equal and
-                the comparison falls through to the lists of PdsFile objects, which
-                have no ordering.
+            TypeError: raised by ``sort()`` wherever two copies at one version rank
+                are given the same priority -- which is any two that are both
+                reprocessed, or both not. The comparison then falls through to the
+                lists of PdsFile objects, which have no ordering.
         """
 
         headers = list(pdsfile_dict.keys())     # Save keys so we can alter dict

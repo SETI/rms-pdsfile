@@ -18,9 +18,9 @@ The rule tables:
   ISIS2 cubes, the browse image collections and the small and full-size browse
   images, points at the guide to interpreting a VIMS preview, and names the two
   program binaries under the volumes' software directories. One of its browse entries
-  is unreachable, for the same reason as `COISS_xxxx.py`'s: it requires an ``extras``
-  directory below a ``data`` directory, and in the archive ``extras`` is a sibling of
-  ``data``.
+  is unreachable, for the same reason as `COISS_xxxx.py`'s: it requires an
+  ``extras/`` directory below a ``data/`` directory, and in the archive ``extras/``
+  is a sibling of ``data/``.
 * ``default_viewables`` -- points a cube at its preview images.
 * ``associations_to_volumes``, ``associations_to_previews``,
   ``associations_to_metadata`` and ``associations_to_documents`` -- cross the

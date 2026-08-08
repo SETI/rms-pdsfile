@@ -17,8 +17,8 @@ The rule tables:
   where this volume set's are named for planet and spacecraft together, as in
   ``DATA/JUPITER_VG1``; the other six name ``VG1_JUP.DAT``-style data files, which
   this volume set does not have -- its data files are ``C1547XXX.TAB`` and
-  ``C1547XXX_LSB.DAT``. Every pattern in a ``TranslatorByRegex`` is anchored at both
-  ends, so all ten fall through to the defaults.
+  ``C1547XXX_LSB.DAT``. Every pattern in a ``translator.TranslatorByRegex`` is
+  anchored at both ends, so all ten fall through to the defaults.
 * ``filespec_to_bundleset`` -- maps a file specification beginning with a
   VGIRIS_nnnn volume ID to the volume set name VGIRIS_xxxx_peer_review, which is the
   name the volumes actually sit under.

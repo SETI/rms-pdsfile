@@ -27,15 +27,17 @@ The rule tables:
 * ``opus_type`` -- the reprojected image and its SPICE pointing file, under the
   "Cassini ISS B Ring Reprojected Images" category, and its browse product under
   "browse".
-* ``archive_paths`` and ``archive_dirs`` -- three archives: one for the whole
-  bundle, one for ``data_derived/`` and one for ``browse_derived/``. The two partial
+* ``archive_paths`` and ``archive_dirs`` -- the archive layout these two describe,
+  which nothing reads: three archives, one for the whole bundle, one for
+  ``data_derived/`` and one for ``browse_derived/``. The two partial
   archives also carry the bundle label, context, spice_kernels, schema and readme
   files a reader needs with them.
 * ``product_lbl_basename_wo_ext`` -- pairs a ``_rprj_suppl.txt`` SPICE pointing file
   with the ``*_rprj`` label, whose basename it does not otherwise match.
 
 ``archive_paths`` and ``archive_dirs`` are defined here but the class body assigns
-neither ``ARCHIVE_PATHS`` nor ``ARCHIVE_DIRS``. All six pds4 dataset modules define
+neither ``Pds4File.ARCHIVE_PATHS`` nor ``Pds4File.ARCHIVE_DIRS``. All six pds4
+dataset modules define
 archive tables and four of them assign the attributes; this module and
 `cassini_iss_fring_mosaics_rsfrench2025.py` are the two that do not, so both bundle
 sets use the empty archive tables from `pds4file/rules/__init__.py` and the tables

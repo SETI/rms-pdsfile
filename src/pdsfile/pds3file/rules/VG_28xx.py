@@ -73,8 +73,8 @@ The rule tables:
 * ``versions`` -- the paths of the same product in the other version of this volume
   set.
 * ``sort_key`` and ``split_rules`` -- a basename sort order and a basename grouping.
-  The class body assigns neither ``SORT_KEY`` nor ``SPLIT_RULES``, so neither table
-  is reached and both behaviors are the defaults.
+  The class body assigns neither ``Pds3File.SORT_KEY`` nor ``Pds3File.SPLIT_RULES``,
+  so neither table is reached and both behaviors are the defaults.
 * ``opus_type`` -- files products under four OPUS categories, one per experiment:
   "Voyager PPS", "Voyager UVS", "Voyager RSS" and "Voyager ISS". No other rule
   module spans four.
@@ -1078,8 +1078,9 @@ class VG_28xx(pds3file.Pds3File):
     "VG_28xx".
     The module docstring describes the volume set and every table.
 
-    The class body installs no ``SORT_KEY`` and no ``SPLIT_RULES``, so this module's
-    ``sort_key`` and ``split_rules`` tables are not reached.
+    The class body installs no ``Pds3File.SORT_KEY`` and no
+    ``Pds3File.SPLIT_RULES``, so this module's ``sort_key`` and ``split_rules``
+    tables are not reached.
     """
 
     pds3file.Pds3File.VOLSET_TRANSLATOR = translator.TranslatorByRegex([('VG_28xx', re.I, 'VG_28xx')]) + \

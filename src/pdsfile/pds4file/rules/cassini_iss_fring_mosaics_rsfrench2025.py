@@ -45,9 +45,10 @@ The rule tables:
   co-iss-fring-mosaic-<observation name>, and the mosaic label it names.
 * ``filespec_to_bundleset`` -- maps a file specification beginning with the bundle
   set name to the bundle set name itself.
-* ``archive_paths`` and ``archive_dirs`` -- four archives: one for the whole bundle,
-  one for the reprojected images, one for the plain mosaics and one for the
-  background-subtracted mosaics. Each of the three partial archives also carries the
+* ``archive_paths`` and ``archive_dirs`` -- the archive layout these two describe,
+  which nothing reads: four archives, one for the whole bundle, one for the
+  reprojected images, one for the plain mosaics and one for the background-subtracted
+  mosaics. Each of the three partial archives also carries the
   bundle label, the context, spice_kernels, schema and readme files, the document
   collection files and its own index pair from ``miscellaneous/``; the reprojected
   archive carries the ``miscellaneous/`` collection files as well.
@@ -57,7 +58,8 @@ The rule tables:
   with the reprojected image label.
 
 ``archive_paths`` and ``archive_dirs`` are defined here but the class body assigns
-neither ``ARCHIVE_PATHS`` nor ``ARCHIVE_DIRS``. All six pds4 dataset modules define
+neither ``Pds4File.ARCHIVE_PATHS`` nor ``Pds4File.ARCHIVE_DIRS``. All six pds4
+dataset modules define
 archive tables and four of them assign the attributes; this module and
 `cassini_iss_spokes_hedman_hamilton_2024.py` are the two that do not, so both bundle
 sets use the empty archive tables from `pds4file/rules/__init__.py` and the tables

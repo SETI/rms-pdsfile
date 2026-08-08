@@ -24,8 +24,8 @@ The rule tables:
   extras, and labels the CISSCAL software and the calibration report inside
   COISS_0011. The browse extras get no entry here and fall through to the default
   table's "Browse image collection". Two entries of this table are unreachable: both
-  require an ``extras`` directory below a ``data`` directory, and in the archive
-  ``extras`` is a sibling of ``data``.
+  require an ``extras/`` directory below a ``data/`` directory, and in the archive
+  ``extras/`` is a sibling of ``data/``.
 * ``default_viewables`` -- points an image at its preview images.
 * ``associations_to_volumes``, ``associations_to_calibrated``,
   ``associations_to_previews``, ``associations_to_metadata`` and

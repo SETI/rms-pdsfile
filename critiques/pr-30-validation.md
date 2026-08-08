@@ -121,6 +121,27 @@ assignments matter, and a check that exercises judgment is a check that can be a
 T4 all read the docstring, so the base run does not exercise them and it would be wrong to
 report base as "36 findings, all of one kind" without saying so.
 
+### 4.1a The gate was failing and its own record said it passed
+
+**Between the second reads' corrections and the CodeRabbit review, this checker reported
+24 findings and this record claimed 0.** They were introduced by the round 3 and round 4
+corrections -- prose that names a class attribute (``SORT_KEY``, ``ARCHIVE_PATHS``) or a
+directory (``data``, ``extras``) in the backquotes the convention reserves for a module's
+own tables -- and they were present at `0793081`, which is the commit CI ran green on.
+
+The reason they went unseen is worth recording exactly, because it is not a judgment
+error. The checker prints its findings, then a blank line, then the totals line, then the
+per-code counts, then a blank line, then the `ALLOWED` list. Every re-run during the
+correction batches was read through `| tail -2`, which shows the blank line and
+`ALLOWED` and cuts the totals off. The output that said "24 findings over 36 files" was
+produced every time and never displayed.
+
+The brief warned about this shape for the Sphinx probe -- "a probe that pipes it away
+reports a clean build for a build that never ran" -- and the same mistake was made on a
+different gate. Every gate in this record is now run with its output to a file and its
+exit status read, and the totals are quoted from the file. The mutation table below was
+also re-run after the repair rather than carried over.
+
 ### 4.2 The mutations
 
 Each mutation was applied to a copy of the head tree, the checker run over all 36 files,
@@ -129,6 +150,7 @@ and the copy restored.
 | mutation | finding |
 |---|---|
 | unmutated control, before and after | 0 findings, exit 0 |
+| a function-scope import backquoted in a docstring | T3 no rule module defines it |
 | `s_rings_viewables` renamed to `dsntrack_viewables` in `COCIRS_xxxx.py`'s docstring | T1 names "dsntrack_viewables", defined by `CORSS_8xxx.py`; **and** T2 `s_rings_viewables` not named |
 | `s_rings_viewables` misspelled `s_ring_viewables` | T3 no rule module defines it; **and** T2 |
 | `dsntrack_viewables` dropped from `CORSS_8xxx.py`'s docstring | T2 module defines it, docstring does not name it |
@@ -144,6 +166,14 @@ check that could fire -- but `COVIMS_8xxx.py`'s docstring names `COUVIS_8xxx.py`
 last paragraph, because the two modules cross-reference each other. The whole-docstring
 form of T4 therefore passed vacuously on exactly the copy it exists to catch. It now reads
 the summary line, and eight summary lines were reworded so that each names its own module.
+
+`imported_names` reads the module body alone. It read `ast.walk` until CodeRabbit
+pointed out that an import inside a function or a class binds no module-scope name, so
+counting it would let a docstring backquote a name the module does not have and pass T3.
+That is the one direction a permission list can fail in that **hides** a finding rather
+than inventing one, which is why it was narrowed rather than argued with. No rule module
+has a nested import, so the repair moved no number here; the mutation row above is what
+shows it works.
 
 **The check has one hole left, and it is stated in the script rather than left to be
 found.** A module key that is a prefix of another key is satisfied by the longer one, so a
@@ -431,11 +461,13 @@ from any other round. Records: `critiques/pr-30/round-1.md` through `-4`.
 | 2 | the 10 pds4 rule modules and all 7 functions | 10 modules, 6 classes, 7 functions | 33 | 7 |
 | 3 | the same 26, re-read | the same | 31 | 10 |
 | 4 | the same 10 plus the 7, re-read | the same | 26 | 6 |
-| | | | **147** | **39** |
+| CodeRabbit | the whole diff | -- | 3 | 2 |
+| | | | **150** | **41** |
 
 Every finding was re-verified by the executor before it was acted on. The 39 code defects
-are recorded as deferred observations 240 through 272; none was fixed here, because this
-PR changes no executable statement.
+are recorded as deferred observations 240 through 275; none was fixed here, because this
+PR changes no executable statement. The only executable change in the PR is to its own
+checker, in `critiques/pr-30/`, which is not part of the package.
 
 ### The second reads found more of the first reads' work than of the original
 
@@ -494,6 +526,32 @@ modules that do it.
   3. The first correction of `COISS_xxxx.py`'s scope narrowed "all four volume sets" to
   "the three image volume sets", and round 3 measured that COISS_0xxx does not name its
   files that way either.
+
+### A fifth reader found what four rounds did not
+
+CodeRabbit opened five threads on the pushed branch, and they do not divide the way the
+round tally would predict.
+
+| thread | verdict |
+|---|---|
+| `check_rule_tables.py` accepts nested imports | **accepted** -- a bypass in this PR's own gate, repaired in section 4.1a |
+| `COUVIS_0xxx.DATA_SET_ID` documents a hazard it does not list under `Raises:` | **accepted** -- `IndexError` and `KeyError` added, both attributed to the item read |
+| the prioritizers' `TypeError` enumerates cases where it should state the condition | **accepted** -- both now state equal priority and give the cases as examples |
+| `FILESPEC_TO_BUNDLESET` leaves three volume sets unresolved | **declined as a code change**, out of scope for a docstrings-only PR; the docstring already names all three and says no directory carries the answers, and deferred observation 250 holds the code |
+| the two pds4 modules with unwired archive tables | **declined as a code change**, same reason; the prose already says the tables are unreached, deferred 243 and 251 hold it, and the two bullets that still read as though the tables were live are reworded |
+
+Three of the five were real, and **two of those three are defects in prose that four
+review rounds passed over**: the missing `Raises:` entries survived rounds 2 and 4, both
+of which raised the subscripts and neither of which asked for the section to be amended,
+and the `TypeError` condition survived rounds 1 and 3. The checker bypass survived all
+four because no round was asked to review the checker.
+
+That is the limit of the round structure as run here. A reviewer reads the prose against
+the code; it takes a different reader to ask whether the tool doing the mechanical half
+is sound, and to insist that a hazard named in prose be named in the section that exists
+for hazards. **A future docstring PR should point one round at its own checkers**, and
+should treat "the docstring mentions this exception" as failing the `Raises:` contract
+rather than satisfying it.
 
 ### The one process rule that was followed, and what it bought
 

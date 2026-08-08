@@ -23,8 +23,8 @@ The rule tables:
   set, which cannot be found by wildcarding the version suffix alone: the earliest
   version put the data under ``EASYDATA/`` rather than ``data/``, and the table's
   first entry spells that out as a literal. Its second entry is the general one, and
-  what its case directives rewrite is the directory component alone, ``data`` to
-  ``DATA`` and back. The data file basenames are upper case in both versions.
+  what its case directives rewrite is the directory component alone, ``data/`` to
+  ``DATA/`` and back. The data file basenames are upper case in both versions.
 * ``view_options`` and ``split_rules`` -- the view flags and the basename grouping.
 * ``opus_type`` and ``opus_products`` -- file products under the "Cassini VIMS" OPUS
   category as "Occultation Profile (1 km)" and "(10 km)", and list what OPUS offers

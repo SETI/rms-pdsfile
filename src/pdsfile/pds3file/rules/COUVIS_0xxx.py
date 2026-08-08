@@ -325,6 +325,10 @@ class COUVIS_0xxx(pds3file.Pds3File):
             ValueError: if no versions table covers this file's logical path, or if
                 the table that does cover it holds no row under the key.
             FileNotFoundError: if the versions table the lookup names is not on disk.
+            IndexError: raised by the item read ``__getitem__()`` on the row's list
+                of row dictionaries, if the matched row carries none.
+            KeyError: raised by the item read ``__getitem__()`` on that dictionary,
+                if the versions table has no DATA_SET_ID column.
         """
 
         if not self.exists or self.isdir:
