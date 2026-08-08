@@ -1196,9 +1196,11 @@ Four things that shaped the result:
     hashes identically at base and head for all nine files. Seventeen comment lines
     were removed, and all seventeen are the description inside a module's banner
     comment, which the rule requires be a module docstring.
-  * **Sixty-one defects found by reading the code against its own prose**, across two
-    adversarial reads of each module — deferred entries 199 to 215 and the
-    amendments to 47, 54, 66 and 191. Twelve are code defects rather than prose
+  * **Sixty-one defects found by reading the code against its own prose** — deferred
+    entries 199 to 215 and the amendments to 47, 54, 66 and 191. They come from one
+    adversarial read of each module, `critiques/pr-29a/round-1.md` over the four
+    path-and-shelf modules and `-2` over the other five, each by a fresh reviewer
+    with no context from the other. Twelve are code defects rather than prose
     ones, including a shelf cache whose trim is not least-recently-used because its
     counter is an int that each rule subclass rebinds onto itself, and a cache
     lookup in `child_of_index` that can never hit.
