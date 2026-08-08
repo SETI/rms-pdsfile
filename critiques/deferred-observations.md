@@ -4033,7 +4033,7 @@ of them has a module docstring at all.
      (`_preload.py:101`) is re-exported by `preload_and_cache` and by `pdsfile.pdsfile`,
      but every cache in the package is built with `cls.DICTIONARY_CACHE_LIMIT`, a class
      attribute defined separately and identically in `pdsfile.py:331`,
-     `pds3file/__init__.py:59` and `pds4file/__init__.py:48`. Rebinding the module
+     `pds3file/__init__.py:134` and `pds4file/__init__.py:116`. Rebinding the module
      constant changes nothing. `pdscache.MEMCACHED_LOADED` (`pdscache.py:77`) is read
      nowhere; the flag the code actually consults is `_preload.HAS_PYLIBMC`, set by a
      second `try: import pylibmc` in a second module. Both names are in the frozen API,
