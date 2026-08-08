@@ -43,15 +43,17 @@ class _OpusMixin:
                                   opus_type
       instance attributes read    abspath, logical_path, root_, version_rank
       instance attributes written none
-      other methods called        from_abspath, from_logical_path,
-                                  pdsfiles_for_abspaths, and the optional
-                                  opus_prioritizer hook the rule modules supply
+      other methods called        from_abspath, from_logical_path, and the
+                                  optional opus_prioritizer hook the rule modules
+                                  supply
 
-    All of them are defined on PdsFile or on its subclasses. Three more come from
-    sibling mixins: glob_glob and os_path_exists from _LocalFsMixin, shelf_lookup
-    from _ShelfMixin. Every one of these is an attribute lookup on self or on a
-    class at run time, not an import, which is what lets the halves live in
-    different modules.
+    All of them are on PdsFile or on its subclasses; the lazy properties are
+    defined in _PropertiesMixin rather than in the PdsFile class body. Four more
+    come from sibling mixins:
+    glob_glob and os_path_exists from _LocalFsMixin, shelf_lookup from
+    _ShelfMixin, and pdsfiles_for_abspaths from _SortingMixin. Every one of these
+    is an attribute lookup on self or on a class at run time, not an import, which
+    is what lets the halves live in different modules.
 
     opus_products is the one method in the package that needs the PdsFile class
     object itself, to enumerate its direct subclasses. Its import is deferred into
@@ -197,11 +199,11 @@ class _OpusMixin:
 
             (group, priority, opus_type, description, default_checked)
 
-            ('Cassini ISS',    0, 'coiss_raw',       'Raw Image',                  True)
-            ('Cassini VIMS', 130, 'covims_full',     'Extra Preview (full-size)',  True)
-            ('Cassini CIRS', 618, 'cirs_browse_pan', 'Extra Browse Diagram (Pan)', True)
-            ('metadata',      40, 'ring_geometry',   'Ring Geometry Index',        True)
-            ('browse',        30, 'browse_medium',   'Browse Image (medium)',      True)
+            ('Cassini ISS',    0, 'coiss_raw',         'Raw Image', True)
+            ('Cassini VIMS', 130, 'covims_full',       'Extra Preview (full)', False)
+            ('Cassini CIRS', 618, 'cocirs_browse_pan', 'Extra Browse Diagram (Pan)', True)
+            ('metadata',      50, 'ring_geometry',     'Ring Geometry Index', False)
+            ('browse',        30, 'browse_medium',     'Browse Image (medium)', False)
 
         Each value is a list of sublists, and a sublist is what OPUS adds to its results
         together. A sublist holds a data product, the label that describes it if the

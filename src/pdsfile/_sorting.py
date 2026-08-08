@@ -71,8 +71,10 @@ class _SortingMixin:
       other methods called        child, parent, from_abspath,
                                   from_logical_path, version_info
 
-    All of those are defined on PdsFile. Two more come from a sibling mixin:
-    sort_basenames reaches _LocalFsMixin's os_path_isdir, and
+    All of those are available on a bare PdsFile rather than only on Pds3File
+    and Pds4File; version_info, like the lazy properties above, is defined in
+    _PropertiesMixin rather than in the PdsFile class body. Two more come from a
+    sibling mixin: sort_basenames reaches _LocalFsMixin's os_path_isdir, and
     logicals_for_abspaths, basenames_for_abspaths and abspaths_for_logicals
     reach its os_path_exists. Every one of these is an attribute lookup on self
     or on type(self) at run time, not an import, which is what lets the halves
@@ -99,30 +101,39 @@ class _SortingMixin:
     def split_basename(self, basename=''):
         """Split a basename into the parts the sort order is built from.
 
-        The parts are an anchor, a suffix and an extension. The anchor is what groups a
+        The parts are an anchor, a suffix and a third part. The anchor is what groups a
         file with its relatives -- a data file, its label and its previews share one.
         The split rules are what produce it, and the rule that catches everything else
-        splits at the **last** period; a bundle set name splits before its version
-        suffix instead.
+        splits at the **last** period, which makes the third part the extension; a
+        bundle set name splits before its version suffix instead.
 
-        A rule module can override the split for its own data set, and which of the two
-        mechanisms wins depends on the kind of name. A bundle set name is split by the
-        regular expression alone, and the split rules are never consulted for it. A
-        bundle name consults the split rules first, and their answer is returned wherever
-        it differs from the name given; otherwise the regular expression's groups are.
-        Every other name is split by the rules alone.
+        A rule module can override the split for its own data set. A bundle set name is
+        split by the regular expression alone, and the split rules are never consulted
+        for it. Every other name is split by the rules alone: the bundle-name branch
+        would return the regular expression's groups where the rules answer with the
+        name it was given, but no split rule in the tree answers with a bare string, so
+        that comparison is never true and the branch never runs.
+
+        **For a bundle set name that carries a volume type, the three parts do not
+        rejoin into the name.** The regular expression that has five groups, which is the
+        PDS3 spelling, is read as the first group, the second and third joined, and the
+        fourth, so ``COISS_2xxx_previews.tar.gz`` splits into ``COISS_2xxx``,
+        ``_previews.tar.gz`` and ``_previews``: the volume type appears twice and the
+        archive ending appears only inside the suffix. The two-group spelling, which is
+        the PDS4 one, gives the stem, the version suffix and an empty string.
 
         **The result is not always a tuple.** A class with no split rules at all, which
-        is a bare PdsFile, returns the basename it was given, unchanged; and a split rule
-        that rewrites a name returns whatever that rule produced.
+        is a bare PdsFile, returns the basename it was given, unchanged. Every other
+        answer is a three-element tuple, whether it came from the regular expression or
+        from a split rule.
 
         Parameters:
             basename (str): the basename to split. An empty string splits this object's
                 own basename.
 
         Returns:
-            tuple: the anchor, the suffix and the extension, for a name the default
-            split handles.
+            tuple: the anchor, the suffix, and the extension for a name the default
+            split handles or the volume type for a bundle set name that carries one.
         """
 
         cls = type(self)
@@ -455,9 +466,11 @@ class _SortingMixin:
 
         Raises:
             KeyError: from the item read ``__getitem__()`` on the table of child names,
-                for a path with no slash in it. Such a path becomes a top-level name but
-                gets no entry in that table, and the walk subscripts one for every
-                top-level name.
+                for a path with no slash in it that no deeper path in the list lies
+                under. Such a path becomes a top-level name, and the walk subscripts the
+                table for every top-level name; only a deeper path sharing that name
+                puts an entry there, and then the shallow path comes back as an
+                overlooked item rather than raising.
             ValueError: raised by ``from_logical_path()`` if a path's first component is
                 not one of the class's categories, or if no holdings directory can be
                 found at all.

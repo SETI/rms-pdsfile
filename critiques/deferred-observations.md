@@ -4021,7 +4021,7 @@ of them has a module docstring at all.
      here. **Owner: a future pdsfile PR.**
 
 163. **`is_preloading()` reads a cache key that nothing in the package ever writes.**
-     `_preload.py:159` is `return cls.CACHE.get_now('$PRELOADING')`, and `$PRELOADING`
+     `_preload.py:164` is `return cls.CACHE.get_now('$PRELOADING')`, and `$PRELOADING`
      appears nowhere else in `src/` or `tests/`. The call therefore answers `None` for
      every caller, which reads as "not preloading" and cannot become anything else
      without an external writer. The name is public: it is re-exported by
@@ -4030,7 +4030,7 @@ of them has a module docstring at all.
      to PR-29a, so its own docstring is not written here. **Owner: a future preload PR.**
 
 164. **Two exported names are read by nothing.** `_preload.DICTIONARY_CACHE_LIMIT`
-     (`_preload.py:96`) is re-exported by `preload_and_cache` and by `pdsfile.pdsfile`,
+     (`_preload.py:101`) is re-exported by `preload_and_cache` and by `pdsfile.pdsfile`,
      but every cache in the package is built with `cls.DICTIONARY_CACHE_LIMIT`, a class
      attribute defined separately and identically in `pdsfile.py:315`,
      `pds3file/__init__.py:59` and `pds4file/__init__.py:48`. Rebinding the module
@@ -4056,7 +4056,7 @@ of them has a module docstring at all.
      written here state each method's own answer. **Owner: a future pdsfile PR.**
 
 167. **`cache_lifetime_for_class`'s docstring gives the wrong default for `cls`.**
-     `_preload.py:98` is `def cache_lifetime_for_class(arg, cls=None)` and the docstring
+     `_preload.py:103` is `def cache_lifetime_for_class(arg, cls=None)` and the docstring
      two lines below says "cls -- the class calling the method (default True)". The
      function is public, re-exported by `preload_and_cache` and by `pdsfile.pdsfile`.
      `_preload.py` is PR-29a's file, so the correction belongs there. **Owner: PR-29a.**
@@ -4305,7 +4305,7 @@ of them has a module docstring at all.
 
 189. **`PdsFile.permanent` is written in four places and read in none.** It is
      initialized False at `pdsfile.py:490`, set True at `:748` (`new_merged_dir`), at
-     `:1330` (`_update_ranks_and_vols`) and at `_preload.py:694`, and read nowhere in
+     `:1330` (`_update_ranks_and_vols`) and at `_preload.py:707`, and read nowhere in
      `src/` or `tests/`. Its comment says "If True, never to be removed from cache",
      which nothing implements: `_complete` has already written the cache entry with an
      ordinary lifetime by the time `_update_ranks_and_vols` sets the flag. The
@@ -4335,9 +4335,9 @@ of them has a module docstring at all.
      constant branch, and `set()` then evaluates `time.time() + <method>`.
      `MemcachedCache` tests `in ('function', 'method')` and accepts the same argument.
 
-     This is not hypothetical. `_preload.py:562` and `_preload.py:594` construct
+     This is not hypothetical. `_preload.py:573` and `_preload.py:605` construct
      `pdscache.DictionaryCache(lifetime=cls.cache_lifetime, ...)`, and `cache_lifetime`
-     is a classmethod (`_preload.py:791`). Verified by running: building the cache
+     is a classmethod (`_preload.py:804`). Verified by running: building the cache
      exactly as those lines do and calling `set('a', 1)` gives
      `TypeError: unsupported operand type(s) for +: 'float' and 'method'`. It is reached
      only on the fallback from a memcached cache to a dictionary cache -- the class-level
@@ -4683,7 +4683,7 @@ up without moving the number that matters. It remains the only module under
 independent read of `_preload.py` reproduced it: `type(Pds3File.cache_lifetime).__name__` is
 `'method'`, a `DictionaryCache` built with it has `lifetime_func` None, and `set('x', 'v')`
 raises `TypeError: unsupported operand type(s) for +: 'float' and 'method'`. The two
-construction sites are `_preload.py:562` and `_preload.py:594`. Three docstrings had
+construction sites are `_preload.py:573` and `_preload.py:605`. Three docstrings had
 described `cache_lifetime` as the lifetime function every cache built by `preload()` is
 given; all three now say that a memcached cache accepts a class method as a lifetime
 function and a dictionary cache does not, keeping it as a constant. **Owner: unchanged.**

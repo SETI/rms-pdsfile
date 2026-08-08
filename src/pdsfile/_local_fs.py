@@ -4,11 +4,14 @@
 
 """The four filesystem questions PdsFile asks, answered from the tree or from shelves.
 
-Every part of this package that needs to know whether a file exists, whether a path is a
-directory, what a directory contains, or which paths match a wildcard goes through this
-module rather than through ``os`` and ``glob``. The indirection buys one thing: under the
-``SHELVES_ONLY`` setting the same four questions are answered out of the info shelf
-files, so the package can serve a holdings tree that is described but not present.
+Whether a file exists, whether a path is a directory, what a directory contains, and
+which paths match a wildcard: those four questions are answered here, and most of the
+package asks them through this module rather than through ``os`` and ``glob``. A few
+calls elsewhere go straight to ``os`` or ``glob`` -- among them the shelf-file probes,
+the ``_volinfo`` and icon reads a preload makes, and the search for a holdings directory
+itself. The indirection buys one thing: under the ``SHELVES_ONLY`` setting the same four
+questions are answered out of the info shelf files, so the package can serve a holdings
+tree that is described but not present.
 
 ``_LocalFsMixin`` implements them as ``os_path_exists()``, ``os_path_isdir()``,
 ``os_listdir()`` and ``glob_glob()``, plus ``_non_checksum_abspath()``, the mapping from
@@ -81,10 +84,10 @@ class _LocalFsMixin:
         checksum file whose basename carries no volume type keeps its ``_md5.txt``, so
         the path returned names nothing: ``.../checksums-volumes/SET/BUNDLE_md5.txt``
         comes back as ``.../volumes/SET/BUNDLE_md5.txt`` rather than as the bundle
-        directory. The ``checksums-volumes`` and ``checksums-archives-volumes``
-        categories are the ones whose files are named that way; a checksum file in any
-        other checksums category carries its volume type and does reduce to the path it
-        covers.
+        directory. By the naming rule ``os_listdir()`` below applies, the categories
+        whose files are named that way are ``checksums-volumes``, ``checksums-bundles``
+        and ``checksums-archives-volumes``; a checksum file in any other checksums
+        category carries its volume type and does reduce to the path it covers.
 
         Parameters:
             abspath (str): the absolute path to map back.
@@ -145,6 +148,13 @@ class _LocalFsMixin:
 
         Returns:
             bool: True if the path names something that exists.
+
+        Raises:
+            ValueError: raised by ``from_abspath()`` on the index-row path, for a path
+                that lies under no holdings directory but whose index part exists on the
+                filesystem anyway.
+            OSError: raised by ``child_of_index()`` on the same path, when the index the
+                row belongs to has no shelf file that can be opened.
         """
 
         if f'{cls.PDS_HOLDINGS}/_infoshelf' in abspath:
@@ -289,13 +299,16 @@ class _LocalFsMixin:
         listing of the tree it parallels:
 
           * a checksums-archives directory lists the archive directory and appends
-            ``_md5.txt``, or ``_<voltype>_md5.txt`` outside volumes;
+            ``_md5.txt``, or ``_<voltype>_md5.txt`` outside volumes. This is the one
+            branch with no category-level case, so a category-level listing comes back
+            with the ending appended to each bundle set name;
           * a checksums directory does the same against the tree it checksums, except
             that it reserves the bare ``_md5.txt`` for bundles as well as for volumes,
             and except at the category level, where it passes the listing through
             unchanged;
-          * an archives directory lists the bundle tree and appends ``.tar.gz``, or
-            ``_<voltype>.tar.gz`` outside volumes;
+          * an archives directory lists the tree it archives and appends ``.tar.gz``, or
+            ``_<voltype>.tar.gz`` outside volumes, and passes a category-level listing
+            through unchanged;
           * any other holdings directory lists the matching directory in the info shelf
             tree, reduces the ``_info.pickle`` and ``_info.py`` pair for each bundle to
             the bundle name, and puts any AAREADME the real filesystem has in front. At
@@ -311,7 +324,9 @@ class _LocalFsMixin:
                 ignored.
 
         Returns:
-            list: the basenames, in the order the underlying listing gave them.
+            list: the basenames, in the order the underlying listing gave them, except
+            in the branch that lists the info shelf tree, which puts any AAREADME the
+            real filesystem has in front of that order.
 
         Raises:
             ValueError: for a checksums-archives path naming no recognized volume type.

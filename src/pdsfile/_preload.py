@@ -9,10 +9,11 @@ many requests walks the top once at startup and keeps what it found. That walk i
 preload, and this module is it.
 
 ``preload()`` is the entry point. It chooses the cache implementation, walks each
-holdings directory down as far as its bundle sets, constructs and caches what it finds,
+holdings directory down through its bundle sets, constructs and caches what it finds,
 loads the bundle descriptions and the icons, and records which holdings it has covered so
-that a second call does not repeat the work. The walk deliberately stops at the bundle
-set: below that, objects are built on demand.
+that a second call does not repeat the work. The walk deliberately stops at the bundle:
+it constructs the children of every bundle set, so every bundle is cached, and it goes no
+deeper, so anything inside a bundle is built on demand.
 
 What makes several physical holdings directories look like one tree is the **merged
 directory**: for each category there is one cache entry whose children are the union of
@@ -25,16 +26,20 @@ discarding whatever the import-time call left there.
 The cache holds four kinds of permanent entry beside the PdsFile objects themselves --
 the version ranks per category, the directory paths per version, the list of holdings
 already preloaded, and the bundle descriptions read from the ``_volinfo`` tables. The
-comment block below names their keys. ``get_permanent_values()`` re-reads them and
-preloads again if any has gone missing, which is how a shared memcached that has been
-trimmed or restarted is repaired.
+comment block below names their keys. ``get_permanent_values()`` re-reads the first two
+of them, along with the category, bundle set and bundle objects, and preloads again if
+any of those has gone missing, which is how a shared memcached that has been trimmed or
+restarted is repaired. It reads neither the list of preloaded holdings nor the bundle
+descriptions, so a cache that has lost only those is not repaired by it.
 
 ``cache_lifetime_for_class()`` decides, per object, how long that object should be kept,
 and the four lifetimes are the module constants below. What ``preload()`` hands a cache
 it builds is not that function but ``cache_lifetime()``, the class method that wraps it.
 A memcached cache takes a method as a lifetime function; a dictionary cache does not, and
-stores it as a constant default instead, so the first store into such a cache that needs
-the default raises TypeError.
+stores it as a constant default instead, so a store into such a cache that needs the
+default raises TypeError. That cache is rarely the one in use: each PdsFile class builds
+a dictionary cache of its own around the plain function when the class is defined, and
+``preload()`` builds one only where the cache in place is not already a dictionary cache.
 
 ``is_preloading()``, ``pause_caching()`` and ``resume_caching()`` are the small
 operations a caller outside the package reaches through ``pdsfile.preload_and_cache``.
@@ -201,13 +206,17 @@ class _PreloadMixin:
     load_volume_info reads the "|"-separated _volinfo tables that describe each
     bundleset and bundle. cache_category_merged_dirs seeds the category-level
     merged directories, which is what makes one logical tree out of several
-    physical ones. get_permanent_values re-reads the entries that are supposed to
-    be permanent and preloads again if any has gone missing. cache_lifetime is
+    physical ones. get_permanent_values re-reads the rank and version tables and
+    the category, bundleset and bundle entries, and preloads again if any of
+    those has gone missing. cache_lifetime is
     what preload hands a cache it creates as that cache's default lifetime, and it
     delegates to the module-level cache_lifetime_for_class above. Being a class
     method rather than a plain function, it counts as a lifetime function to a
     MemcachedCache but not to a DictionaryCache, which keeps it as a constant
-    default and raises TypeError on the first store that needs one.
+    default and raises TypeError on a store that needs one. Such a
+    DictionaryCache is rarely built: each class binds one of its own around the
+    module-level plain function when the class is defined, and preload replaces
+    the cache in place only where it is not already a DictionaryCache.
 
     Every attribute these methods and the module-level functions above them read
     or write on a PdsFile object or on a PdsFile class, and nothing else -- str,
@@ -268,7 +277,7 @@ class _PreloadMixin:
 
         A shared memcached can lose entries that were meant to last -- it can be trimmed,
         restarted, or written by another program -- and a cache missing one of them
-        answers wrongly rather than slowly. So every one is read back: the version rank
+        answers wrongly rather than slowly. So these are read back: the version rank
         and directory tables for each category, each category directory itself, each
         bundle set inside it, and each bundle inside that. Names ending ``.txt`` or
         ``.tar.gz`` are not directories and are skipped.
@@ -360,8 +369,9 @@ class _PreloadMixin:
 
         An icon_type that is empty or contains only dashes "-" is replaced by None, and
         so is a version ID or a publication date that contains only dashes. An empty
-        version ID, an empty publication date and an empty data set ID stay empty
-        strings.
+        version ID and an empty publication date stay empty strings. An empty data set
+        ID field is not a list holding an empty string: it becomes an empty list, the
+        same value a record with no data set IDs at all gets.
 
         Blank records and those beginning with "#" are ignored. Every ``.txt`` file
         directly inside the ``_volinfo`` directory is read, and files whose names begin
@@ -507,25 +517,26 @@ class _PreloadMixin:
         Anything else uses a dictionary cache. Which one is chosen also sets the default
         caching policy, since only a shared cache is worth filling with everything. A
         dictionary cache is constructed only where the cache in place is not already one,
-        and it is given ``cache_lifetime()`` as its default; that is a class method, which
-        such a cache keeps as a constant rather than calling, so its first store that
-        needs the default raises TypeError.
+        which usually leaves the one the class built for itself alone. A cache this
+        method does construct is given ``cache_lifetime()`` as its default; that is a
+        class method, which such a cache keeps as a constant rather than calling, so a
+        store into it that needs the default raises TypeError.
 
         Then the holdings list is compared with what has already been loaded. Nothing to
         do means returning early, after re-reading the permanent values on a memcached
         cache in case any has been lost. Otherwise the cache is blocked against other
         processes and paused against its own writes for the duration.
 
-        The walk itself creates the category-level merged directories and the empty rank
-        and version tables, then, per holdings directory, reads the bundle descriptions,
-        descends each category directory as far as its bundle sets, and loads the icons.
-        Everything it caches is permanent. A child that cannot be constructed is dropped
-        from its parent's child list rather than reported. A category directory that is
-        missing is warned about and skipped. **One that exists but is not a directory is
-        warned about as ignored and is not ignored**: that branch has no skip, so the
-        path is constructed, cached permanently, and merged into the category-level
-        merged directory's child list. Nothing below it is walked, because the walk
-        returns at once on anything that is not a directory.
+        The walk itself overwrites the category-level merged directories and creates an
+        empty rank and version table for each category that has none yet, then, per
+        holdings directory, reads the bundle descriptions, descends each category
+        directory through its bundle sets to the bundles inside them, and loads the
+        icons. Everything it caches is permanent. A child that cannot be constructed is
+        dropped from its parent's child list rather than reported. A category directory
+        that is missing is warned about and skipped. **One that exists but is not a
+        directory is warned about as ignored and is not ignored**: that branch has no
+        skip, so the object is constructed anyway. Nothing below it is walked, because
+        the walk returns at once on anything that is not a directory.
 
         The list of preloaded holdings is written, the pause lifted and the block
         released however the walk ends, so a failure part way through does not leave the
@@ -663,8 +674,10 @@ class _PreloadMixin:
 
             The walk stops below the bundle set: a category directory and a bundle set
             are descended into, and anything else returns at once, which is what keeps
-            the preload from reading the whole tree. Each directory it does visit is
-            marked permanent, so it is never trimmed.
+            the preload from reading the whole tree. Each directory it does visit has
+            its ``permanent`` attribute set, which nothing in the package reads; what
+            keeps these entries out of the trim is the zero lifetime they were stored
+            with.
 
             A child whose construction raises is taken to be a file that does not belong
             where it is, and is **removed from its parent's child list**, so the cached
@@ -798,8 +811,9 @@ class _PreloadMixin:
 
         It is a class method rather than a plain function. A memcached cache accepts that
         as a lifetime function; a dictionary cache does not, and keeps it as a constant
-        default, so the first store into such a cache that needs the default raises
-        TypeError.
+        default, so a store into such a cache that needs the default raises TypeError.
+        ``preload()`` hands this to a cache only where it builds one, and it builds a
+        dictionary cache only where the cache in place is not already one.
 
         Parameters:
             arg: the object about to be cached.

@@ -62,17 +62,21 @@ class _AssociationsMixin:
                                   version_rank
       instance attributes WRITTEN _associated_parallels_filled, which
                                   associated_parallel initializes to {} on first
-                                  use and then fills; _recache() writes the
-                                  object back to the cache afterwards. The object
-                                  written is the one the request resolved to, not
-                                  necessarily the one asked
+                                  use and then fills; _recache() offers the
+                                  object back to the cache afterwards, which
+                                  keeps it only where the cache already held an
+                                  entry for it. The object offered is the one the
+                                  request resolved to, not necessarily the one
+                                  asked
       class attributes read       ASSOCIATIONS, CATEGORIES
       other methods called        _recache, all_versions, bundle_pdsfile,
                                   bundleset_pdsfile, parent, from_abspath,
                                   from_logical_path
 
-    All of those are defined on PdsFile. Nine more come from sibling mixins, and
-    they are why this is the deepest layer in the class::
+    All of those are available on a bare PdsFile rather than only on Pds3File and
+    Pds4File; all_versions, like the lazy properties above, is defined in
+    _PropertiesMixin rather than in the PdsFile class body. Nine more come from
+    sibling mixins, and they are why this is the deepest layer in the class::
 
       _DerivedPathsMixin          archive_path_and_lskip,
                                   checksum_path_and_lskip
@@ -96,8 +100,8 @@ class _AssociationsMixin:
     associated_parallel is the only method here that writes anything. It fills
     _associated_parallels_filled on the object the request resolved to -- this
     one where the volume type is unchanged, and this file's latest version where
-    it is not -- and calls _recache, so a lookup changes a cached object; the
-    other three read only.
+    it is not -- and calls _recache, so a lookup changes a cached object wherever
+    the cache was already holding that object; the other three read only.
     """
 
     ############################################################################
@@ -114,7 +118,8 @@ class _AssociationsMixin:
         Parameters:
             category (str): the category to look in, with any surrounding slashes
                 ignored.
-            must_exist (bool): whether to return only paths that exist.
+            must_exist (bool): whether to return only paths that exist, with the same
+                exception ``associated_abspaths()`` makes for a label.
 
         Returns:
             list: the logical paths, in the order ``associated_abspaths()`` produced
@@ -143,7 +148,8 @@ class _AssociationsMixin:
         Parameters:
             category (str): the category to look in, with any surrounding slashes
                 ignored.
-            must_exist (bool): whether to return only paths that exist.
+            must_exist (bool): whether to return only paths that exist, with the same
+                exception ``associated_abspaths()`` makes for a label.
 
         Returns:
             list: the PdsFile objects, without duplicates, in the order
@@ -182,23 +188,30 @@ class _AssociationsMixin:
 
         The matching runs once per index extension the class defines, so a class with
         two of them does the work twice. Duplicates are removed at the end, which is what
-        keeps the repetition invisible where both passes match the same files. It is not
-        invisible for a pattern naming an index row: the pass that recognizes the row
-        rewrites the pattern down to the index file itself, and that rewrite persists
-        into the next pass, which finds no extension of its own in the shortened pattern
-        and so matches the bare index file. The row and the index file are different
-        paths, so the dedup keeps both.
+        keeps the repetition invisible where both passes match the same files. A pattern
+        naming an index row can escape that: the pass that recognizes the row rewrites
+        the pattern down to the index file itself, and that rewrite persists into any
+        later pass, which finds no extension of its own in the shortened pattern and so
+        matches the bare index file. The row and the index file are different paths, so
+        the dedup keeps both. It takes a later pass to run, so it cannot happen at all
+        for a class that defines a single index extension, and where a class defines
+        more than one it happens only for a row of an index whose extension is not the
+        last of them.
 
         Asking for this file's own volume type also brings in its label, if it has one,
-        and the data files it points at.
+        and the data files it points at. The data files are filtered by ``must_exist``
+        and the label is not, and ``label_basename`` guesses a name for a file that is
+        not there, so a request that asked for existing paths only can come back holding
+        a label that does not exist.
 
         Parameters:
             category (str): the category to look in, with any surrounding slashes
                 ignored.
-            must_exist (bool): whether to return only paths that exist. False still
-                globs a pattern that holds a wildcard, because there is nothing else to
-                expand it against; it changes the answer only for a pattern that names
-                one file.
+            must_exist (bool): whether to return only paths that exist, apart from the
+                label described above, which is appended without a test either way.
+                False still globs a pattern that holds a wildcard, because there is
+                nothing else to expand it against; it changes the answer only for a
+                pattern that names one file.
 
         Returns:
             list: the absolute paths, without duplicates, in the order they were found.
@@ -357,13 +370,19 @@ class _AssociationsMixin:
 
         Answers are cached under the category and rank asked for, on the object the
         request resolved to: this one where the volume type is unchanged, and this file's
-        latest version where it is not. That object is written back to the shared cache
-        when an answer is recorded. The deepest-directory search caches both of its
-        outcomes, what it finds and the None it reaches by running off the top.
+        latest version where it is not. That object is offered back to the shared cache
+        when an answer is recorded, and the cache keeps it only where it already held an
+        entry for that object's logical path. Under the default caching policy an
+        ordinary data file is not in the cache, so its answers live on the one object
+        that computed them and the next constructor call recomputes them; a directory is
+        in the cache, and there the answers do survive. The deepest-directory search
+        records both of its outcomes, what it finds and the None it reaches by running
+        off the top.
 
-        Two paths return without caching anything, both of them before the caching
-        begins: a category the class does not recognize returns None, and a category
-        directory returns the requested category's own directory.
+        Two paths return before the dictionary of answers is created at all, and so
+        record nothing: a category the class does not recognize returns None, and a
+        category directory returns the requested category's own directory. A return of
+        an answer the dictionary already holds records nothing either.
 
         Parameters:
             category (str): the category to look in, with any trailing slash ignored,
@@ -386,14 +405,15 @@ class _AssociationsMixin:
 
             The argument may be a PdsFile, an absolute path, or None; a path is turned
             into a PdsFile. An object whose file does not exist is replaced by None, and
-            None is what gets cached, so a later call gets the same answer without
-            looking again.
+            None is what gets recorded, so a later call on this same object gets the
+            same answer without looking again.
 
             The answer is filed under the numeric rank asked for, and also under the
             spelling asked for when that was a word such as "latest", and also under the
             answer's own version rank when no rank was asked for at all. The object is
-            then written back to the shared cache, because the dictionary it just
-            changed lives on the object.
+            then offered back to the shared cache, because the dictionary it just
+            changed lives on the object; the cache keeps it only where it already held
+            an entry for that object's logical path.
 
             An answer equal to this object is cached and returned like any other; it is
             not turned into None.
