@@ -72,9 +72,10 @@ class ToolSpec:
 
     Nothing here reads a field. A spec is passed down to the shared modules, and every
     read of every field named below happens in one of them; no tool module reads its own
-    spec. The reader is named for each field, because "the spec carries it" and "this
-    tool acts on it" are different claims: all ten specs set all twelve required fields,
-    and a field a tool's own driver and helpers never read has no effect on that tool.
+    spec. Each entry below names a reader in every module that reads its field, because
+    "the spec carries it" and "this tool acts on it" are different claims: all ten specs
+    set all twelve required fields, and a field a tool's own driver and helpers never
+    read has no effect on that tool.
 
     holdings_sentinel, index_ext and file_log_level are the three where that gap is
     widest. Each is a property of the PDS3/PDS4 flavor rather than of one tool, so all
@@ -86,18 +87,27 @@ class ToolSpec:
         progname: The tool's name, as it appears in the --help description, in the
             "Missing task" error, and as the subdirectory of each log root. It is
             what the tool calls itself, which for all five pds4 tools is the pds3
-            tool's name. Read by build_arg_parser(), setup_run() and all three
-            drivers, which pass it as the log path method's dir argument.
+            tool's name. Read by build_arg_parser(), setup_run(), run_main(),
+            _shelf_common.run_selection_main() and
+            _indexshelf_common.run_index_main(), the last three passing it as the log
+            path method's dir argument.
         logname: The PdsLogger name, e.g. 'pds.validation.archives'. setup_run()
             constructs the logger with it, and every helper that takes an optional
-            logger falls back to PdsLogger.get_logger() on it.
+            logger falls back to a logger of that name, among them
+            _archives_common.load_directory_info(),
+            _indexshelf_common.generate_indexdict() and
+            _linkshelf_common.load_links().
         pdsfile_cls: Pds3File or Pds4File. Every construction of a PdsFile in these
-            shared modules goes through it, as do set_log_root() in setup_run() and
-            close_all_shelves() in _indexshelf_common.write_indexdict().
+            shared modules goes through it, among them run_main(),
+            _shelf_common.resolve_holdings_paths(), _linkshelf_common.load_links() and
+            _indexshelf_common.index_targets(); setup_run() also sets the log root on
+            it, and _indexshelf_common.write_indexdict() closes its open shelves.
         unit: What one command-line target names: 'volume', 'bundle' or 'table'. It
-            names the command-line positional, so each driver reads that positional
-            back with getattr(args, spec.unit), and it is substituted into the help
-            text. _shelf_common.resolve_holdings_paths() also compares it against a
+            names the command-line positional that build_arg_parser() adds, so each
+            driver reads that positional back with getattr: run_main(),
+            _shelf_common.run_selection_main() and
+            _indexshelf_common.run_index_main() all do. It is substituted into the help
+            text, and _shelf_common.resolve_holdings_paths() also compares it against a
             directory's ``bundletype_``.
         holdings_sentinel: The directory component that separates the holdings root
             from the rest of a path, '/holdings/' or '/pds4-holdings/'. Read by
@@ -114,23 +124,27 @@ class ToolSpec:
             limits entry. Read by _archives_common.load_directory_info(),
             make_archive_filter() and validate_tuples(), and by
             _linkshelf_common.write_linkdict().
-        description: The parser description, with {progname} and {unit} fields.
+        description: The parser description, with {progname} and {unit} fields. Read
+            by build_arg_parser().
         task_help: Help text for each of the five tasks, keyed by task name, with
             {unit} and {units} fields. build_arg_parser() subscripts it once per
             task flag, so a spec that omits one of the five raises rather than
             producing a parser without it.
         positional_help: Help text for the positional argument, with {unit} and
-            {units} fields.
+            {units} fields. Read by build_arg_parser().
         log_path_method: The name of the PdsFile method that builds this tool's log
             path, e.g. 'log_path_for_volume'. Named rather than bound so that every
-            tool reaches log_paths_for() the same way. Read by run_main() and by
-            _indexshelf_common.run_index_main(). The checksum and info shelf tools
-            pick between two methods per target instead, so they leave it at its
-            empty default, which their driver never reads.
+            tool reaches the log path the same way. Read by run_main() and by
+            _indexshelf_common.run_index_main(), each of which hands it on to the
+            helper below that builds the pair of log paths. The checksum and info
+            shelf tools pick between two
+            methods per target instead, so they leave it at its empty default, which
+            their driver never reads.
         log_suffix: The suffix in a log file's basename, e.g. '_archives'. Read by
-            all three drivers. An empty string is what a spec whose log path method
-            takes no suffix argument carries, which is the index shelf tools' case;
-            run_index_main() passes the suffix only when there is one.
+            run_main(), _shelf_common.run_selection_main() and
+            _indexshelf_common.run_index_main(). An empty string is what a spec whose
+            log path method takes no suffix argument carries, which is the index shelf
+            tools' case; run_index_main() passes the suffix only when there is one.
         expand_target: Callable (pdsf, path) returning the list of PdsFile objects
             one command-line path resolves to. `path` is the absolute path the
             command line resolved to, for messages. Read by run_main() alone. The
@@ -139,8 +153,10 @@ class ToolSpec:
             those six leave it unset and their two drivers never reach for it.
         handler_factories: The pdslogger handler factories to attach at each log
             root, in the order they are added. Read twice per run: setup_run()
-            attaches them at the log root, and each driver attaches them again in
-            the log directory of every target.
+            attaches them at the log root, and run_main(),
+            _shelf_common.run_selection_main() and
+            _indexshelf_common.run_index_main() attach them again in the log
+            directory of every target.
         lskip_for: Callable (pdsdir) returning the number of leading characters
             trimmed from an absolute path to form the archive-relative path. Read
             by _archives_common.load_directory_info(), so it is set by the archive
@@ -149,24 +165,27 @@ class ToolSpec:
             already shelved for it, and keyword-only logger and limits, and
             returning the links found in that unit and the latest modification time
             among the files read. Read by the five task functions of
-            _linkshelf_common: what a link looks like is the one thing the two
-            flavors of that tool do differently, so each keeps its own.
+            _linkshelf_common, among them _linkshelf_common.link_initialize() and
+            _linkshelf_common.link_update(): what a link looks like is the one thing
+            the two flavors of that tool do differently, so each keeps its own.
         link_target_regex: The compiled pattern that recognizes a label's reference
             to the file it describes. Read by _linkshelf_common.read_links().
         extra_arguments: Command-line arguments beyond the ones every tool takes,
             as (args, kwargs) pairs passed straight to add_argument. Each help
-            string is formatted with {unit} and {units} like the rest. The default
-            is empty, which is what the archive, index shelf and link shelf tools
-            carry.
+            string is formatted with {unit} and {units} like the rest. Read by
+            build_arg_parser(). The default is empty, which is what the archive,
+            index shelf and link shelf tools carry.
         checksum_path_message: What the checksum and info shelf tools print when a
-            command-line path names checksum files, which they cannot work on. It
-            and the two messages below are read by _shelf_common only, so they stay
-            at their empty defaults on the six specs whose tools do not go through
-            it.
+            command-line path names checksum files, which they cannot work on. Read
+            by _shelf_common.resolve_holdings_paths(). It and the two messages below
+            are read in _shelf_common.py alone, so they stay at their empty defaults
+            on the six specs whose tools do not go through it.
         invalid_dir_message: What those tools print for a directory that is neither
-            a unit nor a unit set.
+            a unit nor a unit set. Read by
+            _shelf_common.expand_selection_targets().
         invalid_file_message: What they print for a file that is neither an archive
-            file nor a top-level file of a unit.
+            file nor a top-level file of a unit. Read by the same
+            _shelf_common.expand_selection_targets().
     """
 
     progname: str
