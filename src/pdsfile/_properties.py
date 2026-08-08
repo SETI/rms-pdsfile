@@ -274,10 +274,13 @@ class _PropertiesMixin:
     def filespec(self):
         """This file's path below its bundle set, starting at the bundle name.
 
-        This is the part of a path that a bundle's own documentation quotes: the bundle
-        name, followed by the interior path where there is one. It is recomputed on every
-        access from attributes fixed at construction, and it is an empty string for
-        anything above a bundle.
+        This is the part of a path that a bundle's own documentation quotes. It is
+        recomputed on every access from attributes fixed at construction, and it is an
+        empty string for anything above a bundle. The prefix is ``bundlename_``, which is
+        the bundle name and a slash inside a bundle and **empty in the archive and
+        checksum trees**, where a bundle is one file rather than a directory. So a file
+        inside a bundle gets the bundle name and its interior path, and an archive or
+        checksum file gets its own basename alone.
 
         Returns:
             str: the bundle name, or the bundle name and the interior path joined by a
@@ -490,8 +493,9 @@ class _PropertiesMixin:
         """An anchor unique across the whole tree, in a form an HTML page can hold.
 
         Where ``anchor`` is unique only among the files beside it, this prefixes the
-        parent's logical path and replaces every slash with a hyphen, which leaves a
-        string with no character an HTML fragment identifier would object to.
+        parent's logical path and replaces every slash with a hyphen. Nothing else is
+        escaped, so a basename carrying a space, or any other character an HTML id cannot
+        hold, passes straight through; the holdings tree contains such names.
 
         The value is derived on the first access, stored in ``_global_anchor_filled`` and
         returned unchanged afterwards; deriving it calls ``_recache()``, and fills
@@ -557,8 +561,9 @@ class _PropertiesMixin:
 
         A file whose extension is not one of the class's index extensions, in either case,
         gets an empty string. Anything else gets this file's own absolute path with the
-        holdings directory renamed to the parallel ``_indexshelf-`` tree and the extension
-        replaced by ``.pickle``.
+        **category** directory inside holdings prefixed by ``_indexshelf-``, which is
+        where the parallel shelf tree lives, and the extension replaced by ``.pickle``.
+        The holdings directory itself keeps its name.
 
         The path is built by text substitution and is never tested, so a non-empty answer
         says the name is an index name and not that any shelf exists; ``is_index`` is the
@@ -699,9 +704,13 @@ class _PropertiesMixin:
 
         The value is derived on the first access, stored in ``_childnames_filled`` and
         returned unchanged afterwards; deriving it calls ``_recache()`` and fills
-        ``_isdir_filled``, ``_indexshelf_abspath`` and ``_is_index``. A merged directory
-        is born with the slot set to an empty list, which the preload appends to as it
-        visits each physical copy; an index row is born with an empty list and keeps it.
+        ``_isdir_filled``, ``_split_filled``, ``_indexshelf_abspath`` and ``_is_index``;
+        on an index table with at least as many rows as the sort's info-first threshold it
+        also fills ``_islabel_filled``, ``_label_basename_filled`` and
+        ``_info_basename_filled``, because the sort asks for the info basename. A merged
+        directory is born with the slot set to an empty list, which the preload appends to
+        as it visits each physical copy; an index row is born with an empty list and keeps
+        it.
 
         A directory with an absolute path is listed through ``os_listdir()``, which under
         SHELVES_ONLY reads the info shelf, and the names are sorted with every grouping
@@ -768,13 +777,20 @@ class _PropertiesMixin:
     def parent_logical_path(self):
         """The parent's logical path, or an empty string where there is no parent.
 
-        Recomputed on every access, and it builds the parent object twice to answer. This
-        is what callers use in place of ``parent().logical_path``, which raises on the
-        objects that have no parent; a category-level merged directory is the case it
-        exists for.
+        Recomputed on every access, and it calls ``parent()`` twice, though the second
+        call is normally a cache hit rather than a second construction. This is what
+        callers use in place of ``parent().logical_path``, which raises on the object that
+        has no parent; a category-level **merged** directory is the case it exists for. It
+        is not safe on the other object at that level: a *physical* category directory has
+        a parent to ask for, and asking walks up to the holdings directory itself, which
+        no logical path covers.
 
         Returns:
             str: the parent's logical path, or an empty string.
+
+        Raises:
+            ValueError: raised by ``parent()`` on a physical category directory, whose
+                parent would be the holdings directory.
         """
 
         parent = self.parent()
@@ -1224,14 +1240,19 @@ class _PropertiesMixin:
         returned unchanged afterwards; deriving it calls ``_recache()``. A merged
         directory and an index row both reach the body.
 
-        Three sources, by what the object is. An index row gets a fixed phrase naming how
-        many rows it stands for. A bundle or bundle set gets the volume-info table's
-        description, with the volume type prefixed where the description does not already
-        say it, so a preview tree's description reads ``Previews of ...`` rather than
-        repeating the volume's own; where the table gives no icon type, one is taken from
-        the class's high-level icon table and then from the description rules. Anything
-        else is looked up in the volume-info tables by its own logical path and falls back
-        to the description rules.
+        Three sources, by what the object is. An index row gets a fixed phrase, singular
+        or plural by whether it stands for one row or several. A bundle or bundle set gets
+        the volume-info table's description, with the volume type prefixed where the
+        description does not already say it, so a preview tree's description reads
+        ``Previews of ...`` rather than repeating the volume's own. Where the table stores
+        an explicit None for the icon type, one is taken from the class's high-level icon
+        table -- unless the basename is one of EXTRA_README_BASENAMES, which skips that
+        step -- and then from the description rules. **A bundle the tables do not cover
+        reaches neither fallback**, because the lookup's own default supplies ``UNKNOWN``
+        rather than None, and its description is the empty string with the volume-type
+        prefix applied to it. Anything that is not a bundle or a bundle set is looked up
+        in the volume-info tables by its own logical path and falls back to the
+        description rules.
 
         Returns:
             str: the description, which is HTML rather than plain text.
@@ -1416,7 +1437,7 @@ class _PropertiesMixin:
         lower number sorts first, the type id OPUS keys on, a description, and a flag
         saying whether OPUS checks this type by default. ``('Cassini ISS', 0, 'coiss_raw',
         'Raw Image', True)`` is one, and ``('Cassini ISS', 130, 'coiss_full', 'Extra
-        preview (full-size)', False)`` is another.
+        Preview (full)', False)`` is another.
 
         A path no rule matches gets an empty string rather than a tuple, so a caller has
         to test the result before unpacking it.
@@ -1481,9 +1502,10 @@ class _PropertiesMixin:
         """The PDS4-style logical identifier of this file, where it has one.
 
         The value is derived on the first access, stored in ``_lid_filled`` and returned
-        unchanged afterwards; deriving it calls ``_recache()``, and fills
-        ``_data_set_id_filled`` and the slots that reads. A merged directory and an index
-        row are born with the slot set to an empty string.
+        unchanged afterwards; deriving it calls ``_recache()``. It fills
+        ``_data_set_id_filled`` and the slots that reads only where the LID rules answer
+        for this path, because the four conditions below are tested with ``and`` and the
+        rules come first; a path outside the ``volumes`` tree leaves those slots alone.
 
         Four conditions must all hold, and an empty string is the answer when any of them
         fails: the class's LID_AFTER_DSID rules must answer for this path, the file must
@@ -1624,9 +1646,13 @@ class _PropertiesMixin:
 
         Directories, checksum files, archive files and anything outside the volumes,
         calibrated and metadata trees are answered with an empty list without the shelf
-        being opened. The paths in the triples are resolved from the shelf's relative form
-        against this file's bundle, bundle set or holdings root, by how many levels the
-        recorded path climbs.
+        being opened.
+
+        The paths in the triples are resolved from the shelf's relative form against one
+        of four anchors, by how many levels the recorded path climbs: this file's bundle
+        for a path that climbs none, its bundle set for one, **its category** for two, and
+        the holdings root for three. The two-level case is the one that crosses into
+        another bundle set, which is why it anchors above one.
 
         Returns:
             list: the triples, or the label's absolute path as a string, or an empty list,
@@ -2115,9 +2141,9 @@ class _PropertiesMixin:
         The volume-info table's own date is used where it has one. Where it is empty,
         three fallbacks are tried in order and the first that answers wins: the
         modification date of this file's bundle, then of its bundle set, then of this file
-        itself, each cut to its first ten characters so a timestamp becomes a date. A file
-        above the bundle level, for which the first two have no object to ask, falls
-        through to the third.
+        itself, each cut to its first ten characters so a timestamp becomes a date. A
+        bundle set directory has no bundle to ask and takes the second; only an object
+        above the bundle set falls through to the third.
 
         **A date recorded as None short-circuits all of it**: an empty string is returned
         without the slot being written, so the derivation runs again on every access for
@@ -2389,8 +2415,9 @@ class _PropertiesMixin:
 
         This holds no slot of its own: it reads ``grid_view_allowed`` for the side effect
         of filling ``_view_options_filled`` and then takes the second of the triple. The
-        three flags are independent of each other; a directory may allow this and not the
-        grid.
+        three are separate positions and nothing in the code ties them together, but no
+        shipped rule sets a later flag without the earlier ones, so in practice a
+        directory that allows this allows the grid too.
 
         Returns:
             bool: True if a multipage view is allowed.
@@ -2426,13 +2453,18 @@ class _PropertiesMixin:
         rule is written about the parent's path rather than this one's: the class's
         NEIGHBORS rules turn a directory path into a pattern matching its siblings.
 
-        An object with no parent is False. Both shipped subclasses carry one rule,
-        matching any path with a slash in it, so what decides is whether the **parent's**
-        path has one: a bundle set directory is False, because its parent is the bare
-        category, and everything from the bundle level down is True.
+        A merged category directory, which has no parent, is False. Both shipped
+        subclasses carry one rule, matching any path with a slash in it, so what decides
+        is whether the **parent's** path has one: a bundle set directory is False, because
+        its parent is the bare category, and everything from the bundle level down is
+        True.
 
         Returns:
             bool: True if a neighbor rule answers for the parent.
+
+        Raises:
+            ValueError: raised by ``parent()`` on a physical category directory, for the
+                reason ``parent_logical_path`` gives.
         """
 
         parent = self.parent()
@@ -2449,8 +2481,11 @@ class _PropertiesMixin:
         directory and an index row are born with the slot set to zero.
 
         The class's FILENAME_KEYLEN is either the number itself or something callable that
-        returns it, and both are accepted here. Zero means the whole basename is the key,
-        which is what every object outside an index uses.
+        returns it, and both are accepted here. Zero means the whole basename is the key.
+        **The value belongs to the bundle set, not to the index**, because it is a class
+        attribute of the rule module, so every object of a bundle set whose rules trim
+        index keys reports that bundle set's length, index table or not; a non-zero answer
+        here says nothing about whether this object has rows.
 
         Returns:
             int: the key length in characters.
