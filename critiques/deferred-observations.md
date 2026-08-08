@@ -4932,3 +4932,81 @@ rediscovery.
      were found by a reviewer who was told to grep for other copies of a claim it had just
      checked, which is the practice worth carrying into PR-30.
      **Owner: PR-30, as a reviewer-brief instruction.**
+
+### Added by the PR-29b adversarial review (round 3, the 58 remaining members)
+
+232. **`index_pdslabel` parses a PDS4 index file as its own label, and raises.** The label's
+     path is guessed by replacing each index extension in this file's path with each label
+     extension. `str.replace` is a no-op when the substring is absent, so for a class with
+     more than one index extension the iteration for the extension the path does *not*
+     carry leaves the path unchanged and hands the index file itself to
+     `pdsparser.PdsLabel.from_file()`. `Pds3File` has one index extension and one label
+     extension and never reaches it; `Pds4File` has `('.csv', '.tab')` and
+     `('.xml', '.lblx')`.
+
+     Measured: every PDS4 index in the holdings copy raises
+     `SyntaxError: missing END statement in <the .csv itself>` out of the property. The
+     `except OSError` around the parse does not catch it. So the property does not return
+     None for a PDS4 index; it raises, and there is no path on which a PDS4 index label is
+     returned at all.
+
+     The fix is to skip the substitution where the path does not carry the index extension,
+     and to break out of both loops on success rather than the inner one. Both change what
+     the property returns for inputs it currently rejects, so it needs a regression test.
+     The docstring states the behavior and adds the `Raises:`.
+     **Owner: a future pdsfile PR.**
+
+233. **`childnames` on an index table caches an `info_basename` derived from a half-built
+     child list.** The index branch calls `sort_basenames(childnames)` with the class
+     defaults, whose `info_first` threshold makes the sort read `self.info_basename`, which
+     reads `self.childnames` -- and at that moment `_childnames_filled` still holds the
+     pre-index list, which for a table is empty. The `_info_basename_filled` that gets
+     stored and `_recache()`d was therefore derived from the wrong list, and it is not
+     recomputed afterwards.
+
+     Measured on a 3,745-row index: reading `childnames` fills `_info_basename_filled` with
+     `'COISS_2001_index.lbl'`, which is the answer the *label* rules give and happens to be
+     right, so the defect is currently invisible. It would not be for a table whose info
+     basename depends on its own children.
+     **Owner: a future pdsfile PR.**
+
+234. **A bundle the volume-info tables do not cover gets a description that is only the
+     volume-type prefix.** `description` prefixes the volume type where the table's
+     description does not already say it, and the fallback for an uncovered bundle is an
+     empty description, so the result is the prefix applied to nothing: `'Metadata for '`,
+     with a trailing space, and `icon_type` of `UNKNOWN`. Measured over 857 bundle and
+     bundle-set objects, five are uncovered, all under `metadata/RPX_xxxx_v1.0`.
+
+     The icon fallbacks do not rescue them either, and for a reason worth stating because it
+     is the opposite of what the code reads like: both are guarded on `icon_type is None`,
+     and the uncovered fallback supplies the string `'UNKNOWN'`, not None. The None case is
+     reached only where the table stores a blank icon column, which the preload converts.
+     `bundle_publication_date` makes exactly this None-versus-fallback distinction for its
+     own field and `description` does not.
+     **Owner: a future pdsfile PR.**
+
+235. **`all_versions` stores `self.abspath` for its own rank without testing it.** The
+     dictionary is seeded with `{self.version_rank: self.abspath}` before anything is
+     globbed, so an object with no absolute path writes None into `_all_version_abspaths`,
+     on itself and on every version it finds. The next call takes the remembered-paths
+     branch and passes that None to `cls.from_abspath()`. A merged directory does not reach
+     it -- the glob is rooted at a None `root_` and raises TypeError first, which is what
+     `all_version_abspaths`' docstring records -- so the reachable case is an object built
+     from a logical path no holdings directory holds.
+     **Owner: a future pdsfile PR.**
+
+236. **A claim about what a property costs, or about what a constructor pre-set, is
+     mechanically checkable, and checking it mechanically finds what reading does not.**
+     Round 3 established five of its twenty-two findings by instrumentation rather than by
+     reading: blanking every slot on a fresh object, reading one property and diffing the
+     slots, which found nine docstrings naming fewer slots than they fill; comparing each
+     body's assigned slots against `new_merged_dir()` and `new_index_row_pdsfile()`, which
+     found five saying nothing about a slot that is pre-set; counting the four link-path
+     prefixes over 400 real shelves, which found the resolution anchor the prose omitted;
+     and counting 5,972 volume-info entries, which found the 91 checksums that are not in
+     the documents tree.
+
+     None of those is reachable by careful reading, and all of them are cheap. **PR-30's
+     reviewer brief should ask for the instrumentation explicitly**, in the same way this
+     PR's briefs asked for relationship claims to be checked by reading the other end.
+     **Owner: PR-30, as a reviewer-brief instruction.**
