@@ -40,6 +40,7 @@ IN_SCOPE = ('pdsfile.py', 'pdscache.py', 'pdsviewable.py', '__init__.py',
 # Every file-and-line citation the two documents make, with a token that must appear on
 # the cited line. A range is checked at both ends.
 CITATIONS = [
+    ('src/pdsfile/pdsfile.py', 174, 'class PdsFile(_AssociationsMixin,'),
     ('src/pdsfile/pdscache.py', 77, 'MEMCACHED_LOADED = True'),
     ('src/pdsfile/pdscache.py', 175, 'self.keys = set()'),
     ('src/pdsfile/pdscache.py', 190, 'self.preload_eligible = True'),

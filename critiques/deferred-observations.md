@@ -4420,3 +4420,63 @@ of them has a module docstring at all.
      whenever the threshold is crossed, including when the count is zero (`:224`),
      verified by capturing `('%d items trimmed from DictionaryCache', 0)`. Both are now
      documented. **Owner: a future pdscache PR.**
+
+### Added by the PR-29a executor's own measurements (2026-08-07)
+
+199. **`pdsfile.py` is over both module-length limits and the overage is code, not
+     prose.** Measured with `critiques/pr-29a/measure_module_lines.py`: 2,435 total
+     lines, 781 of them docstring, **1,654 code** — over the 1,000-line code budget by
+     654 and over the 2,000-line ingestion budget by 435. It is the only file under
+     `src/` over both. The owner deferred the split on 2026-08-07 and its waiver stands;
+     this entry records what a future split has to work with rather than reopening the
+     decision.
+
+     **There is no documentation lever.** The file is one class occupying 2,247 of its
+     2,435 lines, starting at `pdsfile.py:174` and running to the end of the class body,
+     holding 37 methods that account for 1,920 lines between them, against a module
+     docstring of 87 lines. Deleting the module
+     docstring outright would leave 1,567 code lines, still 567 over. Trimming
+     docstrings cannot fix either number, and under the two-limit rule it would not even
+     move the code figure.
+
+     The available lever is structural: a tenth mixin, on the pattern Phase 5
+     established. Whether one exists — whether any coherent group of those 37 methods
+     can leave without dragging the rest — is open and nothing here answers it.
+     **Owner: whoever takes the `pdsfile.py` split.**
+
+200. **The permanent-ruff-set table in `pdsfile_overrides.mdc` deviation (4) cites line
+     numbers that have drifted, and one of its counts is wrong.** The table's caption
+     says the line numbers are "at the merge commit", meaning PR-23's and PR-24's, and
+     eight PRs have moved code since. Measured at `9466dbc`, before this PR, by running
+     `ruff check --config 'lint.per-file-ignores = {}'` over the fifteen core modules and
+     comparing the reported sites against the table:
+
+     | row | table says | actual line at `9466dbc` |
+     |---|---|---|
+     | `__init__.py` `F403` | 10, 12, 13 — **three of them** | 38 and 39 — **two** |
+     | `_derived_paths.py` `A002` | 264, 281, 297 | 299, 316, 332 |
+     | `pdscache.py` `RUF015` / `UP031` | 622 / 324 | 1201 / 775 |
+     | `pdsfile.py` `B904` / `I001` | 1418, 1824, 1874 / 84 | 1825, 2305, 2355 / 94 |
+     | `pdsviewable.py` `B006` | 52, 114, 205 | 133, 248, 390 |
+
+     The other six rows — for `_index_rows.py`, `_opus.py`, `_preload.py`,
+     `_properties.py`, `_shelves.py` and `_sorting.py` — were exact at `9466dbc`. This
+     PR's docstrings move five of the six: the `RUF005` sites go to lines 228, 344 and
+     449 in the first three, the `B904` site to line 299 in `_shelves.py`, and
+     `_sorting.py`'s four to lines 283, 291, 295 and 300. `_properties.py` is not
+     documented here, so its row alone still points at the right line.
+
+     **The `F403` count is the part that is not a drift.** `__init__.py` has two star
+     imports, not three; the third import the row's prose describes,
+     `from pdsfile.pdsfile import PdsFile as PdsFile`, is an explicit aliased re-export
+     and raises no `F403` at all. So "the three star imports are what bind `Pds3File`,
+     `Pds4File` and the rule modules" is wrong about the mechanism as well as the count:
+     two star imports bind the subpackages, and `PdsFile` arrives by name.
+
+     Nothing is broken by this — the enforced copy is the `per-file-ignores` block in
+     `pyproject.toml`, which lists codes and not lines, and it is correct. The table is
+     documentation. This PR does not renumber it, because re-deriving rows that PR-23,
+     PR-24 and PR-29 wrote is not a docstring PR's work and a half-renumbered table is
+     worse than a consistently historical one. **Owner: whichever PR next revises
+     deviation (4)** — either re-derive every row, or say in the caption that the
+     numbers are the sites as of the PR that derived each row and will drift.
