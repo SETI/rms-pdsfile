@@ -1,4 +1,4 @@
-# PR-29b validation — the `_properties.py` measurement, and the second reads Phase 7 owed
+# PR-29b validation — `_properties.py`, and the second reads Phase 7 owed
 
 Base: `998a166`. Branch: `pr-29b-docstrings-properties`. Base branch: `rewrite`.
 
@@ -8,52 +8,49 @@ Every command below was run with the tree's interpreter,
 `PDS3_HOLDINGS_DIR`, `PDS4_HOLDINGS_DIR` and `PDSFILE_TEST_HOLDINGS=full`. The base tree is
 a second worktree at the same commit, so "base" numbers were measured, not recalled.
 
-Nothing here is inherited. Every number carries the command that produced it.
+Nothing here is inherited. Every number carries the command that produced it, and section
+12 lists the numbers this PR was handed that did **not** reproduce.
 
-## 1. This PR stopped short, on purpose, and section 2 is why
+## 1. Scope
 
-PR-29b was to document `_properties.py`'s 68 functions, write its module docstring, and
-carry the second reads of `pdsfile.py` and `pdsviewable.py`. **It does the second reads and
-it does not document the 68.** The measurement section 2 was asked for says the module
-cannot carry docstrings at the standard of the other twelve and stay inside the 2,000-line
-total the rule sets, and the choice between a waiver and a split belongs to the owner.
+Three files, and two different jobs.
 
-What is here:
+| file | lines at base | at head | job |
+|---|---:|---:|---|
+| `src/pdsfile/_properties.py` | 1,689 | 2,720 | 68 function docstrings and the module's first, all written here |
+| `src/pdsfile/pdsfile.py` | 2,435 | 2,459 | a second adversarial read of prose that shipped with PR-29 |
+| `src/pdsfile/pdsviewable.py` | 986 | 999 | the same |
 
-| | |
-|---|---|
-| `src/pdsfile/_properties.py` | ten of 68 functions documented, as the measurement sample; the class docstring's contract block made a literal block; **58 functions and the module docstring not written** |
-| `src/pdsfile/pdsfile.py` | second adversarial read, docstring corrections only |
-| `src/pdsfile/pdsviewable.py` | second adversarial read, docstring corrections only |
-| `critiques/pr-29a/build_docs_probe.py` | takes extra module names; default page list unchanged |
+    python critiques/pr-29/measure.py src/pdsfile/_properties.py src/pdsfile/pdsfile.py \
+        src/pdsfile/pdsviewable.py
 
-Deferred entry 80 stays open, because `_properties.py` is still the one module in the
-package without a module docstring. So does entry 215.
+At base: 131 functions, 4 classes, 2 of the 3 modules documented, 94 parameters excluding
+`self` and `cls`. **`_properties.py` held 68 of those functions, all 68 already carrying a
+docstring, and 2 of the 94 parameters.** So unlike PR-29 and PR-29a this was not mostly
+writing from nothing; it was 68 thin docstrings, dominated by `Returns:` and behavior
+rather than by `Parameters:`, that had to become accurate ones.
 
-## 2. The line-count projection
+`_properties.py` was the last module in the package without a module docstring and the only
+one the mechanical checker still reported findings on. Both are closed here, and with them
+deferred entry 80.
+
+## 2. The line-count measurement, and the waiver it produced
 
 `.cursor/rules/pdsfile_overrides.mdc` deviation (3) sets **code lines <= 1,000** and
-**total lines <= 2,000**. `_properties.py` is waived on code lines (1,392) by plan §8
-settled decision 3. It has no waiver on total lines, and at base it is at 1,689.
+**total lines <= 2,000**. `_properties.py` was waived on code lines (1,392) by plan §8
+settled decision 3 and had no waiver on total lines, standing at 1,689 with 192 lines of
+function docstring spread over 68 functions -- under three lines each.
 
-    python critiques/pr-29a/measure_module_lines.py src/pdsfile/_properties.py
+**Ten members were documented first and the cost measured**, before the other 58 were
+written, because the answer decided whether the work could proceed at all. The ten were
+chosen to span the file: a lazy property with a trivial body (`exists`), two derived
+properties with no slot (`is_documents`, `extension`), a lazy property with three cases
+(`html_path`), the largest body in the file (`_info`, 118 lines), a mid-sized lazy property
+(`mime_type`), the subject of deferred entry 68 (`version_ranks`), the most branched
+derivation (`label_basename`), its one-expression consumer (`label_abspath`), and the
+file's only static method, which holds one of its two parameters (`version_info`).
 
-    src/pdsfile/_properties.py     total 1689   docstring 297   code 1392
-
-Of those 297 docstring lines, 105 are the class docstring and **192 are spread over all 68
-functions**, under three lines each, which is what makes this module the last one the
-mechanical checker still reports findings on.
-
-**Ten members were documented first and the cost measured**, per the brief's instruction to
-measure before writing the bulk. The ten were chosen to span the file: a lazy property with
-a trivial body (`exists`), two derived properties with no slot of their own
-(`is_documents`, `extension`), a lazy property with three cases (`html_path`), the largest
-body in the file (`_info`, 118 lines), a mid-sized lazy property (`mime_type`), the subject
-of deferred entry 68 (`version_ranks`), the most branched derivation (`label_basename`),
-its one-expression consumer (`label_abspath`), and the file's only static method, which
-holds one of its two parameters (`version_info`).
-
-| function | docstring lines at base | at head | delta |
+| function | docstring lines at base | after the sample | delta |
 |---|---:|---:|---:|
 | `exists` | 1 | 16 | +15 |
 | `is_documents` | 1 | 10 | +9 |
@@ -67,57 +64,48 @@ holds one of its two parameters (`version_info`).
 | `version_info` | 6 | 27 | +21 |
 | **ten together** | **25** | **216** | **+191** |
 
-Two projections, from the same ten:
+The ten hold 26% of the file's function bodies. Fitting them to their code lines gives
+`docstring = 12.4 + 0.292 * code_lines`; over all 68 functions, whose bodies hold 1,231
+code lines between them, that projected 1,202 lines of function docstring, and with 1,392
+code lines, a 105-line class docstring and a module docstring of about 25, **a total of
+about 2,720 against a ceiling of 2,000**. The flat mean of the ten projected about 2,990.
 
-* **Flat mean.** 19.1 added lines per function over 58 more functions is 1,108 lines, on
-  top of the 1,880 the file already stands at, and before the module docstring: **about
-  2,990 total.**
-* **Weighted by body size**, because `_info` is the largest body in the file and a flat
-  mean over-weights it. Fitting the ten to their code lines gives
-  `docstring = 12.4 + 0.292 * code_lines`; over all 68 functions, whose bodies hold 1,231
-  code lines between them, that is 1,202 lines of function docstring. With 1,392 code, a
-  105-line class docstring and a module docstring of about 25: **about 2,720 total.**
+The simplest way to see it needed no projection: at base the file had **311 lines of
+headroom**, and documenting ten of 68 functions spent **191 of them**. Fifteen percent of
+the work had consumed sixty-one percent of the budget.
 
-The ten hold 26% of the file's function bodies, so neither projection is an extrapolation
-from a corner of it.
+That was reported and the work stopped there, because the two ways out -- a waiver or a
+split of the mixin -- were the owner's to choose and a thin docstring was the one answer
+that was not available. **The owner waived `_properties.py` on total lines** (2026-08-08),
+and the remaining 58 were written.
 
-**The standard the ten are written to is not inflated, which is the obvious objection.**
-Measured at head over the twelve modules already documented, a function docstring runs
+### 2.1 What it actually cost
 
-| | function-docstring lines | functions | per function |
+    python critiques/pr-29a/measure_module_lines.py src/pdsfile/_properties.py
+
+| | total | docstring | code |
 |---|---:|---:|---:|
-| PR-29's five public modules | 1,871 | 123 | 15.2 |
-| PR-29a's nine private modules | 2,158 | 88 | **24.5** |
-| this PR's ten | 216 | 10 | **21.6** |
+| base | 1,689 | 297 | 1,392 |
+| head | **2,720** | 1,330 | **1,390** |
 
-The ten sit below the nine modules whose standard the brief asks this file to be brought to,
-and above the five. Writing them at PR-29's 15.2 rather than PR-29a's 24.5 would still land
-the file near 2,400 total. There is no version of this that fits.
+**The projection landed within four lines of the outcome**, which is the result worth
+keeping: 2,720 projected from a tenth of the work, 2,720 measured over all of it. A
+per-module projection from a representative sample is reliable enough to price this
+decision, and PR-30 has the rule modules coming.
 
-The simplest way to see it needs no projection at all. At base the file had **311 lines of
-headroom** under the 2,000 ceiling. Documenting ten of its 68 functions spent **191 of
-them**, and `measure_module_lines.py` now reports the file at 1,880. Fifteen percent of the
-work has consumed sixty-one percent of the budget, and the 58 functions left have 120 lines
-between them: **2.1 lines each.**
+Two other numbers matter for that. **Code lines went down by two**, because the three
+description lines inside the banner comment became part of the module docstring, so nothing
+about the complexity the 1,000-line limit exists to bound has changed. And the per-function
+cost is not a constant: measured at head, a function docstring runs **15.2** lines across
+PR-29's five public modules, **24.5** across PR-29a's nine private ones, and **17.3** across
+these 68. What makes 17.3 add up to 1,175 lines is the count, not the length.
 
-**The ceiling is 2,000 and both projections clear it by 700 to 1,000 lines.** Turned around:
-staying under 2,000 leaves `2000 - 1392 - 105 - 25 = 478` lines for 68 function docstrings,
-which is **7.0 lines each** -- a summary line, a blank, a two-line `Returns:` and the
-closing quotes, with nothing left for the cached-property lifecycle that is the whole
-reason this module is hard to document. That is the thin docstring the brief forbids, and
-writing 2,700 lines into a file with a 2,000-line ceiling is the silent breach it also
-forbids. So the work stopped here.
+The standard the 68 are written to therefore sits between the two earlier PRs rather than
+above them. Writing them at PR-29's 15.2 would still have landed the file near 2,400.
 
-The two ways out are the owner's, and the plan already defers the same question for
-`pdsfile.py` (entry 199): a total-lines waiver for `_properties.py`, or splitting the mixin.
-The measurement above is what either decision costs.
-
-### 2.1 What the ten are worth on their own
-
-They are not a throwaway. Every one was written from the code and read against it, they
-close five docstrings that were wrong (section 6), and they are what makes the projection
-reproducible rather than a guess: the owner can read them and judge whether the standard
-they set is the one the other twelve modules are held to.
+Deviation (3) is amended with the waiver, the reason, and these numbers. It is the first
+entry waived on total lines, which is stated in the rule because it makes it the precedent
+`pdsfile.py`'s deferred split (entry 199) will be argued against.
 
 ## 3. Proof that the change is docstrings only
 
@@ -130,11 +118,11 @@ module, class and function, and hashes `ast.dump` of what is left with
 | file | base | head |
 |---|---|---|
 | `_properties.py` | `c034278fc92c7fb2` | `c034278fc92c7fb2` |
-| `pdsfile.py` | `b6b8ad8bd5dba452` | PENDING |
-| `pdsviewable.py` | `46cc34775e969faa` | PENDING |
+| `pdsfile.py` | `b6b8ad8bd5dba452` | `b6b8ad8bd5dba452` |
+| `pdsviewable.py` | `46cc34775e969faa` | `46cc34775e969faa` |
 
-PR-29 established that this check is not vacuous, with five mutations of a documented file;
-the same script is used here unchanged.
+All three pairs match. PR-29 established that this check is not vacuous, with five
+mutations of a documented file; the same script is used here unchanged.
 
 ### 3.2 The comment enumeration, which the AST cannot see
 
@@ -143,18 +131,28 @@ the same script is used here unchanged.
 
 | file | comment lines at base | at head | removed | added |
 |---|---:|---:|---:|---:|
-| `_properties.py` | 125 | 125 | 0 | 0 |
+| `_properties.py` | 125 | 122 | 3 | 0 |
 | `pdsfile.py` | 325 | 325 | 0 | 0 |
 | `pdsviewable.py` | 84 | 84 | 0 | 0 |
 
-**No comment line was removed, added, reworded or moved.** Unlike PR-29 and PR-29a, this
-PR turns no banner comment into a module docstring, because the one module that still needs
-that is the one section 2 stopped on. Every comment in all three files is byte-identical to
-base and sits under the same preceding line of code.
+**Three lines removed in total, all of them one block, and all of them accounted for:**
 
-One comment is wrong and is left alone, because comment text is the author's: `version_info`
-carries a worked example of its own arithmetic reading `_v2.1 -> 201000` and
-`_v2.1.3 -> 201030`, and the code produces 20100 and 20103. Deferred observation, section 9.
+    # The derived values of a PdsFile: the lazy properties, which fill an _X_filled slot
+    # and (in all but one case) write the object back to the shared cache, and the ones
+    # recomputed on each access
+
+That is the description inside `_properties.py`'s banner comment, which the rule requires be
+a module docstring and which therefore could not stay where it was. This is the same
+removal PR-29a made in each of its nine files. The banner's rules and its
+`# pdsfile/_properties.py` line are untouched, and every fact the removed description
+carried is in the module docstring that replaced it. Every other comment in all three files
+is byte-identical to base and sits under the same preceding line of code, including all 325
+in `pdsfile.py`.
+
+**One comment is wrong and is left alone**, because comment text is the author's:
+`version_info` carries a worked example of its own arithmetic reading `_v2.1 -> 201000` and
+`_v2.1.3 -> 201030`, and the code produces 20100 and 20103. Deferred observation, section
+10.
 
 ## 4. The mechanical checks
 
@@ -165,20 +163,21 @@ carries a worked example of its own arithmetic reading `_v2.1 -> 201000` and
 
 | code | check | base | head |
 |---|---|---:|---:|
-| P1 | a `Parameters:` entry that is not a parameter of the signature | 0 | PENDING |
-| P2 | a parameter that does not appear in `Parameters:` exactly once | 2 | PENDING |
-| P3 | a section spelled `Args:`, `Arguments:`, `Keyword arguments:` or `Input:` | 2 | PENDING |
-| R1 | `Returns:` present without a value return, or absent with one | 67 | PENDING |
-| E1 | a `Raises:` entry the body neither raises nor attributes to a call it makes | 0 | PENDING |
-| E2 | a class raised in the body that `Raises:` does not name | 1 | PENDING |
-| D1 | a docstring line wider than 90 columns | 0 | PENDING |
-| U1 | a unicode smart quote, dash or arrow anywhere in the file | 0 | PENDING |
-| M1 | a module, class or function with no docstring | 1 | PENDING |
-| | **total** | **73** | PENDING |
+| P1 | a `Parameters:` entry that is not a parameter of the signature | 0 | 0 |
+| P2 | a parameter that does not appear in `Parameters:` exactly once | 2 | 0 |
+| P3 | a section spelled `Args:`, `Arguments:`, `Keyword arguments:` or `Input:` | 2 | 0 |
+| R1 | `Returns:` present without a value return, or absent with one | 67 | 0 |
+| E1 | a `Raises:` entry the body neither raises nor attributes to a call it makes | 0 | 0 |
+| E2 | a class raised in the body that `Raises:` does not name | 1 | 0 |
+| D1 | a docstring line wider than 90 columns | 0 | 0 |
+| U1 | a unicode smart quote, dash or arrow anywhere in the file | 0 | 0 |
+| M1 | a module, class or function with no docstring | 1 | 0 |
+| | **total** | **73** | **0** |
 
-**All 73 belong to `_properties.py`.** `pdsfile.py` and `pdsviewable.py` report 0 at base
-and 0 at head, which is the point of running the checker on them: their remaining defects
-are semantic, and no checker sees those.
+**All 73 belonged to `_properties.py`.** `pdsfile.py` and `pdsviewable.py` reported 0 at
+base and 0 at head, which is the point of running the checker over them: their remaining
+defects are semantic, and no checker sees those. With this PR the checker reports **0 over
+all fifteen modules under `src/pdsfile/`**.
 
 ### 4.2 The checker is unchanged and still reproduces both earlier records
 
@@ -186,15 +185,12 @@ are semantic, and no checker sees those.
       276 findings   E2 16, M1 20, P2 139, P3 26, R1 75
     python critiques/pr-29/check_docstrings.py <PR-29a's nine files at 9466dbc>
       249 findings   D1 2, E2 18, M1 37, P2 94, P3 44, R1 54
-    python critiques/pr-29/check_docstrings.py <the fourteen files at head>
-      0 findings
 
-The first two are `critiques/pr-29-validation.md` section 4's and
-`critiques/pr-29a-validation.md` section 4's numbers, with the identical per-code
-breakdowns. `git diff --stat 998a166 -- critiques/` shows one file changed, and it is not a
-checker.
+Those are `critiques/pr-29-validation.md` section 4's and `critiques/pr-29a-validation.md`
+section 4's numbers, with the identical per-code breakdowns. `check_docstrings.py`,
+`check_comments.py`, `strip_docstrings.py` and `measure.py` are byte-identical to base.
 
-### 4.3 The state-contract derivation
+### 4.3 The state-contract derivation -- deferred observation 54
 
     python critiques/pr-29a/derive_state_contract.py src/pdsfile src/pdsfile/_properties.py
 
@@ -204,9 +200,16 @@ checker.
 | head | 114 | 114 | 41 | 94 | **0** |
 
 `reached` is derived from the code, which this PR does not change. `listed` is derived from
-the class docstring, which this PR does change -- section 5 -- so the identical 94 is the
-result that matters: the contract block survived being turned into a literal block with
-every name intact. Deferred entry 54 is amended with these numbers.
+the class docstring, which this PR **does** change -- section 5 -- so the identical 94 is
+the result that matters: the contract block survived being turned into a literal block with
+every name intact. Entry 54 is amended with these numbers, which are the first measurement
+of `_properties.py` under the derivation from the PR that owns the module.
+
+The derivation also settled a claim that appears in three places at once. It reports 64
+properties, 40 of them writing a slot, exactly one of those 40 (`filename_keylen`) not
+calling `_recache()`, 24 properties with no slot, and exactly four non-property members.
+That is what `pdsfile.py`'s module map says, what `_PropertiesMixin`'s class docstring says,
+and what the new module docstring says, so the three agree and all three are right.
 
 ## 5. The Sphinx build
 
@@ -216,45 +219,41 @@ elsewhere, reproducibly:
     python critiques/pr-29a/build_docs_probe.py <tree>/src <build dir> [_properties]
 
 The configuration is `critiques/pr-29/sphinx-conf.py` **unchanged**, with `nitpick_ignore`
-empty and nothing mocked.
+empty and nothing mocked. The probe now takes module names after the build directory and
+adds them to its page list; its default list is unchanged, so PR-29a's recorded run still
+reproduces exactly.
 
-**The exit status is checked, twice over.** The probe appends a line of its own when
+**The exit status is checked, two ways.** The probe appends a line of its own when
 `sphinx-build` returns nonzero, so a build that never ran cannot report clean, and the
 probe's own exit status was read rather than piped away.
 
-### 5.1 The thirteen-module page set, which is the gate this PR must pass
-
-| | base | head |
-|---|---:|---:|
-| `-n` warnings | 0 | **0** |
-| `-W` warnings | 0 | **0** |
-
-That set is PR-29's four modules and PR-29a's nine, and it covers both files this PR
-finishes. It is clean at base because PR-29 and PR-29a left it clean, and this PR's
-corrections to `pdsfile.py` and `pdsviewable.py` keep it so.
-
-### 5.2 The fourteen-module page set, which measures what `_properties.py` still owes
-
-| | base | head |
-|---|---:|---:|
-| `-n` warnings | 21 | **10** |
-| `-W` warnings | 17 | **7** |
+| page set | | base | head |
+|---|---|---:|---:|
+| the thirteen PR-29 and PR-29a modules | `-n` | 0 | **0** |
+| | `-W` | 0 | **0** |
+| those thirteen plus `_properties` | `-n` | 21 | **0** |
+| | `-W` | 17 | **0** |
 
 The 21 at base is the figure `critiques/pr-29a-validation.md` section 7 recorded for
-including this module, reproduced. The class docstring accounts for ten of the eleven
-warnings that go away; the remainder are in held-back function docstrings -- `lid` and
-`lidvid`, whose worked examples indent under a bare paragraph, `opus_type`, whose
-`Examples:` heading docutils reads as a definition list, and `viewset_lookup`, whose
-`Keyword arguments:` section Napoleon does not recognize. None of the seven is reachable
-without writing the docstrings section 2 stopped on.
+including this module, reproduced. Eleven of them were the class docstring's contract block,
+whose trailing-underscore attribute names read as reStructuredText references and whose
+indentation read as a definition list; making it a literal block removed all eleven without
+changing a character of its content, which section 4.3's derivation confirms. The other ten
+were in function docstrings this PR rewrote.
 
-**One hazard is worth recording for whoever runs this next.** The first run of the extended
-probe reported a clean fourteen-module build, and the reason was that it was executed from
-the base tree, whose copy of `build_docs_probe.py` predates the extra-module argument and
-silently ignored it. The page set is now verified directly --
-`grep -c 'automodule:: pdsfile._properties' <build>/api.rst` is 1 -- because "the gate ran
-and found nothing" and "the gate did not run" look identical from the outside. This is the
-same failure CodeRabbit caught in PR-29a's probe, arriving by a different route.
+One warning survived until the end and is worth stating, because it is a convention rather
+than a defect: `index_pdslabel`'s `Returns:` named `pdsparser.PdsLabel` in the type slot,
+which resolves to nothing under `-n` because `pdsparser` has neither an autodoc page nor an
+intersphinx inventory. It is named in prose instead, exactly as PR-29 does with `PdsFile`
+inside `pdsviewable.py`, and it is listed in section 11 as PR-35's.
+
+**One hazard is worth recording for whoever runs this probe next.** Its first extended run
+reported a clean fourteen-module build, and the reason was that it was executed from the
+base tree, whose copy of the script predates the extra-module argument and silently ignored
+it. The page set is now verified directly -- `grep -c 'automodule:: pdsfile._properties'`
+over the generated `api.rst` is 1 -- because "the gate ran and found nothing" and "the gate
+did not run" look identical from outside. This is the same failure CodeRabbit caught in
+PR-29a's probe, arriving by a different route.
 
 ## 6. Every docstring that was wrong about the code
 
@@ -266,58 +265,20 @@ PENDING
 
 ## 8. Standing gates
 
-### 8.1 Test id sets, full data, both modes
+PENDING
+
+## 9. What the second reads found that the first reads had introduced
 
 PENDING
 
-### 8.2 The code checks with no holdings
-
-    env -u PDS3_HOLDINGS_DIR -u PDS4_HOLDINGS_DIR -u PDSFILE_TEST_HOLDINGS \
-        bash scripts/run-all-checks.sh -c -s
-
-All checks passed: ruff, the indentation pass, pytest, pyroma 10/10, the API-freeze check
-and the clean-install gate. The script needs a `venv` in the repository root; a symlink to
-the shared interpreter was made for the run and removed afterwards. It is gitignored and is
-not part of this PR.
-
-### 8.3 The API freeze
-
-    pytest tests/api
-
-PENDING. The four frozen files are byte-identical to `998a166`, checked with
-`git diff --quiet 998a166 -- <file>` on each. This PR adds no name and removes none; it adds
-`__doc__` text to ten functions that already had it, which the manifest has no field for.
-
-### 8.4 ruff
-
-    ruff check .                                          # All checks passed
-    ruff check --preview --select E111,E112,E113 .        # All checks passed
-    ruff check . --config 'lint.per-file-ignores = {}'    # Found 2249 errors
-
-### 8.5 The ratchet
-
-| | base | head |
-|---|---:|---:|
-| `per-file-ignores` entries | 66 | 66 |
-| code slots across those entries | 180 | 180 |
-| findings with `per-file-ignores = {}` | 2,249 | 2,249 |
-| `[project.scripts]` entries | 11 | 11 |
-
-Nothing moved. No entry was retired and no entry grew. `bandit` and `vulture` are disabled
-and not installed; this PR claims nothing about them.
-
-### 8.6 The record checkers
-
-    python critiques/pr-28/check_record_numbers.py     # 15 stale at base and at head
-    python critiques/pr-29/check_citations.py          # PENDING
-
-The 15 are PR-28's own numbers, invalidated by PR-28a's extraction; they arrived that way
-and this PR neither caused nor repaired them.
-
-## 9. Deferred observations
+## 10. Deferred observations
 
 PENDING
 
-## 10. Type omissions -- PR-35's queue
+## 11. Type omissions -- PR-35's queue
+
+PENDING
+
+## 12. Numbers this PR was handed that did not reproduce
 
 PENDING
