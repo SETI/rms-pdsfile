@@ -440,10 +440,12 @@ def expand_selection_targets(spec, abspaths):
     files are handled as one group. A file expands to its own unit paired with its
     basename, which is the selection the task functions narrow their work to.
 
-    An archive unit set is the one directory that stays whole, because its checksums
-    live in a single file covering the whole set rather than one file per unit. Any
-    other unit set contributes its unit directories and nothing else, so a readme file
-    sitting at unit-set level is dropped rather than rejected.
+    An archive unit set is the one directory that stays whole, and the reason holds for
+    both kinds of tool on this driver: an archive's derived file covers the whole unit
+    set rather than one unit, whether it is the checksum file the task help describes or
+    the info shelf that PdsFile builds from the unit set downward. Any other unit set
+    contributes its unit directories and nothing else, so a readme file sitting at
+    unit-set level is dropped rather than rejected.
 
     A file is accepted on either of two grounds: it stands for a whole bundle, which is
     a unit's own archive or checksum file, or its parent is a unit directory, which
