@@ -95,9 +95,10 @@ def main(argv=None):
     the four turns the table form on, and giving --narrow-table alone does the same,
     since --narrow-table is not one of the three the test looks at.
 
-    **The table form is keyed by OPUS type rather than by product category**, so two
-    categories of the same type collapse and the later one is what prints. The other
-    three forms key on the whole category tuple and show both.
+    **The table form is keyed by the OPUS type rather than by the whole product
+    category**, so two categories sharing a type would collapse into the later one's
+    row; the other three forms key on the whole category tuple and would show both.
+    Nothing here prevents the collision, and nothing observed produces one.
 
     Both holdings roots are read from the environment and both trees are preloaded,
     whatever kinds of path were asked for.

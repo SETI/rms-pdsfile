@@ -14,9 +14,10 @@ The subpackage is laid out in three parts:
     hands both to a shared driver. Eleven modules are console scripts, named in
     ``[project.scripts]``.
   * The five ``_*_common.py`` modules hold everything the two flavors of a tool would
-    otherwise say twice. ``_common.py`` is the specification, the command line and the
-    driver every family could use; ``_archives_common.py``, ``_shelf_common.py``,
-    ``_indexshelf_common.py`` and ``_linkshelf_common.py`` hold what one family shares.
+    otherwise say twice. ``_common.py`` is the specification, the command line and one of
+    the three drivers; ``_archives_common.py``, ``_shelf_common.py``,
+    ``_indexshelf_common.py`` and ``_linkshelf_common.py`` hold what one family shares,
+    and two of them hold the other two drivers.
   * ``pds3/`` also holds four modules that share none of that and parse their own
     command lines: ``crlf.py``, ``pdsdependency.py``, ``re_validate.py`` and
     ``shelf_consistency_check.py``, plus ``linkshelf_repairs.py``, which is a table of
@@ -24,8 +25,9 @@ The subpackage is laid out in three parts:
 
 Every tool that shares the skeleton takes the same five tasks -- initialize,
 reinitialize, validate, repair and update -- one or more target paths, and the ``--log``
-and ``--quiet`` options. A run writes its log to the place the target's own class builds
-and, when a log root is configured, to a parallel place under the root as well.
+and ``--quiet`` options. A run writes each target's log beside the holdings tree that
+target is in, and, when ``--log`` or the PDS_LOG_ROOT environment variable names a log
+root, under that root as well.
 
 This module is a namespace and defines nothing. Import a tool by its module path.
 """

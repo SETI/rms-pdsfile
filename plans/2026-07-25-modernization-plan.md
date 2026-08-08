@@ -1238,10 +1238,12 @@ the only one the mechanical checker still reported findings on (73 at PR-29a's h
 Carried with it the **second reads of `pdsfile.py` and `pdsviewable.py`** PR-29 asked for
 and could not fit. Closes entries 68, 80 and 215; amends 54.
 
-**With this PR the checker reports zero over all fifteen modules under `src/pdsfile/`**, so
-the docstring work for that directory is finished. Phase 7's remaining docstring PR is
-PR-30, which covers the rule modules, the two subclasses and the maintenance tools; PR-31
-onward are the Sphinx tree and the guides.
+**With this PR the checker reports zero over all fifteen modules at the top level of
+`src/pdsfile/`**, so the docstring work for that directory is finished. What remained of
+Phase 7's docstrings was the rule modules, the two subclasses and the maintenance tools;
+PR-30 took the rule modules and PR-30a the subclasses, the shared maintenance core and
+`tools/`, leaving PR-30b the 17 per-tool modules. PR-31 onward are the Sphinx tree and
+the guides.
 
 Four things that shaped the result:
 
@@ -1290,17 +1292,32 @@ split is deliberate: the rest of what this entry originally named is three separ
 surfaces with nothing in common but the phase, and the scarce resource is the review
 budget rather than the writing.
 
-  * **PR-30a** — `src/pdsfile/pds3file/__init__.py` and
-    `src/pdsfile/pds4file/__init__.py`: 2 files, 510 lines, 2 classes, 33 functions,
-    23 of them undocumented. These are the two `PdsFile` subclasses, so their
-    docstrings have to describe class state and the preload path rather than a
-    dataset, which is PR-29a's kind of work and not this one's.
-  * **PR-30b** — `src/pdsfile/holdings_maintenance/`: 23 files, 9,602 lines,
-    5 classes, 152 functions, 57 of them undocumented, plus 34 existing docstrings
-    that use `Args:` and have to be converted. This is the largest remaining
-    surface in the package and larger than PR-29a's whole scope.
-  * **PR-30c** — `src/pdsfile/tools/`: 2 files, 199 lines, 2 functions, both already
-    documented. Small enough to ride with either of the above.
+The split below is two PRs rather than the three first named. `tools/` is 199 lines and
+two already-documented functions, too small to review on its own, and the shared
+maintenance core turned out to belong with the subclasses rather than with the per-tool
+modules: both are about class and module contracts rather than about a dataset or a
+command line, and both are read by every other part of the subpackage.
+
+  * **PR-30a (done)** — the shared maintenance core, the two `PdsFile` subclasses and
+    `src/pdsfile/tools/`: 10 files, 3,177 lines, 6 classes, 82 functions, 26 of them
+    undocumented, and not one of the ten with a module docstring. The two subclasses
+    describe class state and the preload path rather than a dataset, which is PR-29a's
+    kind of work; the six core modules are almost entirely relationship claims about
+    which of ten tools each driver and each `ToolSpec` field reaches, which is why
+    `critiques/pr-30a/check_spec_readers.py` exists.
+    `critiques/pr-30a-validation.md` is the record.
+  * **PR-30b** — the 17 per-tool modules under
+    `src/pdsfile/holdings_maintenance/pds3/` and `pds4/`: 105 functions, 72 of them
+    undocumented, 291 parameters, and `critiques/pr-29/check_docstrings.py` reports
+    **271 findings over 17 files** against them. This is the largest remaining
+    docstring surface in the package. It splits naturally into the ten
+    specification-driven tools, whose shared behavior PR-30a has already described, and
+    the four that parse their own command lines -- `crlf.py`, `pdsdependency.py`,
+    `re_validate.py` and `shelf_consistency_check.py` -- plus `linkshelf_repairs.py`,
+    which is a data table.
+
+    With PR-30b done, the checker reports zero over every module under `src/pdsfile/`
+    except `_version.py`, which setuptools_scm generates and `.gitignore` excludes.
 
 The dataset accuracy problem is what makes the rule modules a PR of their own. There
 is no gate for "this sentence names the right instrument", the holdings tree is the
