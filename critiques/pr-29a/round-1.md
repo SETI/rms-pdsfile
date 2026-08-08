@@ -100,7 +100,7 @@ but index shelves are written one per **index table**, by `indexshelf_abspath`
 (confirmed on disk: `_indexshelf-metadata/COISS_2xxx/` contains *directories*, not
 `*_index.pickle` files). Nothing in `src/` or `tests/` ever passes `'index'` to
 `shelf_path_and_lskip` / `shelf_path_and_key` / `shelf_lookup` — every call site passes
-`'info'` or `'link'` — so this is a latent trap rather than a live bug, but the three
+`'info'` or `'link'` — so this is a latent trap rather than a live bug, but the four
 docstrings advertise `'index'` as one of the supported values
 (`_shelves.py:159`, `:228`, `:384`, `:453`) without saying the path it produces never
 exists. Confidence: **certain** on the path mismatch; **likely** that this should be

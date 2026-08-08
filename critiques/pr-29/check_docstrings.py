@@ -8,9 +8,10 @@ Checks:
 
     P1  Every name in a `Parameters:` block is a real parameter of the signature.
     P2  Every parameter appears in `Parameters:` exactly once. `*args` and `**kwargs`
-        count as parameters. A method's `self` and `cls` do not, because the interpreter
-        supplies them; a module-level function's parameter that happens to be spelled
-        `cls` does, because the caller has to pass it.
+        count as parameters. The one exception is the implicit receiver -- the first
+        positional parameter of an instance or class method, which the interpreter
+        supplies. A `self` or `cls` anywhere else counts: on a module-level function, on
+        a `@staticmethod`, and in any position after the first.
     P3  The section is spelled `Parameters:`; `Args:`, `Arguments:` and
         `Keyword arguments:` are rejected.
     R1  `Returns:` is present if and only if the body has a `return <expr>`, a `yield`
@@ -137,18 +138,23 @@ def entries_of(body, pattern):
     return [(name, '\n'.join(text)) for name, text in result]
 
 
-def signature_names(node, is_method):
-    """Return the parameter names of a function definition, in order.
+def signature_names(node, has_receiver):
+    """Return the parameter names a caller has to supply, in order.
 
-    `*args` and `**kwargs` are returned with their stars attached. `self` and `cls` are
-    omitted from a method, where the interpreter supplies them and there is nothing for
-    a caller to pass. They are kept on a module-level function, where a parameter that
-    happens to be spelled `cls` is an ordinary argument the caller has to supply and so
-    has to be documented.
+    `*args` and `**kwargs` are returned with their stars attached.
+
+    What is dropped is the **implicit receiver**, and only that: the first positional
+    parameter of an instance method or a class method, where the interpreter supplies the
+    argument and a caller passes nothing. Nothing is dropped from a module-level function
+    or a static method, where a parameter that happens to be spelled `self` or `cls` is an
+    ordinary argument the caller has to pass, and nothing is dropped from a later
+    position, where such a parameter is caller-supplied whatever it is called.
 
     Parameters:
         node (ast.FunctionDef): the function definition.
-        is_method (bool): whether the definition sits directly in a class body.
+        has_receiver (bool): whether the interpreter supplies the first positional
+            parameter, which is true of an instance method and a class method and false
+            of a static method and of any function outside a class body.
 
     Returns:
         list: the parameter names.
@@ -161,10 +167,32 @@ def signature_names(node, is_method):
     if args.kwarg:
         names.append('**' + args.kwarg.arg)
 
-    if not is_method:
-        return names
+    positional = args.posonlyargs + args.args
+    if has_receiver and positional and positional[0].arg in ('self', 'cls'):
+        return names[1:]
 
-    return [n for n in names if n not in ('self', 'cls')]
+    return names
+
+
+def is_static(node):
+    """Report whether a definition is decorated `@staticmethod`.
+
+    A static method takes no implicit receiver, so a parameter of its spelled `self` or
+    `cls` is one the caller has to pass.
+
+    Parameters:
+        node (ast.FunctionDef): the function definition.
+
+    Returns:
+        bool: True if it is.
+    """
+
+    for item in node.decorator_list:
+        name = item.attr if isinstance(item, ast.Attribute) else getattr(item, 'id', '')
+        if name == 'staticmethod':
+            return True
+
+    return False
 
 
 def returns_a_value(node):
@@ -198,7 +226,8 @@ def bound_names(node):
     """Return the names a function body binds locally.
 
     An `except ... as` name and an ordinary assignment both count, because both can put
-    an exception object into a local name that a later `raise` re-raises. Nested
+    an exception object into a local name that a later `raise` re-raises, and an
+    assignment counts however it destructures. Nested
     definitions are not searched, matching `raised_names`, so a name bound only inside a
     nested function does not mask a class of the same spelling raised outside it.
 
@@ -219,12 +248,37 @@ def bound_names(node):
             names.add(item.name)
         elif isinstance(item, ast.Assign):
             for target in item.targets:
-                if isinstance(target, ast.Name):
-                    names.add(target.id)
-        elif (isinstance(item, (ast.AnnAssign, ast.AugAssign))
-              and isinstance(item.target, ast.Name)):
-            names.add(item.target.id)
+                names |= target_names(target)
+        elif isinstance(item, (ast.AnnAssign, ast.AugAssign)):
+            names |= target_names(item.target)
         stack.extend(ast.iter_child_nodes(item))
+
+    return names
+
+
+def target_names(node):
+    """Return every name one assignment target binds.
+
+    A target can be a bare name or a nest of tuples, lists and stars, so
+    `exc, _ = pair` binds `exc` as surely as `exc = pair[0]` does.
+
+    Parameters:
+        node (ast.AST): the assignment target.
+
+    Returns:
+        set: the names it binds.
+    """
+
+    names = set()
+    stack = [node]
+    while stack:
+        item = stack.pop()
+        if isinstance(item, ast.Name):
+            names.add(item.id)
+        elif isinstance(item, ast.Starred):
+            stack.append(item.value)
+        elif isinstance(item, (ast.Tuple, ast.List)):
+            stack.extend(item.elts)
 
     return names
 
@@ -345,9 +399,9 @@ def definitions(tree):
         tree (ast.Module): the parsed module.
 
     Returns:
-        list: triples of qualified name, node, and node kind. A function defined
-        directly in a class body has the kind `method`, because `self` and `cls` are
-        parameters there only in name.
+        list: triples of qualified name, node, and node kind. The kind is `method` only
+        where the interpreter supplies the first parameter, so a `@staticmethod` in a
+        class body is a `function`: every parameter it declares is one a caller passes.
     """
 
     found = [('<module>', tree, 'module')]
@@ -368,7 +422,8 @@ def definitions(tree):
                 walk(child, name + '.', True)
             elif isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 name = prefix + child.name
-                found.append((name, child, 'method' if in_class else 'function'))
+                receiver = in_class and not is_static(child)
+                found.append((name, child, 'method' if receiver else 'function'))
                 walk(child, name + '.', False)
             else:
                 walk(child, prefix, in_class)

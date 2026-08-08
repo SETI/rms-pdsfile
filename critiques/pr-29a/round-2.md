@@ -8,7 +8,7 @@ Everything below was checked against the other end of the relation (`pdsfile.py`
 where a claim was cheap to execute it was executed against
 `PDS3_HOLDINGS_DIR=/seti/opus/pdsdata/holdings`.
 
-Totals: **6 code defects**, **34 prose defects**.
+Totals: **6 code defects**, **37 prose defects** (P1 to P37).
 
 ---
 

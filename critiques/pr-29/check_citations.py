@@ -31,6 +31,13 @@ import sys
 import tomllib
 
 SRC = pathlib.Path('src/pdsfile')
+
+# The two documents whose citations are checked, and the scope is deliberate. A validation
+# record and a deferred observation are both standing claims about the code as it is, so a
+# citation that drifts inside one makes it wrong. A review round is a record of what one
+# reviewer saw at one moment, kept so the reading can be audited rather than repeated; its
+# line numbers describe the tree it read and are not maintained afterwards. Adding the
+# round records here would demand that history be rewritten every time a docstring grows.
 RECORD = pathlib.Path('critiques/pr-29-validation.md')
 DEFERRED = pathlib.Path('critiques/deferred-observations.md')
 

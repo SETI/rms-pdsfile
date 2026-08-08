@@ -71,7 +71,8 @@ def run(build, src, flag, out):
         out (str): the output subdirectory name.
 
     Returns:
-        list: the lines of output that name a warning or an error.
+        list: the lines of output that name a warning or an error, plus one line
+        recording a nonzero exit status.
     """
 
     result = subprocess.run(
@@ -80,8 +81,14 @@ def run(build, src, flag, out):
         capture_output=True, text=True, check=False)
 
     text = result.stdout + result.stderr
+    problems = [line for line in text.split('\n') if PROBLEM_RE.search(line)]
 
-    return [line for line in text.split('\n') if PROBLEM_RE.search(line)]
+    # A build that fails to start prints no warning line at all -- an absent sphinx says
+    # only "No module named sphinx" -- so a filter alone would report a clean build.
+    if result.returncode:
+        problems.append(f'sphinx-build exited with status {result.returncode}')
+
+    return problems
 
 
 def main(argv):

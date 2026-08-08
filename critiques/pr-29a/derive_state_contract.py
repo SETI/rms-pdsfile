@@ -526,27 +526,33 @@ class Deriver(ast.NodeVisitor):
     def run(self, tree):
         """Walk a whole module, one function scope at a time.
 
+        A nested definition is a scope of its own and is walked separately, not as part
+        of the function that encloses it.
+
         Parameters:
             tree (ast.Module): the parsed module.
         """
 
+        # Every function is walked on its own, with its own scope, and a nested definition
+        # is not walked as part of the function that encloses it. A closure has its own
+        # local names, so sharing a scope would let one function's string-valued local
+        # decide how the other's attribute reads are classified. Measured over every
+        # module in this package the two give the same answer, so this is a statement
+        # about what the derivation means rather than a correction to a result.
         functions = [n for n in ast.walk(tree)
                      if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))]
 
-        nested = set()
         for function in functions:
-            for item in ast.walk(function):
-                if item is not function and isinstance(item, (ast.FunctionDef,
-                                                              ast.AsyncFunctionDef)):
-                    nested.add(id(item))
-
-        for function in functions:
-            if id(function) in nested:
-                continue
             self.collect_builtin_locals(function)
-            for item in ast.walk(function):
+            stack = list(function.body)
+            while stack:
+                item = stack.pop()
+                if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef,
+                                     ast.ClassDef)):
+                    continue
                 if isinstance(item, ast.Attribute):
                     self.record(item)
+                stack.extend(ast.iter_child_nodes(item))
 
         # Module-level code outside any function.
         self.scope = Scope(self.modules)

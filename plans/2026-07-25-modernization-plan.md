@@ -1120,7 +1120,8 @@ against the code by a person, and 300 cannot be reviewed in one pass. The split
 point is not arbitrary: deferred entry 80 names exactly `pdsfile.py`,
 `preload_and_cache.py`, `pdscache.py` and `pdsviewable.py` as the module headers
 that narrate the port, so PR-29 is precisely the set that entry covers, plus the
-15-line `__init__.py`. PR-29a takes the ten private modules.
+15-line `__init__.py`. The ten private modules follow, split again between PR-29a
+and PR-29b for the same reason and recorded below.
 
 **PR-29 (L)** `docs: Google-style docstrings — the public modules` — **done**,
 record `critiques/pr-29-validation.md`
@@ -1180,9 +1181,13 @@ the package still without a module docstring.
 
 **PR-29a (L)** `docs: Google-style docstrings — the private modules` — **done**,
 record `critiques/pr-29a-validation.md`
-Nine `_*.py` modules: 88 functions, 129 parameters, eight class docstrings and nine
-module headers, none of which had a docstring. 28 of the 88 functions had none
-either. `critiques/pr-29/`'s checkers and `sphinx-conf.py` were reused rather than
+Nine `_*.py` modules: 88 functions, eight class docstrings and nine module headers,
+none of which had a docstring. 28 of the 88 functions had none either. The 88
+signatures declare **129** parameters counting neither `self` nor `cls`, which is
+what `critiques/pr-29/measure.py` reports and what sized the work; the docstrings
+carry **139** `Parameters:` entries, the extra ten being the `cls` that nine
+module-level functions and one closure take as an ordinary argument a caller has to
+pass. `critiques/pr-29/`'s checkers and `sphinx-conf.py` were reused rather than
 rewritten; the two changes made to them are enumerated in the record.
 
 Four things that shaped the result:
