@@ -837,8 +837,9 @@ class _PropertiesMixin:
                 of the expected shape; and raised by ``shelf_lookup()`` out of the
                 bundle-set loop whatever that setting is, because that loop's handler
                 catches OSError alone. The last is what a checksums bundle-set directory
-                does, for which no shelf exists at all, so the properties above fail on
-                one rather than answering.
+                **with any children** does, since no shelf covers the checksum trees, so
+                the properties above fail on one rather than answering; an empty one never
+                enters the loop and answers with zeros.
             SyntaxError: raised by ``shelf_lookup()`` where the readable sidecar it reads
                 before the shelf itself does not hold the record it expects. Neither
                 handler here catches it, so it escapes whatever SHELVES_REQUIRED is set
