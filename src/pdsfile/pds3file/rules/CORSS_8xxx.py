@@ -20,18 +20,23 @@ The rule tables:
 * ``diagram_viewables``, ``profile_viewables``, ``skyview_viewables``,
   ``dsntrack_viewables`` and ``timeline_viewables`` -- five further viewable sets,
   which the class offers under the keys "diagram", "profile", "skyview", "dsntrack"
-  and "timeline" alongside "default". They are the occultation track geometry, the
-  radial profile figure, the sky view, the DSN elevation track and the observation
-  timeline. ``skyview_viewables`` and ``dsntrack_viewables`` are defined by no other
-  rule module, and this is the largest set of named viewables any of them offers.
+  and "timeline" alongside "default". The class's own tooltips say what each is:
+  "diagram" illustrates the observation footprints on the target, "profile" is the
+  radial profile derived from the occultation, "skyview" is the occultation track of
+  Cassini behind the rings as seen from Earth, "dsntrack" is the elevation angle of
+  Saturn as seen from the DSN stations, and "timeline" is the timeline of events
+  during the experiment. ``skyview_viewables`` and ``dsntrack_viewables`` are defined
+  by no other rule module. Only `COCIRS_xxxx.py`, with twenty-one, offers more named
+  viewables than these six.
 * ``associations_to_volumes``, ``associations_to_previews``,
   ``associations_to_diagrams``, ``associations_to_metadata`` and
   ``associations_to_documents`` -- cross the five trees for one occultation.
 * ``versions`` -- the paths of the same product in the other version of this volume
   set, which cannot be found by wildcarding the version suffix alone: the earlier
-  version used upper-case file names, put the data under ``EASYDATA/`` rather than
-  ``data/``, used a different number of digits after "Rev", and had a different
-  directory tree.
+  version put the data under ``EASYDATA/`` rather than ``data/``, used two digits
+  after "Rev" where the current version uses three, and nested the per-occultation
+  directories differently. The data file basenames are upper case in both versions;
+  what the table's ``#UPPER#`` directive rewrites is the directory component.
 * ``view_options``, ``neighbors`` and ``split_rules`` -- the view flags, the
   corresponding directories in sibling volumes, and the basename grouping.
 * ``opus_type``, ``opus_products``, ``opus_id`` and
@@ -486,10 +491,12 @@ opus_id_to_primary_logical_path = translator.TranslatorByRegex([
 class CORSS_8xxx(pds3file.Pds3File):
     """The ``Pds3File`` subclass for CORSS_8xxx.
 
-    The class body puts this module's rule tables in front of the class attributes
-    ``Pds3File`` reads, and the module tail registers the class in
-    ``Pds3File.SUBCLASSES`` under the key "CORSS_8xxx".
-    The module docstring describes the volume set and every table.
+    The class body wires this module's rule tables onto the class attributes
+    ``Pds3File`` reads. Where a table is added to the inherited one, a lookup tries
+    this module's patterns first and falls through to the defaults; where it is
+    assigned outright there is no fall-through. The module tail registers the class
+    in ``Pds3File.SUBCLASSES`` under the key
+    "CORSS_8xxx". The module docstring describes the volume set and every table.
     """
 
     pds3file.Pds3File.VOLSET_TRANSLATOR = translator.TranslatorByRegex([('CORSS_8xxx', re.I, 'CORSS_8xxx')]) + \

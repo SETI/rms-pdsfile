@@ -7,8 +7,11 @@
 `pds3file/rules/__init__.py` defines one translator per rule attribute of
 ``Pds3File``, holding the behavior that applies to any PDS3 volume set whose own
 rule module says nothing more specific. Each dataset module in this package builds
-its own tables and adds them in front of the ones here, so a lookup tries the
-dataset-specific patterns first and falls through to these.
+its own tables and installs them on the subclass. Most are added in front of the
+table here, so a lookup tries the dataset-specific patterns first and falls through
+to these; ``OPUS_ID``, ``OPUS_ID_TO_PRIMARY_LOGICAL_PATH`` and ``VIEWABLES`` are
+assigned outright wherever a module defines them, and for those there is no
+fall-through.
 
 The tables:
 
@@ -29,42 +32,56 @@ The tables:
   dataset module replaces.
 * ``VERSIONS`` -- the paths of every version of a product, found by making the
   version suffix on the volume set name a wildcard.
-* ``VIEWABLES`` and ``VIEWABLE_TOOLTIPS`` -- the viewable sets a product offers and
-  the tooltip for each. The one entry, "default", is a null translator.
+* ``VIEWABLES`` -- the viewable sets a product offers. Its one entry, "default", is
+  a null translator.
+* ``VIEWABLE_TOOLTIPS`` -- the tooltip for each viewable set. Its one entry is the
+  plain string "Default browse product for this observation".
 * ``VIEW_OPTIONS`` -- the grid, multipage and continuous view flags, all False here.
 * ``NEIGHBORS`` -- the pattern matching directories treated as adjacent, which by
   default is every sibling of the given directory.
 * ``SIBLINGS`` -- the pattern matching basenames treated as adjacent within one
-  directory. All files in ``document/``, ``calib/``, ``catalog/``, ``index/`` and
-  ``label/`` are siblings of one another.
+  directory. The first of its four rules makes all files in ``document/``,
+  ``calib/``, ``catalog/``, ``index/`` and ``label/`` siblings of one another; the
+  other three make every file at depth two, three or four under any category a
+  sibling of every other, which is most of what the table does.
 * ``INFO_FILE_BASENAMES`` -- which basenames count as the information file for the
   directory they sit in: ``voldesc.cat``, ``voldesc.sfd``, and any basename ending
-  in ``INFO.txt``, ``INF.txt``, ``DOC.txt``, ``AAREADME.txt`` or ``README.txt``.
-* ``SORT_KEY`` -- the key a basename sorts by. It orders previews by increasing
-  size, orders a volume set's versions with the newest first, sorts a PDS link ahead
-  of everything else, and otherwise sorts alphabetically.
+  in ``INFO.txt``, ``INF.txt`` or ``DOC.txt`` behind at least one word character,
+  and exactly ``AAREADME.txt`` or ``README.txt``. Every pattern is anchored at both
+  ends, so a bare ``INFO.txt`` matches nothing and neither does ``MYREADME.txt``.
+* ``SORT_KEY`` -- the key a basename sorts by. It orders previews largest first,
+  rewriting ``_full`` to ``_1full`` and ``_thumb`` to ``_4thumb``; orders a volume
+  set's versions with the newest first; sorts a PDS link ahead of everything else;
+  and otherwise sorts alphabetically.
 * ``SPLIT_RULES`` -- how a basename splits into an anchor, an optional middle part
   and an extension, which is what groups related files together in a listing.
 * ``OPUS_TYPE`` -- the OPUS category, rank, slug, title and default-selected flag
   for a product. The entries here cover previews, diagrams and the metadata indices.
 * ``OPUS_FORMAT`` -- the interchange format and file format of a product, keyed on
   extension.
-* ``OPUS_PRODUCTS`` -- glob patterns for every file OPUS offers alongside a product,
-  which here is the contents of the volume set's document directory.
+* ``OPUS_PRODUCTS`` -- glob patterns for every file OPUS offers alongside a product.
+  The one rule here emits ``documents/<volset>/*.[!lz]*``, which is the volume set's
+  document directory filtered: a basename with no dot, or whose extension begins
+  with an l or a z, is excluded.
 * ``CROSS_PDS3_PDS4_PRODUCTS`` -- the PDS4 products OPUS offers alongside a PDS3
   product. Empty here.
-* ``OPUS_ID``, ``OPUS_ID_TO_SUBCLASS`` and ``OPUS_ID_TO_PRIMARY_LOGICAL_PATH`` --
-  the path-to-OPUS-ID translation and its two inverses. All three are empty here,
-  because an OPUS ID is dataset-specific in every case.
+* ``OPUS_ID`` -- the OPUS ID of a path, and
+  ``OPUS_ID_TO_PRIMARY_LOGICAL_PATH`` its inverse.
+* ``OPUS_ID_TO_SUBCLASS`` -- the subclass that owns an OPUS ID, which is a lookup of
+  a different kind rather than an inverse of the path translation. All three are
+  empty here, because an OPUS ID is dataset-specific in every case.
 * ``FILESPEC_TO_BUNDLESET`` -- the volume set name a file specification belongs to,
-  which by default replaces the last three characters of the volume ID with "xxx". A
-  volume set whose name does not end in exactly three x's overrides it.
+  which by default replaces the last three characters of the volume ID with "xxx".
+  Eleven modules override it. Three volume sets that need an override do not have
+  one, so the default answers with a name no directory carries: JNOJIR_1000 gives
+  JNOJIR_1xxx, JNOSRU_0001 gives JNOSRU_0xxx and RES_0001 gives RES_0xxx.
 * ``LID_AFTER_DSID`` -- the tail of a PDS4 LID for a PDS3 path, in the form
   volume_id:directory_tree:filename.
 * ``DATA_SET_ID`` -- the PDS3 data set ID of a product. A null translator here.
 
-``__all__`` lists dataset modules of this package, but nothing imports them through
-it: ``pds3file/__init__.py`` names each one explicitly in a ``from .rules import``
+``__all__`` lists 24 of this package's 25 dataset modules; ``JNOSRU_xxxx`` is absent
+from it. Nothing imports them through it, so nothing is broken by the gap:
+``pds3file/__init__.py`` names all 25 explicitly in a ``from .rules import``
 block, because importing a rule module is what registers its subclass and that has
 to happen after ``Pds3File`` itself is built.
 """

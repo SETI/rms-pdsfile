@@ -12,9 +12,10 @@ appear in a Python identifier. The bundle set is registered in
 
 It holds reprojected images of Saturn's B ring, in a ``data_derived/`` collection of
 FITS files with ``.lblx`` labels and a text file of SPICE pointing for each, and a
-``browse_derived/`` collection of PNG browse products. OPUS files them under the
-"Cassini ISS B Ring Reprojected Images" category and offers them with the PDS3
-Cassini ISS images rather than as products of this bundle; the tables in
+``browse_derived/`` collection of PNG browse products. OPUS files the image and its
+SPICE pointing file under the "Cassini ISS B Ring Reprojected Images" category and
+the browse product under "browse", and offers all three with the PDS3 Cassini ISS
+images rather than as products of this bundle; the tables in
 `pds3file/rules/COISS_xxxx.py` are what reach them from the PDS3 side.
 
 The rule tables:
@@ -23,8 +24,9 @@ The rule tables:
   ``sort_key`` -- all four are empty, so descriptions, view flags, adjacent
   directories and basename sort order are the defaults from
   `pds4file/rules/__init__.py`.
-* ``opus_type`` -- the reprojected image, its SPICE pointing file and its browse
-  product.
+* ``opus_type`` -- the reprojected image and its SPICE pointing file, under the
+  "Cassini ISS B Ring Reprojected Images" category, and its browse product under
+  "browse".
 * ``archive_paths`` and ``archive_dirs`` -- three archives: one for the whole
   bundle, one for ``data_derived/`` and one for ``browse_derived/``. The two partial
   archives also carry the bundle label, context, spice_kernels, schema and readme
@@ -32,9 +34,10 @@ The rule tables:
 * ``product_lbl_basename_wo_ext`` -- pairs a ``_rprj_suppl.txt`` SPICE pointing file
   with the ``*_rprj`` label, whose basename it does not otherwise match.
 
-``archive_paths`` and ``archive_dirs`` are defined here but the class body does not
-assign them to ``Pds4File.ARCHIVE_PATHS`` or ``Pds4File.ARCHIVE_DIRS``, so this
-bundle set uses the empty archive tables from `pds4file/rules/__init__.py`. It is
+``archive_paths`` and ``archive_dirs`` are defined here but the class body assigns
+neither ``ARCHIVE_PATHS`` nor ``ARCHIVE_DIRS``, which is what the other four pds4
+rule modules with archive tables do, so this bundle set uses the empty archive
+tables from `pds4file/rules/__init__.py`. It is
 also the only pds4 rule module with a subclass that defines no associations, no
 viewables and no OPUS ID tables, and the only one that adds nothing to
 ``Pds4File.FILESPEC_TO_BUNDLESET``.
@@ -151,9 +154,12 @@ product_lbl_basename_wo_ext = translator.TranslatorByRegex([
 class cassini_iss_spokes_hedman_hamilton_2024(pds4file.Pds4File):
     """The ``Pds4File`` subclass for cassini_iss_spokes_hedman_hamilton_2024.
 
-    The class body puts this module's rule tables in front of the class attributes
-    ``Pds4File`` reads, and the module tail registers the class in
-    ``Pds4File.SUBCLASSES`` under the key "cassini_iss_spokes_hedman-hamilton-2024".
+    The class body wires this module's rule tables onto the class attributes
+    ``Pds4File`` reads. Where a table is added to the inherited one, a lookup tries
+    this module's patterns first and falls through to the defaults; where it is
+    assigned outright there is no fall-through. The module tail registers the class
+    in ``Pds4File.SUBCLASSES`` under the key
+    "cassini_iss_spokes_hedman-hamilton-2024".
     The module docstring describes the bundle set and every table.
     """
 

@@ -8,10 +8,11 @@ This bundle set holds derived radial occultation profiles of Saturn's rings from
 solar occultation observations made with the Cassini UVIS instrument between June
 2005 and June 2017 (bundle ``readme.txt`` under
 ``$PDS4_HOLDINGS_DIR/bundles/cassini_uvis_solarocc_beckerjarmak2023``). The bundle
-set holds a single bundle of the same name, laid out as ``data/`` for the time
-series tables, ``data/supplemental/`` for the supplemental tables, ``browse/`` for
-the plots, ``document/`` for the two volumes of the ring solar occultation atlas and
-the UVIS user guide, and a ``readme.txt``. A data file is named
+set holds a single bundle of the same name. Its readme's own directory-structure
+section lists ``readme.txt``, ``bundle.xml``, ``browse/``, ``context/``, ``data/``
+with a ``supplemental/`` inside it, ``document/`` and ``xml_schema/``. The
+``document/`` collection holds the two volumes of the ring solar occultation atlas
+and the UVIS user guide. A data file is named
 uvis_euv_<year>_<day>_solar_time_series_<ingress or egress>.
 
 The rule tables:
@@ -26,9 +27,9 @@ The rule tables:
   no metadata association is produced.
 * ``view_options``, ``neighbors`` and ``sort_key`` -- all three are empty, so the
   view flags, the adjacent directories and the basename sort order are the defaults.
-* ``opus_type`` -- files products under the "Cassini UVIS Solar Occultations" OPUS
-  category as the time series, its supplement, the detailed browse and the
-  documentation.
+* ``opus_type`` -- files all four of its products under the "Cassini UVIS Solar
+  Occultations" OPUS category: the time series, its supplement, the detailed browse
+  and the documentation.
 * ``opus_products`` -- the tables, browse products, previews, readme and the three
   named documents OPUS offers with one occultation.
 * ``opus_id`` and ``opus_id_to_primary_logical_path`` -- an OPUS ID of the form
@@ -268,9 +269,12 @@ archive_dirs = translator.TranslatorByRegex([
 class cassini_uvis_solarocc_beckerjarmak2023(pds4file.Pds4File):
     """The ``Pds4File`` subclass for cassini_uvis_solarocc_beckerjarmak2023.
 
-    The class body puts this module's rule tables in front of the class attributes
-    ``Pds4File`` reads, and the module tail registers the class in
-    ``Pds4File.SUBCLASSES`` under the key "cassini_uvis_solarocc_beckerjarmak2023".
+    The class body wires this module's rule tables onto the class attributes
+    ``Pds4File`` reads. Where a table is added to the inherited one, a lookup tries
+    this module's patterns first and falls through to the defaults; where it is
+    assigned outright there is no fall-through. The module tail registers the class
+    in ``Pds4File.SUBCLASSES`` under the key
+    "cassini_uvis_solarocc_beckerjarmak2023".
     The module docstring describes the bundle set and every table.
     """
 

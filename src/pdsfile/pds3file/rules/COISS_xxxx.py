@@ -4,21 +4,24 @@
 
 """Rules for the COISS_xxxx volume sets: Cassini ISS images.
 
-`COISS_xxxx.py` serves four volume sets, matched by the pattern COISS_[0123]xxx:
+`COISS_xxxx.py` serves four volume sets, matched by the pattern COISS_[0123x]xxx:
 COISS_0xxx is the Cassini ISS calibration data collection, which also carries the
 CISSCAL calibration software and the ISS calibration report in COISS_0011;
 COISS_1xxx is the Cassini ISS Jupiter image collection; COISS_2xxx is the Cassini
 Saturn image collection; and COISS_3xxx holds Cassini cartographic maps (holdings
-``_volinfo/COISS_0xxx.txt`` and its three siblings). A data file is a VICAR image
-whose basename begins with N for the narrow-angle camera or W for the wide-angle
-camera, followed by the ten-digit spacecraft clock.
+``_volinfo/COISS_0xxx.txt`` and its three siblings). In the three image volume sets
+a data file is a VICAR image whose basename begins with N for the narrow-angle
+camera or W for the wide-angle camera, followed by the ten-digit spacecraft clock.
+COISS_3xxx is not named that way, which is why ``COISS_xxxx.FILENAME_KEYLEN``
+returns 0 for it.
 
 The rule tables:
 
 * ``description_and_icon_by_regex`` -- distinguishes narrow-angle from wide-angle
-  images, names the calibrated products and the thumbnail, browse, full and TIFF
+  images, names the calibrated products, the thumbnail extras and the full and TIFF
   extras, and labels the CISSCAL software and the calibration report inside
-  COISS_0011.
+  COISS_0011. The browse extras get no entry of their own and fall to the generic
+  "Preview image collection".
 * ``default_viewables`` -- points an image at its preview images.
 * ``associations_to_volumes``, ``associations_to_calibrated``,
   ``associations_to_previews``, ``associations_to_metadata`` and
@@ -31,13 +34,15 @@ The rule tables:
 * ``opus_type``, ``opus_format`` and ``opus_products`` -- file products under the
   "Cassini ISS" OPUS category and list what OPUS offers with each.
 * ``opus_id`` and ``opus_id_to_primary_logical_path`` -- the OPUS ID and its
-  inverse. The reverse table is written as one entry per leading three digits of the
-  spacecraft clock, each naming the small range of volumes that can hold it.
+  inverse. The reverse table has 52 entries, most of them one per leading three
+  digits of the spacecraft clock, each naming the small range of volumes that can
+  hold it. Four are wider: three cover several three-digit prefixes at once and one
+  keys on two digits.
 * ``cross_pds3_pds4_products`` -- the PDS4 products OPUS offers alongside a PDS3
-  Cassini ISS image: the reprojected images, their browse products and their indices
-  from the cassini_iss_fring_mosaics_rsfrench2025 and
-  cassini_iss_spokes_hedman-hamilton-2024 bundles. This is the only rule module that
-  defines this table.
+  Cassini ISS image: the reprojected images and their browse products from the
+  cassini_iss_fring_mosaics_rsfrench2025 and cassini_iss_spokes_hedman-hamilton-2024
+  bundles, plus the two global reprojected-image index files, which come from the
+  fring bundle alone. This is the only rule module that defines this table.
 * ``_PRODUCT_ID_TO_F_RING_OBSERVATION_ID_MAPPING`` and
   ``_f_ring_cross_products_list`` -- the supporting data behind that table. The
   mapping gives, for each inclusive range of ten-digit product IDs, the F-ring
@@ -773,10 +778,12 @@ opus_id_to_primary_logical_path = translator.TranslatorByRegex([
 class COISS_xxxx(pds3file.Pds3File):
     """The ``Pds3File`` subclass for COISS_xxxx.
 
-    The class body puts this module's rule tables in front of the class attributes
-    ``Pds3File`` reads, and the module tail registers the class in
-    ``Pds3File.SUBCLASSES`` under the key "COISS_xxxx".
-    The module docstring describes the volume set and every table.
+    The class body wires this module's rule tables onto the class attributes
+    ``Pds3File`` reads. Where a table is added to the inherited one, a lookup tries
+    this module's patterns first and falls through to the defaults; where it is
+    assigned outright there is no fall-through. The module tail registers the class
+    in ``Pds3File.SUBCLASSES`` under the key
+    "COISS_xxxx". The module docstring describes the volume set and every table.
 
     It also defines ``FILENAME_KEYLEN``, which returns 0 for COISS_3xxx and 11
     elsewhere, so that the several files of one observation group together.

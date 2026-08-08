@@ -13,8 +13,9 @@ JNO-J-SRU-COUNTRATE-TABLE-5-L2-V1.0 for the count rate tables
 The rule tables:
 
 * ``description_and_icon_by_regex`` -- names the image, count rate table and preview
-  directories and the files inside them. A data file is FITS here, which is why this
-  module names it rather than leaving it to the default table.
+  directories and the files inside them. The default table already names a FITS
+  file; what this one adds is a description that says "Image file, FITS" and an
+  IMAGE icon in place of the generic "FITS data file".
 * ``default_viewables`` -- points a product at its preview images.
 * ``associations_to_volumes``, ``associations_to_previews`` and
   ``associations_to_metadata`` -- cross the volumes, previews and metadata trees for
@@ -113,10 +114,12 @@ view_options = translator.TranslatorByRegex([
 class JNOSRU_xxxx(pds3file.Pds3File):
     """The ``Pds3File`` subclass for JNOSRU_xxxx.
 
-    The class body puts this module's rule tables in front of the class attributes
-    ``Pds3File`` reads, and the module tail registers the class in
-    ``Pds3File.SUBCLASSES`` under the key "JNOSRU_xxxx".
-    The module docstring describes the volume set and every table.
+    The class body wires this module's rule tables onto the class attributes
+    ``Pds3File`` reads. Where a table is added to the inherited one, a lookup tries
+    this module's patterns first and falls through to the defaults; where it is
+    assigned outright there is no fall-through. The module tail registers the class
+    in ``Pds3File.SUBCLASSES`` under the key
+    "JNOSRU_xxxx". The module docstring describes the volume set and every table.
     """
 
     pds3file.Pds3File.VOLSET_TRANSLATOR = translator.TranslatorByRegex([('JNOSRU_....', re.I, 'JNOSRU_xxxx')]) + \

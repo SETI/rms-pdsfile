@@ -12,12 +12,15 @@ VGIRIS_xxxx_peer_review (holdings ``_volinfo/VGIRIS_xxxx.txt``).
 
 The rule tables:
 
-* ``description_and_icon_by_regex`` -- names the directories of a volume, which are
-  split first by planet and then by spacecraft, so that a directory reads as
-  "Voyager 2 Neptune data" rather than as a bare code. The table carries entries for
-  all four Voyager targets, which is wider than the two volumes present.
+* ``description_and_icon_by_regex`` -- names data files by spacecraft and planet, so
+  that ``VG2_NEP.DAT`` reads as "Voyager 2 Neptune data", and carries four bare
+  planet directory patterns. Those four do not fire on this volume set: its
+  directories are named for planet and spacecraft together, as in
+  ``DATA/JUPITER_VG1``, and every pattern in a ``TranslatorByRegex`` is anchored at
+  both ends, so they fall through to the default "Data files".
 * ``filespec_to_bundleset`` -- maps a file specification beginning with a
-  VGIRIS_nnnn volume ID to the volume set name VGIRIS_xxxx.
+  VGIRIS_nnnn volume ID to the volume set name VGIRIS_xxxx_peer_review, which is the
+  name the volumes actually sit under.
 
 `VG_20xx.py` covers the original selected-data release from the same instrument and
 defines tables of these same two names for it.
@@ -62,10 +65,12 @@ filespec_to_bundleset = translator.TranslatorByRegex([
 class VGIRIS_xxxx(pds3file.Pds3File):
     """The ``Pds3File`` subclass for VGIRIS_xxxx.
 
-    The class body puts this module's rule tables in front of the class attributes
-    ``Pds3File`` reads, and the module tail registers the class in
-    ``Pds3File.SUBCLASSES`` under the key "VGIRIS_xxxx".
-    The module docstring describes the volume set and every table.
+    The class body wires this module's rule tables onto the class attributes
+    ``Pds3File`` reads. Where a table is added to the inherited one, a lookup tries
+    this module's patterns first and falls through to the defaults; where it is
+    assigned outright there is no fall-through. The module tail registers the class
+    in ``Pds3File.SUBCLASSES`` under the key
+    "VGIRIS_xxxx". The module docstring describes the volume set and every table.
     """
 
     pds3file.Pds3File.VOLSET_TRANSLATOR = translator.TranslatorByRegex([('VGIRIS_xxxx', re.I, 'VGIRIS_xxxx')]) + \

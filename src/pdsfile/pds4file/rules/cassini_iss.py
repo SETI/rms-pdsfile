@@ -7,11 +7,12 @@
 The cassini_iss bundle set holds the Cassini ISS images as PDS4 bundles. The
 archive layout described in this module's header comment has two bundles,
 cassini_iss_cruise and cassini_iss_saturn, each holding a ``data_raw/`` collection
-of raw images and a ``browse_raw/`` collection beside it, together with the
-non-data collections ``bundle.xml``, ``calibration/``, ``context/``, ``document/``
-and ``xml_schema/``. Both data and browse collections are subdivided by the leading
-three digits of the spacecraft clock. The PDS3 form of the same observations is
-served by `pds3file/rules/COISS_xxxx.py`.
+of raw images and a ``browse_raw/`` collection beside it, together with the non-data
+collections ``bundle.xml``, ``context/``, ``document/`` and ``xml_schema/``. Below a
+data or browse collection ``opus_id`` reads two nested clock levels, a three-digit
+block and a five-digit block inside it; the archive split uses the three-digit block
+alone. The PDS3 form of the same observations is served by
+`pds3file/rules/COISS_xxxx.py`.
 
 The rule tables written against PDS4 ``bundles/cassini_iss`` paths:
 
@@ -33,14 +34,15 @@ The rule tables written against PDS4 ``bundles/cassini_iss`` paths:
   comprehension rather than listing them.
 
 Eight tables here are byte-identical to the tables of the same name in
-`pds3file/rules/COISS_xxxx.py`, and their patterns are written against PDS3
-``volumes/COISS_*`` paths rather than against ``bundles/cassini_iss`` paths:
-``description_and_icon_by_regex``, ``view_options``, ``neighbors``, ``sort_key``,
-``opus_type``, ``opus_format``, ``opus_products`` and
-``opus_id_to_primary_logical_path``. They describe the same Cassini ISS
-observations, in their PDS3 locations: ``opus_type`` files products under the
-"Cassini ISS" OPUS category, and ``opus_id_to_primary_logical_path`` resolves an
-OPUS ID to a path under ``volumes/COISS_1xxx`` or ``volumes/COISS_2xxx``.
+`pds3file/rules/COISS_xxxx.py`: ``description_and_icon_by_regex``, ``view_options``,
+``neighbors``, ``sort_key``, ``opus_type``, ``opus_format``, ``opus_products`` and
+``opus_id_to_primary_logical_path``. Six of the eight key on PDS3 paths -- on
+``volumes/`` or on a COISS volume ID -- rather than on ``bundles/cassini_iss``;
+``sort_key`` keys on basenames and ``opus_format`` on file extensions, so neither is
+PDS3-specific. They describe the same Cassini ISS observations in their PDS3
+locations: ``opus_type`` files products under the "Cassini ISS" OPUS category, and
+``opus_id_to_primary_logical_path`` resolves an OPUS ID to a path under
+``volumes/COISS_1xxx`` or ``volumes/COISS_2xxx``.
 """
 
 import re
@@ -491,9 +493,12 @@ archive_dirs = translator.TranslatorByRegex([
 class cassini_iss(pds4file.Pds4File): # Cassini_ISS
     """The ``Pds4File`` subclass for cassini_iss.
 
-    The class body puts this module's rule tables in front of the class attributes
-    ``Pds4File`` reads, and the module tail registers the class in
-    ``Pds4File.SUBCLASSES`` under the key "cassini_iss".
+    The class body wires this module's rule tables onto the class attributes
+    ``Pds4File`` reads. Where a table is added to the inherited one, a lookup tries
+    this module's patterns first and falls through to the defaults; where it is
+    assigned outright there is no fall-through. The module tail registers the class
+    in ``Pds4File.SUBCLASSES`` under the key
+    "cassini_iss".
     The module docstring describes the bundle set and every table.
     """
 

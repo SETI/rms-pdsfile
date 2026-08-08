@@ -5,18 +5,20 @@
 """Rules for the VG_20xx volume set: selected Voyager IRIS thermal infrared data.
 
 VG_20xx is described in the holdings as selected Voyager IRIS thermal infrared data,
-original release. The one volume, VG_2001, carries four data set IDs, one each for
-the Jupiter, Saturn, Uranus and Neptune encounters of Voyager 1 and Voyager 2
-(holdings ``_volinfo/VG_20xx.txt``).
+original release. The one volume, VG_2001, carries four data set IDs, one per
+planet: VG1/VG2-J and VG1/VG2-S cover both spacecraft at Jupiter and Saturn, while
+VG2-U and VG2-N are Voyager 2 alone (holdings ``_volinfo/VG_20xx.txt``).
 
 The rule tables:
 
-* ``description_and_icon_by_regex`` -- names the directories of the volume, which
-  are split first by planet and then by spacecraft, so that a directory reads as
-  "Voyager 2 Uranus data" rather than as a bare code.
+* ``description_and_icon_by_regex`` -- names the four planet directories of the
+  volume, and separately names each data file by spacecraft and planet, so that
+  ``VG2_URA.DAT`` reads as "Voyager 2 Uranus data". The split by spacecraft is at
+  the file level; the directory level is split by planet alone.
 * ``filespec_to_bundleset`` -- maps a file specification beginning with a VG_20nn
-  volume ID to the volume set name VG_20xx, which the default rule cannot do because
-  this volume set name ends in two x's rather than three.
+  volume ID, which the default rule cannot do because this volume set name ends in
+  two x's rather than three. Its replacement string is "VG__20xx", with two
+  underscores, and no directory of that name exists.
 
 `VGIRIS_xxxx.py` covers the extended IRIS collection restored from the original
 tapes and defines tables of these same two names for it.
@@ -61,10 +63,12 @@ filespec_to_bundleset = translator.TranslatorByRegex([
 class VG_20xx(pds3file.Pds3File):
     """The ``Pds3File`` subclass for VG_20xx.
 
-    The class body puts this module's rule tables in front of the class attributes
-    ``Pds3File`` reads, and the module tail registers the class in
-    ``Pds3File.SUBCLASSES`` under the key "VG_20xx".
-    The module docstring describes the volume set and every table.
+    The class body wires this module's rule tables onto the class attributes
+    ``Pds3File`` reads. Where a table is added to the inherited one, a lookup tries
+    this module's patterns first and falls through to the defaults; where it is
+    assigned outright there is no fall-through. The module tail registers the class
+    in ``Pds3File.SUBCLASSES`` under the key
+    "VG_20xx". The module docstring describes the volume set and every table.
     """
 
     pds3file.Pds3File.VOLSET_TRANSLATOR = translator.TranslatorByRegex([('VG_20xx', re.I, 'VG_20xx')]) + \

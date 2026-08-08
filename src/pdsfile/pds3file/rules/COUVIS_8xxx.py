@@ -19,9 +19,12 @@ The rule tables:
   ``associations_to_diagrams``, ``associations_to_metadata`` and
   ``associations_to_documents`` -- cross the five trees for one profile.
 * ``versions`` -- the paths of the same profile in the other versions of this volume
-  set, which cannot be found by wildcarding the version suffix alone: earlier
-  versions used upper-case file names, put the data under ``DATA/EASYDATA/`` rather
-  than ``data/``, and wrote an underscore after "TAU".
+  set, which cannot be found by wildcarding the version suffix alone. Three
+  different things are in the way. The earliest version put the data under
+  ``DATA/EASYDATA/`` rather than ``data/``, which is what the table's ``#UPPER#``
+  directive rewrites; it also wrote an underscore after "TAU"; and its first three
+  entries pair observations whose dates differ, repairing files that were misnamed.
+  The data file basenames are upper case in both versions.
 * ``view_options`` and ``split_rules`` -- the view flags and the basename grouping.
 * ``opus_type`` and ``opus_products`` -- file products under the "Cassini UVIS" OPUS
   category as "Occultation Profile (1 km)" and "(10 km)", and list what OPUS offers
@@ -241,10 +244,12 @@ opus_id_to_primary_logical_path = translator.TranslatorByRegex([
 class COUVIS_8xxx(pds3file.Pds3File):
     """The ``Pds3File`` subclass for COUVIS_8xxx.
 
-    The class body puts this module's rule tables in front of the class attributes
-    ``Pds3File`` reads, and the module tail registers the class in
-    ``Pds3File.SUBCLASSES`` under the key "COUVIS_8xxx".
-    The module docstring describes the volume set and every table.
+    The class body wires this module's rule tables onto the class attributes
+    ``Pds3File`` reads. Where a table is added to the inherited one, a lookup tries
+    this module's patterns first and falls through to the defaults; where it is
+    assigned outright there is no fall-through. The module tail registers the class
+    in ``Pds3File.SUBCLASSES`` under the key
+    "COUVIS_8xxx". The module docstring describes the volume set and every table.
     """
 
     pds3file.Pds3File.VOLSET_TRANSLATOR = translator.TranslatorByRegex([('COUVIS_8xxx', re.I, 'COUVIS_8xxx')]) + \

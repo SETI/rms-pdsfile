@@ -4,21 +4,28 @@
 
 """Rules for the JNOJIR_xxxx volume set: Juno JIRAM raw data.
 
-JNOJIR_xxxx is described in the holdings as the Juno JIRAM raw image collection. Its
-volumes are numbered one per orbit, starting from JNOJIR_1000 for the 2013 Moon
-images and JNOJIR_1001 for orbit insertion, and carry data set ID
-JNO-J-JIRAM-2-EDR-V1.0 (``_volinfo/JNOJIR_xxxx.txt``). An observation is a raw or
-calibrated image or spectrum, and each data file has a log table of engineering data
-beside it.
+JNOJIR_xxxx is described in the holdings as the Juno JIRAM raw image collection.
+Each orbit has two volumes, a 1nnn holding the raw data and a 2nnn holding the
+reduced, which is why this module's patterns are written for JNOJIR_1 and JNOJIR_2
+alike. The series opens with JNOJIR_1000 for the 2013 Moon images and JNOJIR_1001
+for orbit insertion. Four data set IDs are in play: JNO-J-JIRAM-2-EDR-V1.0 and
+JNO-J-JIRAM-3-RDR-V1.0 for the Jupiter volumes, and JNO-L-JIRAM-2-EDR-V3.0 and
+JNO-L-JIRAM-3-RDR-V3.0 for the Moon pair (``_volinfo/JNOJIR_xxxx.txt``). An
+observation is a raw or calibrated image or spectrum, and each data file has a log
+table of engineering data beside it.
 
 The rule tables:
 
 * ``description_and_icon_by_regex`` -- distinguishes the raw and calibrated images
   from the raw and calibrated spectra, names the engineering data, and names the
   date-ordered data directories.
-* ``associations_to_volumes``, ``associations_to_metadata`` and
-  ``associations_to_documents`` -- cross the volumes, metadata and documents trees
-  for one observation.
+* ``associations_to_volumes`` and ``associations_to_metadata`` -- cross the volumes
+  and metadata trees for one observation. The volumes entry is what pairs a raw file
+  with its reduced counterpart, rewriting the volume's leading 1 to a 2 and EDR to
+  RDR.
+* ``associations_to_documents`` -- the documents tree for one observation. The class
+  body installs it as a replacement for the default rather than adding to it, so the
+  table re-implements the default behavior itself.
 * ``neighbors`` -- the corresponding directories in sibling volumes.
 * ``siblings`` -- the basenames treated as adjacent within one directory. This is
   the only rule module that overrides the sibling rule, rather than letting it be
@@ -199,10 +206,12 @@ split_rules = translator.TranslatorByRegex([
 class JNOJIR_xxxx(pds3file.Pds3File):
     """The ``Pds3File`` subclass for JNOJIR_xxxx.
 
-    The class body puts this module's rule tables in front of the class attributes
-    ``Pds3File`` reads, and the module tail registers the class in
-    ``Pds3File.SUBCLASSES`` under the key "JNOJIR_xxxx".
-    The module docstring describes the volume set and every table.
+    The class body wires this module's rule tables onto the class attributes
+    ``Pds3File`` reads. Where a table is added to the inherited one, a lookup tries
+    this module's patterns first and falls through to the defaults; where it is
+    assigned outright there is no fall-through. The module tail registers the class
+    in ``Pds3File.SUBCLASSES`` under the key
+    "JNOJIR_xxxx". The module docstring describes the volume set and every table.
     """
 
     pds3file.Pds3File.VOLSET_TRANSLATOR = translator.TranslatorByRegex([('JNOJIR_xxxx', re.I, 'JNOJIR_xxxx')]) + \

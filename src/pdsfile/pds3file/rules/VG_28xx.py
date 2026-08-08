@@ -18,18 +18,20 @@ experiment (``_volinfo/VG_28xx.txt``):
   ID VG1/VG2-SR-ISS-4-PROFILES-V1.0.
 
 This is the longest rule module, and the reason is that a product here is named by a
-dense code rather than by a readable name. A basename such as PU1P01AI.TAB encodes
-the experiment, the occultation star, the kind of product, the ring and the
-occultation direction in single characters, and every one of those characters has to
-be turned into English for a description, an OPUS type and an OPUS ID.
+dense code rather than by a readable name. A basename such as PU1P01AI.TAB decomposes
+as P, U1, P, 01, A, I: the experiment, the occultation code, the kind of product, a
+two-character field the patterns match and discard, the ring, and the occultation
+direction. Every one of those fields has to be turned into English for a
+description, an OPUS type and an OPUS ID.
 
-Sixteen of the module's top-level names exist for that translation. Each is a
+Eighteen of the module's top-level names exist for that translation. Each is a
 dictionary written as a string, with its newlines stripped, so that it can be
 concatenated into the replacement pattern of a ``translator.TranslatorByRegex``
 entry and subscripted there by a captured group:
 
-* ``SUN_DICT`` -- the occultation star codes N1, S1, U1 and U2 mapped to the planet
-  and star they stand for.
+* ``SUN_DICT`` -- the occultation codes N1, S1, U1 and U2 mapped to what they stand
+  for. The two Uranus codes name a planet and a star, "Uranus sigma Sgr" and "Uranus
+  beta Per"; N1 and S1 name the planet alone.
 * ``SU_DICT`` -- S and U mapped to Saturn and Uranus.
 * ``URING_DICT`` -- the Uranian ring codes mapped to ring names, six through
   epsilon, plus X for the ring plane. ``URING_INV_DICT`` is the same mapping
@@ -38,20 +40,22 @@ entry and subscripted there by a captured group:
 * ``KIND`` and ``KIND_UC`` -- the product kind codes mapped to phrases such as
   "calibration model", "edited raw data" and "calibrated profile", in lower case and
   with an initial capital.
-* ``ICON`` -- the same product kind codes mapped to the icon type each gets.
+* ``ICON`` -- product kind codes mapped to the icon type each gets. It covers ten of
+  the eleven codes ``KIND`` carries, omitting "P", the calibrated profile.
 * ``NEXT`` -- the integers 5 through 13 mapped to the next integer as a string,
   which turns a profile's starting radius decade into the end of its range.
 * ``SRSS_DICT`` and ``URSS_DICT`` -- the radio-occultation resolution codes for
   Saturn and for Uranus mapped to sampling intervals.
-* ``FRAME_DICT`` -- 1 and 2 mapped to B1950 and J2000.
+* ``FRAME_DICT`` -- 1 and 2 intended for B1950 and J2000. Its string literal is
+  missing the closing brace, and no table reads it.
 * ``COORD_DICT`` -- the coordinate system codes mapped to "celestial", "ring" and
   "inclined ring".
 * ``CU_DICT`` -- C and U mapped to "corrected" and "un-corrected".
 * ``VIP_DICT`` -- V, I and P mapped to the Vax, IEEE and PC binary formats.
 * ``POLE_DICT`` -- 1 and 2 mapped to "original" and "updated", for the two pole
   solutions the profiles were computed against.
-* ``US23_DICT`` -- two Uranus data files whose descriptions do not follow from their
-  codes.
+* ``US23_DICT`` -- two UVS Saturn data files whose descriptions do not follow from
+  their codes, keyed on the digit after the "US" prefix.
 * ``USTAR_DICT`` -- 1 and 2 mapped to the OPUS ID spellings of the two Uranus
   occultation stars.
 
@@ -67,8 +71,9 @@ The rule tables:
   for one product.
 * ``versions`` -- the paths of the same product in the other version of this volume
   set.
-* ``sort_key`` and ``split_rules`` -- the basename sort order and the basename
-  grouping.
+* ``sort_key`` and ``split_rules`` -- a basename sort order and a basename grouping.
+  The class body assigns neither ``SORT_KEY`` nor ``SPLIT_RULES``, so neither table
+  is reached and both behaviors are the defaults.
 * ``opus_type`` -- files products under four OPUS categories, one per experiment:
   "Voyager PPS", "Voyager UVS", "Voyager RSS" and "Voyager ISS". No other rule
   module spans four.
@@ -1065,10 +1070,15 @@ opus_id_to_primary_logical_path = translator.TranslatorByRegex([
 class VG_28xx(pds3file.Pds3File):
     """The ``Pds3File`` subclass for VG_28xx.
 
-    The class body puts this module's rule tables in front of the class attributes
-    ``Pds3File`` reads, and the module tail registers the class in
-    ``Pds3File.SUBCLASSES`` under the key "VG_28xx".
-    The module docstring describes the volume set and every table.
+    The class body wires this module's rule tables onto the class attributes
+    ``Pds3File`` reads. Where a table is added to the inherited one, a lookup tries
+    this module's patterns first and falls through to the defaults; where it is
+    assigned outright there is no fall-through. The module tail registers the class
+    in ``Pds3File.SUBCLASSES`` under the key
+    "VG_28xx". The module docstring describes the volume set and every table.
+
+    The class body installs no ``SORT_KEY`` and no ``SPLIT_RULES``, so the module's
+    ``sort_key`` and ``split_rules`` tables are not reached.
     """
 
     pds3file.Pds3File.VOLSET_TRANSLATOR = translator.TranslatorByRegex([('VG_28xx', re.I, 'VG_28xx')]) + \

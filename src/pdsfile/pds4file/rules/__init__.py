@@ -10,15 +10,27 @@
 `pds4file/rules/__init__.py` defines one translator per rule attribute of
 ``Pds4File``, holding the behavior that applies to any PDS4 bundle set whose own
 rule module says nothing more specific. Each dataset module in this package builds
-its own tables and adds them in front of the ones here, so a lookup tries the
-dataset-specific patterns first and falls through to these.
+its own tables and installs them on the subclass. Most are added in front of the
+table here, so a lookup tries the dataset-specific patterns first and falls through
+to these; ``OPUS_ID``, ``OPUS_ID_TO_PRIMARY_LOGICAL_PATH``, ``VIEWABLES`` and
+``PRODUCT_LBL_BASENAME_WO_EXT`` are assigned outright wherever a module defines
+them, and for those there is no fall-through.
 
-Most of these tables carry the PDS3 defaults unchanged, and the header comment says
-so. Five of them are written for PDS3 paths and conventions and cannot match a PDS4
-path at all: ``DESCRIPTION_AND_ICON`` keys on ``volumes/`` and on the PDS3 volume
-subdirectories, ``VERSIONS`` and ``FILESPEC_TO_BUNDLESET`` require an upper-case
-volume set or volume identifier, ``INFO_FILE_BASENAMES`` looks for ``voldesc.cat``,
-and ``LID_AFTER_DSID`` keys on ``volumes/`` as well.
+Most of these tables are the PDS3 defaults, copied. Comparing every top-level
+assignment against `pds3file/rules/__init__.py`: 20 are identical, three differ
+(``ASSOCIATIONS``, ``DESCRIPTION_AND_ICON`` and ``OPUS_TYPE``) and three have no
+PDS3 counterpart (``PRODUCT_LBL_BASENAME_WO_EXT``, ``ARCHIVE_PATHS`` and
+``ARCHIVE_DIRS``). The module's header comment says "all", which is one claim
+stronger than the code supports.
+
+Two of the copied tables cannot match a PDS4 path at all: ``FILESPEC_TO_BUNDLESET``
+requires an upper-case volume identifier, and ``LID_AFTER_DSID`` keys on
+``volumes/``. The others still answer for PDS4 paths, through their least specific
+rules rather than through anything written for a bundle: ``DESCRIPTION_AND_ICON``
+falls to its closing extension-only block, so a ``.tab`` file is an "ASCII table"
+and a bundle directory is a "Directory"; ``VERSIONS`` answers at the category level
+through ``([a-z-]+)``; and ``INFO_FILE_BASENAMES`` matches the ``readme.txt`` that
+sits in every bundle.
 
 The tables:
 
@@ -36,8 +48,10 @@ The tables:
   translators that a dataset module replaces.
 * ``VERSIONS`` -- the paths of every version of a product, found by making the
   version suffix on the bundle set name a wildcard.
-* ``VIEWABLES`` and ``VIEWABLE_TOOLTIPS`` -- the viewable sets a product offers and
-  the tooltip for each. The one entry, "default", is a null translator.
+* ``VIEWABLES`` -- the viewable sets a product offers. Its one entry, "default", is
+  a null translator.
+* ``VIEWABLE_TOOLTIPS`` -- the tooltip for each viewable set. Its one entry is the
+  plain string "Default browse product for this observation".
 * ``VIEW_OPTIONS`` -- the grid, multipage and continuous view flags, all False here.
 * ``NEIGHBORS`` -- the pattern matching directories treated as adjacent, which by
   default is every sibling of the given directory.
@@ -55,8 +69,11 @@ The tables:
 * ``OPUS_PRODUCTS`` -- glob patterns for every file OPUS offers alongside a product.
 * ``CROSS_PDS3_PDS4_PRODUCTS`` -- the PDS4 products OPUS offers alongside a PDS3
   product. Empty here.
-* ``OPUS_ID``, ``OPUS_ID_TO_SUBCLASS`` and ``OPUS_ID_TO_PRIMARY_LOGICAL_PATH`` --
-  the path-to-OPUS-ID translation and its two inverses, all empty here.
+* ``OPUS_ID`` -- the OPUS ID of a path, and ``OPUS_ID_TO_PRIMARY_LOGICAL_PATH`` its
+  inverse.
+* ``OPUS_ID_TO_SUBCLASS`` -- the subclass that owns an OPUS ID, which is a lookup of
+  a different kind rather than an inverse of the path translation. All three are
+  empty here.
 * ``FILESPEC_TO_BUNDLESET`` -- the bundle set name a file specification belongs to.
 * ``LID_AFTER_DSID`` -- the tail of a PDS4 LID for a PDS3 path.
 * ``DATA_SET_ID`` -- the PDS3 data set ID of a product. A null translator here.
@@ -64,12 +81,18 @@ The tables:
   goes with a data product whose own basename does not match its label's. Empty
   here. This table has no PDS3 counterpart.
 * ``ARCHIVE_PATHS`` -- the archive files that cover a given path. Empty here, and
-  with no PDS3 counterpart: PDS3 archive paths are derived arithmetically from the
-  volume ID, while a PDS4 bundle set chooses how to split itself.
+  with no PDS3 counterpart: a PDS3 archive path is built structurally by
+  ``_derived_paths.py``, one archive per bundle under the ``archives-`` parallel of
+  the category, while a PDS4 bundle set chooses how to split itself and has to say
+  so in a table.
 * ``ARCHIVE_DIRS`` -- the inverse, the directories packaged inside a given archive
   file. Empty here, and likewise with no PDS3 counterpart.
 
-``__all__`` lists bundle set names, but nothing imports the modules through it:
+``__all__`` lists four bundle set names; the ``from .rules import`` block in
+``pds4file/__init__.py`` names six, adding
+``cassini_iss_fring_mosaics_rsfrench2025`` and
+``cassini_iss_spokes_hedman_hamilton_2024``. Nothing imports the modules through
+``__all__``, so nothing is broken by the gap:
 ``pds4file/__init__.py`` names each one explicitly in a ``from .rules import``
 block, because importing a rule module is what registers its subclass and that has
 to happen after ``Pds4File`` itself is built.

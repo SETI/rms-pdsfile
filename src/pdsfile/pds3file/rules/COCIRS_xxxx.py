@@ -4,7 +4,7 @@
 
 """Rules for the COCIRS_xxxx volume sets: Cassini CIRS thermal infrared data.
 
-`COCIRS_xxxx.py` serves four volume sets, matched by the pattern COCIRS_[0156]xxx.
+`COCIRS_xxxx.py` serves four volume sets, matched by the pattern COCIRS_[0156x]xxx.
 COCIRS_0xxx and COCIRS_1xxx are described in the holdings as Cassini CIRS thermal
 infrared data, raw and calibrated, plus map cubes, covering 2000-2009 and 2010-2017;
 COCIRS_5xxx and COCIRS_6xxx are described as Cassini CIRS data in simplified formats
@@ -18,9 +18,10 @@ tree of observation diagrams.
 The rule tables:
 
 * ``description_and_icon_by_regex`` -- names the TSDR and CUBE trees and their
-  contents, the simplified-format tables, and the per-body diagram directories. Its
-  longest run is one entry per observed body, from Jupiter and the Galilean moons
-  through Saturn and its satellites out to Pan.
+  contents, the simplified-format tables, and the BROWSE tree of observation
+  diagrams. Its longest run is 24 entries for the geometry index tables, one per
+  observed body, from Jupiter and the Galilean moons through Saturn and its
+  satellites out to Pan.
 * ``default_viewables`` -- the previews for a spectral image cube in COCIRS_0xxx and
   COCIRS_1xxx, and the observation diagrams for a table in COCIRS_5xxx and
   COCIRS_6xxx.
@@ -33,7 +34,9 @@ The rule tables:
   and "rings", and then one further entry per satellite, built by looping over
   ``spice_lookup`` and interpolating the NAIF ID into a diagram path. This is the
   only rule module that builds its viewable dictionary rather than writing it out,
-  and it is why one COCIRS observation offers twenty-one named viewables.
+  and it is why a COCIRS_5xxx or COCIRS_6xxx observation offers twenty-one named
+  viewables. Every entry but "default" is keyed on COCIRS_[56], so a COCIRS_0xxx or
+  COCIRS_1xxx product offers one.
 * ``associations_to_volumes``, ``associations_to_previews``,
   ``associations_to_diagrams``, ``associations_to_metadata`` and
   ``associations_to_documents`` -- cross the five trees for one observation.
@@ -45,7 +48,10 @@ The rule tables:
   here has to keep a ``.tar.gz`` suffix whole.
 * ``opus_type``, ``opus_format`` and ``opus_products`` -- file products under the
   "Cassini CIRS" OPUS category and list what OPUS offers with each. The type table
-  carries one "Extra Browse Diagram" entry per observed body.
+  carries 21 "Extra Browse Diagram" entries: 18 keyed on the NAIF IDs of
+  ``spice_lookup``, plus one each for the rings, for Saturn and for the default. It
+  has no Jupiter or Galilean entry, so its per-body run is not the description
+  table's.
 * ``opus_id`` and ``opus_id_to_primary_logical_path`` -- the OPUS ID and its
   inverse.
 * ``data_set_id`` -- the PDS3 data set ID for a path. It is needed here because one
@@ -778,10 +784,12 @@ data_set_id = translator.TranslatorByRegex([
 class COCIRS_xxxx(pds3file.Pds3File):
     """The ``Pds3File`` subclass for COCIRS_xxxx.
 
-    The class body puts this module's rule tables in front of the class attributes
-    ``Pds3File`` reads, and the module tail registers the class in
-    ``Pds3File.SUBCLASSES`` under the key "COCIRS_xxxx".
-    The module docstring describes the volume set and every table.
+    The class body wires this module's rule tables onto the class attributes
+    ``Pds3File`` reads. Where a table is added to the inherited one, a lookup tries
+    this module's patterns first and falls through to the defaults; where it is
+    assigned outright there is no fall-through. The module tail registers the class
+    in ``Pds3File.SUBCLASSES`` under the key
+    "COCIRS_xxxx". The module docstring describes the volume set and every table.
     """
 
     pds3file.Pds3File.VOLSET_TRANSLATOR = translator.TranslatorByRegex([('COCIRS_[0156x]xxx', re.I, 'COCIRS_xxxx')]) + \

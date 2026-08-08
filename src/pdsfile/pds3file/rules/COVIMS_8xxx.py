@@ -21,8 +21,9 @@ The rule tables:
   documents entry replaces the default rather than adding to it.
 * ``versions`` -- the paths of the same profile in the other versions of this volume
   set, which cannot be found by wildcarding the version suffix alone: the earliest
-  version used upper-case file names and put the data under ``EASYDATA/`` rather
-  than ``data/``.
+  version put the data under ``EASYDATA/`` rather than ``data/``, which is what the
+  table's ``#UPPER#`` directive rewrites. The data file basenames are upper case in
+  both versions.
 * ``view_options`` and ``split_rules`` -- the view flags and the basename grouping.
 * ``opus_type`` and ``opus_products`` -- file products under the "Cassini VIMS" OPUS
   category as "Occultation Profile (1 km)" and "(10 km)", and list what OPUS offers
@@ -286,10 +287,12 @@ opus_id_to_primary_logical_path = translator.TranslatorByRegex([
 class COVIMS_8xxx(pds3file.Pds3File):
     """The ``Pds3File`` subclass for COVIMS_8xxx.
 
-    The class body puts this module's rule tables in front of the class attributes
-    ``Pds3File`` reads, and the module tail registers the class in
-    ``Pds3File.SUBCLASSES`` under the key "COVIMS_8xxx".
-    The module docstring describes the volume set and every table.
+    The class body wires this module's rule tables onto the class attributes
+    ``Pds3File`` reads. Where a table is added to the inherited one, a lookup tries
+    this module's patterns first and falls through to the defaults; where it is
+    assigned outright there is no fall-through. The module tail registers the class
+    in ``Pds3File.SUBCLASSES`` under the key
+    "COVIMS_8xxx". The module docstring describes the volume set and every table.
     """
 
     pds3file.Pds3File.VOLSET_TRANSLATOR = translator.TranslatorByRegex([('COVIMS_8xxx', re.I, 'COVIMS_8xxx')]) + \

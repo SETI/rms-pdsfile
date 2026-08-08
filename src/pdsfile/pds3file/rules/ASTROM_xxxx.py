@@ -39,10 +39,11 @@ filespec_to_bundleset = translator.TranslatorByRegex([
 class ASTROM_xxxx(pds3file.Pds3File):
     """The ``Pds3File`` subclass for ASTROM_xxxx.
 
-    The class body puts this module's rule tables in front of the class attributes
-    ``Pds3File`` reads, and the module tail registers the class in
-    ``Pds3File.SUBCLASSES`` under the key "ASTROM_xxxx".
-    The module docstring describes the volume set and every table.
+    The class body puts ASTROM_xxxx in front of ``Pds3File.VOLSET_TRANSLATOR`` and
+    wires no rule table: this module's one table is added to
+    ``Pds3File.FILESPEC_TO_BUNDLESET`` at module level, below the class. The module
+    tail registers the class in ``Pds3File.SUBCLASSES`` under the key
+    "ASTROM_xxxx".
     """
 
     pds3file.Pds3File.VOLSET_TRANSLATOR = translator.TranslatorByRegex([('ASTROM_xxxx', re.I, 'ASTROM_xxxx')]) + \

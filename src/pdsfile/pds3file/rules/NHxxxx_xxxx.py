@@ -18,18 +18,21 @@ different compression, and the downlink is recorded as a hexadecimal code in the
 file name. That is what shapes this module:
 
 * ``FILE_CODE_PRIORITY`` -- the hexadecimal file codes mapped to a sort priority,
-  covering the LORRI codes 630 through 63B and the MVIC codes 530 through 54A. The
-  comment on each entry names the mode it stands for: lossless, packetized or lossy,
-  high-resolution or binned, and which of the two command and data handling units
-  produced it. This table is defined by no other rule module.
+  36 of them: the twelve contiguous LORRI codes 630 through 63B, and 24 MVIC codes
+  between 530 and 54A, which are not contiguous. The comment on each entry names the
+  mode it stands for. For LORRI that is lossless, packetized or lossy, high-resolution
+  or 4x4 binned; for MVIC it is panchromatic TDI, panchromatic TDI 3x3 binned, color
+  TDI or panchromatic frame transfer, each again lossless, packetized or lossy. Each
+  comment also records which of the two CDH units produced it. This table is defined
+  by no other rule module.
 
 The remaining rule tables:
 
 * ``description_and_icon_by_regex`` -- distinguishes raw from calibrated FITS and
   names the binning and compression of each, names the date-grouped directories, the
   calibration frames (debias, flat field, dead pixel, hot pixel) and the PDS3
-  catalog files, and points at the instrument and payload descriptions in the
-  documents tree.
+  catalog files, and points at the instrument and payload descriptions in each
+  volume's own document directory.
 * ``default_viewables``, ``raw_viewables`` and ``calibrated_viewables`` -- the
   previews for a product, for its raw form and for its calibrated form. The class
   offers the last two as the "raw" and "calibrated" viewable sets with tooltips of
@@ -47,9 +50,11 @@ The remaining rule tables:
   each.
 * ``opus_id`` and ``opus_id_to_primary_logical_path`` -- the OPUS ID and its
   inverse.
-* ``filespec_to_bundleset`` -- maps a file specification beginning with an
-  NHxxnn_nnn volume ID to its volume set name, which the default rule cannot do
-  because these volume set names do not follow the usual shape.
+* ``filespec_to_bundleset`` -- maps a file specification beginning with a volume ID
+  of the form NH, two characters for the mission phase, the letters LO or MV, an
+  underscore and four digits, to NHxxLO_xxxx or NHxxMV_xxxx. The default rule cannot
+  do it because it replaces only the last three characters and leaves the mission
+  phase in place.
 
 The class body sets ``NHxxxx_xxxx.FILENAME_KEYLEN`` to 14 so that the several
 downlinks of one observation group together, and defines
@@ -517,10 +522,12 @@ filespec_to_bundleset = translator.TranslatorByRegex([
 class NHxxxx_xxxx(pds3file.Pds3File):
     """The ``Pds3File`` subclass for NHxxxx_xxxx.
 
-    The class body puts this module's rule tables in front of the class attributes
-    ``Pds3File`` reads, and the module tail registers the class in
-    ``Pds3File.SUBCLASSES`` under the key "NHxxxx_xxxx".
-    The module docstring describes the volume set and every table.
+    The class body wires this module's rule tables onto the class attributes
+    ``Pds3File`` reads. Where a table is added to the inherited one, a lookup tries
+    this module's patterns first and falls through to the defaults; where it is
+    assigned outright there is no fall-through. The module tail registers the class
+    in ``Pds3File.SUBCLASSES`` under the key
+    "NHxxxx_xxxx". The module docstring describes the volume set and every table.
 
     It also sets ``FILENAME_KEYLEN`` to 14, so that the several downlinks of one
     observation group together, and defines ``opus_prioritizer``.
@@ -582,14 +589,18 @@ class NHxxxx_xxxx(pds3file.Pds3File):
         touches are rewritten and the alternative heading is added.
 
         Parameters:
-            pdsfile_dict (dict): the OPUS product dictionary, keyed by a
-                (category, rank, slug, title, selected) tuple, whose values are lists
-                of lists of PdsFile objects.
+            pdsfile_dict (dict): the OPUS product dictionary. A key is a
+                (category, rank, slug, title, selected) tuple, or the empty string
+                for a product whose type no rule matched; a value is a list of lists
+                of PdsFile objects.
 
         Returns:
             dict: the same dictionary.
 
         Raises:
+            IndexError: raised by the item read ``__getitem__()`` on the heading,
+                where the heading is the empty-string key and it holds more than one
+                copy of a product in the volumes tree.
             KeyError: raised by the priority lookup, the item read
                 ``__getitem__()`` on ``FILE_CODE_PRIORITY``, for a file code the
                 table does not list.

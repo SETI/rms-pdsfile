@@ -29,10 +29,10 @@ import pdsfile.pds3file as pds3file
 class RES_xxxx(pds3file.Pds3File):
     """The ``Pds3File`` subclass for RES_xxxx.
 
-    The class body puts this module's rule tables in front of the class attributes
-    ``Pds3File`` reads, and the module tail registers the class in
-    ``Pds3File.SUBCLASSES`` under the key "RES_xxxx".
-    The module docstring describes the volume set and every table.
+    The class body puts RES_xxxx in front of ``Pds3File.VOLSET_TRANSLATOR`` and does
+    nothing else, because this module defines no rule tables: every rule the class
+    uses is the default from `pds3file/rules/__init__.py`. The module tail registers
+    the class in ``Pds3File.SUBCLASSES`` under the key "RES_xxxx".
     """
 
     pds3file.Pds3File.VOLSET_TRANSLATOR = translator.TranslatorByRegex([('RES_xxxx', re.I, 'RES_xxxx')]) + \

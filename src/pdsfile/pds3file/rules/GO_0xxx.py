@@ -13,20 +13,24 @@ images, for the Earth-Moon conjunction and for the Galileo Optical Experiment.
 
 Some images were processed more than once, and the reprocessed copies live in
 ``REDO/``, ``REPAIRED/`` and ``TIRETRACK/`` directories that supersede an image
-elsewhere in the volume set. The module header enumerates every such image and the
-image it supersedes.
+elsewhere in the volume set. The module header lists every such image with the image
+it supersedes, and two of them have no counterpart.
 
 The rule tables:
 
-* ``description_and_icon_by_regex`` -- names the orbit and target directories, the
-  calibration, Earth-Moon and optical-experiment directories, the reprocessed-image
-  directories, and the images carrying a Shoemaker-Levy 9 graphics overlay.
+* ``description_and_icon_by_regex`` -- names the nested orbit and target
+  directories and the images carrying an SL9 graphics overlay. It carries entries
+  for the calibration, Earth-Moon, optical-experiment, top-level target and
+  reprocessed-image directories too, but those six patterns are one path component
+  short of a real logical path, so they never fire and those directories fall
+  through to the generic "Directory".
 * ``default_viewables`` -- points an image at its preview images.
 * ``associations_to_volumes``, ``associations_to_previews``,
   ``associations_to_metadata`` and ``associations_to_documents`` -- cross the
   volumes, previews, metadata and documents trees for one image.
 * ``versions`` -- the paths of the same image in the other version of this volume
-  set, where the file names differ.
+  set, whose file names differ: the earlier version puts the last four characters of
+  an image name in a directory of their own.
 * ``view_options``, ``neighbors``, ``sort_key`` and ``split_rules`` -- the view
   flags, the corresponding directories in sibling volumes, the basename sort order
   and the basename grouping.
@@ -764,13 +768,15 @@ opus_id_to_primary_logical_path = translator.TranslatorByRegex([
 class GO_0xxx(pds3file.Pds3File):
     """The ``Pds3File`` subclass for GO_0xxx.
 
-    The class body puts this module's rule tables in front of the class attributes
-    ``Pds3File`` reads, and the module tail registers the class in
-    ``Pds3File.SUBCLASSES`` under the key "GO_0xxx".
-    The module docstring describes the volume set and every table.
+    The class body wires this module's rule tables onto the class attributes
+    ``Pds3File`` reads. Where a table is added to the inherited one, a lookup tries
+    this module's patterns first and falls through to the defaults; where it is
+    assigned outright there is no fall-through. The module tail registers the class
+    in ``Pds3File.SUBCLASSES`` under the key
+    "GO_0xxx". The module docstring describes the volume set and every table.
 
-    It also carries ``METADATA_PATH_TRANSLATOR`` and defines
-    ``opus_prioritizer``.
+    It also sets ``FILENAME_KEYLEN`` to 11, carries
+    ``METADATA_PATH_TRANSLATOR``, and defines ``opus_prioritizer``.
     """
 
     pds3file.Pds3File.VOLSET_TRANSLATOR = translator.TranslatorByRegex([('GO_0xxx', re.I, 'GO_0xxx')]) + \
@@ -824,14 +830,18 @@ class GO_0xxx(pds3file.Pds3File):
         touches are rewritten and the alternative heading is added.
 
         Parameters:
-            pdsfile_dict (dict): the OPUS product dictionary, keyed by a
-                (category, rank, slug, title, selected) tuple, whose values are lists
-                of lists of PdsFile objects.
+            pdsfile_dict (dict): the OPUS product dictionary. A key is a
+                (category, rank, slug, title, selected) tuple, or the empty string
+                for a product whose type no rule matched; a value is a list of lists
+                of PdsFile objects.
 
         Returns:
             dict: the same dictionary.
 
         Raises:
+            IndexError: raised by the item read ``__getitem__()`` on the heading,
+                where the heading is the empty-string key and it holds more than one
+                copy of a product in the volumes tree.
             TypeError: raised by ``sort()`` where two copies at one version rank are
                 both reprocessed or both superseded. The priority is then equal and
                 the comparison falls through to the lists of PdsFile objects, which

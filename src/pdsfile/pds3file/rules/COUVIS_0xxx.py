@@ -263,10 +263,12 @@ opus_id_to_primary_logical_path = translator.TranslatorByRegex([
 class COUVIS_0xxx(pds3file.Pds3File):
     """The ``Pds3File`` subclass for COUVIS_0xxx.
 
-    The class body puts this module's rule tables in front of the class attributes
-    ``Pds3File`` reads, and the module tail registers the class in
-    ``Pds3File.SUBCLASSES`` under the key "COUVIS_0xxx".
-    The module docstring describes the volume set and every table.
+    The class body wires this module's rule tables onto the class attributes
+    ``Pds3File`` reads. Where a table is added to the inherited one, a lookup tries
+    this module's patterns first and falls through to the defaults; where it is
+    assigned outright there is no fall-through. The module tail registers the class
+    in ``Pds3File.SUBCLASSES`` under the key
+    "COUVIS_0xxx". The module docstring describes the volume set and every table.
 
     It also carries ``VERSIONS_PATH_AND_KEY`` and defines ``DATA_SET_ID`` as a
     method rather than as a translator.
@@ -310,16 +312,18 @@ class COUVIS_0xxx(pds3file.Pds3File):
         A COUVIS_0xxx data file's data set ID depends on which version of the volume
         set it belongs to, so it is looked up rather than derived from the path.
         ``VERSIONS_PATH_AND_KEY`` gives the metadata versions table that covers this
-        file and the row key within it; the row is read from that table and its
-        DATA_SET_ID column returned.
+        file and the row key within it; the row is read from that table and the
+        DATA_SET_ID column of its first row dictionary returned. The two subscripts
+        in that expression are guarded by the existence check above them rather than
+        by anything this method does.
 
         Returns:
             str: the data set ID, and the empty string for an object that does not
             exist and for a directory.
 
         Raises:
-            ValueError: if no versions table covers this file's logical path, and if
-                the table that does covers it holds no row under the key.
+            ValueError: if no versions table covers this file's logical path, or if
+                the table that does cover it holds no row under the key.
             FileNotFoundError: if the versions table the lookup names is not on disk.
         """
 

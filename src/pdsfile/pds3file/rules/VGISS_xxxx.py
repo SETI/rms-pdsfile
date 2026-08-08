@@ -5,7 +5,7 @@
 """Rules for the VGISS_xxxx volume sets: raw and calibrated Voyager images.
 
 `VGISS_xxxx.py` serves four volume sets, one per encounter, matched by the pattern
-VGISS_[5678]xxx: VGISS_5xxx is the Voyager Jupiter image collection, VGISS_6xxx the
+VGISS_[5678x]xxx: VGISS_5xxx is the Voyager Jupiter image collection, VGISS_6xxx the
 Saturn collection, VGISS_7xxx the Voyager 2 Uranus collection and VGISS_8xxx the
 Voyager 2 Neptune collection, each described in the holdings as raw and calibrated
 (``_volinfo/VGISS_5xxx.txt`` and its three siblings). One observation appears
@@ -620,10 +620,15 @@ opus_id_to_primary_logical_path = translator.TranslatorByRegex([
 class VGISS_xxxx(pds3file.Pds3File):
     """The ``Pds3File`` subclass for VGISS_xxxx.
 
-    The class body puts this module's rule tables in front of the class attributes
-    ``Pds3File`` reads, and the module tail registers the class in
-    ``Pds3File.SUBCLASSES`` under the key "VGISS_xxxx".
-    The module docstring describes the volume set and every table.
+    The class body wires this module's rule tables onto the class attributes
+    ``Pds3File`` reads. Where a table is added to the inherited one, a lookup tries
+    this module's patterns first and falls through to the defaults; where it is
+    assigned outright there is no fall-through. The module tail registers the class
+    in ``Pds3File.SUBCLASSES`` under the key
+    "VGISS_xxxx". The module docstring describes the volume set and every table.
+
+    It also sets ``FILENAME_KEYLEN`` to 8, so that the several forms of one
+    observation group together.
     """
 
     pds3file.Pds3File.VOLSET_TRANSLATOR = translator.TranslatorByRegex([('VGISS_[5678x]xxx', re.I, 'VGISS_xxxx')]) + \
