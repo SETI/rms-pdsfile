@@ -560,8 +560,13 @@ def run_selection_main(spec, tasks, argv):
 
     Raises:
         SystemExit: from ``sys.exit()`` inside ``setup_run()`` with status 1 if no task
-            was given, and from the two path helpers on a path they reject. A task that
+            was given, 0 for --help and 2 for a command line the parser cannot
+            classify, and from the two path helpers on a path they reject. A task that
             raises is logged and re-raised, so the result is not built at all.
+        ValueError: raised by ``resolve_holdings_paths()``, before any logging is open,
+            for a path that resolves to nothing and is not an unresolved unit name
+            inside an archives directory.
+        OSError: raised by the same ``resolve_holdings_paths()`` call on the same terms.
     """
 
     (args, logger) = _common.setup_run(spec, argv)

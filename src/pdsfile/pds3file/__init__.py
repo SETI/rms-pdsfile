@@ -34,22 +34,29 @@ expressions above them. They are what a PDS3 caller writes, and three of the PDS
 maintenance tools write them too: ``pdsarchives`` names ``log_path_for_volume`` in its
 specification and reaches ``volume_pdsfile()`` and ``volset_pdsfile()`` to expand a
 command-line path; ``pdsdependency`` reads ``volset_``, ``volname``, ``is_volume_dir``
-and ``is_volset_dir`` and names ``log_path_for_volume``; and ``re_validate`` reads
-``volname`` and ``volset_`` and names ``log_path_for_volume``. The checksum, info shelf
+and ``is_volset_dir``, names ``log_path_for_volume``, and is the only caller anywhere of
+any of the ten regular-expression aliases, through ``VOLNAME_REGEX_I``; and
+``re_validate`` reads ``volname`` and ``volset_`` and names ``log_path_for_volume``.
+The checksum, info shelf
 and link shelf tools use the bundle-named methods instead, because those are the ones
 the PDS3 and PDS4 halves can share.
 
 The module ends with three statements. The class registers itself in its own
 ``SUBCLASSES`` under "default", which is the entry a path no rule module claims resolves
 to; the per-volume-set rule modules are imported, and each of them adds its own entry to
-that same registry as it is imported; and the merged directory of each category is
-created, so that a tree can be read before any preload has run.
+that same registry as it is imported; and one cache entry is created for each category
+that has none, holding a directory whose children are the union of that category's
+children across every holdings directory. Those entries never expire and an existing one
+is left alone, so the call is safe at any time; before a preload has filled anything they
+are empty, so they are what makes several trees look like one rather than what makes a
+tree readable at all.
 
 **One of the three orderings is load-bearing and the file says which.** The import has to
 follow the class body, because every rule module subclasses ``Pds3File`` and so needs a
-class that is already built. Nothing forces the other two into their places: no rule
-module reads ``SUBCLASSES``, and the merged-directory call reads only what the class
-body binds.
+class that is already built. Nothing forces the other two into their places. Every rule
+module does reach ``SUBCLASSES`` -- each ends by assigning its own key into it -- but
+none reads the "default" entry, so registering that entry after the import would serve
+equally; and the merged-directory call reads only what the class body binds.
 
 The import is wrapped in a handler for ``AttributeError``. The in-code comment beside it
 says that is what a recursive import of ``pdsfile`` raises when a rule module is tested
@@ -80,10 +87,11 @@ class Pds3File(PdsFile):
     ``LOCAL_PRELOADED`` and ``SUBCLASSES`` are assigned in the class body rather than
     inherited from ``PdsFile``, so preloading a PDS3 tree fills this class's cache and
     leaves ``Pds4File``'s alone. The four setters below are overridden for the same
-    reason. Three of them write an attribute: the base version writes it onto every
-    direct subclass and not onto the class it was called on, and these write it onto the
-    class the call names. The fourth, ``set_easylogger()``, writes nothing either way
-    and passes the call on; the override is where the base's recursion stops.
+    reason. The base version of each writes its attribute onto every direct subclass and
+    not onto the class it was called on; these write it onto the class the call names.
+    ``set_easylogger()`` differs only in route: the base passes the call down to each
+    direct subclass, and this override ends the recursion by installing the logger
+    through its own ``set_logger()``, which writes ``LOGGER`` on the class named.
 
     A rule subclass inherits all of it, so a setting made on ``Pds3File`` reaches every
     volume set, and one made on a rule subclass reaches that volume set alone.
@@ -193,10 +201,11 @@ class Pds3File(PdsFile):
         """Return a blank object, with every slot at the value the base class gives it.
 
         This is not how a caller gets an object; the inherited class methods are.
-        Several of them reach this: ``from_abspath()`` and ``from_path()`` build a blank
-        object and fill it in. Several do not: ``from_logical_path()`` answers from the
-        class cache where the cache holds the path, and ``copy()`` and ``new_pdsfile()``
-        build their result with ``__new__`` and never run this at all.
+        ``from_abspath()``, ``from_path()`` and ``from_logical_path()`` all look in the
+        class cache first and all build a blank object here on a miss, so whether a
+        given call reaches this depends on what the cache holds rather than on which
+        constructor was called. ``new_pdsfile()`` reaches it too. ``copy()`` is the one
+        that does not: it builds its result with ``__new__`` and never runs this.
 
         A blank object has no path in either form, and its absolute path is the empty
         string rather than None, which is what its representation shows.

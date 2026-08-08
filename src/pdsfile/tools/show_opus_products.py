@@ -17,9 +17,9 @@ both trees into the caches those classes hold as class attributes. Those caches 
 by logical path, so a session that has preloaded one tree resolves a logical path to that
 tree whatever root a later caller has in mind. Calling this in process therefore changes
 how every later call in the same interpreter resolves a path, which is why the tests
-under ``tests/holdings_maintenance/`` drive it with ``python -m`` in a subprocess against
-a disposable copy of a holdings tree, rather than importing ``main()`` and calling it the
-way they do for the tools that touch no holdings root.
+under ``tests/holdings_maintenance/`` drive every run that reads a holdings tree with
+``python -m`` in a subprocess, against a disposable copy. They do import ``main()`` and
+call it, but only for command lines argparse rejects before either root is read.
 """
 
 import argparse
@@ -97,10 +97,11 @@ def main(argv=None):
     that test looks at.
 
     **The table form is keyed by the OPUS type rather than by the whole product
-    category**, so two categories sharing a type would collapse into the later one's
-    row, where the pprint and raw forms key on the whole category tuple and would show
-    both. Nothing here prevents the collision; a scan of 6,674 files across every volume
-    of one holdings copy produced none.
+    category, and the collision that invites is real.** Two categories differing only in
+    their rank can carry one type -- VG_2803's Uranus ring occultations give two "200 m
+    inversion, old pole" categories the type "vgrss_occ_inv0_2" -- and the table then
+    prints one row, the later category's. The pprint and raw forms key on the whole
+    category tuple and show both.
 
     Both holdings roots are read from the environment and both trees are preloaded,
     whatever kinds of path were asked for.

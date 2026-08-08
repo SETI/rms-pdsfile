@@ -13,8 +13,9 @@ this module rather than on either of the two drivers in ``_common.py`` and
 An index shelf is a pickled ``{filename key: list of row numbers}`` dictionary written
 beside a readable ``.py`` file holding the same mapping as Python source. Both are
 written by one call and both are touched by one call, and the repair task takes the
-older of the two as the pair's age. Nothing in this package reads the ``.py`` file; it
-is there to be read by a person or by something outside the package.
+older of the two as the pair's age. Nothing in this package opens the ``.py`` file; it
+is there to be read by a person or by something outside the package. What does read a
+shelf pickle back is this module, and the shelf cache on the PdsFile classes.
 
 The five tasks are here rather than in the two tool modules, because nothing in them
 differs between PDS3 and PDS4: what a row is, how a key is formed and how a shelf is
@@ -269,10 +270,10 @@ def load_indexdict(spec, pdsf, *, logger=None, limits=None):
             pickle. It is logged through ``exception()`` and re-raised.
         EOFError: from the same ``load()`` on a shelf file of zero length, which is
             what an interrupted write leaves. It is not a PickleError, so the handler
-            below does not catch it and it escapes without being logged, unlike every
-            other failure here.
+            below does not catch it and it escapes without being logged.
         OSError: raised by ``open()`` if the file goes away between the existence test
-            and the read. This one is not caught either.
+            and the read. This one escapes unlogged on the same terms. The PickleError
+            above is the only failure this function logs.
     """
 
     if limits is None:
@@ -709,10 +710,11 @@ def run_index_main(spec, tasks, argv):
     directory rather than in the target's.
 
     Two further differences are worth naming, neither of which follows from the three
-    above. This driver records no log directories, so a superseded index shelf is not
-    versioned anywhere; and each task is called with the logger as a keyword, which the
-    other two drivers do not do, so the task's lines land inside the level this opens
-    for the target.
+    above. This driver records no log directories; that is consistent with an index
+    shelf never being versioned, though it is not the cause, since nothing in this
+    module asks for a superseded file to be copied anywhere. And each task is called
+    with the logger as a keyword, which the other two drivers do not do, so the task's
+    lines land inside the level this opens for the target.
 
     Every command-line path is resolved and expanded before the run's first log level is
     opened, so a path this rejects exits before any per-target log file is created.
@@ -733,10 +735,12 @@ def run_index_main(spec, tasks, argv):
             otherwise. A task that raises is logged and re-raised instead, so the
             original exception propagates and the closing ``sys.exit()`` is not
             reached.
-        ValueError: raised by ``log_paths_for()`` for a target that is not an index
-            file, since the log path method these tools name checks that. Every path
-            index_targets() admits carries the spec's extension and sits under
-            metadata/, which is not the same test.
+
+    The log path method these tools name raises ValueError for a target that is not an
+    index file, and that cannot happen here: the test it applies is "under metadata/ and
+    carrying one of the class's index extensions", which every path index_targets()
+    admits satisfies, since that function's own admission test is the same one applied
+    case-sensitively to a single extension.
     """
 
     (args, logger) = _common.setup_run(spec, argv)

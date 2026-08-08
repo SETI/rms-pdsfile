@@ -532,4 +532,53 @@ checker's own scope list. Section 12 records that this number was handed as zero
 
 ## 12. Numbers this PR was handed that did not reproduce
 
-[to be completed]
+Recorded because every number was re-derived rather than inherited.
+
+* **`ToolSpec.index_ext` was handed as "declared and read nowhere", with the instruction
+  not to document it as if it drove behavior. It is read**, at
+  `_indexshelf_common.index_targets()`, where it is the extension a metadata directory is
+  globbed for and a command-line file is checked against. It is the one field of the
+  twenty-one that is read in exactly one place, and it acts on two of the ten tools. The
+  instruction was right about the risk and wrong about this field: what is true of
+  `index_ext` is that all ten specs set it and eight tools never reach a line that reads
+  it. Section 4's checker reports **S3: 0** -- no field is read nowhere.
+
+* **The two subclass `__init__.py` files do not carry `N801`, `N999` or `N802`.** They
+  were handed as carrying "`N801`/`N999`/`N802`/`A002`/`F401`" on account of frozen
+  names. Measured with the ratchet emptied over just those two files, the codes are
+  `F401` ×31, `RUF012` ×4, `I001` ×4 and `A002` ×2, and `pyproject.toml`'s two entries
+  list exactly those four for pds3file and three of them for pds4file. `N` is in the
+  selected rule set, so the absence is a measurement and not a gap in coverage:
+  `Pds3File` is CapWords, `pds3file` is lower case and every method is snake_case. The
+  underlying instruction stands -- the names are frozen and no docstring suggests a
+  rename -- but the reason given for it does not.
+
+* **The scope table omitted the classes**, exactly as PR-30's did. Six are in scope:
+  `ToolSpec`, `VersionedFile`, `RunResult` and `LinkInfo`, all documented at base, and
+  `Pds3File` and `Pds4File`, neither documented. The handed count of 82 functions and
+  26 undocumented ones is right; what it left out is that documenting a module means
+  documenting its classes too, and that `doc_python.mdc` section 4 requires it. The base
+  `M1` count of 38 is the arithmetic check: 10 modules + 2 classes + 26 functions.
+
+* **`critiques/pr-29/check_citations.py` reports 6 stale at `80f5e52`, not 0.**
+  PR-30's record section 8.6 says "0 stale at base and 0 at head, with no repair needed".
+  Run at `80f5e52`, which is PR-30's merge commit, it reports six, all of them of the
+  form "[deferred] cites `<file>`, which no entry covers" for `_opus.py`,
+  `COVIMS_0xxx.py` twice, `uranus_occs_earthbased.py`, `COCIRS_xxxx.py` and
+  `_properties.py`. They are outside this PR's scope and are not repaired here; what is
+  recorded is that the number handed forward as zero is six, so a later PR comparing
+  against zero would read its own six as a regression.
+
+Everything else reproduced exactly:
+
+* the ten-file scope and its **3,177 lines**, 82 functions, 26 undocumented, 163
+  parameters, and none of the ten with a module docstring;
+* the `ns` **1135** and `s` **558** baselines, id for id, at base and at head;
+* all four ratchet numbers, **66 / 180 / 2,249 / 11**;
+* the four checker reproductions -- PR-29's **276**, PR-29a's **249**, PR-29b's **73**
+  and PR-30's **78** at `c4811d8` and **0** at `80f5e52` -- and PR-30's
+  `check_rule_tables.py` at **0 findings over 36 files**;
+* `critiques/pr-28/check_record_numbers.py` at **15 stale**, which is what PR-28's and
+  PR-29a's records both say;
+* `critiques/deferred-observations.md` continuing from **276**: the last entry at
+  `80f5e52` is 275.

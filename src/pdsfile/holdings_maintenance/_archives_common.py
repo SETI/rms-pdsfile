@@ -103,12 +103,18 @@ def load_directory_info(spec, pdsdir, *, logger=None, limits=None):
     fields that the comparison examines are neutral for it and only its presence is
     checked. The first tuple returned is the tree's own root, on the same terms.
 
-    Three kinds of file are left out of the result: ``.DS_Store`` files and
-    dot-underscore files, each logged under a pdslogger level of its own so that a
-    message limit can be set on it alone, and backup files, which are those matching
-    ``BACKUP_FILENAME`` or carrying " copy" anywhere in the basename. A backup file is
-    logged as an **error**, which is the level every other error shares and so cannot
-    be capped separately, and which gives the whole run a nonzero exit status.
+    Three kinds of file are left out of the result: ``.DS_Store`` files, dot-underscore
+    files, and backup files, which are those matching ``BACKUP_FILENAME`` or carrying
+    " copy" anywhere in the basename. The first two are logged under pdslogger levels
+    of their own, so a message limit can be set on either alone, and a backup file is
+    logged as an **error**, which is the level every other error shares and cannot be
+    capped separately.
+
+    **Two of the three give the whole run a nonzero exit status**, and the level names
+    do not say which: pdslogger classifies by level value, and the ``dot_`` level's
+    value is that of an error, so a dot-underscore file counts as an error exactly as a
+    backup file does. A ``.DS_Store`` counts as neither an error nor a warning, and an
+    invisible file, which is kept rather than skipped, counts as a warning.
     Dot-underscore
     directories are skipped as well, but the walk still descends into them, because
     pruning happens through the directory list ``os.walk()`` is given and this loop does

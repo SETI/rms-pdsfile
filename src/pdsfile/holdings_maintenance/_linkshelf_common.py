@@ -17,8 +17,12 @@ to account for:
 
   * a **list** of ``(record number, link text, path)`` triples, for a file that points
     at others: a label, a catalog file, an index or a document. The middle element is
-    the text the file was written with, not a basename: it carries a directory wherever
-    the link did;
+    each link's ``linktext``, which is what the file was written with **except where the
+    repair lookup cut it back**: a link carrying a directory is truncated to its
+    basename in place while a repair is looked for, and the truncation stands whether or
+    not one is found. So the element is the text as written for most links, its basename
+    for a link that carried a directory and reached the repair table, and it is not
+    reliably either;
   * a **string**, for a file that is pointed at, naming the label that describes it, and
     the empty string for a file no label claims.
 
@@ -181,9 +185,11 @@ def link_text_of(info):
     existing shelf is the plain tuple that was pickled, (recno, linktext, target).
     An update sees both in the same dictionary.
 
-    The tuple's second element is the text rather than the repaired name, so both forms
-    report what the file was written with. Nothing else about a LinkInfo survives the
-    pickling, which is why this is the only accessor the two forms share.
+    The tuple's second element is the text rather than the repaired name, so the two
+    forms answer alike. Neither answers "what the file was written with" without
+    qualification: ``remove_path()`` sets the text and the name together, so a link it
+    cut back reports its basename in both forms. Nothing else about a LinkInfo survives
+    the pickling, which is why this is the only accessor the two forms share.
 
     Parameters:
         info: A LinkInfo or a (recno, linktext, target) tuple.
@@ -433,9 +439,9 @@ def load_links(spec, dirpath, *, logger=None, limits=None):
     Returns:
         dict: The links, keyed by absolute path. A file that points at others maps to a
         list of (record number, link text, absolute path) triples, the middle element
-        being the text as written and so carrying a directory wherever the link did; a
-        file that is pointed at maps to the absolute path of its label, or to the empty
-        string.
+        being whatever ``linktext`` held when the shelf was written, which the repair
+        lookup may have cut back to a basename; a file that is pointed at maps to the
+        absolute path of its label, or to the empty string.
 
     Raises:
         OSError: raised here if there is no shelf file for the unit, and raised by
@@ -767,11 +773,11 @@ def validate_links(spec, dirpath, dirdict, shelfdict, *, logger=None, limits=Non
 def link_initialize(spec, pdsdir, *, logger=None, limits=None):
     """Shelve one unit's links, refusing to replace a shelf that is already there.
 
-    A shelf file already in place is logged as an error and the unit is not scanned.
-    Two of the five tasks never rewrite a shelf: this one, which stops at the error
-    above, and link_validate(), which writes nothing at all. This is the only one of
-    the three that do write that writes without versioning first, because it only runs
-    where there is nothing to version.
+    A shelf file already in place is logged as an error and the unit is not scanned, so
+    this task never replaces one. Four of the five write a shelf -- every task but
+    link_validate() -- and this is the only one of the four that writes without
+    versioning the old file first, because it is the only one that runs where there is
+    nothing to version.
 
     Parameters:
         spec (ToolSpec): The tool's specification. Its generate_links is what scans the

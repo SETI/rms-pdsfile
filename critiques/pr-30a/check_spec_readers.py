@@ -13,16 +13,20 @@ directions.
 Checks:
 
     S1  The docstring's entry for a field names a reader that does not read it.
-    S2  A module reads a field and the docstring's entry for it names no reader in that
-        module. The unit is the module rather than the function deliberately: `logname`
-        is read by twenty functions and an entry listing all twenty would be unreadable,
-        while the claim that matters -- which of the shared modules acts on this field,
-        and so which tools it reaches -- is settled at module granularity. An entry that
-        names one reader per module and describes the rest in prose passes; an entry
-        that is silent about a whole module does not.
+    S2  A reader of a field is not named in the docstring's entry for it. **The unit
+        depends on how widely the field is read.** For a field with more than
+        `FUNCTION_LIMIT` readers the unit is the module -- `logname` has twenty readers
+        and an entry listing all twenty would be unreadable, while the claim that
+        matters, which shared module acts on the field and so which tools it reaches, is
+        settled at module granularity. At or below that limit the unit is the function,
+        so a field read in a few places must have all of them named and cannot name the
+        reader that supports its story while staying silent about one that would
+        contradict it.
     S3  A field is read nowhere in the package. An inert field is not necessarily a
         defect, but a docstring that describes one as if it drove something is, so
         every one is reported for a human to check against its prose.
+    S4  A documented reader is written without a module qualifier, so it cannot be
+        matched to one reader rather than to any function of that name.
 
 A read is an attribute access `spec.<field>` or `SPEC.<field>` anywhere under the source
 root, attributed to the function it appears in. That is a name filter, not a resolution:
@@ -32,10 +36,12 @@ declares, so the two ways it could be wrong are a different object named `spec` 
 a field of the same name, and a spec passed under a third name. Both are visible in the
 output rather than silent, because S2 reports the reader it found by name.
 
-A documented reader is a `name()` or `module.name()` token inside the field's entry in
-the `Attributes:` section. A module-qualified name must match the module as well as the
-function; a bare name matches the function in any module, which is what lets the entries
-for fields read in the defining module stay short.
+A documented reader is a `module.name()` token inside the field's entry in the
+`Attributes:` section, and **the module qualifier is required**. A bare name would match
+a function of that name in any module, and this tree has several: `link_targets` exists
+in `_linkshelf_common` and in both link shelf tools, and `initialize` through `update` in
+all ten tool modules. An unqualified token is reported as S4 rather than matched
+loosely.
 
 **Every such token is read as a claim**, including one an entry mentions for some other
 reason -- a function the value is passed on to, or one named as a counterexample. That
@@ -44,6 +50,28 @@ carry meaning: **an entry writes a reader with its parentheses and anything else
 them.** An entry that puts a non-reader in parentheses reads as though that function
 acts on the field, which is the mistake S1 exists to catch, and it caught three of them
 during this PR before the convention was written down.
+
+**What this cannot catch, stated because a gate whose reach is unknown is worse than a
+narrow one.**
+
+1. *It checks attribution, never assertion.* An entry that names the right readers can
+   still be wrong about everything else it says. Two defects found by review both lived
+   inside the `handler_factories` entry, which this scored as fully correct throughout:
+   where the drivers attach the factories, and how often. The entries this protects are
+   exactly the entries whose interesting content it does not read.
+2. *Above `FUNCTION_LIMIT` readers, one named reader per module satisfies S2.* `logname`
+   has twenty readers across four modules and its entry names four, so an entry can name
+   the reader that supports its story and stay silent about one that would contradict
+   it.
+3. *The reader detector is a name filter.* It records only `spec.<field>` and
+   `SPEC.<field>` where the receiver is a bare name. A field read through `s = spec`,
+   `self.spec`, `getattr(spec, name)` or a `dataclasses.replace()` copy is invisible, and
+   S2 then stays silent for that module rather than reporting an unknown. No such read
+   exists today, so on that point the gate rests on a property of the code rather than
+   checking one.
+4. *The parenthesis convention is enforced in one direction.* S1 catches a non-reader
+   written with parentheses; nothing catches a genuine reader written without them,
+   which would simply not be counted as a claim.
 
 Usage:
     python check_spec_readers.py SRC_ROOT
@@ -60,6 +88,8 @@ import sys
 SPEC_MODULE = 'holdings_maintenance/_common.py'
 SPEC_CLASS = 'ToolSpec'
 SPEC_NAMES = ('spec', 'SPEC')
+
+FUNCTION_LIMIT = 5          # at or below this many readers, S2's unit is the function
 
 CALL_RE = re.compile(r'`?([A-Za-z_][\w.]*)\(\)`?')
 SECTION_RE = re.compile(r'^(?P<indent>\s*)(?P<name>[A-Z][A-Za-z ]*):\s*$')
@@ -191,8 +221,8 @@ def derived_readers(root, fields):
 def matches(documented, stem, function):
     """Report whether one documented reader name refers to one derived reader.
 
-    A name with a dot in it must match the module stem as well as the function; a bare
-    name matches the function in any module.
+    The module qualifier is required; an unqualified name matches nothing here and is
+    reported as S4 by the caller instead.
 
     Parameters:
         documented (str): the name the docstring cites, without its parentheses.
@@ -205,7 +235,7 @@ def matches(documented, stem, function):
 
     module, _, name = documented.rpartition('.')
 
-    return name == function and (not module or module == stem)
+    return bool(module) and name == function and module == stem
 
 
 def main(argv):
@@ -229,18 +259,28 @@ def main(argv):
         readers = derived[field]
 
         for name in sorted(names):
-            if not any(matches(name, stem, function) for stem, function in readers):
+            if '.' not in name:
+                findings.append((field, f'S4: the entry names "{name}()" without a '
+                                        'module qualifier'))
+            elif not any(matches(name, stem, function) for stem, function in readers):
                 findings.append((field, f'S1: the entry names "{name}()", which reads '
                                         'no such field'))
 
-        for stem in sorted({stem for stem, _ in readers}):
-            if not any(matches(name, stem, function)
-                       for name in names
-                       for reader_stem, function in readers if reader_stem == stem):
-                functions = sorted(f for s, f in readers if s == stem)
-                findings.append((field, f'S2: read in {stem}.py, by '
-                                        f'{", ".join(functions)}, and the entry names '
-                                        'no reader there'))
+        if len(readers) <= FUNCTION_LIMIT:
+            for stem, function in sorted(readers):
+                if not any(matches(name, stem, function) for name in names):
+                    findings.append((field, f'S2: read by {stem}.{function}, which the '
+                                            'entry does not name, and this field has '
+                                            f'{len(readers)} readers in all'))
+        else:
+            for stem in sorted({stem for stem, _ in readers}):
+                if not any(matches(name, stem, function)
+                           for name in names
+                           for reader_stem, function in readers if reader_stem == stem):
+                    functions = sorted(f for s, f in readers if s == stem)
+                    findings.append((field, f'S2: read in {stem}.py, by '
+                                            f'{", ".join(functions)}, and the entry '
+                                            'names no reader there'))
 
         if not readers:
             findings.append((field, 'S3: read nowhere under the source root'))
