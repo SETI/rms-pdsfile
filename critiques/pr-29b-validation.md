@@ -260,10 +260,12 @@ PR-29a's probe, arriving by a different route.
 
 ## 6. Every docstring that was wrong about the code
 
-Sixty-eight prose defects, over three files. They divide by where the prose came from, and
-the division is the point: **fourteen of them are sentences that shipped with PR-29 and had
-already had one adversarial read**, and nine more are sentences a read inside *this* PR
-wrote and a later read had to correct.
+**Seventy-eight prose defects over three files, plus two the executor caught in its own
+corrections and three in documents rather than in code.** They divide by where the prose
+came from, and the division is the point: fourteen are sentences that shipped with PR-29
+and had already had one adversarial read; **ten are sentences a read inside this PR wrote
+and a later read had to correct**; and the rest are the thin prose `_properties.py` carried
+at base.
 
 ### 6.1 In `pdsfile.py` and `pdsviewable.py` -- prose that shipped
 
@@ -331,12 +333,24 @@ corrects, includes:
 * `index_pdslabel`: "the parsed PdsLabel associated with the label of an index". On PDS4 it
   raises rather than returning anything.
 
-### 6.3 And two claims in documents rather than in code
+### 6.3 And the ones a *second* read found in the first read's corrections
+
+Ten of them, listed in section 9 with what they have in common. The two largest are
+`local_viewset`'s "stored as False rather than None", which has one input that stores None
+and re-derives forever, and `all_versions`' account of how two versions collide in rank,
+which named a mechanism no path can reach.
+
+### 6.4 And three claims in documents rather than in code
 
 * Deviation (4)'s `RUF005` note said `self._info[:4] + (shape,)` "raises today". The line is
   unreachable on the two construction paths that would make it raise. Raised by CodeRabbit.
 * Deviation (3)'s "documenting a module costs roughly fourteen lines per function" is below
   every module measured. Entry 223.
+* **Deferred entry 224, which this PR wrote**, named `version_info()`'s three-part
+  truncation as the way two versions collide in rank. Round 4 found that a fourth part
+  cannot reach a rank at all. The entry and the docstring were written from one reading and
+  are corrected together, which is the case for treating a record as prose that needs
+  reviewing rather than as evidence that the prose was reviewed.
 
 ## 7. Review
 
@@ -352,7 +366,8 @@ Reading them once would have broken the property the rounds exist for, so round 
 | 2 | `pdsfile.py` + `pdsviewable.py` | 63 functions, 3 classes, 2 modules | 14 | 10 |
 | 3 | `_properties.py`, the other 58 | 58 functions, 1 module | 22 | 6 |
 | 5 | `pdsfile.py` + `pdsviewable.py`, re-read | the same 63 | 9 | 4 |
-| 4 | `_properties.py`, all 68 re-read | the same 68 | PENDING | PENDING |
+| 4 | `_properties.py`, all 68 re-read | the same 68 | 12 | 4 |
+| | | **totals** | **78** | **32** |
 
 Every reviewer was fresh, with no context from this session or from any other round, and
 every brief named the five angles in the same order. Every finding was re-verified by the
@@ -482,12 +497,75 @@ it, verified by mutation -- without demanding that every later PR rewrite an ear
 
 ## 9. What the second reads found that the first reads had introduced
 
-This is the measurement section 5 of the brief exists for, and the one PR-29a's record asked
-this PR to make. Rounds 3, 4 and 5 were each handed **the list of sentences the earlier
-round had rewritten, by name**, and asked to judge each against the code as if it were new
-prose, and to tag every finding `[CHANGED]` or `[ORIGINAL]`.
+This is the measurement the brief exists for, and the one `critiques/pr-29a-validation.md`
+asked this PR to make. Rounds 4 and 5 were each handed **the list of sentences the earlier
+round had rewritten, by name and by claim** -- 44 for round 4, 14 for round 5 -- and asked
+to judge each against the code as if it were new prose, and to tag every finding
+`[CHANGED]` or `[ORIGINAL]`.
 
-PENDING
+| second read | over prose from | findings | `[CHANGED]` | `[ORIGINAL]` |
+|---|---|---:|---:|---:|
+| round 4 | rounds 1 and 3 | 12 | **5** | 6, plus 1 unverifiable |
+| round 5 | round 2 | 9 | **5** | 4 |
+| | | **21** | **10** | **10** |
+
+**Ten of twenty-one findings on a second read were corrections of the first read's own
+corrections.** PR-29a measured eleven of twenty-three on a different set of modules. Two
+PRs, two module families, the same ratio: **about half of what a second read finds is
+damage the first read did.**
+
+That is the number, and it is worth separating from the ones beside it, because the two
+have different consequences. The `[ORIGINAL]` half is the ordinary yield of a second
+reader -- prose neither read had reached. The `[CHANGED]` half is prose that had been read
+twice, by an author and a reviewer, and was wrong *because* it had been read twice.
+
+### What the wrong corrections have in common
+
+All ten are the same move: **a vague sentence replaced by a specific one that is more
+confident and less true.**
+
+* Round 1 found that `local_viewset` stores a miss rather than repeating the derivation,
+  which is right, and wrote "Anything else is stored as False rather than None". Round 4
+  found the one input that stores None and re-derives on every access.
+* Round 3 found that `filespec`'s prefix is `bundlename_` and fixed the body, and round 4
+  found the `Returns:` three lines below still listing the two old cases.
+* Round 3 found that `all_versions` can drop a version to a rank collision, and named
+  `version_info()`'s three-part truncation as the mechanism. Round 4 found that a fourth
+  version part cannot reach a rank at all, because the bundle-set pattern captures at most
+  three, so the reachable collision is the arithmetic one. **Deferred entry 224 was written
+  from the same wrong reading and was corrected with the docstring**, which is the sharpest
+  form of the problem: the record was no safer than the prose it described.
+* Round 3 found that the module docstring's "each docstring names the slots it fills" was
+  false and narrowed it to four named properties. Round 4 measured the four and found only
+  one of them does what the narrowed sentence says.
+* Round 2 found that a named-only view set is not served by every lookup, and named four
+  that do serve it. Round 5 found that one of the four does not, and that the three said
+  not to sometimes do.
+
+### And two the executor caught in its own corrections
+
+Recorded because they are the same failure with no reviewer involved, and because they are
+the argument for re-verifying a correction rather than only the prose it replaced.
+
+* `_info`'s `Raises:` was rewritten from round 1's finding to say a checksums bundle-set
+  directory fails rather than answering. Two of the three in the holdings tree do; the
+  third has an empty child list, never enters the loop, and answers with zeros. The entry
+  now says "with any children".
+* Round 3's measurement of how many slots `viewset` and `all_viewsets` fill was written
+  into the module docstring as seven and eleven. Re-measured with different
+  instrumentation, `all_viewsets` fills five. The two measurements disagree and the number
+  is a property of the object rather than of the code, so it was removed rather than
+  reconciled.
+
+### What this says about the round budget
+
+The four-round cap in the brief was written for two slices read twice. This PR ran five,
+because the owner's waiver added 58 members to slice A after round 1 had run, and reading
+them once would have given up exactly the property the measurement above depends on.
+
+**The cost of the extra round was one round. The cost of not running it would have been
+that 58 of the 68 docstrings shipped with one read**, and one read is what PR-29 measured
+as insufficient in the first place.
 
 ## 10. Deferred observations
 
