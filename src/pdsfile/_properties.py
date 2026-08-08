@@ -13,7 +13,9 @@ what OPUS calls it.
 Most of these are properties, and most of those are lazy in one particular sense. Each
 holds a slot that ``PdsFile.__init__()`` creates and sets to None; the first access
 derives the value, stores it in the slot, and calls ``self._recache()`` so that the copy
-of this object in the shared cache is the filled one rather than the empty one. A second
+of this object in the shared cache is the filled one rather than the empty one.
+``filename_keylen`` is the one exception: it fills its slot and does not call
+``_recache()``. A second
 access returns the slot. The saving is not the arithmetic but the shelf reads, the
 filesystem calls and the globs the derivations make, and ``_recache()`` is what spreads
 it past the lifetime of one object.
@@ -22,9 +24,12 @@ Three consequences run through the whole module and are worth knowing before rea
 one docstring:
 
   * **Reading one property fills others.** ``mime_type`` fills the slot behind ``split``
-    and the slot behind ``isdir``; ``date`` fills the slot behind ``_info``. Each
-    docstring names the slots its own derivation fills, because that is what a caller
-    measuring cost, or writing a test that counts shelf reads, needs.
+    and the slot behind ``isdir``; ``date`` fills the slot behind ``_info``. Most
+    docstrings here name the slots their own derivation fills, because that is what a
+    caller measuring cost, or writing a test that counts shelf reads, needs. The ones
+    that reach furthest name them by the property rather than one by one -- ``viewset``
+    and ``all_viewsets`` each reach about a dozen -- so the list to trust for an exact
+    answer is the one in the property that owns the slot.
 
   * **A miss is stored as a value.** An empty string, an empty list or False is written
     where nothing was found, so the derivation is not repeated. Which falsy value stands
@@ -35,9 +40,10 @@ one docstring:
   * **Two kinds of object arrive with the slots already filled.** A merged directory,
     which stands for one category across several disks, and an index row, which stands
     for rows of an index table, are both built by filling most slots in advance, so many
-    of these bodies are never reached on them. Each docstring says what its own slot
-    holds on those two, because "born with the slot set" and "derives it" are different
-    answers to what a property costs and to whether it can fail.
+    of these bodies are never reached on them. A docstring says what its own slot holds
+    on those two wherever that changes the answer, because "born with the slot set" and
+    "derives it" are different answers to what a property costs and to whether it can
+    fail.
 
 The rest are properties with no slot, recomputed on each access because they only read
 another property or an attribute; and four members that are not properties at all:
@@ -961,13 +967,15 @@ class _PropertiesMixin:
     def size_bytes(self):
         """This file's size in bytes.
 
-        Read out of ``_info``, so the first access derives that and fills
-        ``_info_filled``. A file that does not exist is zero, and so is a directory that
-        is neither a bundle set nor covered by a shelf; a bundle-set directory reports the
-        sum over its bundles.
+        Read out of ``_info``, so the first access derives that and fills ``_info_filled``
+        and ``_exists_filled``. A file that does not exist is zero, and so is a directory
+        that is neither a bundle set nor covered by a shelf; a bundle-set directory
+        reports the sum over its bundles. The two kinds of object born with
+        ``_info_filled`` already set answer from it rather than from a size: a merged
+        directory reports None and an index row reports zero.
 
         Returns:
-            int: the size in bytes.
+            int: the size in bytes, or None on a merged directory.
         """
 
         return self._info[0]
@@ -976,13 +984,17 @@ class _PropertiesMixin:
     def modtime(self):
         """When this file was last modified.
 
-        Read out of ``_info``, so the first access derives that and fills
-        ``_info_filled``. A file that does not exist gets None, and so does a directory
-        whose shelf records no time, which is what an empty directory gets. A bundle-set
-        directory reports the latest of the times its bundles record.
+        Read out of ``_info``, so the first access derives that and fills ``_info_filled``
+        and ``_exists_filled``. A file that does not exist gets None, and so does a
+        directory whose shelf records no time, which is what an empty directory gets. A
+        bundle-set directory reports the latest of the times its bundles record. The two
+        kinds of object born with ``_info_filled`` already set answer from it: a merged
+        directory reports None, and an index row reports the integer zero rather than a
+        time or a None.
 
         Returns:
-            datetime.datetime: the modification time, or None where none is recorded.
+            datetime.datetime: the modification time; None where none is recorded
+            and on a merged directory; the integer zero on an index row.
         """
 
         return self._info[2]
@@ -1014,8 +1026,9 @@ class _PropertiesMixin:
         Read out of ``_info``, whose fifth element is the shape. Where that shape is the
         ``'TBD'`` marker the info derivation writes for a viewable it measured from the
         filesystem, reading this opens the image with PIL, rewrites ``_info_filled`` and
-        calls ``_recache()``, so this is one of the two properties that reaches the
-        filesystem after ``_info`` is already filled.
+        calls ``_recache()``. This and ``height`` are the only two properties that reach
+        the filesystem after ``_info`` is filled, and the view-set properties reach it
+        through them.
 
         Anything that is not a measured viewable is zero: a file that does not exist, a
         directory, and an image PIL could not open.
@@ -1055,9 +1068,11 @@ class _PropertiesMixin:
         absent this does nothing, so ``width`` and ``height`` may call it on every access
         at no cost.
 
-        An image that cannot be opened, for any reason at all, is recorded as ``(0, 0)``,
-        which is indistinguishable from a file that was never a viewable and which stops
-        the measurement being retried.
+        Every measurement logs a warning before it opens the image, which is the one
+        visible sign that reading ``width`` or ``height`` went to disk. An image that
+        cannot be opened, for any reason at all, is recorded as ``(0, 0)``, which is
+        indistinguishable from a file that was never a viewable and which stops the
+        measurement being retried.
         """
         cls = type(self)
 
@@ -1887,12 +1902,13 @@ class _PropertiesMixin:
         returned unchanged afterwards; deriving it calls ``_recache()``. A merged
         directory and an index row are born with the slot set to False.
 
-        The lookup is skipped, and False stored, for anything that is not an existing file
-        inside a bundle: the bundle and bundle-set levels, the archive and checksum trees.
-        Everything else asks ``viewset_lookup()`` for the default view set, which for a
-        directory is inherited from a child. **A miss is stored as False rather than
-        None**, which is what stops the lookup being repeated, so a caller must test the
-        result and not assume a set.
+        The lookup is skipped, and False stored, for anything that is not an existing
+        object below a bundle directory: the bundle and bundle-set levels, and the archive
+        and checksum trees. A directory below the bundle is not skipped and asks
+        ``viewset_lookup()`` as a file does, which is what lets a directory inherit a view
+        set from a child. Reading this fills ``_exists_filled`` and the slots the lookup
+        reaches. **A miss is stored as False rather than None**, which is what stops the
+        lookup being repeated, so a caller must test the result and not assume a set.
 
         Returns:
             pdsviewable.PdsViewSet: the view set, or False where there is none.
@@ -1918,7 +1934,11 @@ class _PropertiesMixin:
 
         The value is derived on the first access, stored in ``_local_viewset_filled`` and
         returned unchanged afterwards; deriving it calls ``_recache()``. A merged
-        directory and an index row are born with the slot set to False.
+        directory and an index row are born with the slot set to False. Building the set
+        is not free: it reads this file's ``url``, ``width``, ``height`` and
+        ``size_bytes``, so it fills ``_exists_filled``, ``_html_path_filled`` and
+        ``_info_filled``, and on a viewable whose shape the shelves left marked it opens
+        the image with PIL through ``width``.
 
         Where ``viewset`` finds the images that *represent* this file, this one is the
         file itself as an image, and it is the only one of the two that tests both that
@@ -1949,10 +1969,12 @@ class _PropertiesMixin:
         returned unchanged afterwards; deriving it calls ``_recache()``. A merged
         directory and an index row are born with the slot set to an empty dictionary.
 
-        A file's own dictionary holds its default set, which is itself where it is a
-        viewable and its representative images otherwise, plus one entry for each other
-        name the class's VIEWABLES table defines that answers for this path. A name that
-        answers with nothing is left out, so a key's presence means a set exists.
+        A file's own dictionary holds one entry for each name that answers for this path:
+        ``default``, which is the file itself where it is a viewable and its
+        representative images otherwise, and each other name the class's VIEWABLES table
+        defines. A name that answers with nothing is left out, ``default`` included, so a
+        key's presence means a set exists and a file with no viewables at all gets an
+        empty dictionary.
 
         A directory's dictionary is the same for its own names, and is then widened by the
         names its children offer: **the first twenty child names only**, and only those
@@ -2383,8 +2405,8 @@ class _PropertiesMixin:
         This holds no slot of its own: it reads ``grid_view_allowed`` for the side effect
         of filling ``_view_options_filled`` and then takes the third of the triple. Where
         the other two flags describe one directory, this one says a page may carry on past
-        its end into the directories beside it, which is what ``has_neighbor_rule`` says
-        is possible at all.
+        its end into the directories beside it. Nothing in this package reads it; it is
+        part of the answer the rules give a viewer.
 
         Returns:
             bool: True if a continuous view is allowed.
@@ -2654,9 +2676,10 @@ class _PropertiesMixin:
         is what builds a preview set out of a directory of sizes. Failing all of it, an
         empty view set is returned.
 
-        **The three misses are not the same value.** A file that does not exist and a
-        directory whose children all decline give None; everything else that fails gives
-        an empty ``PdsViewSet``, which is falsy but is not None.
+        **The misses are not all the same value.** A file that does not exist and a
+        directory whose candidate children all decline give None; everything else that
+        fails gives an empty ``PdsViewSet``, which is falsy but is not None. Two values
+        over three cases, and a caller testing for None reads the third as a set.
 
         Parameters:
             name (str): which view set to look for. It is a key of the class's VIEWABLES
