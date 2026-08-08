@@ -3856,7 +3856,7 @@ docstring to repair with it. **The entry is still open**: the fix is still the
 `self.lifetime is not None` test, and it is still a behavior change to a public class.
 
 Two things the entry did not say, found while writing the prose. `MemcachedCache` carries
-the identical trap: `set_local` (`pdscache.py:1569`) tests `if self.lifetime:` in
+the identical trap: `set_local` (`pdscache.py:1575`) tests `if self.lifetime:` in
 exactly the same way, and `MemcachedCache.__init__` documented `lifetime` as "0 for no
 expiration" in exactly the same words. And the two constructors disagree on what counts
 as a lifetime function — `DictionaryCache` accepts `type(lifetime).__name__ == 'function'`
@@ -3904,7 +3904,7 @@ of them has a module docstring at all.
      missing key, and the docstring described the behavior neither of them had.**
      `DictionaryCache.get_multi` (`pdscache.py:407`) reads each key through `self[key]`
      at `:427`, so a key that is absent, expired, or holds `None` raises `KeyError` and
-     no partial result comes back. `MemcachedCache.get_multi` (`:1305`) omits such a key
+     no partial result comes back. `MemcachedCache.get_multi` (`:1309`) omits such a key
      and returns the rest. Both carried the same sentence, "Missing keys do not
      appear in the returned dictionary", which was true of the second and the opposite of
      the first. Verified by running: `DictionaryCache(lifetime=100).get_multi(['k',
@@ -3957,7 +3957,7 @@ of them has a module docstring at all.
 
 157. **`MemcachedCache.delete_multi` cannot delete anything: its first statement names a
      client method that does not exist, and two more faults sit behind it.** The call
-     opens with `_ = self.mc.del_multi(keys)` (`pdscache.py:1672`). `self.mc` is a
+     opens with `_ = self.mc.del_multi(keys)` (`pdscache.py:1678`). `self.mc` is a
      `pylibmc.Client`, and pylibmc's batch delete is `delete_multi`; `del_multi` appears
      nowhere in it. Checked against the 1.6.3 source rather than assumed: the C method
      table in `src/_pylibmcmodule.h` registers `delete_multi`, `src/pylibmc/client.py`
@@ -3967,9 +3967,9 @@ of them has a module docstring at all.
      changed.
 
      Behind that fault sit two more. The local removal the loop would reach is spelled
-     `_del_local` (`pdscache.py:1679`) and the method this class defines is
-     `_delete_local` (`pdscache.py:1690`). And the value it would then return compares
-     `count = len(self) - prev_len` (`pdscache.py:1687`), which any real deletion drives
+     `_del_local` (`pdscache.py:1685`) and the method this class defines is
+     `_delete_local` (`pdscache.py:1696`). And the value it would then return compares
+     `count = len(self) - prev_len` (`pdscache.py:1693`), which any real deletion drives
      negative, against `len(keys)`, so only an empty batch could answer `True`. Three
      independent faults in fourteen lines, with no caller and no test anywhere in this
      repo. **Owner: a future pdscache PR.**
@@ -3988,7 +3988,7 @@ of them has a module docstring at all.
 159. **Three `MemcachedCache` log calls are not guarded by a logger test, and two error
      paths are guarded by one that changes what they do.** Unguarded: breaking a stale
      block (`pdscache.py:898`), losing a race to claim one (`:959`), and the
-     permanent-value-too-big report (`:1903`). Each raises `AttributeError` on a cache
+     permanent-value-too-big report (`:1909`). Each raises `AttributeError` on a cache
      built with `logger=None`, which is the default. The other two are worse than
      unguarded: `unblock`'s refusals read `if not test_pid and self.logger:` and
      `if test_pid != self.pid and self.logger:` (`:977`, `:983`), so a cache with no
@@ -3997,7 +3997,7 @@ of them has a module docstring at all.
 
 160. **`MemcachedCache.replicate_clear` writes `None` back to the shared clear counter.**
      The branch reading `if clear_count is None: # lost from memcache!` responds with
-     `self.mc.set('$CLEAR_COUNT', clear_count, time=0)` (`pdscache.py:1796-1797`), which
+     `self.mc.set('$CLEAR_COUNT', clear_count, time=0)` (`pdscache.py:1802-1803`), which
      stores the `None` it was just given rather than the count this process knows. The
      key is then held at a value no comparison can use, and `was_cleared()`, which
      evaluates `clear_count > self.clear_count`, raises `TypeError` from then on.
@@ -4116,7 +4116,7 @@ of them has a module docstring at all.
      entry 170. **Owner: a future pdscache PR.**
 
 172. **`MemcachedCache.get_multi` restores a lost permanent value and then does not
-     return it.** The branch at `pdscache.py:1343-1360` notices that a requested key is a
+     return it.** The branch at `pdscache.py:1347-1364` notices that a requested key is a
      permanent entry the server no longer has, calls `_restore_permanent_to_cache()`, and
      breaks -- without adding the recovered value to the result. `get()` handles the same
      case at `:1006-1008` by restoring *and* returning it. Verified by running against a
@@ -4127,7 +4127,7 @@ of them has a module docstring at all.
      pdscache PR.**
 
 173. **`MemcachedCache.delete` removes the permanent copy and reports that it removed
-     nothing.** The answer is `status1 or status2` (`pdscache.py:1620`), from the server
+     nothing.** The answer is `status1 or status2` (`pdscache.py:1626`), from the server
      and from `_delete_local`, and `_delete_local` deliberately does not touch the
      permanent copies. The permanent deletion at `:1506-1507` is not folded in. Verified
      by running: with `'p'` in `permanent_values` only, `delete('p')` returns False and
@@ -4135,11 +4135,11 @@ of them has a module docstring at all.
 
 174. **`MemcachedCache.clear(block=False)` empties the server with no block held, and
      raises `TypeError` if the clear counter has been lost.** `wait_for_unblock('clear')`
-     (`:1748`) waits for anyone else's block and claims nothing; `flush_all()` (`:1751`)
+     (`:1754`) waits for anyone else's block and claims nothing; `flush_all()` (`:1757`)
      runs unprotected; only afterwards is this process's ID written to the blocking key,
      to be released a moment later. Verified by recording the client calls a
      `clear(block=False)` makes: `get`, `get`, `flush_all`, `set_multi`, `get`, `set`.
-     Separately, `max(self.mc.get('$CLEAR_COUNT'), self.clear_count)` at `:1750` raises
+     Separately, `max(self.mc.get('$CLEAR_COUNT'), self.clear_count)` at `:1756` raises
      `TypeError` when the server has lost that key -- verified -- which is the same lost
      key `was_cleared` and `replicate_clear` already have entries and docstrings for.
      **Owner: a future pdscache PR.**
@@ -4349,7 +4349,7 @@ of them has a module docstring at all.
      the one on this list with a live caller.**
 
 192. **`MemcachedCache.set()` can discard the value it was just given and still answer
-     True.** Unless the cache is paused, `set()` calls `flush()` (`pdscache.py:1464`),
+     True.** Unless the cache is paused, `set()` calls `flush()` (`pdscache.py:1470`),
      and `flush()` calls `replicate_clear_if_necessary()`. If another process has cleared
      the cache since this one last looked, that replication empties every local
      dictionary -- including the buffer holding the value `set()` wrote a line earlier --
@@ -4363,8 +4363,8 @@ of them has a module docstring at all.
 193. **`MemcachedCache.get()` can raise `KeyError` on the path that exists to rescue a
      lost permanent value.** When the server has lost a permanent entry, `get()` calls
      `_restore_permanent_to_cache()` and then returns `self.permanent_values[key]`
-     (`pdscache.py:1266`). The restore drops a key from `permanent_values` when the
-     server rejects it as too large (`:1908`), so the subscript that follows can miss.
+     (`pdscache.py:1268`). The restore drops a key from `permanent_values` when the
+     server rejects it as too large (`:1914`), so the subscript that follows can miss.
      Verified by running: with the value only in `permanent_values` and the stub server
      refusing it as too large, `get('perm')` raises `KeyError: 'perm'` -- while the same
      call has just put the value safely in `toobig_dict`, so the *next* read answers it.
@@ -4374,7 +4374,7 @@ of them has a module docstring at all.
 194. **`MemcachedCache.delete_multi` writes to the server, and can break another
      process's block, before it raises.** Entry 157 records that the call cannot delete
      anything. What it did not record is that the failure is not inert: the first
-     statement is `self.wait_for_unblock('delete_multi')` (`pdscache.py:1671`), which
+     statement is `self.wait_for_unblock('delete_multi')` (`pdscache.py:1677`), which
      reads the blocking key and, after `MAX_BLOCK_SECONDS`, writes it to break the block.
      Verified by running against a stub with another process holding the block and the
      timeout shortened: the call recorded `get`, `get`, `set('$OK_PID', 0)`, left the
@@ -4384,7 +4384,7 @@ of them has a module docstring at all.
 
 195. **`_restore_permanent_to_cache` logs before it acts, so the no-logger failure
      leaves the oversized value neither moved nor dropped.** The order at
-     `pdscache.py:1903-1908` is warn, then `toobig_dict[k] = v[0]`, then
+     `pdscache.py:1909-1914` is warn, then `toobig_dict[k] = v[0]`, then
      `del self.permanent_values[k]`. With `logger=None` the unguarded warn raises first.
      Verified by running: `toobig_dict` is empty and `permanent_values` still holds the
      key afterwards, so the "next lost entry does not try it again" property does not
@@ -4394,7 +4394,7 @@ of them has a module docstring at all.
 
 196. **`int(x + 0.999)` is not a ceiling, and a sub-millisecond lifetime becomes
      permanent.** `MemcachedCache` converts lifetimes that way at `pdscache.py:781` and
-     `:1572`. Measured: `1.0005` gives 1 and `2.0001` gives 2, where a ceiling gives 2 and
+     `:1578`. Measured: `1.0005` gives 1 and `2.0001` gives 2, where a ceiling gives 2 and
      3; and `0.0005` gives **0**, which this class reads as never expiring. So a lifetime
      function returning a small positive number stores a permanent entry, and the
      constant-zero trap of entry 23 extends to any constant below 0.001. **Owner: a
@@ -4413,7 +4413,7 @@ of them has a module docstring at all.
 
 198. **Two smaller things in `pdscache.py` that no docstring had claimed either way.**
      `get()` and `get_now()` unpack the stored object as a `(value, lifetime)` pair
-     (`pdscache.py:1271` and `:1419`), so any key holding something else raises
+     (`pdscache.py:1273` and `:1425`), so any key holding something else raises
      `TypeError: cannot unpack non-iterable int object` -- verified on `'$CLEAR_COUNT'`
      for both, and reachable for every bookkeeping key and for anything another program
      wrote into a shared memcached. And `_trim` writes its "items trimmed" message

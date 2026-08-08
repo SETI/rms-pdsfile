@@ -1238,10 +1238,12 @@ class MemcachedCache(PdsCache):
                 ``__getitem__()``, on those copies. The value is not lost -- the same
                 call put it in the oversized dictionary, so the next read answers it --
                 but this one raises.
-            TypeError: if the server holds something under the key that is not the
-                ``(value, lifetime)`` pair this class writes; it comes from unpacking
-                that pair. The bookkeeping keys are like that, so reading one of those
-                through this method raises.
+            TypeError: if the server holds something under the key that is not
+                iterable. It comes from unpacking the ``(value, lifetime)`` pair this
+                class writes. The bookkeeping keys hold plain integers, so reading one of
+                those through this method raises.
+            ValueError: if the server holds something iterable under the key but not of
+                length two. It comes from the same unpacking.
         """
 
         self.replicate_clear_if_necessary()
@@ -1292,8 +1294,10 @@ class MemcachedCache(PdsCache):
             KeyError: if no source has the key, or its value is None -- and also, from
                 ``get()``, in the narrower case where a permanent entry the server has
                 lost turns out to be too large to write back.
-            TypeError: from ``get()``, if the server holds something under the key that
-                is not the pair this class writes.
+            TypeError: from ``get()``, if the server holds something under the key
+                that is not iterable.
+            ValueError: from ``get()``, if it holds something iterable but not of length
+                two.
         """
 
         value = self.get(key)
@@ -1407,9 +1411,11 @@ class MemcachedCache(PdsCache):
             The value the server holds, or None if the server has none.
 
         Raises:
-            TypeError: if the server holds something under the key that is not the
-                ``(value, lifetime)`` pair this class writes, which the bookkeeping keys
-                are. It comes from unpacking that pair.
+            TypeError: if the server holds something under the key that is not
+                iterable, which the bookkeeping keys are not. It comes from unpacking
+                the ``(value, lifetime)`` pair.
+            ValueError: if the server holds something iterable under the key but not of
+                length two. It comes from the same unpacking.
         """
 
         result = self.mc.get(key)

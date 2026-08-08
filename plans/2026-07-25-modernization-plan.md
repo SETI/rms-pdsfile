@@ -1150,9 +1150,13 @@ Three things that shaped the result and bind the PRs after it:
     review rounds (170–198) — plus two notes for the documentation PRs that follow
     it, 168 and 169. Entries 23, 24 and 80 are amended. That list, not the prose,
     is the evidence the docstrings were verified rather than paraphrased.
-  * **Four review rounds: one per file, then a second read of `pdscache.py`, and
-    the second read did not come back empty.** It found about twenty items where
-    the first read of the same file found fifteen. So the finding rate is a
+  * **Four review rounds over the three substantial files** — one each on
+    `pdscache.py`, `pdsviewable.py` and `pdsfile.py`, then a second read of
+    `pdscache.py`. `__init__.py` and `preload_and_cache.py` had no round of their
+    own: between them they hold two module docstrings, no classes and no
+    functions, and both are covered by the checker, the Sphinx build and
+    CodeRabbit. **The second read did not come back empty:** it found about twenty
+    items where the first read of the same file found fifteen. So the finding rate is a
     property of how much prose there is to check, not of how much is left — one
     adversarial read per file does not exhaust a docstring PR of this size.
     **PR-29a should plan for at least two reads of each module it touches, not one

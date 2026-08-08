@@ -217,15 +217,40 @@ def raised_names(node):
     return names
 
 
+def unpack_targets(node):
+    """Return the binding targets of a node, wherever a node can bind names.
+
+    Unpacking is not confined to assignment: a `for` target, a comprehension target and a
+    `with ... as` all bind, and all raise the same way on a value of the wrong shape.
+
+    Parameters:
+        node (ast.AST): the node to inspect.
+
+    Returns:
+        list: the target nodes it binds, which may be empty.
+    """
+
+    if isinstance(node, ast.Assign):
+        return list(node.targets)
+    if isinstance(node, (ast.For, ast.AsyncFor, ast.comprehension)):
+        return [node.target]
+    if isinstance(node, (ast.withitem,)):
+        return [node.optional_vars] if node.optional_vars else []
+
+    return []
+
+
 def called_names(node):
     """Return the mechanisms a function body uses that an exception can be blamed on.
 
     A call contributes the name it names: the identifier for a plain call, the attribute
     for a method call. Item syntax contributes the dunder method the interpreter reaches
     for, so an exception a docstring attributes to `__getitem__()` is recognized in a
-    body that writes `self[key]`. Tuple unpacking contributes `unpacking`, because a
-    `TypeError` from unpacking a value that is not a sequence is raised by no call and by
-    no `raise`, and is exactly the kind of failure a caller needs told about.
+    body that writes `self[key]`. Unpacking contributes `unpacking` wherever it binds --
+    an assignment, a `for` target, a comprehension target, a `with ... as` -- because the
+    `TypeError` from unpacking a value that is not iterable, and the `ValueError` from
+    unpacking one of the wrong length, are raised by no call and by no `raise`, and are
+    exactly the kind of failure a caller needs told about.
 
     Nested definitions are not searched.
 
@@ -255,8 +280,8 @@ def called_names(node):
                 names.add('__delitem__')
             else:
                 names.add('__getitem__')
-        elif isinstance(item, ast.Assign):
-            for target in item.targets:
+        else:
+            for target in unpack_targets(item):
                 if isinstance(target, (ast.Tuple, ast.List)):
                     names.add('unpacking')
         stack.extend(ast.iter_child_nodes(item))

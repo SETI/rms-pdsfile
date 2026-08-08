@@ -63,8 +63,9 @@ the systematic weak point of the prose, not a one-off.
 
 ## A change to the checker this round forced
 
-Findings 3, 7 and 10 are exceptions raised by **subscripts and tuple unpacking**, not by
-`raise` statements. Section 4.1 of the record had a convention that such exceptions go in
+Findings 3 and 10 are exceptions raised by **subscripts and tuple unpacking**, not by
+`raise` statements. (Finding 7 is about rounding, not about an exception, and is not part
+of this.) Section 4.1 of the record had a convention that such exceptions go in
 prose rather than in a `Raises:` section, because check E1 could not verify an attribution
 to anything but a call — and round 4 shows that convention was wrong, since these are
 exactly the failures a caller needs told about, and prose buries them.

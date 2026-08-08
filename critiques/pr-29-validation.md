@@ -18,7 +18,7 @@ Five files, and only these:
 | file | lines at base | at head | module docstring at base | classes without one | functions without one / total | parameters |
 |---|---:|---:|---|---:|---:|---:|
 | `src/pdsfile/pdsfile.py` | 1,949 | 2,435 | present | 1 | 2 / 37 | 56 |
-| `src/pdsfile/pdscache.py` | 1,047 | 1,782 | absent | 3 | 2 / 60 | 58 |
+| `src/pdsfile/pdscache.py` | 1,047 | 1,914 | absent | 3 | 2 / 60 | 58 |
 | `src/pdsfile/pdsviewable.py` | 587 | 986 | absent | 0 | 8 / 26 | 36 |
 | `src/pdsfile/__init__.py` | 15 | 39 | absent | 0 | 0 / 0 | 0 |
 | `src/pdsfile/preload_and_cache.py` | 16 | 48 | absent | 0 | 0 / 0 | 0 |
@@ -214,7 +214,9 @@ stub there. Section 7 lists every omission as PR-35's queue.
 **An exception raised by a mechanism other than a `raise` statement gets a `Raises:`
 entry when the mechanism is one E1 can verify, and prose otherwise.** E1 accepts an
 attribution to a call the body makes, to item syntax (which counts as the corresponding
-dunder method), or to tuple unpacking, and checks each against the AST.
+dunder method), or to tuple unpacking, and checks each against the AST. Unpacking is
+recognized wherever it binds -- an assignment, a `for` target, a comprehension target, or
+a `with ... as` -- so an entry cannot be attributed to it in a body that does not unpack.
 
 That rule is wider than the one this PR started with, which sent *every* operator-raised
 exception to prose. Round 4 showed that convention was wrong: exceptions from subscripts
