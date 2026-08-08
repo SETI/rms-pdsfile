@@ -72,7 +72,7 @@ conflicts with a rule below, follow the rule below. See
    | `src/pdsfile/pdsfile.py` | 2,468 | 814 | 1,654 | both |
    | `src/pdsfile/_properties.py` | 2,817 | 1,427 | 1,390 | both |
    | `src/pdsfile/holdings_maintenance/pds3/pdsdependency.py` | 1,165 | 30 | 1,135 | code |
-   | `src/pdsfile/pds3file/rules/VG_28xx.py` | 1,105 | 85 | 1,020 | code |
+   | `src/pdsfile/pds3file/rules/VG_28xx.py` | 1,115 | 95 | 1,020 | code |
 
    - `src/pdsfile/pdsfile.py` — **waived on both limits, and the split is
      deferred** (owner, 2026-08-07). This is a code problem and not a
