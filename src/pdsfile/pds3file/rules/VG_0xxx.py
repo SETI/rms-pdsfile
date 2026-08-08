@@ -2,6 +2,38 @@
 # pds3file/rules/VG_0xxx.py
 ##########################################################################################
 
+"""Rules for the VG_0xxx volume set: the original compressed Voyager images.
+
+VG_0xxx is described in the holdings as the Voyager image collection, original
+release of compressed raw images (``_volinfo/VG_0xxx.txt``). A data file is an IMQ,
+the compressed Voyager EDR form, and each has a compressed browse image beside it in
+IBQ form. The products are filed under the "Voyager ISS" OPUS category. The same
+observations appear decompressed, and with calibrated versions, under the VGISS_5xxx
+through VGISS_8xxx volume sets that `VGISS_xxxx.py` serves.
+
+The rule tables:
+
+* ``description_and_icon_by_regex`` -- describes the compressed raw images and their
+  browse counterparts, and names the directories that group images by spacecraft
+  clock and by target.
+* ``default_viewables`` -- points a compressed image at the preview images generated
+  for it in the previews tree.
+* ``associations_to_volumes`` and ``associations_to_previews`` -- cross the volumes
+  and previews trees for one image.
+* ``view_options`` -- the grid, multipage and continuous view flags for the image
+  directories.
+* ``neighbors`` -- treats the corresponding directory in the other VG_0xxx volumes
+  as adjacent.
+* ``opus_type`` -- files the two products as "Compressed Raw (IMQ)" and "Small
+  Preview (IBQ)" under the "Voyager ISS" OPUS category.
+* ``opus_format`` -- gives the IMQ and IBQ extensions their interchange and file
+  formats.
+* ``opus_id`` -- derives the OPUS ID from the image number in the file name.
+
+This module defines no OPUS product list and no reverse OPUS-ID lookup, so both come
+from the defaults in `pds3file/rules/__init__.py`.
+"""
+
 import re
 
 import translator
@@ -151,6 +183,13 @@ opus_id = translator.TranslatorByRegex([
 ##########################################################################################
 
 class VG_0xxx(pds3file.Pds3File):
+    """The ``Pds3File`` subclass for VG_0xxx.
+
+    The class body puts this module's rule tables in front of the class attributes
+    ``Pds3File`` reads, and the module tail registers the class in
+    ``Pds3File.SUBCLASSES`` under the key "VG_0xxx".
+    The module docstring describes the volume set and every table.
+    """
 
     pds3file.Pds3File.VOLSET_TRANSLATOR = translator.TranslatorByRegex([('VG_0xxx', re.I, 'VG_0xxx')]) + \
                                           pds3file.Pds3File.VOLSET_TRANSLATOR

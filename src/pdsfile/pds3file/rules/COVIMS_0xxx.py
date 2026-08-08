@@ -2,6 +2,46 @@
 # pds3file/rules/COVIMS_0xxx.py
 ##########################################################################################
 
+"""Rules for the COVIMS_0xxx volume set: Cassini VIMS cubes.
+
+COVIMS_0xxx is described in the holdings as the Cassini VIMS visual/near-IR cube
+collection. Its volumes carry data set ID CO-E/V/J/S-VIMS-2-QUBE-V1.0 and are
+divided by date, each covering a span of spacecraft clock (holdings
+``_volinfo/COVIMS_0xxx.txt``). A data file is an ISIS2 spectral image cube whose
+basename is a ten-digit spacecraft clock, a version number, and sometimes a
+three-digit sub-observation number.
+
+The rule tables:
+
+* ``description_and_icon_by_regex`` -- names the date-grouped data directories, the
+  ISIS2 cubes, the browse image collections and the small and full-size browse
+  images, and points at the guide to interpreting a VIMS preview.
+* ``default_viewables`` -- points a cube at its preview images.
+* ``associations_to_volumes``, ``associations_to_previews``,
+  ``associations_to_metadata`` and ``associations_to_documents`` -- cross the
+  volumes, previews, metadata and documents trees for one cube. The documents entry
+  replaces the default rather than adding to it.
+* ``view_options`` and ``neighbors`` -- the view flags and the corresponding
+  directories in sibling volumes.
+* ``opus_type``, ``opus_format`` and ``opus_products`` -- file products under the
+  "Cassini VIMS" OPUS category as a "Raw Cube" plus its extra previews, and list
+  what OPUS offers with each.
+* ``opus_id`` and ``opus_id_to_primary_logical_path`` -- the OPUS ID and its
+  inverse. The reverse table is written as one entry per leading three digits of the
+  spacecraft clock, each naming the small range of volumes that can hold it.
+* ``BASENAME_REGEX`` -- the compiled pattern that splits a cube basename into its
+  clock-and-version part and its optional sub-observation number. It is the only
+  compiled regular expression any rule module holds at the top level, and it exists
+  because this volume set's grouping rule is computed by
+  ``COVIMS_0xxx.FILENAME_KEYLEN`` rather than expressed as a translator.
+
+The class body also carries ``COVIMS_0xxx.LOWER_VERSION_PRIORITIZED``, the
+enumerated cubes whose latest version is not the one with the highest version number
+in its file name, and defines
+``COVIMS_0xxx.OPUS_ID_TO_PRIMARY_LOGICAL_PATH`` as a function that consults that
+table before falling back to the translator.
+"""
+
 import os
 import re
 
@@ -275,6 +315,17 @@ opus_id_to_primary_logical_path = translator.TranslatorByRegex([
 BASENAME_REGEX = re.compile(r'(v?\d{10}_\d+)(_0[0-6][0-9]|).*')
 
 class COVIMS_0xxx(pds3file.Pds3File):
+    """The ``Pds3File`` subclass for COVIMS_0xxx.
+
+    The class body puts this module's rule tables in front of the class attributes
+    ``Pds3File`` reads, and the module tail registers the class in
+    ``Pds3File.SUBCLASSES`` under the key "COVIMS_0xxx".
+    The module docstring describes the volume set and every table.
+
+    It also carries ``LOWER_VERSION_PRIORITIZED`` and defines
+    ``OPUS_ID_TO_PRIMARY_LOGICAL_PATH`` and ``FILENAME_KEYLEN`` as functions
+    rather than as translators.
+    """
 
     pds3file.Pds3File.VOLSET_TRANSLATOR = translator.TranslatorByRegex([('COVIMS_0xxx', re.I, 'COVIMS_0xxx')]) + \
                                           pds3file.Pds3File.VOLSET_TRANSLATOR
@@ -324,6 +375,27 @@ class COVIMS_0xxx(pds3file.Pds3File):
     }
 
     def OPUS_ID_TO_PRIMARY_LOGICAL_PATH(opus_id):
+        """Return the primary data file an OPUS ID names.
+
+        The one argument is the OPUS ID string. This function is reached off the
+        class rather than off an instance, so no receiver is supplied and the string
+        arrives as the first positional parameter.
+
+        ``LOWER_VERSION_PRIORITIZED`` is consulted first, because for a listed cube
+        the latest version is not the one with the highest version number in its file
+        name. Failing that, every pattern the module's ``opus_id_to_primary_logical_path``
+        table produces for the ID is globbed case-sensitively over the holdings tree.
+        One match is returned as it stands; where there are several, the one whose
+        version number sorts highest is returned. That comparison is alphabetic,
+        which orders correctly here because no cube carries a two-digit version
+        number.
+
+        Returns:
+            PdsFile: the primary data file.
+
+        Raises:
+            ValueError: if no pattern for the ID matches any file.
+        """
 
         # Check list of known exceptions first
         if opus_id in COVIMS_0xxx.LOWER_VERSION_PRIORITIZED:
@@ -351,6 +423,18 @@ class COVIMS_0xxx(pds3file.Pds3File):
         return pds3file.Pds3File.from_abspath(version_tuples[-1][1])
 
     def FILENAME_KEYLEN(self):
+        """Return the count of leading basename characters that group siblings.
+
+        A VIMS cube basename opens with an optional "v", the ten-digit spacecraft
+        clock, an underscore and a version number, and may then carry an underscore
+        and a three-digit sub-observation number between 000 and 069. Those two parts
+        together are what the cube, its label and its previews share.
+
+        Returns:
+            int: the combined length of the two parts ``BASENAME_REGEX`` captures, or
+            0 if the basename does not match it at all.
+        """
+
         match = BASENAME_REGEX.match(self.basename)
         if match:
             return len(match.group(1) + match.group(2))

@@ -2,6 +2,46 @@
 # pds4file/rules/cassini_uvis_solarocc_beckerjarmak2023.py
 ##########################################################################################
 
+"""Rules for the cassini_uvis_solarocc_beckerjarmak2023 bundle set.
+
+This bundle set holds derived radial occultation profiles of Saturn's rings from
+solar occultation observations made with the Cassini UVIS instrument between June
+2005 and June 2017 (bundle ``readme.txt`` under
+``$PDS4_HOLDINGS_DIR/bundles/cassini_uvis_solarocc_beckerjarmak2023``). The bundle
+set holds a single bundle of the same name, laid out as ``data/`` for the time
+series tables, ``data/supplemental/`` for the supplemental tables, ``browse/`` for
+the plots, ``document/`` for the two volumes of the ring solar occultation atlas and
+the UVIS user guide, and a ``readme.txt``. A data file is named
+uvis_euv_<year>_<day>_solar_time_series_<ingress or egress>.
+
+The rule tables:
+
+* ``description_and_icon_by_regex`` -- empty. Descriptions for this bundle set come
+  from the defaults in `pds4file/rules/__init__.py`.
+* ``default_viewables`` -- points a data or supplemental table at its preview images.
+* ``associations_to_bundles``, ``associations_to_previews``,
+  ``associations_to_metadata`` and ``associations_to_documents`` -- cross the
+  bundles, previews, metadata and documents trees for one occultation.
+  ``associations_to_metadata`` matches the data files but returns an empty list, so
+  no metadata association is produced.
+* ``view_options``, ``neighbors`` and ``sort_key`` -- all three are empty, so the
+  view flags, the adjacent directories and the basename sort order are the defaults.
+* ``opus_type`` -- files products under the "Cassini UVIS Solar Occultations" OPUS
+  category as the time series, its supplement, the detailed browse and the
+  documentation.
+* ``opus_products`` -- the tables, browse products, previews, readme and the three
+  named documents OPUS offers with one occultation.
+* ``opus_id`` and ``opus_id_to_primary_logical_path`` -- an OPUS ID of the form
+  co-uvis-occ-<year>-<day>-sun-<e or i>, and the path of the primary label it names.
+* ``filespec_to_bundleset`` -- maps a file specification beginning with the bundle
+  set name to the bundle set name itself.
+* ``archive_paths`` and ``archive_dirs`` -- the whole bundle set is packaged as one
+  archive named after itself, so both tables have a single entry.
+
+`cassini_uvis_solarocc_beckerjarmak2023_primary_filespec.py` holds the list of
+primary labels this bundle set offers, which this module re-exports.
+"""
+
 import re
 
 import translator
@@ -226,6 +266,13 @@ archive_dirs = translator.TranslatorByRegex([
 ##########################################################################################
 
 class cassini_uvis_solarocc_beckerjarmak2023(pds4file.Pds4File):
+    """The ``Pds4File`` subclass for cassini_uvis_solarocc_beckerjarmak2023.
+
+    The class body puts this module's rule tables in front of the class attributes
+    ``Pds4File`` reads, and the module tail registers the class in
+    ``Pds4File.SUBCLASSES`` under the key "cassini_uvis_solarocc_beckerjarmak2023".
+    The module docstring describes the bundle set and every table.
+    """
 
     pds4file.Pds4File.VOLSET_TRANSLATOR = translator.TranslatorByRegex(
         [('cassini_uvis_solarocc_beckerjarmak2023', re.I,

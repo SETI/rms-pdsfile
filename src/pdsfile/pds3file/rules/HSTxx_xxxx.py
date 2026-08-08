@@ -2,6 +2,41 @@
 # pds3file/rules/HSTxx_xxxx.py
 ##########################################################################################
 
+"""Rules for the HSTxx_xxxx volume sets: HST placeholder volumes for OPUS.
+
+`HSTxx_xxxx.py` serves five volume sets, one per HST instrument, matched by the
+pattern HST.x_xxxx: HSTIx_xxxx for WFC3, HSTJx_xxxx for ACS, HSTNx_xxxx for NICMOS,
+HSTOx_xxxx for STIS and HSTUx_xxxx for WFPC2. Each is described in the holdings as a
+set of placeholder volumes for OPUS queries (``_volinfo/HSTIx_xxxx.txt`` and its
+four siblings): what a volume carries is previews, 16-bit TIFFs of raw images, FITS
+label listings and PDS labels with download instructions, rather than the archived
+data itself. Observations are grouped by visit.
+
+The rule tables:
+
+* ``description_and_icon_by_regex`` -- names the visit directories, the several
+  preview kinds (raw, calibrated, drizzled, 2-D image, spectrum line plot), the
+  16-bit TIFF of a raw image, the FITS label listing, the PDS label that carries the
+  download instructions, and the association indices in the metadata tree.
+* ``default_viewables`` -- the preview images for a product.
+* ``associations_to_volumes``, ``associations_to_previews``,
+  ``associations_to_metadata`` and ``associations_to_documents`` -- cross the
+  volumes, previews, metadata and documents trees for one observation.
+* ``split_rules``, ``view_options`` and ``neighbors`` -- the basename grouping, the
+  view flags and the corresponding directories in sibling volumes.
+* ``opus_type`` and ``opus_products`` -- file products under the "HST" OPUS
+  category, with a type for each preview kind and for the FITS header text, and list
+  what OPUS offers with each.
+* ``opus_id`` and ``opus_id_to_primary_logical_path`` -- the OPUS ID and its
+  inverse.
+* ``filespec_to_bundleset`` -- maps a file specification beginning with an
+  HSTnx_nnnn volume ID to its volume set name, which the default rule cannot do
+  because these volume set names do not end in three x's.
+
+Two other rule modules serve HST data: `ASTROM_xxxx.py` for the WFPC2 astrometry of
+Saturn's moons and `RPX_xxxx.py` for the WFPC2 ring plane crossing observations.
+"""
+
 import re
 
 import translator
@@ -185,6 +220,13 @@ filespec_to_bundleset = translator.TranslatorByRegex([
 ##########################################################################################
 
 class HSTxx_xxxx(pds3file.Pds3File):
+    """The ``Pds3File`` subclass for HSTxx_xxxx.
+
+    The class body puts this module's rule tables in front of the class attributes
+    ``Pds3File`` reads, and the module tail registers the class in
+    ``Pds3File.SUBCLASSES`` under the key "HSTxx_xxxx".
+    The module docstring describes the volume set and every table.
+    """
 
     pds3file.Pds3File.VOLSET_TRANSLATOR = translator.TranslatorByRegex([('HST.x_xxxx', re.I, 'HSTxx_xxxx')]) + \
                                           pds3file.Pds3File.VOLSET_TRANSLATOR

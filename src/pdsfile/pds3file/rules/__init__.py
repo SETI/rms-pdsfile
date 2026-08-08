@@ -1,8 +1,73 @@
 ##########################################################################################
 # pds3file/rules/__init__.py
-#
-# Definitions of Translator objects used by the PdsFile class.
 ##########################################################################################
+
+"""The default rule tables, which every ``Pds3File`` subclass starts from.
+
+`pds3file/rules/__init__.py` defines one translator per rule attribute of
+``Pds3File``, holding the behavior that applies to any PDS3 volume set whose own
+rule module says nothing more specific. Each dataset module in this package builds
+its own tables and adds them in front of the ones here, so a lookup tries the
+dataset-specific patterns first and falls through to these.
+
+The tables:
+
+* ``DESCRIPTION_AND_ICON`` -- the descriptive text and icon type for a logical path.
+  This is the largest table here, and it covers the parts of a holdings tree that
+  look the same for every dataset: the category directories, the checksum, archive,
+  preview, diagram and metadata trees, the standard PDS3 volume subdirectories
+  (``catalog/``, ``document/``, ``index/``, ``software/``, ``label/``, ``calib/``,
+  ``geometry/``), SPICE kernel extensions, and a closing block keyed on file
+  extension alone.
+* ``GENERIC_VOLSET_DESC`` and ``GENERIC_VOLUME_DESC`` -- the descriptions used for a
+  volume set and a volume when nothing more specific matches. Both are read only by
+  ``DESCRIPTION_AND_ICON`` itself.
+* ``ASSOCIATIONS`` -- a dictionary keyed by category ("volumes", "previews",
+  "calibrated", "diagrams", "metadata", "documents") giving the files in that
+  category that correspond to a given path. Only the "volumes", "metadata" and
+  "documents" entries do anything here; the other three are null translators that a
+  dataset module replaces.
+* ``VERSIONS`` -- the paths of every version of a product, found by making the
+  version suffix on the volume set name a wildcard.
+* ``VIEWABLES`` and ``VIEWABLE_TOOLTIPS`` -- the viewable sets a product offers and
+  the tooltip for each. The one entry, "default", is a null translator.
+* ``VIEW_OPTIONS`` -- the grid, multipage and continuous view flags, all False here.
+* ``NEIGHBORS`` -- the pattern matching directories treated as adjacent, which by
+  default is every sibling of the given directory.
+* ``SIBLINGS`` -- the pattern matching basenames treated as adjacent within one
+  directory. All files in ``document/``, ``calib/``, ``catalog/``, ``index/`` and
+  ``label/`` are siblings of one another.
+* ``INFO_FILE_BASENAMES`` -- which basenames count as the information file for the
+  directory they sit in: ``voldesc.cat``, ``voldesc.sfd``, and any basename ending
+  in ``INFO.txt``, ``INF.txt``, ``DOC.txt``, ``AAREADME.txt`` or ``README.txt``.
+* ``SORT_KEY`` -- the key a basename sorts by. It orders previews by increasing
+  size, orders a volume set's versions with the newest first, sorts a PDS link ahead
+  of everything else, and otherwise sorts alphabetically.
+* ``SPLIT_RULES`` -- how a basename splits into an anchor, an optional middle part
+  and an extension, which is what groups related files together in a listing.
+* ``OPUS_TYPE`` -- the OPUS category, rank, slug, title and default-selected flag
+  for a product. The entries here cover previews, diagrams and the metadata indices.
+* ``OPUS_FORMAT`` -- the interchange format and file format of a product, keyed on
+  extension.
+* ``OPUS_PRODUCTS`` -- glob patterns for every file OPUS offers alongside a product,
+  which here is the contents of the volume set's document directory.
+* ``CROSS_PDS3_PDS4_PRODUCTS`` -- the PDS4 products OPUS offers alongside a PDS3
+  product. Empty here.
+* ``OPUS_ID``, ``OPUS_ID_TO_SUBCLASS`` and ``OPUS_ID_TO_PRIMARY_LOGICAL_PATH`` --
+  the path-to-OPUS-ID translation and its two inverses. All three are empty here,
+  because an OPUS ID is dataset-specific in every case.
+* ``FILESPEC_TO_BUNDLESET`` -- the volume set name a file specification belongs to,
+  which by default replaces the last three characters of the volume ID with "xxx". A
+  volume set whose name does not end in exactly three x's overrides it.
+* ``LID_AFTER_DSID`` -- the tail of a PDS4 LID for a PDS3 path, in the form
+  volume_id:directory_tree:filename.
+* ``DATA_SET_ID`` -- the PDS3 data set ID of a product. A null translator here.
+
+``__all__`` lists dataset modules of this package, but nothing imports them through
+it: ``pds3file/__init__.py`` names each one explicitly in a ``from .rules import``
+block, because importing a rule module is what registers its subclass and that has
+to happen after ``Pds3File`` itself is built.
+"""
 
 import re
 

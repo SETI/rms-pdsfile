@@ -2,6 +2,63 @@
 # pds3file/rules/NHxxxx_xxxx.py
 ##########################################################################################
 
+"""Rules for the New Horizons image volume sets: LORRI and MVIC.
+
+`NHxxxx_xxxx.py` serves two volume sets through one subclass, matched by the pattern
+NHxx.._xxxx: NHxxLO_xxxx, the New Horizons LORRI image collection, and NHxxMV_xxxx,
+the New Horizons MVIC image collection (``_volinfo/NHxxLO_xxxx.txt`` and
+``_volinfo/NHxxMV_xxxx.txt``). A volume name encodes the mission phase and the
+instrument, as in NHJULO_1001 for the Jupiter flyby with LORRI and NHKEMV_1001 for
+the Arrokoth flyby with MVIC. A raw volume is numbered 1nnn and its calibrated
+counterpart 2nnn, which is why the association and viewable tables here rewrite that
+digit rather than switching trees. A data file is FITS.
+
+One observation can be downlinked more than once, in different binnings and with
+different compression, and the downlink is recorded as a hexadecimal code in the
+file name. That is what shapes this module:
+
+* ``FILE_CODE_PRIORITY`` -- the hexadecimal file codes mapped to a sort priority,
+  covering the LORRI codes 630 through 63B and the MVIC codes 530 through 54A. The
+  comment on each entry names the mode it stands for: lossless, packetized or lossy,
+  high-resolution or binned, and which of the two command and data handling units
+  produced it. This table is defined by no other rule module.
+
+The remaining rule tables:
+
+* ``description_and_icon_by_regex`` -- distinguishes raw from calibrated FITS and
+  names the binning and compression of each, names the date-grouped directories, the
+  calibration frames (debias, flat field, dead pixel, hot pixel) and the PDS3
+  catalog files, and points at the instrument and payload descriptions in the
+  documents tree.
+* ``default_viewables``, ``raw_viewables`` and ``calibrated_viewables`` -- the
+  previews for a product, for its raw form and for its calibrated form. The class
+  offers the last two as the "raw" and "calibrated" viewable sets with tooltips of
+  their own.
+* ``associations_to_volumes``, ``associations_to_previews``,
+  ``associations_to_metadata`` and ``associations_to_documents`` -- cross the
+  volumes, previews, metadata and documents trees for one observation.
+* ``versions`` -- the paths of the same product in the other versions of these
+  volume sets.
+* ``view_options``, ``neighbors``, ``sort_key`` and ``split_rules`` -- the view
+  flags, the corresponding directories in sibling volumes, the basename sort order
+  and the basename grouping.
+* ``opus_type`` and ``opus_products`` -- file products under the "New Horizons
+  LORRI" and "New Horizons MVIC" OPUS categories and list what OPUS offers with
+  each.
+* ``opus_id`` and ``opus_id_to_primary_logical_path`` -- the OPUS ID and its
+  inverse.
+* ``filespec_to_bundleset`` -- maps a file specification beginning with an
+  NHxxnn_nnn volume ID to its volume set name, which the default rule cannot do
+  because these volume set names do not follow the usual shape.
+
+The class body sets ``NHxxxx_xxxx.FILENAME_KEYLEN`` to 14 so that the several
+downlinks of one observation group together, and defines
+``NHxxxx_xxxx.opus_prioritizer``, which uses ``FILE_CODE_PRIORITY`` to keep the
+best downlink of a product under its original OPUS heading and move the rest to an
+"Alternate Downlink" heading. `GO_0xxx.py` is the only other rule module that
+defines a prioritizer.
+"""
+
 import re
 
 import translator
@@ -458,6 +515,16 @@ filespec_to_bundleset = translator.TranslatorByRegex([
 ##########################################################################################
 
 class NHxxxx_xxxx(pds3file.Pds3File):
+    """The ``Pds3File`` subclass for NHxxxx_xxxx.
+
+    The class body puts this module's rule tables in front of the class attributes
+    ``Pds3File`` reads, and the module tail registers the class in
+    ``Pds3File.SUBCLASSES`` under the key "NHxxxx_xxxx".
+    The module docstring describes the volume set and every table.
+
+    It also sets ``FILENAME_KEYLEN`` to 14, so that the several downlinks of one
+    observation group together, and defines ``opus_prioritizer``.
+    """
 
     pds3file.Pds3File.VOLSET_TRANSLATOR = translator.TranslatorByRegex([('NHxx.._xxxx', re.I, 'NHxxxx_xxxx')]) + \
                                           pds3file.Pds3File.VOLSET_TRANSLATOR
@@ -496,7 +563,41 @@ class NHxxxx_xxxx(pds3file.Pds3File):
     FILENAME_KEYLEN = 14    # trim off suffixes
 
     def opus_prioritizer(self, pdsfile_dict):
-        """Prioritize items that have been downlinked in multiple ways."""
+        """Split the best downlink of a product from its alternatives.
+
+        One New Horizons observation can be downlinked more than once, in different
+        binnings and with different compression, and the mode is recorded as three
+        hexadecimal characters after "_0x" in the file name. Where an OPUS heading
+        holds more than one copy of a data product, this keeps the copy whose file
+        code ranks best in ``FILE_CODE_PRIORITY`` under that heading and moves the
+        rest to a heading in the same category whose rank is 50 higher, whose slug
+        gains "_alternate" and whose title gains " Alternate Downlink". The copies
+        are grouped by version rank first, so one copy per rank survives under the
+        original heading.
+
+        A heading holding a single copy is left alone, and so is one whose copies are
+        not in the volumes tree.
+
+        The dictionary is modified in place as well as returned: the two headings it
+        touches are rewritten and the alternative heading is added.
+
+        Parameters:
+            pdsfile_dict (dict): the OPUS product dictionary, keyed by a
+                (category, rank, slug, title, selected) tuple, whose values are lists
+                of lists of PdsFile objects.
+
+        Returns:
+            dict: the same dictionary.
+
+        Raises:
+            KeyError: raised by the priority lookup, the item read
+                ``__getitem__()`` on ``FILE_CODE_PRIORITY``, for a file code the
+                table does not list.
+            TypeError: raised by ``sort()`` where two copies at one version rank
+                carry the same file code. The priority and the code are then equal
+                and the comparison falls through to the lists of PdsFile objects,
+                which have no ordering.
+        """
 
         headers = list(pdsfile_dict.keys())     # Save keys so we can alter dict
         for header in headers:

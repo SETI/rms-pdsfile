@@ -2,6 +2,42 @@
 # pds3file/rules/EBROCC_xxxx.py
 ##########################################################################################
 
+"""Rules for the EBROCC_xxxx volume set: Earth-based ring occultation data.
+
+EBROCC_xxxx is described in the holdings as Earth-based ring occultation data. Its
+one volume, EBROCC_0001, holds data from the 28 Sgr occultation of Saturn's rings
+and carries six data set IDs, one per observatory: ESO1M, ESO22M, IRTF, LICK1M,
+MCD27M and PAL200 (``_volinfo/EBROCC_xxxx.txt``). The volume is laid out with one
+directory per observatory under each of its data, geometry and browse trees, which
+is why this module needs a ``data_set_id`` table of its own: the data set ID depends
+on which observatory directory a file sits in, not on which volume.
+
+The rule tables:
+
+* ``description_and_icon_by_regex`` -- names the per-observatory data, geometry and
+  browse directories.
+* ``default_viewables`` -- the preview plots for a product, and an empty viewable for
+  a label file.
+* ``associations_to_volumes``, ``associations_to_previews`` and
+  ``associations_to_metadata`` -- cross the volumes, previews and metadata trees for
+  one occultation.
+* ``view_options`` -- the grid, multipage and continuous view flags.
+* ``opus_type``, ``opus_format`` and ``opus_products`` -- file products under the
+  "Earth-based Occultations" OPUS category as the occultation profile, the geometry
+  table, the geometry diagram, the preview plot and the source data, and list what
+  OPUS offers with each.
+* ``opus_id`` and ``opus_id_to_primary_logical_path`` -- the OPUS ID and its
+  inverse.
+* ``data_set_id`` -- the PDS3 data set ID for a path, keyed on the observatory
+  directory. `EBROCC_xxxx.py` and `COCIRS_xxxx.py` are the only two rule modules
+  that define this table.
+* ``filespec_to_bundleset`` -- maps a file specification beginning with the
+  EBROCC_0001 volume ID to the volume set name EBROCC_xxxx.
+
+The PDS4 counterpart for Earth-based occultations, of Uranus rather than Saturn, is
+`uranus_occs_earthbased.py`.
+"""
+
 import re
 
 import translator
@@ -200,6 +236,13 @@ filespec_to_bundleset = translator.TranslatorByRegex([
 ##########################################################################################
 
 class EBROCC_xxxx(pds3file.Pds3File):
+    """The ``Pds3File`` subclass for EBROCC_xxxx.
+
+    The class body puts this module's rule tables in front of the class attributes
+    ``Pds3File`` reads, and the module tail registers the class in
+    ``Pds3File.SUBCLASSES`` under the key "EBROCC_xxxx".
+    The module docstring describes the volume set and every table.
+    """
 
     pds3file.Pds3File.VOLSET_TRANSLATOR = translator.TranslatorByRegex([('EBROCC_xxxx', re.I, 'EBROCC_xxxx')]) + \
                                           pds3file.Pds3File.VOLSET_TRANSLATOR

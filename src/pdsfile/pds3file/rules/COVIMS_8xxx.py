@@ -2,6 +2,39 @@
 # pds3file/rules/COVIMS_8xxx.py
 ##########################################################################################
 
+"""Rules for the COVIMS_8xxx volume set: Cassini VIMS ring occultation profiles.
+
+COVIMS_8xxx is described in the holdings as Cassini VIMS occultation profiles of
+Saturn's rings, 2005-2017 (``_volinfo/COVIMS_8xxx.txt``). A product is a radial
+profile at one of two sampling intervals, 1 km or 10 km.
+
+The rule tables:
+
+* ``description_and_icon_by_regex`` -- distinguishes the 1 km profile from the 10 km
+  profile.
+* ``default_viewables`` and ``diagrams_viewables`` -- the preview images for a
+  profile and the observation diagrams for it. The class offers them as the
+  "default" and "diagram" viewable sets.
+* ``associations_to_volumes``, ``associations_to_previews``,
+  ``associations_to_diagrams``, ``associations_to_metadata`` and
+  ``associations_to_documents`` -- cross the five trees for one profile. The
+  documents entry replaces the default rather than adding to it.
+* ``versions`` -- the paths of the same profile in the other versions of this volume
+  set, which cannot be found by wildcarding the version suffix alone: the earliest
+  version used upper-case file names and put the data under ``EASYDATA/`` rather
+  than ``data/``.
+* ``view_options`` and ``split_rules`` -- the view flags and the basename grouping.
+* ``opus_type`` and ``opus_products`` -- file products under the "Cassini VIMS" OPUS
+  category as "Occultation Profile (1 km)" and "(10 km)", and list what OPUS offers
+  with each. The product list names files explicitly rather than by wildcard.
+* ``opus_id`` and ``opus_id_to_primary_logical_path`` -- the OPUS ID and its
+  inverse.
+
+`COUVIS_8xxx.py` serves the UVIS occultation profiles of the same rings and defines
+a table of each of these same names; `CORSS_8xxx.py` serves the radio occultation
+profiles.
+"""
+
 import re
 
 import translator
@@ -251,6 +284,13 @@ opus_id_to_primary_logical_path = translator.TranslatorByRegex([
 ##########################################################################################
 
 class COVIMS_8xxx(pds3file.Pds3File):
+    """The ``Pds3File`` subclass for COVIMS_8xxx.
+
+    The class body puts this module's rule tables in front of the class attributes
+    ``Pds3File`` reads, and the module tail registers the class in
+    ``Pds3File.SUBCLASSES`` under the key "COVIMS_8xxx".
+    The module docstring describes the volume set and every table.
+    """
 
     pds3file.Pds3File.VOLSET_TRANSLATOR = translator.TranslatorByRegex([('COVIMS_8xxx', re.I, 'COVIMS_8xxx')]) + \
                                           pds3file.Pds3File.VOLSET_TRANSLATOR

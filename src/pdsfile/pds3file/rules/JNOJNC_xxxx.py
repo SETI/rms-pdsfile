@@ -2,6 +2,34 @@
 # pds3file/rules/JNOJNC_xxxx.py
 ##########################################################################################
 
+"""Rules for the JunoCam volume set: Jupiter images from JunoCam.
+
+The volume set on disk is JNOJNC_0xxx, described in the holdings as the JunoCam
+Jupiter image collection; its volumes are numbered by orbit and carry data set IDs
+JUNO-J-JUNOCAM-2-EDR-L0-V1.0, JUNO-J-JUNOCAM-3-RDR-L1A-V1.0 and, from JNOJNC_0007
+on, JUNO-J-JUNOCAM-4-RDR-L1B-V1.0 (``_volinfo/JNOJNC_0xxx.txt``). The subclass and
+this module are named JNOJNC_xxxx, and the volume set translator is what maps the
+volume set name JNOJNC_0xxx onto that subclass; the two names are not the same
+string, which is unusual among these modules.
+
+A product is a raw or calibrated binary image, either RGB or methane-band, and
+volumes hold derived global maps as well as the images themselves.
+
+The rule tables:
+
+* ``description_and_icon_by_regex`` -- distinguishes raw from calibrated and RGB
+  from methane-band, for both the images and the derived global maps; names the
+  directories that organize images by target and by orbit; and names the small,
+  medium and full-resolution browse directories and their PNGs.
+* ``default_viewables`` -- points an image at its browse PNGs.
+* ``associations_to_volumes`` and ``associations_to_metadata`` -- cross the volumes
+  and metadata trees for one image.
+* ``neighbors`` -- the corresponding directories in sibling volumes.
+
+This module defines no OPUS tables, so OPUS behavior comes from the defaults in
+`pds3file/rules/__init__.py`.
+"""
+
 import re
 
 import translator
@@ -105,6 +133,13 @@ neighbors = translator.TranslatorByRegex([
 ##########################################################################################
 
 class JNOJNC_xxxx(pds3file.Pds3File):
+    """The ``Pds3File`` subclass for JNOJNC_xxxx.
+
+    The class body puts this module's rule tables in front of the class attributes
+    ``Pds3File`` reads, and the module tail registers the class in
+    ``Pds3File.SUBCLASSES`` under the key "JNOJNC_xxxx".
+    The module docstring describes the volume set and every table.
+    """
 
     pds3file.Pds3File.VOLSET_TRANSLATOR = translator.TranslatorByRegex([('JNOJNC_0xxx', re.I, 'JNOJNC_xxxx')]) + \
                                           pds3file.Pds3File.VOLSET_TRANSLATOR

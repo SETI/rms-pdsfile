@@ -1,10 +1,79 @@
 ##########################################################################################
 # pds4file/rules/__init__.py
 #
-# Subclasses of PdsFile, encompassing dataset-specific information
 # TODO: Modify the general rules for pds4, for now all variables have placeholder values
 # the same as the pds3 general rules.
 ##########################################################################################
+
+"""The default rule tables, which every ``Pds4File`` subclass starts from.
+
+`pds4file/rules/__init__.py` defines one translator per rule attribute of
+``Pds4File``, holding the behavior that applies to any PDS4 bundle set whose own
+rule module says nothing more specific. Each dataset module in this package builds
+its own tables and adds them in front of the ones here, so a lookup tries the
+dataset-specific patterns first and falls through to these.
+
+Most of these tables carry the PDS3 defaults unchanged, and the header comment says
+so. Five of them are written for PDS3 paths and conventions and cannot match a PDS4
+path at all: ``DESCRIPTION_AND_ICON`` keys on ``volumes/`` and on the PDS3 volume
+subdirectories, ``VERSIONS`` and ``FILESPEC_TO_BUNDLESET`` require an upper-case
+volume set or volume identifier, ``INFO_FILE_BASENAMES`` looks for ``voldesc.cat``,
+and ``LID_AFTER_DSID`` keys on ``volumes/`` as well.
+
+The tables:
+
+* ``DESCRIPTION_AND_ICON`` -- the descriptive text and icon type for a logical path,
+  covering the category directories, the checksum, archive, preview, diagram and
+  metadata trees, the standard PDS3 volume subdirectories, SPICE kernel extensions,
+  and a closing block keyed on file extension alone.
+* ``GENERIC_VOLSET_DESC`` and ``GENERIC_VOLUME_DESC`` -- the descriptions used for a
+  bundle set and a bundle when nothing more specific matches. Both are read only by
+  ``DESCRIPTION_AND_ICON`` itself.
+* ``ASSOCIATIONS`` -- a dictionary keyed by category giving the files in that
+  category that correspond to a given path. The PDS4 key is "bundles" where the PDS3
+  key is "volumes"; the other keys, "previews", "calibrated", "diagrams", "metadata"
+  and "documents", are the same. "previews", "calibrated" and "diagrams" are null
+  translators that a dataset module replaces.
+* ``VERSIONS`` -- the paths of every version of a product, found by making the
+  version suffix on the bundle set name a wildcard.
+* ``VIEWABLES`` and ``VIEWABLE_TOOLTIPS`` -- the viewable sets a product offers and
+  the tooltip for each. The one entry, "default", is a null translator.
+* ``VIEW_OPTIONS`` -- the grid, multipage and continuous view flags, all False here.
+* ``NEIGHBORS`` -- the pattern matching directories treated as adjacent, which by
+  default is every sibling of the given directory.
+* ``SIBLINGS`` -- the pattern matching basenames treated as adjacent within one
+  directory.
+* ``INFO_FILE_BASENAMES`` -- which basenames count as the information file for the
+  directory they sit in.
+* ``SORT_KEY`` -- the key a basename sorts by.
+* ``SPLIT_RULES`` -- how a basename splits into an anchor, an optional middle part
+  and an extension.
+* ``OPUS_TYPE`` -- the OPUS category, rank, slug, title and default-selected flag
+  for a product, covering previews, diagrams and the metadata indices.
+* ``OPUS_FORMAT`` -- the interchange format and file format of a product, keyed on
+  extension.
+* ``OPUS_PRODUCTS`` -- glob patterns for every file OPUS offers alongside a product.
+* ``CROSS_PDS3_PDS4_PRODUCTS`` -- the PDS4 products OPUS offers alongside a PDS3
+  product. Empty here.
+* ``OPUS_ID``, ``OPUS_ID_TO_SUBCLASS`` and ``OPUS_ID_TO_PRIMARY_LOGICAL_PATH`` --
+  the path-to-OPUS-ID translation and its two inverses, all empty here.
+* ``FILESPEC_TO_BUNDLESET`` -- the bundle set name a file specification belongs to.
+* ``LID_AFTER_DSID`` -- the tail of a PDS4 LID for a PDS3 path.
+* ``DATA_SET_ID`` -- the PDS3 data set ID of a product. A null translator here.
+* ``PRODUCT_LBL_BASENAME_WO_EXT`` -- the label basename, without its extension, that
+  goes with a data product whose own basename does not match its label's. Empty
+  here. This table has no PDS3 counterpart.
+* ``ARCHIVE_PATHS`` -- the archive files that cover a given path. Empty here, and
+  with no PDS3 counterpart: PDS3 archive paths are derived arithmetically from the
+  volume ID, while a PDS4 bundle set chooses how to split itself.
+* ``ARCHIVE_DIRS`` -- the inverse, the directories packaged inside a given archive
+  file. Empty here, and likewise with no PDS3 counterpart.
+
+``__all__`` lists bundle set names, but nothing imports the modules through it:
+``pds4file/__init__.py`` names each one explicitly in a ``from .rules import``
+block, because importing a rule module is what registers its subclass and that has
+to happen after ``Pds4File`` itself is built.
+"""
 
 import re
 

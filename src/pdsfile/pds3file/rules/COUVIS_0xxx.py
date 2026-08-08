@@ -2,6 +2,37 @@
 # pds3file/rules/COUVIS_0xxx.py
 ##########################################################################################
 
+"""Rules for the COUVIS_0xxx volume set: Cassini UVIS data.
+
+COUVIS_0xxx is described in the holdings as the Cassini UVIS (Ultraviolet
+Spectrometer) data collection (``_volinfo/COUVIS_0xxx.txt``). Its volumes group data
+files by date. A product is a binary data file with a detached PDS3 label, and the
+same observation can appear in more than one version of the volume set under a
+different data set ID.
+
+The rule tables:
+
+* ``description_and_icon_by_regex`` -- names the date-grouped directories, the time
+  series and the binary and spectral data cubes, and labels the versions table in
+  the metadata tree that ties data files to their data set IDs.
+* ``default_viewables`` -- points a data file at its preview images.
+* ``associations_to_volumes``, ``associations_to_previews``,
+  ``associations_to_metadata`` and ``associations_to_documents`` -- cross the
+  volumes, previews, metadata and documents trees for one observation.
+* ``view_options``, ``neighbors`` and ``sort_key`` -- the view flags, the
+  corresponding directories in sibling volumes, and the basename sort order.
+* ``opus_type``, ``opus_format`` and ``opus_products`` -- file products under the
+  "Cassini UVIS" OPUS category as "Raw Data" and "Calibration Data", and list what
+  OPUS offers with each.
+* ``opus_id`` and ``opus_id_to_primary_logical_path`` -- the OPUS ID and its
+  inverse.
+
+This volume set is the reason the data set ID cannot always be a translator. The
+class body defines ``COUVIS_0xxx.DATA_SET_ID`` as a method, and a companion class
+attribute ``COUVIS_0xxx.VERSIONS_PATH_AND_KEY`` that gives, for a data file, the
+metadata versions table to read and the row key to read it at.
+"""
+
 import os
 import re
 
@@ -230,6 +261,16 @@ opus_id_to_primary_logical_path = translator.TranslatorByRegex([
 ##########################################################################################
 
 class COUVIS_0xxx(pds3file.Pds3File):
+    """The ``Pds3File`` subclass for COUVIS_0xxx.
+
+    The class body puts this module's rule tables in front of the class attributes
+    ``Pds3File`` reads, and the module tail registers the class in
+    ``Pds3File.SUBCLASSES`` under the key "COUVIS_0xxx".
+    The module docstring describes the volume set and every table.
+
+    It also carries ``VERSIONS_PATH_AND_KEY`` and defines ``DATA_SET_ID`` as a
+    method rather than as a translator.
+    """
 
     pds3file.Pds3File.VOLSET_TRANSLATOR = translator.TranslatorByRegex([('COUVIS_0xxx', re.I, 'COUVIS_0xxx')]) + \
                                           pds3file.Pds3File.VOLSET_TRANSLATOR
@@ -264,8 +305,23 @@ class COUVIS_0xxx(pds3file.Pds3File):
     ])
 
     def DATA_SET_ID(self):
-        """Look up the ID of this product using one of the "versions" indices in
-        the metadata tree."""
+        """Return the PDS3 data set ID of this product.
+
+        A COUVIS_0xxx data file's data set ID depends on which version of the volume
+        set it belongs to, so it is looked up rather than derived from the path.
+        ``VERSIONS_PATH_AND_KEY`` gives the metadata versions table that covers this
+        file and the row key within it; the row is read from that table and its
+        DATA_SET_ID column returned.
+
+        Returns:
+            str: the data set ID, and the empty string for an object that does not
+            exist and for a directory.
+
+        Raises:
+            ValueError: if no versions table covers this file's logical path, and if
+                the table that does covers it holds no row under the key.
+            FileNotFoundError: if the versions table the lookup names is not on disk.
+        """
 
         if not self.exists or self.isdir:
             return ''

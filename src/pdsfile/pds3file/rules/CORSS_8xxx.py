@@ -2,6 +2,46 @@
 # pds3file/rules/CORSS_8xxx.py
 ##########################################################################################
 
+"""Rules for the CORSS_8xxx volume set: Cassini RSS ring occultation profiles.
+
+CORSS_8xxx is described in the holdings as Cassini RSS radio occultation profiles of
+Saturn's rings, 2005-2010. Its one volume, CORSS_8001, carries data set ID
+CO-SR-RSS-4/5-OCC-V2.0 (``_volinfo/CORSS_8xxx.txt``). Data are organized by
+spacecraft revolution: a "Rev" directory per orbit, and within it a directory per
+occultation direction, holding the optical depth profile, the diffraction-limited
+profile, the geometry table and the calibration parameters.
+
+The rule tables:
+
+* ``description_and_icon_by_regex`` -- names the calibration, geometry, optical
+  depth and diffraction-limited products and the observation description, and gives
+  the browse diagrams their sizes.
+* ``default_viewables`` -- the preview images for a product.
+* ``diagram_viewables``, ``profile_viewables``, ``skyview_viewables``,
+  ``dsntrack_viewables`` and ``timeline_viewables`` -- five further viewable sets,
+  which the class offers under the keys "diagram", "profile", "skyview", "dsntrack"
+  and "timeline" alongside "default". They are the occultation track geometry, the
+  radial profile figure, the sky view, the DSN elevation track and the observation
+  timeline. ``skyview_viewables`` and ``dsntrack_viewables`` are defined by no other
+  rule module, and this is the largest set of named viewables any of them offers.
+* ``associations_to_volumes``, ``associations_to_previews``,
+  ``associations_to_diagrams``, ``associations_to_metadata`` and
+  ``associations_to_documents`` -- cross the five trees for one occultation.
+* ``versions`` -- the paths of the same product in the other version of this volume
+  set, which cannot be found by wildcarding the version suffix alone: the earlier
+  version used upper-case file names, put the data under ``EASYDATA/`` rather than
+  ``data/``, used a different number of digits after "Rev", and had a different
+  directory tree.
+* ``view_options``, ``neighbors`` and ``split_rules`` -- the view flags, the
+  corresponding directories in sibling volumes, and the basename grouping.
+* ``opus_type``, ``opus_products``, ``opus_id`` and
+  ``opus_id_to_primary_logical_path`` -- file products under the "Cassini RSS" OPUS
+  category, list what OPUS offers with each, and give the OPUS ID and its inverse.
+
+`COUVIS_8xxx.py` and `COVIMS_8xxx.py` serve the stellar occultation profiles of the
+same rings from the two Cassini spectrometers.
+"""
+
 import re
 
 import translator
@@ -444,6 +484,13 @@ opus_id_to_primary_logical_path = translator.TranslatorByRegex([
 ##########################################################################################
 
 class CORSS_8xxx(pds3file.Pds3File):
+    """The ``Pds3File`` subclass for CORSS_8xxx.
+
+    The class body puts this module's rule tables in front of the class attributes
+    ``Pds3File`` reads, and the module tail registers the class in
+    ``Pds3File.SUBCLASSES`` under the key "CORSS_8xxx".
+    The module docstring describes the volume set and every table.
+    """
 
     pds3file.Pds3File.VOLSET_TRANSLATOR = translator.TranslatorByRegex([('CORSS_8xxx', re.I, 'CORSS_8xxx')]) + \
                                           pds3file.Pds3File.VOLSET_TRANSLATOR

@@ -2,6 +2,41 @@
 # pds3file/rules/JNOJIR_xxxx.py
 ##########################################################################################
 
+"""Rules for the JNOJIR_xxxx volume set: Juno JIRAM raw data.
+
+JNOJIR_xxxx is described in the holdings as the Juno JIRAM raw image collection. Its
+volumes are numbered one per orbit, starting from JNOJIR_1000 for the 2013 Moon
+images and JNOJIR_1001 for orbit insertion, and carry data set ID
+JNO-J-JIRAM-2-EDR-V1.0 (``_volinfo/JNOJIR_xxxx.txt``). An observation is a raw or
+calibrated image or spectrum, and each data file has a log table of engineering data
+beside it.
+
+The rule tables:
+
+* ``description_and_icon_by_regex`` -- distinguishes the raw and calibrated images
+  from the raw and calibrated spectra, names the engineering data, and names the
+  date-ordered data directories.
+* ``associations_to_volumes``, ``associations_to_metadata`` and
+  ``associations_to_documents`` -- cross the volumes, metadata and documents trees
+  for one observation.
+* ``neighbors`` -- the corresponding directories in sibling volumes.
+* ``siblings`` -- the basenames treated as adjacent within one directory. This is
+  the only rule module that overrides the sibling rule, rather than letting it be
+  derived from the split rule.
+* ``sort_key`` -- moves the timestamp to the front of a basename so that data files
+  order by time; puts a log table after the data file it describes and each label
+  after its own data file; sends the long run of JIRAM report PDFs to the end of the
+  documents directory; and sorts volumes that share their last three digits
+  together.
+* ``split_rules`` -- groups a log file with the data file it describes, and groups
+  volumes that share their last three digits. It has to work both on a raw basename
+  and on the basename ``sort_key`` produces from it, so it carries a "before" and an
+  "after" form of each pattern.
+
+This module defines no viewables and no OPUS tables, so previews and OPUS behavior
+come from the defaults in `pds3file/rules/__init__.py`.
+"""
+
 import re
 
 import translator
@@ -162,6 +197,13 @@ split_rules = translator.TranslatorByRegex([
 ##########################################################################################
 
 class JNOJIR_xxxx(pds3file.Pds3File):
+    """The ``Pds3File`` subclass for JNOJIR_xxxx.
+
+    The class body puts this module's rule tables in front of the class attributes
+    ``Pds3File`` reads, and the module tail registers the class in
+    ``Pds3File.SUBCLASSES`` under the key "JNOJIR_xxxx".
+    The module docstring describes the volume set and every table.
+    """
 
     pds3file.Pds3File.VOLSET_TRANSLATOR = translator.TranslatorByRegex([('JNOJIR_xxxx', re.I, 'JNOJIR_xxxx')]) + \
                                           pds3file.Pds3File.VOLSET_TRANSLATOR
