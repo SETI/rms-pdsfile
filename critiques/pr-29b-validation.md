@@ -506,9 +506,9 @@ to judge each against the code as if it were new prose, and to tag every finding
 
 | second read | over prose from | findings | `[CHANGED]` | `[ORIGINAL]` |
 |---|---|---:|---:|---:|
-| round 4 | rounds 1 and 3 | 12 | **5** | 6, plus 1 unverifiable |
+| round 4 | rounds 1 and 3 | 12 | **5** | 7, one of them unverifiable |
 | round 5 | round 2 | 9 | **5** | 4 |
-| | | **21** | **10** | **10** |
+| | | **21** | **10** | **11** |
 
 **Ten of twenty-one findings on a second read were corrections of the first read's own
 corrections.** PR-29a measured eleven of twenty-three on a different set of modules. Two
