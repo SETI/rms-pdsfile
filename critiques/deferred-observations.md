@@ -4751,3 +4751,21 @@ function and a dictionary cache does not, keeping it as a constant. **Owner: unc
      package reads; what actually keeps those entries out of the trim is the zero lifetime
      they were stored with, which is entry 189's subject from the other side.
      **Owner: a future pdsfile PR.**
+
+### Added by the CodeRabbit re-review of PR #129 (2026-08-08)
+
+222. **`data_abspath_associated_with_index_row`'s neighbor rewrite replaces every
+     occurrence of the basename, not the last path component.**
+     `src/pdsfile/_index_rows.py:489` builds the answer for a missing row as
+     `abspath.replace(neighbor.basename, self.basename)`, so a basename that also appears
+     in a parent directory name is substituted there too and the result names a different
+     directory rather than a sibling file. The `cls.os_path_exists(abspath)` guard on the
+     next line is what keeps a corrupted path from being returned -- the rewrite is
+     accepted only if it resolves -- so the failure mode is a missed answer rather than a
+     wrong one, and a holdings tree whose row basenames never appear as directory
+     components never sees it. The docstring states the behavior, including that the
+     replacement is not scoped to the last component. The fix is to rewrite only the final
+     component, which changes what the method returns for inputs it currently rejects and
+     so needs its own regression test. Raised by the CodeRabbit re-review; the docstring
+     documents it and no entry did.
+     **Owner: a future pdsfile PR.**
