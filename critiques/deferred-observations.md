@@ -2308,6 +2308,24 @@ these entries are read by the PRs that come after it.
     correctly stayed out of PR-24.
     **Owner: Phase 7 (PR-29–PR-34), which owns docstrings and module structure.**
 
+    **AMENDED by PR-30a (2026-08-08). The merge is still open and the split is now
+    navigable without it.** PR-30a documented both groups where they stand rather
+    than moving anything, since it changes no executable statement. Every one of the
+    nineteen aliases — thirteen properties and six methods, not the "seven shadowed
+    definitions plus one" this entry's framing implies — now opens with the same
+    sentence shape, "The PDS3 name for `bundle...`, whose value it returns", so the
+    group a member belongs to is legible from the member rather than from the comment
+    above it, and the class docstring counts them in one place. The `Raises:` and
+    `Returns:` of each also record where its base member's answer differs from what
+    the name suggests, which is the thing a merge would not have supplied.
+
+    The line numbers have moved: `# Alias, compatible with old function/property
+    names` is at `:243` above `log_path_for_volset`, `# Override functions` at `:268`,
+    and the second group now runs from `:268` to `:524` rather than fifty lines. The
+    two are further apart than when this entry was written, which is an argument for
+    the merge rather than against it. **Owner: unchanged — a later PR that may move
+    code.**
+
 ### Added by the PR-24 adversarial review (round 2)
 
 88. **The pds3 and pds4 tool twins have already diverged on their mutable
@@ -4033,7 +4051,7 @@ of them has a module docstring at all.
      (`_preload.py:101`) is re-exported by `preload_and_cache` and by `pdsfile.pdsfile`,
      but every cache in the package is built with `cls.DICTIONARY_CACHE_LIMIT`, a class
      attribute defined separately and identically in `pdsfile.py:331`,
-     `pds3file/__init__.py:134` and `pds4file/__init__.py:116`. Rebinding the module
+     `pds3file/__init__.py:157` and `pds4file/__init__.py:132`. Rebinding the module
      constant changes nothing. `pdscache.MEMCACHED_LOADED` (`pdscache.py:77`) is read
      nowhere; the flag the code actually consults is `_preload.HAS_PYLIBMC`, set by a
      second `try: import pylibmc` in a second module. Both names are in the frozen API,
@@ -5449,3 +5467,168 @@ rediscovery.
      and gets no independent read under the current round structure.
      **Owner: a reviewer-brief instruction -- one round of any PR that ships a checker
      should review the checker.**
+
+### Added by PR-30a
+
+276. **A Google-style `Attributes:` section on a dataclass produces a duplicate-object
+     warning under this project's Sphinx configuration.** Napoleon renders each entry as
+     an attribute directive; autodoc renders the same field again, because a dataclass
+     field is an annotated class-level name and the page carries `:undoc-members:`. The
+     two collide, and `sphinx-build -W` fails. It accounts for **all 27** remaining
+     warnings in PR-30a's probe -- 21 for `ToolSpec`, three for `VersionedFile`, three
+     for `RunResult` -- and it is present identically at `80f5e52`, so the PR neither
+     caused it nor cleared it.
+
+     The cause was isolated with a two-class control rather than argued from the message:
+     a throwaway package holding one dataclass documented with `Attributes:` and one
+     documented in prose, built with the same `conf.py` and the same directives, warns
+     for the first and not the second. **Two fixes were measured on that control and
+     both take it to zero:** `napoleon_use_ivar = True` in `conf.py`, which renders the
+     entries as a field list that creates no target, or dropping `:undoc-members:` from
+     the page. Neither was applied: `critiques/pr-29/sphinx-conf.py` and
+     `critiques/pr-29a/build_docs_probe.py` are inherited, four records depend on their
+     behavior, and the real `conf.py` does not exist yet.
+     **Owner: PR-31, which creates `docs/conf.py`. Whichever of the two it takes, the
+     `Attributes:` sections in `_common.py` and `_shelf_common.py` should not have to
+     change.**
+
+277. **`critiques/pr-29/strip_docstrings.py` cannot answer for a module that was empty.**
+     `strip()` replaces a body its removal empties with a single `pass`, so that the tree
+     stays valid: `node.body = body[1:] or [ast.Pass()]`. A zero-byte module has no body,
+     the guard above that line never fires, and its stripped tree is `Module(body=[])`; a
+     module whose whole content is a docstring strips to `Module(body=[Pass()])`. The two
+     hash differently, and they differ for **any** docstring, so the head hash carries no
+     information about the change: PR-30a's two new package docstrings, sharing not one
+     sentence, both hash to `5c04595997820c90`.
+
+     PR-30a proved those two files another way -- the head file's entire AST is one string
+     constant, so it can hold no executable statement -- and left the script alone, since
+     amending a gate so that it passes is a hard stop and three records depend on its
+     numbers. The narrowest fix, if one is ever wanted, is to skip the substitution when
+     the body was already empty. **Owner: whichever PR next documents an empty module.
+     PR-30b has none; the four remaining `__init__.py` files under
+     `holdings_maintenance/` are all zero bytes, so PR-30b will meet this twice more.**
+
+278. **`_archives_common.validate_tuples()` accepts an interior-path-only mismatch in
+     silence.** The comparison branches on the whole `(dirpath, nbytes, modtime)` triple
+     but then checks only the byte count and the modification time, so an entry that
+     agrees on absolute path, size and time is deleted from the tarfile dictionary and
+     `valid` stays True however far apart the two interior paths are. Measured: with
+     `dir_tuples=[('/a/x.txt', 'V/x.txt', 10, 100.0)]` and
+     `tar_tuples=[('/a/x.txt', 'TOTALLY/DIFFERENT.txt', 10, 100.0)]` the function returns
+     `True` and logs nothing. It cannot arise from the two archive tools as they stand,
+     since each list derives its interior path from its own absolute path by a fixed
+     rule, so this is a latent hole rather than a live bug. PR-30a documents the behavior
+     rather than the intent. **Owner: a later archive-tool PR.**
+
+279. **`_shelf_common.next_version_dest()` has no upper bound and no lower guard.**
+     Measured: with `_v001` through `_v999` present it returns `_v1000`, and with
+     `_v1000` present as well it returns `_v1000` again, because the `_v???` glob matches
+     exactly three characters and cannot see a four-digit name -- so `move_old()` then
+     overwrites the previous `_v1000` silently. Separately, an empty extension makes the
+     version slice `path[-3:0]`, which is `''`, so the first path the glob matches raises
+     `ValueError` out of `int()`; with no match it is harmless. Both are documented in
+     the docstring, neither is fixed. **Owner: a later maintenance-tool PR.**
+
+280. **`_indexshelf_common.load_indexdict()` lets an `EOFError` escape unlogged.** A
+     zero-length shelf file -- what an interrupted or truncated write leaves -- raises
+     `EOFError` out of `pickle.load`, and `except pickle.PickleError` does not catch it,
+     so it is the one failure in that function that is neither logged nor converted.
+     `_linkshelf_common.load_links()` does not have the hole; it catches
+     `(Exception, KeyboardInterrupt)`. Found by round 1 and measured against a real table
+     with the shelf path redirected. PR-30a documents it in `Raises:`.
+     **Owner: PR-30b or a later maintenance-tool PR.**
+
+281. **The two repair tasks derive the sidecar path differently from the writers that
+     create it.** `_indexshelf_common.index_repair()` and
+     `_linkshelf_common.link_repair()` both use `path.replace('.pickle', '.py')`, which
+     rewrites *every* occurrence, while the writers that produced the file use
+     `path.rpartition('.')[0] + '.py'`. A shelf path containing `.pickle` anywhere but
+     its extension therefore gets a sidecar path the writer never wrote, and
+     `os.path.getmtime` raises `FileNotFoundError` from inside the "content is up to
+     date" branch. No such path exists in the holdings trees checked.
+     **Owner: PR-30b or a later maintenance-tool PR.**
+
+282. **`show_opus_products` dies with an `IndexError` on real holdings paths.**
+     `golden_opus_types = [prod_category[2] for prod_category, _ in opus_prod.items()]`
+     assumes every key of `opus_products()` is a five-element tuple; two more places
+     assume the same. Four paths in `/seti/opus/pdsdata/holdings` return a dictionary
+     keyed by the empty string, carrying the volume set's `documents/` products:
+     `volumes/VG_20xx/VG_2001/JUPITER/CALIB/VG1PREJT.LBL` and three files under
+     `volumes/VGIRIS_xxxx_peer_review/VGIRIS_0001/DATA/JUPITER_VG1/`. Found by round 2,
+     which scanned 6,674 files across every volume of the test holdings to establish that
+     it is four and not more, and reproduced here. The tool prints a traceback and
+     returns nothing. **Two owners: the tool should not subscript an unchecked key, and
+     separately `opus_products()` producing an empty-string key at all belongs to
+     `_opus.py` and the `VG_20xx`/`VGIRIS_xxxx` rule modules.**
+
+283. **`show_opus_products --debug` prints no traceback.** `traceback.print_exc()` sits
+     outside any `except` block -- both handlers have exited by the time control reaches
+     `if pdsf_inst is None:` -- so the flag prints `NoneType: None` instead of the
+     traceback its own help text promises. Measured by round 2 on a path that resolves
+     under neither class. **Owner: a later tool PR.**
+
+284. **`show_opus_products`'s narrow-table de-duplication guard can never fire.**
+     `rows` is a list of one-element lists and `opus_type` is a string, so
+     `if opus_type not in rows` compares a string against lists and is always true. The
+     guard is harmless, because `res` is a dictionary keyed by OPUS type and its keys are
+     unique already, but it is dead. **Owner: a later tool PR.**
+
+285. **`_shelf_common.expand_selection_targets()` can dereference `None`.**
+     `pdsdir = pdsf.parent()` is followed immediately by `pdsdir.is_bundle_dir`, so a
+     path whose PdsFile has no parent gives an `AttributeError` rather than the
+     documented `SystemExit`. Round 1 could not construct such a path inside a holdings
+     tree, so it is theoretical. **Owner: a later maintenance-tool PR.**
+
+286. **The `except AttributeError` round each rule-module import is dead code.**
+     `pds3file/__init__.py` and `pds4file/__init__.py` both wrap their
+     `from .rules import (...)` in a handler whose comment says the error is what a
+     recursive import of `pdsfile` raises when a rule module is tested on its own. Round
+     2 traced the handler lines with `sys.settrace` while importing `pdsfile`,
+     `pdsfile.pds3file.rules.COISS_xxxx` and
+     `pdsfile.pds4file.rules.uranus_occs_earthbased` first in a fresh interpreter and got
+     no hits in any of the three, and built a minimal package of the same shape showing
+     that `import pkg.sub as sub` during a circular import binds from `sys.modules`
+     rather than raising -- the fallback added in Python 3.7. `pyproject.toml` requires
+     3.10 or newer, so the mechanism the comment describes cannot occur.
+
+     Removing the handler is a code change and was out of PR-30a's scope; the two module
+     docstrings now say the handler is there and that the mechanism does not occur,
+     rather than repeating the comment. **Owner: a later cleanup PR, which should decide
+     whether the tests that import a rule module on its own still need any handler.**
+
+287. **Two of the five index shelf tasks test a value that cannot be what they test
+     for.** `index_initialize()` and `index_validate()` both guard on
+     `if <table dict> is None:`, and `generate_indexdict()` returns a dictionary from a
+     comprehension on every path that returns at all, so neither branch is reachable.
+     `index_reinitialize()` and `index_repair()` guard on emptiness instead, which is
+     reachable. The consequence is a real divergence rather than only dead code: a table
+     with no rows is shelved as an empty dictionary by `index_initialize()` and stops
+     `index_reinitialize()` before it writes. Measured by stubbing `generate_indexdict`
+     to return `({}, 0.0)`. **Owner: PR-30b or a later maintenance-tool PR.**
+
+288. **An alias inherits its base member's undocumented hazards.** `Pds3File`'s
+     `is_volset_dir` and `is_volset_file` forward to `is_bundleset_dir` and
+     `is_bundleset_file`, which read `isdir`, which `_properties.py` documents as raising
+     `KeyError` under `SHELVES_ONLY` "for a path the shelf covers and holds no entry
+     for"; `volset_pdsfile` and `volume_pdsfile` forward to base methods that call
+     `os_path_exists()` and `from_abspath()`, both of which can raise. None of the four
+     base members carries a `Raises:` section, so PR-30a's aliases do not either, and
+     round 2 could not construct a bundle-set-level path that is shelf-covered and absent
+     to demonstrate the first. The gap is in the base members rather than in the aliases,
+     which is why it was not closed on one side only. **Owner: a later PR that revisits
+     `pdsfile.py` and `_properties.py`, or PR-35 when it decides what the stubs
+     declare.**
+
+289. **Entry 239's freeze rule was followed for the second reads and broken for the
+     first.** PR-30a launched rounds 1 and 2 against `2fd40c4` and then kept committing
+     to `src/` while they ran; the tree reached `bd5b192`, eight commits on, before round
+     1 finished. Round 1 noticed, read the frozen text through `git show`, re-checked its
+     findings against the moved tree, and reported the drift in its own record, so the
+     experiment survived -- but only because the reviewer caught it, and two of its
+     fourteen findings had already been fixed by the executor independently, which makes
+     the yield harder to attribute. Rounds 3 and 4 were launched against a frozen
+     `e8af080` with nothing committed to `src/` until they returned.
+     **Owner: a reviewer-brief and executor instruction -- the freeze is the executor's
+     to hold, and "I found it myself first" is not a reason to break it, because it
+     destroys the measurement the round exists to produce.**
