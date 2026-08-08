@@ -1,9 +1,56 @@
 ##########################################################################################
 # pdsfile/_properties.py
-# The derived values of a PdsFile: the lazy properties, which fill an _X_filled slot
-# and (in all but one case) write the object back to the shared cache, and the ones
-# recomputed on each access
 ##########################################################################################
+
+"""The values a PdsFile works out about itself rather than reading off its path.
+
+A ``PdsFile``'s taxonomy -- its category, bundle set, bundle and interior path -- is
+fixed when the object is built. Everything else it can answer is derived, and this is
+where the derivations live: whether the file exists, how large it is and when it changed,
+what describes it, what displays it, what its label is, which versions of it exist, and
+what OPUS calls it.
+
+Most of these are properties, and most of those are lazy in one particular sense. Each
+holds a slot that ``PdsFile.__init__()`` creates and sets to None; the first access
+derives the value, stores it in the slot, and calls ``self._recache()`` so that the copy
+of this object in the shared cache is the filled one rather than the empty one. A second
+access returns the slot. The saving is not the arithmetic but the shelf reads, the
+filesystem calls and the globs the derivations make, and ``_recache()`` is what spreads
+it past the lifetime of one object.
+
+Three consequences run through the whole module and are worth knowing before reading any
+one docstring:
+
+  * **Reading one property fills others.** ``mime_type`` fills the slot behind ``split``
+    and the slot behind ``isdir``; ``date`` fills the slot behind ``_info``. Each
+    docstring names the slots its own derivation fills, because that is what a caller
+    measuring cost, or writing a test that counts shelf reads, needs.
+
+  * **A miss is stored as a value.** An empty string, an empty list or False is written
+    where nothing was found, so the derivation is not repeated. Which falsy value stands
+    for "nothing" differs by property and is stated in each. Where the slot is left at
+    None instead, the whole derivation runs again on every access, and those cases are
+    called out where they arise.
+
+  * **Two kinds of object arrive with the slots already filled.** A merged directory,
+    which stands for one category across several disks, and an index row, which stands
+    for rows of an index table, are both built by filling most slots in advance, so many
+    of these bodies are never reached on them. Each docstring says what its own slot
+    holds on those two, because "born with the slot set" and "derives it" are different
+    answers to what a property costs and to whether it can fail.
+
+The rest are properties with no slot, recomputed on each access because they only read
+another property or an attribute; and four members that are not properties at all:
+``version_info()``, which reads a bundle set suffix as a version; ``all_versions()``,
+which finds this file across versions; ``viewset_lookup()``, which searches for a named
+set of images; and ``_repair_width_height()``, which measures an image the shelves did
+not.
+
+The class here is a mixin of ``PdsFile``. It defines no state: every slot it writes is
+created by ``PdsFile.__init__()`` and ``_recache()`` is defined in ``PdsFile``, both of
+which stay in the core module. ``_PropertiesMixin``'s own docstring enumerates every
+attribute these bodies read or write, which is the contract that makes the split safe.
+"""
 
 import datetime
 import os
@@ -600,8 +647,8 @@ class _PropertiesMixin:
         label extension and cannot reach this; the PDS4 subclass has two.
 
         Returns:
-            pdsparser.PdsLabel: the parsed label, or None where this is not an index or no
-            label could be parsed.
+            the parsed label, as the ``PdsLabel`` object ``pdsparser`` builds, or None
+            where this is not an index or no label could be parsed.
         """
 
         if not self.is_index:
@@ -1080,9 +1127,30 @@ class _PropertiesMixin:
 
     @property
     def _volume_info(self):
-        """Return the information about this volume, volset, or product as retrieved from
-        a table in the volinfo/ directory. Returned tuple is (description, icon_type,
-        volume_date, list of data_set_ids, optional checksum].
+        """What the volume-info tables record about this bundle, bundle set or product.
+
+        The tables are read by the preload and held in the shared cache; this is the
+        lookup into them. The value is derived on the first access, stored in
+        ``_volume_info_filled`` and returned unchanged afterwards; deriving it calls
+        ``_recache()``. An index row inherits its table's value. A merged directory is
+        born without this slot and does reach the body, where it finds nothing and takes
+        the fallback.
+
+        Up to three keys are tried in order: this object's own logical path, and then, for
+        anything outside the documents tree, the bundle set and bundle name with the
+        volume type in front and then without it. The first key the cache holds wins. A
+        file the tables say nothing about gets a fallback whose icon type is ``UNKNOWN``
+        and whose every other field is empty, so this never raises and every reader of it
+        gets a value of the right shape.
+
+        ``description``, ``icon_type``, ``bundle_version_id``,
+        ``bundle_publication_date``, ``volume_data_set_ids`` and ``checksum`` are the six
+        fields read back out of here, in that order.
+
+        Returns:
+            tuple: the description, the icon type, the version id, the publication date,
+            the list of data set ids, and the MD5 checksum. Six elements, of which the
+            last is empty for everything the checksum tables do not cover.
         """
 
         cls = type(self)
@@ -1115,7 +1183,25 @@ class _PropertiesMixin:
 
     @property
     def description(self):
-        """Return the description text about this file as it appears in Viewmaster."""
+        """The sentence describing this file, as a Viewmaster page shows it.
+
+        This and ``icon_type`` are two halves of one derivation: the pair is computed on
+        the first access to either, stored in ``_description_and_icon_filled`` and
+        returned unchanged afterwards; deriving it calls ``_recache()``. A merged
+        directory and an index row both reach the body.
+
+        Three sources, by what the object is. An index row gets a fixed phrase naming how
+        many rows it stands for. A bundle or bundle set gets the volume-info table's
+        description, with the volume type prefixed where the description does not already
+        say it, so a preview tree's description reads ``Previews of ...`` rather than
+        repeating the volume's own; where the table gives no icon type, one is taken from
+        the class's high-level icon table and then from the description rules. Anything
+        else is looked up in the volume-info tables by its own logical path and falls back
+        to the description rules.
+
+        Returns:
+            str: the description, which is HTML rather than plain text.
+        """
 
         cls = type(self)
 
@@ -1174,7 +1260,19 @@ class _PropertiesMixin:
 
     @property
     def icon_type(self):
-        """Return the icon type for this file."""
+        """The name of the icon a page should show for this file.
+
+        This is the second half of ``description``'s derivation, so reading it computes
+        the description too and fills ``_description_and_icon_filled``. It holds no slot
+        of its own and is recomputed from that pair on every access.
+
+        The value is a name such as ``ROOT`` or ``INFO``, which ``iconset_for()`` and the
+        ``_iconset`` property turn into an icon set. It is never empty: where no table and
+        no rule supply one, the description rules' own fallback does.
+
+        Returns:
+            str: the icon type name.
+        """
 
         _ = self.description
         return self._description_and_icon_filled[1]
@@ -1227,7 +1325,18 @@ class _PropertiesMixin:
 
     @property
     def opus_id(self):
-        """Return the OPUS ID of this product if it has one; otherwise an empty string.
+        """The OPUS identifier of the product this file belongs to.
+
+        The value is derived on the first access from the class's OPUS_ID rules, stored in
+        ``_opus_id_filled`` and returned unchanged afterwards; deriving it calls
+        ``_recache()``. A merged directory is born with the slot set to an empty string.
+
+        The rules read the logical path, so nothing here tests that the file exists. A
+        path no rule matches gets an empty string rather than None, which is what lets a
+        caller test the result for truth.
+
+        Returns:
+            str: the OPUS ID, or an empty string.
         """
 
         if self._opus_id_filled is None:
@@ -1238,8 +1347,21 @@ class _PropertiesMixin:
 
     @property
     def opus_format(self):
-        """Return the OPUS format of this product, e.g., ('ASCII', 'Table') or
-        ('Binary', 'FITS').
+        """How the data in this file is encoded, as OPUS describes it.
+
+        The value is derived on the first access from the class's OPUS_FORMAT rules,
+        stored in ``_opus_format_filled`` and returned unchanged afterwards; deriving it
+        calls ``_recache()``. A merged directory is born with the slot set to an empty
+        string.
+
+        **A path no rule matches gets None, not an empty string**, because the rules'
+        answer is stored as it comes. That makes this the one OPUS property whose miss is
+        not falsy-but-a-string, and it also means the slot stays None and the derivation
+        runs again on every access for such a file.
+
+        Returns:
+            tuple: a pair such as ``('ASCII', 'Table')`` or ``('Binary', 'FITS')``, or
+            None where no rule matches.
         """
 
         if self._opus_format_filled is None:
@@ -1250,13 +1372,23 @@ class _PropertiesMixin:
 
     @property
     def opus_type(self):
-        """Return the OPUS type of this product, returned as a tuple: (dataset name,
-        priority (where lower comes first), type ID, description)
-        If no OPUS type exists, it returns ''
+        """Which OPUS product category this file belongs to, and how it is ranked.
 
-        Examples:
-            ('Cassini ISS',   0, 'coiss_raw',  'Raw Image')
-            ('Cassini ISS', 130, 'coiss_full', 'Extra preview (full-size)')
+        The value is derived on the first access from the class's OPUS_TYPE rules, stored
+        in ``_opus_type_filled`` and returned unchanged afterwards; deriving it calls
+        ``_recache()``. A merged directory is born with the slot set to an empty string.
+
+        The tuple has five elements: the data set's display name, a priority in which the
+        lower number sorts first, the type id OPUS keys on, a description, and a flag
+        saying whether OPUS checks this type by default. ``('Cassini ISS', 0, 'coiss_raw',
+        'Raw Image', True)`` is one, and ``('Cassini ISS', 130, 'coiss_full', 'Extra
+        preview (full-size)', False)`` is another.
+
+        A path no rule matches gets an empty string rather than a tuple, so a caller has
+        to test the result before unpacking it.
+
+        Returns:
+            tuple: the five-element OPUS type, or an empty string where no rule matches.
         """
 
         if self._opus_type_filled is None:
@@ -1268,7 +1400,22 @@ class _PropertiesMixin:
 
     @property
     def data_set_id(self):
-        """Return the PDS3 DATA_SET_ID for the file, if it has one; otherwise, blank."""
+        """The PDS3 data set identifier this file belongs to.
+
+        The value is derived on the first access, stored in ``_data_set_id_filled`` and
+        returned unchanged afterwards; deriving it calls ``_recache()`` and fills
+        ``_volume_data_set_ids_filled`` and ``_volume_info_filled``. A merged directory is
+        born with the slot set to an empty string; an index row is born with it set to
+        None and so does reach the body.
+
+        The bundle's own list of data set ids decides. An empty list gives an empty string
+        and a list of one gives that one, both without consulting any rule. Only a bundle
+        carrying more than one needs the class's DATA_SET_ID rule to say which of them
+        this file belongs to, and a rule that answers with nothing gives an empty string.
+
+        Returns:
+            str: the data set id, or an empty string.
+        """
 
         if self._data_set_id_filled is not None:
             return self._data_set_id_filled
@@ -1297,27 +1444,26 @@ class _PropertiesMixin:
 
     @property
     def lid(self):
-        """Return the LID for data files under volumes directory. If the volume
-        has no LID, it returns ''.
+        """The PDS4-style logical identifier of this file, where it has one.
 
-        Format:
-        dataset_id:volume_id:directory_path:file_name
+        The value is derived on the first access, stored in ``_lid_filled`` and returned
+        unchanged afterwards; deriving it calls ``_recache()``, and fills
+        ``_data_set_id_filled`` and the slots that reads. A merged directory and an index
+        row are born with the slot set to an empty string.
 
-        Examples:
-        'volumes/COISS_2xxx/COISS_2002/data/1460960653_1461048959/
-        N1460960653_1.IMG'
-        -> 'CO-S-ISSNA/ISSWA-2-EDR-V1.0:COISS_2002:data/1460960653_1461048959:
-            N1460960653_1.IMG'
+        Four conditions must all hold, and an empty string is the answer when any of them
+        fails: the class's LID_AFTER_DSID rules must answer for this path, the file must
+        have a data set id, its bundle set must carry no version suffix, and it must be in
+        the ``volumes`` category. The last two are what restrict LIDs to the current
+        version of a PDS3 volume; a superseded version and anything in the previews,
+        calibrated or metadata trees get an empty string however good a path they have.
 
-        'volumes/COISS_2xxx/COISS_2002/data/1460960653_1461048959/
-        N1460960653_1.LBL'
-        -> 'CO-S-ISSNA/ISSWA-2-EDR-V1.0:COISS_2002:data/1460960653_1461048959:
-            N1460960653_1.LBL'
+        The identifier is the data set id and the rules' answer joined by a colon, so it
+        reads as ``<data set id>:<bundle>:<directory path>:<file name>``. A label and the
+        file it describes get different LIDs, because the file name is the last field.
 
-        'volumes/COISS_2xxx/COISS_2008/extras/full/1477675247_1477737486/
-        N1477691357_1.IMG.png'
-        -> 'CO-S-ISSNA/ISSWA-2-EDR-V1.0:COISS_2008:
-            extras/full/1477675247_1477737486:N1477691357_1.IMG.png'
+        Returns:
+            str: the LID, or an empty string.
         """
 
         if self._lid_filled is not None:
@@ -1336,27 +1482,20 @@ class _PropertiesMixin:
 
     @property
     def lidvid(self):
-        """Return the LIDVID for data files under volumes directory. If the
-        volume has no LID, it returns ''.
+        """This file's logical identifier with a version appended.
 
-        Format:
-        dataset_id:volume_id:directory_path:file_name::vid
+        The value is derived on the first access from ``lid``, stored in
+        ``_lidvid_filled`` and returned unchanged afterwards; deriving it calls
+        ``_recache()`` and fills ``_lid_filled``. A merged directory and an index row are
+        born with the slot set to an empty string.
 
-        Examples:
-        'volumes/COISS_2xxx/COISS_2002/data/1460960653_1461048959/
-        N1460960653_1.IMG'
-        -> 'CO-S-ISSNA/ISSWA-2-EDR-V1.0:COISS_2002:data/1460960653_1461048959:
-            N1460960653_1.IMG::1.0'
+        A file with no LID gets an empty string. Everything else gets its LID with
+        ``::1.0`` appended. The version is that literal and is not read from anywhere:
+        only the current version of a PDS3 bundle has a LID at all, so there is no second
+        version for this to name.
 
-        'volumes/COISS_2xxx/COISS_2002/data/1460960653_1461048959/
-        N1460960653_1.LBL'
-        -> 'CO-S-ISSNA/ISSWA-2-EDR-V1.0:COISS_2002:data/1460960653_1461048959:
-            N1460960653_1.LBL::1.0'
-
-        'volumes/COISS_2xxx/COISS_2008/extras/full/1477675247_1477737486/
-        N1477691357_1.IMG.png'
-        -> 'CO-S-ISSNA/ISSWA-2-EDR-V1.0:COISS_2008:
-            extras/full/1477675247_1477737486:N1477691357_1.IMG.png::1.0'
+        Returns:
+            str: the LIDVID, or an empty string.
         """
 
         if self._lidvid_filled is not None:
@@ -1374,9 +1513,26 @@ class _PropertiesMixin:
 
     @property
     def info_basename(self):
-        """Return the basename of an informational file associated with this PdsFile
-        object. This could be a file like "VOLDESC.CAT", "CATINFO.TXT", or the label file
-        associated with a data product.
+        """The basename of the file that describes this one, for a page to link to.
+
+        The value is derived on the first access, stored in ``_info_basename_filled`` and
+        returned unchanged afterwards; deriving it calls ``_recache()`` and fills the
+        slots behind ``childnames``, ``islabel`` and ``label_basename``. A merged
+        directory and an index row are born with the slot set to an empty string.
+
+        Three sources are tried in order and the first that answers wins. The class's
+        INFO_FILE_BASENAMES rules pick one of this object's own child names, which is how
+        a directory finds its ``VOLDESC.CAT`` or ``CATINFO.TXT``. Failing that, a label
+        file describes itself and any other file is described by its own label. Failing
+        that, a bundle directory looks one level above itself on the filesystem for each
+        of EXTRA_README_BASENAMES, which is a real ``os.path.exists()`` test because those
+        files are not in any info shelf, and it keeps the last that matches rather than
+        the first.
+
+        A file none of the three answers for gets an empty string.
+
+        Returns:
+            str: the basename of the informational file, or an empty string.
         """
 
         cls = type(self)
@@ -1414,8 +1570,33 @@ class _PropertiesMixin:
 
     @property
     def internal_link_info(self):
-        """Return a list of tuples [(recno, basename, abspath), ...], or else the abspath
-        of the label for this file.
+        """What the link shelf records about the files this one points at.
+
+        The value is derived on the first access, stored in ``_internal_links_filled`` and
+        returned unchanged afterwards; deriving it calls ``_recache()``. A merged
+        directory and an index row are born with the slot set to an empty list.
+
+        **The result has three shapes and the caller has to tell them apart.** A label
+        file gets a list of triples, one for each link it holds: the line number the link
+        is on, the text that appears there, and the absolute path it resolves to. A file
+        that has an external label gets that label's absolute path, as a string. A file
+        that has neither gets an empty list.
+
+        A fourth shape says the answer is missing rather than empty: an empty *tuple* is
+        stored where the shelf could not be read, which an empty list would not
+        distinguish from a file with no links. That path logs a warning and re-raises
+        where SHELVES_REQUIRED is set. A bundle-set AAREADME file, which no shelf covers,
+        is excepted from all of it and gets an empty list.
+
+        Directories, checksum files, archive files and anything outside the volumes,
+        calibrated and metadata trees are answered with an empty list without the shelf
+        being opened. The paths in the triples are resolved from the shelf's relative form
+        against this file's bundle, bundle set or holdings root, by how many levels the
+        recorded path climbs.
+
+        Returns:
+            list: the triples, or the label's absolute path as a string, or an empty list,
+            or an empty tuple where the shelf failed.
         """
 
         if self._internal_links_filled is not None:
@@ -1493,9 +1674,24 @@ class _PropertiesMixin:
 
     @property
     def linked_abspaths(self):
-        """Return a list of absolute paths linked to this PdsFile. Linked files are those
-        whose name appears somewhere in the file, e.g., by being referenced in a label or
-        cited in a documentation file.
+        """The absolute paths of every file this one points at.
+
+        This holds no slot of its own and is recomputed on every access, but the first
+        access fills ``_internal_links_filled`` through ``internal_link_info``, whose
+        three shapes it sorts out.
+
+        Where that gives triples, this is their paths, in the order they appear, with
+        duplicates dropped and this file itself removed. Where it gives a string, this
+        file is not a label but has one, so the question is passed to the label instead
+        and the answer is the label's links: a data file therefore reports the same list
+        as the label that describes it, this file included. Where it gives neither, the
+        answer is an empty list.
+
+        An empty tuple from a failed shelf takes the first branch and yields an empty
+        list, so a shelf failure is indistinguishable here from a file with no links.
+
+        Returns:
+            list: the absolute paths, without duplicates.
         """
 
         cls = type(self)
@@ -1633,7 +1829,23 @@ class _PropertiesMixin:
 
     @property
     def data_abspaths(self):
-        """Return a list of the targets of a label file; otherwise []."""
+        """The absolute paths of the data files this label describes.
+
+        This is the inverse of ``label_abspath`` and it holds no slot of its own. Anything
+        that is not itself a label gets an empty list at once.
+
+        A link is a target only where the pointing is mutual: each path this label links
+        to is built into a PdsFile and kept only where that file names this label as its
+        own. That is what separates the files a label describes from the files it merely
+        mentions -- a format file it includes, or another label it cites. Building each
+        candidate makes this the most expensive of the link properties.
+
+        The comparison is on the basename and is case-insensitive, so a label and a data
+        file whose recorded label name differs only in case still pair up.
+
+        Returns:
+            list: the absolute paths of the data files, in the order the links appear.
+        """
 
         if not self.islabel:
             return []
@@ -1652,7 +1864,22 @@ class _PropertiesMixin:
 
     @property
     def viewset(self):
-        """Return PdsViewSet to use for this object."""
+        """The set of images that stands in for this file on a page.
+
+        The value is derived on the first access, stored in ``_viewset_filled`` and
+        returned unchanged afterwards; deriving it calls ``_recache()``. A merged
+        directory and an index row are born with the slot set to False.
+
+        The lookup is skipped, and False stored, for anything that is not an existing file
+        inside a bundle: the bundle and bundle-set levels, the archive and checksum trees.
+        Everything else asks ``viewset_lookup()`` for the default view set, which for a
+        directory is inherited from a child. **A miss is stored as False rather than
+        None**, which is what stops the lookup being repeated, so a caller must test the
+        result and not assume a set.
+
+        Returns:
+            pdsviewable.PdsViewSet: the view set, or False where there is none.
+        """
 
         if self._viewset_filled is not None:
             return self._viewset_filled
@@ -1670,7 +1897,19 @@ class _PropertiesMixin:
 
     @property
     def local_viewset(self):
-        """Return PdsViewSet for this object if it is itself viewable; otherwise False.
+        """The set made from this file itself, where this file is an image.
+
+        The value is derived on the first access, stored in ``_local_viewset_filled`` and
+        returned unchanged afterwards; deriving it calls ``_recache()``. A merged
+        directory and an index row are born with the slot set to False.
+
+        Where ``viewset`` finds the images that *represent* this file, this one is the
+        file itself as an image, and it is the only one of the two that tests both that
+        the file exists and that its name is viewable. Anything else is stored as False
+        rather than None, so the derivation is not repeated.
+
+        Returns:
+            pdsviewable.PdsViewSet: a set holding this file alone, or False.
         """
 
         if self._local_viewset_filled is not None:
@@ -1687,7 +1926,29 @@ class _PropertiesMixin:
 
     @property
     def all_viewsets(self):
-        """Return a dictionary of every available PdsViewSet for this object."""
+        """Every named set of images available for this file, keyed by name.
+
+        The value is derived on the first access, stored in ``_all_viewsets_filled`` and
+        returned unchanged afterwards; deriving it calls ``_recache()``. A merged
+        directory and an index row are born with the slot set to an empty dictionary.
+
+        A file's own dictionary holds its default set, which is itself where it is a
+        viewable and its representative images otherwise, plus one entry for each other
+        name the class's VIEWABLES table defines that answers for this path. A name that
+        answers with nothing is left out, so a key's presence means a set exists.
+
+        A directory's dictionary is the same for its own names, and is then widened by the
+        names its children offer: **the first twenty child names only**, and only those
+        that are not directories, so a directory whose viewables sort past the twentieth
+        name reports fewer kinds than it holds. A child contributes only names not already
+        present, and never the default.
+
+        This is the expensive property of the group: every candidate name costs a lookup,
+        and a directory builds up to twenty children to ask them.
+
+        Returns:
+            dict: view set name mapped to the ``pdsviewable.PdsViewSet`` for it.
+        """
 
         if self._all_viewsets_filled is None:
 
@@ -1735,8 +1996,24 @@ class _PropertiesMixin:
 
     @property
     def _iconset(self):
-        """Return the PdsViewSet for this object's icon whether it is to be displayed
-        in a closed or open state.
+        """The pair of icon sets for this file, closed and open.
+
+        Both are derived together on the first access, stored in ``_iconset_filled`` as a
+        two-element list, and returned unchanged afterwards; deriving them calls
+        ``_recache()`` and fills ``_description_and_icon_filled`` by way of ``icon_type``.
+        A merged directory reaches this body, and so does an index row, which is born with
+        the slot set to None.
+
+        The two sets come out of ``pdsviewable.ICON_SET_BY_TYPE``, which ``load_icons()``
+        fills, so reading this before that has run for this file's icon type raises
+        KeyError. Both entries are read at once, which is why ``iconset_open`` and
+        ``iconset_closed`` cost nothing after either of them.
+
+        This property returns the closed set, the same as ``iconset_closed``; the open one
+        is reached only through the slot.
+
+        Returns:
+            pdsviewable.PdsViewSet: the icon set for the closed state.
         """
 
         if self._iconset_filled is not None:
@@ -1751,21 +2028,64 @@ class _PropertiesMixin:
 
     @property
     def iconset_open(self):
-        """Return PdsViewSet for this object's icon if displayed in an open state."""
+        """The icon set for this file shown expanded.
+
+        This holds no slot of its own: it reads ``_iconset`` for the side effect of
+        filling ``_iconset_filled`` and then takes the second of the pair. It raises the
+        same KeyError as ``_iconset`` where ``load_icons()`` has not supplied this icon
+        type.
+
+        An icon type with no ``_open`` variant is served the closed set here, because
+        ``load_icons()`` files a closed set under the open key as well when nothing is
+        there.
+
+        Returns:
+            pdsviewable.PdsViewSet: the icon set for the open state.
+        """
 
         _ = self._iconset
         return self._iconset_filled[1]
 
     @property
     def iconset_closed(self):
-        """Return PdsViewSet for this object's icon if displayed in a closed state."""
+        """The icon set for this file shown collapsed.
+
+        This holds no slot of its own: it reads ``_iconset`` for the side effect of
+        filling ``_iconset_filled`` and then takes the first of the pair, which is the
+        value ``_iconset`` itself returns. It raises the same KeyError as ``_iconset``
+        where ``load_icons()`` has not supplied this icon type.
+
+        Returns:
+            pdsviewable.PdsViewSet: the icon set for the closed state.
+        """
 
         _ = self._iconset
         return self._iconset_filled[0]
 
     @property
     def bundle_publication_date(self):
-        """Return the publication date for this bundle as a formatted string."""
+        """When this file's bundle was published, as a date.
+
+        The value is derived on the first access, stored in
+        ``_bundle_publication_date_filled`` and returned unchanged afterwards; deriving it
+        calls ``_recache()`` and fills ``_volume_info_filled``. A merged directory is born
+        with the slot set to an empty string and an index row inherits its table's value.
+
+        The volume-info table's own date is used where it has one. Where it is empty,
+        three fallbacks are tried in order and the first that answers wins: the
+        modification date of this file's bundle, then of its bundle set, then of this file
+        itself, each cut to its first ten characters so a timestamp becomes a date. A file
+        above the bundle level, for which the first two have no object to ask, falls
+        through to the third.
+
+        **A date recorded as None short-circuits all of it**: an empty string is returned
+        without the slot being written, so the derivation runs again on every access for
+        such a file. The fallback the volume-info lookup supplies is an empty string
+        rather than None, so only a table that stores None reaches this.
+
+        Returns:
+            str: the publication date as ``YYYY-MM-DD``, or an empty string.
+        """
 
         if self._bundle_publication_date_filled is not None:
             return self._bundle_publication_date_filled
@@ -1799,7 +2119,21 @@ class _PropertiesMixin:
 
     @property
     def bundle_version_id(self):
-        """Return version ID of this bundle."""
+        """The version identifier the volume-info table records for this bundle.
+
+        The value is derived on the first access, stored in ``_bundle_version_id_filled``
+        and returned unchanged afterwards; deriving it calls ``_recache()`` and fills
+        ``_volume_info_filled``. A merged directory is born with the slot set to an empty
+        string and an index row inherits its table's value.
+
+        This is the version the archive itself declares, which is not the version suffix
+        ``version_info()`` reads out of a bundle set name and not the rank derived from
+        it. A table recording None gives an empty string, so the result is always a
+        string.
+
+        Returns:
+            str: the version id, or an empty string.
+        """
 
         if self._bundle_version_id_filled is None:
             if self._volume_info[2] is None:
@@ -1813,7 +2147,20 @@ class _PropertiesMixin:
 
     @property
     def volume_data_set_ids(self):
-        """Return a list of the dataset IDs found in this volume."""
+        """Every PDS3 data set identifier this file's bundle covers.
+
+        The value is derived on the first access, stored in
+        ``_volume_data_set_ids_filled`` and returned unchanged afterwards; deriving it
+        calls ``_recache()`` and fills ``_volume_info_filled``. A merged directory is born
+        with the slot set to an empty string and an index row inherits its table's value.
+
+        It is the volume-info table's field, passed through unexamined, so a bundle the
+        tables do not cover gets that lookup's fallback, an empty list. ``data_set_id``
+        reads this to decide whether it needs a rule at all.
+
+        Returns:
+            list: the data set ids, which is empty where the tables record none.
+        """
 
         if self._volume_data_set_ids_filled is None:
             self._volume_data_set_ids_filled = self._volume_info[4]
@@ -1882,8 +2229,24 @@ class _PropertiesMixin:
 
     @property
     def exact_archive_url(self):
-        """Return the URL of an archive file if that archive contains the exact contents
-        of this directory tree. Otherwise return blank.
+        """The URL of the archive file holding exactly this directory, where one exists.
+
+        The value is derived on the first access, stored in ``_exact_archive_url_filled``
+        and returned unchanged afterwards; deriving it calls ``_recache()`` and fills
+        ``_exists_filled``. A merged directory and an index row are born with the slot set
+        to an empty string.
+
+        The word that carries the meaning is *exact*: ``archive_path_if_exact()`` answers
+        only where an archive file covers this directory and nothing more, so a
+        subdirectory inside a bundle gets an empty string even though an archive of its
+        bundle exists. A file that does not exist gets an empty string without the
+        question being asked, and so does anything the archive tree does not cover.
+
+        Where an archive is found, the answer is that archive's own ``url``, so building
+        it constructs a second PdsFile.
+
+        Returns:
+            str: the archive's URL, or an empty string.
         """
 
         cls = type(self)
@@ -1907,8 +2270,20 @@ class _PropertiesMixin:
 
     @property
     def exact_checksum_url(self):
-        """Return the URL of a checksum file if that checksum contains the exact contents
-        of this directory tree. Otherwise return blank.
+        """The URL of the checksum file covering exactly this directory, where one exists.
+
+        The value is derived on the first access, stored in ``_exact_checksum_url_filled``
+        and returned unchanged afterwards; deriving it calls ``_recache()`` and fills
+        ``_exists_filled``. A merged directory and an index row are born with the slot set
+        to an empty string.
+
+        This is ``exact_archive_url``'s shape with ``checksum_path_if_exact()`` in place
+        of the archive lookup, and the same *exact* condition governs it: a checksum file
+        that covers more than this directory does not count. A file that does not exist
+        gets an empty string without the question being asked.
+
+        Returns:
+            str: the checksum file's URL, or an empty string.
         """
 
         if self._exact_checksum_url_filled is not None:
@@ -1932,7 +2307,22 @@ class _PropertiesMixin:
 
     @property
     def grid_view_allowed(self):
-        """Return True if this directory can be viewed as a grid inside Viewmaster."""
+        """Whether a page may show this directory's children as a grid.
+
+        This is the first of three flags derived together on the first access to any of
+        them, stored in ``_view_options_filled`` as a triple and returned unchanged
+        afterwards; deriving them calls ``_recache()`` and fills ``_exists_filled`` and
+        ``_isdir_filled``. A merged directory and an index row are born with the slot set
+        to ``(False, False, False)``.
+
+        Only an existing directory can be anything but all three False, and for one the
+        class's VIEW_OPTIONS rules decide. Both shipped subclasses end those rules with a
+        catch-all that answers ``(False, False, False)``, so a directory no specific rule
+        names is single-page.
+
+        Returns:
+            bool: True if a grid view is allowed.
+        """
 
         if self._view_options_filled is not None:
             return self._view_options_filled[0]
@@ -1951,8 +2341,15 @@ class _PropertiesMixin:
 
     @property
     def multipage_view_allowed(self):
-        """Return True if a multipage view starting from this directory is allowed
-        inside Viewmaster.
+        """Whether a page may run this directory's children across several pages.
+
+        This holds no slot of its own: it reads ``grid_view_allowed`` for the side effect
+        of filling ``_view_options_filled`` and then takes the second of the triple. The
+        three flags are independent of each other; a directory may allow this and not the
+        grid.
+
+        Returns:
+            bool: True if a multipage view is allowed.
         """
 
         _ = self.grid_view_allowed
@@ -1961,8 +2358,16 @@ class _PropertiesMixin:
 
     @property
     def continuous_view_allowed(self):
-        """Return True if a continuous view of multiple directories starting from this
-        one is allowed inside Viewmaster.
+        """Whether a page may run this directory and the ones after it together.
+
+        This holds no slot of its own: it reads ``grid_view_allowed`` for the side effect
+        of filling ``_view_options_filled`` and then takes the third of the triple. Where
+        the other two flags describe one directory, this one says a page may carry on past
+        its end into the directories beside it, which is what ``has_neighbor_rule`` says
+        is possible at all.
+
+        Returns:
+            bool: True if a continuous view is allowed.
         """
 
         _ = self.grid_view_allowed
@@ -1971,8 +2376,18 @@ class _PropertiesMixin:
 
     @property
     def has_neighbor_rule(self):
-        """Return True if a neighbor rule is available to go to the object just before
-        or just after this one.
+        """Whether the tree can say which directories come before and after this one.
+
+        Recomputed on every access, and it builds the parent object to answer, because the
+        rule is written about the parent's path rather than this one's: the class's
+        NEIGHBORS rules turn a directory path into a pattern matching its siblings.
+
+        An object with no parent is False. Both shipped subclasses carry a rule matching
+        any path with a slash in it, so in practice this is True for everything below the
+        category level.
+
+        Returns:
+            bool: True if a neighbor rule answers for the parent.
         """
 
         parent = self.parent()
@@ -1980,7 +2395,21 @@ class _PropertiesMixin:
 
     @property
     def filename_keylen(self):
-        """Return the length of the keys used to select the rows of an index file."""
+        """How many leading characters of a row key select a row of this index.
+
+        The value is derived on the first access and stored in
+        ``_filename_keylen_filled``. **This is the one lazy property that does not call**
+        ``_recache()``, so the value is kept on this object and not written back to the
+        shared cache; another object for the same path derives it again. A merged
+        directory and an index row are born with the slot set to zero.
+
+        The class's FILENAME_KEYLEN is either the number itself or something callable that
+        returns it, and both are accepted here. Zero means the whole basename is the key,
+        which is what every object outside an index uses.
+
+        Returns:
+            int: the key length in characters.
+        """
 
         if self._filename_keylen_filled is None:
             if isinstance(self.FILENAME_KEYLEN, int):
@@ -1992,9 +2421,20 @@ class _PropertiesMixin:
 
     @property
     def infoshelf_path_and_key(self):
-        """Return The absolute path to the associated info shelf file, if any, and the
-        key to use within that file. If the shelf info does not exist, return a pair of
-        empty strings.
+        """Which info shelf covers this file, and the key to read out of it.
+
+        The value is derived on the first access, stored in ``_infoshelf_path_and_key``
+        and returned unchanged afterwards; deriving it calls ``_recache()``. A merged
+        directory and an index row are born with the slot set to a pair of empty strings.
+
+        **Every exception the derivation can raise is swallowed** and recorded as a pair
+        of empty strings, so this never raises and never distinguishes a file no shelf
+        covers from one whose shelf path could not be worked out. That is what makes it
+        safe to read on any object, and it is why a caller wanting the reason has to call
+        ``shelf_path_and_key_for_abspath()`` itself.
+
+        Returns:
+            tuple: the shelf's absolute path and the key within it, or two empty strings.
         """
 
         cls = type(self)
@@ -2084,8 +2524,27 @@ class _PropertiesMixin:
         return (version_rank, version_message, version_id)
 
     def all_versions(self):
-        """Return a dictionary containing all existing versions of this PdsFile, keyed
-        by the version ranks of the volumes on which they reside.
+        """Every version of this file that exists, keyed by version rank.
+
+        The dictionary always holds this object under its own rank, whether or not the
+        file exists, and one entry for each other version found. The ranks are
+        ``version_info()``'s, so they sort oldest to newest and the current version is
+        highest.
+
+        **What is remembered is the paths, not the objects.** The first call globs for
+        every pattern the class's VERSIONS rules give, builds a PdsFile for each existing
+        match, and then writes the path dictionary into ``_all_version_abspaths`` on
+        **every** version it found, calling ``_recache()`` on each, so one call fills the
+        slot on a whole family of objects. A later call rebuilds the objects from those
+        paths rather than globbing again. The objects are deliberately not cached, because
+        the shared cache cannot keep the links between them.
+
+        Two versions that reach the same rank cannot both be kept: the second is logged as
+        a duplicate and dropped. ``version_info()`` is what makes that possible, by
+        ranking only the first three parts of a version suffix.
+
+        Returns:
+            dict: version rank mapped to the PdsFile for that version.
         """
 
         cls = type(self)
@@ -2136,8 +2595,17 @@ class _PropertiesMixin:
 
     @property
     def all_version_abspaths(self):
-        """Return a dictionary containing the abspaths for all existing versions of
-        this PdsFile, keyed by the version ranks of the volumes on which they reside.
+        """The absolute path of every version of this file, keyed by version rank.
+
+        This is the slot ``all_versions()`` fills, read directly. Where it is empty the
+        whole search runs, for its side effect alone; the objects that call builds are
+        discarded and only the paths are kept. Afterwards this costs nothing.
+
+        A merged directory reaches this body and fails: the glob is rooted at ``root_``,
+        which is None on such an object, so building the pattern raises TypeError.
+
+        Returns:
+            dict: version rank mapped to the absolute path of that version.
         """
 
         if self._all_version_abspaths is None:
@@ -2147,12 +2615,34 @@ class _PropertiesMixin:
         return self._all_version_abspaths
 
     def viewset_lookup(self, name='default'):
-        """Return the PdsViewSet associated with this file. If multiple
-        PdsViewSets are available, they can be selected by name; "default" is
-        assumed.
+        """Find one named set of images for this file, without caching the answer.
 
-        Keyword arguments:
-            name -- a volset name (default 'default')
+        This is the search behind ``viewset`` and ``all_viewsets``, and unlike them it
+        stores nothing: every call repeats the work, except for the one shortcut that
+        reads an answer ``all_viewsets`` already recorded. A file that does not exist gets
+        None at once.
+
+        Four ways of answering are tried in order. The class's VIEWABLES table may give
+        glob patterns for this name and path, in which case the matches are globbed, and
+        where the first match has a recognizable anchor the rest are narrowed to the files
+        sharing it, so one product's images are not mixed with a neighbor's. Failing that,
+        a directory asks its children, taking the first non-directory child that answers,
+        and **stopping after twenty candidate names**, so a large directory can answer
+        None where a viewable exists further down its list. Failing that, a viewable file
+        asked for its default set is grouped with the siblings sharing its anchor, which
+        is what builds a preview set out of a directory of sizes. Failing all of it, an
+        empty view set is returned.
+
+        **The three misses are not the same value.** A file that does not exist and a
+        directory whose children all decline give None; everything else that fails gives
+        an empty ``PdsViewSet``, which is falsy but is not None.
+
+        Parameters:
+            name (str): which view set to look for. It is a key of the class's VIEWABLES
+                table, and 'default' is the one every other property asks for.
+
+        Returns:
+            pdsviewable.PdsViewSet: the view set, an empty one, or None.
         """
 
         cls = type(self)
