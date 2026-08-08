@@ -23,8 +23,8 @@ module functions.
     builders, and ``set_log_root``.
   * ``_index_rows.py`` -- ``_IndexRowsMixin``: index shelves, and the pseudo-children
     that stand for rows of an index table.
-  * ``_local_fs.py`` -- ``_LocalFsMixin``: the case-repairing filesystem layer that
-    honors ``SHELVES_ONLY`` (``os_path_exists``, ``os_path_isdir``, ``os_listdir``,
+  * ``_local_fs.py`` -- ``_LocalFsMixin``: the filesystem layer that answers from the
+    info shelves under ``SHELVES_ONLY`` (``os_path_exists``, ``os_path_isdir``, ``os_listdir``,
     ``glob_glob`` and ``_non_checksum_abspath``), and ``PATH_EXISTS_CACHE_SIZE``.
   * ``_opus.py`` -- ``_OpusMixin``: ``opus_products``, and the two constructors that
     resolve an OPUS ID (``from_opus_id``) or a bundle-name file specification
@@ -84,11 +84,14 @@ disjoint, that nothing shadows them, that they hold no state and that the order 
 alphabetical. ``tests/api/test_mixin_import_isolation.py`` checks the no-back-import
 rule by loading each module in a fresh interpreter.
 
-Every public name of the package resolves as ``pdsfile.pdsfile.<name>``, which is what
-the import block below is for: several of its imports are referenced nowhere in this
-file and exist only to keep a name on that surface, so deleting one because it looks
-unused removes the name. Where a symbol is really defined shows in ``__module__``,
-``__qualname__`` and ``__mro__``.
+Every name this module binds is part of the package's public surface as
+``pdsfile.pdsfile.<name>``, which is what the import block below is for: several of its
+imports are referenced nowhere in this file and exist only to keep a name on that
+surface, so deleting one because it looks unused removes the name. The converse does not
+hold -- the subclasses, the viewable classes and the preload module are public and are
+not attributes of this module -- so the manifest in ``tests/api/api_manifest.json``, not
+this namespace, is what defines the package's surface. Where a symbol is really defined
+shows in ``__module__``, ``__qualname__`` and ``__mro__``.
 """
 
 import os
@@ -189,7 +192,10 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
     attribute whose name ends in an underscore is empty or ends in a slash, so the pieces
     concatenate into a path without any separator logic -- with one exception:
     ``new_merged_dir()`` sets ``disk_``, ``root_`` and ``html_root_`` to None, and
-    concatenating one of those raises rather than producing a path.
+    concatenating one of those raises rather than producing a path. The three Nones are
+    copied on, so anything built below a merged directory carries them too, until
+    ``_complete()`` finds a physical object already cached for the logical path and
+    returns that instead.
 
     Most of what an instance can answer is a property, computed on first access and
     stored on the object. Some of those answers are cached beyond the object: an object
@@ -695,11 +701,14 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
 
         The object is returned mostly filled in, with the lazy properties a category
         directory can answer already set, so those are never computed from a filesystem.
-        Seven storage slots are left unset, and the properties behind them do not
-        degrade gracefully: ``html_path`` and ``url`` raise IndexError,
+        Seven storage slots are left unset. The properties behind four of them answer
+        normally anyway -- ``_volume_info`` falls back to its unknown tuple,
+        ``description`` and ``icon_type`` come from the rules, ``index_pdslabel`` is None
+        and ``associated_parallel()`` returns this object -- and the other three do not:
+        ``html_path`` and ``url`` raise IndexError off the empty child list,
         ``all_version_abspaths`` raises TypeError on the None ``root_``, and
-        ``iconset_open`` and ``iconset_closed`` read the icon directory out of the
-        holdings tree.
+        ``iconset_open`` and ``iconset_closed`` raise KeyError until ``load_icons()`` has
+        filled ``pdsviewable.ICON_SET_BY_TYPE`` for this object's icon type.
 
         Parameters:
             basename (str): the category name, which must be one of ``CATEGORIES``.
@@ -1778,12 +1787,15 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
             PdsFile: the object for the path.
 
         Raises:
-            ValueError: if the path is not absolute, or has no ``holdings`` component.
-                Also, before either of those is tested, if the path names the holdings
-                directory itself or anything else with nothing below that component,
-                which the logical-path conversion refuses; and afterwards, if a
-                component below it is not a legal category, bundleset or voltype, which
-                comes from ``child()``.
+            ValueError: raised by ``logical_path_from_abspath()``, which runs first, for
+                a path with no ``holdings`` component, and for one that names the
+                holdings directory itself or anything else with nothing below that
+                component. Raised here for a path that survives that conversion and is
+                not absolute. Raised by ``child()`` afterwards for a component below the
+                holdings directory that is not a legal category, bundleset or voltype.
+                The message naming a missing ``holdings`` directory is written here but
+                cannot be reached, because a path the conversion accepted contains that
+                component by construction.
             OSError: if ``must_exist`` is True and the path does not exist. With
                 ``fix_case`` also True, a disk or root whose case cannot be repaired
                 raises it first.
@@ -1966,8 +1978,11 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
         description of a file and fills in what is missing. The category and the version
         suffix can each be written in several ways or left out, and they are recognized
         at the *front* of the description, in any order; what is left over is taken as
-        the bundleset, the bundle name and the interior path. A missing category is
-        assumed to be the class's own bundle directory name.
+        the bundleset, the bundle name and the interior path. A missing *voltype* is
+        assumed to be the class's own bundle directory name; a ``checksums`` or
+        ``archives`` prefix that was given is kept, and the category is the three
+        concatenated, so ``checksums/archives`` resolves to
+        ``checksums-archives-volumes``.
 
         Only the front is scanned. A category or version written after the bundleset --
         ``COISS_2xxx/archives`` rather than ``archives/COISS_2xxx`` -- is not recognized
@@ -2009,12 +2024,20 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
             PdsFile: the object the description resolves to.
 
         A description the preload dictionaries cannot answer does not fail cleanly. A
-        bundle*set* they do not hold gives KeyError; a bundle *name* they do not hold
-        gives UnboundLocalError instead, because the recovery path that follows the
-        KeyError leaves the version rank unassigned when no bundleset matches the name.
-        A bundle name with no underscore in it gives ValueError, and a bundleset whose
-        rank list is empty gives IndexError. None of the four is caught here, and the
-        last three reach a caller who is watching for KeyError unhandled.
+        bundle*set* they do not hold gives KeyError when no version suffix was given,
+        because the rank comes from a lookup in the rank table; with a suffix the rank
+        comes from ``version_info()`` instead, the lookup that fails is the one for the
+        absolute path, and the recovery that follows it ends in ValueError. A bundle
+        *name* they do not hold gives UnboundLocalError, because the recovery path that
+        follows the KeyError leaves the version rank unassigned when no bundleset matches
+        the name. A bundleset whose rank list is empty gives IndexError. None of these is
+        caught here, and all but the first reach a caller who is watching for KeyError
+        unhandled.
+
+        A bundle name with no underscore in it gives ValueError as well, from the index
+        of the underscore. No bundle name either shipped subclass recognizes can reach
+        it, because every alternative of both bundle-name patterns requires an
+        underscore; a subclass whose pattern does not would.
 
         Raises:
             OSError: if no preload has been performed.
