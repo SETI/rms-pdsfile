@@ -144,11 +144,12 @@ def signature_names(node, has_receiver):
     `*args` and `**kwargs` are returned with their stars attached.
 
     What is dropped is the **implicit receiver**, and only that: the first positional
-    parameter of an instance method or a class method, where the interpreter supplies the
-    argument and a caller passes nothing. Nothing is dropped from a module-level function
-    or a static method, where a parameter that happens to be spelled `self` or `cls` is an
-    ordinary argument the caller has to pass, and nothing is dropped from a later
-    position, where such a parameter is caller-supplied whatever it is called.
+    parameter of an instance method or a class method, whatever it is named, because the
+    interpreter supplies the argument and a caller passes nothing. Nothing is dropped from
+    a module-level function or a static method, where a parameter that happens to be
+    spelled `self` or `cls` is an ordinary argument the caller has to pass, and nothing is
+    dropped from a later position, where such a parameter is caller-supplied whatever it
+    is called.
 
     Parameters:
         node (ast.FunctionDef): the function definition.
@@ -167,8 +168,10 @@ def signature_names(node, has_receiver):
     if args.kwarg:
         names.append('**' + args.kwarg.arg)
 
-    positional = args.posonlyargs + args.args
-    if has_receiver and positional and positional[0].arg in ('self', 'cls'):
+    # Dropped by position, not by name: the interpreter supplies the first positional
+    # parameter of a bound method whatever it is called, so a method written `def m(this)`
+    # has nothing for a caller to pass either.
+    if has_receiver and (args.posonlyargs or args.args):
         return names[1:]
 
     return names
@@ -225,9 +228,10 @@ def returns_a_value(node):
 def bound_names(node):
     """Return the names a function body binds locally.
 
-    An `except ... as` name and an ordinary assignment both count, because both can put
-    an exception object into a local name that a later `raise` re-raises, and an
-    assignment counts however it destructures. Nested
+    Every way a name can come to hold an exception object counts, because `raise <name>`
+    on any of them re-raises a value rather than naming a class: the function's own
+    parameters, an `except ... as`, an assignment however it destructures, a `for` or
+    comprehension target, a `with ... as`, a walrus, and an `import ... as`. Nested
     definitions are not searched, matching `raised_names`, so a name bound only inside a
     nested function does not mask a class of the same spelling raised outside it.
 
@@ -238,7 +242,13 @@ def bound_names(node):
         set: the locally bound names.
     """
 
-    names = set()
+    args = node.args
+    names = {a.arg for a in args.posonlyargs + args.args + args.kwonlyargs}
+    if args.vararg:
+        names.add(args.vararg.arg)
+    if args.kwarg:
+        names.add(args.kwarg.arg)
+
     stack = list(node.body)
     while stack:
         item = stack.pop()
@@ -249,8 +259,14 @@ def bound_names(node):
         elif isinstance(item, ast.Assign):
             for target in item.targets:
                 names |= target_names(target)
-        elif isinstance(item, (ast.AnnAssign, ast.AugAssign)):
+        elif isinstance(item, (ast.AnnAssign, ast.AugAssign, ast.For, ast.AsyncFor,
+                               ast.comprehension, ast.NamedExpr)):
             names |= target_names(item.target)
+        elif isinstance(item, ast.withitem) and item.optional_vars is not None:
+            names |= target_names(item.optional_vars)
+        elif isinstance(item, (ast.Import, ast.ImportFrom)):
+            for alias in item.names:
+                names.add((alias.asname or alias.name).split('.')[0])
         stack.extend(ast.iter_child_nodes(item))
 
     return names
