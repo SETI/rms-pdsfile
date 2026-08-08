@@ -4929,14 +4929,19 @@ rediscovery.
      **Owner: a future pdsfile PR.**
 
 231. **A claim stated in more than one place is corrected in one place, and this PR found
-     two more instances of it.** PR-29a's record named the partial fix as a pattern no
-     reviewer brief had asked about. Round 5 found it twice more, and both times the copy
-     left behind was the *summary* rather than the detail. `full_size`'s own docstring
-     correctly said it raises IndexError on a set with nothing indexed by size; the
-     `PdsViewSet` class docstring listed it among the lookups a named-only set is served
-     by. And `IDX_EXT` and `LBL_EXT` being defined only on the subclasses is stated
-     explicitly in `_local_fs.py`, `_associations.py` and `_properties.py`, and was denied
-     by `pdsfile.py`'s module map, which is the fourth copy and the one nobody looked at.
+     four more instances of it.** PR-29a's record named the partial fix as a pattern no
+     reviewer brief had asked about. This PR's briefs asked, and rounds 4 and 5 found it
+     four times, and in every case the copy left behind was the *summary* rather than the
+     detail. `full_size`'s own docstring correctly said it raises IndexError on a set with
+     nothing indexed by size; the `PdsViewSet` class docstring listed it among the lookups
+     a named-only set is served by. `IDX_EXT` and `LBL_EXT` being defined only on the
+     subclasses is stated explicitly in `_local_fs.py`, `_associations.py` and
+     `_properties.py`, and was denied by `pdsfile.py`'s module map, the fourth copy and the
+     one nobody looked at. `filename_keylen`'s own docstring said it is the one lazy
+     property with no `_recache()` and `_properties.py`'s module docstring said every lazy
+     property calls it. And **`filespec`'s body and its own `Returns:` disagreed after
+     round 3 fixed one and not the other**, which is the pattern inside a single
+     docstring.
 
      **The rule this suggests is that a claim should be checked from the summary downward,
      not from the detail upward**: the detailed docstring is the one whose author had the
