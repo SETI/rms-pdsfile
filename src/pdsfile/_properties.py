@@ -27,9 +27,11 @@ one docstring:
     and the slot behind ``isdir``; ``date`` fills the slot behind ``_info``. Most
     docstrings here name the slots their own derivation fills, because that is what a
     caller measuring cost, or writing a test that counts shelf reads, needs. The ones
-    that reach furthest name them by the property rather than one by one -- ``viewset``
-    and ``all_viewsets`` each reach about a dozen -- so the list to trust for an exact
-    answer is the one in the property that owns the slot.
+    that reach furthest -- ``viewset``, ``local_viewset``, ``all_viewsets`` and
+    ``data_abspaths`` -- name them by the property they read rather than one by one,
+    because how many slots a read fills depends on what the object is. So the list to
+    trust for an exact answer is the one in the property that owns the slot, and a list
+    given by a property that reaches through others is a lower bound.
 
   * **A miss is stored as a value.** An empty string, an empty list or False is written
     where nothing was found, so the derivation is not repeated. Which falsy value stands
