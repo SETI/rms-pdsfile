@@ -17,10 +17,18 @@ same answer, and the repair task takes the older of the two as the pair's age.
 
 The five tasks are here rather than in the two tool modules, because nothing in them
 differs between PDS3 and PDS4: what a row is, how a key is formed and how a shelf is
-compared to its table are properties of ``pdstable``. ``index_tasks()`` binds a spec
-into each of the five and returns the table a driver takes. The two tools differ only in
-their spec, and among the fields that reach this module only ``index_ext`` differs in
-value, '.tab' against '.csv'.
+compared to its table are properties of ``pdstable``. ``index_tasks()`` binds a spec into
+each of the five and returns the table a driver takes.
+
+The two tools differ only in their spec, and their two specs differ in five fields:
+``pdsfile_cls``, ``holdings_sentinel``, ``index_ext``, ``file_log_level`` and
+``handler_factories``. Three of the five reach this module, and only two of those three
+change what it does. ``index_ext`` is '.tab' against '.csv', which is what a table is
+called; ``pdsfile_cls`` is the class every object is built from; and
+``handler_factories`` differs because the pds4 tools attach a warning handler the pds3
+tools do not, which changes what the log tree holds rather than what is shelved.
+``holdings_sentinel`` and ``file_log_level`` are read nowhere here, so their difference
+does not reach the index shelf tools at all.
 
 The tools do not all agree about an empty result. ``index_initialize()`` and
 ``index_validate()`` test the fresh table dictionary against None, which
