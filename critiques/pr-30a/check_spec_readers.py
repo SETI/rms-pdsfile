@@ -38,10 +38,12 @@ function; a bare name matches the function in any module, which is what lets the
 for fields read in the defining module stay short.
 
 **Every such token is read as a claim**, including one an entry mentions for some other
-reason -- a function the value is passed on to, say. That is deliberate rather than a
-limitation to work around: an entry that names a function in parentheses reads as though
-that function acts on the field, and if it does not, the entry should say so in words
-instead. S1 is the check that enforces it, and it fired on exactly that during this PR.
+reason -- a function the value is passed on to, or one named as a counterexample. That
+is deliberate rather than a limitation to work around, and it makes the parentheses
+carry meaning: **an entry writes a reader with its parentheses and anything else without
+them.** An entry that puts a non-reader in parentheses reads as though that function
+acts on the field, which is the mistake S1 exists to catch, and it caught three of them
+during this PR before the convention was written down.
 
 Usage:
     python check_spec_readers.py SRC_ROOT

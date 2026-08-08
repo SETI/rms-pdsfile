@@ -15,8 +15,10 @@ mapping, in the ``_linkshelf-<category>/`` tree. Its keys are the files of one u
 its values are of two kinds, which is what most of the reading and writing code here has
 to account for:
 
-  * a **list** of ``(record number, basename, path)`` triples, for a file that points at
-    others: a label, a catalog file, an index or a document;
+  * a **list** of ``(record number, link text, path)`` triples, for a file that points
+    at others: a label, a catalog file, an index or a document. The middle element is
+    the text the file was written with, not a basename: it carries a directory wherever
+    the link did;
   * a **string**, for a file that is pointed at, naming the label that describes it, and
     the empty string for a file no label claims.
 
@@ -25,9 +27,11 @@ it is read, so a holdings tree can be moved without rewriting its link shelves. 
 that leaves the unit is stored with as many leading ``../`` as it takes to reach the
 nearest directory the two paths share.
 
-Inside a run a link is a ``LinkInfo`` object; read back from a shelf it is the plain
-tuple that was pickled. An update sees both kinds in one dictionary, which is why
-``link_text_of()`` exists.
+A link is a ``LinkInfo`` object where it is found and a plain tuple where it is stored.
+The boundary is each tool's ``generate_links``, which normalizes every LinkInfo to a
+triple before returning, so inside this module only ``read_links()`` and
+``link_text_of()`` ever meet one; ``link_text_of()`` exists because an update hands
+``generate_links`` a dictionary of shelved tuples and the scan then adds objects to it.
 
 The five task functions are here because none of them differs between PDS3 and PDS4:
 each calls the spec's ``generate_links``, and everything it then does with the result is
@@ -428,8 +432,10 @@ def load_links(spec, dirpath, *, logger=None, limits=None):
 
     Returns:
         dict: The links, keyed by absolute path. A file that points at others maps to a
-        list of (record number, basename, absolute path) triples; a file that is
-        pointed at maps to the absolute path of its label, or to the empty string.
+        list of (record number, link text, absolute path) triples, the middle element
+        being the text as written and so carrying a directory wherever the link did; a
+        file that is pointed at maps to the absolute path of its label, or to the empty
+        string.
 
     Raises:
         OSError: raised here if there is no shelf file for the unit, and raised by
@@ -678,10 +684,12 @@ def validate_links(spec, dirpath, dirdict, shelfdict, *, logger=None, limits=Non
     lacks, and that is what the last two loops report. A caller that still needs
     either dictionary afterwards has to pass a copy.
 
-    A list value in either dictionary is sorted in place before the two are compared, so
-    two links recorded in a different order are not a disagreement, and both callers'
-    lists come back sorted whether or not anything was reported. That is the opposite of
+    A list value is sorted in place before the two are compared, so two links recorded
+    in a different order are not a disagreement. That is the opposite of
     ``_indexshelf_common.validate_indexdict()``, which compares its lists as they are.
+    Only the lists under a key present in both dictionaries are sorted, and those keys
+    are deleted from both immediately afterwards, so a caller holding the dictionaries
+    cannot reach a sorted list through them.
 
     Every disagreement is its own error line and the walk continues, so one call reports
     all of them.
@@ -759,10 +767,11 @@ def validate_links(spec, dirpath, dirdict, shelfdict, *, logger=None, limits=Non
 def link_initialize(spec, pdsdir, *, logger=None, limits=None):
     """Shelve one unit's links, refusing to replace a shelf that is already there.
 
-    A shelf file already in place is logged as an error and the unit is not scanned, so
-    this is the one task of the five that never rewrites a shelf. It is also the only
-    one that writes without versioning first, because it only runs where there is
-    nothing to version.
+    A shelf file already in place is logged as an error and the unit is not scanned.
+    Two of the five tasks never rewrite a shelf: this one, which stops at the error
+    above, and link_validate(), which writes nothing at all. This is the only one of
+    the three that do write that writes without versioning first, because it only runs
+    where there is nothing to version.
 
     Parameters:
         spec (ToolSpec): The tool's specification. Its generate_links is what scans the
@@ -879,7 +888,9 @@ def link_repair(spec, pdsdir, *, logger=None, limits=None):
     Where the shelved links and a fresh scan differ, the old shelf is versioned into the
     run's log directories and a new one is written. Where they agree, the content is
     right and only the dates can be wrong, so the shelf is compared against the newest
-    file the scan read:
+    file the scan **walked**, which is not the same as the newest it read: the scan
+    takes each file's modification time before deciding whether to open it, so a
+    ``.DS_Store`` or a backup file touched today dates the unit.
 
       * The shelf's age is the **older** of the pickle's and the sidecar's modification
         times, so a pair with one stale half is treated as stale.
@@ -889,9 +900,10 @@ def link_repair(spec, pdsdir, *, logger=None, limits=None):
       * If the holdings are not newer, the repair is canceled and nothing is touched.
         Equal times take this branch, since the test is strict.
 
-    The comparison that decides this is between whole dictionaries and is made before
-    validate_links() would empty them, so it is an equality test and not a report: a
-    repair says what it did, not what was wrong.
+    The comparison that decides this is a plain equality test between the two whole
+    dictionaries, not a call to validate_links(), which this task never makes. A repair
+    therefore says what it did rather than what was wrong; only link_validate() reports
+    the differences one by one.
 
     A unit with no shelf is a warning and is handed to link_initialize().
 
@@ -969,10 +981,11 @@ def link_update(spec, pdsdir, *, logger=None, limits=None):
     """Add the links of any file the shelf does not already carry.
 
     This is the one task that hands the shelved links to the scan. The scan takes them
-    as its starting point and skips every file already accounted for, so what comes back
-    is the old entries unchanged plus an entry for each file that has appeared since.
-    An entry for a file that has since been deleted is therefore kept, and a file whose
-    links have changed is not re-read.
+    as its starting point and skips every file already accounted for, so a file whose
+    links have changed is not re-read. It is not a merge of old over new, though: the
+    result is assembled by walking the files that are there now, so an entry for a file
+    that has since been deleted is dropped. An update therefore adds new files and
+    removes gone ones while leaving every surviving file's links as they were shelved.
 
     Where the scan returns exactly what the shelf held, the update is canceled and
     nothing is written or touched, and that is reported at info level rather than as a

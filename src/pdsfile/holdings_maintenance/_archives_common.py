@@ -14,13 +14,17 @@ byte count and the modification time agree. **Contents are never compared**, whi
 what makes validating a whole volume set affordable and is what the ``--help`` text
 says.
 
-Three pieces are here because both flavors need them and neither differs on them: the
-walk that inventories a directory tree, the tarfile member filter that decides what goes
-into an archive and under what identity, and the comparison of the two inventories.
+Four functions are here because both flavors need them and neither differs on them: the
+rejection of a command-line path that names checksum or archive files, the walk that
+inventories a directory tree, the tarfile member filter that decides what goes into an
+archive and under what identity, and the comparison of the two inventories.
+
 Both sides of that comparison are lists of ``(abspath, interior path, nbytes, modtime)``
 tuples: ``load_directory_info()`` builds one from the filesystem, and each tool builds
-the other from its ``.tar.gz`` file. The tuples' second element is named ``dirpath``
-throughout, and it is an interior path rather than a directory.
+the other from its ``.tar.gz`` file. **The second element is an interior path rather
+than a directory**, which the name ``dirpath`` invites a reader to get wrong -- and
+``dirpath`` is used for both things in this module, naming the walk root in
+``load_directory_info()`` and the tuple slot in ``validate_tuples()``.
 
 The rest of the module is the constants the two tools share: the default message limits
 of each scope, and the ``--help`` text, whose ``{unit}`` and ``{units}`` fields
@@ -99,11 +103,13 @@ def load_directory_info(spec, pdsdir, *, logger=None, limits=None):
     fields that the comparison examines are neutral for it and only its presence is
     checked. The first tuple returned is the tree's own root, on the same terms.
 
-    Three kinds of file are left out of the result, each logged under its own level so
-    that a message limit can be set on it: ``.DS_Store`` files, dot-underscore files,
-    and backup files, which are those matching ``BACKUP_FILENAME`` or carrying " copy"
-    anywhere in the basename. A backup file is logged as an **error**, not merely
-    skipped, so finding one gives the whole run a nonzero exit status. Dot-underscore
+    Three kinds of file are left out of the result: ``.DS_Store`` files and
+    dot-underscore files, each logged under a pdslogger level of its own so that a
+    message limit can be set on it alone, and backup files, which are those matching
+    ``BACKUP_FILENAME`` or carrying " copy" anywhere in the basename. A backup file is
+    logged as an **error**, which is the level every other error shares and so cannot
+    be capped separately, and which gives the whole run a nonzero exit status.
+    Dot-underscore
     directories are skipped as well, but the walk still descends into them, because
     pruning happens through the directory list ``os.walk()`` is given and this loop does
     not modify it.

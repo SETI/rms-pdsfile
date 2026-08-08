@@ -11,27 +11,33 @@ everything that says the tree is a PDS3 one:
   * **Where the tree is.** ``PDS_HOLDINGS`` is "holdings", ``BUNDLE_DIR_NAME`` is
     "volumes", and ``_HOLDINGS_ENV`` names the PDS3_HOLDINGS_DIR environment variable
     that locates the tree on disk.
-  * **What a name looks like.** A PDS3 volume set is an uppercase mission code and a
-    digit-and-x suffix, ``COISS_1xxx``; a volume is a mission code and four digits,
-    ``COISS_1001``. Five regular expressions match those, each with a case-insensitive
-    twin, and three of the five admit a version suffix, a category suffix, an archive
-    extension or a checksum basename as well.
-  * **Which rules apply.** Every rule table the base class leaves as None is filled in
-    from ``pds3file.rules``, which is where the per-dataset behavior lives.
+  * **What a name looks like.** A PDS3 volume set is a mission code and a digit-and-x
+    suffix, ``COISS_1xxx``; a volume is a mission code and four digits, ``COISS_1001``.
+    The code is upper case except that a volume set's may carry a lower-case ``x``,
+    which is what ``HSTUx_xxxx`` and ``NHxxLO_xxxx`` are. Five regular expressions
+    match those, each with a case-insensitive twin, and three of the five admit some
+    combination of a version suffix, a category suffix, an archive extension and a
+    checksum basename as well.
+  * **Which rules apply.** Almost every rule table the base class leaves as None is
+    filled in from ``pds3file.rules``, which is where the per-dataset behavior lives.
+    The exception is ``PRODUCT_LBL_BASENAME_WO_EXT``, which stays None here because
+    ``pds3file.rules`` has no such table; only ``Pds4File`` fills it.
   * **Its own cache and registry.** ``CACHE``, ``LOCAL_PRELOADED`` and ``SUBCLASSES``
     are assigned here rather than inherited, so a preload of a PDS3 tree does not
     disturb ``Pds4File``.
 
 **The class also carries the PDS3 vocabulary.** A volume is what the shared code calls
-a bundle, and a volume set a bundle set, so a dozen properties and methods here are
-one-line aliases forwarding to the bundle-named member of the base class, and ten class
-attributes are second names for the bundle-named regular expressions above them. They
-are what a PDS3 caller writes, and the PDS3 maintenance tools write them too:
-``pdsarchives`` names ``log_path_for_volume`` in its specification and reaches
-``volume_pdsfile()`` and ``volset_pdsfile()`` to expand a command-line path, and
-``re_validate`` reads ``volname`` and ``volset_``. The checksum, info shelf and link
-shelf tools use the bundle-named methods instead, because those are the ones the PDS3
-and PDS4 halves can share.
+a bundle, and a volume set a bundle set, so nineteen members here -- thirteen properties
+and six methods -- are one-line aliases forwarding to the bundle-named member of the base
+class, and ten class attributes are second names for the bundle-named regular
+expressions above them. They are what a PDS3 caller writes, and three of the PDS3
+maintenance tools write them too: ``pdsarchives`` names ``log_path_for_volume`` in its
+specification and reaches ``volume_pdsfile()`` and ``volset_pdsfile()`` to expand a
+command-line path; ``pdsdependency`` reads ``volset_``, ``volname``, ``is_volume_dir``
+and ``is_volset_dir`` and names ``log_path_for_volume``; and ``re_validate`` reads
+``volname`` and ``volset_`` and names ``log_path_for_volume``. The checksum, info shelf
+and link shelf tools use the bundle-named methods instead, because those are the ones
+the PDS3 and PDS4 halves can share.
 
 The module ends with three statements. The class registers itself in its own
 ``SUBCLASSES`` under "default", which is the entry a path no rule module claims resolves
@@ -41,9 +47,16 @@ created, so that a tree can be read before any preload has run.
 
 **One of the three orderings is load-bearing and the file says which.** The import has to
 follow the class body, because every rule module subclasses ``Pds3File`` and so needs a
-class that is already built. It is wrapped in a handler for ``AttributeError``, which is
-what a recursive import of ``pdsfile`` raises when a rule module is tested on its own,
-and a run that takes that path finishes with no rule subclasses registered at all.
+class that is already built. Nothing forces the other two into their places: no rule
+module reads ``SUBCLASSES``, and the merged-directory call reads only what the class
+body binds.
+
+The import is wrapped in a handler for ``AttributeError``. The in-code comment beside it
+says that is what a recursive import of ``pdsfile`` raises when a rule module is tested
+on its own; that mechanism does not occur on any Python this package supports, since
+``import pdsfile.pds3file as pds3file`` binds from ``sys.modules`` during a circular
+import rather than raising. A run that did take the handler would finish with no rule
+subclasses registered at all.
 """
 
 import re
@@ -67,8 +80,10 @@ class Pds3File(PdsFile):
     ``LOCAL_PRELOADED`` and ``SUBCLASSES`` are assigned in the class body rather than
     inherited from ``PdsFile``, so preloading a PDS3 tree fills this class's cache and
     leaves ``Pds4File``'s alone. The four setters below are overridden for the same
-    reason: the base class writes each attribute onto every direct subclass, and these
-    write it onto the class the call names.
+    reason. Three of them write an attribute: the base version writes it onto every
+    direct subclass and not onto the class it was called on, and these write it onto the
+    class the call names. The fourth, ``set_easylogger()``, writes nothing either way
+    and passes the call on; the override is where the base's recursion stops.
 
     A rule subclass inherits all of it, so a setting made on ``Pds3File`` reaches every
     volume set, and one made on a rule subclass reaches that volume set alone.
@@ -80,11 +95,14 @@ class Pds3File(PdsFile):
         the PDS3_HOLDINGS_DIR environment variable.
       * Five regular expressions naming a volume set and a volume, each with a
         case-insensitive twin, and ten aliases of the ten under the volume vocabulary.
-        ``BUNDLESET_PLUS_REGEX`` and ``BUNDLENAME_PLUS_REGEX`` extend the plain forms to
-        the version suffixes, category suffixes, ``.tar.gz`` and ``_md5.txt`` names that
-        appear beside a volume set, each of those parts being optional;
-        ``BUNDLENAME_VERSION`` matches a volume name and requires a version suffix on
-        it.
+        The three that extend the plain forms do not extend them alike.
+        ``BUNDLESET_PLUS_REGEX`` takes all four kinds of part, each optional: a version
+        suffix, a category suffix, and a ``.tar.gz`` or ``_md5.txt`` ending.
+        ``BUNDLENAME_PLUS_REGEX`` takes only the last two -- a lower-case category word
+        and an archive or checksum ending, which are the names sitting beside a volume
+        -- and matches no version suffix at all, so ``COISS_1001_v1`` fails it.
+        ``BUNDLENAME_VERSION`` is the pattern for that: it matches a volume name and
+        requires one of the seven version suffixes on it.
       * ``LOGGER`` and ``CACHE``, the second built with the shared cache-lifetime rule
         and holding a direct reference to the logger, which is why replacing ``LOGGER``
         later does not change where the cache logs.
@@ -174,9 +192,14 @@ class Pds3File(PdsFile):
     def __init__(self):
         """Return a blank object, with every slot at the value the base class gives it.
 
-        This is not how a caller gets an object. The constructors are the inherited
-        class methods, and each of them builds a blank object this way and then fills it
-        in, so calling the class directly gives something with no path and no contents.
+        This is not how a caller gets an object; the inherited class methods are.
+        Several of them reach this: ``from_abspath()`` and ``from_path()`` build a blank
+        object and fill it in. Several do not: ``from_logical_path()`` answers from the
+        class cache where the cache holds the path, and ``copy()`` and ``new_pdsfile()``
+        build their result with ``__new__`` and never run this at all.
+
+        A blank object has no path in either form, and its absolute path is the empty
+        string rather than None, which is what its representation shows.
         """
 
         super().__init__()
@@ -247,10 +270,14 @@ class Pds3File(PdsFile):
         """Return a representation naming the class and the path.
 
         Three forms are produced, and which one appears says what the object is: an
-        object with no absolute path is written as ``Pds3File-logical("...")`` around its
-        logical path; one of this class exactly is written as ``Pds3File("...")`` around
-        its absolute path; and one of a rule subclass names that subclass after a dot,
-        as ``Pds3File.COISS_xxxx("...")``.
+        object whose absolute path is **None** is written as ``Pds3File-logical("...")``
+        around its logical path; one of this class exactly is written as
+        ``Pds3File("...")`` around its absolute path; and one of a rule subclass names
+        that subclass after a dot, as ``Pds3File.COISS_xxxx("...")``.
+
+        The first test is against None specifically, so a blank object, whose absolute
+        path is the empty string, takes the second branch and prints an empty absolute
+        path: ``repr(Pds3File())`` is ``Pds3File("")``.
 
         Returns:
             str: the representation.

@@ -90,15 +90,17 @@ def main(argv=None):
     dropped. Where every named type is dropped, the file's output is skipped entirely
     rather than printed unfiltered.
 
-    Which output form is used is decided by the first true flag in the order table,
-    pprint, raw; --narrow-table only changes the shape of the table form. Giving none of
-    the four turns the table form on, and giving --narrow-table alone does the same,
-    since --narrow-table is not one of the three the test looks at.
+    There are three output forms and the first true flag in the order table, pprint, raw
+    picks among them; --narrow-table only changes the shape of the table form. Giving
+    none of --table, --pprint and --raw turns the table form on, and giving
+    --narrow-table alone does the same, because --narrow-table is not one of the three
+    that test looks at.
 
     **The table form is keyed by the OPUS type rather than by the whole product
     category**, so two categories sharing a type would collapse into the later one's
-    row; the other three forms key on the whole category tuple and would show both.
-    Nothing here prevents the collision, and nothing observed produces one.
+    row, where the pprint and raw forms key on the whole category tuple and would show
+    both. Nothing here prevents the collision; a scan of 6,674 files across every volume
+    of one holdings copy produced none.
 
     Both holdings roots are read from the environment and both trees are preloaded,
     whatever kinds of path were asked for.
@@ -107,12 +109,19 @@ def main(argv=None):
         argv (list): The full command line, defaulting to sys.argv.
 
     Returns:
-        int: 0, always.
+        int: 0 on every path that reaches the end.
 
     Raises:
+        SystemExit: raised by ``parse_args()`` for a command line it cannot classify,
+            with status 2, and for --help with status 0. This is the first thing that
+            can go wrong, before either holdings root is read.
         KeyError: from the item read ``__getitem__()`` on the environment, if either
-            PDS3_HOLDINGS_DIR or PDS4_HOLDINGS_DIR is unset. This happens after the
-            command line has been parsed, so an invalid command line is reported first.
+            PDS3_HOLDINGS_DIR or PDS4_HOLDINGS_DIR is unset.
+        IndexError: from the item read ``__getitem__()`` on a product category, for a
+            file whose ``opus_products()`` returns a key that is not a five-element
+            tuple. The key is subscripted for its OPUS type in three places without
+            being checked, and a few real paths do return such a key, so this escapes
+            and nothing is returned for that run.
     """
 
     if argv is None:

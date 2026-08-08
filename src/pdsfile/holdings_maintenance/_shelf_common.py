@@ -201,9 +201,12 @@ def move_old(path, kind, *, logger=None):
 
     Raises:
         FileNotFoundError: raised by ``copy()`` on a companion file that is not beside
-            the original. The versioned copy of the original is already in place by
-            then, so a call that fails on a companion leaves the destination directory
-            partly filled.
+            the original, and on a recorded log directory that does not exist. The
+            versioned copy of the original is already in place by the time a companion
+            fails, so such a call leaves the destination directory partly filled.
+        ValueError: raised by ``next_version_dest()`` for a log directory already
+            holding a file whose three characters before the extension are not a
+            number.
     """
 
     if not os.path.exists(path):

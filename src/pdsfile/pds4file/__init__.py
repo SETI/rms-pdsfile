@@ -15,14 +15,16 @@ everything that says the tree is a PDS4 one:
     are spelled out in ``BUNDLESET_REGEX``, so a new bundle set has to be added here
     before it can be read. Bundle names are patterns, one per family of bundles.
   * **Which rules apply.** Every rule table the base class leaves as None is filled in
-    from ``pds4file.rules``, plus three the PDS3 side has no use for:
-    ``PRODUCT_LBL_BASENAME_WO_EXT``, ``ARCHIVE_PATHS`` and ``ARCHIVE_DIRS``.
+    from ``pds4file.rules``, including ``PRODUCT_LBL_BASENAME_WO_EXT``, which the base
+    declares and ``Pds3File`` leaves None. Two more have no counterpart on ``PdsFile``
+    at all and are introduced here: ``ARCHIVE_PATHS`` and ``ARCHIVE_DIRS``. All three
+    are unused on the PDS3 side.
   * **Its own cache and registry.** ``CACHE``, ``LOCAL_PRELOADED`` and ``SUBCLASSES``
     are assigned here rather than inherited, so a preload of a PDS4 tree does not
     disturb ``Pds3File``.
 
 The class carries no second vocabulary. The shared code is already written in the PDS4
-terms -- bundle, bundle set -- so the dozen aliases ``Pds3File`` needs have no
+terms -- bundle, bundle set -- so the nineteen aliases ``Pds3File`` needs have no
 counterpart here, and the two methods this class adds beyond the overrides are the
 archive-path pair at the end of the class body.
 
@@ -34,9 +36,16 @@ created, so that a tree can be read before any preload has run.
 
 **One of the three orderings is load-bearing and the file says which.** The import has to
 follow the class body, because every rule module subclasses ``Pds4File`` and so needs a
-class that is already built. It is wrapped in a handler for ``AttributeError``, which is
-what a recursive import of ``pdsfile`` raises when a rule module is tested on its own,
-and a run that takes that path finishes with no rule subclasses registered at all.
+class that is already built. Nothing forces the other two into their places: no rule
+module reads ``SUBCLASSES``, and the merged-directory call reads only what the class
+body binds.
+
+The import is wrapped in a handler for ``AttributeError``. The in-code comment beside it
+says that is what a recursive import of ``pdsfile`` raises when a rule module is tested
+on its own; that mechanism does not occur on any Python this package supports, since
+``import pdsfile.pds4file as pds4file`` binds from ``sys.modules`` during a circular
+import rather than raising. A run that did take the handler would finish with no rule
+subclasses registered at all.
 """
 
 import re
@@ -60,8 +69,10 @@ class Pds4File(PdsFile):
     ``LOCAL_PRELOADED`` and ``SUBCLASSES`` are assigned in the class body rather than
     inherited from ``PdsFile``, so preloading a PDS4 tree fills this class's cache and
     leaves ``Pds3File``'s alone. The four setters below are overridden for the same
-    reason: the base class writes each attribute onto every direct subclass, and these
-    write it onto the class the call names.
+    reason. Three of them write an attribute: the base version writes it onto every
+    direct subclass and not onto the class it was called on, and these write it onto the
+    class the call names. The fourth, ``set_easylogger()``, writes nothing either way
+    and passes the call on; the override is where the base's recursion stops.
 
     A rule subclass inherits all of it, so a setting made on ``Pds4File`` reaches every
     bundle set, and one made on a rule subclass reaches that bundle set alone.
@@ -161,9 +172,14 @@ class Pds4File(PdsFile):
     def __init__(self):
         """Return a blank object, with every slot at the value the base class gives it.
 
-        This is not how a caller gets an object. The constructors are the inherited
-        class methods, and each of them builds a blank object this way and then fills it
-        in, so calling the class directly gives something with no path and no contents.
+        This is not how a caller gets an object; the inherited class methods are.
+        Several of them reach this: ``from_abspath()`` and ``from_path()`` build a blank
+        object and fill it in. Several do not: ``from_logical_path()`` answers from the
+        class cache where the cache holds the path, and ``copy()`` and ``new_pdsfile()``
+        build their result with ``__new__`` and never run this at all.
+
+        A blank object has no path in either form, and its absolute path is the empty
+        string rather than None, which is what its representation shows.
         """
 
         super().__init__()
@@ -209,10 +225,14 @@ class Pds4File(PdsFile):
         """Return a representation naming the class and the path.
 
         Three forms are produced, and which one appears says what the object is: an
-        object with no absolute path is written as ``Pds4File-logical("...")`` around its
-        logical path; one of this class exactly is written as ``Pds4File("...")`` around
-        its absolute path; and one of a rule subclass names that subclass after a dot,
-        as ``Pds4File.uranus_occs_earthbased("...")``.
+        object whose absolute path is **None** is written as ``Pds4File-logical("...")``
+        around its logical path; one of this class exactly is written as
+        ``Pds4File("...")`` around its absolute path; and one of a rule subclass names
+        that subclass after a dot, as ``Pds4File.uranus_occs_earthbased("...")``.
+
+        The first test is against None specifically, so a blank object, whose absolute
+        path is the empty string, takes the second branch and prints an empty absolute
+        path: ``repr(Pds4File())`` is ``Pds4File("")``.
 
         Returns:
             str: the representation.
@@ -318,6 +338,13 @@ class Pds4File(PdsFile):
             dict[str, list[str]]: the absolute path of each archive that covers this
             file, mapped to the absolute paths of the directories it packages. An
             archive whose patterns match nothing that exists maps to an empty list.
+
+        Raises:
+            OSError: raised by ``glob_glob()`` under SHELVES_ONLY, when a shelf file its
+                search has already located cannot be opened or read back.
+            AssertionError: raised by the same ``glob_glob()`` call, under SHELVES_ONLY,
+                for a shelf path that does not hold the info shelf directory prefix
+                exactly once. Under ``python -O`` nothing is raised there.
         """
 
         archive_paths = self.archive_paths()

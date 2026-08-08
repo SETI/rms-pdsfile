@@ -12,8 +12,9 @@ this module rather than on either of the two drivers in ``_common.py`` and
 
 An index shelf is a pickled ``{filename key: list of row numbers}`` dictionary written
 beside a readable ``.py`` file holding the same mapping as Python source. Both are
-written together and both are re-dated together, so a caller reading either gets the
-same answer, and the repair task takes the older of the two as the pair's age.
+written by one call and both are touched by one call, and the repair task takes the
+older of the two as the pair's age. Nothing in this package reads the ``.py`` file; it
+is there to be read by a person or by something outside the package.
 
 The five tasks are here rather than in the two tool modules, because nothing in them
 differs between PDS3 and PDS4: what a row is, how a key is formed and how a shelf is
@@ -30,11 +31,13 @@ tools do not, which changes what the log tree holds rather than what is shelved.
 ``holdings_sentinel`` and ``file_log_level`` are read nowhere here, so their difference
 does not reach the index shelf tools at all.
 
-The tools do not all agree about an empty result. ``index_initialize()`` and
+The five tasks do not all agree about an empty result. ``index_initialize()`` and
 ``index_validate()`` test the fresh table dictionary against None, which
 ``generate_indexdict()`` never returns, while ``index_reinitialize()`` and
-``index_repair()`` test it for emptiness; a table with no rows therefore stops the
-latter two and is written by the former two.
+``index_repair()`` test it for emptiness. A table with no rows therefore stops the
+latter two before they write, and does not stop the former two -- which matters only
+for ``index_initialize()``, since ``index_validate()`` writes nothing whatever it
+finds and goes on to compare the empty table against the shelf.
 """
 
 import datetime
@@ -262,10 +265,14 @@ def load_indexdict(spec, pdsf, *, logger=None, limits=None):
         dict: The shelved row numbers, empty if there is no shelf file.
 
     Raises:
-        pickle.PickleError: from ``load()`` on a shelf file that is not readable as a
+        pickle.PickleError: from ``load()`` on a shelf file whose bytes are not a
             pickle. It is logged through ``exception()`` and re-raised.
+        EOFError: from the same ``load()`` on a shelf file of zero length, which is
+            what an interrupted write leaves. It is not a PickleError, so the handler
+            below does not catch it and it escapes without being logged, unlike every
+            other failure here.
         OSError: raised by ``open()`` if the file goes away between the existence test
-            and the read. This one is not caught, so it is not logged.
+            and the read. This one is not caught either.
     """
 
     if limits is None:
@@ -353,10 +360,12 @@ def validate_indexdict(spec, pdsf, tabdict, shelfdict, *, logger=None):
 def index_initialize(spec, pdsf, *, logger=None, limits=None):
     """Shelve one index table, refusing to replace a shelf that is already there.
 
-    A shelf file already in place is logged as an error and nothing is read or written,
-    so this is the one task that never overwrites. A table with no rows is shelved as an
-    empty dictionary rather than skipped, which is where this differs from
-    index_reinitialize().
+    A shelf file already in place is logged as an error and nothing is read or written.
+    Three of the five tasks never overwrite an existing shelf -- this one, which stops
+    at the error above, index_validate(), which writes nothing at all, and
+    index_update(), which reports an existing shelf and leaves it. A table with no rows
+    is shelved as an empty dictionary rather than skipped, which is where this differs
+    from index_reinitialize().
 
     Parameters:
         spec (ToolSpec): The tool's specification.
@@ -699,10 +708,11 @@ def run_index_main(spec, tasks, argv):
     exit status; and their per-target handlers are created in the tool's own log
     directory rather than in the target's.
 
-    Two consequences of the third reason are worth naming. This driver records no log
-    directories, so a superseded index shelf is not versioned anywhere; and each task is
-    called with the logger as a keyword, which the other two drivers do not do, so the
-    task's lines land inside the level this opens for the target.
+    Two further differences are worth naming, neither of which follows from the three
+    above. This driver records no log directories, so a superseded index shelf is not
+    versioned anywhere; and each task is called with the logger as a keyword, which the
+    other two drivers do not do, so the task's lines land inside the level this opens
+    for the target.
 
     Every command-line path is resolved and expanded before the run's first log level is
     opened, so a path this rejects exits before any per-target log file is created.
@@ -716,11 +726,17 @@ def run_index_main(spec, tasks, argv):
         argv (list): The full command line, sys.argv.
 
     Raises:
-        SystemExit: from ``sys.exit()``, on a normal return with status 1 if the run
-            logged a fatal or an error and 0 otherwise, and earlier with status 1 from
-            index_targets() on a path it rejects. A task that raises is logged and
-            re-raised instead, so the original exception propagates and the closing
-            ``sys.exit()`` is not reached.
+        SystemExit: from ``sys.exit()``. Inside setup_run(): status 1 when the command
+            line names no task, 0 for --help and 2 for a command line the parser cannot
+            classify. Then status 1 from index_targets() on a path it rejects, and, on
+            a normal return, status 1 if the run logged a fatal or an error and 0
+            otherwise. A task that raises is logged and re-raised instead, so the
+            original exception propagates and the closing ``sys.exit()`` is not
+            reached.
+        ValueError: raised by ``log_paths_for()`` for a target that is not an index
+            file, since the log path method these tools name checks that. Every path
+            index_targets() admits carries the spec's extension and sits under
+            metadata/, which is not the same test.
     """
 
     (args, logger) = _common.setup_run(spec, argv)

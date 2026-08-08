@@ -39,9 +39,11 @@ command line names rather than a choice:
   * ``_indexshelf_common.run_index_main()`` drives the two index shelf tools, whose
     target is a metadata table rather than a unit.
 
-All three begin at ``setup_run()``, which is the whole of what they share: the parsed
-command line and a logger wired to the tool's log roots. The exit status is not part of
-that, because the three differ on it -- two of them call ``sys.exit()`` themselves and
+All three begin at ``setup_run()``, which gives them the parsed command line and a logger
+wired to the tool's log roots. They share more than that call -- all three build their
+log paths through ``log_paths_for()`` and attach the spec's handler factories once per
+target, and two of the three record the log directories through ``set_log_dirs()``. What
+none of them shares is the exit status: two call ``sys.exit()`` themselves and
 ``run_selection_main()`` returns a result for its caller to act on.
 """
 
@@ -98,16 +100,22 @@ class ToolSpec:
             _indexshelf_common.run_index_main(), the last three passing it as the log
             path method's dir argument.
         logname: The PdsLogger name, e.g. 'pds.validation.archives'. setup_run()
-            constructs the logger with it, and every helper that takes an optional
-            logger falls back to a logger of that name, among them
+            constructs the logger with it, and most helpers that take an optional
+            logger fall back to a logger of that name, among them
             _archives_common.load_directory_info(),
             _indexshelf_common.generate_indexdict() and
-            _linkshelf_common.load_links().
-        pdsfile_cls: Pds3File or Pds4File. Every construction of a PdsFile in these
-            shared modules goes through it, among them run_main(),
+            _linkshelf_common.load_links(). Two do not: read_links in
+            _linkshelf_common takes a logger and never uses one, and move_old in
+            _shelf_common falls back on the logname its VersionedFile carries rather
+            than on this one.
+        pdsfile_cls: Pds3File or Pds4File. Every PdsFile these shared modules build
+            from a path goes through it, among them run_main(),
             _shelf_common.resolve_holdings_paths(), _linkshelf_common.load_links() and
             _indexshelf_common.index_targets(); setup_run() also sets the log root on
-            it, and _indexshelf_common.write_indexdict() closes its open shelves.
+            it, and _indexshelf_common.write_indexdict() closes its open shelves. An
+            object reached from another object rather than from a path -- through the
+            child or parent methods -- comes back as the right class without this
+            field being read.
         unit: What one command-line target names: 'volume', 'bundle' or 'table'. It
             names the command-line positional that build_arg_parser() adds, so each
             driver reads that positional back with getattr: run_main(),
@@ -159,18 +167,23 @@ class ToolSpec:
             those six leave it unset and their two drivers never reach for it.
         handler_factories: The pdslogger handler factories to attach at each log
             root, in the order they are added. Read twice per run: setup_run()
-            attaches them at the log root, and run_main(),
-            _shelf_common.run_selection_main() and
-            _indexshelf_common.run_index_main() attach them again in the log
-            directory of every target.
+            attaches them once at the log root, and each driver attaches them again
+            per target. **Where the second attachment lands differs by driver.**
+            run_main() and _shelf_common.run_selection_main() use the directory of
+            the target's own log file, so each target gets its own;
+            _indexshelf_common.run_index_main() trims the target's part back off and
+            uses the tool's own directory under each log root, which is the same
+            directory for every table it processes.
         lskip_for: Callable (pdsdir) returning the number of leading characters
             trimmed from an absolute path to form the archive-relative path. Read
             by _archives_common.load_directory_info(), so it is set by the archive
             tools alone.
         generate_links: Callable taking a unit directory, optionally the links
             already shelved for it, and keyword-only logger and limits, and
-            returning the links found in that unit and the latest modification time
-            among the files read. Read by the five task functions of
+            returning the links found in that unit and a modification time. The time
+            is the newest among **every file the walk sees**, taken before any skip
+            test and whether or not the file is opened, so a ``.DS_Store`` or a backup
+            file touched today moves it. Read by the five task functions of
             _linkshelf_common, among them _linkshelf_common.link_initialize() and
             _linkshelf_common.link_update(): what a link looks like is the one thing
             the two flavors of that tool do differently, so each keeps its own.
@@ -394,9 +407,10 @@ def log_paths_for(pdsf, method, *args, **kwargs):
     Raises:
         AttributeError: from the ``getattr()`` that looks the method up, if the object
             has no method of that name.
-        ValueError: from either call to the looked-up method, written ``build()`` here,
-            for a place option it does not recognize, and, where the method is
-            log_path_for_index, for a PdsFile that is not an index file.
+        ValueError: from the looked-up method, written ``build()`` here, where that
+            method is log_path_for_index and the PdsFile is not an index file. The
+            other reason those methods raise ValueError, a place option they do not
+            recognize, cannot arise through this call: both places are supplied here.
     """
 
     build = getattr(pdsf, method)
@@ -457,10 +471,12 @@ def run_main(spec, tasks, argv):
         argv (list): The full command line, sys.argv.
 
     Raises:
-        SystemExit: from ``sys.exit()``, with status 1 for a command-line path that
-            does not exist, and on a normal return with status 1 if the run logged a
-            fatal or an error and 0 otherwise. A task that raises is logged and
-            re-raised instead, so the original exception propagates and the closing
+        SystemExit: from ``sys.exit()``, four ways. Inside setup_run(): status 1 when
+            the command line names no task, 0 for --help and 2 for a command line the
+            parser cannot classify. Here: status 1 for a command-line path that does
+            not exist, and, on a normal return, status 1 if the run logged a fatal or
+            an error and 0 otherwise. A task that raises is logged and re-raised
+            instead, so the original exception propagates and the closing
             ``sys.exit()`` is not reached; the status the finally clause sets in that
             case is discarded with the frame.
     """
