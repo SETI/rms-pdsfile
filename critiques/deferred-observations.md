@@ -5209,3 +5209,115 @@ rediscovery.
      Whether that transfers to `holdings_maintenance/`, where the unit is a
      function again, is exactly what PR-30b should sample rather than assume.
      **Owner: PR-30a, PR-30b and PR-30c, which should sample rather than average.**
+
+### Added by the PR-30 adversarial review (rounds 1 and 2, first reads)
+
+249. **`VG_20xx.py`'s `filespec_to_bundleset` returns a volume set name no directory
+     carries.** The replacement string is `r'VG__20xx'`, with two underscores.
+     Runtime: `Pds3File.FILESPEC_TO_BUNDLESET.first('VG_2001/x')` returns
+     `'VG__20xx'`, and the holdings tree has `volumes/VG_20xx`. The docstring written
+     here describes what the table returns rather than what it was meant to return,
+     which is why the defect is visible at all. **Owner: whoever next touches the
+     Voyager rule modules.**
+
+250. **`FILESPEC_TO_BUNDLESET` answers with a non-existent volume set for three volume
+     sets that define no override.** With only the default rule in play,
+     `JNOJIR_1000` gives `JNOJIR_1xxx`, `JNOSRU_0001` gives `JNOSRU_0xxx` and
+     `RES_0001` gives `RES_0xxx`. The real names are `JNOJIR_xxxx`, `JNOSRU_xxxx` and
+     `RES_xxxx_prelim`. Eleven modules do define an override; these three need one and
+     do not have it. **Owner: whoever next touches those three modules.**
+
+251. **Five tables in three modules are defined and never reached.** `VG_28xx.py`
+     defines `sort_key` and `split_rules` and its class body assigns neither
+     `SORT_KEY` nor `SPLIT_RULES`. `cassini_iss_fring_mosaics_rsfrench2025.py` and
+     `cassini_iss_spokes_hedman_hamilton_2024.py` each define `archive_paths` and
+     `archive_dirs`, with a detailed header comment, and neither class body assigns
+     `ARCHIVE_PATHS` or `ARCHIVE_DIRS`. Entry 243 records the second pair; this entry
+     records that the shape repeats. The rule-table checker built for PR-30 cannot see
+     it, because it tests only that a defined table is named in the docstring, and
+     both docstrings now say the tables are unreached. **A checker that compared
+     top-level tables against class-body assignments would catch all five**, and is a
+     natural extension of `critiques/pr-30/check_rule_tables.py`.
+     **Owner: whichever PR next extends that checker.**
+
+252. **Six of `GO_0xxx.py`'s description rules are one path component short and never
+     fire.** `volumes/\w+/RAW_CAL`, `volumes/\w+/GOPEX`, `volumes/\w+/EMCONJ` and
+     `volumes/\w+/(MOON|EARTH|VENUS|IDA|GASPRA|SL9)` need a second `\w+` to reach a
+     real logical path such as `volumes/GO_0xxx/GO_0002/RAW_CAL`, because `\w` does
+     not span a slash; two `REDO` rules need a separator that the real names do not
+     have. All six return None at runtime and the directories they name fall through
+     to the generic "Directory". **Owner: whoever next touches `GO_0xxx.py`.**
+
+253. **`SPLIT_RULES`'s "after sort key" preview rule cannot match what `SORT_KEY`
+     produces.** `SORT_KEY` emits `_1full`, `_2med`, `_3small` and `_4thumb`; the
+     split rule written for those spellings is
+     `(.*)_(1thumb|2small|3med|9full)\.(jpg|png)`. No sort key ever matches it,
+     although the comment on `SPLIT_RULES` says the rules "must also work for the sort
+     keys of basenames". Both `rules/__init__.py` modules carry it.
+     **Owner: whoever next touches the default rule tables.**
+
+254. **Three dead or mistargeted regular expressions in single modules.**
+     `COUVIS_8xxx.py`'s last `versions` entry matches `volumes/COVIMS_8xxx.../COUVIS_8001/...`,
+     naming one mission in the other's module, so COUVIS_8xxx has no cross-version
+     rule for any directory but `data`. `JNOJNC_xxxx.py` has `JNOJNC _0\d\d\d`, with a
+     space inside the volume ID, so its global-maps association can never match.
+     `VG_28xx.py`'s `FRAME_DICT` string literal is missing its closing brace, so the
+     value would not parse; nothing reads it. **Owner: whoever next touches each.**
+
+255. **Five pds4 association patterns carry a stray `]` in an alternation.**
+     `cassini_iss.py`, `cassini_vims.py` and `uranus_occs_earthbased.py` all write
+     `(.*|_[a-z]*])`, whose second alternative requires a literal `]` in the path and
+     is unreachable behind a leading `.*` in any case. It reads as a typo for
+     `(.*|_[a-z]*)`. **Owner: whoever next revises the pds4 rules.**
+
+256. **Two pds4 `associations_to_documents` tables emit regular-expression
+     metacharacters into a path.** `cassini_uvis_solarocc_beckerjarmak2023.py` and
+     `cassini_iss_fring_mosaics_rsfrench2025.py` return
+     `documents/<name>[^/]*` and `documents/<name>[^/]*/.*`, where the replacement is
+     consumed as a logical path or an fnmatch glob: `[^/]` is a character class
+     matching a literal `^` or `/`, and `.*` is not a glob. Every other module emits a
+     plain `documents/<name>/*`. **Owner: whoever next revises the pds4 rules.**
+
+257. **`uranus_occs_earthbased.py`'s two archive tables disagree about versioned bundle
+     sets.** `archive_paths` matches `(uranus_occs_earthbased[^/]*)` and so answers for
+     `uranus_occs_earthbased_v2`; `archive_dirs` matches
+     `.*archives-(.*/uranus_occs_earthbased)/(.*).tar.gz`, which cannot match the `_v2`
+     archive it would name. The module's own header comment anticipates the `_v2` case
+     explicitly. **Owner: whoever next revises the pds4 rules.**
+
+258. **Duplicated entries in six tables.** `VGISS_xxxx.py`'s `opus_type` repeats a
+     `GEOMED` line; `CORSS_8xxx.py`'s description table repeats a four-line preview
+     block; `HSTxx_xxxx.py` repeats an `index/hstfiles` line; both `rules/__init__.py`
+     modules repeat `volumes/[^/]+`; and `COISS_xxxx.py`'s `opus_type` repeats an
+     `extras/(tiff|full)` line, which `cassini_iss.py` and `cassini_vims.py` inherit
+     verbatim. None changes behavior, since a translator takes the first match.
+     **Owner: cleanup, whenever a PR touches each table.**
+
+259. **Typos in user-facing description strings.** These are the strings Viewmaster
+     shows: "Interopolated ousekeeping data" (`COCIRS_xxxx.py`), "Raw imag, FITS" and
+     "Calibrated imag, FITS" (`NHxxxx_xxxx.py`), "Ring intercept geomemtry" and "Raw
+     data with anomalies identifed" (`VG_28xx.py`), "Thumbnail obervation diagram"
+     (`CORSS_8xxx.py`), "Checksum index of indices and metadatas" and "GIF vewable
+     image" (both `rules/__init__.py` modules). The PR-30 docstrings do not repeat any
+     of them. **Owner: a small text-only PR; none of these is behavioral.**
+
+260. **Two regular expressions with unescaped dots, and one with a misplaced
+     quantifier.** `COCIRS_xxxx.py`'s `split_rules` writes `(.*)\.tar.gz`, where the
+     second and third dots are wildcards; `RPX_xxxx.py`'s `versions` writes
+     `volumes/RPX_xxxx*/...` on the *source* side, where `*` quantifies the preceding
+     `x` rather than globbing. Both happen to match what they were meant to match.
+     `COUVIS_0xxx.VERSIONS_PATH_AND_KEY` accepts only `_v<digit>`, not the
+     `_v1.0`/`_v2.1` forms the rest of the package spells `(|_v[0-9\.]+)`.
+     **Owner: whoever next touches each.**
+
+261. **`EBROCC_xxxx.py`'s `default_viewables` has an unreachable branch.** Its first
+     entry, `(r'.*\.lbl', re.I, '')`, is case-insensitive and anchored, so it consumes
+     every `.LBL`; the `LBL` alternative in the entry below it can never be reached.
+     **Owner: whoever next touches `EBROCC_xxxx.py`.**
+
+262. **`cassini_iss.py`'s two bundles claim the same archive name for one clock
+     block.** The cruise bundle's archive names are built over `range(29, 46)` and the
+     Saturn bundle's over `range(45, 89)`, so both produce a `*_145xxxxxxx.tar.gz`.
+     The module's header comment states the same overlapping bounds, so it may be
+     deliberate; the `cassini_iss` bundle set is not in this holdings copy, so it could
+     not be settled here. **Owner: whoever can read a complete PDS4 holdings tree.**
