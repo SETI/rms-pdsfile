@@ -143,8 +143,11 @@ class _PropertiesMixin:
 
         Where the derivation does run, an object with no absolute path is False and
         anything else is asked of ``os_path_exists()``, which under SHELVES_ONLY answers
-        from the info shelves rather than from the filesystem and memoizes its answer for
-        the life of the process.
+        from the info shelves rather than from the filesystem, for everything outside the
+        documents tree, for which no shelves are written. That answer is memoized in an
+        LRU of PATH_EXISTS_CACHE_SIZE entries that nothing invalidates, so a file created
+        or removed after the first question about it keeps its old answer until the entry
+        is evicted.
 
         Returns:
             bool: True if the file exists.
@@ -250,26 +253,28 @@ class _PropertiesMixin:
 
     @property
     def html_path(self):
-        """The path part of this file's URL, starting with the HTML root.
+        """Where this file is served, as a URL or as a path below the HTML root.
 
         The value is derived once, stored in ``_html_path_filled`` and returned unchanged
         afterwards; deriving it calls ``_recache()``. ``url`` returns the same value under
         another name. Nothing here tests whether the file exists, so a path this
         installation would serve is returned whether or not anything is there to serve.
 
-        Three cases. An object with no absolute path, which is a merged directory, takes
-        the path of its first child and drops the last component; a merged directory whose
-        child list is still empty therefore raises IndexError rather than answering. A
-        file whose path ends in ``.link`` holds its own URL as its contents, which are
-        read as latin-1 and stripped, and a file that cannot be opened falls back to the
-        third case. Everything else is ``html_root_`` followed by the logical path.
+        Three cases. An object with no absolute path, normally a merged directory, takes
+        the path of its first child and drops the last component; one whose child list is
+        still empty therefore raises IndexError rather than answering. A file whose path
+        ends in ``.link`` holds a URL as its contents, and those contents, read as latin-1
+        and stripped, are the answer: that is a complete external URL, scheme and host
+        included, and not a path below this installation's HTML root. A ``.link`` file
+        that cannot be opened falls back to the third case, which is everything else:
+        ``html_root_`` followed by the logical path.
 
         Returns:
-            str: the URL path.
+            str: a path below the HTML root, or the whole URL held by a ``.link`` file.
 
         Raises:
-            IndexError: raised by ``__getitem__()`` on the child-name list of a merged
-                directory that has no children.
+            IndexError: raised by ``__getitem__()`` on the child-name list of an object
+                with no absolute path and no children.
         """
 
         if self._html_path_filled is not None:
@@ -345,11 +350,15 @@ class _PropertiesMixin:
         """The third part of this basename as ``split_basename()`` divides it.
 
         This holds no slot of its own but reads ``split``, so the first access fills
-        ``_split_filled`` and calls ``_recache()`` as a side effect. Under the rule that
-        catches most names the third part is the text from the **last** period onward,
-        including the period, and an empty string for a name with no period; the
-        bundle-set rules put the volume type there instead, so
-        ``COISS_2xxx_previews.tar.gz`` gives ``_previews`` and not an extension at all.
+        ``_split_filled`` and calls ``_recache()`` as a side effect. Under the split rule
+        that catches most names the third part is the text from the **last** period
+        onward, including the period, and an empty string for a name with no period.
+
+        A bundle-set name is not split by the rules at all: the bundle-set regular
+        expression matches first, and where the name carries a volume type that
+        expression puts the volume type in the third part, so
+        ``COISS_2xxx_previews.tar.gz`` gives ``_previews``. A bundle-set name carrying
+        only a version, ``COISS_2xxx_v1``, gives an empty string.
 
         A merged directory and an index row are born with ``_split_filled`` set to
         ``(basename, '', '')``, so both report an empty string.
@@ -358,7 +367,15 @@ class _PropertiesMixin:
         basename itself rather than a triple, and this then returns its third character.
 
         Returns:
-            str: the extension, with its leading period.
+            str: the third part of the split. For a name the default rule handles that is
+            the extension including its period, and an empty string where there is none;
+            for a bundle-set name it is the volume type or an empty string; for a class
+            with no split rules it is one character of the basename.
+
+        Raises:
+            IndexError: raised by ``__getitem__()`` on a class with no split rules whose
+                basename is shorter than three characters, where the subscript indexes
+                the basename itself.
         """
 
         return self.split[2]
@@ -503,15 +520,19 @@ class _PropertiesMixin:
     def _info(self):
         """The size, child count, modification time, checksum and shape of this file.
 
-        This is the one derivation behind ``size_bytes``, ``modtime``, ``checksum``,
-        ``date``, ``formatted_size``, ``width`` and ``height``; each of them reads this
-        rather than the filesystem. The value is derived once, stored in ``_info_filled``
-        and returned unchanged afterwards, and deriving it calls ``_recache()``. A merged
-        directory and an index row are born with the slot already filled, with a list
-        rather than a tuple, so neither reaches this body.
+        This is the derivation behind ``size_bytes``, ``modtime``, ``date``,
+        ``formatted_size``, ``width`` and ``height``, and the fallback behind
+        ``checksum``, which prefers the MD5 the volume-info table carries and reads this
+        only where that is empty. The value is derived once, stored in ``_info_filled``
+        and returned unchanged afterwards, and deriving it calls ``_recache()``; the one
+        later write is ``_repair_width_height()``, which replaces the fifth element in
+        place when ``width`` or ``height`` is read on a viewable whose shape is the
+        ``'TBD'`` marker, so those two do reach the filesystem where the others do not. A
+        merged directory and an index row are born with the slot already filled, with a
+        list rather than a tuple, so neither reaches this body.
 
-        A file that does not exist gets zeros, no modification time and no checksum, which
-        is what makes the seven properties above safe to read on any object.
+        A file that does not exist gets zeros, no modification time and no checksum, so
+        the properties above answer rather than fail on it.
 
         Otherwise the info shelf is asked first, wherever ``info_shelf_expected`` says one
         should cover this file. A shelf that cannot be read logs a warning and re-raises
@@ -535,7 +556,8 @@ class _PropertiesMixin:
         Returns:
             tuple: the size in bytes, the child count, the modification time or None, the
             checksum or an empty string, and the shape, which is a pair except on a
-            viewable whose dimensions have not been read.
+            viewable whose dimensions have not been read. A merged directory and an index
+            row return instead the list they were born with.
 
         Raises:
             OSError: raised by ``shelf_lookup()`` and re-raised where SHELVES_REQUIRED is
@@ -543,9 +565,19 @@ class _PropertiesMixin:
                 the shelves report as existing that the filesystem does not hold.
             KeyError: raised by ``shelf_lookup()`` and re-raised under the same setting
                 where the shelf opened but holds no entry for this file.
-            ValueError: raised by ``shelf_lookup()`` and re-raised under the same setting,
-                and by ``int()`` or ``datetime()`` on a shelf time string that is not of
-                the expected shape.
+            ValueError: raised by ``shelf_lookup()`` and re-raised under the same setting;
+                raised by ``int()`` or ``datetime()`` on a shelf time string that is not
+                of the expected shape; and raised by ``shelf_lookup()`` out of the
+                bundle-set loop whatever that setting is, because that loop's handler
+                catches OSError alone. The last is what a checksums bundle-set directory
+                does, for which no shelf exists at all, so the properties above fail on
+                one rather than answering.
+            SyntaxError: raised by ``shelf_lookup()`` where the readable sidecar it reads
+                before the shelf itself does not hold the record it expects. Neither
+                handler here catches it, so it escapes whatever SHELVES_REQUIRED is set
+                to.
+            NameError: raised by ``shelf_lookup()`` from the same sidecar, and escaping
+                the same way, where that line parses but uses a bare name.
         """
 
         if self._info_filled is not None:
@@ -855,16 +887,23 @@ class _PropertiesMixin:
         """A best guess at the MIME type of this file, or an empty string.
 
         The value is derived once from the extension, stored in ``_mime_type_filled`` and
-        returned unchanged afterwards; deriving it calls ``_recache()``, and reading
-        ``extension`` fills ``_split_filled`` as well. A merged directory is born with the
-        slot set to an empty string and an index row with ``text/plain``, so neither
-        reaches this body.
+        returned unchanged afterwards; deriving it calls ``_recache()``, reading
+        ``extension`` fills ``_split_filled``, and testing ``isdir`` fills
+        ``_isdir_filled``. A merged directory is born with the slot set to an empty string
+        and an index row with ``text/plain``, so neither reaches this body.
 
-        A directory gets an empty string. Otherwise the extension without its leading
-        period, lowercased, is looked for in PLAIN_TEXT_EXTS, which gives ``text/plain``,
-        and then in MIME_TYPES_VS_EXT, which gives the type recorded there. An extension
-        in neither gets an empty string, which callers read as not displayable in a
-        browser rather than as unknown.
+        A directory gets an empty string. Otherwise the extension **without its first
+        character**, lowercased, is looked for in PLAIN_TEXT_EXTS, which gives
+        ``text/plain``, and then in MIME_TYPES_VS_EXT, which gives the type recorded
+        there. Dropping the first character is right for an extension, whose first
+        character is the period, and wrong for the volume type ``extension`` returns for a
+        bundle-set name: ``COISS_2xxx_previews_md5.txt`` is looked up as ``previews``, so
+        it gets an empty string rather than ``text/plain``. An extension in neither table
+        gets an empty string.
+
+        Reading ``isdir`` is what makes this able to fail: under SHELVES_ONLY it raises
+        KeyError for a path the info shelf covers and holds no entry for, which is a path
+        ``exists`` would have answered False for.
 
         Returns:
             str: the MIME type, or an empty string.
@@ -1188,9 +1227,11 @@ class _PropertiesMixin:
         """The basename of the PDS3 label that describes this data file.
 
         The value is derived once, stored in ``_label_basename_filled`` and returned
-        unchanged afterwards; deriving it calls ``_recache()``. A merged directory and an
-        index row are born with the slot set to an empty string, and a label file gets an
-        empty string too, because a label has no label of its own.
+        unchanged afterwards; deriving it calls ``_recache()``. Deriving it also fills
+        four slots that belong to other properties, because the body reads ``islabel``,
+        ``extension``, ``exists`` and, on one path, ``internal_link_info``. A merged
+        directory and an index row are born with the slot set to an empty string, and a
+        label file gets an empty string too, because a label has no label of its own.
 
         Otherwise the name is guessed before it is looked up. The guesses are this
         basename with its extension replaced by each of LBL_EXT in turn, in both cases,
@@ -1208,6 +1249,11 @@ class _PropertiesMixin:
 
         A basename whose extension is empty makes the stem empty as well, so the guesses
         are the bare label extensions.
+
+        The link-shelf fallback is the one path that can fail: reading
+        ``internal_link_info`` re-raises OSError, KeyError or ValueError from the link
+        shelf where SHELVES_REQUIRED is set, so an existing file none of whose guesses
+        exists is where this raises rather than answering.
 
         Returns:
             str: the label basename, or an empty string where there is none.
@@ -1272,9 +1318,11 @@ class _PropertiesMixin:
 
         This holds no slot of its own and is recomputed on every access, but the first
         access fills ``_label_basename_filled`` through ``label_basename``. The path is
-        that name beside this file, so it exists exactly when ``label_basename`` found an
-        existing name; the one case where it does not is a file that does not itself
-        exist, for which ``label_basename`` returns a guess.
+        that name beside this file, which is not always where the name came from. Two
+        cases give a path that need not exist: a file that does not itself exist, for
+        which ``label_basename`` returns a guess, and a name the link shelf supplied,
+        which the shelf may have recorded in another directory of the bundle and which
+        nothing tests before it is rebuilt here.
 
         Returns:
             str: the absolute path of the label, or an empty string where there is none.
@@ -1484,15 +1532,18 @@ class _PropertiesMixin:
         and it sorts versions oldest to newest. The list describes the bundle rather than
         the file: it holds one entry for each version of the bundle the preload found.
 
-        The value is derived once, stored in ``_version_ranks_filled`` and returned
-        unchanged afterwards; deriving it calls ``_recache()``. A merged directory is born
-        with the slot set to an empty list, and an index row inherits its table's list.
+        For a file that exists the value is derived once, stored in
+        ``_version_ranks_filled`` and returned unchanged afterwards; deriving it calls
+        ``_recache()``. A merged directory is born with the slot set to an empty list, and
+        an index row takes whatever its table's value is.
 
         **A file that does not exist yields None rather than a list.** The derivation
         leaves the slot at the None it started with and returns that, so a caller that
-        iterates the result without testing it raises TypeError. An object that exists but
-        names neither a bundle nor a bundle set gets an empty list, and so does one whose
-        category has no rank table, which also logs a warning.
+        iterates the result without testing it raises TypeError. Because the slot stays
+        None, the guard at the top never fires either, and the body -- including
+        ``exists`` and ``_recache()`` -- runs again on every access. An object that exists
+        but names neither a bundle nor a bundle set gets an empty list, and so does one
+        whose category has no rank table, which also logs a warning.
 
         Returns:
             list: the version ranks, or None for a file that does not exist.
@@ -1672,9 +1723,11 @@ class _PropertiesMixin:
 
         A numbered suffix ``_v<major>[.<minor>[.<micro>]]`` ranks at ten thousand times
         the major number plus a hundred times the minor plus the micro, so a version can
-        be compared with any other of its own bundle set by rank alone. Its id is the
-        number without the leading ``_v``, rebuilt from the same parts, so a fourth part
-        is dropped from both the id and the rank while staying in the message.
+        be compared with any other of its own bundle set by rank alone for as long as the
+        minor and micro numbers stay below 100: ``_v1.100`` and ``_v2`` both rank 20000.
+        The id is the number without the leading ``_v``, rebuilt from the same parts, so a
+        fourth part is dropped from both the id and the rank while staying in the message,
+        and ``_v2.1.3`` and ``_v2.1.3.4`` are indistinguishable by either.
 
         Every other suffix is rejected. Only the current version and the four stage
         suffixes get an empty version id.

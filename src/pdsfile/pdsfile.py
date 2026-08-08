@@ -24,8 +24,9 @@ module functions.
   * ``_index_rows.py`` -- ``_IndexRowsMixin``: index shelves, and the pseudo-children
     that stand for rows of an index table.
   * ``_local_fs.py`` -- ``_LocalFsMixin``: the filesystem layer that answers from the
-    info shelves under ``SHELVES_ONLY`` (``os_path_exists``, ``os_path_isdir``, ``os_listdir``,
-    ``glob_glob`` and ``_non_checksum_abspath``), and ``PATH_EXISTS_CACHE_SIZE``.
+    info shelves under ``SHELVES_ONLY`` (``os_path_exists``, ``os_path_isdir``,
+    ``os_listdir``, ``glob_glob`` and ``_non_checksum_abspath``), and
+    ``PATH_EXISTS_CACHE_SIZE``.
   * ``_opus.py`` -- ``_OpusMixin``: ``opus_products``, and the two constructors that
     resolve an OPUS ID (``from_opus_id``) or a bundle-name file specification
     (``from_filespec``).
