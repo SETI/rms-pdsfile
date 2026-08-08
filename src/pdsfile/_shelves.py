@@ -1,8 +1,36 @@
 ##########################################################################################
 # pdsfile/_shelves.py
-# Shelf file support: locating a shelf file and the key into it, opening and
-# caching shelf files, and looking up the values they hold
 ##########################################################################################
+
+"""Shelf files: the sidecar indexes that answer questions about files without
+opening them.
+
+A shelf file is a pickled dictionary covering one bundle, or one bundle set of archives,
+and it is keyed by the interior path of each file below that bundle. Three kinds exist,
+and they live in three parallel trees named after them:
+
+  * an **info** shelf, under ``_infoshelf-<category>/``, records each file's size, its
+    child count, its modification time, its checksum and, for an image, its dimensions;
+  * a **link** shelf, under ``_linkshelf-<category>/``, records which files each label
+    points at;
+  * an **index** shelf, under ``_indexshelf-<category>/``, records which rows of an
+    index table each selection key covers.
+
+Reading them is what makes a holdings tree answerable without touching most of it, and
+it is what lets the whole package run against a tree it cannot stat, under the
+``SHELVES_ONLY`` setting that ``_local_fs.py`` implements.
+
+``_ShelfMixin`` holds three things: the arithmetic that turns a file's path into the
+shelf path and the key within it; a cache of open shelves shared by every PdsFile
+subclass, bounded and trimmed by least-recent access; and the lookup that puts the two
+together. It also holds two questions about expectation -- whether a file should have an
+info shelf entry at all, and whether the one it should have is there.
+
+``_eval_null_key_record()`` is a shortcut past all of that. Every info shelf is written
+alongside a readable ``.py`` sidecar of the same dictionary, whose second line is the
+entry for the bundle itself, so a question about a bundle can be answered by reading one
+line instead of unpickling a whole shelf.
+"""
 
 import os
 import pickle
@@ -18,10 +46,6 @@ def _eval_null_key_record(rec):
     "<bundlename>_info.py" sidecar holding the same dictionary as Python source.
     The sidecar's second line is the entry for the null key -- the bundle itself
     -- and it is the only line this reads.
-
-    Keyword arguments:
-        rec -- the second line of an info shelf sidecar, as returned by
-               readline(), so it still carries its trailing newline.
 
     The line has the form
 
@@ -47,6 +71,22 @@ def _eval_null_key_record(rec):
       raises NameError if it is in none of them. A record the maintenance tools
       wrote is a tuple of literals and contains no name, so which namespaces are
       in scope is not observable.
+
+    Parameters:
+        rec (str): the second line of an info shelf sidecar, as returned by
+            ``readline()``, so it still carries its trailing newline.
+
+    Returns:
+        tuple: the values the line records, which for a record the maintenance tools
+        wrote is the byte count, the child count, the modification time, the checksum
+        and the (width, height) pair.
+
+    Raises:
+        SyntaxError: raised by ``eval()`` when what is left after the parse is not a
+            complete expression, which is what a line with no colon or without the
+            expected trailing comma can leave behind.
+        NameError: raised by ``eval()`` if the expression uses a bare name that is in
+            none of the namespaces above.
     """
 
     # Format is "": (bytes, count, date, checksum, (0,0)),
@@ -61,23 +101,76 @@ class _ShelfMixin:
     """Shelf file support for PdsFile.
 
     A mixin of PdsFile; it holds methods only and defines no state of its own.
-    The open-shelf cache lives on PdsFile as the SHELF_CACHE, SHELF_ACCESS,
-    SHELF_CACHE_SIZE, SHELF_CACHE_SLOP, SHELF_ACCESS_COUNT and
-    SHELF_NULL_KEY_VALUES class attributes, so every subclass shares one cache.
-    The other class attributes these methods read are LOGGER and PDS_HOLDINGS,
-    also on PdsFile, and SHELF_PATH_INFO -- which maps a shelf type to its
-    directory prefix and file suffix -- on the Pds3File and Pds4File subclasses.
+
+    The open-shelf cache is class state, not instance state, and it is defined on
+    PdsFile itself, so every subclass shares one cache: SHELF_CACHE maps a shelf
+    path to the dictionary it holds, SHELF_ACCESS maps it to the serial number of
+    its last use, SHELF_ACCESS_COUNT issues those serial numbers, SHELF_CACHE_SIZE
+    and SHELF_CACHE_SLOP bound the cache, and SHELF_NULL_KEY_VALUES remembers the
+    one entry per shelf that describes the bundle as a whole. SHELF_PATH_INFO,
+    which maps a shelf type to its directory prefix and file suffix, is also on
+    PdsFile.
+
+    This is the innermost layer: nothing here reaches a sibling mixin, which is
+    what lets _LocalFsMixin call into it without a cycle.
+
+    Every attribute these methods read or write on a PdsFile object or on a
+    PdsFile class, and nothing else -- str, dict, os.path, pickle, file and logger
+    methods are not in scope::
+
+      class attributes read       LOGGER, PDS_HOLDINGS, SHELF_ACCESS,
+                                  SHELF_ACCESS_COUNT, SHELF_CACHE,
+                                  SHELF_CACHE_SIZE, SHELF_CACHE_SLOP,
+                                  SHELF_NULL_KEY_VALUES, SHELF_PATH_INFO
+      class attributes WRITTEN    SHELF_ACCESS_COUNT, which is rebound on every
+                                  use. The four dictionaries are mutated rather
+                                  than rebound, so they are reads
+      core properties read        is_category_dir
+      lazy properties read        is_documents
+      instance attributes read    archives_, basename, bundlename, bundlename_,
+                                  bundleset, bundleset_, category_, checksums_,
+                                  interior, logical_path, root_, suffix
+      instance attributes WRITTEN none
+
+    All of them are defined on PdsFile. Every one is an attribute lookup on self
+    or on type(self) at run time, not an import, which is what lets the halves
+    live in different modules.
     """
 
     def shelf_path_and_lskip(self, shelf_type='info', bundlename=''):
-        """Return the absolute path to the shelf file associated with this PdsFile.
-        Also return the number of characters to skip over in that absolute path to obtain
-        the key into the shelf.
+        """Return this file's shelf path, and the prefix length of the tree it covers.
 
-        Keyword arguments:
-            shelf_type -- shelf type ID: 'index', 'info', or 'link' (default 'info')
-            bundlename -- an optional bundle name to append to the end of a this path,
-                          which can be used if this is a bundleset (default '')
+        One shelf covers one bundle, or one bundle set of archives, so the shelf path is
+        built from this file's bundle set and bundle rather than from the file itself. A
+        bundle set can name one of its bundles explicitly, which is how a shelf is
+        located from the level above it. Three directories that sit under a bundle set
+        without being bundles -- a name starting ``checksums_``, a name starting
+        ``superseded``, or a name ending ``_support`` -- get a shelf of their own under
+        their own name.
+
+        The second value is a character count, and **it does not index the shelf path**.
+        It is the length of the prefix that a *data* path under the covered tree carries
+        before its shelf key begins, so slicing it off a file's own absolute path leaves
+        the interior path that keys the shelf. Sliced off the shelf path instead it
+        lands somewhere arbitrary, because that path carries a directory prefix such as
+        ``_infoshelf-`` that the count does not account for.
+
+        Parameters:
+            shelf_type (str): which shelf: 'index', 'info' or 'link'.
+            bundlename (str): a bundle below this one to build the path for, with any
+                trailing slash ignored. An empty string uses this file's own bundle.
+
+        Returns:
+            tuple: the absolute path of the shelf file, and the prefix length described
+            above.
+
+        Raises:
+            ValueError: if this is a checksum file, since checksums have no shelves; if
+                it is an archive file with no bundle set; or if it is neither an archive
+                nor anything a bundle name can be found for.
+            KeyError: raised by the shelf-type lookup, the item read
+                ``__getitem__()`` on SHELF_PATH_INFO, for a type that is not one of the
+                three.
         """
 
         if self.checksums_:
@@ -124,12 +217,26 @@ class _ShelfMixin:
         return (abspath, lskip)
 
     def shelf_path_and_key(self, shelf_id='info', bundlename=''):
-        """Return the absolute path to a shelf file, plus the key for this item.
+        """Return this file's shelf path and the key that finds it in that shelf.
 
-        Keyword arguments:
-            shelf_id   -- shelf type ID: 'index', 'info', or 'link' (default 'info')
-            bundlename -- an optional bundle name to append to the end of a this path,
-                          which can be used if this is a bundleset (default '')
+        The key is this file's interior path -- what is left of its logical path below
+        the bundle -- which is the empty string for the bundle directory itself. Naming
+        a bundle explicitly asks about that bundle rather than about a file inside it,
+        so the key is then the empty string whatever this file is.
+
+        Parameters:
+            shelf_id (str): which shelf: 'index', 'info' or 'link'.
+            bundlename (str): a bundle below this one to ask about. An empty string asks
+                about this file.
+
+        Returns:
+            tuple: the absolute path of the shelf file, and the key into it.
+
+        Raises:
+            ValueError: raised by ``shelf_path_and_lskip()`` for a checksum file, an
+                archive file with no bundle set, or a file with no bundle name.
+            KeyError: raised by ``shelf_path_and_lskip()`` for an unrecognized shelf
+                type.
         """
 
         (abspath, _lskip) = self.shelf_path_and_lskip(shelf_id, bundlename)
@@ -140,16 +247,36 @@ class _ShelfMixin:
 
     @classmethod
     def _get_shelf(cls, shelf_path, log_missing_file=True):
-        """Internal method to open and return a shelf/pickle file. A limited number of
-        shelf files are kept open at all times to reduce file IO.
+        """Return the dictionary a shelf file holds, opening it if it is not open.
 
-        Use log_missing_file = False to suppress log entries when a nonexistent
-        shelf file is requested but the exception is handled externally.
+        The open shelves are held in a cache shared by every PdsFile subclass, so a
+        second request for the same shelf costs nothing but a bookkeeping update.
+        Opening a shelf that was not cached reads and unpickles the whole file, sorts
+        the dictionary by key so that a caller may binary-search it, remembers the entry
+        for the bundle itself if the shelf has one and none was remembered before, and
+        adds the result to the cache.
 
-        Keyword arguments:
-            shelf_path       -- the path of the shelf file
-            log_missing_file -- a flag used to determine if we would like to log the path
-                                of the opening pickle file (default True)
+        The cache is then trimmed if it has grown past its size plus its slop, which is
+        what keeps the trim from running on every open: the least recently used shelves
+        are closed until the size remains. The shelf just opened is the most recently
+        used, so it is never the one discarded.
+
+        The debug line announcing the open is written before the file is looked for, so
+        a request for a missing shelf is logged and then fails, unless logging of that
+        case was suppressed.
+
+        Parameters:
+            shelf_path (str): the absolute path of the shelf file.
+            log_missing_file (bool): whether to log the attempt even when the file is
+                not there. False suits a caller that expects the failure and handles it.
+
+        Returns:
+            dict: the shelf contents, keyed by interior path.
+
+        Raises:
+            OSError: if the file does not exist, or if reading or unpickling it fails
+                for any reason at all. The second case replaces the original exception
+                rather than chaining it, so what went wrong is not reported.
         """
 
         # If the shelf is already open, update the access count and return it
@@ -202,11 +329,18 @@ class _ShelfMixin:
 
     @classmethod
     def _close_shelf(cls, shelf_path):
-        """Internal method to close a shelf file. A limited number of shelf
-        files are kept open at all times to reduce file IO.
+        """Drop a shelf from the open-shelf cache.
 
-        Keyword arguments:
-            shelf_path -- the path of the shelf file
+        Closing a shelf that is not open is not an error: it is logged as one and the
+        call returns.
+
+        What is dropped is the shelf dictionary and its access record. The entry for the
+        bundle itself, remembered separately when the shelf was opened, is **not**
+        dropped, so a question about a bundle keeps being answerable from memory after
+        its shelf has been closed, and that store is never trimmed.
+
+        Parameters:
+            shelf_path (str): the absolute path of the shelf file.
         """
 
         # If the shelf is not already open, return
@@ -223,20 +357,52 @@ class _ShelfMixin:
 
     @classmethod
     def close_all_shelves(cls):
-        """Close all shelf files."""
+        """Drop every shelf from the open-shelf cache.
+
+        The cache is shared by every PdsFile subclass, so this empties it for all of
+        them. The remembered entries for the bundles themselves are kept, as they are by
+        a single close.
+        """
 
         keys = list(cls.SHELF_CACHE.keys())     # save keys so dict can be
         for shelf_path in keys:                     # be modified inside loop!
             cls._close_shelf(shelf_path)
 
     def shelf_lookup(self, shelf_type='info', bundlename=''):
-        """Return the contents of a shelf file associated with this object.
+        """Return what a shelf file records about this file.
 
-        Keyword arguments:
-            shelf_type -- indicates the type of the shelf file: 'info', 'link', or
-                          'index' (default 'info')
-            bundlename -- can be used to get info about a bundle when the method
-                          is applied to its enclosing bundleset (default '')
+        A question about a bundle rather than about a file inside it has two shortcuts
+        before the shelf itself is opened. The first is the store of bundle entries
+        already read. The second applies to info shelves only: the readable ``.py``
+        sidecar beside the shelf carries the bundle's own entry on its second line, so
+        that line is read and remembered instead of unpickling the whole shelf. This is
+        what keeps a preload from opening every info shelf in the tree.
+
+        Anything else opens the shelf, through the shared cache, and reads one key.
+
+        Parameters:
+            shelf_type (str): which shelf: 'info', 'link' or 'index'.
+            bundlename (str): a bundle below this one to ask about, which is how a
+                bundle set asks about one of its bundles. An empty string asks about
+                this file.
+
+        Returns:
+            the value the shelf records for this file, whose shape depends on which
+            shelf was asked.
+
+        Raises:
+            ValueError: raised by ``shelf_path_and_key()`` for a checksum file, an
+                archive file with no bundle set, or a file with no bundle name.
+            KeyError: raised by ``shelf_path_and_key()`` for an unrecognized shelf type,
+                and by the final item read ``__getitem__()`` when the shelf opened but
+                holds no such key.
+            OSError: raised by ``_get_shelf()`` when the shelf file is missing or
+                unreadable, and by ``open()`` when the sidecar shortcut is taken and the
+                ``.py`` file is missing. The sidecar is tried before the shelf, so a
+                bundle whose sidecar is missing fails there rather than falling back.
+            SyntaxError: raised by ``_eval_null_key_record()`` when the sidecar's second
+                line is not the record it expects, which includes a sidecar with fewer
+                than two lines.
         """
 
         cls = type(self)
@@ -270,12 +436,31 @@ class _ShelfMixin:
 
     @classmethod
     def shelf_path_and_key_for_abspath(cls, abspath, shelf_type='info'):
-        """Return the absolute path to the shelf file associated with this file path.
-        Also return the key for indexing into the shelf.
+        """Return the shelf path and key for an absolute path, without a PdsFile.
 
-        Keyword arguments:
-            abspath    -- the absolute path of the file
-            shelf_type -- shelf type, e.g., 'info' or 'link' (default 'info')
+        This answers the same question as ``shelf_path_and_key()`` by taking the path
+        apart directly, which is what lets the filesystem layer use shelves while it is
+        still deciding whether a PdsFile can be built at all.
+
+        The path is split at the holdings directory name. An archive path is covered by
+        its bundle set's shelf, so two components are consumed and the key is what
+        follows; anything else is covered by its bundle's shelf, so three are consumed.
+        The key for the covered directory itself is the empty string.
+
+        Parameters:
+            abspath (str): the absolute path of the file.
+            shelf_type (str): which shelf: 'index', 'info' or 'link'.
+
+        Returns:
+            tuple: the absolute path of the shelf file, and the key into it.
+
+        Raises:
+            ValueError: if the path is under checksums, since checksums have no shelves;
+                or if it has too few components for the kind of shelf that covers it,
+                which includes a path with no holdings directory in it at all.
+            KeyError: raised by the shelf-type lookup, the item read
+                ``__getitem__()`` on SHELF_PATH_INFO, for a type that is not one of the
+                three.
         """
 
         # No checksum shelf files allowed
@@ -313,8 +498,19 @@ class _ShelfMixin:
 
     @property
     def info_shelf_expected(self):
-        """Return True if this object should be associated with an entry in an info
-        shelf file.
+        """Whether this file should have an entry in an info shelf.
+
+        Four things have none: a checksum file, anything in the documents tree, a
+        category-level directory, which is merged across holdings directories and so
+        belongs to no single tree, and a bundle-set-level file, including its AAREADME.
+        An archive has one from its bundle set downward, and everything else has one
+        from its bundle downward.
+
+        This is a claim about what ought to exist, not about what does.
+        ``shelf_exists_if_expected()`` is the one that looks.
+
+        Returns:
+            bool: True if an info shelf entry is expected.
         """
 
         # Checksum files have no info shelves
@@ -338,8 +534,19 @@ class _ShelfMixin:
         return bool(self.bundlename)
 
     def shelf_exists_if_expected(self):
-        """Return True if shelf exists for a pdsfile instance expected to have the shelf
-        file. False if shelf doesn't exist for a pdsfile instance expected to have one.
+        """Whether the info shelf entry this file should have is really there.
+
+        Three answers, not two: True if an entry is expected and was found, False if one
+        is expected and the shelf could not be read, and None if none is expected, which
+        is not a failure and should not be reported as one.
+
+        False comes only from an OSError, which is what a missing or unreadable shelf or
+        sidecar raises. A shelf that opens but has no entry for this file raises KeyError
+        instead, and a sidecar that is present but malformed raises SyntaxError, so False
+        means the shelf could not be read rather than that the entry is not in it.
+
+        Returns:
+            bool: True or False as above, or None if no entry is expected.
         """
 
         if self.info_shelf_expected:

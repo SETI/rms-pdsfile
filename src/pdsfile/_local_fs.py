@@ -1,8 +1,27 @@
 ##########################################################################################
 # pdsfile/_local_fs.py
-# Local implementations of basic filesystem operations, which consult info shelf
-# files instead of the file system when SHELVES_ONLY is set
 ##########################################################################################
+
+"""The four filesystem questions PdsFile asks, answered from the tree or from shelves.
+
+Every part of this package that needs to know whether a file exists, whether a path is a
+directory, what a directory contains, or which paths match a wildcard goes through this
+module rather than through ``os`` and ``glob``. The indirection buys one thing: under the
+``SHELVES_ONLY`` setting the same four questions are answered out of the info shelf
+files, so the package can serve a holdings tree that is described but not present.
+
+``_LocalFsMixin`` implements them as ``os_path_exists()``, ``os_path_isdir()``,
+``os_listdir()`` and ``glob_glob()``, plus ``_non_checksum_abspath()``, the mapping from
+a checksum file back to what it covers, which the shelf-backed answers fall back on.
+
+Two things a caller should know. Existence answers are memoized for the life of the
+process, so a file created or deleted after the first question about it is not noticed.
+And the shelf-backed answers match keys exactly, so they are case-sensitive whatever the
+filesystem is; the case-repair machinery applies only to the answers that come from the
+filesystem.
+
+``PATH_EXISTS_CACHE_SIZE`` is how many existence answers are remembered.
+"""
 
 import bisect
 import fnmatch
@@ -21,23 +40,50 @@ class _LocalFsMixin:
     """Local implementations of the basic filesystem operations PdsFile needs.
 
     A mixin of PdsFile; it holds methods only and defines no state of its own.
-    The class attributes these methods read -- PDS_HOLDINGS, VOLTYPES, IDX_EXT,
-    SHELVES_ONLY, FS_IS_CASE_INSENSITIVE, EXTRA_README_BASENAMES -- are defined on
-    PdsFile and its subclasses.
 
-    Under SHELVES_ONLY these methods answer from the info shelf files rather than
-    the holdings tree, which is why they call into _ShelfMixin
-    (shelf_path_and_key_for_abspath, _get_shelf). Those calls resolve through the
-    class at run time, so both mixins have to be bases of the same class.
+    Every attribute these methods read or write on a PdsFile object or on a
+    PdsFile class, and nothing else -- str, list, dict, os, os.path, glob, fnmatch
+    and bisect functions are not in scope::
+
+      class attributes read       EXTRA_README_BASENAMES, FS_IS_CASE_INSENSITIVE,
+                                  IDX_EXT, PDS_HOLDINGS, SHELVES_ONLY, VOLTYPES
+      lazy properties read        exists
+      instance attributes read    none
+      instance attributes WRITTEN none
+      other methods called        from_abspath
+
+    All of those but one are defined on PdsFile. IDX_EXT is defined only on
+    Pds3File and Pds4File, so os_path_exists raises AttributeError on a bare
+    PdsFile, before it reaches anything else.
+
+    Three more come from sibling mixins, and they are what makes the shelf-backed
+    answers possible: shelf_path_and_key_for_abspath and _get_shelf from
+    _ShelfMixin, and child_of_index from _IndexRowsMixin, which is how a path
+    naming one row of an index table is tested for existence. Every one of these
+    is an attribute lookup on cls at run time, not an import, which is what lets
+    the layers live in different modules.
     """
 
     @classmethod
     def _non_checksum_abspath(cls, abspath):
-        """Return the non-checksum path associated with this checksum file. If the given
-        absolute path does not point to a checksum file, it returns None.
+        """Return the path a checksum file covers, or None if it is not a checksum file.
 
-        Keyword arguments:
-            abspath -- the absolute path of the checksum file.
+        A path counts as a checksum file only if it holds the holdings directory
+        followed immediately by ``checksums-``. Every ``/checksums-`` in the path is then
+        removed, not just that one, and the basename's ``_<voltype>_md5.txt`` ending is
+        dropped.
+
+        **Only the volume types that appear in the basename are dropped.** A checksum
+        file for volumes, for bundles or for archives does not carry its volume type in
+        its basename, so its ``_md5.txt`` survives and the path returned names nothing:
+        ``.../checksums-volumes/SET/BUNDLE_md5.txt`` comes back as
+        ``.../volumes/SET/BUNDLE_md5.txt`` rather than as the bundle directory.
+
+        Parameters:
+            abspath (str): the absolute path to map back.
+
+        Returns:
+            str: the covered path, or None if the argument is not a checksum path.
         """
 
         # Checksum files need special handling
@@ -55,20 +101,42 @@ class _LocalFsMixin:
     @classmethod
     @functools.lru_cache(maxsize=PATH_EXISTS_CACHE_SIZE)
     def os_path_exists(cls, abspath, force_case_sensitive=False):
-        """Return True if the given absolute path points to a file that exists; Return
-        False otherwise. This replaces os.path.exists(path) but might use infoshelf
-        files rather than refer to the holdings directory.
+        """Whether a path names something that exists.
 
-        Note: This function is case-insensitive under SHELVES_ONLY. Otherwise,
-        its behavior matches that of the file system. For Macs, this usually
-        means that it is case insensitive. If force_case_sensitive=True, then
-        the check of the basename will be case-sensitive regardless of the file
-        system.
+        This stands in for ``os.path.exists()`` and can answer without touching the
+        filesystem. Four paths through it, in order:
 
-        Keyword arguments:
-            abspath              -- the absolute path of the file.
-            force_case_sensitive -- a flag to determine if the basename will be case
-                                    sensitive (default False)
+          * a path inside the info shelf tree is tested directly on the filesystem,
+            because a shelf cannot describe itself;
+          * a path naming one row of an index table -- recognized by an index extension
+            followed by a slash -- exists if the table exists and the table has that row;
+          * under SHELVES_ONLY, the info shelf covering the path is consulted: a path
+            with a key exists if the shelf holds that key, and a path that is itself a
+            covered directory exists if its shelf file does. If that fails, three
+            fallbacks are tried in turn, looking for a directory in the shelf tree, a
+            shelf file for it, and, for a checksum path, the thing it covers;
+          * anything still unanswered is tested on the filesystem.
+
+        **The answer is memoized and never invalidated**, up to
+        ``PATH_EXISTS_CACHE_SIZE`` distinct calls, so a file created or removed after the
+        first question about it keeps its old answer for the life of the process. The
+        flag is part of the key, and so is the class, so the same path asked about two
+        ways is remembered twice.
+
+        The case rules are not the same on all four paths. On the shelf path a key is
+        matched exactly, so the answer is case-sensitive whatever the filesystem is, and
+        the flag has no effect there. On the filesystem path the answer is the
+        filesystem's own, which on a Mac is usually case-insensitive, and the flag then
+        forces the basename to be compared against the real directory listing.
+
+        Parameters:
+            abspath (str): the absolute path to test.
+            force_case_sensitive (bool): whether to insist the basename match in case.
+                It applies only where the filesystem answers and the class marks the
+                filesystem case-insensitive.
+
+        Returns:
+            bool: True if the path names something that exists.
         """
 
         if f'{cls.PDS_HOLDINGS}/_infoshelf' in abspath:
@@ -132,12 +200,24 @@ class _LocalFsMixin:
 
     @classmethod
     def os_path_isdir(cls, abspath):
-        """Return True if the given absolute path points to a directory; Return False
-        otherwise. This replaces os.path.isdir() but might use infoshelf files rather
-        than refer to the holdings directory.
+        """Whether a path names a directory.
 
-        Keyword arguments:
-            abspath -- the absolute path of a file or a directory.
+        This stands in for ``os.path.isdir()``. Under SHELVES_ONLY the info shelf
+        answers: a shelf records an empty checksum for a directory and a real one for a
+        file, so the checksum column is the test, and a path that is itself a covered
+        directory is a directory if its shelf file exists. The same three fallbacks as
+        the existence test follow if that fails, and a checksum path is decided by its
+        extension, ``.txt`` being a file and anything else a directory.
+
+        Unlike the existence test this answer is not memoized, and it consults the
+        filesystem directly for its fallbacks rather than going back through the
+        memoized test.
+
+        Parameters:
+            abspath (str): the absolute path to test.
+
+        Returns:
+            bool: True if the path names a directory.
         """
 
         if cls.SHELVES_ONLY:
@@ -180,12 +260,44 @@ class _LocalFsMixin:
 
     @classmethod
     def os_listdir(cls, abspath):
-        """Return a list of the file basenames within a directory, given its absolute
-        path. This replaces os.listdir() but might use infoshelf files rather than the
-        file system.
+        """Return the basenames a directory contains.
 
-        Keyword arguments:
-            abspath -- the given absolute path.
+        This stands in for ``os.listdir()``. The filesystem answer drops ``.DS_Store``
+        and the ``._`` files a Mac leaves behind; the shelf-backed answers do not,
+        because a shelf never records them.
+
+        Under SHELVES_ONLY the info shelf covering the path answers first: its keys that
+        begin with this directory's key and hold no further slash are its children. When
+        no shelf covers the path, the parallel trees are derived instead, each from the
+        listing of the tree it parallels:
+
+          * a checksums-archives directory lists the archive directory and appends
+            ``_md5.txt``, or ``_<voltype>_md5.txt`` outside volumes;
+          * a checksums directory does the same against the tree it checksums, except at
+            the category level, where it passes the listing through unchanged;
+          * an archives directory lists the bundle tree and appends ``.tar.gz``, or
+            ``_<voltype>.tar.gz`` outside volumes;
+          * any other holdings directory lists the matching directory in the info shelf
+            tree, reduces the ``_info.pickle`` and ``_info.py`` pair for each bundle to
+            the bundle name, and puts any AAREADME the real filesystem has in front. At
+            the category level that listing is returned unchanged.
+
+        A file rather than a directory yields an empty list on the three parallel-tree
+        branches, recognized by its extension. If the shelf tree has no matching
+        directory at all, the real filesystem answers, which is what serves the
+        documents tree, for which no shelves are written.
+
+        Parameters:
+            abspath (str): the absolute path of the directory, with any trailing slash
+                ignored.
+
+        Returns:
+            list: the basenames, in the order the underlying listing gave them.
+
+        Raises:
+            ValueError: for a checksums-archives path naming no recognized volume type.
+            OSError: raised by ``listdir()`` when the filesystem is the one answering
+                and the directory is not there.
         """
 
         # Make sure there is no trailing slash
@@ -322,18 +434,37 @@ class _LocalFsMixin:
 
     @classmethod
     def glob_glob(cls, abspath, force_case_sensitive=False):
-        """Return a list of the existing absolute paths. Works the same as glob.glob(),
-        but uses shelf files instead of accessing the filesystem directly.
+        """Return the existing absolute paths a pattern matches.
 
-        Note: This function is case-insensitive under SHELVES_ONLY. Otherwise,
-        its behavior matches that of the file system. For Macs, this usually
-        means that it is case insensitive. If force_case_sensitive=True, then
-        file paths will only match if the case is exact.
+        This stands in for ``glob.glob()``. A pattern with no wildcard in it is not
+        globbed at all: it is tested for existence, which is what makes the index-row
+        notation ``index.tab/whatever`` work here, since a real glob would not match it.
 
-        Keyword arguments:
-            abspath              -- the given absolute path
-            force_case_sensitive -- a flag to determine if the filepath will be case
-                                    sensitive (default False)
+        Without SHELVES_ONLY the search is the memoized filesystem glob. With it, the
+        info shelves are searched instead: the shelf files covering the pattern are
+        found, and each one's keys are matched against the interior part of the pattern.
+        The keys are sorted, so the search starts at the first key that could match the
+        pattern's fixed prefix and stops at the first that cannot. A match must also
+        have as many slashes as the pattern, because ``fnmatch`` matches text and would
+        otherwise let ``f*r`` match ``foo/bar``. If no shelf file covers the pattern, the
+        filesystem glob answers after all.
+
+        **The shelf-backed search is case-sensitive**, whatever the filesystem is and
+        whatever the flag says: the prefix scan folds case only to decide where to stop,
+        and the match itself is exact. The flag reaches the filesystem glob alone.
+
+        Results have any trailing slash removed.
+
+        A shelf path that does not hold the info shelf directory prefix exactly once
+        trips an assert, and so raises AssertionError, or nothing at all under
+        python -O.
+
+        Parameters:
+            abspath (str): the absolute path, with or without wildcards.
+            force_case_sensitive (bool): whether a filesystem match must agree in case.
+
+        Returns:
+            list: the matching absolute paths.
         """
 
         # We can save a lot of trouble if there's no match pattern

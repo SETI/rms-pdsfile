@@ -1,8 +1,29 @@
 ##########################################################################################
 # pdsfile/_sorting.py
-# Splitting, sorting, and bulk conversion between PdsFile objects, abspaths, logical
-# paths and basenames
 ##########################################################################################
+
+"""Splitting and sorting filenames, and converting between the four ways to name a file.
+
+Two jobs live here because they are one domain: operating on many files at once rather
+than on one.
+
+The first is **order**. A directory listing that reads well is not alphabetical: a file
+should sit next to its label, the newest version of a bundle should come before the
+older ones, and a directory of a thousand files should put its AAREADME at the top.
+``sort_basenames()`` is where those rules are applied, from a sort key built out of a
+name's parts rather than out of the name; ``split_basename()`` is what produces those
+parts; and the other sorters are variations -- keeping one file first, sorting whole
+paths level by level, sorting a directory's own contents.
+
+The second is **bulk conversion**. A file can be named by a PdsFile object, an absolute
+path, a logical path or a basename, and different callers hold different ones. The
+twelve ``<plural>_for_<plural>()`` methods convert a list of any of the four into a list
+of any other, each with the same option to drop the ones that do not exist.
+
+Nothing here reads the filesystem itself. The four methods that need to probe it -- to
+tell a directory from a file, or to drop what does not exist -- delegate to
+``_LocalFsMixin``.
+"""
 
 import os
 
@@ -20,7 +41,7 @@ class _SortingMixin:
     Two groups of methods, kept together because they are one domain -- bulk
     operations over lists of basenames, logical paths, abspaths and PdsFile
     objects. None of them reads the filesystem itself: the four that need to
-    probe it delegate to _LocalFsMixin, as the contract below records.
+    probe it delegate to _LocalFsMixin, as the contract below records::
 
       splitting and sorting   split_basename, basename_is_label,
                               basename_is_viewable, sort_basenames,
@@ -37,7 +58,7 @@ class _SortingMixin:
 
     Every attribute these methods read or write on a PdsFile object or on a
     PdsFile class, and nothing else -- str, list, set, dict, regex, translator,
-    os.path and logger methods are not in scope:
+    os.path and logger methods are not in scope::
 
       lazy properties read        childnames, exists, info_basename
       instance attributes read    abspath, basename, logical_path
@@ -61,6 +82,11 @@ class _SortingMixin:
     bare PdsFile; split_basename does not, because SPLIT_RULES is None there and
     it returns before reaching either regex. That is how they have always
     behaved.
+
+    Two extension sets are spelled differently and are not interchangeable:
+    LBL_EXT holds extensions with their leading dot and VIEWABLE_EXTS holds them
+    without, which is why basename_is_label puts a dot back on and
+    basename_is_viewable does not.
     """
 
     ############################################################################
@@ -68,13 +94,27 @@ class _SortingMixin:
     ############################################################################
 
     def split_basename(self, basename=''):
-        """Return the tuple with basename info: (anchor, suffix, extension).
+        """Split a basename into the parts the sort order is built from.
 
-        Default behavior is to split a file at first period; split a bundle set name
-        before the suffix. Can be overridden.
+        The parts are an anchor, a suffix and an extension. The anchor is what groups a
+        file with its relatives -- a data file, its label and its previews share one --
+        so the default split is at the **first** period rather than the last, and a
+        bundle set name splits before its version suffix instead.
 
-        Keyword arguments:
-            basename -- basename of a file (default '')
+        A rule module can override the split for its own data set, and the class's split
+        rules are consulted first for every name that is not a bundle set or bundle name.
+
+        **The result is not always a tuple.** A class with no split rules at all, which
+        is a bare PdsFile, returns the basename it was given, unchanged; and a split rule
+        that rewrites a name returns whatever that rule produced.
+
+        Parameters:
+            basename (str): the basename to split. An empty string splits this object's
+                own basename.
+
+        Returns:
+            tuple: the anchor, the suffix and the extension, for a name the default
+            split handles.
         """
 
         cls = type(self)
@@ -111,11 +151,24 @@ class _SortingMixin:
         return self.SPLIT_RULES.first(basename)
 
     def basename_is_label(self, basename):
-        """Return True if this basename is a label. Override if label identification
-        ever depends on the data set.
+        """Whether a basename is a label file.
 
-        Keyword arguments:
-            basename -- basename of a file
+        A label is decided by extension alone: the part after the last period, with a
+        period put back in front of it, has to be one of the class's label extensions,
+        matched without regard to case. A name of four characters or fewer is not a
+        label whatever its extension, so a file called ``.LBL`` is not one.
+
+        A name with no period at all is tested as though the whole name were the
+        extension, which no label extension matches.
+
+        A rule module can override this where a data set identifies labels some other
+        way.
+
+        Parameters:
+            basename (str): the basename to test.
+
+        Returns:
+            bool: True if the basename is a label.
         """
 
         cls = type(self)
@@ -123,11 +176,20 @@ class _SortingMixin:
         return (len(basename) > 4) and (f'.{lbl_ext}'.lower() in cls.LBL_EXT)
 
     def basename_is_viewable(self, basename=None):
-        """Return True if this basename is viewable. Override if viewable files can
-        have extensions other than the usual set (.png, .jpg, etc.).
+        """Whether a basename is a file a browser can display.
 
-        Keyword arguments:
-            basename -- basename of a file
+        Decided by extension: the part after the last period, without a leading period,
+        has to be one of the class's viewable extensions, matched without regard to case.
+        A name with no period at all is not viewable.
+
+        A rule module can override this where a data set has viewable files with other
+        extensions.
+
+        Parameters:
+            basename (str): the basename to test. None tests this object's own basename.
+
+        Returns:
+            bool: True if the basename is viewable.
         """
 
         cls = type(self)
@@ -143,24 +205,57 @@ class _SortingMixin:
 
     def sort_basenames(self, basenames, labels_after=None, dirs_first=None,
                        dirs_last=None, info_first=None):
-        """Return Sorted basenames, including additional options. Input None for
-        defaults.
+        """Return the basenames in the order this directory should show them.
 
-        Keyword arguments:
-            basenames    -- a list of file basenames
-            labels_after -- a flag used to determine if all label files should appear
-                            after the associated data files when sorted (default None)
-            dirs_first   -- a flag used to determine if directories should appear before
-                            all files when sorted (default None)
-            dirs_last    -- a flag used to determine if directories should appear after
-                            all files when sorted (default None)
-            info_first   -- a flag used to determine info files will be listed first in
-                            all sorted lists (default None)
+        The order is not alphabetical. Each name is turned into a sort key from its
+        parts rather than from its text, so a file sorts next to the files that share
+        its anchor, and a bundle set with a version suffix sorts by **decreasing**
+        version, which puts the newest first.
+
+        Four options reorder groups on top of that, and each one takes the class's
+        default when it is left as None. A label can be made to follow the file it
+        describes rather than to sort by its own name. Directories can be pulled to the
+        front or pushed to the back; asking for both puts them at the front. And the
+        directory's own info file can be pulled to the very front, either always or only
+        once the directory has grown past a threshold, which is what keeps a short
+        listing from being reordered for no reason.
+
+        Sorting by directory-or-file is the one option that reads the filesystem, and it
+        does so once per name.
+
+        Parameters:
+            basenames (list): the basenames to sort. It is not modified.
+            labels_after (bool): whether a label sorts after the file it describes. None
+                takes the class's default.
+            dirs_first (bool): whether directories sort before files. None takes the
+                class's default.
+            dirs_last (bool): whether directories sort after files. None takes the
+                class's default. Ignored where directories are already sorting first.
+            info_first: whether the directory's info file sorts before everything.
+                None takes the class's default. Zero or False never, one or True always,
+                and a larger number only once the list is at least that long.
+
+        Returns:
+            list: a new list of the basenames, sorted.
         """
 
         cls = type(self)
 
         def modified_sort_key(basename):
+            """Return the tuple one basename sorts on.
+
+            The tuple begins with the parts of the name -- for a bundle set, its stem and
+            the negated version rank, so that newer sorts first; for anything else, the
+            anchor, a zero, the suffix and the extension. The options then wrap it: the
+            label test is inserted before the extension, and the directory and info tests
+            are put in front of the whole thing.
+
+            Parameters:
+                basename (str): the name to build a key for.
+
+            Returns:
+                tuple: the sort key.
+            """
 
             # Volumes of the same name sort by decreasing version number
             matchobj = cls.BUNDLESET_PLUS_REGEX_I.match(basename)
@@ -233,23 +328,33 @@ class _SortingMixin:
 
     def sort_sibnames(self, basenames, labels_after=None, dirs_first=None,
                       dirs_last=None, info_first=None):
-        """Return sorted basenames that represent siblings of this object. In the
-        returned list of basenames, the name of this object will be first and
-        matching file names will always be adjacent.
+        """Return sibling basenames sorted, with this object's own name first.
 
-        When a selected file and its label and/or targets are displayed in
-        Viewmaster, this is the order in which they appear.
+        The names are sorted the usual way first, in the parent directory's order rather
+        than in this file's, and then this file's own name is moved to the front and the
+        names sharing its anchor -- everything up to its first period -- are moved
+        immediately after it. Names with any other anchor keep the order the sort gave
+        them. This is the order a viewer shows a selected file, its label and its
+        targets in.
 
-        Keyword arguments:
-            basenames    -- a list of file basenames
-            labels_after -- a flag used to determine if all label files should appear
-                            after the associated data files when sorted (default None)
-            dirs_first   -- a flag used to determine if directories should appear before
-                            all files when sorted (default None)
-            dirs_last    -- a flag used to determine if directories should appear after
-                            all files when sorted (default None)
-            info_first   -- a flag used to determine info files will be listed first in
-                            all sorted lists (default None)
+        This file's own name is included whether or not it was in the list.
+        **The list passed in is appended to** when it was not, so a caller's list can
+        come back one item longer than it went in; the returned list is a different one.
+
+        Parameters:
+            basenames (list): the basenames to sort. It is not modified.
+            labels_after (bool): whether a label sorts after the file it describes. None
+                takes the class's default.
+            dirs_first (bool): whether directories sort before files. None takes the
+                class's default.
+            dirs_last (bool): whether directories sort after files. None takes the
+                class's default. Ignored where directories are already sorting first.
+            info_first: whether the directory's info file sorts before everything.
+                None takes the class's default. Zero or False never, one or True always,
+                and a larger number only once the list is at least that long.
+
+        Returns:
+            list: a new list of the basenames, sorted, with this object's first.
         """
 
         # First, sort the names the usual way
@@ -278,18 +383,27 @@ class _SortingMixin:
 
     def sort_siblings(self, siblings, labels_after=None, dirs_first=None,
                       dirs_last=None, info_first=None):
-        """Return sorted siblings of this object, keeping this object first.
+        """Return sibling PdsFile objects sorted, with this object first.
 
-        Keyword arguments:
-            siblings     -- a list of file siblings
-            labels_after -- a flag used to determine if all label files should appear
-                            after the associated data files when sorted (default None)
-            dirs_first   -- a flag used to determine if directories should appear before
-                            all files when sorted (default None)
-            dirs_last    -- a flag used to determine if directories should appear after
-                            all files when sorted (default None)
-            info_first   -- a flag used to determine info files will be listed first in
-                            all sorted lists (default None)
+        The same order as ``sort_sibnames()``, applied to objects. The siblings are
+        keyed by basename first, so two objects with the same basename collapse to the
+        one given last, and this object always displaces any sibling that shares its
+        name. This object is included whether or not it was in the list.
+
+        Parameters:
+            siblings (list): the sibling PdsFile objects, iterated once.
+            labels_after (bool): whether a label sorts after the file it describes. None
+                takes the class's default.
+            dirs_first (bool): whether directories sort before files. None takes the
+                class's default.
+            dirs_last (bool): whether directories sort after files. None takes the
+                class's default. Ignored where directories are already sorting first.
+            info_first: whether the directory's info file sorts before everything.
+                None takes the class's default. Zero or False never, one or True always,
+                and a larger number only once the list is at least that long.
+
+        Returns:
+            list: the objects, sorted, with this one first.
         """
 
         # Create a dictionary by basename; remove duplicates too
@@ -306,12 +420,27 @@ class _SortingMixin:
 
     @classmethod
     def sort_logical_paths(cls, logical_paths):
-        """Retrun sorted list of logical paths. Sort a list of logical paths, using the
-        sort order at each level in the directory tree. The logical paths must all have
-        the same number of directory levels.
+        """Return logical paths sorted level by level down the directory tree.
 
-        Keyword arguments:
-            logical_paths -- a list of logical paths
+        Sorting paths as strings would put them in an order no directory would show. So
+        the paths are taken apart into a tree, each directory's children are sorted the
+        way that directory would sort them, and the tree is then walked in order. Paths
+        that share a top-level name come out together, and the top-level names themselves
+        are sorted alphabetically.
+
+        **The paths must all have the same number of levels.** A path that is also a
+        directory of another path is treated as a directory, so it is not emitted in
+        place; it is caught at the end as an overlooked item, appended alphabetically
+        after everything else, and logged as a warning. The same end check drops anything
+        the walk produced that was not asked for, also with a warning. Both warnings are
+        skipped where the class has no logger.
+
+        Parameters:
+            logical_paths (list): the logical paths to sort. It is iterated twice and is
+                not modified.
+
+        Returns:
+            list: a new list of the same paths, sorted.
         """
 
         # Create a dictionary of PdsFile objects keyed by logical path/subpath.
@@ -339,6 +468,15 @@ class _SortingMixin:
         # Sort keys at each level, recursively
 
         def _append_recursively(path):
+            """Append one directory's paths to the result, deepest last.
+
+            A child that is itself a directory of the tree being built is descended
+            into; a child that is not is a leaf and is appended.
+
+            Parameters:
+                path (str): the logical path of the directory to walk.
+            """
+
             for name in child_names[path]:
                 newpath = path + '/' + name
                 if newpath in child_names:
@@ -378,27 +516,48 @@ class _SortingMixin:
         return sorted_paths
 
     def sort_childnames(self, labels_after=None, dirs_first=None):
-        """Return a sorted list of the contents of this directory.
+        """Return this directory's own contents, sorted.
 
-        Keyword arguments:
-            labels_after -- a flag used to determine if all label files should appear
-                            after the associated data files when sorted (default None)
-            dirs_first   -- a flag used to determine if directories should appear before
-                            all files when sorted (default None)
+        The two options this does not take, for pushing directories to the back and for
+        pulling an info file to the front, fall back to the class's defaults.
+
+        Parameters:
+            labels_after (bool): whether a label sorts after the file it describes. None
+                takes the class's default.
+            dirs_first (bool): whether directories sort before files. None takes the
+                class's default.
+
+        Returns:
+            list: the child basenames, sorted.
         """
 
         return self.sort_basenames(self.childnames, labels_after, dirs_first)
 
     def viewable_childnames(self):
-        """Return A sorted list of the files in this directory that are viewable."""
+        """Return the children of this directory a browser can display.
+
+        The order is the one the child list already carries, which is the class's sort
+        with all four grouping options off, rather than the order
+        ``sort_childnames()`` would give.
+
+        Returns:
+            list: the viewable child basenames.
+        """
 
         return [b for b in self.childnames if self.basename_is_viewable(b)]
 
     def childnames_by_anchor(self, anchor):
-        """Return a list of child basenames having the given anchor.
+        """Return the children of this directory that share an anchor.
 
-        Keyword arguments:
-            anchor -- anchor of a basename
+        The anchor is the first part of the split of a basename, so this collects a data
+        file with its label and its other relatives. The comparison is exact, including
+        case.
+
+        Parameters:
+            anchor (str): the anchor to match.
+
+        Returns:
+            list: the matching child basenames, in the child list's order.
         """
 
         matches = []
@@ -410,10 +569,15 @@ class _SortingMixin:
         return matches
 
     def viewable_childnames_by_anchor(self, anchor):
-        """Return a list of viewable child names having the given anchor.
+        """Return the children sharing an anchor that a browser can display.
 
-        Keyword arguments:
-            anchor -- anchor of a basename
+        The anchor match and the viewable test, applied in that order.
+
+        Parameters:
+            anchor (str): the anchor to match.
+
+        Returns:
+            list: the matching viewable child basenames, in the child list's order.
         """
 
         matches = self.childnames_by_anchor(anchor)
@@ -427,6 +591,20 @@ class _SortingMixin:
 
     @staticmethod
     def abspaths_for_pdsfiles(pdsfiles, must_exist=False):
+        """Return the absolute paths of a list of PdsFile objects.
+
+        An object with no absolute path -- a merged directory, which stands for several
+        real ones -- is dropped either way, so the result can be shorter than the input
+        even without the existence test.
+
+        Parameters:
+            pdsfiles (list): the objects, iterated once.
+            must_exist (bool): whether to drop the objects whose files are not there.
+
+        Returns:
+            list: the absolute paths.
+        """
+
         if must_exist:
             return [p.abspath for p in pdsfiles if p.abspath is not None
                                                 and p.exists]
@@ -435,6 +613,19 @@ class _SortingMixin:
 
     @staticmethod
     def logicals_for_pdsfiles(pdsfiles, must_exist=False):
+        """Return the logical paths of a list of PdsFile objects.
+
+        Every object has a logical path, including a merged directory, so nothing is
+        dropped unless the existence test drops it.
+
+        Parameters:
+            pdsfiles (list): the objects, iterated once.
+            must_exist (bool): whether to drop the objects whose files are not there.
+
+        Returns:
+            list: the logical paths.
+        """
+
         if must_exist:
             return [p.logical_path for p in pdsfiles if p.exists]
         else:
@@ -442,6 +633,19 @@ class _SortingMixin:
 
     @staticmethod
     def basenames_for_pdsfiles(pdsfiles, must_exist=False):
+        """Return the basenames of a list of PdsFile objects.
+
+        Basenames are not unique across directories, so a list drawn from more than one
+        directory can hold the same name twice; nothing is deduplicated.
+
+        Parameters:
+            pdsfiles (list): the objects, iterated once.
+            must_exist (bool): whether to drop the objects whose files are not there.
+
+        Returns:
+            list: the basenames.
+        """
+
         if must_exist:
             return [p.basename for p in pdsfiles if p.exists]
         else:
@@ -451,6 +655,19 @@ class _SortingMixin:
 
     @classmethod
     def pdsfiles_for_abspaths(cls, abspaths, must_exist=False):
+        """Return PdsFile objects for a list of absolute paths.
+
+        Every path yields an object, whether or not the file is there; the existence
+        test is applied to the objects afterwards, so it costs one existence check each.
+
+        Parameters:
+            abspaths (list): the absolute paths, iterated once.
+            must_exist (bool): whether to drop the paths whose files are not there.
+
+        Returns:
+            list: the PdsFile objects.
+        """
+
         pdsfiles = [cls.from_abspath(p) for p in abspaths]
         if must_exist:
             pdsfiles = [pdsf for pdsf in pdsfiles if pdsf.exists]
@@ -459,6 +676,25 @@ class _SortingMixin:
 
     @classmethod
     def logicals_for_abspaths(cls, abspaths, must_exist=False):
+        """Return the logical paths of a list of absolute paths.
+
+        No PdsFile is built: each path is cut at the holdings directory directly, which
+        is why this is the cheap direction.
+
+        Parameters:
+            abspaths (list): the absolute paths, iterated once.
+            must_exist (bool): whether to drop the paths whose files are not there. The
+                test is applied before the conversion.
+
+        Returns:
+            list: the logical paths.
+
+        Raises:
+            ValueError: raised by ``logical_path_from_abspath()`` if a path does not lie
+                under a holdings directory. With the existence test on, a path that does
+                not exist is dropped before it can raise.
+        """
+
         if must_exist:
             abspaths = [p for p in abspaths if cls.os_path_exists(p)]
 
@@ -466,6 +702,19 @@ class _SortingMixin:
 
     @classmethod
     def basenames_for_abspaths(cls, abspaths, must_exist=False):
+        """Return the basenames of a list of absolute paths.
+
+        The names are taken from the paths as text, so nothing has to exist unless the
+        existence test is asked for.
+
+        Parameters:
+            abspaths (list): the absolute paths, iterated once.
+            must_exist (bool): whether to drop the paths whose files are not there.
+
+        Returns:
+            list: the basenames.
+        """
+
         if must_exist:
             abspaths = [p for p in abspaths if cls.os_path_exists(p)]
 
@@ -475,6 +724,20 @@ class _SortingMixin:
 
     @classmethod
     def pdsfiles_for_logicals(cls, logical_paths, must_exist=False):
+        """Return PdsFile objects for a list of logical paths.
+
+        Resolving a logical path means deciding which holdings directory it belongs to,
+        so this is the expensive direction. Every path yields an object, and the
+        existence test is applied to the objects afterwards.
+
+        Parameters:
+            logical_paths (list): the logical paths, iterated once.
+            must_exist (bool): whether to drop the paths whose files are not there.
+
+        Returns:
+            list: the PdsFile objects.
+        """
+
         pdsfiles = [cls.from_logical_path(p) for p in logical_paths]
         if must_exist:
             pdsfiles = [pdsf for pdsf in pdsfiles if pdsf.exists]
@@ -483,6 +746,25 @@ class _SortingMixin:
 
     @classmethod
     def abspaths_for_logicals(cls, logical_paths, must_exist=False):
+        """Return the absolute paths of a list of logical paths.
+
+        No PdsFile is built, but each path still has to be resolved against the holdings
+        directories this machine hosts.
+
+        Parameters:
+            logical_paths (list): the logical paths, iterated once.
+            must_exist (bool): whether to drop the paths whose files are not there. The
+                test is applied after the conversion.
+
+        Returns:
+            list: the absolute paths.
+
+        Raises:
+            ValueError: raised by ``abspath_for_logical_path()`` if a path does not start
+                with a category name, or if no holdings directory can be found at all.
+                It is raised before the existence test, so it is raised either way.
+        """
+
         abspaths = [abspath_for_logical_path(p, cls) for p in logical_paths]
         if must_exist:
             abspaths = [p for p in abspaths if cls.os_path_exists(p)]
@@ -491,6 +773,20 @@ class _SortingMixin:
 
     @classmethod
     def basenames_for_logicals(cls, logical_paths, must_exist=False):
+        """Return the basenames of a list of logical paths.
+
+        Without the existence test the names are taken from the paths as text. With it,
+        a PdsFile is built for each path first, which is what makes the test possible and
+        what makes this the expensive branch.
+
+        Parameters:
+            logical_paths (list): the logical paths, iterated once.
+            must_exist (bool): whether to drop the paths whose files are not there.
+
+        Returns:
+            list: the basenames.
+        """
+
         if must_exist:
             pdsfiles = cls.pdsfiles_for_logicals(logical_paths,
                                                      must_exist=must_exist)
@@ -501,6 +797,18 @@ class _SortingMixin:
     #### ... for basenames
 
     def pdsfiles_for_basenames(self, basenames, must_exist=False):
+        """Return PdsFile objects for basenames in this directory.
+
+        Each name is resolved as a child of this object, so the answer depends on which
+        directory this is.
+
+        Parameters:
+            basenames (list): the basenames, iterated once.
+            must_exist (bool): whether to drop the names whose files are not there.
+
+        Returns:
+            list: the PdsFile objects.
+        """
 
         pdsfiles = [self.child(b) for b in basenames]
 
@@ -510,6 +818,22 @@ class _SortingMixin:
         return pdsfiles
 
     def abspaths_for_basenames(self, basenames, must_exist=False):
+        """Return the absolute paths of basenames in this directory.
+
+        Where this directory has an absolute path of its own and nothing has to be
+        checked, the paths are joined directly and no PdsFile is built. Otherwise a
+        child object is built for each name, which is also what serves a merged
+        directory, whose children can be on different disks. A child that still has no
+        absolute path contributes None.
+
+        Parameters:
+            basenames (list): the basenames, iterated once.
+            must_exist (bool): whether to drop the names whose files are not there.
+
+        Returns:
+            list: the absolute paths.
+        """
+
         # shortcut
         if self.abspath and not must_exist:
             return [_clean_join(self.abspath, b) for b in basenames]
@@ -518,6 +842,20 @@ class _SortingMixin:
         return [pdsf.abspath for pdsf in pdsfiles]
 
     def logicals_for_basenames(self, basenames, must_exist=False):
+        """Return the logical paths of basenames in this directory.
+
+        Where nothing has to be checked the paths are joined directly, which works for a
+        merged directory too, since a logical path does not name a disk. Otherwise a
+        child object is built for each name.
+
+        Parameters:
+            basenames (list): the basenames, iterated once.
+            must_exist (bool): whether to drop the names whose files are not there.
+
+        Returns:
+            list: the logical paths.
+        """
+
         # shortcut
         if not must_exist:
             return [_clean_join(self.logical_path, b) for b in basenames]
