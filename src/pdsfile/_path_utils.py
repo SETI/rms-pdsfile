@@ -323,7 +323,10 @@ def formatted_file_size(size):
 
     Parameters:
         size: the number of bytes. It is compared for truth and used arithmetically, so
-            any non-negative number works.
+            an int and a float are both accepted. A whole number of bytes is what the
+            result means, and a value between zero and one exclusive is not one: the unit
+            order goes negative there and indexes ``FILE_BYTE_UNITS`` from its end, so
+            0.5 comes out as ``500 YB`` with no error raised.
 
     Returns:
         str: the size and its unit, separated by a space.
@@ -331,8 +334,9 @@ def formatted_file_size(size):
     Raises:
         ValueError: raised by ``log10()`` on a negative size.
         IndexError: for a size of 1e27 or more, because ``FILE_BYTE_UNITS`` stops at
-            ``YB``. It comes from the unit lookup, the item read ``__getitem__()`` on
-            that list.
+            ``YB``, and for a positive size below 1e-27, because the negative order then
+            reaches past the front of the same list. Both come from the unit lookup, the
+            item read ``__getitem__()`` on that list.
     """
     order = int(math.log10(size) // 3) if size else 0
     return f'{size / 1000.**order:.3g} {FILE_BYTE_UNITS[order]}'

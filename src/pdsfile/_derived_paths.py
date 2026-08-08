@@ -9,8 +9,11 @@ A holdings tree keeps several parallel copies of the same structure. Alongside
 ``archives-volumes/`` holding one ``.tar.gz`` per bundle, and the same pair exists for
 every other category except ``documents``, which gets neither. So a file below a bundle
 has a checksum file that covers it and an archive file that contains it, and each of
-those has a directory it was made from; a file at bundle-set level has a checksum file
-but no archive, because an archive is made of a bundle. Working out those paths is
+those has a directory it was made from. A plain file at bundle-set level has neither,
+because both are named after a bundle, and asking for its checksum path raises. The
+exceptions are on the checksum side: the archives tree, where one checksum file covers a
+whole bundle set, and the few directories under a bundle set that are not bundles, which
+are checksummed under their own names. Working out those paths is
 arithmetic on the parts of a path -- the holdings root, the category, the bundle set, the
 bundle name -- and that arithmetic is what ``_DerivedPathsMixin`` holds.
 
@@ -37,8 +40,8 @@ class _DerivedPathsMixin:
     Three groups. The checksum group says where the MD5 file that covers this
     file lives, and which directory a checksum file was made from. The archive
     group asks the same two questions of a .tar.gz. The log group builds the path
-    of a log file written about this file, and owns the two class attributes that
-    decide where logs go and how they are time-stamped.
+    of a log file written about this file, and writes the two class attributes
+    that decide where logs go and what time tag they carry.
 
     Every attribute these methods read or write on a PdsFile object or on a
     PdsFile class, and nothing else -- str, datetime and contextlib methods are
@@ -138,11 +141,16 @@ class _DerivedPathsMixin:
     def checksum_path_if_exact(self):
         """Return the checksum file whose contents exactly cover this directory.
 
-        A checksum file covers a whole bundle, or a whole bundle set of archives. Only
-        two kinds of object are therefore an exact match for one: a bundle directory,
-        and an archive file's bundle set directory. Everything else -- a file inside a
-        bundle, a category directory, a checksum file itself -- gets an empty string,
-        because the checksum file that covers it also covers other things.
+        Two kinds of object are recognized as an exact match: a bundle directory, and an
+        archive file's bundle set directory. Everything else gets an empty string. For a
+        file inside a bundle, for a category directory and for a checksum file itself
+        that is the right answer, because the checksum file covering such an object also
+        covers other things. It is not the right answer for the three kinds of directory
+        that sit under a bundle set without being a bundle -- a name starting
+        ``checksums_``, a name starting ``superseded``, or a name ending ``_support`` --
+        for which ``checksum_path_and_lskip()`` names a checksum file that covers only
+        them. Neither test here matches such a directory, so it gets an empty string
+        whether or not that file is there.
 
         An exact match still has to exist. The path is checked against the filesystem,
         so a bundle whose checksum file has not been written yet also gets an empty
@@ -219,8 +227,11 @@ class _DerivedPathsMixin:
         returns**. It is the length of the prefix of the *archived directory's* path
         that ends before the bundle name, which is what a caller strips to get the name
         each entry should have inside the archive. Sliced off the returned archive path
-        instead it lands in the middle of the bundle set name, because that path carries
-        an extra ``archives-`` the count does not account for.
+        instead it lands nine characters too early, because that path carries an extra
+        ``archives-`` the count does not account for. Where those nine characters put it
+        depends on how long the bundle set's directory name is: inside the category for a
+        name shorter than nine characters, at the start of the bundle set name for one
+        exactly nine long, and inside the bundle set name for a longer one.
 
         Returns:
             tuple: the absolute path of the archive file, and the length of the archived
@@ -493,9 +504,12 @@ class _DerivedPathsMixin:
     def log_path_for_bundle(self, suffix='', task='', dir='', place='default'):
         """Return the log file path for this file's bundle.
 
-        The path is ``[dir/]category/bundleset/bundlename[_suffix]_time[_task].log``
-        below the log root, so every file in one bundle logs to one place regardless of
-        where in the bundle it sits.
+        The path is
+        ``[dir/]category/bundleset<version>/bundlename[_suffix]_time[_task].log`` below
+        the log root, so every file in one bundle logs to one place regardless of where
+        in the bundle it sits. The version part is this file's own bundle set suffix,
+        which is not the ``suffix`` argument: the argument goes after the bundle name,
+        and either can be empty.
 
         Parameters:
             suffix (str): the suffix of the log file basename. An empty string appends
@@ -565,8 +579,9 @@ class _DerivedPathsMixin:
             str: the absolute path of the log file.
 
         Raises:
-            ValueError: if this file is not an index file. That check runs before the
-                place option is looked at, so a non-index file is reported as such even
+            ValueError: if this file is not an index file, and, raised by
+                ``_log_path_for()``, if the place option is neither of the two. The
+                index check runs first, so a non-index file is reported as such even
                 when the place option is also wrong.
         """
 

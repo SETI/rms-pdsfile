@@ -39,8 +39,9 @@ class _IndexRowsMixin:
 
     where::
 
-      filename.tab    is the name of an ASCII table file, which must end in
-                      ".tab";
+      filename.tab    is the name of an ASCII table file, whose extension must
+                      be one the class lists in IDX_EXT, in either case: ".tab"
+                      for Pds3File, ".csv" or ".tab" for Pds4File;
       selection       is a string that identifies a row, typically via the
                       basename part of a FILE_SPECIFICATION_NAME.
 
@@ -80,6 +81,11 @@ class _IndexRowsMixin:
     out for a bundle set with no rule module of its own: that class is Pds4File
     itself, whose first base is named 'PdsFile', so a row of such a bundle set is
     read with the PDS3 column names, which are not the same list.
+
+    The column names are the only part of that method that branches. The category
+    it assembles the data path in is the literal string 'volumes', not the class's
+    BUNDLE_DIR_NAME, so a PDS4 row is placed under a category no PDS4 holdings
+    tree has.
 
     child_of_index neither writes the shared cache nor effectively reads it. The
     read is keyed by the row's absolute path, and the cache holds only lowercased
@@ -141,11 +147,16 @@ class _IndexRowsMixin:
             the index's own last key if the selection would sort last.
           * ``'<'`` returns the key that would precede it, or the index's own first key
             if the selection would sort first.
-          * ``''`` returns the selection itself, unchanged.
+          * ``''`` returns the truncated selection itself, without resolving it to a key
+            of the index.
 
         The ``''`` case is reached only when partial matching was allowed. With an exact
         match required, an unmatched selection falls through to the neighbor search
         instead, so ``''`` then behaves like ``'>'``.
+
+        ``''`` also answers a case where something did match. Its return sits ahead of
+        the ambiguity check, so a selection that is a prefix of several keys is handed
+        back as itself under ``''`` while every other flag raises OSError for it.
 
         What a flag outside those four raises depends on the flag's own text. The guard
         interpolates the flag into an f-string and then applies ``%`` to the result, with
@@ -166,9 +177,10 @@ class _IndexRowsMixin:
 
         Raises:
             KeyError: under flag ``'='``, if nothing matched.
-            OSError: if the selection is a prefix of more than one key, which makes it
-                ambiguous. The longest-match rule resolves the other direction but not
-                this one.
+            OSError: under any flag but ``''``, if the selection is a prefix of more than
+                one key, which makes it ambiguous. The longest-match rule resolves the
+                other direction but not this one. Under ``''`` the return described above
+                comes first, so the ambiguous selection is accepted as a key instead.
             IndexError: raised by the neighbor lookup, which is item syntax, when the
                 index has no keys at all. The list indexed is the index's own keys with
                 the selection appended, so a single key is enough for either fallback to
@@ -263,9 +275,11 @@ class _IndexRowsMixin:
         The selection is resolved to a row key first, with partial matching allowed, so
         the flag means here exactly what it means there: ``'='`` raises when nothing
         matches, ``'>'`` and ``'<'`` fall back to a neighboring key, and ``''`` accepts
-        the selection as given. The object this returns can therefore stand for a row
-        that is not in the index at all, and its ``exists`` is already filled in to say
-        which case it is.
+        the selection, truncated to ``filename_keylen``, as a key of its own -- including
+        a selection that is a prefix of several keys, which every other flag rejects as
+        ambiguous. The object this returns can therefore stand for a row that is not in
+        the index at all, and its ``exists`` is already filled in to say which case it
+        is.
 
         The shared cache is consulted first, under the row's absolute path, but nothing
         is ever stored under a key of that shape: the cache is keyed by lowercased
@@ -291,8 +305,9 @@ class _IndexRowsMixin:
             KeyError: raised by ``find_selected_row_key()`` under flag ``'='`` when
                 nothing matches. The shelf lookup that follows uses a key that came from
                 the index's own key list, so it does not add a second source of KeyError.
-            OSError: raised by ``find_selected_row_key()`` on an ambiguous selection, and
-                by ``get_indexshelf()`` when the index file is missing.
+            OSError: raised by ``find_selected_row_key()`` on an ambiguous selection
+                under any flag but ``''``, and by ``get_indexshelf()`` when the index
+                file is missing.
             ValueError: raised by ``get_indexshelf()`` when the file is not an index, and
                 by ``find_selected_row_key()`` for a flag outside the four whose text is
                 exactly one string conversion.
@@ -351,9 +366,14 @@ class _IndexRowsMixin:
 
         The row's own columns are the first source: the file specification column names
         the file, and the volume and path columns, when the table has them, say where
-        under the bundles tree it sits. The path is assembled from this object's own
-        bundle set, in the ``volumes`` category, so a row of an index that lives
-        somewhere else still points into the bundles tree. The version does not travel
+        under the data tree it sits. The path is assembled from this object's own bundle
+        set in the ``volumes`` category, written here as a literal rather than taken from
+        the class's ``BUNDLE_DIR_NAME``, so a row of an index that lives somewhere else
+        still points into ``volumes``. That is the bundles tree under PDS3. Under PDS4
+        the bundles tree is called ``bundles`` and a holdings tree has no ``volumes``
+        category at all, so a PDS4 row is given a path that cannot exist, even though
+        ``get_keys()`` below does branch on PDS3 versus PDS4 to choose the columns it
+        reads. The version does not travel
         with it: a bundle set's suffix is carried into another category only where that
         category's volume type is this object's own, so a row of a ``metadata`` index
         names the unversioned ``volumes`` bundle set, which is the most recent version,
@@ -362,7 +382,8 @@ class _IndexRowsMixin:
         A row that is not in the index has no columns to read, and then the neighbors
         are tried instead: the row before it and the row after it are resolved through
         the parent index, each is asked the same question recursively, and the answer is
-        rewritten by substituting this row's basename for the neighbor's. That rewrite
+        rewritten by replacing every occurrence of the neighbor's basename with this
+        row's, anywhere in the path rather than in the last component only. That rewrite
         is accepted only if the neighbor really is a different row and the rewritten
         path exists, which is what keeps a guess from being returned as a fact.
 

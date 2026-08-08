@@ -175,8 +175,9 @@ class _ShelfMixin:
         All three shelf types are accepted, but only 'info' and 'link' name a file a
         holdings tree holds. An index shelf is written one per index table, inside a
         directory named for the bundle, so what this builds for 'index' -- the bundle's
-        own name directly under ``_indexshelf-<category>/`` -- names nothing that exists.
-        The ``indexshelf_abspath`` property is what finds a real index shelf.
+        own name under its bundle set in ``_indexshelf-<category>/`` -- sits one level
+        above the real shelves and names nothing that exists. The ``indexshelf_abspath``
+        property is what finds a real index shelf.
 
         Parameters:
             shelf_type (str): which shelf: 'index', 'info' or 'link'.
@@ -248,9 +249,9 @@ class _ShelfMixin:
         the bundle -- which is the empty string for the bundle directory itself. Naming
         a bundle explicitly asks about that bundle rather than about a file inside it,
         so the key is then the empty string whatever this file is. On an archive object
-        the name reaches neither half of the pair: the path is the bundle set's shelf,
-        and the key is emptied all the same, so the answer describes the bundle set
-        rather than the bundle that was named.
+        the name does not reach the path, which is the bundle set's shelf whatever is
+        passed; it does reach the key, which is emptied as it is anywhere else, so the
+        answer describes the whole bundle set rather than the bundle that was named.
 
         Parameters:
             shelf_id (str): which shelf: 'index', 'info' or 'link'. Only 'info' and
@@ -298,9 +299,10 @@ class _ShelfMixin:
         opened can carry a lower stamp than shelves a busier class opened before it. It
         is then the one discarded, and the next request for it reopens the file.
 
-        The debug line announcing the open is written before the file is looked for, so
-        a request for a missing shelf is logged and then fails, unless logging of that
-        case was suppressed.
+        The debug line announcing the open is written before the check that reports a
+        missing file, so a request for a missing shelf is logged and then fails.
+        Suppressing the logging of that case turns the debug line's own guard into an
+        existence test, so the line is then written only for a shelf that is there.
 
         Parameters:
             shelf_path (str): the absolute path of the shelf file.
@@ -308,7 +310,9 @@ class _ShelfMixin:
                 not there. False suits a caller that expects the failure and handles it.
 
         Returns:
-            dict: the shelf contents, keyed by interior path.
+            dict: the shelf contents, in order of key. An info or link shelf is keyed by
+            interior path; an index shelf, which this opens too, is keyed by row
+            selection key.
 
         Raises:
             OSError: if the file does not exist, or if reading or unpickling it fails
@@ -445,6 +449,9 @@ class _ShelfMixin:
             SyntaxError: raised by ``_eval_null_key_record()`` when the sidecar's second
                 line is not the record it expects, which includes a sidecar with fewer
                 than two lines.
+            NameError: raised by ``_eval_null_key_record()`` when that line parses as a
+                complete expression but uses a bare name, which is the other way a
+                sidecar the maintenance tools did not write can fail.
         """
 
         cls = type(self)
@@ -493,8 +500,11 @@ class _ShelfMixin:
         reading a parsed bundle name. In the documents tree a PdsFile carries no bundle
         name, so the instance method raises ValueError there while this one consumes
         three components and returns a shelf path built from the file's own basename,
-        which no holdings tree holds. The filesystem layer excludes the documents tree
-        before it calls.
+        which no holdings tree holds. Of the filesystem layer's four entry points only
+        ``os_path_exists()`` excludes the documents tree before it calls;
+        ``os_path_isdir()``, ``os_listdir()`` and ``glob_glob()`` hand documents paths
+        straight through, and ``_PropertiesMixin`` calls this for any absolute path at
+        all.
 
         Parameters:
             abspath (str): the absolute path of the file.
@@ -554,9 +564,17 @@ class _ShelfMixin:
         Four things have none: a checksum file, anything in the documents tree, a
         category-level directory, which is merged across holdings directories and so
         belongs to no single tree, and anything at bundle-set level outside the archives
-        tree -- the bundle set's own directory as well as the files beside it, including
-        its AAREADME. An archive has one from its bundle set downward, and everything
-        else has one from its bundle downward.
+        tree. An archive has one from its bundle set downward, and everything else has
+        one from its bundle downward.
+
+        The last of the four is decided by the bundle name alone, so it takes in more
+        than the bundle set's own directory and the files beside it, including its
+        AAREADME. It also takes in the three directories that sit under a bundle set
+        without being bundles -- a name starting ``checksums_``, a name starting
+        ``superseded``, or a name ending ``_support`` -- for which
+        ``shelf_path_and_lskip()`` does build a shelf path of their own. This answers
+        False for them all the same, so ``shelf_exists_if_expected()`` returns None for
+        such a directory rather than looking for the shelf that path names.
 
         This is a claim about what ought to exist, not about what does.
         ``shelf_exists_if_expected()`` is the one that looks.
@@ -594,8 +612,9 @@ class _ShelfMixin:
 
         False comes only from an OSError, which is what a missing or unreadable shelf or
         sidecar raises. A shelf that opens but has no entry for this file raises KeyError
-        instead, and a sidecar that is present but malformed raises SyntaxError, so False
-        means the shelf could not be read rather than that the entry is not in it.
+        instead, and a sidecar that is present but malformed raises SyntaxError or
+        NameError, so False means the shelf could not be read rather than that the entry
+        is not in it.
 
         Returns:
             bool: True or False as above, or None if no entry is expected.
