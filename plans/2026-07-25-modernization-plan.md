@@ -1112,11 +1112,69 @@ entry 130 measured are untouched. Record: `critiques/pr-28a-validation.md`.
 
 ### Phase 7 — Docstrings and documentation
 
-**PR-29 (L)** `docs: Google-style docstrings — core modules`
-Per `doc_python.mdc`: every module/class/method/function in
-`src/pdsfile/*.py` (core + extracted modules, pdscache, pdsviewable);
-`Parameters:` sections, wrap at 90; fix the known typos. Content must be
-accurate to behavior — verified against the code, not the old docstrings.
+**PR-29/PR-29a split.** The plan's single PR-29 covered all of `src/pdsfile/*.py`,
+which is about 300 docstrings. There is no mechanical gate for semantic accuracy —
+a checker can prove a `Parameters:` block matches a signature and can prove
+nothing about whether a description is true — so every docstring has to be read
+against the code by a person, and 300 cannot be reviewed in one pass. The split
+point is not arbitrary: deferred entry 80 names exactly `pdsfile.py`,
+`preload_and_cache.py`, `pdscache.py` and `pdsviewable.py` as the module headers
+that narrate the port, so PR-29 is precisely the set that entry covers, plus the
+15-line `__init__.py`. PR-29a takes the ten private modules.
+
+**PR-29 (L)** `docs: Google-style docstrings — the public modules` — **done**,
+record `critiques/pr-29-validation.md`
+Per `doc_python.mdc`, every module/class/method/function in the five public
+files — `pdsfile.py`, `pdscache.py`, `pdsviewable.py`, `__init__.py` and
+`preload_and_cache.py`: 134 docstrings, `Parameters:` sections, wrapped at 90,
+each one written from the code rather than from the old prose. `_version.py` is
+out of scope as a gitignored build artifact.
+
+Three things that shaped the result and bind the PRs after it:
+
+  * **Docstrings only, proved rather than sampled.** The docstring-stripped AST
+    hashes identically at base and head for all five files, so no executable
+    statement moved. Comments are not AST nodes, so they were diffed separately:
+    three lines removed, all of them `preload_and_cache.py`'s header comment,
+    which entry 80 required be rewritten and which the rule requires be a
+    docstring.
+  * **A `-W` and `-n` Sphinx build over the five modules, out of tree.** Base had
+    81 warnings under `-n`; head has zero, with `nitpick_ignore` empty and nothing
+    mocked. The working `conf.py` is at `critiques/pr-29/sphinx-conf.py` for PR-31
+    to inherit. Two hazards it exposed are deferred entries 168 and 169: a
+    trailing underscore in a docstring is an RST reference, and cross-reference
+    roles cannot be used until the full API reference exists, so PR-31 must sweep
+    the inline literals these docstrings use instead.
+  * **Forty-five defects found by reading the code against its own prose** —
+    sixteen by the executor (deferred entries 152–167) and twenty-nine by the four
+    review rounds (170–198) — plus two notes for the documentation PRs that follow
+    it, 168 and 169. Entries 23, 24 and 80 are amended. That list, not the prose,
+    is the evidence the docstrings were verified rather than paraphrased.
+  * **Four review rounds over the three substantial files** — one each on
+    `pdscache.py`, `pdsviewable.py` and `pdsfile.py`, then a second read of
+    `pdscache.py`. `__init__.py` and `preload_and_cache.py` had no round of their
+    own: between them they hold two module docstrings, no classes and no
+    functions, and both are covered by the checker, the Sphinx build and
+    CodeRabbit. **The second read did not come back empty:** it found about twenty
+    items where the first read of the same file found fifteen. So the finding rate is a
+    property of how much prose there is to check, not of how much is left — one
+    adversarial read per file does not exhaust a docstring PR of this size.
+    **PR-29a should plan for at least two reads of each module it touches, not one
+    pass per file.**
+  * **The systematic weak point is the relationship claim** — a sentence asserting
+    that one method calls another, that one is safe because another checked first,
+    or that a lifetime or a limit behaves the same way in both cache classes. Six
+    of round 4's thirteen prose defects were of that kind, and so was the only
+    thing CodeRabbit found that three earlier rounds had all missed. A reviewer
+    brief for PR-29a should name that category explicitly; three of PR-29's four
+    did not, and the one that did found the most.
+
+**PR-29a (L)** `docs: Google-style docstrings — the private modules`
+The ten `_*.py` mixin and extracted modules: 156 functions, 131 parameters, and
+ten module headers, none of which has a docstring at all. Entry 80 stays open for
+those headers. Reuse `critiques/pr-29/`'s checkers and `sphinx-conf.py`; the
+docstring/code disagreements to expect are the same shape as PR-29's, and entry
+167 names one already (`cache_lifetime_for_class`'s `cls` default).
 
 **PR-30 (L)** `docs: docstrings — rules, subclasses, maintenance tools`
 Rule modules get a standard header docstring (dataset, what each rule table
