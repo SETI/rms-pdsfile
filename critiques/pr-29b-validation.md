@@ -17,7 +17,7 @@ Three files, and two different jobs.
 
 | file | lines at base | at head | job |
 |---|---:|---:|---|
-| `src/pdsfile/_properties.py` | 1,689 | 2,801 | 68 function docstrings and the module's first, all written here |
+| `src/pdsfile/_properties.py` | 1,689 | 2,817 | 68 function docstrings and the module's first, all written here |
 | `src/pdsfile/pdsfile.py` | 2,435 | 2,468 | a second adversarial read of prose that shipped with PR-29 |
 | `src/pdsfile/pdsviewable.py` | 986 | 1,005 | the same |
 
@@ -86,13 +86,13 @@ and the remaining 58 were written.
 | | total | docstring | code |
 |---|---:|---:|---:|
 | base | 1,689 | 297 | 1,392 |
-| head | **2,801** | 1,411 | **1,390** |
+| head | **2,817** | 1,427 | **1,390** |
 
-**The projection landed within three percent of the outcome**: about 2,720 projected from a
-tenth of the work, 2,801 measured over all of it. The 81-line gap is the five review
-rounds' corrections, which is the one cost a sample cannot see, since a sample is
-projected before it is reviewed. A per-module projection is therefore good enough to price
-this decision and should be read as a floor, and PR-30 has the rule modules coming.
+**The projection landed within four percent of the outcome**: about 2,720 projected from a
+tenth of the work, 2,817 measured over all of it. The 97-line gap is the five review
+rounds' corrections, which is the one cost a sample cannot see, because a sample is
+projected before it is read. A per-module projection is therefore good enough to price this
+decision and should be read as a floor, and PR-30 has the rule modules coming.
 
 Two other numbers matter for that. **Code lines went down by two**, because the three
 description lines inside the banner comment became part of the module docstring, so nothing
@@ -100,8 +100,8 @@ about the complexity the 1,000-line limit exists to bound has changed. And the p
 cost is not a constant. Measured at the commit where each family's own PR left it -- so
 that this PR's corrections are not folded into the figure they are compared against -- a
 function docstring runs **15.2** lines across PR-29's five public modules at `9466dbc`,
-**24.5** across PR-29a's nine private ones at `998a166`, and **18.4** across these 68 at
-head. What makes 18.4 add up to 1,249 lines is the count, not the length.
+**24.5** across PR-29a's nine private ones at `998a166`, and **18.6** across these 68 at
+head. What makes 18.6 add up to 1,266 lines is the count, not the length.
 
 The standard the 68 are written to therefore sits between the two earlier PRs rather than
 above them. Writing them at PR-29's 15.2 would still have landed the file near 2,400.
@@ -537,7 +537,7 @@ Recorded because every number was re-derived rather than inherited.
 
 * **What did not reproduce is in deviation (3)'s own prose, not in the brief.**
   "Documenting a module costs roughly fourteen lines per function" is below every module
-  measured: 15.2 for PR-29's five, 24.5 for PR-29a's nine, 18.4 for these 68. The rule now
+  measured: 15.2 for PR-29's five, 24.5 for PR-29a's nine, 18.6 for these 68. The rule now
   carries the three figures. Entry 223.
 
 * **And one claim in a rule file was wrong about the code.** Deviation (4)'s `RUF005` note

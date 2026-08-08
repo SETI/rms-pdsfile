@@ -1249,17 +1249,19 @@ Four things that shaped the result:
     lazy properties to the standard of the other twelve modules could not be done inside
     the 2,000-line ingestion limit. Ten representative members were documented first and
     the cost measured before the other 58 were written: the projection was about 2,720
-    lines against a ceiling of 2,000, and the file landed at **2,720**. Its *code* lines
-    went down by two. The owner waived it on total lines (2026-08-08) rather than take
+    lines against a ceiling of 2,000, and the file landed at **2,817**, the 97-line gap
+    being the five review rounds' corrections. Its *code* lines went down by two. The owner waived it on total lines (2026-08-08) rather than take
     either wrong answer -- a thin docstring or a silent breach -- and deviation (3) records
     the waiver, its reason and the numbers. It is the precedent `pdsfile.py`'s deferred
     split (entry 199) will be argued against.
   * **The cost of documenting a module is not a constant, and a per-module sample prices
     it.** A function docstring runs 15.2 lines across PR-29's five public modules, 24.5
-    across PR-29a's nine private ones, 17.3 across these 68; the rule's "roughly fourteen"
+    across PR-29a's nine private ones, 18.6 across these 68; the rule's "roughly fourteen"
     is below all three. What made this module expensive was the count, not the length. **A
-    ten-member sample projected the finished file to within four lines**, which is the
-    method PR-30 should use on the rule modules rather than an average. Entry 223.
+    ten-member sample projected the finished file to within four percent, and low**, the
+    shortfall being the corrections a sample cannot see because it is projected before it
+    is read. That is the method PR-30 should use on the rule modules rather than an
+    average, reading the answer as a floor. Entry 223.
   * **A lazy property's docstring has to answer what a function's does not**, and that is
     where the defects were. For each: what the value is before first access, which *other*
     slots reading it fills, what a file that does not exist yields, and whether a merged
@@ -1271,6 +1273,14 @@ Four things that shaped the result:
     of `pdsfile.py` and `pdsviewable.py`. Keeping the property the rounds exist for --
     every docstring read twice by two reviewers sharing no context -- was worth one more
     round than the cap.
+  * **The second reads paid, and the measurement is now three PRs deep.** Rounds 4 and 5
+    returned 21 findings over prose two full rounds had already corrected, and **ten of the
+    21 were on sentences those rounds had themselves written**. PR-29a measured eleven of
+    twenty-three; this PR measures ten of twenty-one, on a different module and with the
+    changed sentences named to the reviewer by hand. **PR-30 should budget for the second
+    read finding about half its yield in the first read's own corrections**, and should
+    freeze the tree before launching it -- this PR did not, and entry 239 records what that
+    cost.
 
 **PR-30 (L)** `docs: docstrings — rules, subclasses, maintenance tools`
 Rule modules get a standard header docstring (dataset, what each rule table

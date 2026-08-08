@@ -4813,16 +4813,16 @@ rediscovery.
      already documented, each at the commit where its own PR left it so that this PR's
      corrections are not folded into the figure they are compared against, a function
      docstring runs **15.2** lines across PR-29's five public modules, **24.5** across
-     PR-29a's nine private ones and **18.4** across `_properties.py`'s 68 members.
+     PR-29a's nine private ones and **18.6** across `_properties.py`'s 68 members.
      Deviation (3)'s "roughly fourteen lines per function" is below all three. The figure
      that made `_properties.py` a decision was not the length but the count: 68 members at
-     18.4 lines is 1,249 lines of function docstring, which is what took the file from
-     1,689 total lines to 2,801.
+     18.6 lines is 1,266 lines of function docstring, which is what took the file from
+     1,689 total lines to 2,817.
 
      The method is worth keeping because it worked: ten representative members were
      documented first, fitted to their code lines, and projected the finished file at about
      2,720 against a ceiling of 2,000. Written out in full and then reviewed it landed at
-     **2,801**. The 81-line gap is the five review rounds' corrections, which a sample
+     **2,817**. The 97-line gap is the five review rounds' corrections, which a sample
      cannot see because it is projected before it is read, so **a sample prices the
      decision to within a few percent and should be read as a floor.** PR-30 has the rule
      modules coming; the rule now carries the three per-module figures so the next
