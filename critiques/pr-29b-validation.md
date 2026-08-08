@@ -265,20 +265,158 @@ PENDING
 
 ## 8. Standing gates
 
-PENDING
+### 8.1 Test id sets, full data, both modes
+
+The command lines are `scripts/automated_tests/pdsfile_main_test.sh`'s, plus `--junitxml`.
+Run from each tree in turn.
+
+| mode | scope | base | head | ids only in base | ids only in head | outcome changed |
+|---|---|---|---|---|---|---|
+| `ns` | all seven directories | 1101 passed, 34 skipped (1135 ids) | 1101 passed, 34 skipped (1135 ids) | none | none | none |
+| `s` | `tests/pds3file/ tests/rules/pds3/` only | 555 passed, 3 skipped (558 ids) | 555 passed, 3 skipped (558 ids) | none | none | none |
+
+The per-test id sets were diffed, not the counts: the two junit files were parsed and
+compared id by id with the outcome attached, so a test that changed from passed to skipped
+would show even though the totals would not. The `--mode s` scope is the script's own, not
+the full suite.
+
+### 8.2 The code checks with no holdings
+
+    env -u PDS3_HOLDINGS_DIR -u PDS4_HOLDINGS_DIR -u PDSFILE_TEST_HOLDINGS \
+        bash scripts/run-all-checks.sh -c -s
+
+All checks passed: ruff, the indentation pass, pytest, pyroma 10/10, the API-freeze check
+and the clean-install gate. The script needs a `venv` in the repository root; a symlink to
+the shared interpreter was made for the run and removed afterwards. It is gitignored and is
+not part of this PR.
+
+### 8.3 The API freeze
+
+    pytest tests/api
+
+26 passed. The four frozen files are byte-identical to `998a166`, checked with
+`git diff --quiet 998a166 -- <file>` on each. This PR turns three `#` header comment lines
+into part of a module docstring and rewrites 137 docstrings, which is freeze-neutral two
+ways rather than by assumption: the manifest has no docstring field, and
+`tests/api/test_mixin_collisions.py` lists `__doc__` among the structural names it ignores,
+so the one test that walks a class body cannot see a docstring either.
+
+### 8.4 ruff
+
+    ruff check .                                          # All checks passed
+    ruff check --preview --select E111,E112,E113 .        # All checks passed
+    ruff check . --config 'lint.per-file-ignores = {}'    # Found 2249 errors
+
+Two findings were introduced and fixed inside this PR rather than shipped, both in
+`critiques/pr-29b/remap_citations.py` and both therefore invisible to the configured gate,
+which covers `src/pdsfile tests scripts` only: `E401` and `I001` on a single import line.
+The bare `ruff check .` is clean at head, which is the check that caught them.
+
+### 8.5 The ratchet
+
+| | base | head |
+|---|---:|---:|
+| `per-file-ignores` entries | 66 | 66 |
+| code slots across those entries | 180 | 180 |
+| findings with `per-file-ignores = {}` | 2,249 | 2,249 |
+| `[project.scripts]` entries | 11 | 11 |
+
+Nothing moved. No entry was retired and no entry grew. `bandit` and `vulture` are disabled
+and not installed; this PR claims nothing about them.
+
+### 8.6 The record checkers
+
+    python critiques/pr-28/check_record_numbers.py
+
+15 stale at base and 15 at head, byte-identical outputs. Those are PR-28's own numbers,
+invalidated by PR-28a's extraction; they arrived that way and this PR neither caused nor
+repaired them.
+
+    python critiques/pr-29/check_citations.py
+
+**0 stale at head, and it took two repairs.** It reports 0 at base. A docstring-only PR
+moves every citation below a docstring it grows, and this one grew docstrings in all three
+files that PR-29's record and PR-29's deferred entries cite: 47 citations drifted on the
+first pass and 45 more when round 5's corrections changed six docstrings again, 92 in all.
+
+Each was **re-derived rather than renumbered**. `critiques/pr-29b/remap_citations.py`
+aligns the file at a commit where the citations were correct against the working tree with
+`difflib`, which is exact here because no statement moved; carries each citation to the
+line its own line became; and **requires the citation's own token to be present there**,
+refusing to write anything at all if any citation cannot be resolved. The checker's table
+and the two documents are rewritten in one pass so they cannot disagree. The refusal is
+mutation-tested: corrupting one entry's token makes the run report it and leave every file
+untouched.
+
+One number in PR-29's record could not be repaired that way and should not have been.
+The checker compared `pdsfile.py`'s and `pdsviewable.py`'s line counts against the working
+tree, and PR-29's record states them "at head", meaning its own head. A later PR that adds
+a docstring does not make that record wrong. The check now reads those two files out of
+PR-29's merge commit, which keeps it falsifiable -- editing the record's table still fails
+it, verified by mutation -- without demanding that every later PR rewrite an earlier record.
 
 ## 9. What the second reads found that the first reads had introduced
+
+This is the measurement section 5 of the brief exists for, and the one PR-29a's record asked
+this PR to make. Rounds 3, 4 and 5 were each handed **the list of sentences the earlier
+round had rewritten, by name**, and asked to judge each against the code as if it were new
+prose, and to tag every finding `[CHANGED]` or `[ORIGINAL]`.
 
 PENDING
 
 ## 10. Deferred observations
 
-PENDING
+Entries 223 to 231, and amendments to 54, 68, 80 and 215. The amendments are the four this
+PR closes or measures; the new entries divide into what the executor measured (223 to 228)
+and what the review rounds found in the code rather than in the prose (229 onward).
+
+The one worth naming here is **223**, because the owner asked that the line-count
+measurement be kept as evidence after the waiver removed it as a gate. It records the three
+per-module costs, the ten-member sampling method, and the fact that the projection landed
+within four lines of the outcome.
 
 ## 11. Type omissions -- PR-35's queue
 
-PENDING
+This PR writes two `Parameters:` entries, because `_properties.py` declares two parameters
+in the whole file, and `pdsfile.py` and `pdsviewable.py` are corrections to prose that
+already carries its own. One of the two is written without a type.
+
+| parameter | where | what the code shows |
+|---|---|---|
+| `suffix` | `version_info` | compared against string literals and then split and sliced as text, so a `str` -- except that None is accepted explicitly and short-circuits before any string operation, so a `(str)` slot would be a narrower type than the code has |
+
+`name` in `viewset_lookup` is written `(str)`: it is used as a key into the class's
+VIEWABLES dictionary and compared with `'default'`, and nothing else is reachable.
+
+**One return type is omitted for a different reason.** `index_pdslabel` returns the
+`PdsLabel` object `pdsparser` builds, and naming it in the type slot fails the `-n` Sphinx
+build, because `pdsparser` has neither an autodoc page in the probe's page set nor an
+intersphinx inventory. It is named in prose instead, which is PR-29's convention for
+`PdsFile` inside `pdsviewable.py`, used unchanged. PR-35's stub can write the type; a
+docstring here cannot, until PR-31 decides what the doc tree's intersphinx mapping holds.
 
 ## 12. Numbers this PR was handed that did not reproduce
 
-PENDING
+Recorded because every number was re-derived rather than inherited.
+
+* **The brief said `_properties.py` had "no module docstring, one class whose docstring is
+  105 lines".** Both reproduce. So do 1,689 lines, 68 functions, all 68 already documented,
+  2 parameters, the `ns` 1135 and `s` 558 baselines, the ratchet's 66 / 180 / 11, the base
+  checker's 73 findings, and PR-29a's 21 Sphinx warnings for including this module.
+
+* **The brief said deferred observations continue from 223.** They do; the last entry at
+  base is 222.
+
+* **`critiques/pr-29a-validation.md` section 6 records `_properties.py` at 1,689 total, 297
+  docstring, 1,392 code, and deviation (3) repeats it.** All three reproduce.
+
+* **What did not reproduce is in deviation (3)'s own prose, not in the brief.**
+  "Documenting a module costs roughly fourteen lines per function" is below every module
+  measured: 15.2 for PR-29's five, 24.5 for PR-29a's nine, 17.3 for these 68. The rule now
+  carries the three figures. Entry 223.
+
+* **And one claim in a rule file was wrong about the code.** Deviation (4)'s `RUF005` note
+  said `self._info[:4] + (shape,)` "raises today" because `_info_filled` is a list on two
+  construction paths. It cannot: the line is reached only where the recorded shape has more
+  than two elements, and both those paths pre-set a two-element one. Raised by CodeRabbit,
+  reproduced on a live merged directory, and corrected to say the hazard is latent.
