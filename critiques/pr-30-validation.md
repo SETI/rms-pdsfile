@@ -28,7 +28,7 @@ were one line each and carried no Google section of any kind.
 ## 2. What changed
 
 Docstrings only. **36 module docstrings, 31 class docstrings and 7 function docstrings**
-(3 new, 4 rewritten) -- 74 in all, 1,992 lines added against 8 removed. Section 3 proves
+(3 new, 4 rewritten) -- 74 in all, 2,005 lines added against 8 removed. Section 3 proves
 that no executable statement moved.
 
 Three comment lines were deleted and none was added or reworded; section 3.2 enumerates
@@ -227,7 +227,7 @@ the deviation's table carries a row for `VG_28xx.py` whose numbers this PR moves
 
 | file | total base | total head | docstring head | code base | code head |
 |---|---:|---:|---:|---:|---:|
-| `VG_28xx.py` | 1,019 | 1,116 | 96 | 1,019 | 1,020 |
+| `VG_28xx.py` | 1,019 | 1,117 | 97 | 1,019 | 1,020 |
 | `GO_0xxx.py` | 822 | 918 | 96 | 821 | 822 |
 | `COCIRS_xxxx.py` | 786 | 855 | 68 | 786 | 787 |
 | `COISS_xxxx.py` | 766 | 846 | 78 | 766 | 768 |

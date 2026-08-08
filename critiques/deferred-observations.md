@@ -5193,22 +5193,22 @@ rediscovery.
 248. **The per-module cost of documenting a rule module, measured, for entry 223's
      method.** Entry 223 asks that the cost be sampled per module rather than taken from
      an average, and read as a floor. Measured over all 36 at this PR's head:
-     **1,992 lines added against 8 removed, for 74 docstrings**, which is 26.9 lines each
+     **2,005 lines added against 8 removed, for 74 docstrings**, which is 27.1 lines each
      against PR-29's 15.2 for a public-module function, PR-29a's 24.5 for a private one
      and PR-29b's 18.6 for a lazy property. **The review is 15% of that total**: the first
-     reads' corrections added 219 lines and the second reads' a further 79, because an
+     reads' corrections added 219 lines, the second reads' a further 79 and CodeRabbit's 13, because an
      accurate sentence about a rule table is longer than an approximate one and a sentence
      that has to say a table is unreachable is longer again.
 
      The number that would actually price the next one is narrower than any of those. The
-     36 **module** docstrings occupy 1,493 lines, a mean of 41.5, and they run from 13
+     36 **module** docstrings occupy 1,499 lines, a mean of 41.6, and they run from 13
      lines (`RES_xxxx.py`, which defines no rule tables) to 115 (`VG_28xx.py`, which
      defines 32). **The correlation between a module's rule-table count and its docstring
      length is 0.87**, and the module's own line count predicts nothing:
      `uranus_occs_earthbased_primary_filespec.py` is 774 lines and needs 13.
      So the unit to sample for a rule-shaped module is the table, not the module and not
-     the function. A least-squares fit over the 36 gives **2.54 lines of module docstring
-     per top-level table plus a fixed 11.2**, over 429 tables in all.
+     the function. A least-squares fit over the 36 gives **2.55 lines of module docstring
+     per top-level table plus a fixed 11.3**, over 429 tables in all.
      Whether that transfers to `holdings_maintenance/`, where the unit is a
      function again, is exactly what PR-30b should sample rather than assume.
      **Owner: PR-30a, PR-30b and PR-30c, which should sample rather than average.**
