@@ -7,10 +7,12 @@
 A holdings tree keeps several parallel copies of the same structure. Alongside
 ``volumes/`` there is a ``checksums-volumes/`` holding one MD5 file per bundle and an
 ``archives-volumes/`` holding one ``.tar.gz`` per bundle, and the same pair exists for
-every other category. So a file has a checksum file that covers it and an archive file
-that contains it, and each of those has a directory it was made from. Working out those
-paths is arithmetic on the parts of a path -- the holdings root, the category, the bundle
-set, the bundle name -- and that arithmetic is what ``_DerivedPathsMixin`` holds.
+every other category except ``documents``, which gets neither. So a file below a bundle
+has a checksum file that covers it and an archive file that contains it, and each of
+those has a directory it was made from; a file at bundle-set level has a checksum file
+but no archive, because an archive is made of a bundle. Working out those paths is
+arithmetic on the parts of a path -- the holdings root, the category, the bundle set, the
+bundle name -- and that arithmetic is what ``_DerivedPathsMixin`` holds.
 
 The log paths are the same kind of derivation aimed at a different tree. A maintenance
 tool writes its log where the file it worked on says to, under a log root that is either
@@ -79,8 +81,12 @@ class _DerivedPathsMixin:
         ``superseded``, or a name ending ``_support`` -- one covers that directory.
 
         The basename carries the volume type when there is one to carry: a file under
-        ``volumes/`` or ``bundles/`` gets none, and anything else gets the category name
-        without its trailing slash, so a metadata bundle yields ``..._metadata_md5.txt``.
+        ``volumes/`` or ``bundles/`` gets none, and anything else gets its own bundle
+        type without the trailing slash, so a metadata bundle yields
+        ``..._metadata_md5.txt``. The bundle type is not the category, and the two part
+        company on an archive file, whose category carries an ``archives-`` prefix its
+        bundle type does not: an archive of a metadata bundle still yields
+        ``..._metadata_md5.txt`` and not ``..._archives-metadata_md5.txt``.
 
         The second value is a character count into the returned path: everything from it
         onward is the checksum file's basename.
@@ -305,11 +311,15 @@ class _DerivedPathsMixin:
         """Return the log file path for the archiving of this file.
 
         The log goes under an ``archives`` subdirectory of the log root, and below that
-        it is filed by what was archived rather than by the archive: a copy of this
-        object is made with its checksum marker cleared, and, if it is an archive file,
-        with its archive marker cleared and its category replaced by its bundle type. So
-        an object for an archive of a volume logs under ``archives/volumes/...``. The
-        copy is discarded; this object is not changed.
+        it is filed by category, bundle set and bundle name. A copy of this object is
+        made with its checksum marker cleared, and, if it is an archive file, with its
+        archive marker cleared and its category replaced by its bundle type, so an object
+        for an archive of a volume logs under ``archives/volumes/...``. Only the second
+        of those rewrites reaches the answer, because the category is the only one of the
+        three the log path reads: clearing the checksum marker leaves the category as it
+        was, so a checksum file logs under ``archives/checksums-volumes/...`` rather than
+        under ``archives/volumes/...``. The copy is discarded; this object is not
+        changed.
 
         The basename ends in ``_targz``, then the time tag, then the task if one was
         given.
@@ -340,7 +350,10 @@ class _DerivedPathsMixin:
 
         The value is written onto the class this is called on, so calling it on a
         subclass leaves the others alone. A root is stored with exactly one trailing
-        slash, however many it was given.
+        slash, however many it was given, so an empty string is stored as ``/`` and every
+        log path is then built at the filesystem root. Only None asks for the default
+        described below, so a caller that treats an empty string as "unset" has to
+        convert it first.
 
         None means there is no default, and every log path is then built under a
         ``logs`` directory beside the holdings directory the file itself is in, so
@@ -406,10 +419,12 @@ class _DerivedPathsMixin:
     def _log_path_for(self, target, suffix, task, subdir, place):
         """Return a complete log file path, given the parts that name what is logged.
 
-        The three log_path_for_* methods differ only in the parts that name their
-        target and in whether they accept a suffix. Everything else -- resolving
-        the log root, the optional subdirectory, the time tag, the task tag and the
-        ".log" extension -- is the same for all three and is done here.
+        The three log_path_for_* methods differ in three ways: in the parts that
+        name their target, in whether they accept a suffix, and in what their
+        subdirectory defaults to, which is "index" for log_path_for_index and
+        nothing for the other two. Everything else -- resolving the log root, the
+        optional subdirectory, the time tag, the task tag and the ".log" extension
+        -- is the same for all three and is done here.
 
         The assembled path is::
 

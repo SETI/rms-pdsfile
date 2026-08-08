@@ -58,25 +58,34 @@ class _IndexRowsMixin:
                                   _exists_filled, on each newly built row object
       class attribute read        CACHE, and __bases__ -- see below
       other methods called        bundleset_abspath, new_index_row_pdsfile,
-                                  parent, sort_basenames, from_abspath
+                                  parent, from_abspath
 
-    All of them are defined on PdsFile. Two more come from sibling mixins:
-    get_indexshelf reaches _ShelfMixin's _get_shelf, and
+    All of them are defined on PdsFile. Three more come from sibling mixins:
+    get_indexshelf reaches _ShelfMixin's _get_shelf, find_selected_row_key
+    reaches _SortingMixin's sort_basenames, and
     data_abspath_associated_with_index_row reaches _LocalFsMixin's
-    os_path_exists. Every one of these is an attribute lookup on self or on
-    type(self) at run time, not an import, which is what lets the halves live in
-    different modules.
+    os_path_exists. The sort_basenames reach brings the most with it: that method
+    matches each name against BUNDLESET_PLUS_REGEX_I, which only Pds3File and
+    Pds4File define, so the neighbor search works on a subclass instance and
+    raises AttributeError on a bare PdsFile. Every one of these is an attribute
+    lookup on self or on type(self) at run time, not an import, which is what lets
+    the halves live in different modules.
 
     data_abspath_associated_with_index_row chooses between the PDS3 and PDS4
     column-name tables by comparing type(self).__bases__[0].__name__ against the
     string 'Pds4File'. That reads a rule subclass's direct base, which mixin
     bases on PdsFile do not change. It is fragile all the same: a subclass one
     level deeper, or one whose first base is not the PDS3/PDS4 class, silently
-    gets the PDS3 table.
+    gets the PDS3 table. One of those cases is the class the PDS4 registry hands
+    out for a bundle set with no rule module of its own: that class is Pds4File
+    itself, whose first base is named 'PdsFile', so a row of such a bundle set is
+    read with the PDS3 column names, which are not the same list.
 
-    child_of_index reads the shared cache but never writes it: an object it
-    builds is returned to the caller and is not stored, so the same call made
-    twice on the same missing row builds two objects.
+    child_of_index neither writes the shared cache nor effectively reads it. The
+    read is keyed by the row's absolute path, and the cache holds only lowercased
+    logical paths, so it always misses; the object built is returned to the caller
+    and is not stored. Two calls for one row therefore build two objects and read
+    the index table twice.
     """
 
     def get_indexshelf(self):
@@ -129,19 +138,23 @@ class _IndexRowsMixin:
 
           * ``'='`` raises, which is the default.
           * ``'>'`` returns the key that would follow the selection in sorted order, or
-            the second-to-last key if the selection would sort last.
-          * ``'<'`` returns the key that would precede it, or the second key if the
-            selection would sort first.
+            the index's own last key if the selection would sort last.
+          * ``'<'`` returns the key that would precede it, or the index's own first key
+            if the selection would sort first.
           * ``''`` returns the selection itself, unchanged.
 
         The ``''`` case is reached only when partial matching was allowed. With an exact
         match required, an unmatched selection falls through to the neighbor search
         instead, so ``''`` then behaves like ``'>'``.
 
-        A flag outside those four raises **TypeError**, not the ValueError the guard is
-        written to raise: the guard builds its message by applying ``%`` to a string that
-        carries no conversion, and that formatting fails before the ValueError can be
-        constructed.
+        What a flag outside those four raises depends on the flag's own text. The guard
+        interpolates the flag into an f-string and then applies ``%`` to the result, with
+        the flag again as the argument, so the outcome turns on whether that text carries
+        a conversion. A flag with none, such as ``'bogus'``, makes ``%`` raise TypeError
+        for the argument it cannot consume, before the ValueError can be constructed; a
+        flag that is exactly one string conversion, such as ``'%s'``, makes ``%`` succeed
+        and the ValueError is raised as written; and a flag carrying a numeric conversion
+        such as ``'%d'`` raises TypeError from the conversion itself.
 
         Parameters:
             selection (str): the row key to look for, exact or partial.
@@ -157,10 +170,16 @@ class _IndexRowsMixin:
                 ambiguous. The longest-match rule resolves the other direction but not
                 this one.
             IndexError: raised by the neighbor lookup, which is item syntax, when the
-                index has fewer than two keys and so has no neighbor to return. It comes
+                index has no keys at all. The list indexed is the index's own keys with
+                the selection appended, so a single key is enough for either fallback to
+                land on it, and only an empty key list leaves nothing to return. It comes
                 from ``__getitem__()`` on the sorted key list.
-            ValueError: written for a flag outside the four, and unreachable, for the
-                reason given above.
+            ValueError: for a flag outside the four, reached when the flag's text is
+                exactly one string conversion, as above.
+            TypeError: for a flag outside the four whose text carries no conversion or a
+                numeric one. The ``%`` applied to the guard's message then fails while
+                the argument to ``ValueError()`` is being evaluated, so the ValueError
+                above is never constructed for such a flag.
         """
 
         if flag not in ('', '=', '>', '<'):
@@ -248,16 +267,17 @@ class _IndexRowsMixin:
         that is not in the index at all, and its ``exists`` is already filled in to say
         which case it is.
 
-        An object already in the shared cache under the row's absolute path is returned
-        as it is. Otherwise the row is built: the shelf gives the row numbers for the
-        key, the table is read over just the span those numbers cover, and the resulting
-        row dictionaries are attached to the new object. Reading the table also fills in
-        this index's ``column_names`` if they were still empty. A key that is not among
-        the index's own keys skips all of that and yields an object with no row
-        dictionaries.
+        The shared cache is consulted first, under the row's absolute path, but nothing
+        is ever stored under a key of that shape: the cache is keyed by lowercased
+        logical paths, so this lookup always misses and the row is always built. Building
+        it means the shelf gives the row numbers for the key, the table is read over just
+        the span those numbers cover, and the resulting row dictionaries are attached to
+        the new object. Reading the table also fills in this index's ``column_names`` if
+        they were still empty. A key that is not among the index's own keys skips all of
+        that and yields an object with no row dictionaries.
 
-        A newly built object is **not** written to the cache, so two calls for the same
-        uncached row return two objects.
+        The object built is **not** written to the cache either, so two calls for one row
+        return two objects and read the table twice.
 
         Parameters:
             selection (str): the row key to look for, exact or partial.
@@ -273,7 +293,13 @@ class _IndexRowsMixin:
                 the index's own key list, so it does not add a second source of KeyError.
             OSError: raised by ``find_selected_row_key()`` on an ambiguous selection, and
                 by ``get_indexshelf()`` when the index file is missing.
-            ValueError: raised by ``get_indexshelf()`` when the file is not an index.
+            ValueError: raised by ``get_indexshelf()`` when the file is not an index, and
+                by ``find_selected_row_key()`` for a flag outside the four whose text is
+                exactly one string conversion.
+            TypeError: raised by ``find_selected_row_key()`` for a flag outside the four
+                whose text carries no conversion or a numeric one.
+            IndexError: raised by ``find_selected_row_key()`` when a neighbor was asked
+                for and the index has no keys at all.
         """
 
         cls = type(self)
@@ -327,7 +353,11 @@ class _IndexRowsMixin:
         the file, and the volume and path columns, when the table has them, say where
         under the bundles tree it sits. The path is assembled from this object's own
         bundle set, in the ``volumes`` category, so a row of an index that lives
-        somewhere else still points into the bundles tree.
+        somewhere else still points into the bundles tree. The version does not travel
+        with it: a bundle set's suffix is carried into another category only where that
+        category's volume type is this object's own, so a row of a ``metadata`` index
+        names the unversioned ``volumes`` bundle set, which is the most recent version,
+        whatever version the index itself belongs to.
 
         A row that is not in the index has no columns to read, and then the neighbors
         are tried instead: the row before it and the row after it are resolved through
@@ -336,12 +366,23 @@ class _IndexRowsMixin:
         is accepted only if the neighbor really is a different row and the rewritten
         path exists, which is what keeps a guess from being returned as a fact.
 
-        An empty string is the answer for anything that fails: an object that is not an
-        index row, a table with no recognizable file specification column, and a missing
-        row whose neighbors yield nothing.
+        An empty string is the answer for three failures: an object that is not an index
+        row, a table with no recognizable file specification column, and a missing row
+        whose neighbors were resolved but yielded nothing. It is not the answer for
+        everything that can go wrong, because the neighbor path is unguarded: resolving
+        a neighbor goes through ``child_of_index()``, and what that raises propagates.
 
         Returns:
             str: the absolute path, or an empty string.
+
+        Raises:
+            OSError: raised through ``child_of_index()`` when this row's own basename is
+                a prefix of more than one of the index's keys, which makes the neighbor
+                lookup ambiguous, and when the index file behind the parent is missing.
+            ValueError: raised through ``child_of_index()`` when the parent's file is not
+                usable as an index.
+            IndexError: raised through ``child_of_index()`` when the parent index has no
+                keys at all, so the neighbor lookup has nothing to return.
         """
 
         cls = type(self)
@@ -439,12 +480,21 @@ class _IndexRowsMixin:
         """Return the PdsFile for the data file this index row describes.
 
         It is the object for the path ``data_abspath_associated_with_index_row()``
-        works out, so everything that makes that path an empty string makes this None.
-        The object is constructed from the path, so it is returned whether or not the
-        file is there.
+        works out, so everything that makes that path an empty string makes this None,
+        and everything that makes it raise raises here too. The object is constructed
+        from the path, so it is returned whether or not the file is there.
 
         Returns:
             PdsFile: the data file, or None if no path could be inferred.
+
+        Raises:
+            OSError: raised by ``data_abspath_associated_with_index_row()`` when a
+                missing row's neighbor lookup is ambiguous, and when the index file
+                behind the parent is missing.
+            ValueError: raised by ``data_abspath_associated_with_index_row()`` when the
+                parent's file is not usable as an index.
+            IndexError: raised by ``data_abspath_associated_with_index_row()`` when the
+                parent index has no keys at all.
         """
 
         cls = type(self)

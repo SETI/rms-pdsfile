@@ -5,9 +5,11 @@
 """Shelf files: the sidecar indexes that answer questions about files without
 opening them.
 
-A shelf file is a pickled dictionary covering one bundle, or one bundle set of archives,
-and it is keyed by the interior path of each file below that bundle. Three kinds exist,
-and they live in three parallel trees named after them:
+An info or link shelf file is a pickled dictionary covering one bundle, or one bundle set
+of archives, and it is keyed by the interior path of each file below that bundle. An
+index shelf covers one index table instead of a bundle and is keyed by row selection
+keys, so a bundle has as many index shelves as it has index tables, in a directory of its
+own. Three kinds exist, and they live in three parallel trees named after them:
 
   * an **info** shelf, under ``_infoshelf-<category>/``, records each file's size, its
     child count, its modification time, its checksum and, for an image, its dimensions;
@@ -20,11 +22,12 @@ Reading them is what makes a holdings tree answerable without touching most of i
 it is what lets the whole package run against a tree it cannot stat, under the
 ``SHELVES_ONLY`` setting that ``_local_fs.py`` implements.
 
-``_ShelfMixin`` holds three things: the arithmetic that turns a file's path into the
-shelf path and the key within it; a cache of open shelves shared by every PdsFile
-subclass, bounded and trimmed by least-recent access; and the lookup that puts the two
-together. It also holds two questions about expectation -- whether a file should have an
-info shelf entry at all, and whether the one it should have is there.
+``_ShelfMixin`` provides three things: the arithmetic that turns a file's path into the
+shelf path and the key within it; the handling of a cache of open shelves, which is class
+state on PdsFile, bounded, and trimmed by a serial number that each calling class issues
+from a counter of its own; and the lookup that puts the two together. It also provides
+two questions about expectation -- whether a file should have an info shelf entry at all,
+and whether the one it should have is there.
 
 ``_eval_null_key_record()`` is a shortcut past all of that. Every info shelf is written
 alongside a readable ``.py`` sidecar of the same dictionary, whose second line is the
@@ -103,16 +106,26 @@ class _ShelfMixin:
     A mixin of PdsFile; it holds methods only and defines no state of its own.
 
     The open-shelf cache is class state, not instance state, and it is defined on
-    PdsFile itself, so every subclass shares one cache: SHELF_CACHE maps a shelf
-    path to the dictionary it holds, SHELF_ACCESS maps it to the serial number of
-    its last use, SHELF_ACCESS_COUNT issues those serial numbers, SHELF_CACHE_SIZE
-    and SHELF_CACHE_SLOP bound the cache, and SHELF_NULL_KEY_VALUES remembers the
-    one entry per shelf that describes the bundle as a whole. SHELF_PATH_INFO,
-    which maps a shelf type to its directory prefix and file suffix, is also on
-    PdsFile.
+    PdsFile itself. The four dictionaries are genuinely shared, because none of
+    them is ever rebound: SHELF_CACHE maps a shelf path to the dictionary it holds,
+    SHELF_ACCESS maps it to the serial number of its last use, and
+    SHELF_NULL_KEY_VALUES remembers the one entry per shelf that describes the
+    bundle as a whole, each of the three mutated in place; SHELF_PATH_INFO, which
+    maps a shelf type to its directory prefix and file suffix, is only ever read.
+    SHELF_CACHE_SIZE and SHELF_CACHE_SLOP bound the cache. SHELF_ACCESS_COUNT,
+    which issues the serial numbers, is not shared: it is an int, so incrementing
+    it rebinds it onto the class the call was made on, which for a real object is
+    a per-bundleset rule subclass. Each such subclass counts from its own zero
+    while writing into the one shared SHELF_ACCESS, so the serial numbers in that
+    dictionary order the shelves by the activity of whichever class opened each
+    one, not by when each was last used.
 
-    This is the innermost layer: nothing here reaches a sibling mixin, which is
-    what lets _LocalFsMixin call into it without a cycle.
+    This is the innermost layer in all but one respect, which is what lets
+    _LocalFsMixin call into it without a cycle. The exception is the reach into
+    _PropertiesMixin named below, and it is mutual: _PropertiesMixin calls
+    info_shelf_expected, shelf_lookup and shelf_path_and_key_for_abspath from
+    here. It costs nothing, because is_documents is one comparison of an instance
+    attribute and reaches no further.
 
     Every attribute these methods read or write on a PdsFile object or on a
     PdsFile class, and nothing else -- str, dict, os.path, pickle, file and logger
@@ -122,19 +135,22 @@ class _ShelfMixin:
                                   SHELF_ACCESS_COUNT, SHELF_CACHE,
                                   SHELF_CACHE_SIZE, SHELF_CACHE_SLOP,
                                   SHELF_NULL_KEY_VALUES, SHELF_PATH_INFO
-      class attributes WRITTEN    SHELF_ACCESS_COUNT, which is rebound on every
-                                  use. The four dictionaries are mutated rather
-                                  than rebound, so they are reads
+      class attributes WRITTEN    SHELF_ACCESS_COUNT, rebound on every use onto
+                                  the calling class. SHELF_ACCESS, SHELF_CACHE and
+                                  SHELF_NULL_KEY_VALUES are mutated rather than
+                                  rebound, so they are reads, and SHELF_PATH_INFO
+                                  is only ever subscripted
       core properties read        is_category_dir
-      lazy properties read        is_documents
       instance attributes read    archives_, basename, bundlename, bundlename_,
                                   bundleset, bundleset_, category_, checksums_,
                                   interior, logical_path, root_, suffix
       instance attributes WRITTEN none
 
-    All of them are defined on PdsFile. Every one is an attribute lookup on self
-    or on type(self) at run time, not an import, which is what lets the halves
-    live in different modules.
+    All of those are defined on PdsFile. One more comes from a sibling mixin:
+    info_shelf_expected reads _PropertiesMixin's is_documents, which holds no slot
+    of its own and is recomputed on every access. Every one of these is an
+    attribute lookup on self or on type(self) at run time, not an import, which is
+    what lets the halves live in different modules.
     """
 
     def shelf_path_and_lskip(self, shelf_type='info', bundlename=''):
@@ -143,10 +159,11 @@ class _ShelfMixin:
         One shelf covers one bundle, or one bundle set of archives, so the shelf path is
         built from this file's bundle set and bundle rather than from the file itself. A
         bundle set can name one of its bundles explicitly, which is how a shelf is
-        located from the level above it. Three directories that sit under a bundle set
-        without being bundles -- a name starting ``checksums_``, a name starting
-        ``superseded``, or a name ending ``_support`` -- get a shelf of their own under
-        their own name.
+        located from the level above it; on an archive file the name is never read, since
+        one shelf already covers the whole bundle set. Three directories that sit under a
+        bundle set without being bundles -- a name starting ``checksums_``, a name
+        starting ``superseded``, or a name ending ``_support`` -- get a shelf of their own
+        under their own name.
 
         The second value is a character count, and **it does not index the shelf path**.
         It is the length of the prefix that a *data* path under the covered tree carries
@@ -155,10 +172,18 @@ class _ShelfMixin:
         lands somewhere arbitrary, because that path carries a directory prefix such as
         ``_infoshelf-`` that the count does not account for.
 
+        All three shelf types are accepted, but only 'info' and 'link' name a file a
+        holdings tree holds. An index shelf is written one per index table, inside a
+        directory named for the bundle, so what this builds for 'index' -- the bundle's
+        own name directly under ``_indexshelf-<category>/`` -- names nothing that exists.
+        The ``indexshelf_abspath`` property is what finds a real index shelf.
+
         Parameters:
             shelf_type (str): which shelf: 'index', 'info' or 'link'.
             bundlename (str): a bundle below this one to build the path for, with any
-                trailing slash ignored. An empty string uses this file's own bundle.
+                trailing slash ignored. An empty string uses this file's own bundle. It
+                is read only on the non-archive path; an archive file's shelf covers its
+                whole bundle set whatever is passed here.
 
         Returns:
             tuple: the absolute path of the shelf file, and the prefix length described
@@ -222,10 +247,14 @@ class _ShelfMixin:
         The key is this file's interior path -- what is left of its logical path below
         the bundle -- which is the empty string for the bundle directory itself. Naming
         a bundle explicitly asks about that bundle rather than about a file inside it,
-        so the key is then the empty string whatever this file is.
+        so the key is then the empty string whatever this file is. On an archive object
+        the name reaches neither half of the pair: the path is the bundle set's shelf,
+        and the key is emptied all the same, so the answer describes the bundle set
+        rather than the bundle that was named.
 
         Parameters:
-            shelf_id (str): which shelf: 'index', 'info' or 'link'.
+            shelf_id (str): which shelf: 'index', 'info' or 'link'. Only 'info' and
+                'link' name a file that exists; see ``shelf_path_and_lskip()``.
             bundlename (str): a bundle below this one to ask about. An empty string asks
                 about this file.
 
@@ -256,10 +285,18 @@ class _ShelfMixin:
         for the bundle itself if the shelf has one and none was remembered before, and
         adds the result to the cache.
 
+        The bookkeeping update stamps the shelf with the next serial number from
+        SHELF_ACCESS_COUNT. That counter is an int, so incrementing it rebinds it onto
+        the class the call was made on, which is normally a per-bundleset rule subclass,
+        and each such class counts from its own zero into the one shared SHELF_ACCESS.
+
         The cache is then trimmed if it has grown past its size plus its slop, which is
-        what keeps the trim from running on every open: the least recently used shelves
-        are closed until the size remains. The shelf just opened is the most recently
-        used, so it is never the one discarded.
+        what keeps the trim from running on every open: the shelves are put in order of
+        their stamps and all but the newest SHELF_CACHE_SIZE of them are closed. Because
+        the stamps come from per-class counters, that order is the activity of each
+        opening class rather than the order of use across the tree, and the shelf just
+        opened can carry a lower stamp than shelves a busier class opened before it. It
+        is then the one discarded, and the next request for it reopens the file.
 
         The debug line announcing the open is written before the file is looked for, so
         a request for a missing shelf is logged and then fails, unless logging of that
@@ -275,8 +312,11 @@ class _ShelfMixin:
 
         Raises:
             OSError: if the file does not exist, or if reading or unpickling it fails
-                for any reason at all. The second case replaces the original exception
-                rather than chaining it, so what went wrong is not reported.
+                for any reason at all. The second case raises inside the handler, so the
+                original is attached as the new exception's ``__context__`` and a
+                traceback still prints it under "During handling of the above exception".
+                What is missing is the explicit ``raise ... from``, which would make it
+                the cause rather than the context.
         """
 
         # If the shelf is already open, update the access count and return it
@@ -381,10 +421,12 @@ class _ShelfMixin:
         Anything else opens the shelf, through the shared cache, and reads one key.
 
         Parameters:
-            shelf_type (str): which shelf: 'info', 'link' or 'index'.
+            shelf_type (str): which shelf: 'info', 'link' or 'index'. Only 'info' and
+                'link' name a file that exists; see ``shelf_path_and_lskip()``.
             bundlename (str): a bundle below this one to ask about, which is how a
                 bundle set asks about one of its bundles. An empty string asks about
-                this file.
+                this file. On an archive object the name is ignored and the answer is
+                about the bundle set.
 
         Returns:
             the value the shelf records for this file, whose shape depends on which
@@ -438,18 +480,27 @@ class _ShelfMixin:
     def shelf_path_and_key_for_abspath(cls, abspath, shelf_type='info'):
         """Return the shelf path and key for an absolute path, without a PdsFile.
 
-        This answers the same question as ``shelf_path_and_key()`` by taking the path
-        apart directly, which is what lets the filesystem layer use shelves while it is
-        still deciding whether a PdsFile can be built at all.
+        This asks ``shelf_path_and_key()``'s question of a path directly, without
+        building a PdsFile, which is what lets the filesystem layer use shelves while it
+        is still deciding whether a PdsFile can be built at all.
 
         The path is split at the holdings directory name. An archive path is covered by
         its bundle set's shelf, so two components are consumed and the key is what
         follows; anything else is covered by its bundle's shelf, so three are consumed.
         The key for the covered directory itself is the empty string.
 
+        The two do not always agree, because counting components is not the same as
+        reading a parsed bundle name. In the documents tree a PdsFile carries no bundle
+        name, so the instance method raises ValueError there while this one consumes
+        three components and returns a shelf path built from the file's own basename,
+        which no holdings tree holds. The filesystem layer excludes the documents tree
+        before it calls.
+
         Parameters:
             abspath (str): the absolute path of the file.
-            shelf_type (str): which shelf: 'index', 'info' or 'link'.
+            shelf_type (str): which shelf: 'index', 'info' or 'link'. Only 'info' and
+                'link' name a file that exists: an index shelf is written one per index
+                table, one directory below the path this builds.
 
         Returns:
             tuple: the absolute path of the shelf file, and the key into it.
@@ -502,9 +553,10 @@ class _ShelfMixin:
 
         Four things have none: a checksum file, anything in the documents tree, a
         category-level directory, which is merged across holdings directories and so
-        belongs to no single tree, and a bundle-set-level file, including its AAREADME.
-        An archive has one from its bundle set downward, and everything else has one
-        from its bundle downward.
+        belongs to no single tree, and anything at bundle-set level outside the archives
+        tree -- the bundle set's own directory as well as the files beside it, including
+        its AAREADME. An archive has one from its bundle set downward, and everything
+        else has one from its bundle downward.
 
         This is a claim about what ought to exist, not about what does.
         ``shelf_exists_if_expected()`` is the one that looks.

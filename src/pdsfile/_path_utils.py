@@ -4,21 +4,22 @@
 
 """Path arithmetic and small helpers the PdsFile classes share.
 
-Nothing here is a method and nothing here holds state. Every function that needs a
-setting reads it off a class handed in as an argument, usually named ``cls``, so this
-module can be imported by ``pdsfile.pdsfile`` and by every mixin without importing any
-of them back.
+Nothing here is a method, and every function that needs a setting reads it off a class
+handed in as an argument, usually named ``cls``, so this module can be imported by
+``pdsfile.pdsfile`` and by every mixin without importing any of them back. One function
+does hold state of its own: ``_clean_glob()`` memoizes its answers, up to
+``_GLOB_CACHE_SIZE`` of them, so a wildcard search it has already made is not made again.
 
-Four of the functions convert between the two ways a file is named. An **absolute path**
-is where the file sits on this machine; a **logical path** is what follows the holdings
-directory, starting at a category name such as ``volumes`` or ``previews``, and is the
-same string on every machine that hosts the same holdings.
+Three of the ten functions convert between the two ways a file is named. An **absolute
+path** is where the file sits on this machine; a **logical path** is what follows the
+holdings directory, starting at a category name such as ``volumes`` or ``previews``, and
+is the same string on every machine that hosts the same holdings.
 ``logical_path_from_abspath()`` goes one way, ``abspath_for_logical_path()`` the other,
 and ``selected_path_from_path()`` accepts either and returns whichever kind the caller
 asks for. Turning a logical path into an absolute one is the harder direction, because
 a machine can host several holdings directories and the file could be in any of them.
 
-The rest are utilities: ``construct_category_list()`` builds the category names a
+The other seven are utilities: ``construct_category_list()`` builds the category names a
 holdings tree can contain, ``repair_case()`` recovers the capitalization the filesystem
 actually used, ``formatted_file_size()`` renders a byte count for display, and
 ``_clean_join()``, ``_clean_abspath()``, ``_clean_glob()`` and ``_needs_glob()`` are the
@@ -26,6 +27,32 @@ small path and wildcard primitives the rest of the package builds on.
 
 ``FILE_BYTE_UNITS`` names the size units, and ``_GLOB_CACHE_SIZE`` is how many wildcard
 searches ``_clean_glob()`` remembers.
+
+There is no class here to carry a state contract, so it sits in this docstring. Every
+attribute these functions read or write on the PdsFile class handed to them, and nothing
+else -- str, list, os, os.path, glob, fnmatch, math and functools methods are not in
+scope::
+
+  class attributes read       CATEGORIES, FS_IS_CASE_INSENSITIVE,
+                              LOCAL_HOLDINGS_DIRS, LOCAL_PRELOADED, PDS_HOLDINGS,
+                              _HOLDINGS_ENV
+  class attributes WRITTEN    LOCAL_HOLDINGS_DIRS, rebound with the single
+                              directory the environment variable named, or with
+                              the targets the symlink search turned up, which is
+                              an empty list where it turned up nothing
+  other methods called        glob_glob, is_logical_path, os_listdir
+
+By function: ``logical_path_from_abspath()`` reaches ``PDS_HOLDINGS``; ``_clean_glob()``
+reaches ``FS_IS_CASE_INSENSITIVE``; ``repair_case()`` reaches ``os_listdir()``;
+``abspath_for_logical_path()`` reaches ``CATEGORIES``, ``LOCAL_HOLDINGS_DIRS``,
+``LOCAL_PRELOADED``, ``_HOLDINGS_ENV`` and ``glob_glob()``; and
+``selected_path_from_path()`` reaches ``is_logical_path()``. The six class attributes are
+defined on PdsFile, with ``PDS_HOLDINGS``, ``_HOLDINGS_ENV`` and ``LOCAL_PRELOADED``
+overridden on the subclasses as well; ``is_logical_path()`` is a PdsFile classmethod, and
+``glob_glob()`` and ``os_listdir()`` are ``_LocalFsMixin`` classmethods. The other five
+functions take no class argument and reach nothing on one. Every one of these is an
+attribute lookup on the class object at run time, not an import, which is what keeps this
+module free of any dependency on the package it serves.
 """
 
 import fnmatch
@@ -56,8 +83,11 @@ def construct_category_list(voltypes):
     ``checksums-archives-`` names, each group in the order the volume types were given.
 
     Parameters:
-        voltypes: the volume type names, iterated once. Each is concatenated with the
-            prefixes, so each must be a string. ``documents`` must be among them.
+        voltypes: the volume type names. They are iterated four times, once per
+            combination of the two prefixes, so a one-shot iterator such as a generator
+            yields only the bare names and then fails the removals below. Each name is
+            concatenated with the prefixes, so each must be a string. ``documents`` must
+            be among them.
 
     Returns:
         list: the category names.
@@ -84,9 +114,11 @@ def logical_path_from_abspath(abspath, cls):
     """Return the logical path derived from an absolute path.
 
     The logical path is whatever follows the first occurrence of the holdings directory
-    name, which the class supplies as ``PDS_HOLDINGS``. An absolute path that ends at
-    the holdings directory itself yields an empty string, and one that names the
-    holdings directory twice is split at the first.
+    name, which the class supplies as ``PDS_HOLDINGS``. What is looked for is that name
+    with a slash on each side, so an absolute path that ends at the holdings directory
+    yields an empty string only when it carries the trailing slash; written without one
+    there is nothing to match and the path is rejected. A path that names the holdings
+    directory twice is split at the first.
 
     Parameters:
         abspath (str): the absolute path of a file.
@@ -218,8 +250,9 @@ def repair_case(abspath, cls):
 
     Parameters:
         abspath (str): the path to repair.
-        cls: the PdsFile subclass whose ``os_listdir()`` reads each directory. The root
-            directory is read with ``os.listdir()`` instead.
+        cls: the PdsFile subclass whose ``os_listdir()`` reads each directory below the
+            first. The first component is looked for in ``/`` itself, which is read with
+            ``os.listdir()`` directly rather than through the class.
 
     Returns:
         str: the repaired absolute path.
@@ -280,10 +313,13 @@ def repair_case(abspath, cls):
 def formatted_file_size(size):
     """Return a byte count written for display, with a unit.
 
-    The units step by factors of 1000, not 1024, so ``KB`` here is a thousand bytes.
-    Three significant digits are shown, so a size is rounded rather than truncated and
-    a large value inside a unit can round up to the next thousand without changing the
-    unit. A size of zero is reported as ``0 bytes``.
+    The units step by factors of 1000, not 1024, so ``KB`` here is a thousand bytes. The
+    number is written to three significant digits, so a size is rounded rather than
+    truncated, and the unit is chosen before that rounding. A value that rounds up to a
+    thousand of its own unit therefore keeps the smaller unit and is written in
+    scientific notation, which shows one digit rather than three: 999999 comes out as
+    ``1e+03 KB``, not as ``1000 KB`` and not as ``1 MB``. A size of zero is reported as
+    ``0 bytes``.
 
     Parameters:
         size: the number of bytes. It is compared for truth and used arithmetically, so
