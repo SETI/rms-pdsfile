@@ -1,6 +1,4 @@
-"""The primary product labels of the cassini_iss_fring_mosaics_rsfrench2025 bundle.
-
-`cassini_iss_fring_mosaics_rsfrench2025_primary_filespec.py` holds nothing else.
+"""cassini_iss_fring_mosaics_rsfrench2025_primary_filespec: the primary labels.
 
 This module holds one name:
 

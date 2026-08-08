@@ -24,8 +24,8 @@ The rule tables written against PDS4 ``bundles/cassini_vims`` paths:
 * ``opus_id`` -- builds an OPUS ID of the form co-vims-v<clock> from a PDS4 data
   file name, in two alternatives so that a cube filed under a clock-prefixed
   subdirectory and one filed directly under the clock block both resolve.
-* ``filespec_to_bundleset`` -- maps a file specification beginning with
-  "cassini_vims_" to the bundle set name cassini_vims.
+* ``filespec_to_bundleset`` -- maps a file specification whose first component is
+  "cassini_vims" followed by an underscore to the bundle set name cassini_vims.
 * ``ARCHIVE_PATHS_DICT``, ``archive_paths`` and ``archive_dirs`` -- the archive
   layout. The dictionary holds, per bundle and per collection kind, the archive file
   name patterns; ``archive_paths`` maps a bundle set, bundle or collection path to

@@ -2,7 +2,7 @@
 # pds3file/rules/__init__.py
 ##########################################################################################
 
-"""The default rule tables, which every ``Pds3File`` subclass starts from.
+"""pds3file/rules/__init__.py: the rule tables every Pds3File subclass starts from.
 
 `pds3file/rules/__init__.py` defines one translator per rule attribute of
 ``Pds3File``, holding the behavior that applies to any PDS3 volume set whose own

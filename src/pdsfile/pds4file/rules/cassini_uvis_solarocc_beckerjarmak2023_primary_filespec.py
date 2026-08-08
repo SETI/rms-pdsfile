@@ -1,6 +1,4 @@
-"""The primary product labels of the cassini_uvis_solarocc_beckerjarmak2023 bundle.
-
-`cassini_uvis_solarocc_beckerjarmak2023_primary_filespec.py` holds nothing else.
+"""cassini_uvis_solarocc_beckerjarmak2023_primary_filespec: the primary labels.
 
 This module holds one name:
 

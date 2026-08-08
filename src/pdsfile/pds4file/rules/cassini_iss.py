@@ -22,8 +22,8 @@ The rule tables written against PDS4 ``bundles/cassini_iss`` paths:
   and documents trees for one image.
 * ``opus_id`` -- builds an OPUS ID of the form co-iss-<camera><clock> from the
   clock-and-camera part of a PDS4 data file name.
-* ``filespec_to_bundleset`` -- maps a file specification beginning with
-  "cassini_iss_" to the bundle set name cassini_iss.
+* ``filespec_to_bundleset`` -- maps a file specification whose first component is
+  "cassini_iss" followed by an underscore to the bundle set name cassini_iss.
 * ``ARCHIVE_PATHS_DICT``, ``archive_paths`` and ``archive_dirs`` -- the archive
   layout. The dictionary holds, per bundle and per collection kind, the archive
   file name patterns; ``archive_paths`` maps a bundle set, bundle or collection path

@@ -2,7 +2,7 @@
 # pds3file/rules/JNOJNC_xxxx.py
 ##########################################################################################
 
-"""Rules for the JunoCam volume set: Jupiter images from JunoCam.
+"""Rules for the JunoCam volume set JNOJNC_0xxx, whose subclass is JNOJNC_xxxx.
 
 The volume set on disk is JNOJNC_0xxx, described in the holdings as the JunoCam
 Jupiter image collection; its volumes are numbered by orbit and carry data set IDs

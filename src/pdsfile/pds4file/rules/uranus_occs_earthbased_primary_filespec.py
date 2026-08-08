@@ -1,6 +1,4 @@
-"""The primary product labels of the uranus_occs_earthbased bundle set.
-
-`uranus_occs_earthbased_primary_filespec.py` holds nothing else.
+"""uranus_occs_earthbased_primary_filespec: the bundle set's primary labels.
 
 This module holds one name:
 

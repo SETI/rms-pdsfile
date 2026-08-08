@@ -50,8 +50,9 @@ The rule tables written against PDS4 ``bundles/uranus_occs_earthbased`` paths:
 * ``opus_id_to_subclass_set`` -- the set of OPUS ID prefixes that route to this
   subclass, added to ``Pds4File.OPUS_ID_TO_SUBCLASS``. It is a set rather than a
   list because two bundles can share an OPUS ID prefix.
-* ``filespec_to_bundleset`` -- maps a file specification beginning with
-  "uranus_occ_" to the bundle set name uranus_occs_earthbased.
+* ``filespec_to_bundleset`` -- maps a file specification whose first component is
+  "uranus_occ" followed by an underscore to the bundle set name
+  uranus_occs_earthbased.
 * ``archive_paths`` and ``archive_dirs`` -- the whole bundle set tree is packaged as
   one archive named after itself, so both tables have a single entry. The header
   comment records why: any new observation bundle added under the tree is then

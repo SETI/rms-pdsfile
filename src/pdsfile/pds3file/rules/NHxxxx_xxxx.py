@@ -2,7 +2,7 @@
 # pds3file/rules/NHxxxx_xxxx.py
 ##########################################################################################
 
-"""Rules for the New Horizons image volume sets: LORRI and MVIC.
+"""Rules for the New Horizons LORRI and MVIC volume sets, served by NHxxxx_xxxx.
 
 `NHxxxx_xxxx.py` serves two volume sets through one subclass, matched by the pattern
 NHxx.._xxxx: NHxxLO_xxxx, the New Horizons LORRI image collection, and NHxxMV_xxxx,

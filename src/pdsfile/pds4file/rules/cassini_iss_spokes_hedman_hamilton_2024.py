@@ -2,7 +2,7 @@
 # pds4file/rules/cassini_iss_spokes_hedman_hamilton_2024.py
 ##########################################################################################
 
-"""Rules for the Cassini ISS B-ring spokes bundle set.
+"""cassini_iss_spokes_hedman_hamilton_2024: rules for the B-ring spokes bundle set.
 
 The bundle set on disk is named cassini_iss_spokes_hedman-hamilton-2024, with
 hyphens; this module and its class are named

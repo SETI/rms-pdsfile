@@ -18,13 +18,24 @@ Checks:
     T3  The docstring backquotes an identifier that no rule module defines, that this
         module does not import, and that is not in ALLOWED. A misspelled table name
         lands here rather than in T1.
-    T4  The docstring does not name the module it documents.
+    T4  The docstring's summary line does not name the module it documents.
 
 T1 and T2 are the two directions the plan asks for. T3 closes T1's gap: T1 only fires on
 a name some module really defines, so a typo would pass it. T4 closes the remaining gap,
 which is a docstring copied wholesale between two modules that define the same tables:
 `COUVIS_8xxx.py` and `COVIMS_8xxx.py` define identical sets of 15 tables, so T1 and T2
 are both silent on a straight swap between them and only T4 fires.
+
+T4 reads the **summary line** and not the whole docstring, because these docstrings
+cross-reference one another and a whole-docstring test passes vacuously on exactly the
+copy it exists to catch: `COVIMS_8xxx.py`'s docstring names `COUVIS_8xxx.py` in its last
+paragraph, so pasting the whole of it onto `COUVIS_8xxx.py` satisfies a
+whole-docstring test and fails a summary-line one. The check has one remaining hole,
+stated rather than left to be found: a module key that is a prefix of another key is
+satisfied by the longer one, so a docstring copied from
+`cassini_iss_fring_mosaics_rsfrench2025.py` onto `cassini_iss.py` passes T4. T1 and T2
+both fire on that pair, which is why the hole is left open rather than closed with a
+special case.
 
 Conventions this script assumes, and which the docstrings it checks follow:
 
@@ -207,8 +218,8 @@ def main(argv):
                                    f'does not name')
 
         key = module_key(path)
-        if key not in doc:
-            report(path, 'T4', f'docstring does not name "{key}"')
+        if key not in doc.split('\n')[0]:
+            report(path, 'T4', f'summary line does not name "{key}"')
 
         for other in sorted(keys):
             if other != key and other in doc:

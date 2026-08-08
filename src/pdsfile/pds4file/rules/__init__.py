@@ -5,7 +5,7 @@
 # the same as the pds3 general rules.
 ##########################################################################################
 
-"""The default rule tables, which every ``Pds4File`` subclass starts from.
+"""pds4file/rules/__init__.py: the rule tables every Pds4File subclass starts from.
 
 `pds4file/rules/__init__.py` defines one translator per rule attribute of
 ``Pds4File``, holding the behavior that applies to any PDS4 bundle set whose own

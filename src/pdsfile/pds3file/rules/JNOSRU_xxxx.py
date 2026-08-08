@@ -22,8 +22,8 @@ The rule tables:
 * ``view_options`` -- the grid, multipage and continuous view flags.
 
 This module defines no OPUS tables, so OPUS behavior comes from the defaults in
-`pds3file/rules/__init__.py`. Its volume set translator matches JNOSRU_ followed by
-any four characters.
+`pds3file/rules/__init__.py`. Its volume set translator matches the six letters JNOSRU,
+an underscore, and any four characters.
 """
 
 import re
