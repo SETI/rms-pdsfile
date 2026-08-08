@@ -98,7 +98,7 @@ class ToolSpec:
             names the command-line positional, so each driver reads that positional
             back with getattr(args, spec.unit), and it is substituted into the help
             text. _shelf_common.resolve_holdings_paths() also compares it against a
-            directory's bundletype_.
+            directory's ``bundletype_``.
         holdings_sentinel: The directory component that separates the holdings root
             from the rest of a path, '/holdings/' or '/pds4-holdings/'. Read by
             _shelf_common.resolve_holdings_paths(), which splits a command-line path
@@ -145,8 +145,9 @@ class ToolSpec:
             trimmed from an absolute path to form the archive-relative path. Read
             by _archives_common.load_directory_info(), so it is set by the archive
             tools alone.
-        generate_links: Callable (dirpath, old_links=None, *, logger, limits)
-            returning the links found in one unit and the latest modification time
+        generate_links: Callable taking a unit directory, optionally the links
+            already shelved for it, and keyword-only logger and limits, and
+            returning the links found in that unit and the latest modification time
             among the files read. Read by the five task functions of
             _linkshelf_common: what a link looks like is the one thing the two
             flavors of that tool do differently, so each keeps its own.

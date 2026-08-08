@@ -117,7 +117,7 @@ def load_directory_info(spec, pdsdir, *, logger=None, limits=None):
             file_log_level names the method the per-file lines go through, and its
             logname is the fallback logger's name.
         pdsdir: The unit directory to walk. Its abspath is the root of the walk and its
-            root_ is what the logger reports paths relative to.
+            ``root_`` is what the logger reports paths relative to.
         logger: The logger to report through. Defaults to the tool's own.
         limits (dict): Message limits for this scope, merged over the defaults.
 
@@ -215,8 +215,8 @@ def make_archive_filter(spec, logger, archive_invisibles):
         archive_invisibles (bool): True to archive invisible files, False to skip them.
 
     Returns:
-        callable: A tarfile filter, returning the member to archive it and None to
-        skip it.
+        collections.abc.Callable: A tarfile filter, returning the member to archive it
+        and None to skip it.
     """
 
     file_log = getattr(logger, spec.file_log_level)

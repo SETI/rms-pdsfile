@@ -1,4 +1,27 @@
 #!/usr/bin/env python3
+"""Show the OPUS products of the paths named on the command line.
+
+For each path it is given, this instantiates a Pds3File or a Pds4File and prints what
+``opus_products()`` returns for it: the files OPUS would offer alongside that one,
+grouped by OPUS type. The output is a table by default, and can be a narrower table,
+a pprint dump or the raw dictionary instead. The pprint form exists to be compared
+against the OPUS-products golden files in this package's tests.
+
+Both holdings roots are read straight from the environment, PDS3_HOLDINGS_DIR and
+PDS4_HOLDINGS_DIR, and both are required whichever kind of path is asked about.
+
+**It is a process, not a library call, and its tests treat it as one.** Running
+``main()`` changes state that belongs to the whole interpreter and does not change back:
+it turns shelves-only mode on for ``Pds3File`` and off for ``Pds4File``, and it preloads
+both trees into the caches those classes hold as class attributes. Those caches are keyed
+by logical path, so a session that has preloaded one tree resolves a logical path to that
+tree whatever root a later caller has in mind. Calling this in process therefore changes
+how every later call in the same interpreter resolves a path, which is why the tests
+under ``tests/holdings_maintenance/`` drive it with ``python -m`` in a subprocess against
+a disposable copy of a holdings tree, rather than importing ``main()`` and calling it the
+way they do for the tools that touch no holdings root.
+"""
+
 import argparse
 import os
 import pprint
@@ -14,8 +37,10 @@ def build_arg_parser():
     """Return the argument parser for this tool.
 
     Returns:
-        argparse.ArgumentParser: The parser, holding --paths, --opus-types and the
-        five output-selection options.
+        argparse.ArgumentParser: The parser. It holds --paths, which is required and
+        takes one or more paths; --opus-types, which narrows what is printed; the four
+        output forms --table, --narrow-table, --pprint and --raw, which are independent
+        flags rather than a mutually exclusive group; and --debug.
     """
 
     # Set up parser
@@ -51,17 +76,42 @@ def build_arg_parser():
 
 
 def main(argv=None):
-    """Print the opus products of every path named on the command line.
+    """Print the OPUS products of every path named on the command line.
 
-    Args:
-        argv: The full command line, defaulting to sys.argv.
+    Each path is tried as a Pds3File first and as a Pds4File second, and each of those
+    as an absolute path first and as a logical path second. A path that resolves under
+    none of the four is reported and skipped, and so is one that resolves to a file that
+    does not exist; neither fails the run.
+
+    Every path is resolved before any output is printed, so the warnings about paths
+    come first and the per-file output follows in the order the paths were given.
+
+    An OPUS type named with --opus-types that this file has none of is reported and
+    dropped. Where every named type is dropped, the file's output is skipped entirely
+    rather than printed unfiltered.
+
+    Which output form is used is decided by the first true flag in the order table,
+    pprint, raw; --narrow-table only changes the shape of the table form. Giving none of
+    the four turns the table form on, and giving --narrow-table alone does the same,
+    since --narrow-table is not one of the three the test looks at.
+
+    **The table form is keyed by OPUS type rather than by product category**, so two
+    categories of the same type collapse and the later one is what prints. The other
+    three forms key on the whole category tuple and show both.
+
+    Both holdings roots are read from the environment and both trees are preloaded,
+    whatever kinds of path were asked for.
+
+    Parameters:
+        argv (list): The full command line, defaulting to sys.argv.
 
     Returns:
-        int: 0. A path that cannot be instantiated, or that does not exist, is
-        reported and skipped rather than failing the run.
+        int: 0, always.
 
     Raises:
-        KeyError: If either holdings-root environment variable is unset.
+        KeyError: from the item read ``__getitem__()`` on the environment, if either
+            PDS3_HOLDINGS_DIR or PDS4_HOLDINGS_DIR is unset. This happens after the
+            command line has been parsed, so an invalid command line is reported first.
     """
 
     if argv is None:
