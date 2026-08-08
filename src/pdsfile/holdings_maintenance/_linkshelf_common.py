@@ -509,8 +509,9 @@ def write_linkdict(spec, dirpath, link_dict, *, logger=None, limits=None):
       * the same category only: two, ``../../<bundleset>/<bundlename>/<interior>``;
       * neither: three, with the category in front as well.
 
-    A string value is trimmed by the same count as a key rather than by matching, since
-    the label describing a file is always inside that file's own unit.
+    A string value is trimmed by the same count as a key rather than tested against the
+    prefix first, so the three-way choice above is made for a list value only and a
+    label outside the unit would be trimmed as though it were inside.
 
     Two files are written, under two log levels: the pickle at the unit's link shelf
     path, and a readable ``.py`` beside it. In the sidecar the keys are padded to a
