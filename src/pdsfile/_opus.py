@@ -129,11 +129,13 @@ class _OpusMixin:
         against the filesystem: a path holding a wildcard through a case-sensitive glob,
         one without through a case-sensitive existence test.
 
-        Exactly one surviving match is the ordinary case. Several means the OPUS ID is
-        ambiguous, and then a rule subclass that defines the ``opus_prioritizer`` hook
-        decides, through a single-key dictionary built for the purpose; one that does
-        not defines nothing, so the first match wins and every match is logged as a
-        warning, with the chosen one marked.
+        Exactly one surviving match is the ordinary case. None means the OPUS ID was
+        claimed by a subclass but no file on this machine matches any path that subclass
+        derived from it, which raises. Several means the OPUS ID is ambiguous, and then a
+        rule subclass that defines the ``opus_prioritizer`` hook decides, through a
+        single-key dictionary built for the purpose. A subclass that does not define the
+        hook leaves the order alone, so the first match wins, and every match is logged
+        as a warning with the chosen one marked.
 
         Parameters:
             opus_id (str): the OPUS ID.
