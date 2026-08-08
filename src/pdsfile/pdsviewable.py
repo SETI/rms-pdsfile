@@ -237,12 +237,14 @@ class PdsViewSet:
     A named viewable is indexed by name and, by default, not by size. That is how a
     "full" product that does not resemble its own smaller versions -- because the small
     ones are color-coded and it is not -- stays out of the sizes a page picks from. It
-    stays out only while there is something else to pick: a size lookup on a set with
-    nothing indexed by size falls back to the member named "full", and failing that to an
-    arbitrary member, so a set holding named viewables alone serves them from
-    ``for_width()``, ``for_height()``, ``for_frame()`` and ``full_size``. It does not
-    serve them from ``thumbnail``, ``small`` or ``medium``, which reach past that
-    fallback and raise; each of those three says so.
+    stays out only while there is something else to pick. ``for_width()``,
+    ``for_height()`` and ``for_frame()`` fall back to the member named "full" and, failing
+    that, to an arbitrary member, so a set holding named viewables alone is served by all
+    three. ``full_size`` has only the first half of that chain, so it serves such a set
+    only where one member is named exactly "full" and raises IndexError otherwise.
+    ``thumbnail``, ``small`` and ``medium`` have neither half: each searches every member
+    for a substring in its path or URL, named members included, and serves a named one
+    only where its path carries that substring. Each of those four says so itself.
 
     Because ``by_width`` and ``by_height`` hold one viewable per distinct dimension, two
     members of the same width leave only one of them reachable by width; an unnamed
@@ -328,11 +330,15 @@ class PdsViewSet:
         set's members, chosen arbitrarily, and ignores the rest. Passing an *empty*
         ``PdsViewSet`` is worse: it falls through to the code that indexes a viewable,
         which puts the set object itself among this set's members and then raises
-        AttributeError. The damaged set keeps answering ``for_width()``, ``for_height()``
-        and ``for_frame()`` from whatever is already indexed by size, and fails
-        permanently on ``by_match()`` and on the ``thumbnail``, ``small`` and ``medium``
-        properties built on it, which walk every member. Where nothing was indexed by
-        size before the damage, the size lookups reach the same member and fail too.
+        AttributeError. What the damaged set does afterwards is not deterministic, because
+        the members are held in a Python set and the searches take the first match in
+        iteration order. ``for_width()``, ``for_height()`` and ``for_frame()`` answer
+        normally from whatever is indexed by size and reach the damaged member only
+        through the arbitrary-member fallback, so they fail only where nothing was indexed
+        and only when that fallback happens to yield it. ``by_match()`` and the
+        ``thumbnail``, ``small`` and ``medium`` properties built on it walk every member
+        and fail whenever the damaged one comes up before a match. A set that held nothing
+        before the damage fails every one of them.
 
         Parameters:
             viewable: the ``PdsViewable`` to add.

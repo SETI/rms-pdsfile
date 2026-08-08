@@ -58,13 +58,18 @@ is where that subsystem is implemented.
 
 What this module holds, and why:
 
-  * The ``class PdsFile`` statement. Pickled ``PdsFile`` instances -- Viewmaster's
-    memcached cache holds live ones -- record ``pdsfile.pdsfile`` as the class's module,
-    so moving the statement would invalidate them.
+  * The ``class PdsFile`` statement. A pickled instance records the module of its **own**
+    class, and every object the package hands out is a rule subclass, so what a
+    Viewmaster memcached entry names is ``pdsfile.pds3file.rules.<dataset>`` rather than
+    this module; only an instance of ``PdsFile`` itself would record ``pdsfile.pdsfile``.
+    The statement stays here because the class attributes below it do, not because moving
+    it would invalidate a cache.
   * Every class attribute: the configuration tables, the translator registries, the
     shared ``CACHE`` and ``LOGGER``, ``SHELF_CACHE`` and its companions, ``LOG_ROOT_``
     and ``LATEST_VERSION_RANKS``. A mixin carries behavior only, so the data a mixin
-    reads is defined here and reached as ``cls.X`` at run time.
+    reads is defined here, or on ``Pds3File`` and ``Pds4File`` where the two PDS versions
+    disagree -- ``IDX_EXT`` and ``LBL_EXT`` are the two, and reading either on a bare
+    ``PdsFile`` raises AttributeError -- and is reached as ``cls.X`` at run time.
   * ``__init__`` and the private slots it creates, ``_complete``,
     ``_update_ranks_and_vols`` and ``_recache`` -- the object's own lifecycle, which the
     properties in ``_properties.py`` drive through ``self``.
@@ -85,14 +90,15 @@ disjoint, that nothing shadows them, that they hold no state and that the order 
 alphabetical. ``tests/api/test_mixin_import_isolation.py`` checks the no-back-import
 rule by loading each module in a fresh interpreter.
 
-Every name this module binds is part of the package's public surface as
-``pdsfile.pdsfile.<name>``, which is what the import block below is for: several of its
-imports are referenced nowhere in this file and exist only to keep a name on that
-surface, so deleting one because it looks unused removes the name. The converse does not
-hold -- the subclasses, the viewable classes and the preload module are public and are
-not attributes of this module -- so the manifest in ``tests/api/api_manifest.json``, not
-this namespace, is what defines the package's surface. Where a symbol is really defined
-shows in ``__module__``, ``__qualname__`` and ``__mro__``.
+Every name this module binds is reachable as ``pdsfile.pdsfile.<name>``, and the public
+ones among them are part of the package's frozen surface. That is what the import block
+below is for: several of its imports are referenced nowhere in this file and exist only to
+keep a name reachable, so deleting one because it looks unused removes the name. The
+relation runs one way only -- the subclasses, the viewable classes and the preload module
+are public and are not attributes of this module, and the nine mixins and the private path
+helpers are attributes of it and are not public -- so the manifest in
+``tests/api/api_manifest.json``, not this namespace, is what defines the surface. Where a
+symbol is really defined shows in ``__module__``, ``__qualname__`` and ``__mro__``.
 """
 
 import os
@@ -190,8 +196,10 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
     tree's taxonomy: ``category_``, made of ``checksums_``, ``archives_`` and
     ``bundletype_``; then ``bundleset_`` with its ``bundleset`` and version ``suffix``;
     then ``bundlename_``; then ``interior``, the part below the bundle directory. An
-    attribute whose name ends in an underscore is empty or ends in a slash, so the pieces
-    concatenate into a path without any separator logic -- with one exception:
+    attribute whose name ends in an underscore is empty or already carries its own
+    trailing separator -- a slash, except on ``checksums_`` and ``archives_``, whose
+    separator is the hyphen in ``checksums-`` and ``archives-`` -- so the pieces
+    concatenate into a path without any separator logic. With one exception:
     ``new_merged_dir()`` sets ``disk_``, ``root_`` and ``html_root_`` to None, and
     concatenating one of those raises rather than producing a path. The three Nones are
     copied on, so anything built below a merged directory carries them too, until
@@ -1982,8 +1990,9 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
         the bundleset, the bundle name and the interior path. A missing *voltype* is
         assumed to be the class's own bundle directory name; a ``checksums`` or
         ``archives`` prefix that was given is kept, and the category is the three
-        concatenated, so ``checksums/archives`` resolves to
-        ``checksums-archives-volumes``.
+        concatenated. So ``checksums/archives`` resolves to ``checksums-archives-volumes``
+        for PDS3 and to ``checksums-archives-bundles`` for PDS4, the two differing only in
+        what the class calls its bundle directory.
 
         Only the front is scanned. A category or version written after the bundleset --
         ``COISS_2xxx/archives`` rather than ``archives/COISS_2xxx`` -- is not recognized
