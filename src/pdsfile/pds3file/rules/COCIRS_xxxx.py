@@ -2,6 +2,66 @@
 # pds3file/rules/COCIRS_xxxx.py
 ##########################################################################################
 
+"""Rules for the COCIRS_xxxx volume sets: Cassini CIRS thermal infrared data.
+
+`COCIRS_xxxx.py` serves four volume sets, matched by the pattern COCIRS_[0156x]xxx.
+COCIRS_0xxx and COCIRS_1xxx are described in the holdings as Cassini CIRS thermal
+infrared data, raw and calibrated, plus map cubes, covering 2000-2009 and 2010-2017;
+COCIRS_5xxx and COCIRS_6xxx are described as Cassini CIRS data in simplified formats
+from the 2010 calibration (``_volinfo/COCIRS_0xxx.txt`` and its three siblings).
+The two halves are laid out differently, which is why almost every table here
+branches on COCIRS_[01] against COCIRS_[56]: the first pair holds a TSDR tree of
+calibrated spectra, housekeeping and geometry alongside a CUBE tree of derived
+spectral image cubes, while the second pair holds per-target tables and a BROWSE
+tree of observation diagrams.
+
+The rule tables:
+
+* ``description_and_icon_by_regex`` -- names the TSDR and CUBE trees and their
+  contents, the simplified-format tables, and the BROWSE tree of observation
+  diagrams. Its longest run is 24 entries for the geometry index tables, one per
+  observed body, from Jupiter and the Galilean moons through Saturn and its
+  satellites out to Pan.
+* ``default_viewables`` -- the previews for a spectral image cube in COCIRS_0xxx and
+  COCIRS_1xxx, and the observation diagrams for a table in COCIRS_5xxx and
+  COCIRS_6xxx.
+* ``s_rings_viewables`` and ``saturn_viewables`` -- the diagrams that show a
+  COCIRS_5xxx or COCIRS_6xxx observation against Saturn's rings and against Saturn
+  itself. ``s_rings_viewables`` is defined by no other rule module.
+* ``spice_lookup`` -- NAIF body IDs 601 through 618 mapped to the lower-case names
+  of Saturn's satellites, from Mimas through Pan.
+* ``viewables`` -- the dictionary the class installs. It holds "default", "saturn"
+  and "rings", and then one further entry per satellite, built by looping over
+  ``spice_lookup`` and interpolating the NAIF ID into a diagram path. This is the
+  only rule module that builds its viewable dictionary rather than writing it out,
+  and it is why a COCIRS_5xxx or COCIRS_6xxx observation offers twenty-one named
+  viewables. Every entry but "default" is keyed on COCIRS_[56], so a COCIRS_0xxx or
+  COCIRS_1xxx product offers one.
+* ``associations_to_volumes``, ``associations_to_previews``,
+  ``associations_to_diagrams``, ``associations_to_metadata`` and
+  ``associations_to_documents`` -- cross the five trees for one observation.
+* ``versions`` -- the paths of the same product in the other versions of these
+  volume sets, allowing for a TSDR subdirectory that is present in some versions and
+  absent in others.
+* ``view_options``, ``neighbors`` and ``split_rules`` -- the view flags, the
+  corresponding directories in sibling volumes, and the basename grouping, which
+  here has to keep a ``.tar.gz`` suffix whole.
+* ``opus_type``, ``opus_format`` and ``opus_products`` -- file products under the
+  "Cassini CIRS" OPUS category and list what OPUS offers with each. The type table
+  carries 21 "Extra Browse Diagram" entries: 18 keyed on the NAIF IDs of
+  ``spice_lookup``, plus one each for the rings, for Saturn and for the default. It
+  has no Jupiter or Galilean entry, so its per-body run is not the description
+  table's.
+* ``opus_id`` and ``opus_id_to_primary_logical_path`` -- the OPUS ID and its
+  inverse.
+* ``data_set_id`` -- the PDS3 data set ID for a path. It is needed here because one
+  volume carries different data set IDs for its TSDR and CUBE trees, and because the
+  early COCIRS_0xxx volumes are Jupiter data while the later ones are Saturn data.
+  `COCIRS_xxxx.py` and `EBROCC_xxxx.py` are the only two rule modules that define
+  this table as a translator; `COUVIS_0xxx.py` overrides the same attribute with a
+  method.
+"""
+
 import re
 
 import translator
@@ -723,6 +783,15 @@ data_set_id = translator.TranslatorByRegex([
 ##########################################################################################
 
 class COCIRS_xxxx(pds3file.Pds3File):
+    """The ``Pds3File`` subclass for COCIRS_xxxx.
+
+    The class body and the module tail install this module's rule tables on the class
+    attributes ``Pds3File`` reads. `pds3file/rules/__init__.py` sets out the routes a
+    table takes and which of them leaves the inherited rules in front. The class
+    is registered in ``Pds3File.SUBCLASSES`` under the key
+    "COCIRS_xxxx".
+    The module docstring describes the volume set and every table.
+    """
 
     pds3file.Pds3File.VOLSET_TRANSLATOR = translator.TranslatorByRegex([('COCIRS_[0156x]xxx', re.I, 'COCIRS_xxxx')]) + \
                                           pds3file.Pds3File.VOLSET_TRANSLATOR

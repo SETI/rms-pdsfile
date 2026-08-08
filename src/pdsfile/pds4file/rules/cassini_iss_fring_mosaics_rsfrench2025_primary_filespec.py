@@ -1,3 +1,18 @@
+"""cassini_iss_fring_mosaics_rsfrench2025_primary_filespec: the primary labels.
+
+This module holds one name:
+
+* ``PRIMARY_FILESPEC_LIST`` -- the logical path of every primary PDS4 label in the
+  bundle set, one per F-ring mosaic, under the bundle's ``data_mosaic/`` collection.
+
+`cassini_iss_fring_mosaics_rsfrench2025.py` imports and re-exports the list, and
+``tests/rules/pds4/test_cassini_iss_fring_mosaics_rsfrench2025.py`` walks it to
+check that each label resolves to an OPUS ID and back. It is a separate module
+because it is a long literal list and nothing else in the rules belongs beside it.
+The whole list is tab-indented, which is why this file carries the project's only
+tab-indentation exemption.
+"""
+
 PRIMARY_FILESPEC_LIST = [
 	'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/data_mosaic/iss_081ri_fmovie106_vims/iss_081ri_fmovie106_vims_mosaic.lblx',
 	'bundles/cassini_iss_fring_mosaics_rsfrench2025/cassini_iss_fring_mosaics_rsfrench2025/data_mosaic/iss_089rf_fmovie003_prime/iss_089rf_fmovie003_prime_mosaic.lblx',

@@ -2,6 +2,51 @@
 # pds4file/rules/cassini_iss_spokes_hedman_hamilton_2024.py
 ##########################################################################################
 
+"""cassini_iss_spokes_hedman_hamilton_2024: rules for the B-ring spokes bundle set.
+
+The bundle set on disk is named cassini_iss_spokes_hedman-hamilton-2024; this
+module and its class are named cassini_iss_spokes_hedman_hamilton_2024, with
+underscores in place of the two hyphens, because a hyphen cannot appear in a Python
+identifier. The bundle set is registered in
+``Pds4File.SUBCLASSES`` under the hyphenated name.
+
+It holds reprojected images of Saturn's B ring, in a ``data_derived/`` collection of
+FITS files with ``.lblx`` labels and a text file of SPICE pointing for each, and a
+``browse_derived/`` collection of PNG browse products. OPUS files the image and its
+SPICE pointing file under the "Cassini ISS B Ring Reprojected Images" category and
+the browse product under "browse", and offers all three with the PDS3 Cassini ISS
+images rather than as products of this bundle; the tables in
+`pds3file/rules/COISS_xxxx.py` are what reach them from the PDS3 side.
+
+The rule tables:
+
+* ``description_and_icon_by_regex``, ``view_options``, ``neighbors`` and
+  ``sort_key`` -- all four are empty, so descriptions, view flags, adjacent
+  directories and basename sort order are the defaults from
+  `pds4file/rules/__init__.py`.
+* ``opus_type`` -- the reprojected image and its SPICE pointing file, under the
+  "Cassini ISS B Ring Reprojected Images" category, and its browse product under
+  "browse".
+* ``archive_paths`` and ``archive_dirs`` -- the archive layout these two describe,
+  which nothing reads: three archives, one for the whole bundle, one for
+  ``data_derived/`` and one for ``browse_derived/``. The two partial
+  archives also carry the bundle label, context, spice_kernels, schema and readme
+  files a reader needs with them.
+* ``product_lbl_basename_wo_ext`` -- pairs a ``_rprj_suppl.txt`` SPICE pointing file
+  with the ``*_rprj`` label, whose basename it does not otherwise match.
+
+``archive_paths`` and ``archive_dirs`` are defined here but the class body assigns
+neither ``Pds4File.ARCHIVE_PATHS`` nor ``Pds4File.ARCHIVE_DIRS``. All six pds4
+dataset modules define
+archive tables and four of them assign the attributes; this module and
+`cassini_iss_fring_mosaics_rsfrench2025.py` are the two that do not, so both bundle
+sets use the empty archive tables from `pds4file/rules/__init__.py` and the tables
+here are unreached. It is
+also the only pds4 rule module with a subclass that defines no associations, no
+viewables and no OPUS ID tables, and the only one that adds nothing to
+``Pds4File.FILESPEC_TO_BUNDLESET``.
+"""
+
 import re
 
 import translator
@@ -111,6 +156,15 @@ product_lbl_basename_wo_ext = translator.TranslatorByRegex([
 ##########################################################################################
 
 class cassini_iss_spokes_hedman_hamilton_2024(pds4file.Pds4File):
+    """The ``Pds4File`` subclass for cassini_iss_spokes_hedman_hamilton_2024.
+
+    The class body and the module tail install this module's rule tables on the class
+    attributes ``Pds4File`` reads. `pds4file/rules/__init__.py` sets out the routes a
+    table takes and which of them leaves the inherited rules in front. The class
+    is registered in ``Pds4File.SUBCLASSES`` under the key
+    "cassini_iss_spokes_hedman-hamilton-2024".
+    The module docstring describes the bundle set and every table.
+    """
 
     pds4file.Pds4File.VOLSET_TRANSLATOR = translator.TranslatorByRegex(
         [('cassini_iss_spokes_hedman-hamilton-2024', re.I,

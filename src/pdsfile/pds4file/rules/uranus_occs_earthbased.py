@@ -2,6 +2,96 @@
 # pds4file/rules/uranus_occs_earthbased.py
 ##########################################################################################
 
+"""Rules for the uranus_occs_earthbased bundle set: Earth-based Uranus occultations.
+
+Each bundle in this bundle set holds the data from a single occultation observation
+of the Uranian system, and a support bundle holds the documentation and the Uranian
+ring models behind them (bundle ``readme.txt`` under
+``$PDS4_HOLDINGS_DIR/bundles/uranus_occs_earthbased``). A bundle is named
+uranus_occ_<event>_<observatory>_<aperture>, as in uranus_occ_u0_kao_91cm and
+uranus_occ_u14_ctio_400cm; two of the 52 end in an instrument instead of an
+aperture, uranus_occ_u137_hst_fos and uranus_occ_u138_hst_fos, which is why
+``Pds4File.BUNDLENAME_REGEX`` carries an alternation for "fos". The bundle set spans
+observations from 1977 to 2002 at sixteen observatories, and despite the bundle
+set's name two of those observations are from HST rather than the ground.
+
+A bundle holds ``data/rings/`` for the per-ring radial profiles at 100 m, 500 m and
+1 km sampling, ``data/global/`` for the ring-plane profiles at the same three
+samplings, ``data/atmosphere/`` for the counts-against-time series,
+``data/ring_models/`` for the square-well models and the fitted and predicted ring
+event times, and ``browse/`` for the browse products. The support bundle holds the
+global ring orbital fit, the original index,
+the quality ratings, the ring dictionary definitions, the user guide and its
+plotting software, and SPICE frame and trajectory kernels.
+
+The rule tables written against PDS4 ``bundles/uranus_occs_earthbased`` paths:
+
+* ``default_viewables`` -- points an atmosphere time series or a ring or global
+  profile at its diagrams.
+* ``associations_to_bundles``, ``associations_to_previews``,
+  ``associations_to_diagrams``, ``associations_to_metadata`` and
+  ``associations_to_documents`` -- cross the five trees for one observation.
+* ``opus_type`` -- files products under the "Uranus Earth-based Occultations" OPUS
+  category, with a type for each sampling of the ring and ring-plane profiles, for
+  the ring and ring-plane time series, for the atmosphere time series, for the ring
+  models, and for each kind of support product. Its last rule is the exception: it
+  files the metadata index under the generic "metadata" category.
+* ``opus_products`` -- what OPUS offers with one product, in nine entries under six
+  headings: the ring-specific products, the atmosphere-specific products, the global
+  products, the support-bundle products available only with a ring or global
+  product, the support-bundle products available with everything, and four entries
+  for the previews and diagrams.
+* ``prefix_mapping`` -- the set that drives the OPUS ID tables. Each entry pairs a
+  bundle prefix with up to three OPUS ID prefixes: one for egress, one for ingress
+  where the ingress falls on a different day, and one for the atmosphere series. An
+  OPUS ID prefix encodes the telescope, the detector, the date and the event, as in
+  ctio4m0-insb-occ-1980-229-u12. The comment above the mapping lists five detector
+  codes; the mapping uses seven, adding "fos" for the two HST bundles and "nicmos"
+  for one at Calar Alto.
+* ``opus_id_list`` and ``opus_id`` -- the list is built by looping over
+  ``prefix_mapping``. Where a bundle's ingress and egress share a prefix, which is 47
+  of the 52, it emits one pattern each for ``data/atmosphere/``, ``data/global/`` and
+  ``data/rings/``. Where they do not, it emits separate ingress and egress patterns
+  for the last two, and an atmosphere pattern only if the bundle has an atmosphere
+  prefix: two of the five do, and the other three get none at all. Nothing is emitted
+  for ``data/ring_models/``. ``opus_id`` is the translator built from the resulting
+  163 entries.
+* ``opus_id_to_primary_filespec_list`` and ``opus_id_to_primary_logical_path`` --
+  the same loop run the other way, resolving an OPUS ID to the label of the primary
+  product: the 100 m sampling for a ring or ring-plane profile, and the time series
+  itself for an atmosphere observation.
+* ``opus_id_to_subclass_set`` -- the set of OPUS ID prefixes that route to this
+  subclass, added to ``Pds4File.OPUS_ID_TO_SUBCLASS``. It is a set rather than a
+  list because a bundle's three prefixes are not always distinct: for
+  uranus_occ_u12_ctio_400cm the ingress and atmosphere prefixes are the same string,
+  and for uranus_occ_u12_eso_360cm the egress and atmosphere prefixes are. No prefix
+  is shared between two bundles, so 59 prefixes give 57 set entries.
+* ``filespec_to_bundleset`` -- maps a file specification whose first component is
+  "uranus_occ" followed by an underscore to the bundle set name
+  uranus_occs_earthbased.
+* ``archive_paths`` and ``archive_dirs`` -- the whole bundle set tree is packaged as
+  one archive named after itself, so both tables have a single entry. The header
+  comment records why: any new observation bundle added under the tree is then
+  included without a new archive rule.
+
+Five tables here are byte-identical to the tables of the same name in
+`pds3file/rules/COISS_xxxx.py`, which serves Cassini ISS:
+``description_and_icon_by_regex``, ``view_options``, ``neighbors``, ``sort_key`` and
+``opus_format``. Three of the five key on PDS3 paths, mostly ``volumes/`` and some
+``calibrated/``; ``sort_key`` keys on basenames and ``opus_format`` on file
+extensions, so those two are not PDS3-specific. ``description_and_icon_by_regex`` is
+not wholly inert here either: four of its rules carry no PDS3 anchor and fire for a
+bundle's ``browse/`` collection, which every bundle has.
+
+The class body builds its volume set translator entries by looping over
+``prefix_mapping``. Those entries map a bundle name to the bundle set name, which
+path resolution never needs: the bundle set name is already a
+``Pds4File.SUBCLASSES`` key, so uranus_occ_support, which is absent from the
+mapping, resolves to this subclass all the same.
+`uranus_occs_earthbased_primary_filespec.py` holds the list of primary labels this
+bundle set offers, which this module re-exports.
+"""
+
 import re
 
 import translator
@@ -500,6 +590,21 @@ archive_dirs = translator.TranslatorByRegex([
 ##########################################################################################
 
 class uranus_occs_earthbased(pds4file.Pds4File):
+    """The ``Pds4File`` subclass for uranus_occs_earthbased.
+
+    The class body and the module tail install this module's rule tables on the class
+    attributes ``Pds4File`` reads. `pds4file/rules/__init__.py` sets out the routes a
+    table takes and which of them leaves the inherited rules in front. The class
+    is registered in ``Pds4File.SUBCLASSES`` under the key
+    "uranus_occs_earthbased".
+    The module docstring describes the bundle set and every table.
+
+    Its ``Pds4File.VOLSET_TRANSLATOR`` entries are built by looping over
+    ``prefix_mapping``. Those entries map a bundle name to the bundle set name,
+    which path resolution does not need, because the bundle set name is already a
+    ``Pds4File.SUBCLASSES`` key.
+    """
+
     volset_list = []
     for bundle_prefix, _, _, _ in prefix_mapping:
         volset_list += [(f'uranus_occ_{bundle_prefix}', re.I, 'uranus_occs_earthbased')]

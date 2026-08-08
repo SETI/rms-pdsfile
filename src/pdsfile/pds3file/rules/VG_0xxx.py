@@ -2,6 +2,45 @@
 # pds3file/rules/VG_0xxx.py
 ##########################################################################################
 
+"""Rules for the VG_0xxx volume set: the original compressed Voyager images.
+
+VG_0xxx is described in the holdings as the Voyager image collection, original
+release of compressed raw images (``_volinfo/VG_0xxx.txt``). A data file is an IMQ,
+the compressed Voyager EDR form, and a compressed browse image accompanies it. Five
+of this module's nine tables spell the browse extension IBG -- the description,
+viewable, two association and format tables -- while ``opus_type`` alone spells it
+IBQ, and the two cannot both be right. The products are filed under the
+"Voyager ISS" OPUS category. The same
+observations appear decompressed, and with calibrated versions, under the VGISS_5xxx
+through VGISS_8xxx volume sets that `VGISS_xxxx.py` serves.
+
+The rule tables:
+
+* ``description_and_icon_by_regex`` -- describes the compressed raw images and their
+  browse counterparts, and names the directories that group images by spacecraft
+  clock and by target.
+* ``default_viewables`` -- points a compressed image at the preview images generated
+  for it in the previews tree.
+* ``associations_to_volumes`` and ``associations_to_previews`` -- cross the volumes
+  and previews trees for one image.
+* ``view_options`` -- the grid, multipage and continuous view flags for the image
+  directories.
+* ``neighbors`` -- treats the corresponding directory in the other VG_0xxx volumes
+  as adjacent.
+* ``opus_type`` -- files the two products as "Compressed Raw (IMQ)" and "Small
+  Preview (IBQ)" under the "Voyager ISS" OPUS category.
+* ``opus_format`` -- gives the IMQ and IBG extensions their interchange and file
+  formats.
+* ``opus_id`` -- builds the OPUS ID from the volume and the image number together.
+  The image number comes from the file name and so does the target, by way of the
+  volume; the spacecraft comes from the volume for eight of the seventeen entries and
+  from the leading digit of the image number for the other nine, because several
+  volumes hold images from both spacecraft.
+
+This module defines no OPUS product list and no reverse OPUS-ID lookup, so both come
+from the defaults in `pds3file/rules/__init__.py`.
+"""
+
 import re
 
 import translator
@@ -151,6 +190,17 @@ opus_id = translator.TranslatorByRegex([
 ##########################################################################################
 
 class VG_0xxx(pds3file.Pds3File):
+    """The ``Pds3File`` subclass for VG_0xxx.
+
+    The class body and the module tail install this module's rule tables on the class
+    attributes ``Pds3File`` reads. `pds3file/rules/__init__.py` sets out the routes a
+    table takes and which of them leaves the inherited rules in front. The class
+    is registered in ``Pds3File.SUBCLASSES`` under the key
+    "VG_0xxx".
+    The module docstring describes the volume set and every table.
+
+    It also sets ``FILENAME_KEYLEN`` to 8.
+    """
 
     pds3file.Pds3File.VOLSET_TRANSLATOR = translator.TranslatorByRegex([('VG_0xxx', re.I, 'VG_0xxx')]) + \
                                           pds3file.Pds3File.VOLSET_TRANSLATOR

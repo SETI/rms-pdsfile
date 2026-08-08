@@ -2,6 +2,42 @@
 # pds3file/rules/RPX_xxxx.py
 ##########################################################################################
 
+"""Rules for the RPX_xxxx volume set: the 1995 Saturn ring plane crossing.
+
+RPX_xxxx is described in the holdings as Earth-based data from the 1995 Saturn ring
+plane crossing. RPX_0001 through RPX_0005 are HST WFPC2 observations spanning
+October 1994 to November 1995; RPX_0101, RPX_0201, RPX_0301 and RPX_0401 are
+ground-based campaigns from the William Herschel Telescope, the IRTF, the
+Canada-France-Hawaii Telescope and the WIYN Telescope at Kitt Peak
+(``_volinfo/RPX_xxxx.txt``). The HST volumes hold FITS files in matched sets: raw
+image, calibrated image, engineering data, HST header file, and a mask for the first
+three. There is no header mask, and a browse GIF sits beside each set.
+
+The rule tables:
+
+* ``description_and_icon_by_regex`` -- distinguishes those FITS forms from one
+  another, marks the ones held as zipped FITS, names the browse GIFs and the
+  year-and-month data directories, and names each observing proposal directory by its
+  proposal number and principal investigator.
+* ``default_viewables`` -- the preview images for a product.
+* ``associations_to_volumes``, ``associations_to_previews`` and
+  ``associations_to_metadata`` -- cross the volumes, previews and metadata trees for
+  one observation.
+* ``versions`` -- the paths of the same product in the other version of this volume
+  set.
+* ``view_options`` and ``neighbors`` -- the view flags and the corresponding
+  directories in sibling volumes.
+* ``filespec_to_bundleset`` -- maps a file specification beginning with an RPX_nnnn
+  volume ID to the volume set name RPX_xxxx.
+
+The class body also defines ``RPX_xxxx.FILENAME_KEYLEN``, which returns the length
+of the HST group ID for the RPX_0001 to RPX_0005 volumes and zero elsewhere, so that
+the several FITS files of one HST observation group together.
+
+This module defines no OPUS tables at all, so OPUS treats these products under the
+defaults in `pds3file/rules/__init__.py`.
+"""
+
 import re
 
 import translator
@@ -204,6 +240,18 @@ neighbors = translator.TranslatorByRegex([
 ##########################################################################################
 
 class RPX_xxxx(pds3file.Pds3File):
+    """The ``Pds3File`` subclass for RPX_xxxx.
+
+    The class body and the module tail install this module's rule tables on the class
+    attributes ``Pds3File`` reads. `pds3file/rules/__init__.py` sets out the routes a
+    table takes and which of them leaves the inherited rules in front. The class
+    is registered in ``Pds3File.SUBCLASSES`` under the key
+    "RPX_xxxx".
+    The module docstring describes the volume set and every table.
+
+    It also defines ``FILENAME_KEYLEN`` as a method, which returns 9 for the HST
+    volumes and 0 elsewhere.
+    """
 
     pds3file.Pds3File.VOLSET_TRANSLATOR = translator.TranslatorByRegex([('RPX_xxxx', re.I, 'RPX_xxxx')]) + \
                                           pds3file.Pds3File.VOLSET_TRANSLATOR
@@ -222,7 +270,18 @@ class RPX_xxxx(pds3file.Pds3File):
     VERSIONS = versions + pds3file.Pds3File.VERSIONS
 
     def FILENAME_KEYLEN(self):
-        """9 for files in the RPX series RPX_0001-5; 0 otherwise."""
+        """Return the count of leading basename characters that group siblings.
+
+        A basename in the HST volumes of this volume set opens with a nine-character
+        HST group ID, and the eight files of one observation share it: the raw
+        image, the calibrated image, the engineering data, the header file, a mask
+        for the first three, and the browse GIF. There is no header mask. The
+        ground-based volumes are not grouped this way.
+
+        Returns:
+            int: 9 if this file's absolute path contains "/RPX_000", which of the
+            volumes present selects RPX_0001 through RPX_0005, and 0 otherwise.
+        """
 
         # Use the length of the HST group ID for the new version of RPX_0001-5
         if '/RPX_000' in self.abspath:

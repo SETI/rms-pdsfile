@@ -2,6 +2,62 @@
 # pds3file/rules/COISS_xxxx.py
 ##########################################################################################
 
+"""Rules for the COISS_xxxx volume sets: Cassini ISS images.
+
+`COISS_xxxx.py` serves four volume sets, matched by the pattern COISS_[0123x]xxx:
+COISS_0xxx is the Cassini ISS calibration data collection, which also carries the
+CISSCAL calibration software and the ISS calibration report in COISS_0011;
+COISS_1xxx is the Cassini ISS Jupiter image collection; COISS_2xxx is the Cassini
+Saturn image collection; and COISS_3xxx holds Cassini cartographic maps (holdings
+``_volinfo/COISS_0xxx.txt`` and its three siblings). In COISS_1xxx and COISS_2xxx a
+data file is a VICAR image whose basename begins with N for the narrow-angle camera
+or W for the wide-angle camera, followed by the ten-digit spacecraft clock, and every
+pattern in this module that reads a basename is keyed on COISS_[12]xxx for that
+reason. The calibration volumes name their files differently -- six digits under a
+per-camera, per-test directory, except in COISS_0011 -- and so do the cartographic
+maps of COISS_3xxx.
+
+The rule tables:
+
+* ``description_and_icon_by_regex`` -- distinguishes narrow-angle from wide-angle
+  images, names the calibrated products, the thumbnail extras and the full and TIFF
+  extras, and labels the CISSCAL software and the calibration report inside
+  COISS_0011. The browse extras get no entry here and fall through to the default
+  table's "Browse image collection". Two entries of this table are unreachable: both
+  require an ``extras/`` directory below a ``data/`` directory, and in the archive
+  ``extras/`` is a sibling of ``data/``.
+* ``default_viewables`` -- points an image at its preview images.
+* ``associations_to_volumes``, ``associations_to_calibrated``,
+  ``associations_to_previews``, ``associations_to_metadata`` and
+  ``associations_to_documents`` -- cross the volumes, calibrated, previews, metadata
+  and documents trees for one image.
+* ``view_options`` and ``neighbors`` -- the view flags for the data and extras
+  directories, and the corresponding directories in sibling volumes.
+* ``sort_key`` -- skips the leading N or W so that images sort chronologically by
+  spacecraft clock rather than by camera.
+* ``opus_type``, ``opus_format`` and ``opus_products`` -- file products under the
+  "Cassini ISS" OPUS category and list what OPUS offers with each.
+* ``opus_id`` and ``opus_id_to_primary_logical_path`` -- the OPUS ID and its
+  inverse. The reverse table has 52 entries, most of them one per leading three
+  digits of the spacecraft clock, each naming the small range of volumes that can
+  hold it. Four are wider: three cover several three-digit prefixes at once and one
+  keys on two digits.
+* ``cross_pds3_pds4_products`` -- the PDS4 products OPUS offers alongside a PDS3
+  Cassini ISS image: the reprojected images and their browse products from the
+  cassini_iss_fring_mosaics_rsfrench2025 and cassini_iss_spokes_hedman-hamilton-2024
+  bundles, plus the two global reprojected-image index files, which come from the
+  fring bundle alone. This is the only rule module that defines this table.
+* ``_PRODUCT_ID_TO_F_RING_OBSERVATION_ID_MAPPING`` and
+  ``_f_ring_cross_products_list`` -- the supporting data behind that table. The
+  mapping gives, for each inclusive range of ten-digit product IDs, the F-ring
+  observation name covering it; the list is built from it at import time by turning
+  each range into an explicit regular expression, so that a lookup does not have to
+  match a broad wildcard.
+
+The class body also defines ``COISS_xxxx.FILENAME_KEYLEN``, which is what makes the
+several files of one observation group together.
+"""
+
 import re
 
 import translator
@@ -724,6 +780,18 @@ opus_id_to_primary_logical_path = translator.TranslatorByRegex([
 ##########################################################################################
 
 class COISS_xxxx(pds3file.Pds3File):
+    """The ``Pds3File`` subclass for COISS_xxxx.
+
+    The class body and the module tail install this module's rule tables on the class
+    attributes ``Pds3File`` reads. `pds3file/rules/__init__.py` sets out the routes a
+    table takes and which of them leaves the inherited rules in front. The class
+    is registered in ``Pds3File.SUBCLASSES`` under the key
+    "COISS_xxxx".
+    The module docstring describes the volume set and every table.
+
+    It also defines ``FILENAME_KEYLEN`` as a method, which returns 0 when the bundle
+    set name opens "COISS_3xxx" and 11 otherwise.
+    """
 
     pds3file.Pds3File.VOLSET_TRANSLATOR = translator.TranslatorByRegex([('COISS_[0123x]xxx', re.I, 'COISS_xxxx')]) + \
                                           pds3file.Pds3File.VOLSET_TRANSLATOR
@@ -750,6 +818,18 @@ class COISS_xxxx(pds3file.Pds3File):
     ASSOCIATIONS['documents']  += associations_to_documents
 
     def FILENAME_KEYLEN(self):
+        """Return the count of leading basename characters that group siblings.
+
+        A Cassini ISS image basename opens with the camera letter and the ten-digit
+        spacecraft clock, and every file of one observation shares those eleven
+        characters; what follows distinguishes the image from its label and its
+        previews. The cartographic maps of COISS_3xxx are not grouped this way.
+
+        Returns:
+            int: 0 if the first ten characters of this file's bundle set name are
+            "COISS_3xxx", and 11 otherwise.
+        """
+
         if self.bundleset[:10] == 'COISS_3xxx':
             return 0
         else:

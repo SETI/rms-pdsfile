@@ -2,6 +2,54 @@
 # pds3file/rules/CORSS_8xxx.py
 ##########################################################################################
 
+"""Rules for the CORSS_8xxx volume set: Cassini RSS ring occultation profiles.
+
+CORSS_8xxx is described in the holdings as Cassini RSS radio occultation profiles of
+Saturn's rings, 2005-2010. Its one volume, CORSS_8001, carries data set ID
+CO-SR-RSS-4/5-OCC-V2.0 (``_volinfo/CORSS_8xxx.txt``). Data are organized by
+spacecraft revolution: a "Rev" directory per orbit, and within it a directory per
+occultation direction, holding the optical depth profile, the diffraction-limited
+profile, the geometry table and the calibration parameters.
+
+The rule tables:
+
+* ``description_and_icon_by_regex`` -- names the calibration, geometry, optical
+  depth and diffraction-limited products and the observation description, and gives
+  the browse diagrams their sizes.
+* ``default_viewables`` -- the preview images for a product.
+* ``diagram_viewables``, ``profile_viewables``, ``skyview_viewables``,
+  ``dsntrack_viewables`` and ``timeline_viewables`` -- five further viewable sets,
+  which the class offers under the keys "diagram", "profile", "skyview", "dsntrack"
+  and "timeline" alongside "default". The class's own tooltips say what each is:
+  "diagram" illustrates the observation footprints on the target, "profile" is the
+  radial profile derived from the occultation, "skyview" is the occultation track of
+  Cassini behind the rings as seen from Earth, "dsntrack" is the elevation angle of
+  Saturn as seen from the DSN stations, and "timeline" is the timeline of events
+  during the experiment. ``skyview_viewables`` and ``dsntrack_viewables`` are defined
+  by no other rule module. Only `COCIRS_xxxx.py`, with twenty-one, offers more named
+  viewables than these six.
+* ``associations_to_volumes``, ``associations_to_previews``,
+  ``associations_to_diagrams``, ``associations_to_metadata`` and
+  ``associations_to_documents`` -- cross the five trees for one occultation.
+* ``versions`` -- the paths of the same product in the other version of this volume
+  set, which cannot be found by wildcarding the version suffix alone: the earlier
+  version put the data under ``EASYDATA/`` rather than ``data/``, used two digits
+  after "Rev" where the current version uses three, and nested the per-occultation
+  directories differently. The data file basenames are upper case in both versions,
+  and the table emits two spellings of each earlier path for that reason: one that
+  uppercases the whole tail, directory and basename together, which is what finds
+  ``DOCINFO.TXT``, and one that uppercases the directory and leaves the basename
+  mixed, which is what finds the lower-case PDFs beside it.
+* ``view_options``, ``neighbors`` and ``split_rules`` -- the view flags, the
+  corresponding directories in sibling volumes, and the basename grouping.
+* ``opus_type``, ``opus_products``, ``opus_id`` and
+  ``opus_id_to_primary_logical_path`` -- file products under the "Cassini RSS" OPUS
+  category, list what OPUS offers with each, and give the OPUS ID and its inverse.
+
+`COUVIS_8xxx.py` and `COVIMS_8xxx.py` serve the stellar occultation profiles of the
+same rings from the two Cassini spectrometers.
+"""
+
 import re
 
 import translator
@@ -444,6 +492,15 @@ opus_id_to_primary_logical_path = translator.TranslatorByRegex([
 ##########################################################################################
 
 class CORSS_8xxx(pds3file.Pds3File):
+    """The ``Pds3File`` subclass for CORSS_8xxx.
+
+    The class body and the module tail install this module's rule tables on the class
+    attributes ``Pds3File`` reads. `pds3file/rules/__init__.py` sets out the routes a
+    table takes and which of them leaves the inherited rules in front. The class
+    is registered in ``Pds3File.SUBCLASSES`` under the key
+    "CORSS_8xxx".
+    The module docstring describes the volume set and every table.
+    """
 
     pds3file.Pds3File.VOLSET_TRANSLATOR = translator.TranslatorByRegex([('CORSS_8xxx', re.I, 'CORSS_8xxx')]) + \
                                           pds3file.Pds3File.VOLSET_TRANSLATOR

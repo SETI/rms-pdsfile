@@ -2,6 +2,91 @@
 # pds3file/rules/VG_28xx.py
 ##########################################################################################
 
+"""Rules for the VG_28xx volume set: Voyager radial ring profiles.
+
+VG_28xx is described in the holdings as Voyager radial profiles of the rings of
+Saturn, Uranus and Neptune. Its four volumes each come from a different Voyager
+experiment (``_volinfo/VG_28xx.txt``):
+
+* VG_2801 -- Voyager photopolarimeter (PPS) ring profiles for Saturn, Uranus and
+  Neptune, data set ID VG2-SR/UR/NR-PPS-2/4-OCC-V1.0.
+* VG_2802 -- Voyager ultraviolet (UVS) ring profiles for the same three planets,
+  data set ID VG1/VG2-SR/UR/NR-UVS-2/4-OCC-V1.0.
+* VG_2803 -- Voyager radio occultation profiles of the rings of Saturn and Uranus,
+  data set ID VG1/VG2-SR/UR-RSS-4-OCC-V1.0.
+* VG_2810 -- radial profiles of Saturn's rings derived from Voyager images, data set
+  ID VG1/VG2-SR-ISS-4-PROFILES-V1.0.
+
+This is the longest rule module, and the reason is that a product here is named by a
+dense code rather than by a readable name. A basename such as PU1P01AI.TAB decomposes
+as P, U1, P, 01, A, I: the experiment, the occultation code, the kind of product, a
+two-character field the patterns match and discard, the ring, and the occultation
+direction. Every one of those fields has to be turned into English for a
+description, an OPUS type and an OPUS ID.
+
+Eighteen of the module's top-level names exist for that translation. Each is a
+dictionary written as a string, with its newlines stripped, so that it can be
+concatenated into the replacement pattern of a ``translator.TranslatorByRegex``
+entry and subscripted there by a captured group:
+
+* ``SUN_DICT`` -- the occultation codes N1, S1, U1 and U2 mapped to what they stand
+  for. The two Uranus codes name a planet and a star, "Uranus sigma Sgr" and "Uranus
+  beta Per"; N1 and S1 name the planet alone.
+* ``SU_DICT`` -- S and U mapped to Saturn and Uranus.
+* ``URING_DICT`` -- the Uranian ring codes mapped to ring names, six through
+  epsilon, plus X for the ring plane. ``URING_INV_DICT`` is the same mapping
+  inverted, used when building an OPUS ID from a ring name.
+* ``IE_DICT`` -- I and E mapped to " ingress" and " egress".
+* ``KIND`` and ``KIND_UC`` -- the product kind codes mapped to phrases such as
+  "calibration model", "edited raw data" and "calibrated profile", in lower case and
+  with an initial capital.
+* ``ICON`` -- product kind codes mapped to the icon type each gets. It covers ten of
+  the eleven codes ``KIND`` carries, omitting "P", the calibrated profile.
+* ``NEXT`` -- the integers 5 through 13 mapped to the next integer as a string,
+  which turns a profile's starting radius decade into the end of its range.
+* ``SRSS_DICT`` and ``URSS_DICT`` -- the radio-occultation resolution codes for
+  Saturn and for Uranus mapped to sampling intervals.
+* ``FRAME_DICT`` -- 1 and 2 intended for B1950 and J2000. Its string literal is
+  unterminated, missing both the closing quote on its second value and the closing
+  brace, and no table reads it.
+* ``COORD_DICT`` -- the coordinate system codes mapped to "celestial", "ring" and
+  "inclined ring".
+* ``CU_DICT`` -- C and U mapped to "corrected" and "un-corrected".
+* ``VIP_DICT`` -- V, I and P mapped to the Vax, IEEE and PC binary formats.
+* ``POLE_DICT`` -- 1 and 2 mapped to "original" and "updated", for the two pole
+  solutions the profiles were computed against.
+* ``US23_DICT`` -- two UVS Saturn data files whose descriptions do not follow from
+  their codes, keyed on the digit after the "US" prefix.
+* ``USTAR_DICT`` -- 1 and 2 mapped to the OPUS ID spellings of the two Uranus
+  occultation stars.
+
+The rule tables:
+
+* ``description_and_icon_by_regex`` -- names the directories of each volume and the
+  product forms, using the dictionaries above to build a description out of a file
+  name. It names the source-image directories of VG_2810 and their raw, cleaned,
+  geometrically corrected and TIFF forms as well.
+* ``default_viewables`` -- the previews for a product.
+* ``associations_to_volumes``, ``associations_to_metadata`` and
+  ``associations_to_documents`` -- cross the volumes, metadata and documents trees
+  for one product.
+* ``versions`` -- the paths of the same product in the other version of this volume
+  set.
+* ``sort_key`` and ``split_rules`` -- a basename sort order and a basename grouping.
+  The class body assigns neither ``Pds3File.SORT_KEY`` nor ``Pds3File.SPLIT_RULES``,
+  so neither table is reached and both behaviors are the defaults.
+* ``opus_type`` -- files products under four OPUS categories, one per experiment:
+  "Voyager PPS", "Voyager UVS", "Voyager RSS" and "Voyager ISS". No other rule
+  module spans four.
+* ``opus_format`` and ``opus_products`` -- the interchange and file formats, and
+  what OPUS offers with each product.
+* ``opus_id`` and ``opus_id_to_primary_logical_path`` -- the OPUS ID and its
+  inverse. Both are built out of the same code dictionaries.
+* ``filespec_to_bundleset`` -- maps a file specification beginning with a VG_28nn
+  volume ID to the volume set name VG_28xx, which the default rule cannot do because
+  this volume set name ends in two x's rather than three.
+"""
+
 import re
 
 import translator
@@ -984,6 +1069,19 @@ opus_id_to_primary_logical_path = translator.TranslatorByRegex([
 ##########################################################################################
 
 class VG_28xx(pds3file.Pds3File):
+    """The ``Pds3File`` subclass for VG_28xx.
+
+    The class body and the module tail install this module's rule tables on the class
+    attributes ``Pds3File`` reads. `pds3file/rules/__init__.py` sets out the routes a
+    table takes and which of them leaves the inherited rules in front. The class
+    is registered in ``Pds3File.SUBCLASSES`` under the key
+    "VG_28xx".
+    The module docstring describes the volume set and every table.
+
+    The class body installs no ``Pds3File.SORT_KEY`` and no
+    ``Pds3File.SPLIT_RULES``, so this module's ``sort_key`` and ``split_rules``
+    tables are not reached.
+    """
 
     pds3file.Pds3File.VOLSET_TRANSLATOR = translator.TranslatorByRegex([('VG_28xx', re.I, 'VG_28xx')]) + \
                                           pds3file.Pds3File.VOLSET_TRANSLATOR

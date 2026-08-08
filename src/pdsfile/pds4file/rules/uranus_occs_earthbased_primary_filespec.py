@@ -1,3 +1,17 @@
+"""uranus_occs_earthbased_primary_filespec: the bundle set's primary labels.
+
+This module holds one name:
+
+* ``PRIMARY_FILESPEC_LIST`` -- the logical path of every primary PDS4 label in the
+  bundle set, which is the 100 m ring profile, ring-plane profile or atmosphere time
+  series of each occultation, under each bundle's ``data/`` collection.
+
+`uranus_occs_earthbased.py` imports and re-exports the list, and
+``tests/rules/pds4/test_uranus_occs_earthbased.py`` walks it to check that each
+label resolves to an OPUS ID and back. It is a separate module because it is a long
+literal list and nothing else in the rules belongs beside it.
+"""
+
 PRIMARY_FILESPEC_LIST = [
     'bundles/uranus_occs_earthbased/uranus_occ_u103_eso_220cm/data/rings/u103_eso_220cm_2200nm_radius_beta_ingress_100m.xml',
     'bundles/uranus_occs_earthbased/uranus_occ_u103_eso_220cm/data/rings/u103_eso_220cm_2200nm_radius_lambda_ingress_100m.xml',

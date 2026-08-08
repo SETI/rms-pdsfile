@@ -2,6 +2,73 @@
 # pds4file/rules/cassini_iss_fring_mosaics_rsfrench2025.py
 ##########################################################################################
 
+"""Rules for the cassini_iss_fring_mosaics_rsfrench2025 bundle set.
+
+This bundle set holds F-ring mosaics built from Cassini ISS images, together with
+the reprojected images they are built from. The collections this module's tables
+name are ``data_mosaic/`` and ``data_mosaic_bkg_sub/`` for the mosaics and their
+background-subtracted counterparts, ``browse_mosaic/`` and
+``browse_mosaic_bkg_sub/`` for the PNG browse products, ``data_reproj_img/`` and
+``browse_reproj_img/`` for the reprojected images, ``miscellaneous/`` for the global
+indices, ``document/`` for the F-ring mosaics user guide, ``context/``,
+``spice_kernels/`` and ``xml_schema/``, and the ``bundle.lblx`` and ``readme.txt``
+at the top. A mosaic is an ``.img`` file with a ``.lblx`` label and two metadata
+tables beside it, one of parameters and one of source images.
+
+The reprojected images are in this bundle set but OPUS offers them with the PDS3
+Cassini ISS images rather than as products of this bundle; the tables in
+`pds3file/rules/COISS_xxxx.py` are what reach them from the PDS3 side.
+
+The rule tables:
+
+* ``description_and_icon_by_regex`` -- empty. Descriptions for this bundle set come
+  from the defaults in `pds4file/rules/__init__.py`.
+* ``default_viewables`` -- points a mosaic at the background-subtracted browse PNGs.
+* ``associations_to_bundles``, ``associations_to_previews``,
+  ``associations_to_metadata`` and ``associations_to_documents`` -- the associations
+  for one mosaic. This bundle set keeps its browse products inside the bundle, so
+  ``associations_to_previews`` returns ``bundles/`` paths under ``browse_mosaic/``
+  and ``browse_mosaic_bkg_sub/`` rather than anything under ``previews/``.
+  ``associations_to_metadata`` matches the mosaics and returns an empty list, so no
+  metadata association is produced.
+* ``view_options``, ``neighbors`` and ``sort_key`` -- all three are empty, so the
+  view flags, the adjacent directories and the basename sort order are the defaults.
+* ``opus_type`` -- files the mosaics, their metadata, the readme and the user guide
+  under the "Cassini ISS F Ring Mosaics" OPUS category; the reprojected images,
+  their SPICE pointing files and their metadata under "Cassini ISS F Ring
+  Reprojected Images"; every browse product under "browse"; and every global index
+  under "metadata".
+* ``opus_products`` -- what OPUS offers with one mosaic: both mosaic forms, their
+  metadata tables, both sets of browse PNGs and labels, the readme, the user guide
+  and the two global mosaic indices.
+* ``opus_id`` and ``opus_id_to_primary_logical_path`` -- an OPUS ID of the form
+  co-iss-fring-mosaic-<observation name>, and the mosaic label it names.
+* ``filespec_to_bundleset`` -- maps a file specification beginning with the bundle
+  set name to the bundle set name itself.
+* ``archive_paths`` and ``archive_dirs`` -- the archive layout these two describe,
+  which nothing reads: four archives, one for the whole bundle, one for the
+  reprojected images, one for the plain mosaics and one for the background-subtracted
+  mosaics. Each of the three partial archives also carries the
+  bundle label, the context, spice_kernels, schema and readme files, the document
+  collection files and its own index pair from ``miscellaneous/``; the reprojected
+  archive carries the ``miscellaneous/`` collection files as well.
+* ``product_lbl_basename_wo_ext`` -- the label a data file pairs with where the two
+  basenames differ: a browse PNG drops its size suffix, a metadata table drops
+  everything from "_metadata" on, and a reprojected SPICE pointing text file pairs
+  with the reprojected image label.
+
+``archive_paths`` and ``archive_dirs`` are defined here but the class body assigns
+neither ``Pds4File.ARCHIVE_PATHS`` nor ``Pds4File.ARCHIVE_DIRS``. All six pds4
+dataset modules define
+archive tables and four of them assign the attributes; this module and
+`cassini_iss_spokes_hedman_hamilton_2024.py` are the two that do not, so both bundle
+sets use the empty archive tables from `pds4file/rules/__init__.py` and the tables
+here are unreached.
+
+`cassini_iss_fring_mosaics_rsfrench2025_primary_filespec.py` holds the list of
+primary labels this bundle set offers, which this module re-exports.
+"""
+
 import re
 
 import translator
@@ -345,6 +412,15 @@ product_lbl_basename_wo_ext = translator.TranslatorByRegex([
 ##########################################################################################
 
 class cassini_iss_fring_mosaics_rsfrench2025(pds4file.Pds4File):
+    """The ``Pds4File`` subclass for cassini_iss_fring_mosaics_rsfrench2025.
+
+    The class body and the module tail install this module's rule tables on the class
+    attributes ``Pds4File`` reads. `pds4file/rules/__init__.py` sets out the routes a
+    table takes and which of them leaves the inherited rules in front. The class
+    is registered in ``Pds4File.SUBCLASSES`` under the key
+    "cassini_iss_fring_mosaics_rsfrench2025".
+    The module docstring describes the bundle set and every table.
+    """
 
     pds4file.Pds4File.VOLSET_TRANSLATOR = translator.TranslatorByRegex(
         [('cassini_iss_fring_mosaics_rsfrench2025', re.I,

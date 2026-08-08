@@ -2,6 +2,45 @@
 # pds3file/rules/COUVIS_8xxx.py
 ##########################################################################################
 
+"""Rules for the COUVIS_8xxx volume set: Cassini UVIS ring occultation profiles.
+
+COUVIS_8xxx is described in the holdings as Cassini UVIS occultation profiles of
+Saturn's rings, 2005-2017 (``_volinfo/COUVIS_8xxx.txt``). A product is a radial
+profile at one of two sampling intervals, 1 km or 10 km.
+
+The rule tables:
+
+* ``description_and_icon_by_regex`` -- distinguishes the 1 km profile from the 10 km
+  profile.
+* ``default_viewables`` and ``diagrams_viewables`` -- the preview images for a
+  profile and the observation diagrams for it. The class offers them as the
+  "default" and "diagram" viewable sets.
+* ``associations_to_volumes``, ``associations_to_previews``,
+  ``associations_to_diagrams``, ``associations_to_metadata`` and
+  ``associations_to_documents`` -- cross the five trees for one profile.
+* ``versions`` -- the paths of the same profile in the other versions of this volume
+  set, which cannot be found by wildcarding the version suffix alone. Three different
+  things are in the way, and the table's first five entries carry them. The earliest
+  version put the data under ``DATA/EASYDATA/`` rather than ``data/``, which those
+  entries spell out as a literal rather than deriving; it also wrote an underscore
+  after "TAU"; and the first three of them pair observations whose dates differ,
+  repairing files that were misnamed. The data file basenames are upper case in both
+  versions. The table's sixth entry, the only one that uses a case directive, cannot
+  fire: its pattern asks for a COVIMS_8xxx volume set holding the COUVIS_8001 volume,
+  which no path has, so this volume set has no cross-version rule for any directory
+  but ``data/``.
+* ``view_options`` and ``split_rules`` -- the view flags and the basename grouping.
+* ``opus_type`` and ``opus_products`` -- file products under the "Cassini UVIS" OPUS
+  category as "Occultation Profile (1 km)" and "(10 km)", and list what OPUS offers
+  with each. The product list names files explicitly rather than by wildcard.
+* ``opus_id`` and ``opus_id_to_primary_logical_path`` -- the OPUS ID and its
+  inverse.
+
+`COVIMS_8xxx.py` serves the VIMS occultation profiles of the same rings and defines
+a table of each of these same names; `CORSS_8xxx.py` serves the radio occultation
+profiles.
+"""
+
 import re
 
 import translator
@@ -207,6 +246,15 @@ opus_id_to_primary_logical_path = translator.TranslatorByRegex([
 ##########################################################################################
 
 class COUVIS_8xxx(pds3file.Pds3File):
+    """The ``Pds3File`` subclass for COUVIS_8xxx.
+
+    The class body and the module tail install this module's rule tables on the class
+    attributes ``Pds3File`` reads. `pds3file/rules/__init__.py` sets out the routes a
+    table takes and which of them leaves the inherited rules in front. The class
+    is registered in ``Pds3File.SUBCLASSES`` under the key
+    "COUVIS_8xxx".
+    The module docstring describes the volume set and every table.
+    """
 
     pds3file.Pds3File.VOLSET_TRANSLATOR = translator.TranslatorByRegex([('COUVIS_8xxx', re.I, 'COUVIS_8xxx')]) + \
                                           pds3file.Pds3File.VOLSET_TRANSLATOR

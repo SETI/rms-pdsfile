@@ -2,6 +2,56 @@
 # pds3file/rules/GO_0xxx.py
 ##########################################################################################
 
+"""Rules for the GO_0xxx volume set: Galileo images.
+
+GO_0xxx is described in the holdings as the Galileo image collection, PDS3
+compliant, with modernized file names; the earlier GO_0xxx_v1 is the original
+release under the PDS2 standard (``_volinfo/GO_0xxx.txt``). A data file is a raw
+VICAR image, and products are filed under the "Galileo SSI" OPUS category. Volumes
+group images by orbit and by target, with separate directories for calibration
+images, for the Earth-Moon conjunction and for the Galileo Optical Experiment.
+
+Some images were processed more than once, and the reprocessed copies live in
+``REDO/``, ``REPAIRED/`` and ``TIRETRACK/`` directories that supersede an image
+elsewhere in the volume set. The module header lists every such image with the image
+it supersedes, and two of them have no counterpart.
+
+The rule tables:
+
+* ``description_and_icon_by_regex`` -- names the raw, repaired and SL9-overlay
+  images, the spacecraft-clock directories that hold them, the nested orbit and
+  target directories, and two index entries in the metadata tree. It carries entries
+  for the calibration, Earth-Moon, optical-experiment, top-level target and
+  reprocessed-image directories too, and none of those six fires: four are a path
+  component short of a real logical path, one demands an extra character after the
+  volume ID and one looks for a directory named "GO_0018REDO" with no separator. All
+  six of those directories fall through to the generic "Directory".
+* ``default_viewables`` -- points an image at its preview images.
+* ``associations_to_volumes``, ``associations_to_previews``,
+  ``associations_to_metadata`` and ``associations_to_documents`` -- cross the
+  volumes, previews, metadata and documents trees for one image.
+* ``versions`` -- the paths of the same image in the other version of this volume
+  set, whose file names differ: the earlier version splits an image name after its
+  first seven characters and makes those a directory, so ``C0003061100R.IMG`` there
+  is ``C000306/1100R.IMG``.
+* ``view_options``, ``neighbors``, ``sort_key`` and ``split_rules`` -- the view
+  flags, the corresponding directories in sibling volumes, the basename sort order
+  and the basename grouping.
+* ``opus_type``, ``opus_format`` and ``opus_products`` -- file products under the
+  "Galileo SSI" OPUS category as "Raw Image" and "Image with SL9 graphics overlay",
+  and list what OPUS offers with each.
+* ``opus_id`` and ``opus_id_to_primary_logical_path`` -- the OPUS ID and its
+  inverse.
+
+The class body carries ``GO_0xxx.METADATA_PATH_TRANSLATOR``, which replaces the
+volume IDs in a metadata path with a dollar sign, and defines
+``GO_0xxx.opus_prioritizer``, which is what the reprocessed copies require: when an
+OPUS product group holds more than one copy of a data product, it keeps the
+reprocessed copy under the original heading and moves the copies it supersedes to a
+"(Superseded Processing)" heading. `NHxxxx_xxxx.py` is the only other rule module
+that defines a prioritizer.
+"""
+
 import re
 
 import translator
@@ -719,6 +769,18 @@ opus_id_to_primary_logical_path = translator.TranslatorByRegex([
 ##########################################################################################
 
 class GO_0xxx(pds3file.Pds3File):
+    """The ``Pds3File`` subclass for GO_0xxx.
+
+    The class body and the module tail install this module's rule tables on the class
+    attributes ``Pds3File`` reads. `pds3file/rules/__init__.py` sets out the routes a
+    table takes and which of them leaves the inherited rules in front. The class
+    is registered in ``Pds3File.SUBCLASSES`` under the key
+    "GO_0xxx".
+    The module docstring describes the volume set and every table.
+
+    It also sets ``FILENAME_KEYLEN`` to 11, carries
+    ``METADATA_PATH_TRANSLATOR``, and defines ``opus_prioritizer``.
+    """
 
     pds3file.Pds3File.VOLSET_TRANSLATOR = translator.TranslatorByRegex([('GO_0xxx', re.I, 'GO_0xxx')]) + \
                                           pds3file.Pds3File.VOLSET_TRANSLATOR
@@ -754,7 +816,41 @@ class GO_0xxx(pds3file.Pds3File):
     ])
 
     def opus_prioritizer(self, pdsfile_dict):
-        """Prioritize products that have been processed more than once."""
+        """Split reprocessed Galileo products from the copies they supersede.
+
+        Some images were processed more than once, and the reprocessed copy lives
+        under ``REDO/``, ``REPAIRED/`` or ``TIRETRACK/``. Where an OPUS heading holds
+        more than one copy of a data product, this keeps the reprocessed copy under
+        that heading and moves the rest to a heading in the same category whose rank
+        is 10 higher, whose slug gains "_alternate", whose title gains
+        " (Superseded Processing)" and whose default-selected flag is True whatever
+        the original heading carried. The copies are grouped by version rank first,
+        so one copy per rank survives under the original heading.
+
+        A heading holding a single copy is left alone, and so is one whose copies are
+        not in the volumes tree.
+
+        The dictionary is modified in place as well as returned: the two headings it
+        touches are rewritten and the alternative heading is added.
+
+        Parameters:
+            pdsfile_dict (dict): the OPUS product dictionary. A key is a
+                (category, rank, slug, title, selected) tuple, or the empty string
+                for a product whose type no rule matched; a value is a list of lists
+                of PdsFile objects.
+
+        Returns:
+            dict: the same dictionary.
+
+        Raises:
+            IndexError: raised by the item read ``__getitem__()`` on the heading,
+                where the heading is the empty-string key and it holds more than one
+                copy of a product in the volumes tree.
+            TypeError: raised by ``sort()`` wherever two copies at one version rank
+                are given the same priority -- which is any two that are both
+                reprocessed, or both not. The comparison then falls through to the
+                lists of PdsFile objects, which have no ordering.
+        """
 
         headers = list(pdsfile_dict.keys())     # Save keys so we can alter dict
         for header in headers:

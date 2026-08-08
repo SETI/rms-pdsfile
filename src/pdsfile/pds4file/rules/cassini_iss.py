@@ -2,6 +2,51 @@
 # pds4file/rules/cassini_iss.py
 ##########################################################################################
 
+"""Rules for the cassini_iss bundle set: Cassini ISS images in PDS4.
+
+The cassini_iss bundle set holds the Cassini ISS images as PDS4 bundles. The
+archive layout described in this module's header comment has two bundles,
+cassini_iss_cruise and cassini_iss_saturn, each holding a ``data_raw/`` collection
+of raw images and a ``browse_raw/`` collection beside it, together with the non-data
+collections ``context/``, ``document/`` and ``xml_schema/`` and the ``bundle.xml``
+label beside them. Below a data or browse collection ``opus_id`` reads two nested
+clock levels, a three-digit block and a five-digit block inside it; the archive
+split uses the three-digit block alone. The PDS3 form of the same observations is
+served by `pds3file/rules/COISS_xxxx.py`.
+
+The rule tables written against PDS4 ``bundles/cassini_iss`` paths:
+
+* ``default_viewables`` -- points a data file at its preview images.
+* ``associations_to_bundles``, ``associations_to_calibrated``,
+  ``associations_to_previews``, ``associations_to_metadata`` and
+  ``associations_to_documents`` -- cross the bundles, calibrated, previews, metadata
+  and documents trees for one image.
+* ``opus_id`` -- builds an OPUS ID of the form co-iss-<camera><clock> from the
+  clock-and-camera part of a PDS4 data file name.
+* ``filespec_to_bundleset`` -- maps a file specification whose first component is
+  "cassini_iss" followed by an underscore to the bundle set name cassini_iss.
+* ``ARCHIVE_PATHS_DICT``, ``archive_paths`` and ``archive_dirs`` -- the archive
+  layout. The dictionary holds, per bundle and per collection kind, the archive
+  file name patterns; ``archive_paths`` maps a bundle set, bundle or collection path
+  to the archives covering it, and ``archive_dirs`` maps an archive file back to the
+  directories inside it. The two data and browse collections are split into one
+  archive per leading clock block, so the dictionary builds those entries with a
+  comprehension rather than listing them.
+
+Eight tables here are byte-identical to the tables of the same name in
+`pds3file/rules/COISS_xxxx.py`: ``description_and_icon_by_regex``, ``view_options``,
+``neighbors``, ``sort_key``, ``opus_type``, ``opus_format``, ``opus_products`` and
+``opus_id_to_primary_logical_path``. Five of the eight key on PDS3 paths -- on
+``volumes/`` or on a COISS volume ID -- rather than on ``bundles/cassini_iss``;
+``sort_key`` keys on basenames and ``opus_format`` on file extensions, so neither is
+PDS3-specific, and ``opus_id_to_primary_logical_path`` keys on an OPUS ID and
+*returns* a PDS3 path rather than matching one. They describe the same Cassini ISS
+observations in their PDS3 locations: ``opus_type`` files products under the
+"Cassini ISS" OPUS category, and
+``opus_id_to_primary_logical_path`` resolves an OPUS ID to a path under
+``volumes/COISS_1xxx`` or ``volumes/COISS_2xxx``.
+"""
+
 import re
 
 import translator
@@ -448,6 +493,15 @@ archive_dirs = translator.TranslatorByRegex([
 ##########################################################################################
 
 class cassini_iss(pds4file.Pds4File): # Cassini_ISS
+    """The ``Pds4File`` subclass for cassini_iss.
+
+    The class body and the module tail install this module's rule tables on the class
+    attributes ``Pds4File`` reads. `pds4file/rules/__init__.py` sets out the routes a
+    table takes and which of them leaves the inherited rules in front. The class
+    is registered in ``Pds4File.SUBCLASSES`` under the key
+    "cassini_iss".
+    The module docstring describes the bundle set and every table.
+    """
 
     pds4file.Pds4File.VOLSET_TRANSLATOR = translator.TranslatorByRegex([('cassini_iss', re.I, 'cassini_iss')]) + \
                                           pds4file.Pds4File.VOLSET_TRANSLATOR

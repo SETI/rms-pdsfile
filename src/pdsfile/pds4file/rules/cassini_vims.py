@@ -2,6 +2,55 @@
 # pds4file/rules/cassini_vims.py
 ##########################################################################################
 
+"""Rules for the cassini_vims bundle set: Cassini VIMS cubes in PDS4.
+
+The cassini_vims bundle set holds the Cassini VIMS cubes as PDS4 bundles. The
+archive layout described in this module's header comment has two bundles,
+cassini_vims_cruise and cassini_vims_saturn, each holding a ``data_raw/``
+collection of raw VIMS data and a ``browse_raw/`` collection beside it, together
+with the non-data collections ``calibration/``, ``context/``, ``document/`` and
+``xml_schema/`` and the ``bundle.xml`` label beside them. The cruise bundle is
+packaged as a single
+archive. The Saturn bundle is split into 89: one for the non-data, non-browse
+collections, and then one per leading three-digit clock block for each of the raw
+data and raw browse collections, 44 blocks each. The PDS3 form of the same
+observations is served by `pds3file/rules/COVIMS_0xxx.py`.
+
+The rule tables written against PDS4 ``bundles/cassini_vims`` paths:
+
+* ``default_viewables`` -- points a data file at its preview images.
+* ``associations_to_bundles``, ``associations_to_previews``,
+  ``associations_to_metadata`` and ``associations_to_documents`` -- cross the
+  bundles, previews, metadata and documents trees for one cube. The documents entry
+  also sends a preview to the VIMS preview interpretation guide.
+* ``opus_id`` -- builds an OPUS ID from a PDS4 data file name, in two alternatives.
+  A cube filed under a clock-prefixed subdirectory gives
+  co-vims-v<clock>_<sub-observation>; one filed directly under the clock block gives
+  co-vims-v<clock>.
+* ``filespec_to_bundleset`` -- maps a file specification whose first component is
+  "cassini_vims" followed by an underscore to the bundle set name cassini_vims.
+* ``ARCHIVE_PATHS_DICT``, ``archive_paths`` and ``archive_dirs`` -- the archive
+  layout. The dictionary holds, per bundle and per collection kind, the archive file
+  name patterns; ``archive_paths`` maps a bundle set, bundle or collection path to
+  the archives covering it, and ``archive_dirs`` maps an archive file back to the
+  directories inside it.
+
+Eight tables here are byte-identical to the tables of the same name in
+`pds3file/rules/COISS_xxxx.py`, which serves Cassini ISS rather than VIMS:
+``description_and_icon_by_regex``, ``view_options``, ``neighbors``, ``sort_key``,
+``opus_type``, ``opus_format``, ``opus_products`` and
+``opus_id_to_primary_logical_path``. Five of the eight key on PDS3 paths -- on
+``volumes/`` or on a COISS volume ID; ``sort_key`` keys on basenames and
+``opus_format`` on file extensions, so those two are not PDS3-specific; and
+``opus_id_to_primary_logical_path`` keys on an OPUS ID and *returns* a PDS3 path
+rather than matching one. Four rules of ``description_and_icon_by_regex`` carry no
+PDS3 anchor at all and do fire for a ``bundles/cassini_vims`` path, naming its
+thumbnail and full-size browse directories. What
+``description_and_icon_by_regex`` returns is the Cassini ISS descriptions, naming
+narrow- and wide-angle images and the CISSCAL software, and ``opus_type`` files
+products under the "Cassini ISS" OPUS category.
+"""
+
 import re
 
 import translator
@@ -425,6 +474,15 @@ archive_dirs = translator.TranslatorByRegex([
 ##########################################################################################
 
 class cassini_vims(pds4file.Pds4File):
+    """The ``Pds4File`` subclass for cassini_vims.
+
+    The class body and the module tail install this module's rule tables on the class
+    attributes ``Pds4File`` reads. `pds4file/rules/__init__.py` sets out the routes a
+    table takes and which of them leaves the inherited rules in front. The class
+    is registered in ``Pds4File.SUBCLASSES`` under the key
+    "cassini_vims".
+    The module docstring describes the bundle set and every table.
+    """
 
     pds4file.Pds4File.VOLSET_TRANSLATOR = translator.TranslatorByRegex([('cassini_vims', re.I, 'cassini_vims')]) + \
                                           pds4file.Pds4File.VOLSET_TRANSLATOR

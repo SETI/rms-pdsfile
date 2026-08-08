@@ -2,6 +2,42 @@
 # pds3file/rules/VGISS_xxxx.py
 ##########################################################################################
 
+"""Rules for the VGISS_xxxx volume sets: raw and calibrated Voyager images.
+
+`VGISS_xxxx.py` serves four volume sets, one per encounter, matched by the pattern
+VGISS_[5678x]xxx: VGISS_5xxx is the Voyager Jupiter image collection, VGISS_6xxx the
+Saturn collection, VGISS_7xxx the Voyager 2 Uranus collection and VGISS_8xxx the
+Voyager 2 Neptune collection, each described in the holdings as raw and calibrated
+(``_volinfo/VGISS_5xxx.txt`` and its three siblings). One observation appears
+several times in a volume: as a raw VICAR image, as a cleaned raw image, as a
+calibrated image and as a geometrically corrected image, alongside the reseau and
+distortion tables used to produce them. Products are filed under the "Voyager ISS"
+OPUS category.
+
+The rule tables:
+
+* ``description_and_icon_by_regex`` -- distinguishes those product forms from one
+  another and from the dark-current, reseau and distortion files, and names the
+  directories that group images by spacecraft clock.
+* ``default_viewables`` -- points a product at its preview images.
+* ``associations_to_volumes``, ``associations_to_previews``,
+  ``associations_to_metadata`` and ``associations_to_documents`` -- cross the
+  volumes, previews, metadata and documents trees for one observation.
+* ``sort_key`` and ``split_rules`` -- order and group the several forms of one
+  observation so that they sit together in a listing.
+* ``view_options`` -- the grid, multipage and continuous view flags for the image
+  directories.
+* ``neighbors`` -- treats the corresponding directory in the other volumes of the
+  volume set as adjacent.
+* ``opus_type`` -- one OPUS type per form of the image and per preview, including
+  the reseau and geometric tiepoint tables.
+* ``opus_format``, ``opus_products``, ``opus_id`` and
+  ``opus_id_to_primary_logical_path`` -- the OPUS format, the product list, the OPUS
+  ID and its inverse.
+
+`VG_0xxx.py` serves the original compressed release of the same observations.
+"""
+
 import re
 
 import translator
@@ -582,6 +618,18 @@ opus_id_to_primary_logical_path = translator.TranslatorByRegex([
 ##########################################################################################
 
 class VGISS_xxxx(pds3file.Pds3File):
+    """The ``Pds3File`` subclass for VGISS_xxxx.
+
+    The class body and the module tail install this module's rule tables on the class
+    attributes ``Pds3File`` reads. `pds3file/rules/__init__.py` sets out the routes a
+    table takes and which of them leaves the inherited rules in front. The class
+    is registered in ``Pds3File.SUBCLASSES`` under the key
+    "VGISS_xxxx".
+    The module docstring describes the volume set and every table.
+
+    It also sets ``FILENAME_KEYLEN`` to 8, so that the several forms of one
+    observation group together.
+    """
 
     pds3file.Pds3File.VOLSET_TRANSLATOR = translator.TranslatorByRegex([('VGISS_[5678x]xxx', re.I, 'VGISS_xxxx')]) + \
                                           pds3file.Pds3File.VOLSET_TRANSLATOR
