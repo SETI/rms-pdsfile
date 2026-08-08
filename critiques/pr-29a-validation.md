@@ -17,15 +17,15 @@ Nine files, and only these:
 
 | file | lines at base | at head | funcs without a docstring / total | parameters |
 |---|---:|---:|---:|---:|
-| `src/pdsfile/_sorting.py` | 526 | 864 | 14 / 25 | 49 |
-| `src/pdsfile/_preload.py` | 583 | 777 | 6 / 10 | 12 |
-| `src/pdsfile/_local_fs.py` | 434 | 565 | 0 / 5 | 7 |
-| `src/pdsfile/_associations.py` | 373 | 517 | 2 / 5 | 9 |
-| `src/pdsfile/_shelves.py` | 353 | 560 | 0 / 10 | 12 |
-| `src/pdsfile/_derived_paths.py` | 350 | 564 | 0 / 14 | 18 |
-| `src/pdsfile/_index_rows.py` | 330 | 456 | 1 / 6 | 6 |
-| `src/pdsfile/_opus.py` | 304 | 402 | 0 / 3 | 3 |
-| `src/pdsfile/_path_utils.py` | 221 | 418 | 5 / 10 | 13 |
+| `src/pdsfile/_sorting.py` | 526 | 901 | 14 / 25 | 49 |
+| `src/pdsfile/_preload.py` | 583 | 825 | 6 / 10 | 12 |
+| `src/pdsfile/_local_fs.py` | 434 | 608 | 0 / 5 | 7 |
+| `src/pdsfile/_associations.py` | 373 | 558 | 2 / 5 | 9 |
+| `src/pdsfile/_shelves.py` | 353 | 631 | 0 / 10 | 12 |
+| `src/pdsfile/_derived_paths.py` | 350 | 594 | 0 / 14 | 18 |
+| `src/pdsfile/_index_rows.py` | 330 | 527 | 1 / 6 | 6 |
+| `src/pdsfile/_opus.py` | 304 | 408 | 0 / 3 | 3 |
+| `src/pdsfile/_path_utils.py` | 221 | 458 | 5 / 10 | 13 |
 
     python critiques/pr-29/measure.py src/pdsfile/_sorting.py src/pdsfile/_preload.py \
         src/pdsfile/_local_fs.py src/pdsfile/_associations.py src/pdsfile/_shelves.py \
@@ -331,9 +331,11 @@ Four consequences, and the fourth is the one that matters most:
 does CI, and this PR does not add one. That absence is deliberate and is stated in the
 rule so it does not read as an oversight.
 
-The nine modules this PR documents all pass both limits with room to spare. The largest
-is `_sorting.py` at 864 total and **397 code**; the second largest is `_preload.py` at
-777 total and 475 code.
+The nine modules this PR documents all pass both limits with room to spare, and the
+margin is the point: the largest is `_sorting.py` at 901 total lines and **397 code**,
+and the second is `_preload.py` at 825 total and 475 code. Under the old single limit
+`_sorting.py` would be 99 lines from a split it does not need; under the two-limit rule
+it is 603 lines clear on the budget that measures complexity.
 
 ## 7. The Sphinx build
 
@@ -476,6 +478,69 @@ PR-29b therefore carries `_properties.py` **together with the second reads of
 `pdsfile.py` and `pdsviewable.py`** that PR-29 recommended and could not fit inside its
 round cap. `_properties.py` is also the only `_*.py` module left without a module
 docstring, so deferred entry 80 stays open until PR-29b lands.
+
+## 10a. Review
+
+Four rounds, each run by a fresh reviewer subagent with no context from this session or
+from any other round. Records: `critiques/pr-29a/round-1.md` through `-4`.
+
+| round | slice | surface | prose defects | code defects |
+|---|---|---|---:|---:|
+| 1 | `_derived_paths`, `_shelves`, `_path_utils`, `_index_rows` | 4 classes, 40 functions | 31 | 6 |
+| 2 | `_sorting`, `_preload`, `_associations`, `_local_fs`, `_opus` | 5 classes, 48 functions | 37 | 6 |
+| 3 | the same four as round 1, re-read | the same 40 | 20 | 4 |
+| 4 | the same five as round 2, re-read | the same 48 | 23 | 5 |
+
+Every finding was re-verified by the executor before it was acted on, and five were
+rejected on the evidence: two whole findings and three halves. The rejections are
+recorded in full, because a rejected finding is as much a result as an accepted one.
+
+### The second reads did not come back empty, and that is the finding
+
+PR-29 measured that one adversarial read per file is not enough, and this PR was shaped
+around that: two reads of each slice rather than one read of each of eight files. The
+experiment reproduces. **Rounds 3 and 4 found 43 more prose defects and 9 more code
+defects in prose a full round had already passed over and corrected.**
+
+The sharper result is the one that only a second read can produce. **Eleven of round 4's
+twenty-three findings correct sentences round 2 had itself rewritten**, and the worst of
+them is worth stating in full because it is the shape of the risk. Round 2 found that
+`preload()` warns "Not a directory, ignored" and does not skip the path, which is true,
+and replaced the prose with a claim that the object is "constructed, cached permanently,
+and merged into the category-level merged directory's child list". Neither consequence
+happens: `_complete()` guards its cache write on the logical path containing a slash,
+which a category-level path does not, and the merged-parent append lives in `child()`,
+which `_preload_dir` returns before reaching. Only the headline was right.
+
+**A wrong correction is worse than the error it replaced**, because it reads as freshly
+verified and carries the authority of having been checked. Round 2's sentence was more
+specific, more confident and more wrong than the sentence it replaced. Nothing but
+another independent read finds that, and no mechanical checker can: the AST hash, the
+docstring checker, the state-contract derivation and the Sphinx build all passed over it
+without a word.
+
+### What the angles returned
+
+The reviewer briefs named three angles explicitly, on PR-29's measurement of which ones
+pay. All three earned their place:
+
+* **Relationship claims** were again the largest category. Round 3's finding that the
+  filesystem layer excludes the documents tree "before it calls" -- true of one of the
+  four filesystem entry points and false of the other three -- and round 4's finding that
+  `_recache()` writes back only where the cache already holds the path are both of that
+  kind, and both were checked by reading the other end rather than by plausibility.
+* **Exceptions from something other than `raise`** produced the `KeyError` from a shelf
+  subscript, the `TypeError` from an interpolated f-string given a `%`, the `KeyError`
+  from a child-name table lookup, and the `IndexError` from a negative unit index.
+* **Arithmetic and boundaries** produced the unit that goes negative below one byte, the
+  archive `lskip` that lands nine characters early, and the fallbacks that return the
+  index's own first and last keys rather than its second and second-to-last.
+
+A fourth pattern emerged that no brief named and that the next docstring PR should:
+**the partial fix**. A claim is often stated three times -- in a method docstring, in its
+class's enumerated block, and in the module docstring -- and correcting one copy leaves
+the other two saying the old thing. Round 4 found a fourth copy of one claim that round 3
+had described as appearing three times.
 
 ## 11. Numbers this PR was handed that did not reproduce
 

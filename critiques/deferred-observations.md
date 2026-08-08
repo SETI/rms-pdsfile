@@ -4687,3 +4687,67 @@ construction sites are `_preload.py:573` and `_preload.py:605`. Three docstrings
 described `cache_lifetime` as the lifetime function every cache built by `preload()` is
 given; all three now say that a memcached cache accepts a class method as a lifetime
 function and a dictionary cache does not, keeping it as a constant. **Owner: unchanged.**
+
+### Added by the PR-29a adversarial review (rounds 3 and 4, the second reads)
+
+216. **`data_abspath_associated_with_index_row` builds its answer under a hard-coded
+     `volumes` category.** The line is `parts = [self.bundleset_abspath('volumes')]`, not
+     `self.bundleset_abspath(cls.BUNDLE_DIR_NAME)`. Measured: `Pds3File.BUNDLE_DIR_NAME` is
+     `volumes` and `Pds4File.BUNDLE_DIR_NAME` is `bundles`, and a PDS4 holdings tree has no
+     `volumes` directory at all. So a PDS4 index row is given a path that can never exist,
+     and `data_pdsfile_for_index_row` returns a PdsFile for it, since it does not test
+     existence. `get_keys()` in the same method **does** branch on PDS3 versus PDS4, so a
+     PDS4 row reads the right columns and then puts them in a tree that is not there.
+     **Owner: a future pdsfile PR.**
+
+217. **Three bundle-set-level directory kinds get a checksum path and an info shelf path
+     but are excluded from the two methods that ask whether those exist.**
+     `checksum_path_and_lskip` covers a `checksums_*`, `superseded*` or `*_support`
+     directory, and `shelf_path_and_lskip` builds an info shelf path for it under its own
+     name. But `checksum_path_if_exact` recognizes only a bundle directory and an archives
+     bundle set, and `info_shelf_expected` is `bool(self.bundlename)`, which is empty for
+     all three. Verified by running on the live directory
+     `bundles/uranus_occs_earthbased/uranus_occ_support`: `checksum_path_and_lskip()`
+     returns a real path and `checksum_path_if_exact()` returns `''`;
+     `shelf_path_and_lskip('info')` returns
+     `_infoshelf-bundles/uranus_occs_earthbased/uranus_occ_support_info.pickle` and
+     `info_shelf_expected` is `False`, so `shelf_exists_if_expected()` reports that no
+     entry is expected for a directory that has its own shelf. **Owner: a future pdsfile
+     PR** -- one of each pair is wrong and which one is a decision.
+
+218. **`find_selected_row_key`'s empty-flag return sits ahead of the ambiguity check.**
+     The `if flag == '': return selection` arm comes before
+     `if len(child_keys) > 1: raise OSError('Index selection is ambiguous')`, so under the
+     empty flag an ambiguous selection is accepted as a literal row key rather than
+     reported. That is the flag `_local_fs.os_path_exists` uses for an index-row path, so
+     an ambiguous path is answered by building a row that does not exist. It may be
+     deliberate, since the empty flag means "do not fail"; nothing says so.
+     **Owner: a future pdsfile PR.**
+
+219. **Splitting a bundle set name that carries a volume type returns parts that do not
+     rejoin into the name, and the branch that would use the regular expression's groups
+     is unreachable.** Two findings in `split_basename`, both measured.
+     `COISS_2xxx_previews.tar.gz` gives `('COISS_2xxx', '_previews.tar.gz', '_previews')`,
+     so concatenating the three parts does not reproduce the input, which the family's
+     other cases do. And the bundle-name branch returns the regular expression's groups
+     only where `SPLIT_RULES.first(basename)` answers with the name it was given; every
+     split rule in the tree answers with a three-element tuple, so that comparison is a
+     tuple against a string and is never true. Verified:
+     `SPLIT_RULES.first('COISS_2001_previews.tar.gz')` is
+     `('COISS_2001_previews.tar', '', '.gz')`. **Owner: a future pdsfile PR.**
+
+220. **`associated_abspaths` filters the data files by `must_exist` and does not filter the
+     label it adds.** `label_basename` guesses a name for a label whether or not the file
+     is there, and the label is appended after the existence filter has run, so a call that
+     asked for existing paths only can return a path that does not exist. **Owner: a future
+     pdsfile PR.**
+
+221. **Two smaller things the second reads turned up, both documented and neither fixed.**
+     `formatted_file_size` chooses its unit from a logarithm without a floor, so a value
+     between zero and one drives the unit index negative and indexes the unit list from its
+     end -- `0.5` returns `500 YB` with no error -- and a positive value below `1e-27`
+     drives the index past the end of the list and raises `IndexError`. And
+     `_preload_dir` sets `permanent` on every directory it visits, which nothing in the
+     package reads; what actually keeps those entries out of the trim is the zero lifetime
+     they were stored with, which is entry 189's subject from the other side.
+     **Owner: a future pdsfile PR.**

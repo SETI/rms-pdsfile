@@ -1196,14 +1196,23 @@ Four things that shaped the result:
     hashes identically at base and head for all nine files. Seventeen comment lines
     were removed, and all seventeen are the description inside a module's banner
     comment, which the rule requires be a module docstring.
-  * **Sixty-one defects found by reading the code against its own prose** — deferred
-    entries 199 to 215 and the amendments to 47, 54, 66 and 191. They come from one
-    adversarial read of each module, `critiques/pr-29a/round-1.md` over the four
-    path-and-shelf modules and `-2` over the other five, each by a fresh reviewer
-    with no context from the other. Twelve are code defects rather than prose
-    ones, including a shelf cache whose trim is not least-recently-used because its
-    counter is an int that each rule subclass rebinds onto itself, and a cache
-    lookup in `child_of_index` that can never hit.
+  * **A hundred and eleven prose defects and twenty-one code defects found by reading
+    the code against its own prose** — deferred entries 199 to 221 and the amendments
+    to 47, 54, 66 and 191. Four rounds: two slices, read twice each, every round a
+    fresh reviewer with no context from any other. Among the code defects are a shelf
+    cache whose trim is not least-recently-used because its counter is an int each rule
+    subclass rebinds onto itself, a cache lookup in `child_of_index` that can never
+    hit, and an index-row path built under a hard-coded `volumes` category that no PDS4
+    holdings tree has.
+  * **The second read of a slice is where the wrong corrections are caught.** Rounds 3
+    and 4 found 43 more prose defects in prose a full round had already passed over and
+    fixed, and **eleven of round 4's findings correct sentences round 2 had itself
+    rewritten**. The worst replaced a vague claim with a specific and false one, which
+    reads as freshly verified and is therefore worse than the error it replaced. No
+    mechanical gate here can catch that — the AST hash, the docstring checker, the
+    state-contract derivation and the Sphinx build all passed over it. **PR-29b should
+    plan for two reads of `_properties.py` and budget for the second finding as much as
+    the first.**
   * **Entry 54's derivation is built and it works.**
     `critiques/pr-29a/derive_state_contract.py` rebuilds each mixin's state-contract
     paragraph from the AST and compares it against the docstring both ways. The
