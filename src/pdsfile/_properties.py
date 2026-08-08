@@ -641,14 +641,25 @@ class _PropertiesMixin:
         parse that fails records the marker string ``'failed'``, which is what makes the
         failure remembered rather than retried, and which this reports as None.
 
-        **A class with more than one label extension can discard a label it parsed**: the
-        successful parse leaves the inner loop only, so the outer loop tries the next
-        label extension and its failure overwrites the value. The PDS3 subclass has one
-        label extension and cannot reach this; the PDS4 subclass has two.
+        **The guessing is wrong for a class with more than one index extension.** The
+        substitution is a no-op when the path does not carry the extension being replaced,
+        so the iteration for the other one hands the index file itself to the parser. The
+        PDS3 subclass has one index extension and one label extension and never reaches
+        it; the PDS4 subclass has two of each, so every PDS4 index raises out of this
+        property rather than returning.
+
+        The same shape makes the success case fragile: a parse that worked leaves the
+        inner loop only, so the outer loop tries the next label extension and its failure
+        can overwrite the value that was found.
 
         Returns:
             the parsed label, as the ``PdsLabel`` object ``pdsparser`` builds, or None
             where this is not an index or no label could be parsed.
+
+        Raises:
+            SyntaxError: raised by ``from_file()`` when it is handed something that is not
+                a label, which is what the extension substitution produces for a class
+                whose index extensions number more than one.
         """
 
         if not self.is_index:
@@ -980,10 +991,15 @@ class _PropertiesMixin:
     def checksum(self):
         """The MD5 checksum recorded for this file.
 
-        Two sources, in that order: the volume-info table, which is where the documents
-        tree's checksums live, and then ``_info``, which is where a shelf-covered file's
-        lives. The first access therefore fills ``_volume_info_filled``, and fills
-        ``_info_filled`` as well wherever the first source carries nothing.
+        Two sources, in that order: the volume-info table, and then ``_info``, which is
+        where a shelf-covered file's checksum lives. The first access therefore fills
+        ``_volume_info_filled``, and fills ``_info_filled`` as well wherever the first
+        source carries nothing.
+
+        The volume-info table keeps a checksum for two kinds of path and blanks it for
+        every other: anything in the documents tree, and any file whose basename is one of
+        EXTRA_README_BASENAMES. Those AAREADME files are exactly the ones no info shelf
+        covers, so for them the table is not a shortcut but the only source there is.
 
         Returns:
             str: the checksum, or an empty string where neither source records one.
@@ -1137,11 +1153,11 @@ class _PropertiesMixin:
         the fallback.
 
         Up to three keys are tried in order: this object's own logical path, and then, for
-        anything outside the documents tree, the bundle set and bundle name with the
-        volume type in front and then without it. The first key the cache holds wins. A
-        file the tables say nothing about gets a fallback whose icon type is ``UNKNOWN``
-        and whose every other field is empty, so this never raises and every reader of it
-        gets a value of the right shape.
+        anything outside the documents tree, the bundle set with its version suffix and
+        the bundle name, once with the volume type in front and once without. The first
+        key the cache holds wins. A file the tables say nothing about gets a fallback
+        whose icon type is ``UNKNOWN`` and whose every other field is empty, so this never
+        raises and every reader of it gets a value of the right shape.
 
         ``description``, ``icon_type``, ``bundle_version_id``,
         ``bundle_publication_date``, ``volume_data_set_ids`` and ``checksum`` are the six
@@ -1150,7 +1166,8 @@ class _PropertiesMixin:
         Returns:
             tuple: the description, the icon type, the version id, the publication date,
             the list of data set ids, and the MD5 checksum. Six elements, of which the
-            last is empty for everything the checksum tables do not cover.
+            last is empty except on a documents-tree path or an AAREADME basename, the
+            only two kinds of row the tables record a checksum for.
         """
 
         cls = type(self)
