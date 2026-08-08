@@ -7,11 +7,23 @@
 `pds3file/rules/__init__.py` defines one translator per rule attribute of
 ``Pds3File``, holding the behavior that applies to any PDS3 volume set whose own
 rule module says nothing more specific. Each dataset module in this package builds
-its own tables and installs them on the subclass. Most are added in front of the
-table here, so a lookup tries the dataset-specific patterns first and falls through
-to these; ``OPUS_ID``, ``OPUS_ID_TO_PRIMARY_LOGICAL_PATH`` and ``VIEWABLES`` are
-assigned outright wherever a module defines them, and for those there is no
-fall-through.
+its own tables and installs them on the subclass. There are four routes, and they do
+not behave alike. Measured over the 25 dataset modules:
+
+* ``X = <module table> + Pds3File.X`` in the class body puts the module's rules in
+  front, so a lookup tries them first and falls through to the ones here. Most tables
+  arrive this way.
+* ``ASSOCIATIONS[key] += <module table>`` puts them **behind**: the addition is
+  evaluated with the inherited table on the left, so the rules here are tried first.
+  The exception is a key whose entry here is a null translator, which the merge
+  discards outright; that is "previews", "calibrated" and "diagrams".
+* An outright assignment replaces the table, so nothing falls through. That is how
+  ``OPUS_ID`` (14 modules), ``VIEWABLES`` (17),
+  ``OPUS_ID_TO_PRIMARY_LOGICAL_PATH`` (12), ``VIEWABLE_TOOLTIPS`` (3),
+  ``DATA_SET_ID`` (2) and ``FILENAME_KEYLEN`` (5) always arrive. ``OPUS_PRODUCTS`` is
+  the one table that arrives both ways: eleven modules add it and two replace it.
+* ``FILESPEC_TO_BUNDLESET`` is extended at module level, below the class, in the
+  eleven modules that touch it, rather than in a class body at all.
 
 The tables:
 
@@ -42,8 +54,8 @@ The tables:
 * ``SIBLINGS`` -- the pattern matching basenames treated as adjacent within one
   directory. The first of its four rules makes all files in ``document/``,
   ``calib/``, ``catalog/``, ``index/`` and ``label/`` siblings of one another; the
-  other three make every file at depth two, three or four under any category a
-  sibling of every other, which is most of what the table does.
+  other three make every file one, two or three components below a category a sibling
+  of every other, which is most of what the table does.
 * ``INFO_FILE_BASENAMES`` -- which basenames count as the information file for the
   directory they sit in: ``voldesc.cat``, ``voldesc.sfd``, and any basename ending
   in ``INFO.txt``, ``INF.txt`` or ``DOC.txt`` behind at least one word character,

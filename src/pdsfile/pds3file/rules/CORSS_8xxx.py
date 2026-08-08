@@ -35,8 +35,11 @@ The rule tables:
   set, which cannot be found by wildcarding the version suffix alone: the earlier
   version put the data under ``EASYDATA/`` rather than ``data/``, used two digits
   after "Rev" where the current version uses three, and nested the per-occultation
-  directories differently. The data file basenames are upper case in both versions;
-  what the table's ``#UPPER#`` directive rewrites is the directory component.
+  directories differently. The data file basenames are upper case in both versions,
+  and the table emits two spellings of each earlier path for that reason: one that
+  uppercases the whole tail, directory and basename together, which is what finds
+  ``DOCINFO.TXT``, and one that uppercases the directory and leaves the basename
+  mixed, which is what finds the lower-case PDFs beside it.
 * ``view_options``, ``neighbors`` and ``split_rules`` -- the view flags, the
   corresponding directories in sibling volumes, and the basename grouping.
 * ``opus_type``, ``opus_products``, ``opus_id`` and
@@ -491,12 +494,12 @@ opus_id_to_primary_logical_path = translator.TranslatorByRegex([
 class CORSS_8xxx(pds3file.Pds3File):
     """The ``Pds3File`` subclass for CORSS_8xxx.
 
-    The class body wires this module's rule tables onto the class attributes
-    ``Pds3File`` reads. Where a table is added to the inherited one, a lookup tries
-    this module's patterns first and falls through to the defaults; where it is
-    assigned outright there is no fall-through. The module tail registers the class
-    in ``Pds3File.SUBCLASSES`` under the key
-    "CORSS_8xxx". The module docstring describes the volume set and every table.
+    The class body and the module tail install this module's rule tables on the class
+    attributes ``Pds3File`` reads. `pds3file/rules/__init__.py` sets out the routes a
+    table takes and which of them leaves the inherited rules in front. The class
+    is registered in ``Pds3File.SUBCLASSES`` under the key
+    "CORSS_8xxx".
+    The module docstring describes the volume set and every table.
     """
 
     pds3file.Pds3File.VOLSET_TRANSLATOR = translator.TranslatorByRegex([('CORSS_8xxx', re.I, 'CORSS_8xxx')]) + \

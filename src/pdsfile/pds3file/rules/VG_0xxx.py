@@ -6,9 +6,10 @@
 
 VG_0xxx is described in the holdings as the Voyager image collection, original
 release of compressed raw images (``_volinfo/VG_0xxx.txt``). A data file is an IMQ,
-the compressed Voyager EDR form, and a compressed browse image accompanies it. Four
-of this module's five tables spell the browse extension IBG; ``opus_type`` alone
-spells it IBQ, and the two cannot both be right. The products are filed under the
+the compressed Voyager EDR form, and a compressed browse image accompanies it. Five
+of this module's nine tables spell the browse extension IBG -- the description,
+viewable, two association and format tables -- while ``opus_type`` alone spells it
+IBQ, and the two cannot both be right. The products are filed under the
 "Voyager ISS" OPUS category. The same
 observations appear decompressed, and with calibrated versions, under the VGISS_5xxx
 through VGISS_8xxx volume sets that `VGISS_xxxx.py` serves.
@@ -31,9 +32,10 @@ The rule tables:
 * ``opus_format`` -- gives the IMQ and IBG extensions their interchange and file
   formats.
 * ``opus_id`` -- builds the OPUS ID from the volume and the image number together.
-  The image number comes from the file name; the spacecraft and the target come from
-  the volume, which is why the table has seventeen entries keyed on volume-number
-  ranges rather than one.
+  The image number comes from the file name and so does the target, by way of the
+  volume; the spacecraft comes from the volume for eight of the seventeen entries and
+  from the leading digit of the image number for the other nine, because several
+  volumes hold images from both spacecraft.
 
 This module defines no OPUS product list and no reverse OPUS-ID lookup, so both come
 from the defaults in `pds3file/rules/__init__.py`.
@@ -190,12 +192,12 @@ opus_id = translator.TranslatorByRegex([
 class VG_0xxx(pds3file.Pds3File):
     """The ``Pds3File`` subclass for VG_0xxx.
 
-    The class body wires this module's rule tables onto the class attributes
-    ``Pds3File`` reads. Where a table is added to the inherited one, a lookup tries
-    this module's patterns first and falls through to the defaults; where it is
-    assigned outright there is no fall-through. The module tail registers the class
-    in ``Pds3File.SUBCLASSES`` under the key
-    "VG_0xxx". The module docstring describes the volume set and every table.
+    The class body and the module tail install this module's rule tables on the class
+    attributes ``Pds3File`` reads. `pds3file/rules/__init__.py` sets out the routes a
+    table takes and which of them leaves the inherited rules in front. The class
+    is registered in ``Pds3File.SUBCLASSES`` under the key
+    "VG_0xxx".
+    The module docstring describes the volume set and every table.
 
     It also sets ``FILENAME_KEYLEN`` to 8.
     """

@@ -263,12 +263,12 @@ opus_id_to_primary_logical_path = translator.TranslatorByRegex([
 class COUVIS_0xxx(pds3file.Pds3File):
     """The ``Pds3File`` subclass for COUVIS_0xxx.
 
-    The class body wires this module's rule tables onto the class attributes
-    ``Pds3File`` reads. Where a table is added to the inherited one, a lookup tries
-    this module's patterns first and falls through to the defaults; where it is
-    assigned outright there is no fall-through. The module tail registers the class
-    in ``Pds3File.SUBCLASSES`` under the key
-    "COUVIS_0xxx". The module docstring describes the volume set and every table.
+    The class body and the module tail install this module's rule tables on the class
+    attributes ``Pds3File`` reads. `pds3file/rules/__init__.py` sets out the routes a
+    table takes and which of them leaves the inherited rules in front. The class
+    is registered in ``Pds3File.SUBCLASSES`` under the key
+    "COUVIS_0xxx".
+    The module docstring describes the volume set and every table.
 
     It also carries ``VERSIONS_PATH_AND_KEY`` and defines ``DATA_SET_ID`` as a
     method rather than as a translator.
@@ -313,9 +313,9 @@ class COUVIS_0xxx(pds3file.Pds3File):
         set it belongs to, so it is looked up rather than derived from the path.
         ``VERSIONS_PATH_AND_KEY`` gives the metadata versions table that covers this
         file and the row key within it; the row is read from that table and the
-        DATA_SET_ID column of its first row dictionary returned. The two subscripts
-        in that expression are guarded by the existence check above them rather than
-        by anything this method does.
+        DATA_SET_ID column of its first row dictionary returned. The existence check
+        above guards neither subscript: it says the row is present, not that the
+        table carries a DATA_SET_ID column.
 
         Returns:
             str: the data set ID, and the empty string for an object that does not

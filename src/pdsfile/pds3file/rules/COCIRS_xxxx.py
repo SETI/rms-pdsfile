@@ -58,7 +58,8 @@ The rule tables:
   volume carries different data set IDs for its TSDR and CUBE trees, and because the
   early COCIRS_0xxx volumes are Jupiter data while the later ones are Saturn data.
   `COCIRS_xxxx.py` and `EBROCC_xxxx.py` are the only two rule modules that define
-  this table.
+  this table as a translator; `COUVIS_0xxx.py` overrides the same attribute with a
+  method.
 """
 
 import re
@@ -784,12 +785,12 @@ data_set_id = translator.TranslatorByRegex([
 class COCIRS_xxxx(pds3file.Pds3File):
     """The ``Pds3File`` subclass for COCIRS_xxxx.
 
-    The class body wires this module's rule tables onto the class attributes
-    ``Pds3File`` reads. Where a table is added to the inherited one, a lookup tries
-    this module's patterns first and falls through to the defaults; where it is
-    assigned outright there is no fall-through. The module tail registers the class
-    in ``Pds3File.SUBCLASSES`` under the key
-    "COCIRS_xxxx". The module docstring describes the volume set and every table.
+    The class body and the module tail install this module's rule tables on the class
+    attributes ``Pds3File`` reads. `pds3file/rules/__init__.py` sets out the routes a
+    table takes and which of them leaves the inherited rules in front. The class
+    is registered in ``Pds3File.SUBCLASSES`` under the key
+    "COCIRS_xxxx".
+    The module docstring describes the volume set and every table.
     """
 
     pds3file.Pds3File.VOLSET_TRANSLATOR = translator.TranslatorByRegex([('COCIRS_[0156x]xxx', re.I, 'COCIRS_xxxx')]) + \

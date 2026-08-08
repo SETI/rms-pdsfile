@@ -4,10 +4,10 @@
 
 """cassini_iss_spokes_hedman_hamilton_2024: rules for the B-ring spokes bundle set.
 
-The bundle set on disk is named cassini_iss_spokes_hedman-hamilton-2024, with
-hyphens; this module and its class are named
-cassini_iss_spokes_hedman_hamilton_2024, with underscores, because a hyphen cannot
-appear in a Python identifier. The bundle set is registered in
+The bundle set on disk is named cassini_iss_spokes_hedman-hamilton-2024; this
+module and its class are named cassini_iss_spokes_hedman_hamilton_2024, with
+underscores in place of the two hyphens, because a hyphen cannot appear in a Python
+identifier. The bundle set is registered in
 ``Pds4File.SUBCLASSES`` under the hyphenated name.
 
 It holds reprojected images of Saturn's B ring, in a ``data_derived/`` collection of
@@ -35,9 +35,11 @@ The rule tables:
   with the ``*_rprj`` label, whose basename it does not otherwise match.
 
 ``archive_paths`` and ``archive_dirs`` are defined here but the class body assigns
-neither ``ARCHIVE_PATHS`` nor ``ARCHIVE_DIRS``, which is what the other four pds4
-rule modules with archive tables do, so this bundle set uses the empty archive
-tables from `pds4file/rules/__init__.py`. It is
+neither ``ARCHIVE_PATHS`` nor ``ARCHIVE_DIRS``. All six pds4 dataset modules define
+archive tables and four of them assign the attributes; this module and
+`cassini_iss_fring_mosaics_rsfrench2025.py` are the two that do not, so both bundle
+sets use the empty archive tables from `pds4file/rules/__init__.py` and the tables
+here are unreached. It is
 also the only pds4 rule module with a subclass that defines no associations, no
 viewables and no OPUS ID tables, and the only one that adds nothing to
 ``Pds4File.FILESPEC_TO_BUNDLESET``.
@@ -154,11 +156,10 @@ product_lbl_basename_wo_ext = translator.TranslatorByRegex([
 class cassini_iss_spokes_hedman_hamilton_2024(pds4file.Pds4File):
     """The ``Pds4File`` subclass for cassini_iss_spokes_hedman_hamilton_2024.
 
-    The class body wires this module's rule tables onto the class attributes
-    ``Pds4File`` reads. Where a table is added to the inherited one, a lookup tries
-    this module's patterns first and falls through to the defaults; where it is
-    assigned outright there is no fall-through. The module tail registers the class
-    in ``Pds4File.SUBCLASSES`` under the key
+    The class body and the module tail install this module's rule tables on the class
+    attributes ``Pds4File`` reads. `pds4file/rules/__init__.py` sets out the routes a
+    table takes and which of them leaves the inherited rules in front. The class
+    is registered in ``Pds4File.SUBCLASSES`` under the key
     "cassini_iss_spokes_hedman-hamilton-2024".
     The module docstring describes the bundle set and every table.
     """

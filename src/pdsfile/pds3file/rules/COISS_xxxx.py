@@ -9,19 +9,23 @@ COISS_0xxx is the Cassini ISS calibration data collection, which also carries th
 CISSCAL calibration software and the ISS calibration report in COISS_0011;
 COISS_1xxx is the Cassini ISS Jupiter image collection; COISS_2xxx is the Cassini
 Saturn image collection; and COISS_3xxx holds Cassini cartographic maps (holdings
-``_volinfo/COISS_0xxx.txt`` and its three siblings). In the three image volume sets
-a data file is a VICAR image whose basename begins with N for the narrow-angle
-camera or W for the wide-angle camera, followed by the ten-digit spacecraft clock.
-COISS_3xxx is not named that way, which is why ``COISS_xxxx.FILENAME_KEYLEN``
-returns 0 for it.
+``_volinfo/COISS_0xxx.txt`` and its three siblings). In COISS_1xxx and COISS_2xxx a
+data file is a VICAR image whose basename begins with N for the narrow-angle camera
+or W for the wide-angle camera, followed by the ten-digit spacecraft clock, and every
+pattern in this module that reads a basename is keyed on COISS_[12]xxx for that
+reason. The calibration volumes name their files differently -- six digits under a
+per-camera, per-test directory, except in COISS_0011 -- and so do the cartographic
+maps of COISS_3xxx.
 
 The rule tables:
 
 * ``description_and_icon_by_regex`` -- distinguishes narrow-angle from wide-angle
   images, names the calibrated products, the thumbnail extras and the full and TIFF
   extras, and labels the CISSCAL software and the calibration report inside
-  COISS_0011. The browse extras get no entry of their own and fall to the generic
-  "Preview image collection".
+  COISS_0011. The browse extras get no entry here and fall through to the default
+  table's "Browse image collection". Two entries of this table are unreachable: both
+  require an ``extras`` directory below a ``data`` directory, and in the archive
+  ``extras`` is a sibling of ``data``.
 * ``default_viewables`` -- points an image at its preview images.
 * ``associations_to_volumes``, ``associations_to_calibrated``,
   ``associations_to_previews``, ``associations_to_metadata`` and
@@ -778,15 +782,15 @@ opus_id_to_primary_logical_path = translator.TranslatorByRegex([
 class COISS_xxxx(pds3file.Pds3File):
     """The ``Pds3File`` subclass for COISS_xxxx.
 
-    The class body wires this module's rule tables onto the class attributes
-    ``Pds3File`` reads. Where a table is added to the inherited one, a lookup tries
-    this module's patterns first and falls through to the defaults; where it is
-    assigned outright there is no fall-through. The module tail registers the class
-    in ``Pds3File.SUBCLASSES`` under the key
-    "COISS_xxxx". The module docstring describes the volume set and every table.
+    The class body and the module tail install this module's rule tables on the class
+    attributes ``Pds3File`` reads. `pds3file/rules/__init__.py` sets out the routes a
+    table takes and which of them leaves the inherited rules in front. The class
+    is registered in ``Pds3File.SUBCLASSES`` under the key
+    "COISS_xxxx".
+    The module docstring describes the volume set and every table.
 
-    It also defines ``FILENAME_KEYLEN``, which returns 0 for COISS_3xxx and 11
-    elsewhere, so that the several files of one observation group together.
+    It also defines ``FILENAME_KEYLEN`` as a method, which returns 0 when the bundle
+    set name opens "COISS_3xxx" and 11 otherwise.
     """
 
     pds3file.Pds3File.VOLSET_TRANSLATOR = translator.TranslatorByRegex([('COISS_[0123x]xxx', re.I, 'COISS_xxxx')]) + \

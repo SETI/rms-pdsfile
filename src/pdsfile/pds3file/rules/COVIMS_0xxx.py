@@ -17,7 +17,10 @@ The rule tables:
 * ``description_and_icon_by_regex`` -- names the date-grouped data directories, the
   ISIS2 cubes, the browse image collections and the small and full-size browse
   images, points at the guide to interpreting a VIMS preview, and names the two
-  program binaries under the volumes' software directories.
+  program binaries under the volumes' software directories. One of its browse entries
+  is unreachable, for the same reason as `COISS_xxxx.py`'s: it requires an ``extras``
+  directory below a ``data`` directory, and in the archive ``extras`` is a sibling of
+  ``data``.
 * ``default_viewables`` -- points a cube at its preview images.
 * ``associations_to_volumes``, ``associations_to_previews``,
   ``associations_to_metadata`` and ``associations_to_documents`` -- cross the
@@ -37,8 +40,9 @@ The rule tables:
   clock-and-version part and its optional sub-observation number. It is the only
   compiled regular expression any rule module holds at the top level, and it exists
   because this volume set's grouping rule is computed by
-  ``COVIMS_0xxx.FILENAME_KEYLEN``, which is a method here and a plain integer on
-  every other class that sets it.
+  ``COVIMS_0xxx.FILENAME_KEYLEN``, which is a method here as it is in
+  `COISS_xxxx.py` and `RPX_xxxx.py`, and a plain integer in the five other classes
+  that set it.
 
 The class body also carries ``COVIMS_0xxx.LOWER_VERSION_PRIORITIZED``, the
 enumerated cubes whose latest version is not the one with the highest version number
@@ -322,16 +326,15 @@ BASENAME_REGEX = re.compile(r'(v?\d{10}_\d+)(_0[0-6][0-9]|).*')
 class COVIMS_0xxx(pds3file.Pds3File):
     """The ``Pds3File`` subclass for COVIMS_0xxx.
 
-    The class body wires this module's rule tables onto the class attributes
-    ``Pds3File`` reads. Where a table is added to the inherited one, a lookup tries
-    this module's patterns first and falls through to the defaults; where it is
-    assigned outright there is no fall-through. The module tail registers the class
-    in ``Pds3File.SUBCLASSES`` under the key
-    "COVIMS_0xxx". The module docstring describes the volume set and every table.
+    The class body and the module tail install this module's rule tables on the class
+    attributes ``Pds3File`` reads. `pds3file/rules/__init__.py` sets out the routes a
+    table takes and which of them leaves the inherited rules in front. The class
+    is registered in ``Pds3File.SUBCLASSES`` under the key
+    "COVIMS_0xxx".
+    The module docstring describes the volume set and every table.
 
     It also carries ``LOWER_VERSION_PRIORITIZED`` and defines
     ``OPUS_ID_TO_PRIMARY_LOGICAL_PATH`` and ``FILENAME_KEYLEN`` as functions.
-    ``FILENAME_KEYLEN`` is an integer on every other class that sets it.
     """
 
     pds3file.Pds3File.VOLSET_TRANSLATOR = translator.TranslatorByRegex([('COVIMS_0xxx', re.I, 'COVIMS_0xxx')]) + \
@@ -393,9 +396,11 @@ class COVIMS_0xxx(pds3file.Pds3File):
         name. Failing that, every pattern the module's ``opus_id_to_primary_logical_path``
         table produces for the ID is globbed case-sensitively over the holdings tree.
         One match is returned as it stands; where there are several, the one whose
-        version number sorts highest is returned. That comparison is alphabetic,
-        which orders correctly here because no cube carries a two-digit version
-        number.
+        basename sorts highest from its eleventh character on is returned. That is
+        the underscore, the version number, any sub-observation number and the
+        extension, compared as text. The comparison is alphabetic, and the archive
+        does hold a two-digit version, ``v1630912046_17.qub``, which such a
+        comparison would sort below a single-digit sibling.
 
         Returns:
             PdsFile: the primary data file.

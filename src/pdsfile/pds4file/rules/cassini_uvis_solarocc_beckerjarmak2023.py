@@ -27,7 +27,7 @@ The rule tables:
   no metadata association is produced.
 * ``view_options``, ``neighbors`` and ``sort_key`` -- all three are empty, so the
   view flags, the adjacent directories and the basename sort order are the defaults.
-* ``opus_type`` -- files all four of its products under the "Cassini UVIS Solar
+* ``opus_type`` -- four rules, all of them under the "Cassini UVIS Solar
   Occultations" OPUS category: the time series, its supplement, the detailed browse
   and the documentation.
 * ``opus_products`` -- the tables, browse products, previews, readme and the three
@@ -269,11 +269,10 @@ archive_dirs = translator.TranslatorByRegex([
 class cassini_uvis_solarocc_beckerjarmak2023(pds4file.Pds4File):
     """The ``Pds4File`` subclass for cassini_uvis_solarocc_beckerjarmak2023.
 
-    The class body wires this module's rule tables onto the class attributes
-    ``Pds4File`` reads. Where a table is added to the inherited one, a lookup tries
-    this module's patterns first and falls through to the defaults; where it is
-    assigned outright there is no fall-through. The module tail registers the class
-    in ``Pds4File.SUBCLASSES`` under the key
+    The class body and the module tail install this module's rule tables on the class
+    attributes ``Pds4File`` reads. `pds4file/rules/__init__.py` sets out the routes a
+    table takes and which of them leaves the inherited rules in front. The class
+    is registered in ``Pds4File.SUBCLASSES`` under the key
     "cassini_uvis_solarocc_beckerjarmak2023".
     The module docstring describes the bundle set and every table.
     """

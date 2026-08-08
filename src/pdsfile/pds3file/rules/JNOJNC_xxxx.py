@@ -5,8 +5,8 @@
 """Rules for the JunoCam volume set JNOJNC_0xxx, whose subclass is JNOJNC_xxxx.
 
 The volume set on disk is JNOJNC_0xxx, described in the holdings as the JunoCam
-Jupiter image collection; its volumes are numbered sequentially, each covering a
-range of orbits, and carry data set IDs JUNO-J-JUNOCAM-2-EDR-L0-V1.0,
+Jupiter image collection; its volumes are numbered sequentially, each covering one
+orbit or a range of them, and carry data set IDs JUNO-J-JUNOCAM-2-EDR-L0-V1.0,
 JUNO-J-JUNOCAM-3-RDR-L1A-V1.0 and, from JNOJNC_0007 on,
 JUNO-J-JUNOCAM-4-RDR-L1B-V1.0 (``_volinfo/JNOJNC_0xxx.txt``). The subclass and this
 module are named JNOJNC_xxxx while the volume set is JNOJNC_0xxx, and the volume set
@@ -137,12 +137,12 @@ neighbors = translator.TranslatorByRegex([
 class JNOJNC_xxxx(pds3file.Pds3File):
     """The ``Pds3File`` subclass for JNOJNC_xxxx.
 
-    The class body wires this module's rule tables onto the class attributes
-    ``Pds3File`` reads. Where a table is added to the inherited one, a lookup tries
-    this module's patterns first and falls through to the defaults; where it is
-    assigned outright there is no fall-through. The module tail registers the class
-    in ``Pds3File.SUBCLASSES`` under the key
-    "JNOJNC_xxxx". The module docstring describes the volume set and every table.
+    The class body and the module tail install this module's rule tables on the class
+    attributes ``Pds3File`` reads. `pds3file/rules/__init__.py` sets out the routes a
+    table takes and which of them leaves the inherited rules in front. The class
+    is registered in ``Pds3File.SUBCLASSES`` under the key
+    "JNOJNC_xxxx".
+    The module docstring describes the volume set and every table.
     """
 
     pds3file.Pds3File.VOLSET_TRANSLATOR = translator.TranslatorByRegex([('JNOJNC_0xxx', re.I, 'JNOJNC_xxxx')]) + \

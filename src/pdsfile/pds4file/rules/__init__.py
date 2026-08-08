@@ -10,37 +10,59 @@
 `pds4file/rules/__init__.py` defines one translator per rule attribute of
 ``Pds4File``, holding the behavior that applies to any PDS4 bundle set whose own
 rule module says nothing more specific. Each dataset module in this package builds
-its own tables and installs them on the subclass. Most are added in front of the
-table here, so a lookup tries the dataset-specific patterns first and falls through
-to these; ``OPUS_ID``, ``OPUS_ID_TO_PRIMARY_LOGICAL_PATH``, ``VIEWABLES`` and
-``PRODUCT_LBL_BASENAME_WO_EXT`` are assigned outright wherever a module defines
-them, and for those there is no fall-through.
+its own tables and installs them on the subclass. There are three routes, and they do
+not behave alike. Measured over the six dataset modules:
 
-Most of these tables are the PDS3 defaults, copied. Comparing every top-level
-assignment against `pds3file/rules/__init__.py`: 20 are identical, three differ
-(``ASSOCIATIONS``, ``DESCRIPTION_AND_ICON`` and ``OPUS_TYPE``) and three have no
-PDS3 counterpart (``PRODUCT_LBL_BASENAME_WO_EXT``, ``ARCHIVE_PATHS`` and
+* ``X = <module table> + Pds4File.X`` in the class body puts the module's rules in
+  front, so a lookup tries them first and falls through to the ones here.
+  ``DESCRIPTION_AND_ICON``, ``VIEW_OPTIONS``, ``NEIGHBORS``, ``SORT_KEY``,
+  ``OPUS_TYPE``, ``OPUS_FORMAT``, ``OPUS_PRODUCTS``, ``ARCHIVE_PATHS`` and
+  ``ARCHIVE_DIRS`` arrive this way.
+* ``ASSOCIATIONS[key] += <module table>`` puts them **behind**: the addition is
+  evaluated with the inherited table on the left, so the rules here are tried first.
+  The exception is a key whose entry here is a null translator, which the merge
+  discards outright; that is "previews", "calibrated" and "diagrams".
+* An outright assignment replaces the table, so nothing falls through. That is how
+  ``OPUS_ID``, ``OPUS_ID_TO_PRIMARY_LOGICAL_PATH`` and ``VIEWABLES`` arrive in the
+  five modules that set them, and ``PRODUCT_LBL_BASENAME_WO_EXT`` in the two.
+
+Most of these tables are the PDS3 defaults, copied. Of the 27 top-level assignments
+here, 20 are byte-identical to `pds3file/rules/__init__.py`'s, four differ
+(``__all__``, ``ASSOCIATIONS``, ``DESCRIPTION_AND_ICON`` and ``OPUS_TYPE``) and three
+have no PDS3 counterpart (``PRODUCT_LBL_BASENAME_WO_EXT``, ``ARCHIVE_PATHS`` and
 ``ARCHIVE_DIRS``). The module's header comment says "all", which is one claim
 stronger than the code supports.
 
-Two of the copied tables cannot match a PDS4 path at all: ``FILESPEC_TO_BUNDLESET``
-requires an upper-case volume identifier, and ``LID_AFTER_DSID`` keys on
-``volumes/``. The others still answer for PDS4 paths, through their least specific
-rules rather than through anything written for a bundle: ``DESCRIPTION_AND_ICON``
-falls to its closing extension-only block, so a ``.tab`` file is an "ASCII table"
-and a bundle directory is a "Directory"; ``VERSIONS`` answers at the category level
-through ``([a-z-]+)``; and ``INFO_FILE_BASENAMES`` matches the ``readme.txt`` that
-sits in every bundle.
+Three of the copied tables cannot match a PDS4 path at all:
+``FILESPEC_TO_BUNDLESET`` requires an upper-case volume identifier, and
+``LID_AFTER_DSID`` and ``OPUS_PRODUCTS`` both key on ``volumes/``. Five more are
+copied and empty, so they answer for nothing: ``CROSS_PDS3_PDS4_PRODUCTS``,
+``OPUS_ID``, ``OPUS_ID_TO_PRIMARY_LOGICAL_PATH`` and ``OPUS_ID_TO_SUBCLASS`` hold no
+entries, and ``DATA_SET_ID`` is a null translator.
+
+Two of the copies do answer for PDS4 paths, through their least specific rules rather
+than through anything written for a bundle: ``VERSIONS`` answers at the category
+level through ``([a-z-]+)``, and ``INFO_FILE_BASENAMES`` matches the ``readme.txt``
+that sits in every bundle. ``DESCRIPTION_AND_ICON`` is not one of the copies -- it is
+one of the four tables that differ -- and it answers through its closing catch-alls:
+a ``.tab`` file is an "ASCII table" from the extension block, and a path whose last
+component carries no dot is a "Directory" from the block after it. A bundle or bundle
+set never reaches the table at all, because ``PdsFile.description`` reads the
+volume-info tables for those two cases instead.
 
 The tables:
 
 * ``DESCRIPTION_AND_ICON`` -- the descriptive text and icon type for a logical path,
-  covering the category directories, the checksum, archive, preview, diagram and
-  metadata trees, the standard PDS3 volume subdirectories, SPICE kernel extensions,
-  and a closing block keyed on file extension alone.
-* ``GENERIC_VOLSET_DESC`` and ``GENERIC_VOLUME_DESC`` -- the descriptions used for a
-  bundle set and a bundle when nothing more specific matches. Both are read only by
-  ``DESCRIPTION_AND_ICON`` itself.
+  covering the checksum, archive, preview, diagram and metadata trees, the standard
+  PDS3 volume subdirectories, SPICE kernel extensions, a block keyed on file
+  extension alone and three closing catch-alls. Its category-directory entries are
+  the PDS3 ones, so there is none for ``bundles``: asking a ``Pds4File`` built from
+  the logical path "bundles" for its description raises rather than answering, as it
+  does for "archives-bundles" and "checksums-bundles".
+* ``GENERIC_VOLSET_DESC`` and ``GENERIC_VOLUME_DESC`` -- the strings "Volume
+  collection" and "Data volume". Both are read only by ``DESCRIPTION_AND_ICON``
+  itself, and only by its ``volumes/`` entries, which no PDS4 path reaches, so
+  neither is ever the description of a PDS4 bundle set or bundle.
 * ``ASSOCIATIONS`` -- a dictionary keyed by category giving the files in that
   category that correspond to a given path. The PDS4 key is "bundles" where the PDS3
   key is "volumes"; the other keys, "previews", "calibrated", "diagrams", "metadata"
@@ -63,7 +85,8 @@ The tables:
 * ``SPLIT_RULES`` -- how a basename splits into an anchor, an optional middle part
   and an extension.
 * ``OPUS_TYPE`` -- the OPUS category, rank, slug, title and default-selected flag
-  for a product, covering previews, diagrams and the metadata indices.
+  for a product. Its 17 rules are four for previews, four for diagrams, eight for the
+  metadata indices, and one for a thumbnail under a ``test/`` directory.
 * ``OPUS_FORMAT`` -- the interchange format and file format of a product, keyed on
   extension.
 * ``OPUS_PRODUCTS`` -- glob patterns for every file OPUS offers alongside a product.

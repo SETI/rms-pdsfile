@@ -47,7 +47,8 @@ entry and subscripted there by a captured group:
 * ``SRSS_DICT`` and ``URSS_DICT`` -- the radio-occultation resolution codes for
   Saturn and for Uranus mapped to sampling intervals.
 * ``FRAME_DICT`` -- 1 and 2 intended for B1950 and J2000. Its string literal is
-  missing the closing brace, and no table reads it.
+  unterminated, missing both the closing quote on its second value and the closing
+  brace, and no table reads it.
 * ``COORD_DICT`` -- the coordinate system codes mapped to "celestial", "ring" and
   "inclined ring".
 * ``CU_DICT`` -- C and U mapped to "corrected" and "un-corrected".
@@ -61,10 +62,10 @@ entry and subscripted there by a captured group:
 
 The rule tables:
 
-* ``description_and_icon_by_regex`` -- names the directories of each volume and
-  every product form, using the dictionaries above to build a description out of a
-  file name. It names the source-image directories of VG_2810 and their raw,
-  cleaned, geometrically corrected and TIFF forms as well.
+* ``description_and_icon_by_regex`` -- names the directories of each volume and the
+  product forms, using the dictionaries above to build a description out of a file
+  name. It names the source-image directories of VG_2810 and their raw, cleaned,
+  geometrically corrected and TIFF forms as well.
 * ``default_viewables`` -- the previews for a product.
 * ``associations_to_volumes``, ``associations_to_metadata`` and
   ``associations_to_documents`` -- cross the volumes, metadata and documents trees
@@ -1070,14 +1071,14 @@ opus_id_to_primary_logical_path = translator.TranslatorByRegex([
 class VG_28xx(pds3file.Pds3File):
     """The ``Pds3File`` subclass for VG_28xx.
 
-    The class body wires this module's rule tables onto the class attributes
-    ``Pds3File`` reads. Where a table is added to the inherited one, a lookup tries
-    this module's patterns first and falls through to the defaults; where it is
-    assigned outright there is no fall-through. The module tail registers the class
-    in ``Pds3File.SUBCLASSES`` under the key
-    "VG_28xx". The module docstring describes the volume set and every table.
+    The class body and the module tail install this module's rule tables on the class
+    attributes ``Pds3File`` reads. `pds3file/rules/__init__.py` sets out the routes a
+    table takes and which of them leaves the inherited rules in front. The class
+    is registered in ``Pds3File.SUBCLASSES`` under the key
+    "VG_28xx".
+    The module docstring describes the volume set and every table.
 
-    The class body installs no ``SORT_KEY`` and no ``SPLIT_RULES``, so the module's
+    The class body installs no ``SORT_KEY`` and no ``SPLIT_RULES``, so this module's
     ``sort_key`` and ``split_rules`` tables are not reached.
     """
 

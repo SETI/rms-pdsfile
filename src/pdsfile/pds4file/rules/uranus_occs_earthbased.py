@@ -45,14 +45,17 @@ The rule tables written against PDS4 ``bundles/uranus_occs_earthbased`` paths:
   bundle prefix with up to three OPUS ID prefixes: one for egress, one for ingress
   where the ingress falls on a different day, and one for the atmosphere series. An
   OPUS ID prefix encodes the telescope, the detector, the date and the event, as in
-  ctio4m0-insb-occ-1980-229-u12. The detector codes are listed in the comment above
-  the mapping.
+  ctio4m0-insb-occ-1980-229-u12. The comment above the mapping lists five detector
+  codes; the mapping uses seven, adding "fos" for the two HST bundles and "nicmos"
+  for one at Calar Alto.
 * ``opus_id_list`` and ``opus_id`` -- the list is built by looping over
-  ``prefix_mapping``, emitting one pattern each for ``data/atmosphere/``,
-  ``data/global/`` and ``data/rings/`` where a bundle's ingress and egress share a
-  prefix, and separate ingress and egress patterns for the last two where they do
-  not. Nothing is emitted for ``data/ring_models/``. ``opus_id`` is the translator
-  built from the resulting 163 entries.
+  ``prefix_mapping``. Where a bundle's ingress and egress share a prefix, which is 47
+  of the 52, it emits one pattern each for ``data/atmosphere/``, ``data/global/`` and
+  ``data/rings/``. Where they do not, it emits separate ingress and egress patterns
+  for the last two, and an atmosphere pattern only if the bundle has an atmosphere
+  prefix: two of the five do, and the other three get none at all. Nothing is emitted
+  for ``data/ring_models/``. ``opus_id`` is the translator built from the resulting
+  163 entries.
 * ``opus_id_to_primary_filespec_list`` and ``opus_id_to_primary_logical_path`` --
   the same loop run the other way, resolving an OPUS ID to the label of the primary
   product: the 100 m sampling for a ring or ring-plane profile, and the time series
@@ -74,14 +77,17 @@ The rule tables written against PDS4 ``bundles/uranus_occs_earthbased`` paths:
 Five tables here are byte-identical to the tables of the same name in
 `pds3file/rules/COISS_xxxx.py`, which serves Cassini ISS:
 ``description_and_icon_by_regex``, ``view_options``, ``neighbors``, ``sort_key`` and
-``opus_format``. Three of the five key on PDS3 ``volumes/COISS_*`` paths and so
-cannot fire for a ``bundles/uranus_occs_earthbased`` path; ``sort_key`` keys on
-basenames and ``opus_format`` on file extensions, so those two are not
-PDS3-specific.
+``opus_format``. Three of the five key on PDS3 paths, mostly ``volumes/`` and some
+``calibrated/``; ``sort_key`` keys on basenames and ``opus_format`` on file
+extensions, so those two are not PDS3-specific. ``description_and_icon_by_regex`` is
+not wholly inert here either: four of its rules carry no PDS3 anchor and fire for a
+bundle's ``browse/`` collection, which every bundle has.
 
 The class body builds its volume set translator entries by looping over
-``prefix_mapping``, so a bundle prefix has to appear there for its paths to resolve
-to this subclass. `uranus_occs_earthbased_primary_filespec.py` holds the list of
+``prefix_mapping``. Those entries map a bundle name to the bundle set name, which
+path resolution never needs: the bundle set name is already a ``SUBCLASSES`` key, so
+``uranus_occ_support``, which is absent from the mapping, resolves to this subclass
+all the same. `uranus_occs_earthbased_primary_filespec.py` holds the list of
 primary labels this bundle set offers, which this module re-exports.
 """
 
@@ -585,17 +591,16 @@ archive_dirs = translator.TranslatorByRegex([
 class uranus_occs_earthbased(pds4file.Pds4File):
     """The ``Pds4File`` subclass for uranus_occs_earthbased.
 
-    The class body wires this module's rule tables onto the class attributes
-    ``Pds4File`` reads. Where a table is added to the inherited one, a lookup tries
-    this module's patterns first and falls through to the defaults; where it is
-    assigned outright there is no fall-through. The module tail registers the class
-    in ``Pds4File.SUBCLASSES`` under the key
+    The class body and the module tail install this module's rule tables on the class
+    attributes ``Pds4File`` reads. `pds4file/rules/__init__.py` sets out the routes a
+    table takes and which of them leaves the inherited rules in front. The class
+    is registered in ``Pds4File.SUBCLASSES`` under the key
     "uranus_occs_earthbased".
     The module docstring describes the bundle set and every table.
 
-    Its bundle set translator entries are built by looping over
-    ``prefix_mapping``, so a bundle whose prefix is not listed there does not
-    resolve to this class.
+    Its ``VOLSET_TRANSLATOR`` entries are built by looping over ``prefix_mapping``.
+    Those entries map a bundle name to the bundle set name, which path resolution
+    does not need, because the bundle set name is already a ``SUBCLASSES`` key.
     """
 
     volset_list = []

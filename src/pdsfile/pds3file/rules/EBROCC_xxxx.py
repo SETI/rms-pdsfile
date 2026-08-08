@@ -30,7 +30,8 @@ The rule tables:
   inverse.
 * ``data_set_id`` -- the PDS3 data set ID for a path, keyed on the observatory
   directory. `EBROCC_xxxx.py` and `COCIRS_xxxx.py` are the only two rule modules
-  that define this table.
+  that define this table as a translator; `COUVIS_0xxx.py` overrides the same
+  attribute with a method.
 * ``filespec_to_bundleset`` -- maps a file specification beginning with the
   EBROCC_0001 volume ID to the volume set name EBROCC_xxxx.
 
@@ -238,12 +239,12 @@ filespec_to_bundleset = translator.TranslatorByRegex([
 class EBROCC_xxxx(pds3file.Pds3File):
     """The ``Pds3File`` subclass for EBROCC_xxxx.
 
-    The class body wires this module's rule tables onto the class attributes
-    ``Pds3File`` reads. Where a table is added to the inherited one, a lookup tries
-    this module's patterns first and falls through to the defaults; where it is
-    assigned outright there is no fall-through. The module tail registers the class
-    in ``Pds3File.SUBCLASSES`` under the key
-    "EBROCC_xxxx". The module docstring describes the volume set and every table.
+    The class body and the module tail install this module's rule tables on the class
+    attributes ``Pds3File`` reads. `pds3file/rules/__init__.py` sets out the routes a
+    table takes and which of them leaves the inherited rules in front. The class
+    is registered in ``Pds3File.SUBCLASSES`` under the key
+    "EBROCC_xxxx".
+    The module docstring describes the volume set and every table.
     """
 
     pds3file.Pds3File.VOLSET_TRANSLATOR = translator.TranslatorByRegex([('EBROCC_xxxx', re.I, 'EBROCC_xxxx')]) + \

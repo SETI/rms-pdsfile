@@ -8,12 +8,13 @@ The cassini_vims bundle set holds the Cassini VIMS cubes as PDS4 bundles. The
 archive layout described in this module's header comment has two bundles,
 cassini_vims_cruise and cassini_vims_saturn, each holding a ``data_raw/``
 collection of raw VIMS data and a ``browse_raw/`` collection beside it, together
-with the non-data collections ``bundle.xml``, ``calibration/``, ``context/``,
-``document/`` and ``xml_schema/``. The cruise bundle is packaged as a single
-archive. The Saturn bundle is split three ways: one archive for the non-data,
-non-browse collections, and then one per leading three-digit clock block for each of
-the raw data and raw browse collections. The PDS3 form of the same observations is
-served by `pds3file/rules/COVIMS_0xxx.py`.
+with the non-data collections ``calibration/``, ``context/``, ``document/`` and
+``xml_schema/`` and the ``bundle.xml`` label beside them. The cruise bundle is
+packaged as a single
+archive. The Saturn bundle is split into 89: one for the non-data, non-browse
+collections, and then one per leading three-digit clock block for each of the raw
+data and raw browse collections, 44 blocks each. The PDS3 form of the same
+observations is served by `pds3file/rules/COVIMS_0xxx.py`.
 
 The rule tables written against PDS4 ``bundles/cassini_vims`` paths:
 
@@ -38,10 +39,13 @@ Eight tables here are byte-identical to the tables of the same name in
 `pds3file/rules/COISS_xxxx.py`, which serves Cassini ISS rather than VIMS:
 ``description_and_icon_by_regex``, ``view_options``, ``neighbors``, ``sort_key``,
 ``opus_type``, ``opus_format``, ``opus_products`` and
-``opus_id_to_primary_logical_path``. Six of the eight key on PDS3 paths -- on
-``volumes/`` or on a COISS volume ID -- so they cannot fire for a
-``bundles/cassini_vims`` path; ``sort_key`` keys on basenames and ``opus_format``
-on file extensions, so those two are not PDS3-specific. What
+``opus_id_to_primary_logical_path``. Five of the eight key on PDS3 paths -- on
+``volumes/`` or on a COISS volume ID; ``sort_key`` keys on basenames and
+``opus_format`` on file extensions, so those two are not PDS3-specific; and
+``opus_id_to_primary_logical_path`` keys on an OPUS ID and *returns* a PDS3 path
+rather than matching one. Four rules of ``description_and_icon_by_regex`` carry no
+PDS3 anchor at all and do fire for a ``bundles/cassini_vims`` path, naming its
+thumbnail and full-size browse directories. What
 ``description_and_icon_by_regex`` returns is the Cassini ISS descriptions, naming
 narrow- and wide-angle images and the CISSCAL software, and ``opus_type`` files
 products under the "Cassini ISS" OPUS category.
@@ -472,11 +476,10 @@ archive_dirs = translator.TranslatorByRegex([
 class cassini_vims(pds4file.Pds4File):
     """The ``Pds4File`` subclass for cassini_vims.
 
-    The class body wires this module's rule tables onto the class attributes
-    ``Pds4File`` reads. Where a table is added to the inherited one, a lookup tries
-    this module's patterns first and falls through to the defaults; where it is
-    assigned outright there is no fall-through. The module tail registers the class
-    in ``Pds4File.SUBCLASSES`` under the key
+    The class body and the module tail install this module's rule tables on the class
+    attributes ``Pds4File`` reads. `pds4file/rules/__init__.py` sets out the routes a
+    table takes and which of them leaves the inherited rules in front. The class
+    is registered in ``Pds4File.SUBCLASSES`` under the key
     "cassini_vims".
     The module docstring describes the bundle set and every table.
     """

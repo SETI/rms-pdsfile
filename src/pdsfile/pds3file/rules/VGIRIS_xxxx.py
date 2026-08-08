@@ -12,12 +12,13 @@ VGIRIS_xxxx_peer_review (holdings ``_volinfo/VGIRIS_xxxx.txt``).
 
 The rule tables:
 
-* ``description_and_icon_by_regex`` -- names data files by spacecraft and planet, so
-  that ``VG2_NEP.DAT`` reads as "Voyager 2 Neptune data", and carries four bare
-  planet directory patterns. Those four do not fire on this volume set: its
-  directories are named for planet and spacecraft together, as in
-  ``DATA/JUPITER_VG1``, and every pattern in a ``TranslatorByRegex`` is anchored at
-  both ends, so they fall through to the default "Data files".
+* ``description_and_icon_by_regex`` -- byte-identical to `VG_20xx.py`'s, and every
+  one of its ten entries is unreachable here. Four name bare planet directories,
+  where this volume set's are named for planet and spacecraft together, as in
+  ``DATA/JUPITER_VG1``; the other six name ``VG1_JUP.DAT``-style data files, which
+  this volume set does not have -- its data files are ``C1547XXX.TAB`` and
+  ``C1547XXX_LSB.DAT``. Every pattern in a ``TranslatorByRegex`` is anchored at both
+  ends, so all ten fall through to the defaults.
 * ``filespec_to_bundleset`` -- maps a file specification beginning with a
   VGIRIS_nnnn volume ID to the volume set name VGIRIS_xxxx_peer_review, which is the
   name the volumes actually sit under.
@@ -65,12 +66,12 @@ filespec_to_bundleset = translator.TranslatorByRegex([
 class VGIRIS_xxxx(pds3file.Pds3File):
     """The ``Pds3File`` subclass for VGIRIS_xxxx.
 
-    The class body wires this module's rule tables onto the class attributes
-    ``Pds3File`` reads. Where a table is added to the inherited one, a lookup tries
-    this module's patterns first and falls through to the defaults; where it is
-    assigned outright there is no fall-through. The module tail registers the class
-    in ``Pds3File.SUBCLASSES`` under the key
-    "VGIRIS_xxxx". The module docstring describes the volume set and every table.
+    The class body and the module tail install this module's rule tables on the class
+    attributes ``Pds3File`` reads. `pds3file/rules/__init__.py` sets out the routes a
+    table takes and which of them leaves the inherited rules in front. The class
+    is registered in ``Pds3File.SUBCLASSES`` under the key
+    "VGIRIS_xxxx".
+    The module docstring describes the volume set and every table.
     """
 
     pds3file.Pds3File.VOLSET_TRANSLATOR = translator.TranslatorByRegex([('VGIRIS_xxxx', re.I, 'VGIRIS_xxxx')]) + \

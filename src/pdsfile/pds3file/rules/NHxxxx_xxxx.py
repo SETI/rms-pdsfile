@@ -522,12 +522,12 @@ filespec_to_bundleset = translator.TranslatorByRegex([
 class NHxxxx_xxxx(pds3file.Pds3File):
     """The ``Pds3File`` subclass for NHxxxx_xxxx.
 
-    The class body wires this module's rule tables onto the class attributes
-    ``Pds3File`` reads. Where a table is added to the inherited one, a lookup tries
-    this module's patterns first and falls through to the defaults; where it is
-    assigned outright there is no fall-through. The module tail registers the class
-    in ``Pds3File.SUBCLASSES`` under the key
-    "NHxxxx_xxxx". The module docstring describes the volume set and every table.
+    The class body and the module tail install this module's rule tables on the class
+    attributes ``Pds3File`` reads. `pds3file/rules/__init__.py` sets out the routes a
+    table takes and which of them leaves the inherited rules in front. The class
+    is registered in ``Pds3File.SUBCLASSES`` under the key
+    "NHxxxx_xxxx".
+    The module docstring describes the volume set and every table.
 
     It also sets ``FILENAME_KEYLEN`` to 14, so that the several downlinks of one
     observation group together, and defines ``opus_prioritizer``.
@@ -578,9 +578,10 @@ class NHxxxx_xxxx(pds3file.Pds3File):
         holds more than one copy of a data product, this keeps the copy whose file
         code ranks best in ``FILE_CODE_PRIORITY`` under that heading and moves the
         rest to a heading in the same category whose rank is 50 higher, whose slug
-        gains "_alternate" and whose title gains " Alternate Downlink". The copies
-        are grouped by version rank first, so one copy per rank survives under the
-        original heading.
+        gains "_alternate", whose title gains " Alternate Downlink" and whose
+        default-selected flag is True whatever the original heading carried. The
+        copies are grouped by version rank first, so one copy per rank survives
+        under the original heading.
 
         A heading holding a single copy is left alone, and so is one whose copies are
         not in the volumes tree.

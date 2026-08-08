@@ -11,13 +11,14 @@ ground-based campaigns from the William Herschel Telescope, the IRTF, the
 Canada-France-Hawaii Telescope and the WIYN Telescope at Kitt Peak
 (``_volinfo/RPX_xxxx.txt``). The HST volumes hold FITS files in matched sets: raw
 image, calibrated image, engineering data, HST header file, and a mask for the first
-three. There is no header mask.
+three. There is no header mask, and a browse GIF sits beside each set.
 
 The rule tables:
 
 * ``description_and_icon_by_regex`` -- distinguishes those FITS forms from one
-  another, marks the ones held as zipped FITS, and names each observing proposal
-  directory by its proposal number and principal investigator.
+  another, marks the ones held as zipped FITS, names the browse GIFs and the
+  year-and-month data directories, and names each observing proposal directory by its
+  proposal number and principal investigator.
 * ``default_viewables`` -- the preview images for a product.
 * ``associations_to_volumes``, ``associations_to_previews`` and
   ``associations_to_metadata`` -- cross the volumes, previews and metadata trees for
@@ -241,15 +242,15 @@ neighbors = translator.TranslatorByRegex([
 class RPX_xxxx(pds3file.Pds3File):
     """The ``Pds3File`` subclass for RPX_xxxx.
 
-    The class body wires this module's rule tables onto the class attributes
-    ``Pds3File`` reads. Where a table is added to the inherited one, a lookup tries
-    this module's patterns first and falls through to the defaults; where it is
-    assigned outright there is no fall-through. The module tail registers the class
-    in ``Pds3File.SUBCLASSES`` under the key
-    "RPX_xxxx". The module docstring describes the volume set and every table.
+    The class body and the module tail install this module's rule tables on the class
+    attributes ``Pds3File`` reads. `pds3file/rules/__init__.py` sets out the routes a
+    table takes and which of them leaves the inherited rules in front. The class
+    is registered in ``Pds3File.SUBCLASSES`` under the key
+    "RPX_xxxx".
+    The module docstring describes the volume set and every table.
 
-    It also defines ``FILENAME_KEYLEN``, which returns the length of the HST
-    group ID for the RPX_0001 to RPX_0005 volumes and 0 elsewhere.
+    It also defines ``FILENAME_KEYLEN`` as a method, which returns 9 for the HST
+    volumes and 0 elsewhere.
     """
 
     pds3file.Pds3File.VOLSET_TRANSLATOR = translator.TranslatorByRegex([('RPX_xxxx', re.I, 'RPX_xxxx')]) + \
@@ -272,9 +273,10 @@ class RPX_xxxx(pds3file.Pds3File):
         """Return the count of leading basename characters that group siblings.
 
         A basename in the HST volumes of this volume set opens with a nine-character
-        HST group ID, and the raw image, the calibrated image, the engineering data,
-        the header file and the three masks all share it. There is no header mask.
-        The ground-based volumes are not grouped this way.
+        HST group ID, and the eight files of one observation share it: the raw
+        image, the calibrated image, the engineering data, the header file, a mask
+        for the first three, and the browse GIF. There is no header mask. The
+        ground-based volumes are not grouped this way.
 
         Returns:
             int: 9 if this file's absolute path contains "/RPX_000", which of the

@@ -18,19 +18,22 @@ it supersedes, and two of them have no counterpart.
 
 The rule tables:
 
-* ``description_and_icon_by_regex`` -- names the nested orbit and target
-  directories and the images carrying an SL9 graphics overlay. It carries entries
+* ``description_and_icon_by_regex`` -- names the raw, repaired and SL9-overlay
+  images, the spacecraft-clock directories that hold them, the nested orbit and
+  target directories, and two index entries in the metadata tree. It carries entries
   for the calibration, Earth-Moon, optical-experiment, top-level target and
-  reprocessed-image directories too, but those six patterns are one path component
-  short of a real logical path, so they never fire and those directories fall
-  through to the generic "Directory".
+  reprocessed-image directories too, and none of those six fires: four are a path
+  component short of a real logical path, one demands an extra character after the
+  volume ID and one looks for a directory named "GO_0018REDO" with no separator. All
+  six of those directories fall through to the generic "Directory".
 * ``default_viewables`` -- points an image at its preview images.
 * ``associations_to_volumes``, ``associations_to_previews``,
   ``associations_to_metadata`` and ``associations_to_documents`` -- cross the
   volumes, previews, metadata and documents trees for one image.
 * ``versions`` -- the paths of the same image in the other version of this volume
-  set, whose file names differ: the earlier version puts the last four characters of
-  an image name in a directory of their own.
+  set, whose file names differ: the earlier version splits an image name after its
+  first seven characters and makes those a directory, so ``C0003061100R.IMG`` there
+  is ``C000306/1100R.IMG``.
 * ``view_options``, ``neighbors``, ``sort_key`` and ``split_rules`` -- the view
   flags, the corresponding directories in sibling volumes, the basename sort order
   and the basename grouping.
@@ -768,12 +771,12 @@ opus_id_to_primary_logical_path = translator.TranslatorByRegex([
 class GO_0xxx(pds3file.Pds3File):
     """The ``Pds3File`` subclass for GO_0xxx.
 
-    The class body wires this module's rule tables onto the class attributes
-    ``Pds3File`` reads. Where a table is added to the inherited one, a lookup tries
-    this module's patterns first and falls through to the defaults; where it is
-    assigned outright there is no fall-through. The module tail registers the class
-    in ``Pds3File.SUBCLASSES`` under the key
-    "GO_0xxx". The module docstring describes the volume set and every table.
+    The class body and the module tail install this module's rule tables on the class
+    attributes ``Pds3File`` reads. `pds3file/rules/__init__.py` sets out the routes a
+    table takes and which of them leaves the inherited rules in front. The class
+    is registered in ``Pds3File.SUBCLASSES`` under the key
+    "GO_0xxx".
+    The module docstring describes the volume set and every table.
 
     It also sets ``FILENAME_KEYLEN`` to 11, carries
     ``METADATA_PATH_TRANSLATOR``, and defines ``opus_prioritizer``.
@@ -819,9 +822,10 @@ class GO_0xxx(pds3file.Pds3File):
         under ``REDO/``, ``REPAIRED/`` or ``TIRETRACK/``. Where an OPUS heading holds
         more than one copy of a data product, this keeps the reprocessed copy under
         that heading and moves the rest to a heading in the same category whose rank
-        is 10 higher, whose slug gains "_alternate" and whose title gains
-        " (Superseded Processing)". The copies are grouped by version rank first, so
-        one copy per rank survives under the original heading.
+        is 10 higher, whose slug gains "_alternate", whose title gains
+        " (Superseded Processing)" and whose default-selected flag is True whatever
+        the original heading carried. The copies are grouped by version rank first,
+        so one copy per rank survives under the original heading.
 
         A heading holding a single copy is left alone, and so is one whose copies are
         not in the volumes tree.

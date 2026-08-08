@@ -30,8 +30,8 @@ The rule tables:
 * ``opus_id`` and ``opus_id_to_primary_logical_path`` -- the OPUS ID and its
   inverse.
 * ``filespec_to_bundleset`` -- maps a file specification beginning with a volume ID
-  of the form HST, an instrument letter, a digit, an underscore and four digits, as
-  in HSTI1_1556, to its volume set name. The default rule cannot do it because it
+  of the form HST, an instrument letter, a 0 or a 1, an underscore and four digits,
+  as in HSTI1_1556, to its volume set name. The default rule cannot do it because it
   replaces only the last three characters, giving HSTI1_1xxx where the volume set is
   HSTIx_xxxx: the digit after the instrument letter has to become an x too.
 
@@ -224,15 +224,15 @@ filespec_to_bundleset = translator.TranslatorByRegex([
 class HSTxx_xxxx(pds3file.Pds3File):
     """The ``Pds3File`` subclass for HSTxx_xxxx.
 
-    The class body wires this module's rule tables onto the class attributes
-    ``Pds3File`` reads. Where a table is added to the inherited one, a lookup tries
-    this module's patterns first and falls through to the defaults; where it is
-    assigned outright there is no fall-through. The module tail registers the class
-    in ``Pds3File.SUBCLASSES`` under the key
-    "HSTxx_xxxx". The module docstring describes the volume set and every table.
+    The class body and the module tail install this module's rule tables on the class
+    attributes ``Pds3File`` reads. `pds3file/rules/__init__.py` sets out the routes a
+    table takes and which of them leaves the inherited rules in front. The class
+    is registered in ``Pds3File.SUBCLASSES`` under the key
+    "HSTxx_xxxx".
+    The module docstring describes the volume set and every table.
 
-    It also sets ``FILENAME_KEYLEN`` to 9, so that the several previews of one
-    observation group together.
+    It also sets ``FILENAME_KEYLEN`` to 9, the length of the HST rootname the files
+    of one observation share.
     """
 
     pds3file.Pds3File.VOLSET_TRANSLATOR = translator.TranslatorByRegex([('HST.x_xxxx', re.I, 'HSTxx_xxxx')]) + \

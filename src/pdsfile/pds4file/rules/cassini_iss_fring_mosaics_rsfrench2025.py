@@ -49,16 +49,19 @@ The rule tables:
   one for the reprojected images, one for the plain mosaics and one for the
   background-subtracted mosaics. Each of the three partial archives also carries the
   bundle label, the context, spice_kernels, schema and readme files, the document
-  collection files and its own index pair from ``miscellaneous/``.
+  collection files and its own index pair from ``miscellaneous/``; the reprojected
+  archive carries the ``miscellaneous/`` collection files as well.
 * ``product_lbl_basename_wo_ext`` -- the label a data file pairs with where the two
   basenames differ: a browse PNG drops its size suffix, a metadata table drops
   everything from "_metadata" on, and a reprojected SPICE pointing text file pairs
   with the reprojected image label.
 
 ``archive_paths`` and ``archive_dirs`` are defined here but the class body assigns
-neither ``ARCHIVE_PATHS`` nor ``ARCHIVE_DIRS``, which is what the other four pds4
-rule modules with archive tables do, so this bundle set uses the empty archive
-tables from `pds4file/rules/__init__.py`.
+neither ``ARCHIVE_PATHS`` nor ``ARCHIVE_DIRS``. All six pds4 dataset modules define
+archive tables and four of them assign the attributes; this module and
+`cassini_iss_spokes_hedman_hamilton_2024.py` are the two that do not, so both bundle
+sets use the empty archive tables from `pds4file/rules/__init__.py` and the tables
+here are unreached.
 
 `cassini_iss_fring_mosaics_rsfrench2025_primary_filespec.py` holds the list of
 primary labels this bundle set offers, which this module re-exports.
@@ -409,11 +412,10 @@ product_lbl_basename_wo_ext = translator.TranslatorByRegex([
 class cassini_iss_fring_mosaics_rsfrench2025(pds4file.Pds4File):
     """The ``Pds4File`` subclass for cassini_iss_fring_mosaics_rsfrench2025.
 
-    The class body wires this module's rule tables onto the class attributes
-    ``Pds4File`` reads. Where a table is added to the inherited one, a lookup tries
-    this module's patterns first and falls through to the defaults; where it is
-    assigned outright there is no fall-through. The module tail registers the class
-    in ``Pds4File.SUBCLASSES`` under the key
+    The class body and the module tail install this module's rule tables on the class
+    attributes ``Pds4File`` reads. `pds4file/rules/__init__.py` sets out the routes a
+    table takes and which of them leaves the inherited rules in front. The class
+    is registered in ``Pds4File.SUBCLASSES`` under the key
     "cassini_iss_fring_mosaics_rsfrench2025".
     The module docstring describes the bundle set and every table.
     """

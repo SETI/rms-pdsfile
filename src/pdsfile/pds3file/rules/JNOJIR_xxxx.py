@@ -2,13 +2,14 @@
 # pds3file/rules/JNOJIR_xxxx.py
 ##########################################################################################
 
-"""Rules for the JNOJIR_xxxx volume set: Juno JIRAM raw data.
+"""Rules for the JNOJIR_xxxx volume set: Juno JIRAM images and spectra.
 
 JNOJIR_xxxx is described in the holdings as the Juno JIRAM raw image collection.
-Each orbit has two volumes, a 1nnn holding the raw data and a 2nnn holding the
+Its volumes come in pairs, a 1nnn holding the raw data and a 2nnn holding the
 reduced, which is why this module's patterns are written for JNOJIR_1 and JNOJIR_2
-alike. The series opens with JNOJIR_1000 for the 2013 Moon images and JNOJIR_1001
-for orbit insertion. Four data set IDs are in play: JNO-J-JIRAM-2-EDR-V1.0 and
+alike. The pairs are one per orbit after the first, which is JNOJIR_1000 and
+JNOJIR_2000 for the 2013 lunar flyby; JNOJIR_1001 is orbit insertion. Four data set
+IDs are in play: JNO-J-JIRAM-2-EDR-V1.0 and
 JNO-J-JIRAM-3-RDR-V1.0 for the Jupiter volumes, and JNO-L-JIRAM-2-EDR-V3.0 and
 JNO-L-JIRAM-3-RDR-V3.0 for the Moon pair (``_volinfo/JNOJIR_xxxx.txt``). An
 observation is a raw or calibrated image or spectrum, and each data file has a log
@@ -17,19 +18,21 @@ table of engineering data beside it.
 The rule tables:
 
 * ``description_and_icon_by_regex`` -- distinguishes the raw and calibrated images
-  from the raw and calibrated spectra, names the engineering data, and names the
-  date-ordered data directories.
+  from the raw and calibrated spectra, names the engineering data and the date-ordered
+  data directories, and names the archive description and the per-orbit JIRAM
+  activity reports under each volume's own document directory.
 * ``associations_to_volumes`` and ``associations_to_metadata`` -- cross the volumes
-  and metadata trees for one observation. The volumes entry is what pairs a raw file
-  with its reduced counterpart, rewriting the volume's leading 1 to a 2 and EDR to
-  RDR.
+  and metadata trees for one observation. The volumes entry rewrites the volume digit
+  and the product tag independently rather than together, so from a 1nnn EDR file it
+  offers a 1nnn RDR path and a 2nnn EDR path. Neither exists: a 1nnn volume holds
+  only EDR products and a 2nnn volume only RDR.
 * ``associations_to_documents`` -- the documents tree for one observation. The class
   body installs it as a replacement for the default rather than adding to it, so the
   table re-implements the default behavior itself.
 * ``neighbors`` -- the corresponding directories in sibling volumes.
-* ``siblings`` -- the basenames treated as adjacent within one directory. This is
-  the only rule module that overrides the sibling rule, rather than letting it be
-  derived from the split rule.
+* ``siblings`` -- the basenames treated as adjacent within one directory: data files
+  with data files, log tables with log tables. This is the only rule module that sets
+  the sibling rule at all, rather than letting it be derived from the split rule.
 * ``sort_key`` -- moves the timestamp to the front of a basename so that data files
   order by time; puts a log table after the data file it describes and each label
   after its own data file; sends the long run of JIRAM report PDFs to the end of the
@@ -206,12 +209,12 @@ split_rules = translator.TranslatorByRegex([
 class JNOJIR_xxxx(pds3file.Pds3File):
     """The ``Pds3File`` subclass for JNOJIR_xxxx.
 
-    The class body wires this module's rule tables onto the class attributes
-    ``Pds3File`` reads. Where a table is added to the inherited one, a lookup tries
-    this module's patterns first and falls through to the defaults; where it is
-    assigned outright there is no fall-through. The module tail registers the class
-    in ``Pds3File.SUBCLASSES`` under the key
-    "JNOJIR_xxxx". The module docstring describes the volume set and every table.
+    The class body and the module tail install this module's rule tables on the class
+    attributes ``Pds3File`` reads. `pds3file/rules/__init__.py` sets out the routes a
+    table takes and which of them leaves the inherited rules in front. The class
+    is registered in ``Pds3File.SUBCLASSES`` under the key
+    "JNOJIR_xxxx".
+    The module docstring describes the volume set and every table.
     """
 
     pds3file.Pds3File.VOLSET_TRANSLATOR = translator.TranslatorByRegex([('JNOJIR_xxxx', re.I, 'JNOJIR_xxxx')]) + \
