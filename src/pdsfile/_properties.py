@@ -25,12 +25,11 @@ one docstring:
   * **Reading one property fills others.** ``mime_type`` fills the slot behind ``split``
     and the slot behind ``isdir``; ``date`` fills the slot behind ``_info``. Most
     docstrings here name the slots their own derivation fills, because that is what a
-    caller measuring cost, or writing a test that counts shelf reads, needs. The ones
-    that reach furthest -- ``viewset``, ``local_viewset``, ``all_viewsets`` and
-    ``data_abspaths`` -- name them by the property they read rather than one by one,
-    because how many slots a read fills depends on what the object is. So the list to
-    trust for an exact answer is the one in the property that owns the slot, and a list
-    given by a property that reaches through others is a lower bound.
+    caller measuring cost, or writing a test that counts shelf reads, needs. ``viewset``
+    is the exception that names them by the property it reaches through rather than one by
+    one, because how many slots that read fills depends on what the object is; treat its
+    list as a lower bound. ``all_viewsets`` and ``data_abspaths`` name none, and the slots
+    they fill are the union of what the properties they read fill.
 
   * **A miss is stored as a value.** An empty string, an empty list or False is written
     where nothing was found, so the derivation is not repeated. Which falsy value stands
@@ -41,10 +40,10 @@ one docstring:
   * **Two kinds of object arrive with the slots already filled.** A merged directory,
     which stands for one category across several disks, and an index row, which stands
     for rows of an index table, are both built by filling most slots in advance, so many
-    of these bodies are never reached on them. A docstring says what its own slot holds
-    on those two wherever that changes the answer, because "born with the slot set" and
-    "derives it" are different answers to what a property costs and to whether it can
-    fail.
+    of these bodies are never reached on them. A docstring names whichever of the two its
+    own slot is pre-set on, because "born with the slot set" and "derives it" are
+    different answers to what a property costs and to whether it can fail. Where only one
+    of the two is named, the other is not pre-set.
 
 The rest are properties with no slot, recomputed on each access because they only read
 another property or an attribute; and four members that are not properties at all:
@@ -283,8 +282,9 @@ class _PropertiesMixin:
         checksum file gets its own basename alone.
 
         Returns:
-            str: the bundle name, or the bundle name and the interior path joined by a
-            slash.
+            str: the bundle name; the bundle name and the interior path joined by a
+            slash; or the interior path alone in the archive and checksum trees,
+            where the prefix is empty.
         """
 
         if self.interior:
@@ -296,9 +296,9 @@ class _PropertiesMixin:
     def absolute_or_logical_path(self):
         """The absolute path where there is one, and the logical path otherwise.
 
-        Recomputed on every access. A merged directory has no absolute path, and neither
-        does an object built from a logical path that no holdings directory holds; this is
-        what a caller uses to name such an object without testing which kind it has.
+        Recomputed on every access. A merged directory is the object this exists for: it
+        has a logical path and no absolute one, so a caller can name it without testing
+        which kind it has.
 
         Returns:
             str: the absolute path, or the logical path.
@@ -557,7 +557,7 @@ class _PropertiesMixin:
 
         The value is derived on the first access, stored in ``_indexshelf_abspath`` and
         returned unchanged afterwards; deriving it calls ``_recache()``. A merged
-        directory is born with the slot set to an empty string.
+        directory and an index row are both born with the slot set to an empty string.
 
         A file whose extension is not one of the class's index extensions, in either case,
         gets an empty string. Anything else gets this file's own absolute path with the
@@ -599,8 +599,8 @@ class _PropertiesMixin:
 
         The answer is derived on the first access, stored in ``_is_index`` and returned
         unchanged afterwards; deriving it calls ``_recache()``, and fills
-        ``_indexshelf_abspath`` on the way. A merged directory is born with the slot set
-        to False.
+        ``_indexshelf_abspath`` and ``_split_filled`` on the way. A merged directory and
+        an index row are both born with the slot set to False.
 
         The test is that ``indexshelf_abspath`` names a file that exists, so an index
         table whose shelf has not been written is not an index by this measure. A second
@@ -1028,8 +1028,8 @@ class _PropertiesMixin:
 
         The volume-info table keeps a checksum for two kinds of path and blanks it for
         every other: anything in the documents tree, and any file whose basename is one of
-        EXTRA_README_BASENAMES. Those AAREADME files are exactly the ones no info shelf
-        covers, so for them the table is not a shortcut but the only source there is.
+        EXTRA_README_BASENAMES. No info shelf covers either kind, so for both the table is
+        not a shortcut but the only source there is.
 
         Returns:
             str: the checksum, or an empty string where neither source records one.
@@ -1044,9 +1044,9 @@ class _PropertiesMixin:
         Read out of ``_info``, whose fifth element is the shape. Where that shape is the
         ``'TBD'`` marker the info derivation writes for a viewable it measured from the
         filesystem, reading this opens the image with PIL, rewrites ``_info_filled`` and
-        calls ``_recache()``. This and ``height`` are the only two properties that reach
-        the filesystem after ``_info`` is filled, and the view-set properties reach it
-        through them.
+        calls ``_recache()``. This and ``height`` are the only two of ``_info``'s readers
+        that go back to disk after ``_info`` is filled; other properties in this module
+        reach the filesystem by routes of their own.
 
         Anything that is not a measured viewable is zero: a file that does not exist, a
         directory, and an image PIL could not open.
@@ -1384,7 +1384,9 @@ class _PropertiesMixin:
 
         The value is derived on the first access from the class's OPUS_ID rules, stored in
         ``_opus_id_filled`` and returned unchanged afterwards; deriving it calls
-        ``_recache()``. A merged directory is born with the slot set to an empty string.
+        ``_recache()``. A merged directory and an index row are both born with the slot
+        set to an empty string, so neither reaches this body and neither reports the id
+        the rules would give it.
 
         The rules read the logical path, so nothing here tests that the file exists. A
         path no rule matches gets an empty string rather than None, which is what lets a
@@ -1406,8 +1408,8 @@ class _PropertiesMixin:
 
         The value is derived on the first access from the class's OPUS_FORMAT rules,
         stored in ``_opus_format_filled`` and returned unchanged afterwards; deriving it
-        calls ``_recache()``. A merged directory is born with the slot set to an empty
-        string.
+        calls ``_recache()``. A merged directory and an index row are both born with the
+        slot set to an empty string.
 
         **A path no rule matches gets None, not an empty string**, because the rules'
         answer is stored as it comes. That makes this the one OPUS property whose miss is
@@ -1431,7 +1433,9 @@ class _PropertiesMixin:
 
         The value is derived on the first access from the class's OPUS_TYPE rules, stored
         in ``_opus_type_filled`` and returned unchanged afterwards; deriving it calls
-        ``_recache()``. A merged directory is born with the slot set to an empty string.
+        ``_recache()``. A merged directory and an index row are both born with the slot
+        set to an empty string, so an index row reports no OPUS type even where the rules
+        answer for its table's path.
 
         The tuple has five elements: the data set's display name, a priority in which the
         lower number sorts first, the type id OPUS keys on, a description, and a flag
@@ -1781,10 +1785,11 @@ class _PropertiesMixin:
 
         The value is derived once, stored in ``_label_basename_filled`` and returned
         unchanged afterwards; deriving it calls ``_recache()``. Deriving it also fills
-        four slots that belong to other properties, because the body reads ``islabel``,
-        ``extension``, ``exists`` and, on one path, ``internal_link_info``. A merged
-        directory and an index row are born with the slot set to an empty string, and a
-        label file gets an empty string too, because a label has no label of its own.
+        five slots that belong to other properties, because the body reads ``islabel``,
+        ``extension``, ``exists`` and, on one path, ``internal_link_info``, which reads
+        ``isdir`` on its way. A merged directory and an index row are born with the slot
+        set to an empty string, and a label file gets an empty string too, because a label
+        has no label of its own.
 
         Otherwise the name is guessed before it is looked up. The guesses are this
         basename with its extension replaced by each of LBL_EXT in turn, in both cases,
@@ -1970,11 +1975,17 @@ class _PropertiesMixin:
 
         Where ``viewset`` finds the images that *represent* this file, this one is the
         file itself as an image, and it is the only one of the two that tests both that
-        the file exists and that its name is viewable. Anything else is stored as False
-        rather than None, so the derivation is not repeated.
+        the file exists and that its name is viewable. Anything that fails those tests is
+        stored as False, so the derivation is not repeated. **One case stores None
+        instead**: an existing viewable whose recorded width is zero, which is what an
+        image PIL could not open gets, makes ``PdsViewSet.from_pdsfiles()`` return None,
+        and the guard at the top of this body tests for None, so that object re-derives on
+        every access. ``viewset`` converts the same None to False and this does not.
 
         Returns:
-            pdsviewable.PdsViewSet: a set holding this file alone, or False.
+            pdsviewable.PdsViewSet: a set holding this file alone; False where this
+            file is not an existing viewable; or None where it is one whose width
+            could not be measured.
         """
 
         if self._local_viewset_filled is not None:
@@ -2453,11 +2464,12 @@ class _PropertiesMixin:
         rule is written about the parent's path rather than this one's: the class's
         NEIGHBORS rules turn a directory path into a pattern matching its siblings.
 
-        A merged category directory, which has no parent, is False. Both shipped
-        subclasses carry one rule, matching any path with a slash in it, so what decides
-        is whether the **parent's** path has one: a bundle set directory is False, because
-        its parent is the bare category, and everything from the bundle level down is
-        True.
+        A merged category directory, which has no parent, is False. The base classes carry
+        one rule, matching any path with a slash in it, and the per-bundle-set rule
+        modules prepend more specific ones; none of those changes the answer, because each
+        returns a pattern wherever it matches at all. So what decides is whether the
+        **parent's** path has a slash: a bundle set directory is False, because its parent
+        is the bare category, and everything from the bundle level down is True.
 
         Returns:
             bool: True if a neighbor rule answers for the parent.
@@ -2620,8 +2632,11 @@ class _PropertiesMixin:
         the shared cache cannot keep the links between them.
 
         Two versions that reach the same rank cannot both be kept: the second is logged as
-        a duplicate and dropped. ``version_info()`` is what makes that possible, by
-        ranking only the first three parts of a version suffix.
+        a duplicate and dropped. What makes that reachable is ``version_info()``'s
+        arithmetic rather than its truncation: a minor or micro number of 100 or more
+        overflows into the next major rank, so ``_v1.100`` and ``_v2`` collide. A fourth
+        version part cannot reach here at all, because the bundle-set pattern that
+        captures a suffix stops at three.
 
         Returns:
             dict: version rank mapped to the PdsFile for that version.
@@ -2719,8 +2734,9 @@ class _PropertiesMixin:
         over three cases, and a caller testing for None reads the third as a set.
 
         Parameters:
-            name (str): which view set to look for. It is a key of the class's VIEWABLES
-                table, and 'default' is the one every other property asks for.
+            name (str): which view set to look for. It is a key of the class's
+                VIEWABLES table. ``viewset`` asks for 'default'; ``all_viewsets``
+                asks for every other key the table defines and never for that one.
 
         Returns:
             pdsviewable.PdsViewSet: the view set, an empty one, or None.
