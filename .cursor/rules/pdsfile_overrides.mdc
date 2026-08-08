@@ -50,8 +50,8 @@ conflicts with a rule below, follow the rule below. See
    The cost is not the same for every kind of module, and the spread is wide enough
    that a projection has to be made per module rather than taken from an average.
    Measured over the modules already documented, a function docstring runs 15.2
-   lines in the five public modules, 24.5 in the nine private ones and 17.3 across
-   `_properties.py`'s 68 members. What makes that last figure add up to 1,175 lines
+   lines in the five public modules, 24.5 in the nine private ones and 18.4 across
+   `_properties.py`'s 68 members. What makes that last figure add up to 1,249 lines
    is the count, not the length: a property's docstring has to say what the value is
    before first access, which other slots reading it fills, what a non-existent file
    yields, and whether a merged directory or an index row reaches the body at all,
@@ -69,8 +69,8 @@ conflicts with a rule below, follow the rule below. See
 
    | file | total | docstring | code | over |
    |---|---:|---:|---:|---|
-   | `src/pdsfile/pdsfile.py` | 2,435 | 781 | 1,654 | both |
-   | `src/pdsfile/_properties.py` | 2,720 | 1,330 | 1,390 | both |
+   | `src/pdsfile/pdsfile.py` | 2,468 | 814 | 1,654 | both |
+   | `src/pdsfile/_properties.py` | 2,801 | 1,411 | 1,390 | both |
    | `src/pdsfile/holdings_maintenance/pds3/pdsdependency.py` | 1,165 | 30 | 1,135 | code |
    | `src/pdsfile/pds3file/rules/VG_28xx.py` | 1,019 | 0 | 1,019 | code |
 
@@ -89,7 +89,7 @@ conflicts with a rule below, follow the rule below. See
      properties to the standard of the other twelve modules costs. Measured rather
      than estimated: ten representative members were documented first, and the
      per-function cost projected the file at about 2,720 total lines against a
-     ceiling of 2,000. Written out, it landed at 2,720. Half the file is now
+     ceiling of 2,000. Written out and reviewed, it landed at 2,801. Half the file is now
      docstring, and its code lines went **down** by two, so nothing about the
      complexity this limit exists to bound has changed.
    - the per-dataset rule files, `src/pdsfile/pds{3,4}file/rules/*.py` — waived as
