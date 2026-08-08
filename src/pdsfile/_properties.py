@@ -47,7 +47,7 @@ class _PropertiesMixin:
     Every attribute these bodies read or write on a PdsFile object or on a
     PdsFile class, and nothing else -- str, list, dict, file, os, os.path,
     datetime, PIL, pdsparser, pdsviewable and logger methods are not in scope,
-    and neither is any name this mixin defines itself:
+    and neither is any name this mixin defines itself::
 
       class attributes read       CACHE, DATAFILE_EXTS, DATA_SET_ID,
                                   DEFAULT_HIGH_LEVEL_ICONS, DESCRIPTION_AND_ICON,
