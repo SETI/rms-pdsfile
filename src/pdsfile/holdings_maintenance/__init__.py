@@ -18,10 +18,13 @@ The subpackage is laid out in three parts:
     the three drivers; ``_archives_common.py``, ``_shelf_common.py``,
     ``_indexshelf_common.py`` and ``_linkshelf_common.py`` hold what one family shares,
     and two of them hold the other two drivers.
-  * ``pds3/`` also holds four modules that share none of that and parse their own
-    command lines: ``crlf.py``, ``pdsdependency.py``, ``re_validate.py`` and
-    ``shelf_consistency_check.py``, plus ``linkshelf_repairs.py``, which is a table of
-    known bad links rather than a tool.
+  * ``pds3/`` also holds four tools that declare no specification and reach no driver,
+    parsing their own command lines instead: ``crlf.py``, ``pdsdependency.py``,
+    ``re_validate.py`` and ``shelf_consistency_check.py``. Two of the four still build
+    their log paths through ``_common.py``, and the other two -- ``crlf.py`` and
+    ``shelf_consistency_check.py`` -- take nothing from any shared module and read
+    neither holdings root. ``pds3/`` holds one more Python file,
+    ``linkshelf_repairs.py``, which is a table of known bad links rather than a tool.
 
 Every tool that shares the skeleton takes the same five tasks -- initialize,
 reinitialize, validate, repair and update -- one or more target paths, and the ``--log``
