@@ -14,11 +14,13 @@ files, so the package can serve a holdings tree that is described but not presen
 ``os_listdir()`` and ``glob_glob()``, plus ``_non_checksum_abspath()``, the mapping from
 a checksum file back to what it covers, which the shelf-backed answers fall back on.
 
-Two things a caller should know. Existence answers are memoized for the life of the
-process, so a file created or deleted after the first question about it is not noticed.
-And the shelf-backed answers match keys exactly, so they are case-sensitive whatever the
-filesystem is; the case-repair machinery applies only to the answers that come from the
-filesystem.
+Two things a caller should know. Existence answers are memoized in a cache of
+``PATH_EXISTS_CACHE_SIZE`` entries that is never invalidated, so a file created or
+deleted after the first question about it keeps its old answer until its entry is
+evicted; a single preload asks tens of times that many distinct questions, so the cache
+runs full and evicts throughout. And the shelf-backed answers match keys exactly, so they
+are case-sensitive whatever the filesystem is; the case-repair machinery applies only to
+the answers that come from the filesystem.
 
 ``PATH_EXISTS_CACHE_SIZE`` is how many existence answers are remembered.
 """
@@ -54,7 +56,9 @@ class _LocalFsMixin:
 
     All of those but one are defined on PdsFile. IDX_EXT is defined only on
     Pds3File and Pds4File, so os_path_exists raises AttributeError on a bare
-    PdsFile, before it reaches anything else.
+    PdsFile for every path except the one its opening test answers first: a path
+    inside the info shelf tree, which that test sends straight to the filesystem
+    before the index-row loop reads IDX_EXT.
 
     Three more come from sibling mixins, and they are what makes the shelf-backed
     answers possible: shelf_path_and_key_for_abspath and _get_shelf from
@@ -73,11 +77,14 @@ class _LocalFsMixin:
         removed, not just that one, and the basename's ``_<voltype>_md5.txt`` ending is
         dropped.
 
-        **Only the volume types that appear in the basename are dropped.** A checksum
-        file for volumes, for bundles or for archives does not carry its volume type in
-        its basename, so its ``_md5.txt`` survives and the path returned names nothing:
-        ``.../checksums-volumes/SET/BUNDLE_md5.txt`` comes back as
-        ``.../volumes/SET/BUNDLE_md5.txt`` rather than as the bundle directory.
+        **Only an ending that names one of the class's volume types is dropped.** A
+        checksum file whose basename carries no volume type keeps its ``_md5.txt``, so
+        the path returned names nothing: ``.../checksums-volumes/SET/BUNDLE_md5.txt``
+        comes back as ``.../volumes/SET/BUNDLE_md5.txt`` rather than as the bundle
+        directory. The ``checksums-volumes`` and ``checksums-archives-volumes``
+        categories are the ones whose files are named that way; a checksum file in any
+        other checksums category carries its volume type and does reduce to the path it
+        covers.
 
         Parameters:
             abspath (str): the absolute path to map back.
@@ -110,11 +117,12 @@ class _LocalFsMixin:
             because a shelf cannot describe itself;
           * a path naming one row of an index table -- recognized by an index extension
             followed by a slash -- exists if the table exists and the table has that row;
-          * under SHELVES_ONLY, the info shelf covering the path is consulted: a path
-            with a key exists if the shelf holds that key, and a path that is itself a
-            covered directory exists if its shelf file does. If that fails, three
-            fallbacks are tried in turn, looking for a directory in the shelf tree, a
-            shelf file for it, and, for a checksum path, the thing it covers;
+          * under SHELVES_ONLY, and only for a path outside the ``documents`` tree, for
+            which no shelves are written, the info shelf covering the path is consulted:
+            a path with a key exists if the shelf holds that key, and a path that is
+            itself a covered directory exists if its shelf file does. If that fails,
+            three fallbacks are tried in turn, looking for a directory in the shelf tree,
+            a shelf file for it, and, for a checksum path, the thing it covers;
           * anything still unanswered is tested on the filesystem.
 
         **The answer is memoized and never invalidated**, up to
@@ -203,21 +211,30 @@ class _LocalFsMixin:
         """Whether a path names a directory.
 
         This stands in for ``os.path.isdir()``. Under SHELVES_ONLY the info shelf
-        answers: a shelf records an empty checksum for a directory and a real one for a
-        file, so the checksum column is the test, and a path that is itself a covered
-        directory is a directory if its shelf file exists. The same three fallbacks as
-        the existence test follow if that fails, and a checksum path is decided by its
-        extension, ``.txt`` being a file and anything else a directory.
+        answers, for every path including one in the ``documents`` tree, which the
+        existence test excludes: a shelf records an empty checksum for a directory and a
+        real one for a file, so the checksum column is the test, and a path that is
+        itself a covered directory is a directory if its shelf file exists.
 
-        Unlike the existence test this answer is not memoized, and it consults the
-        filesystem directly for its fallbacks rather than going back through the
-        memoized test.
+        **A path whose shelf does not hold its key raises KeyError**, where the existence
+        test answers False, because the handler around the shelf read catches ValueError,
+        IndexError and OSError only. The same three fallbacks as the existence test
+        follow when one of those three is raised instead, and a checksum path is decided
+        by its extension, ``.txt`` being a file and anything else a directory.
+
+        This answer is not memoized. Of the three fallbacks, the first two consult the
+        filesystem directly and the third, the checksum one, goes back through the
+        memoized existence test, as does the covered-directory case above them.
 
         Parameters:
             abspath (str): the absolute path to test.
 
         Returns:
             bool: True if the path names a directory.
+
+        Raises:
+            KeyError: from the item read ``__getitem__()`` on the shelf, for a path
+                under SHELVES_ONLY whose covering shelf does not hold its key.
         """
 
         if cls.SHELVES_ONLY:
@@ -273,8 +290,10 @@ class _LocalFsMixin:
 
           * a checksums-archives directory lists the archive directory and appends
             ``_md5.txt``, or ``_<voltype>_md5.txt`` outside volumes;
-          * a checksums directory does the same against the tree it checksums, except at
-            the category level, where it passes the listing through unchanged;
+          * a checksums directory does the same against the tree it checksums, except
+            that it reserves the bare ``_md5.txt`` for bundles as well as for volumes,
+            and except at the category level, where it passes the listing through
+            unchanged;
           * an archives directory lists the bundle tree and appends ``.tar.gz``, or
             ``_<voltype>.tar.gz`` outside volumes;
           * any other holdings directory lists the matching directory in the info shelf
@@ -451,9 +470,13 @@ class _LocalFsMixin:
 
         **The shelf-backed search is case-sensitive**, whatever the filesystem is and
         whatever the flag says: the prefix scan folds case only to decide where to stop,
-        and the match itself is exact. The flag reaches the filesystem glob alone.
+        and the match itself is exact. The flag reaches the filesystem glob and the
+        existence test the no-wildcard shortcut makes; nothing else consults it.
 
-        Results have any trailing slash removed.
+        The shelf-backed search removes any trailing slash from the paths it returns.
+        The other four returns do not: the no-wildcard shortcut, either of the two that
+        fall back to the filesystem glob, and the conversion of a category-level shelf
+        listing all pass their paths on as they are.
 
         A shelf path that does not hold the info shelf directory prefix exactly once
         trips an assert, and so raises AssertionError, or nothing at all under
@@ -465,6 +488,11 @@ class _LocalFsMixin:
 
         Returns:
             list: the matching absolute paths.
+
+        Raises:
+            OSError: raised by ``_get_shelf()`` when a shelf file the search has already
+                located cannot be opened or unpickled. That call sits outside any
+                handler.
         """
 
         # We can save a lot of trouble if there's no match pattern

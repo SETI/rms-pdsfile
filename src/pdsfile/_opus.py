@@ -83,9 +83,11 @@ class _OpusMixin:
         translator, and the category is always the class's ``BUNDLE_DIR_NAME``, so the
         file this returns is always in the bundles tree and never in a parallel one.
 
-        The result is constructed, not verified: nothing here reads the filesystem, so
-        a well-formed specification for a file that does not exist still returns an
-        object.
+        The result is not verified: a well-formed specification for a file that does not
+        exist still returns an object. The filesystem is read along the way even so,
+        because ``from_logical_path()`` walks the path with ``child()``, which tests each
+        component for existence. Asking for the capitalization to be fixed adds reads on
+        top of that.
 
         Parameters:
             filespec (str): the file specification, starting at the bundle name.
@@ -113,16 +115,17 @@ class _OpusMixin:
         """Return the PdsFile of the primary data file an OPUS ID names.
 
         The OPUS ID first selects the rule subclass that owns it, through the class's
-        ``OPUS_ID_TO_SUBCLASS`` translator; everything after that is done on that
-        subclass rather than on the class this was called on.
+        ``OPUS_ID_TO_SUBCLASS`` translator. Exactly one thing is then read off that
+        subclass: ``OPUS_ID_TO_PRIMARY_LOGICAL_PATH``. Every other step -- making a path
+        absolute, globbing it, testing it for existence, constructing the objects,
+        logging -- is done on the class this was called on.
 
-        That subclass supplies ``OPUS_ID_TO_PRIMARY_LOGICAL_PATH``, which is either a
-        plain function or a translator table. A function is called and its result is
-        returned as it stands, so what that branch returns is whatever the rule module
-        chose to return. A translator yields one or more logical paths, each of which is
-        made absolute and then resolved against the filesystem: a path holding a
-        wildcard through a case-sensitive glob, one without through a case-sensitive
-        existence test.
+        ``OPUS_ID_TO_PRIMARY_LOGICAL_PATH`` is either a plain function or a translator
+        table. A function is called and its result is returned as it stands, so what that
+        branch returns is whatever the rule module chose to return. A translator yields
+        one or more logical paths, each of which is made absolute and then resolved
+        against the filesystem: a path holding a wildcard through a case-sensitive glob,
+        one without through a case-sensitive existence test.
 
         Exactly one surviving match is the ordinary case. Several means the OPUS ID is
         ambiguous, and then a rule subclass that defines the ``opus_prioritizer`` hook
@@ -187,9 +190,10 @@ class _OpusMixin:
     def opus_products(self):
         """Return every file OPUS should offer alongside this data product or label.
 
-        The answer is a dictionary. Each key is a five-element tuple, and OPUS displays
-        the results in the sorted order of those keys, which is what the group name and
-        the priority number are for::
+        The answer is a dictionary. Each key is a five-element tuple, or the empty string
+        for a product whose type no rule matches, and OPUS displays the results in the
+        sorted order of those keys, which is what the group name and the priority number
+        are for::
 
             (group, priority, opus_type, description, default_checked)
 
@@ -240,8 +244,8 @@ class _OpusMixin:
         path sort.
 
         Returns:
-            dict: the five-element key mapped to its list of sublists of PdsFile
-            objects.
+            dict: each key -- a five-element tuple, or the empty string -- mapped to its
+            list of sublists of PdsFile objects.
         """
 
         cls = type(self)

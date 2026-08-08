@@ -21,7 +21,8 @@ counterpart yields its directory rather than nothing.
 ``associated_abspaths()`` is the general answer, with
 ``associated_logical_paths()`` and ``associated_pdsfiles()`` as conversions of it.
 ``associated_parallel()`` answers the narrower question of the single most similar file
-in one parallel tree, optionally at another version, and caches its answer on the object.
+in one parallel tree, optionally at another version, and caches its answer on the object
+it resolves the question against, which is not always the one it was asked about.
 """
 
 import os
@@ -43,7 +44,8 @@ class _AssociationsMixin:
     (associated_abspaths), logical paths (associated_logical_paths) or PdsFile
     objects (associated_pdsfiles). associated_parallel answers the narrower
     question of the single "most similar" file in a parallel tree, optionally at
-    another version rank, and caches its answer on the object.
+    another version rank, and caches its answer on the object it resolves the
+    question against, which is not always the one it was asked about.
 
     The association rules themselves are not here: the ASSOCIATIONS translator
     and the CATEGORIES set stay on PdsFile, where each rule subclass supplies its
@@ -58,10 +60,12 @@ class _AssociationsMixin:
       instance attributes read    abspath, bundlename, bundletype_, category_,
                                   interior, is_index_row, logical_path,
                                   version_rank
-      instance attributes WRITTEN _associated_parallels_filled, on self, which
+      instance attributes WRITTEN _associated_parallels_filled, which
                                   associated_parallel initializes to {} on first
                                   use and then fills; _recache() writes the
-                                  object back to the cache afterwards
+                                  object back to the cache afterwards. The object
+                                  written is the one the request resolved to, not
+                                  necessarily the one asked
       class attributes read       ASSOCIATIONS, CATEGORIES
       other methods called        _recache, all_versions, bundle_pdsfile,
                                   bundleset_pdsfile, parent, from_abspath,
@@ -87,12 +91,13 @@ class _AssociationsMixin:
     not on PdsFile; associated_abspaths reads it. A bare PdsFile never gets that
     far: ASSOCIATIONS is None on it, so the same method raises TypeError earlier,
     at the ASSOCIATIONS lookup, and never reaches IDX_EXT. Either way
-    associated_abspaths works on a subclass instance and not on a bare PdsFile,
-    which is how it has always behaved.
+    associated_abspaths works on a subclass instance and not on a bare PdsFile.
 
     associated_parallel is the only method here that writes anything. It fills
-    _associated_parallels_filled and calls _recache, so a lookup changes the
-    cached object; the other three read only.
+    _associated_parallels_filled on the object the request resolved to -- this
+    one where the volume type is unchanged, and this file's latest version where
+    it is not -- and calls _recache, so a lookup changes a cached object; the
+    other three read only.
     """
 
     ############################################################################
@@ -112,8 +117,10 @@ class _AssociationsMixin:
             must_exist (bool): whether to return only paths that exist.
 
         Returns:
-            list: the logical paths, without duplicates, in the order
-            ``associated_abspaths()`` produced them.
+            list: the logical paths, in the order ``associated_abspaths()`` produced
+            them. The duplicates were removed from the absolute paths, so two paths
+            under different holdings directories that share one logical path both
+            survive into this list.
 
         Raises:
             TypeError: raised by ``associated_abspaths()`` on a bare PdsFile, whose
@@ -145,6 +152,8 @@ class _AssociationsMixin:
         Raises:
             TypeError: raised by ``associated_abspaths()`` on a bare PdsFile, whose
                 association table is None.
+            ValueError: raised by ``pdsfiles_for_abspaths()`` if an associated path does
+                not lie under a holdings directory.
         """
 
         cls = type(self)
@@ -173,7 +182,12 @@ class _AssociationsMixin:
 
         The matching runs once per index extension the class defines, so a class with
         two of them does the work twice. Duplicates are removed at the end, which is what
-        keeps that invisible in the usual case.
+        keeps the repetition invisible where both passes match the same files. It is not
+        invisible for a pattern naming an index row: the pass that recognizes the row
+        rewrites the pattern down to the index file itself, and that rewrite persists
+        into the next pass, which finds no extension of its own in the shortened pattern
+        and so matches the bare index file. The row and the index file are different
+        paths, so the dedup keeps both.
 
         Asking for this file's own volume type also brings in its label, if it has one,
         and the data files it points at.
@@ -322,8 +336,9 @@ class _AssociationsMixin:
         Where ``associated_abspaths()`` returns every counterpart, this returns one: the
         deepest path in the requested tree that exists and matches this file as far as
         it can. A file whose exact counterpart is missing yields the deepest directory
-        above it that is there, and a file whose bundle has no counterpart at all yields
-        None.
+        above it that is there. A file whose bundle has no counterpart falls back to its
+        bundle set's, and the answer is None only where that too is missing or does not
+        exist.
 
         Asking for no category asks about this file's own, which is how the version
         ranks are reached. Asking for a category with a different volume type first
@@ -331,18 +346,24 @@ class _AssociationsMixin:
         against the latest; that is also why the word ranks are rejected for such a
         request, apart from "latest", which is what the move already did.
 
-        A rank of None means the version this object already has when the volume type is
-        unchanged, and the latest when it is not. A numeric rank names a version
-        directly. The words "latest", "previous" and "next" are resolved against the
-        list of versions this file has, and "previous" at the oldest and "next" at the
-        newest return that same version rather than failing.
+        A rank of None means the latest version wherever the category asked for is this
+        file's own, and wherever the volume type differs, since the move to the latest
+        has already happened by then. It means the version this object already has only
+        where the category differs and the volume type does not, because the path built
+        for the counterpart carries the version suffix over. A numeric rank names a
+        version directly. The words "latest", "previous" and "next" are resolved against
+        the list of versions this file has, and "previous" at the oldest and "next" at
+        the newest return that same version rather than failing.
 
-        Answers are cached on this object, under the category and rank asked for, and
-        the object is written back to the shared cache when an answer is recorded. The
-        one path that returns without caching is the deepest-directory search: it caches
-        what it finds, and returns None uncached when it runs off the top.
+        Answers are cached under the category and rank asked for, on the object the
+        request resolved to: this one where the volume type is unchanged, and this file's
+        latest version where it is not. That object is written back to the shared cache
+        when an answer is recorded. The deepest-directory search caches both of its
+        outcomes, what it finds and the None it reaches by running off the top.
 
-        A category the class does not recognize returns None before any of that.
+        Two paths return without caching anything, both of them before the caching
+        begins: a category the class does not recognize returns None, and a category
+        directory returns the requested category's own directory.
 
         Parameters:
             category (str): the category to look in, with any trailing slash ignored,
@@ -361,7 +382,7 @@ class _AssociationsMixin:
         cls = type(self)
 
         def _cache_and_return(pdsf):
-            """Record one answer in this object's cache and return it.
+            """Record one answer in the cache of the object the request resolved to.
 
             The argument may be a PdsFile, an absolute path, or None; a path is turned
             into a PdsFile. An object whose file does not exist is replaced by None, and

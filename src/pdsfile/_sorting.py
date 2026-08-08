@@ -20,9 +20,11 @@ path, a logical path or a basename, and different callers hold different ones. T
 twelve ``<plural>_for_<plural>()`` methods convert a list of any of the four into a list
 of any other, each with the same option to drop the ones that do not exist.
 
-Nothing here reads the filesystem itself. The four methods that need to probe it -- to
-tell a directory from a file, or to drop what does not exist -- delegate to
-``_LocalFsMixin``.
+Nothing here reads the filesystem itself. Four methods reach ``_LocalFsMixin``
+directly: ``sort_basenames()`` to tell a directory from a file, and three of the bulk
+converters to drop what does not exist. Six more converters drop what does not exist
+through the ``exists`` lazy property, which reaches the same place, and the last three
+do so through one of those six.
 """
 
 import os
@@ -40,8 +42,9 @@ class _SortingMixin:
 
     Two groups of methods, kept together because they are one domain -- bulk
     operations over lists of basenames, logical paths, abspaths and PdsFile
-    objects. None of them reads the filesystem itself: the four that need to
-    probe it delegate to _LocalFsMixin, as the contract below records::
+    objects. None of them reads the filesystem itself: four reach _LocalFsMixin
+    directly, six more reach it through the exists lazy property, and the last
+    three reach it through one of those six, as the contract below records::
 
       splitting and sorting   split_basename, basename_is_label,
                               basename_is_viewable, sort_basenames,
@@ -79,9 +82,9 @@ class _SortingMixin:
     PdsFile: split_basename reads BUNDLENAME_PLUS_REGEX and BUNDLESET_PLUS_REGEX,
     sort_basenames reads BUNDLESET_PLUS_REGEX_I, and basename_is_label reads
     LBL_EXT. So basename_is_label and sort_basenames raise AttributeError on a
-    bare PdsFile; split_basename does not, because SPLIT_RULES is None there and
-    it returns before reaching either regex. That is how they have always
-    behaved.
+    bare PdsFile, sort_basenames only once it has a name to build a key for;
+    split_basename does not, because SPLIT_RULES is None there and it returns
+    before reaching either regex.
 
     Two extension sets are spelled differently and are not interchangeable:
     LBL_EXT holds extensions with their leading dot and VIEWABLE_EXTS holds them
@@ -97,12 +100,17 @@ class _SortingMixin:
         """Split a basename into the parts the sort order is built from.
 
         The parts are an anchor, a suffix and an extension. The anchor is what groups a
-        file with its relatives -- a data file, its label and its previews share one --
-        so the default split is at the **first** period rather than the last, and a
-        bundle set name splits before its version suffix instead.
+        file with its relatives -- a data file, its label and its previews share one.
+        The split rules are what produce it, and the rule that catches everything else
+        splits at the **last** period; a bundle set name splits before its version
+        suffix instead.
 
-        A rule module can override the split for its own data set, and the class's split
-        rules are consulted first for every name that is not a bundle set or bundle name.
+        A rule module can override the split for its own data set, and which of the two
+        mechanisms wins depends on the kind of name. A bundle set name is split by the
+        regular expression alone, and the split rules are never consulted for it. A
+        bundle name consults the split rules first, and their answer is returned wherever
+        it differs from the name given; otherwise the regular expression's groups are.
+        Every other name is split by the rules alone.
 
         **The result is not always a tuple.** A class with no split rules at all, which
         is a bare PdsFile, returns the basename it was given, unchanged; and a split rule
@@ -220,8 +228,10 @@ class _SortingMixin:
         once the directory has grown past a threshold, which is what keeps a short
         listing from being reordered for no reason.
 
-        Sorting by directory-or-file is the one option that reads the filesystem, and it
-        does so once per name.
+        Sorting by directory-or-file reads the filesystem once per name. Pulling the
+        info file to the front reads it too, through the ``info_basename`` lazy property,
+        but that property is cached, so it costs one read for the whole sort rather than
+        one per name.
 
         Parameters:
             basenames (list): the basenames to sort. It is not modified.
@@ -342,7 +352,8 @@ class _SortingMixin:
         come back one item longer than it went in; the returned list is a different one.
 
         Parameters:
-            basenames (list): the basenames to sort. It is not modified.
+            basenames (list): the basenames to sort. This object's own basename is
+                appended to it where the list does not already hold it.
             labels_after (bool): whether a label sorts after the file it describes. None
                 takes the class's default.
             dirs_first (bool): whether directories sort before files. None takes the
@@ -428,9 +439,9 @@ class _SortingMixin:
         that share a top-level name come out together, and the top-level names themselves
         are sorted alphabetically.
 
-        **The paths must all have the same number of levels.** A path that is also a
-        directory of another path is treated as a directory, so it is not emitted in
-        place; it is caught at the end as an overlooked item, appended alphabetically
+        Paths of differing depth are handled. **No path may be a directory of another
+        path in the list**: such a path is treated as a directory, so it is not emitted
+        in place; it is caught at the end as an overlooked item, appended alphabetically
         after everything else, and logged as a warning. The same end check drops anything
         the walk produced that was not asked for, also with a warning. Both warnings are
         skipped where the class has no logger.
@@ -441,6 +452,15 @@ class _SortingMixin:
 
         Returns:
             list: a new list of the same paths, sorted.
+
+        Raises:
+            KeyError: from the item read ``__getitem__()`` on the table of child names,
+                for a path with no slash in it. Such a path becomes a top-level name but
+                gets no entry in that table, and the walk subscripts one for every
+                top-level name.
+            ValueError: raised by ``from_logical_path()`` if a path's first component is
+                not one of the class's categories, or if no holdings directory can be
+                found at all.
         """
 
         # Create a dictionary of PdsFile objects keyed by logical path/subpath.
@@ -468,10 +488,12 @@ class _SortingMixin:
         # Sort keys at each level, recursively
 
         def _append_recursively(path):
-            """Append one directory's paths to the result, deepest last.
+            """Append one directory's paths to the result, in its own sorted child order.
 
-            A child that is itself a directory of the tree being built is descended
-            into; a child that is not is a leaf and is appended.
+            A child that is itself a directory of the tree being built is descended into
+            at the point where its name falls in that order, so a deeper path can be
+            emitted before a shallower one; a child that is not is a leaf and is
+            appended.
 
             Parameters:
                 path (str): the logical path of the directory to walk.
@@ -536,9 +558,11 @@ class _SortingMixin:
     def viewable_childnames(self):
         """Return the children of this directory a browser can display.
 
-        The order is the one the child list already carries, which is the class's sort
-        with all four grouping options off, rather than the order
-        ``sort_childnames()`` would give.
+        The order is the one the child list already carries. For a directory that is the
+        class's sort with all four grouping options off, rather than the order
+        ``sort_childnames()`` would give; for an index table, whose child list is the
+        rows, it is the class's sort with its own defaults, which is the order
+        ``sort_childnames()`` gives.
 
         Returns:
             list: the viewable child basenames.
