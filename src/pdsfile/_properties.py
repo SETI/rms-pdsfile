@@ -169,7 +169,22 @@ class _PropertiesMixin:
 
     @property
     def isdir(self):
-        """Return True if the file is a directory."""
+        """Whether this file is a directory.
+
+        The answer is derived on the first access, stored in ``_isdir_filled`` and
+        returned unchanged afterwards; deriving it calls ``_recache()``. A merged
+        directory is born with the slot set to True and an index row with False, so
+        neither reaches the derivation.
+
+        Where the derivation does run, an object with no absolute path is False and
+        anything else is asked of ``os_path_isdir()``, which under SHELVES_ONLY reads the
+        info shelf rather than the filesystem. That lookup raises KeyError for a path the
+        shelf covers and holds no entry for, where ``exists`` would have answered False,
+        so this is the less forgiving of the two questions.
+
+        Returns:
+            bool: True if the file is a directory.
+        """
 
         cls = type(self)
 
@@ -203,7 +218,17 @@ class _PropertiesMixin:
 
     @property
     def filespec(self):
-        """Return bundlename or bundlename/interior."""
+        """This file's path below its bundle set, starting at the bundle name.
+
+        This is the part of a path that a bundle's own documentation quotes: the bundle
+        name, followed by the interior path where there is one. It is recomputed on every
+        access from attributes fixed at construction, and it is an empty string for
+        anything above a bundle.
+
+        Returns:
+            str: the bundle name, or the bundle name and the interior path joined by a
+            slash.
+        """
 
         if self.interior:
             return self.bundlename_ + self.interior
@@ -212,7 +237,15 @@ class _PropertiesMixin:
 
     @property
     def absolute_or_logical_path(self):
-        """Return the absolute path if this has one; otherwise the logical path."""
+        """The absolute path where there is one, and the logical path otherwise.
+
+        Recomputed on every access. A merged directory has no absolute path, and neither
+        does an object built from a logical path that no holdings directory holds; this is
+        what a caller uses to name such an object without testing which kind it has.
+
+        Returns:
+            str: the absolute path, or the logical path.
+        """
 
         if self.abspath:
             return self.abspath
@@ -221,7 +254,20 @@ class _PropertiesMixin:
 
     @property
     def islabel(self):
-        """Return True if the file is a PDS3 label; deprecated name."""
+        """Whether this file is a PDS3 label, judged by its name alone.
+
+        The answer is derived on the first access from ``basename_is_label()``, stored in
+        ``_islabel_filled`` and returned unchanged afterwards; deriving it calls
+        ``_recache()``. A merged directory and an index row are born with the slot set to
+        False.
+
+        Nothing here looks at the file or tests that it exists, so a name that matches is
+        a label whether or not anything is there. ``is_label`` is the same value under
+        another name, and this is the one that holds the slot.
+
+        Returns:
+            bool: True if the basename is a label name.
+        """
 
         if self._islabel_filled is not None:
             return self._islabel_filled
@@ -233,14 +279,33 @@ class _PropertiesMixin:
 
     @property
     def is_label(self):
-        """Return True if the file is a PDS3 label; alternative name for islabel."""
+        """Whether this file is a PDS3 label, judged by its name alone.
+
+        This returns ``islabel``, which is where the derivation and the slot are, so
+        reading either of them fills ``_islabel_filled`` for both.
+
+        Returns:
+            bool: True if the basename is a label name.
+        """
 
         return self.islabel
 
     @property
     def is_viewable(self):
-        """Return True if the file is viewable. Examples of viewable files are JPEGs,
-        TIFFs, PNGs, etc.
+        """Whether this file is an image a browser can display, judged by its name.
+
+        The answer is derived on the first access from ``basename_is_viewable()``, which
+        tests the extension against the class's VIEWABLE_EXTS, stored in
+        ``_is_viewable_filled`` and returned unchanged afterwards; deriving it calls
+        ``_recache()``. A merged directory and an index row are born with the slot set to
+        False.
+
+        Nothing here opens the file or tests that it exists, so a file that is viewable by
+        name and absent from disk still answers True. ``local_viewset`` is where the
+        existence test is applied.
+
+        Returns:
+            bool: True if the basename is a viewable name.
         """
 
         if self._is_viewable_filled is not None:
@@ -301,14 +366,39 @@ class _PropertiesMixin:
 
     @property
     def url(self):
-        """Return the URL to this file after the domain name, starting with "/holdings".
+        """Where this file is served, as a URL or as a path below the HTML root.
+
+        This returns ``html_path``, which is where the derivation and the slot are. See
+        that property for the three cases, one of which gives a complete external URL
+        rather than a path.
+
+        Returns:
+            str: a path below the HTML root, or the whole URL held by a ``.link`` file.
         """
 
         return self.html_path
 
     @property
     def split(self):
-        """Return (anchor, suffix, extension)"""
+        """This basename divided into the three parts the sort order is built from.
+
+        The value is derived on the first access from ``split_basename()``, stored in
+        ``_split_filled`` and returned unchanged afterwards; deriving it calls
+        ``_recache()``. A merged directory and an index row are born with the slot set to
+        ``(basename, '', '')``.
+
+        The three parts are the anchor, which groups a file with its relatives, the
+        suffix, and a third part that is the extension for most names and the volume type
+        for a bundle-set name that carries one. ``anchor`` and ``extension`` are the first
+        and third read back out of here.
+
+        **The result is not always a triple.** A class with no split rules, which is a
+        bare PdsFile, gets back the basename it passed in.
+
+        Returns:
+            tuple: the anchor, the suffix and the third part; or the basename itself for a
+            class with no split rules.
+        """
 
         if self._split_filled is not None:
             return self._split_filled
@@ -320,8 +410,19 @@ class _PropertiesMixin:
 
     @property
     def anchor(self):
-        """Return the anchor for this object. Objects with the same anchor are grouped
-        together in the same row of a Viewmaster table.
+        """The string that groups this object with the files displayed beside it.
+
+        A data file, its label and its previews share an anchor, which is what puts them
+        in one row of a Viewmaster table. This holds no slot of its own but reads
+        ``split``, so the first access fills ``_split_filled`` and calls ``_recache()``.
+
+        A row key alone would not distinguish one index row from a row of another table,
+        so an index row's anchor is its table's anchor and its own joined by a hyphen.
+        Building that reads the parent, so an index row's anchor also costs the parent
+        object's construction.
+
+        Returns:
+            str: the anchor.
         """
 
         # We need a better anchor for index row PdsFiles
@@ -332,8 +433,20 @@ class _PropertiesMixin:
 
     @property
     def global_anchor(self):
-        """Return the global anchor is a unique string across all data products and
-        is suitable for use in HTML pages.
+        """An anchor unique across the whole tree, in a form an HTML page can hold.
+
+        Where ``anchor`` is unique only among the files beside it, this prefixes the
+        parent's logical path and replaces every slash with a hyphen, which leaves a
+        string with no character an HTML fragment identifier would object to.
+
+        The value is derived on the first access, stored in ``_global_anchor_filled`` and
+        returned unchanged afterwards; deriving it calls ``_recache()``, and fills
+        ``_split_filled`` by way of ``anchor``. A merged directory is born with the slot
+        set to its own basename. An index row is born with it set to None, so an index row
+        does reach this body.
+
+        Returns:
+            str: the global anchor.
         """
 
         if self._global_anchor_filled is not None:
@@ -382,8 +495,24 @@ class _PropertiesMixin:
 
     @property
     def indexshelf_abspath(self):
-        """Return the absolute path to the indexshelf file if this is an index file;
-        blank otherwise.
+        """The absolute path of the index shelf that records this index table's rows.
+
+        The value is derived on the first access, stored in ``_indexshelf_abspath`` and
+        returned unchanged afterwards; deriving it calls ``_recache()``. A merged
+        directory is born with the slot set to an empty string.
+
+        A file whose extension is not one of the class's index extensions, in either case,
+        gets an empty string. Anything else gets this file's own absolute path with the
+        holdings directory renamed to the parallel ``_indexshelf-`` tree and the extension
+        replaced by ``.pickle``.
+
+        The path is built by text substitution and is never tested, so a non-empty answer
+        says the name is an index name and not that any shelf exists; ``is_index`` is the
+        property that tests it. Reading this on a bare PdsFile raises AttributeError,
+        because only the subclasses define index extensions.
+
+        Returns:
+            str: the shelf path, or an empty string.
         """
 
         cls = type(self)
@@ -407,8 +536,26 @@ class _PropertiesMixin:
 
     @property
     def is_index(self):
-        """Return True if this is an index file. An index file is recognized by the
-        presence of the corresponding indexshelf file.
+        """Whether this file is an index table whose rows can be browsed as children.
+
+        The answer is derived on the first access, stored in ``_is_index`` and returned
+        unchanged afterwards; deriving it calls ``_recache()``, and fills
+        ``_indexshelf_abspath`` on the way. A merged directory is born with the slot set
+        to False.
+
+        The test is that ``indexshelf_abspath`` names a file that exists, so an index
+        table whose shelf has not been written is not an index by this measure. A second
+        test catches a table while its shelf is being built: a path in the metadata tree
+        whose name ends in an index extension answers True. **That second answer is
+        returned without being stored**, so a file recognized only that way runs the whole
+        derivation again on every access, and it is the one answer this property gives
+        that is not remembered.
+
+        The second test reads the absolute path as text, so an object that has none raises
+        TypeError there rather than answering False.
+
+        Returns:
+            bool: True if this is an index table.
         """
 
         cls = type(self)
@@ -434,7 +581,28 @@ class _PropertiesMixin:
 
     @property
     def index_pdslabel(self):
-        """Return the parsed PdsLabel associated with the label of an index."""
+        """The parsed PDS label that describes this index table.
+
+        A file that is not an index gets None with no slot written, so that question is
+        asked again on every access. Otherwise the value is derived once, stored in
+        ``_index_pdslabel`` and returned unchanged afterwards; deriving it calls
+        ``_recache()``. An index row is born with the slot set to None and is not itself
+        an index, so it takes the first case.
+
+        The label's path is guessed by replacing each index extension in this file's path
+        with each label extension, in both cases, and parsing the first that opens. A
+        parse that fails records the marker string ``'failed'``, which is what makes the
+        failure remembered rather than retried, and which this reports as None.
+
+        **A class with more than one label extension can discard a label it parsed**: the
+        successful parse leaves the inner loop only, so the outer loop tries the next
+        label extension and its failure overwrites the value. The PDS3 subclass has one
+        label extension and cannot reach this; the PDS4 subclass has two.
+
+        Returns:
+            pdsparser.PdsLabel: the parsed label, or None where this is not an index or no
+            label could be parsed.
+        """
 
         if not self.is_index:
             return None
@@ -462,8 +630,26 @@ class _PropertiesMixin:
 
     @property
     def childnames(self):
-        """Return a list of all the child names if this is a directory or an index.
-        Names are kept in sorted order.
+        """The basenames of this object's children, in display order.
+
+        The value is derived on the first access, stored in ``_childnames_filled`` and
+        returned unchanged afterwards; deriving it calls ``_recache()`` and fills
+        ``_isdir_filled``, ``_indexshelf_abspath`` and ``_is_index``. A merged directory
+        is born with the slot set to an empty list, which the preload appends to as it
+        visits each physical copy; an index row is born with an empty list and keeps it.
+
+        A directory with an absolute path is listed through ``os_listdir()``, which under
+        SHELVES_ONLY reads the info shelf, and the names are sorted with every grouping
+        option off, so the order is the sort rules' own. Anything else starts from an
+        empty list.
+
+        **An index table then replaces that list entirely** with the row keys its index
+        shelf holds, sorted with the default options, so the rows of an index appear as
+        its children. The two cases are consecutive rather than alternative, so a name
+        read from the filesystem cannot survive into an index table's answer.
+
+        Returns:
+            list: the child basenames, sorted.
         """
 
         cls = type(self)
@@ -493,8 +679,18 @@ class _PropertiesMixin:
 
     @property
     def childnames_lc(self):
-        """Return a list of all the child names if this is a directory or an index.
-        Names are kept in sorted order. In this version all names are lower case.
+        """The basenames of this object's children, lowercased, in the same order.
+
+        The value is derived on the first access from ``childnames``, stored in
+        ``_childnames_lc_filled`` and returned unchanged afterwards; deriving it calls
+        ``_recache()`` and fills ``_childnames_filled`` and the slots that reads. A merged
+        directory and an index row are born with the slot set to an empty list.
+
+        The order is ``childnames``' order rather than a fresh sort, and no name is
+        dropped, so two names differing only in case both appear and appear as duplicates.
+
+        Returns:
+            list: the child basenames, lowercased.
         """
 
         if self._childnames_lc_filled is None:
@@ -505,8 +701,15 @@ class _PropertiesMixin:
 
     @property
     def parent_logical_path(self):
-        """Return a safe way to get the logical_path of the parent; works for merged
-        directories when parent is None.
+        """The parent's logical path, or an empty string where there is no parent.
+
+        Recomputed on every access, and it builds the parent object twice to answer. This
+        is what callers use in place of ``parent().logical_path``, which raises on the
+        objects that have no parent; a category-level merged directory is the case it
+        exists for.
+
+        Returns:
+            str: the parent's logical path, or an empty string.
         """
 
         parent = self.parent()
@@ -698,38 +901,101 @@ class _PropertiesMixin:
 
     @property
     def size_bytes(self):
-        """Return the size in bytes represented as an int."""
+        """This file's size in bytes.
+
+        Read out of ``_info``, so the first access derives that and fills
+        ``_info_filled``. A file that does not exist is zero, and so is a directory that
+        is neither a bundle set nor covered by a shelf; a bundle-set directory reports the
+        sum over its bundles.
+
+        Returns:
+            int: the size in bytes.
+        """
 
         return self._info[0]
 
     @property
     def modtime(self):
-        """Return Datetime object representing this file's modification date."""
+        """When this file was last modified.
+
+        Read out of ``_info``, so the first access derives that and fills
+        ``_info_filled``. A file that does not exist gets None, and so does a directory
+        whose shelf records no time, which is what an empty directory gets. A bundle-set
+        directory reports the latest of the times its bundles record.
+
+        Returns:
+            datetime.datetime: the modification time, or None where none is recorded.
+        """
 
         return self._info[2]
 
     @property
     def checksum(self):
-        """Return MD5 checksum of this file."""
+        """The MD5 checksum recorded for this file.
+
+        Two sources, in that order: the volume-info table, which is where the documents
+        tree's checksums live, and then ``_info``, which is where a shelf-covered file's
+        lives. The first access therefore fills ``_volume_info_filled``, and fills
+        ``_info_filled`` as well wherever the first source carries nothing.
+
+        Returns:
+            str: the checksum, or an empty string where neither source records one.
+        """
 
         return self._volume_info[5] or self._info[3]
 
     @property
     def width(self):
-        """Return the width of this image in pixels if it is viewable."""
+        """This image's width in pixels.
+
+        Read out of ``_info``, whose fifth element is the shape. Where that shape is the
+        ``'TBD'`` marker the info derivation writes for a viewable it measured from the
+        filesystem, reading this opens the image with PIL, rewrites ``_info_filled`` and
+        calls ``_recache()``, so this is one of the two properties that reaches the
+        filesystem after ``_info`` is already filled.
+
+        Anything that is not a measured viewable is zero: a file that does not exist, a
+        directory, and an image PIL could not open.
+
+        Returns:
+            int: the width in pixels, or zero.
+        """
 
         self._repair_width_height()
         return self._info[4][0]
 
     @property
     def height(self):
-        """Return the height of this image in pixels if it is viewable."""
+        """This image's height in pixels.
+
+        Read out of ``_info`` exactly as ``width`` is, with the same side effect: a shape
+        still carrying the ``'TBD'`` marker is measured by opening the image, which
+        rewrites ``_info_filled`` and calls ``_recache()``. Reading either property
+        measures both dimensions at once.
+
+        Anything that is not a measured viewable is zero.
+
+        Returns:
+            int: the height in pixels, or zero.
+        """
 
         self._repair_width_height()
         return self._info[4][1]
 
     def _repair_width_height(self):
-        """Internal function to fill in the shape of viewables, if needed."""
+        """Measure a viewable whose shape the shelves left marked, and record it.
+
+        The marker is a third element in ``_info``'s shape, which the info derivation
+        writes as ``(0, 0, 'TBD')`` for a viewable it measured from the filesystem rather
+        than from a shelf. Where it is present the image is opened with PIL, its size
+        replaces the whole shape, and ``_recache()`` stores the object again; where it is
+        absent this does nothing, so ``width`` and ``height`` may call it on every access
+        at no cost.
+
+        An image that cannot be opened, for any reason at all, is recorded as ``(0, 0)``,
+        which is indistinguishable from a file that was never a viewable and which stops
+        the measurement being retried.
+        """
         cls = type(self)
 
         if len(self._info[4]) > 2:      # (0,0,'TBD') means fill in the size now
@@ -747,14 +1013,31 @@ class _PropertiesMixin:
 
     @property
     def alt(self):
-        """Return the webpage alt tag to use if this is a viewable object."""
+        """The text an HTML ``alt`` attribute should carry for this file.
+
+        This is the basename, recomputed on every access. Nothing tests whether the file
+        is viewable, so every object answers.
+
+        Returns:
+            str: the basename.
+        """
 
         return self.basename
 
     @property
     def date(self):
-        """Return the modification date/time of this file as a well-formatted string;
-        otherwise blank.
+        """This file's modification time, written for display.
+
+        The value is derived on the first access from ``modtime``, stored in
+        ``_date_filled`` and returned unchanged afterwards; deriving it calls
+        ``_recache()`` and fills ``_info_filled``. A merged directory is born with the
+        slot set to an empty string, and an index row inherits its table's value.
+
+        A file with no recorded modification time gets an empty string rather than a
+        placeholder date, so a caller can test the result for truth.
+
+        Returns:
+            str: the time as ``YYYY-MM-DD HH:MM:SS``, or an empty string.
         """
 
         if self._date_filled is None:
@@ -769,7 +1052,21 @@ class _PropertiesMixin:
 
     @property
     def formatted_size(self):
-        """Return the size of this file as a formatted string, e.g., "2.16 MB"."""
+        """This file's size, written for display with a unit.
+
+        The value is derived on the first access from ``size_bytes``, stored in
+        ``_formatted_size_filled`` and returned unchanged afterwards; deriving it calls
+        ``_recache()`` and fills ``_info_filled``. A merged directory and an index row are
+        born with the slot set to an empty string.
+
+        A size of zero gets an empty string rather than ``0 bytes``, because the size is
+        tested for truth before it is formatted, so a file that does not exist and an
+        empty file read alike here. Anything else is ``formatted_file_size()``'s three
+        significant digits and a unit stepping by factors of a thousand.
+
+        Returns:
+            str: the size and its unit, or an empty string.
+        """
 
         if self._formatted_size_filled is None:
             if self.size_bytes:
