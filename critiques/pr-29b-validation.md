@@ -257,11 +257,133 @@ PR-29a's probe, arriving by a different route.
 
 ## 6. Every docstring that was wrong about the code
 
-PENDING
+Sixty-eight prose defects, over three files. They divide by where the prose came from, and
+the division is the point: **fourteen of them are sentences that shipped with PR-29 and had
+already had one adversarial read**, and nine more are sentences a read inside *this* PR
+wrote and a later read had to correct.
+
+### 6.1 In `pdsfile.py` and `pdsviewable.py` -- prose that shipped
+
+Round 2 found fourteen and round 5 found four more the earlier reads had not touched. The
+ones a reader would have acted on:
+
+* The module map called `_local_fs.py` "the case-repairing filesystem layer". It holds no
+  case repair; the same map attributes `repair_case` to `_path_utils` seven lines later.
+* "Every public name of the package resolves as ``pdsfile.pdsfile.<name>``." Ninety-four
+  names in the frozen manifest are not attributes of that module.
+* `new_merged_dir()`: "the properties behind them do not degrade gracefully". Four of the
+  seven answer normally. And the two icon properties were said to "read the icon directory
+  out of the holdings tree"; both subscript a dictionary and raise KeyError until
+  `load_icons()` has run.
+* `from_abspath()`'s `Raises:` offered "has no ``holdings`` component" as an outcome. The
+  logical-path conversion runs first and rejects such a path, so the message written here
+  cannot be reached.
+* `from_path()`: "A missing category is assumed to be the class's own bundle directory
+  name." Only the voltype defaults.
+* `from_path()`: "A bundle*set* they do not hold gives KeyError." True only with no version
+  suffix; with one it is ValueError, by a different route.
+* `pdsviewable.py`: "so neither describes any file on disk". Where the request equals an
+  indexed size -- the ordinary case -- both dimensions match the chosen file's.
+* `PdsViewSet`: "a set holding named viewables alone serves them from every lookup."
+  `thumbnail` raises IndexError, `small` and `medium` AttributeError.
+* `append()`: "Every later size lookup on the damaged set fails too." They keep answering.
+* `load_icons()`: the `jpg-<n>` nominal-size fallback is unreachable, because
+  `str.rpartition` returns the whole string when the separator is absent.
+* `iconset_for()`: the requirement is a `document_generic` icon "for the open state being
+  asked for". One closed icon covers both.
+* **The pickle rationale for keeping the `class PdsFile` statement in `pdsfile.py`.** A
+  pickled instance records its own class's module, and every object the package hands out
+  is a rule subclass; `pdsfile.pdsfile` does not appear in `pickle.dumps(p)` at all.
+* "An attribute whose name ends in an underscore is empty or ends in a slash."
+  `checksums_` and `archives_` end in a hyphen, and the same paragraph names them.
+* "The data a mixin reads is defined here." `IDX_EXT` and `LBL_EXT` are defined only on the
+  subclasses, which three sibling module docstrings say and this one denied.
+
+### 6.2 In `_properties.py` -- prose that was thin and is now wrong differently
+
+The 68 docstrings at base were mostly one line each, and the line was often wrong. What the
+reads found in the *replacements* is section 9; what the base prose got wrong, and this PR
+corrects, includes:
+
+* `extension`: "the extension of this file, after the first dot". It is after the **last**
+  dot, and for a bundle-set name the third part is the volume type and not an extension.
+* `version_ranks`: "a list of the numeric version ranks". It is None for a file that does
+  not exist -- deferred entry 68, now documented -- and the body reruns on every access.
+* `_info`: "the info from the info shelf file". Three of its five paths never open a shelf.
+* `label_abspath`: "the absolute path to the label if it exists". It returns a path for a
+  label that does not exist whenever the file itself does not.
+* `opus_type`: a four-element tuple described; the value has five. Deferred entry 215.
+* `_volume_info`: five fields named for a six-element tuple, with the version id omitted, so
+  every field after it was mislabelled. Entry 227.
+* `version_info`: a `Keyword arguments:` block for a positional parameter, and no mention
+  that None is accepted.
+* `filespec`: "bundlename or bundlename/interior". The prefix is `bundlename_`, empty in
+  the archive and checksum trees.
+* `indexshelf_abspath`: the shelf path was described as the holdings directory renamed. It
+  is the category directory prefixed.
+* `filename_keylen`: "the length of the keys used to select the rows of an index file". It
+  is a bundle-set class attribute and is non-zero on objects that are not indexes.
+* `is_index`: "recognized by the presence of the corresponding indexshelf file", which is
+  one of two tests, and the second returns an answer it does not cache.
+* `index_pdslabel`: "the parsed PdsLabel associated with the label of an index". On PDS4 it
+  raises rather than returning anything.
+
+### 6.3 And two claims in documents rather than in code
+
+* Deviation (4)'s `RUF005` note said `self._info[:4] + (shape,)` "raises today". The line is
+  unreachable on the two construction paths that would make it raise. Raised by CodeRabbit.
+* Deviation (3)'s "documenting a module costs roughly fourteen lines per function" is below
+  every module measured. Entry 223.
 
 ## 7. Review
 
-PENDING
+**Five rounds, not four.** Rounds 1 and 2 ran against the pre-waiver scope -- ten members of
+`_properties.py` and the 63 functions of the other two files. The owner's waiver on
+2026-08-08 added 58 members, which is a whole slice arriving after the review had started.
+Reading them once would have broken the property the rounds exist for, so round 3 reads the
+58, round 4 is the second read of all 68, and round 5 is the second read of slice B.
+
+| round | slice | surface | prose defects | code discoveries |
+|---|---|---|---:|---:|
+| 1 | `_properties.py`, the ten of the sample | 10 functions | 21 | 8 |
+| 2 | `pdsfile.py` + `pdsviewable.py` | 63 functions, 3 classes, 2 modules | 14 | 10 |
+| 3 | `_properties.py`, the other 58 | 58 functions, 1 module | 22 | 6 |
+| 5 | `pdsfile.py` + `pdsviewable.py`, re-read | the same 63 | 9 | 4 |
+| 4 | `_properties.py`, all 68 re-read | the same 68 | PENDING | PENDING |
+
+Every reviewer was fresh, with no context from this session or from any other round, and
+every brief named the five angles in the same order. Every finding was re-verified by the
+executor before it was acted on. **One was accepted with its severity changed and none was
+rejected**, which is a lower rejection rate than PR-29a's five and is worth stating rather
+than glossing: the briefs asked for a run rather than an argument wherever holdings data
+could settle it, and the reviewers ran things -- 3,000 random view sets, 400 link shelves,
+5,972 volume-info entries, 200 trials of a nondeterministic failure.
+
+Two findings arrived twice, independently, which is the closest thing to a control this
+process has. `has_neighbor_rule`'s "everything below the category level" was found by the
+executor's own re-verification and, an hour later, by round 3, which noticed on re-grepping
+that its finding was already spent. And `from_path()`'s dead second scanning loop was found
+by round 2 and again by round 5.
+
+### The angles, and which paid
+
+* **Relationship claims were the largest category in every round**, as PR-29 and PR-29a both
+  measured. Eight of round 2's fourteen and most of round 5's. The instruction that made
+  them work was procedural rather than analytical: *verify by reading the other end*.
+* **Cached-property lifecycle** is what this module is made of, and round 3 turned it into
+  a mechanical check -- blank every slot, read one property, diff -- which found nine
+  docstrings naming fewer slots than they fill and five silent about a pre-set slot. Entry
+  236 argues that PR-30's brief should ask for that instrumentation by name.
+* **Exceptions from something other than a `raise`** produced `_info`'s ValueError escaping
+  the bundle-set loop ungated, `mime_type`'s KeyError from `isdir` under SHELVES_ONLY,
+  `extension`'s IndexError on a bare PdsFile, and `index_pdslabel`'s SyntaxError.
+* **Arithmetic and boundaries** produced `version_info`'s rank packing failing above 99 and
+  its fourth part being dropped, and `mime_type` dropping the extension's first character
+  whatever it is.
+* **The partial fix** -- a claim stated in several places and corrected in one -- was named
+  by PR-29a as a pattern no brief had asked about. This PR's briefs asked, and it was found
+  four more times. Entry 231 records that in every case the copy left stale was the
+  *summary* and the one that was right was the *detail*.
 
 ## 8. Standing gates
 
