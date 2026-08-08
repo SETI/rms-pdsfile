@@ -570,14 +570,28 @@ as insufficient in the first place.
 
 ## 10. Deferred observations
 
-Entries 223 to 231, and amendments to 54, 68, 80 and 215. The amendments are the four this
-PR closes or measures; the new entries divide into what the executor measured (223 to 228)
-and what the review rounds found in the code rather than in the prose (229 onward).
+Entries **223 to 239**, and amendments to 54, 68, 80, 215 and 224. They divide into what
+the executor measured (223 to 228), what round 5 found (229 to 231), what round 3 found
+(232 to 236) and what round 4 found (237 to 239). The entries run in the order they were
+written, which is the order the rounds reported rather than the order they are numbered by
+slice.
 
-The one worth naming here is **223**, because the owner asked that the line-count
-measurement be kept as evidence after the waiver removed it as a gate. It records the three
-per-module costs, the ten-member sampling method, and the fact that the projection landed
-within four lines of the outcome.
+Three are worth naming here.
+
+**223** is the one the owner asked be kept as evidence after the waiver removed the
+line-count measurement as a gate. It records the three per-module costs, the ten-member
+sampling method, and that the projection landed within four percent of the outcome and low.
+
+**224 is an entry this PR wrote and then had to correct**, because round 4 found that the
+mechanism it named for a rank collision cannot be reached through any path. It was written
+from the same reading as the docstring it described, and neither was safer than the other.
+
+**239** records that round 4 was launched against a tree the executor was still editing, so
+sixteen of the forty-four sentences its brief named were absent from the text it first read.
+The reviewer noticed and re-read; had it not, its verdicts on those sixteen would have been
+indistinguishable from verdicts on prose that was actually in the branch. The rule it
+suggests is cheap: commit the previous round's corrections, and confirm the corrected
+phrases are in the file, before launching the round that reviews them.
 
 ## 11. Type omissions -- PR-35's queue
 
