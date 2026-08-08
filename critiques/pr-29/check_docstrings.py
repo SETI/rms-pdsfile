@@ -7,8 +7,10 @@ is not attempted.
 Checks:
 
     P1  Every name in a `Parameters:` block is a real parameter of the signature.
-    P2  Every parameter other than `self` and `cls` appears in `Parameters:` exactly
-        once. `*args` and `**kwargs` count as parameters.
+    P2  Every parameter appears in `Parameters:` exactly once. `*args` and `**kwargs`
+        count as parameters. A method's `self` and `cls` do not, because the interpreter
+        supplies them; a module-level function's parameter that happens to be spelled
+        `cls` does, because the caller has to pass it.
     P3  The section is spelled `Parameters:`; `Args:`, `Arguments:` and
         `Keyword arguments:` are rejected.
     R1  `Returns:` is present if and only if the body has a `return <expr>`, a `yield`
@@ -135,14 +137,18 @@ def entries_of(body, pattern):
     return [(name, '\n'.join(text)) for name, text in result]
 
 
-def signature_names(node):
+def signature_names(node, is_method):
     """Return the parameter names of a function definition, in order.
 
     `*args` and `**kwargs` are returned with their stars attached. `self` and `cls` are
-    omitted.
+    omitted from a method, where the interpreter supplies them and there is nothing for
+    a caller to pass. They are kept on a module-level function, where a parameter that
+    happens to be spelled `cls` is an ordinary argument the caller has to supply and so
+    has to be documented.
 
     Parameters:
         node (ast.FunctionDef): the function definition.
+        is_method (bool): whether the definition sits directly in a class body.
 
     Returns:
         list: the parameter names.
@@ -154,6 +160,9 @@ def signature_names(node):
         names.append('*' + args.vararg.arg)
     if args.kwarg:
         names.append('**' + args.kwarg.arg)
+
+    if not is_method:
+        return names
 
     return [n for n in names if n not in ('self', 'cls')]
 
@@ -185,11 +194,48 @@ def returns_a_value(node):
     return False
 
 
+def bound_names(node):
+    """Return the names a function body binds locally.
+
+    An `except ... as` name and an ordinary assignment both count, because both can put
+    an exception object into a local name that a later `raise` re-raises. Nested
+    definitions are not searched, matching `raised_names`, so a name bound only inside a
+    nested function does not mask a class of the same spelling raised outside it.
+
+    Parameters:
+        node (ast.FunctionDef): the function definition.
+
+    Returns:
+        set: the locally bound names.
+    """
+
+    names = set()
+    stack = list(node.body)
+    while stack:
+        item = stack.pop()
+        if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            continue
+        if isinstance(item, ast.ExceptHandler) and item.name:
+            names.add(item.name)
+        elif isinstance(item, ast.Assign):
+            for target in item.targets:
+                if isinstance(target, ast.Name):
+                    names.add(target.id)
+        elif (isinstance(item, (ast.AnnAssign, ast.AugAssign))
+              and isinstance(item.target, ast.Name)):
+            names.add(item.target.id)
+        stack.extend(ast.iter_child_nodes(item))
+
+    return names
+
+
 def raised_names(node):
     """Return the exception class names raised directly in a function body.
 
     A bare `raise` re-raises whatever is being handled and names nothing, so it
-    contributes no name. Nested definitions are not searched.
+    contributes no name. Neither does `raise <local>`, which re-raises an exception the
+    body caught and stored: the name is a variable, not a class, and what it holds is
+    whatever the call inside the `try` produced. Nested definitions are not searched.
 
     Parameters:
         node (ast.FunctionDef): the function definition.
@@ -197,6 +243,8 @@ def raised_names(node):
     Returns:
         set: the class names appearing in `raise` statements.
     """
+
+    local = bound_names(node)
 
     names = set()
     stack = list(node.body)
@@ -209,7 +257,8 @@ def raised_names(node):
             if isinstance(exc, ast.Call):
                 exc = exc.func
             if isinstance(exc, ast.Name):
-                names.add(exc.id)
+                if exc.id not in local:
+                    names.add(exc.id)
             elif isinstance(exc, ast.Attribute):
                 names.add(exc.attr)
         stack.extend(ast.iter_child_nodes(item))
@@ -296,32 +345,35 @@ def definitions(tree):
         tree (ast.Module): the parsed module.
 
     Returns:
-        list: triples of qualified name, node, and node kind.
+        list: triples of qualified name, node, and node kind. A function defined
+        directly in a class body has the kind `method`, because `self` and `cls` are
+        parameters there only in name.
     """
 
     found = [('<module>', tree, 'module')]
 
-    def walk(node, prefix):
+    def walk(node, prefix, in_class):
         """Append every definition below one node, qualifying its name with a prefix.
 
         Parameters:
             node (ast.AST): the node to search below.
             prefix (str): the dotted prefix to put in front of each name found.
+            in_class (bool): whether this node is a class body.
         """
 
         for child in ast.iter_child_nodes(node):
             if isinstance(child, ast.ClassDef):
                 name = prefix + child.name
                 found.append((name, child, 'class'))
-                walk(child, name + '.')
+                walk(child, name + '.', True)
             elif isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 name = prefix + child.name
-                found.append((name, child, 'function'))
-                walk(child, name + '.')
+                found.append((name, child, 'method' if in_class else 'function'))
+                walk(child, name + '.', False)
             else:
-                walk(child, prefix)
+                walk(child, prefix, in_class)
 
-    walk(tree, '')
+    walk(tree, '', False)
 
     return found
 
@@ -372,13 +424,13 @@ def check_file(path, findings):
                 findings.append((path, where, f'P3: section "{banned}:" is not '
                                               'Google style; use "Parameters:"'))
 
-        if kind != 'function':
+        if kind not in ('function', 'method'):
             if 'Parameters' in found:
                 findings.append((path, where,
                                  'P1: a Parameters: section on a ' + kind))
             continue
 
-        expected = signature_names(node)
+        expected = signature_names(node, kind == 'method')
         documented = [n for n, _ in entries_of(found.get('Parameters', []),
                                                PARAM_ENTRY_RE)]
 

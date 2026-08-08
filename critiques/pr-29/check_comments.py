@@ -6,10 +6,11 @@ closes that blind spot: it tokenizes each file in both trees, keeps the comment 
 and reports every one that was removed or added.
 
 Usage:
-    python check_comments.py BASE_TREE HEAD_TREE
+    python check_comments.py BASE_TREE HEAD_TREE [MODULE ...]
 
-Each argument is a directory holding `src/pdsfile/`. Exit status is 1 if any comment
-line differs, 0 otherwise.
+The first two arguments are directories holding `src/pdsfile/`. The rest are the module
+basenames to compare; with none given, the five modules of the first docstring pass are
+compared. Exit status is 1 if any comment line differs, 0 otherwise.
 """
 
 import difflib
@@ -17,8 +18,8 @@ import pathlib
 import sys
 import tokenize
 
-FILES = ('pdsfile.py', 'pdscache.py', 'pdsviewable.py', '__init__.py',
-         'preload_and_cache.py')
+DEFAULT_FILES = ('pdsfile.py', 'pdscache.py', 'pdsviewable.py', '__init__.py',
+                 'preload_and_cache.py')
 
 
 def comments(path):
@@ -64,16 +65,18 @@ def main(argv):
     """Compare the two trees and print the per-file table and every difference.
 
     Parameters:
-        argv (list): the base tree and the head tree, in that order.
+        argv (list): the base tree, the head tree, and then the module basenames to
+            compare. With no basenames the default set is used.
 
     Returns:
         int: 1 if any comment line differs, 0 otherwise.
     """
 
     base, head = pathlib.Path(argv[0]), pathlib.Path(argv[1])
+    files = argv[2:] or DEFAULT_FILES
     removed = added = 0
 
-    for name in FILES:
+    for name in files:
         before = comments(base / 'src' / 'pdsfile' / name)
         after = comments(head / 'src' / 'pdsfile' / name)
         print(f'{name:24s} base {len(before):4d}  head {len(after):4d}')
