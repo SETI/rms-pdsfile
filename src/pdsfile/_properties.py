@@ -2382,9 +2382,10 @@ class _PropertiesMixin:
         rule is written about the parent's path rather than this one's: the class's
         NEIGHBORS rules turn a directory path into a pattern matching its siblings.
 
-        An object with no parent is False. Both shipped subclasses carry a rule matching
-        any path with a slash in it, so in practice this is True for everything below the
-        category level.
+        An object with no parent is False. Both shipped subclasses carry one rule,
+        matching any path with a slash in it, so what decides is whether the **parent's**
+        path has one: a bundle set directory is False, because its parent is the bare
+        category, and everything from the bundle level down is True.
 
         Returns:
             bool: True if a neighbor rule answers for the parent.
