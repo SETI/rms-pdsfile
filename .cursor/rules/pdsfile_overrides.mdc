@@ -141,7 +141,7 @@ conflicts with a rule below, follow the rule below. See
    | `_index_rows.py` `:164` | `RUF005` ×1 | style exclusion |
    | `_opus.py` `:246` | `RUF005` ×1 | style exclusion. `:268` is the same spelling on a subscript operand, which ruff does not flag; both now read alike |
    | `_preload.py` `:325` | `RUF005` ×1 | style exclusion |
-   | `_properties.py` `:1058` | `RUF005` ×1 | style exclusion, and independently: `self._info[:4] + (shape,)` where `_info_filled` is a **list** on two construction paths, so `list + tuple` raises today and `(*…, shape)` would silently succeed |
+   | `_properties.py` `:1058` | `RUF005` ×1 | style exclusion, and independently: `self._info[:4] + (shape,)` where `_info_filled` is a **list** on the merged-directory and index-row construction paths, so `list + tuple` would raise if the line were reached on one. It is not: the line runs only where the recorded shape has more than two elements, and both those paths pre-set a two-element shape. The hazard is latent rather than live, and `(*…, shape)` would convert it into a silent type change |
    | `_shelves.py` `:172` | `B904` ×1 | `from err` and `from None` both change `__cause__`/`__suppress_context__`, and so the traceback |
    | `_sorting.py` `:188,:196,:200,:205` | `RUF005` ×4 | style exclusion |
    | `pdscache.py` `:622`, `:324` | `RUF015` ×1, `UP031` ×1 | `list(d)[0]` raises `IndexError` where `next(iter(d))` raises `StopIteration`; `'%d' % port` truncates a non-int where an f-string does not. Both sit inside `MemcachedCache`, which ground rule 9 protects and no test here exercises |

@@ -20,8 +20,9 @@ Usage:
 
 `SRC_DIR` is the importable source root, the `src` of the tree being measured.
 `BUILD_DIR` is created or emptied. Each `MODULE` is added to the default page list, in
-the order given, and a name already in that list is not repeated. Exit status is 1 if
-either build reports anything.
+the order given; a name already in that list, and a name given twice, are each written
+once, because a duplicated `automodule` directive is a duplicate-target warning and would
+fail the very build this runs. Exit status is 1 if either build reports anything.
 """
 
 import pathlib
@@ -111,7 +112,8 @@ def main(argv):
     build = pathlib.Path(argv[1]).resolve()
     conf = pathlib.Path(__file__).resolve().parent.parent / 'pr-29' / 'sphinx-conf.py'
 
-    modules = MODULES + tuple(name for name in argv[2:] if name not in MODULES)
+    extra = dict.fromkeys(name for name in argv[2:] if name not in MODULES)
+    modules = MODULES + tuple(extra)
 
     write_tree(build, conf, modules)
 

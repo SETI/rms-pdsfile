@@ -2156,10 +2156,13 @@ class _PropertiesMixin:
 
         It is the volume-info table's field, passed through unexamined, so a bundle the
         tables do not cover gets that lookup's fallback, an empty list. ``data_set_id``
-        reads this to decide whether it needs a rule at all.
+        reads this to decide whether it needs a rule at all, and tests its length rather
+        than its type, which is what makes the merged directory's empty **string** work
+        wherever an empty list would.
 
         Returns:
-            list: the data set ids, which is empty where the tables record none.
+            list: the data set ids, which is empty where the tables record none; or the
+            empty string a merged directory was born with.
         """
 
         if self._volume_data_set_ids_filled is None:
