@@ -5193,21 +5193,22 @@ rediscovery.
 248. **The per-module cost of documenting a rule module, measured, for entry 223's
      method.** Entry 223 asks that the cost be sampled per module rather than taken from
      an average, and read as a floor. Measured over all 36 at this PR's head:
-     **1,913 lines added against 8 removed, for 74 docstrings**, which is 25.9 lines each
+     **1,992 lines added against 8 removed, for 74 docstrings**, which is 26.9 lines each
      against PR-29's 15.2 for a public-module function, PR-29a's 24.5 for a private one
-     and PR-29b's 18.6 for a lazy property. A quarter of that total is the review's
-     doing: the first-read corrections added 219 lines on their own, because an accurate
-     sentence about a rule table is longer than an approximate one.
+     and PR-29b's 18.6 for a lazy property. **The review is 15% of that total**: the first
+     reads' corrections added 219 lines and the second reads' a further 79, because an
+     accurate sentence about a rule table is longer than an approximate one and a sentence
+     that has to say a table is unreachable is longer again.
 
      The number that would actually price the next one is narrower than any of those. The
-     36 **module** docstrings occupy 1,412 lines, a mean of 39.2, and they run from 13
-     lines (`RES_xxxx.py`, which defines no rule tables) to 92 (`VG_28xx.py`, which
+     36 **module** docstrings occupy 1,493 lines, a mean of 41.5, and they run from 13
+     lines (`RES_xxxx.py`, which defines no rule tables) to 115 (`VG_28xx.py`, which
      defines 32). **The correlation between a module's rule-table count and its docstring
-     length is 0.90**, and the module's own line count predicts nothing:
+     length is 0.87**, and the module's own line count predicts nothing:
      `uranus_occs_earthbased_primary_filespec.py` is 774 lines and needs 13.
      So the unit to sample for a rule-shaped module is the table, not the module and not
-     the function. A least-squares fit over the 36 gives **2.27 lines of module docstring
-     per top-level table plus a fixed 12.1**, over 429 tables in all.
+     the function. A least-squares fit over the 36 gives **2.54 lines of module docstring
+     per top-level table plus a fixed 11.2**, over 429 tables in all.
      Whether that transfers to `holdings_maintenance/`, where the unit is a
      function again, is exactly what PR-30b should sample rather than assume.
      **Owner: PR-30a, PR-30b and PR-30c, which should sample rather than average.**
@@ -5323,3 +5324,90 @@ rediscovery.
      The module's header comment states the same overlapping bounds, so it may be
      deliberate; the `cassini_iss` bundle set is not in this holdings copy, so it could
      not be settled here. **Owner: whoever can read a complete PDS4 holdings tree.**
+
+### Added by the PR-30 adversarial review (rounds 3 and 4, second reads)
+
+263. **`Pds4File.from_logical_path('bundles').description` raises `TypeError`.**
+     `pds4file/rules/__init__.py`'s `DESCRIPTION_AND_ICON` is the PDS3 table copied, and
+     its category-directory entries are the PDS3 ones: `volumes`, `calibrated`,
+     `diagrams`, `metadata`, `previews`, `documents`. There is no entry for `bundles`,
+     which is the one category directory a PDS4 reader needs, so nothing matches,
+     `_description_and_icon_filled` stays None and `_properties.py:1314` subscripts it.
+     `archives-bundles` and `checksums-bundles` fail the same way, while `previews`,
+     `metadata` and `diagrams` answer, and `Pds3File.from_logical_path('volumes')`
+     answers. **This is the only finding in either round that is a live crash rather than
+     a wrong or dead rule.** Owner: whoever next revises the pds4 default tables.
+
+264. **`Pds4File.FILESPEC_TO_BUNDLESET` maps a spokes file specification to the wrong
+     bundle set.** `cassini_iss_spokes_hedman-hamilton-2024/data_derived/x/y.fits`
+     resolves to `cassini_iss`, because the spokes module adds nothing to the table and
+     `cassini_iss.py`'s `(cassini_iss)_.*` swallows it. The fring bundle set escapes only
+     because its module is imported later and each module prepends. Either the spokes
+     module needs a rule or the `cassini_iss` rule needs narrowing. Owner: whoever next
+     revises the pds4 rules.
+
+265. **`COVIMS_0xxx.OPUS_ID_TO_PRIMARY_LOGICAL_PATH`'s version tie-break rests on a false
+     premise.** Its comment says "There is no case where this involves a two-digit version
+     number, so we can use alphabetic sort". `v1630912046_17.qub` is in COVIMS_0038 in this
+     holdings copy, and `'_17.qub' < '_9.qub'` under an alphabetic comparison, so a
+     single-digit sibling would win. No live failure is demonstrable, because only the `_17`
+     exists for that clock here. The sort key is also `basename[11:]`, which is the
+     underscore, the version, any sub-observation number and the extension rather than the
+     version alone. Owner: whoever next touches `COVIMS_0xxx.py`.
+
+266. **`TranslatorByRegex.append()` discards the receiver when the argument is a null
+     translator.** `X + NullTranslator()` returns the null and throws `X` away; `prepend`
+     mirrors it. Nothing in the rule modules currently adds a null on the right, so this is
+     latent -- but it is the same operator the `ASSOCIATIONS` merges depend on, and it is
+     what makes `ASSOCIATIONS['previews'] += <table>` a replacement rather than an append.
+     A reader of `+` would not expect either behavior. This lives in the `translator`
+     package rather than in this repository. Owner: whoever owns `translator`.
+
+267. **Both `opus_prioritizer` implementations force the alternative heading's
+     default-selected flag to True.** `alt_header` is built with a literal `True` in its
+     fifth slot in `GO_0xxx.py` and `NHxxxx_xxxx.py` alike, so a superseded processing or an
+     alternate downlink is default-selected in OPUS whatever the original heading carried.
+     The docstrings written here record it. Whether it is intended is not recorded anywhere.
+     Owner: whichever PR next touches the prioritizers.
+
+268. **`GO_0xxx.py`'s six dead description rules fail for three different reasons, not
+     one.** Four are a path component short: `volumes/\w+/RAW_CAL` and its siblings need a
+     second `\w+` to reach `volumes/GO_0xxx/GO_0002/RAW_CAL`. The fifth,
+     `volumes/\w+/GO_00(0\d|1[0-6])\w+/REDO`, has the right number of components and fails
+     on the mandatory `\w+` after the volume number. The sixth,
+     `volumes/\w+/GO_00(1[789]|2\d)REDO`, has no slash before REDO and is looking for a
+     directory literally named "GO_0018REDO". Entry 252 recorded these as one mechanism;
+     this amends it. Owner: whoever next touches `GO_0xxx.py`.
+
+269. **`VGIRIS_xxxx.py`'s description table is `VG_20xx.py`'s, and every entry is
+     unreachable.** The two tables have identical `ast.unparse` output. Four entries name
+     bare planet directories, where VGIRIS names them for planet and spacecraft together
+     (`DATA/JUPITER_VG1`); the other six name `VG1_JUP.DAT`-style files, where VGIRIS holds
+     `C1547XXX.TAB` and `C1547XXX_{LSB,MSB}.DAT`. Every pattern is anchored at both ends, so
+     the whole table is dead weight and every VGIRIS path falls through to the defaults.
+     Owner: whoever next touches the Voyager IRIS modules.
+
+270. **`COISS_xxxx.py` and `COVIMS_0xxx.py` each carry description rules for an
+     `extras` directory below a `data` directory, and no volume is laid out that way.**
+     In the archive `extras` is a sibling of `data`, so `COISS_xxxx.py`'s "Preview image
+     collection" and "Preview image" entries and `COVIMS_0xxx.py`'s equivalent never fire,
+     and the browse extras fall through to the default table's "Browse image collection".
+     Owner: whoever next touches either module.
+
+271. **The `cassini_iss_spokes_hedman_hamilton_2024.archive_dirs` comments describe a
+     collection the lists do not contain.** Both partial-archive entries are headed
+     `# - all files under document`, and neither list holds a `document` path; they hold
+     `data_derived`/`browse_derived`, `bundle.lblx`, `context`, `readme.txt`,
+     `spice_kernels` and `xml_schema`. The comment appears to have come from
+     `cassini_iss_fring_mosaics_rsfrench2025.py`, whose equivalents do include `document/`.
+     Owner: whoever next touches the spokes module.
+
+272. **`prefix_mapping` is a `set`, so four derived structures are built in an order that
+     depends on `PYTHONHASHSEED`.** `opus_id_list`, `opus_id_to_primary_filespec_list`,
+     `opus_id_to_subclass_set` and the class's `volset_list` all iterate it. Round 4 could
+     not make it change an answer -- resolving all 399 synthetic reverse OPUS IDs under two
+     seeds gives byte-identical output, because the emission order within one entry is fixed
+     and the only duplicate prefixes are inside a single entry -- so this is recorded as a
+     hazard rather than a defect. A `TranslatorByRegex` returns its first match, so an order
+     that varies is an order that could one day matter. Owner: whoever next touches
+     `uranus_occs_earthbased.py`.
