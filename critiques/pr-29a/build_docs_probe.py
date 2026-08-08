@@ -10,14 +10,19 @@ page list: the nine private modules join the four public ones. `pdsfile.pdsfile`
 be among them or the `PdsFile` written in a `Parameters:` type slot resolves to nothing
 and fails `-n`, which is a property of a partial page set rather than of the prose.
 
-`_properties.py` is deliberately absent. Its docstrings have not been revised, and
-including it adds warnings that belong to the module rather than to this build.
+`_properties.py` is absent from the default list, because a module whose docstrings have
+not been revised adds warnings that belong to the module rather than to this build. Any
+module can be added back by naming it, which is how a later change brings its own file
+into the page set without disturbing the default.
 
 Usage:
-    python build_docs_probe.py SRC_DIR BUILD_DIR
+    python build_docs_probe.py SRC_DIR BUILD_DIR [MODULE ...]
 
 `SRC_DIR` is the importable source root, the `src` of the tree being measured.
-`BUILD_DIR` is created or emptied. Exit status is 1 if either build reports anything.
+`BUILD_DIR` is created or emptied. Each `MODULE` is added to the default page list, in
+the order given; a name already in that list, and a name given twice, are each written
+once, because a duplicated `automodule` directive is a duplicate-target warning and would
+fail the very build this runs. Exit status is 1 if either build reports anything.
 """
 
 import pathlib
@@ -41,12 +46,13 @@ PAGE = ('.. automodule:: pdsfile.{name}\n'
 PROBLEM_RE = re.compile(r'WARNING|ERROR')
 
 
-def write_tree(build, conf):
+def write_tree(build, conf, modules):
     """Write the conf, the index page and the API page into an empty directory.
 
     Parameters:
         build (pathlib.Path): the directory to write, emptied first if it exists.
         conf (pathlib.Path): the `conf.py` to copy in.
+        modules (tuple): the module names to write an autodoc page for, in order.
     """
 
     if build.exists():
@@ -57,7 +63,7 @@ def write_tree(build, conf):
     (build / 'index.rst').write_text(INDEX, encoding='utf-8')
 
     pages = ['API', '===', '', '.. automodule:: pdsfile', '   :members:', '']
-    pages += [PAGE.format(name=name) for name in MODULES]
+    pages += [PAGE.format(name=name) for name in modules]
     (build / 'api.rst').write_text('\n'.join(pages), encoding='utf-8')
 
 
@@ -95,7 +101,8 @@ def main(argv):
     """Build the probe tree and run both gates over it.
 
     Parameters:
-        argv (list): the source root and the build directory.
+        argv (list): the source root, the build directory, and any module names to add
+            to the default page list.
 
     Returns:
         int: 1 if either build reported a problem, 0 otherwise.
@@ -105,7 +112,10 @@ def main(argv):
     build = pathlib.Path(argv[1]).resolve()
     conf = pathlib.Path(__file__).resolve().parent.parent / 'pr-29' / 'sphinx-conf.py'
 
-    write_tree(build, conf)
+    extra = dict.fromkeys(name for name in argv[2:] if name not in MODULES)
+    modules = MODULES + tuple(extra)
+
+    write_tree(build, conf, modules)
 
     total = 0
     for flag, out in (('-n', '_build_n'), ('-W', '_build_w')):

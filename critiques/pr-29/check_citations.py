@@ -47,7 +47,7 @@ IN_SCOPE = ('pdsfile.py', 'pdscache.py', 'pdsviewable.py', '__init__.py',
 # Every file-and-line citation the two documents make, with a token that must appear on
 # the cited line. A range is checked at both ends.
 CITATIONS = [
-    ('src/pdsfile/pdsfile.py', 174, 'class PdsFile(_AssociationsMixin,'),
+    ('src/pdsfile/pdsfile.py', 185, 'class PdsFile(_AssociationsMixin,'),
     ('src/pdsfile/_index_rows.py', 489, 'abspath.replace(neighbor.basename, self.basename)'),
     ('src/pdsfile/pdscache.py', 77, 'MEMCACHED_LOADED = True'),
     ('src/pdsfile/pdscache.py', 175, 'self.keys = set()'),
@@ -109,52 +109,52 @@ CITATIONS = [
     ('src/pdsfile/_preload.py', 573, 'lifetime=cls.cache_lifetime'),
     ('src/pdsfile/_preload.py', 605, 'lifetime=cls.cache_lifetime'),
     ('src/pdsfile/_preload.py', 804, 'def cache_lifetime(cls, arg):'),
-    ('src/pdsfile/pdsviewable.py', 92, 'self.width_over_height = float'),
-    ('src/pdsfile/pdsviewable.py', 93, 'self.height_over_width = float'),
-    ('src/pdsfile/pdsviewable.py', 340, 'for sub_viewable in viewable.viewables:'),
-    ('src/pdsfile/pdsviewable.py', 342, 'return'),
-    ('src/pdsfile/pdsviewable.py', 344, 'self.viewables.add(viewable)'),
-    ('src/pdsfile/pdsviewable.py', 347, 'if viewable.name:'),
-    ('src/pdsfile/pdsviewable.py', 465, 'viewable.for_frame(200,200)'),
-    ('src/pdsfile/pdsviewable.py', 482, 'viewable.for_frame(400,400)'),
-    ('src/pdsfile/pdsviewable.py', 675, 'full_viewable = viewable'),
-    ('src/pdsfile/pdsviewable.py', 677, 'viewables.append(viewable)'),
-    ('src/pdsfile/pdsviewable.py', 837, "rpartition('/png-')"),
-    ('src/pdsfile/pdsviewable.py', 839, "rpartition('/jpg-')"),
-    ('src/pdsfile/pdsviewable.py', 855, "not in ('.png', 'jpg')"),
-    ('src/pdsfile/pdsviewable.py', 863, 'except Image.UnidentifiedImageError:'),
-    ('src/pdsfile/pdsviewable.py', 866, 'continue'),
-    ('src/pdsfile/pdsviewable.py', 868, '(width, height) = im.size'),
-    ('src/pdsfile/pdsviewable.py', 890, "key_base.replace('document_', '')"),
-    ('src/pdsfile/pdsviewable.py', 891, "icon_name.replace('folder_', '')"),
-    ('src/pdsfile/pdsviewable.py', 908, 'ICON_SET_BY_TYPE[icon_name, is_open] = viewset'),
-    ('src/pdsfile/pdsviewable.py', 913, 'if (icon_name, True) not in ICON_SET_BY_TYPE:'),
-    ('src/pdsfile/pdsviewable.py', 984, 'return ICON_SET_BY_TYPE[icon_type, is_open]'),
-    ('src/pdsfile/pdsfile.py', 315, 'DICTIONARY_CACHE_LIMIT = 200000'),
-    ('src/pdsfile/pdsfile.py', 490, 'self.permanent    = False'),
-    ('src/pdsfile/pdsfile.py', 723, 'this.disk_        = None'),
-    ('src/pdsfile/pdsfile.py', 748, 'this.permanent    = True'),
-    ('src/pdsfile/pdsfile.py', 1116, "return ''"),
-    ('src/pdsfile/pdsfile.py', 1125, "return ''"),
-    ('src/pdsfile/pdsfile.py', 1169, 'return None'),
-    ('src/pdsfile/pdsfile.py', 1287, "if '/' in self.logical_path:"),
-    ('src/pdsfile/pdsfile.py', 1330, 'self.permanent = True'),
-    ('src/pdsfile/pdsfile.py', 1580, "raise ValueError('Cannot define child from PDS root: '"),
-    ('src/pdsfile/pdsfile.py', 1619, 'if logical_path in cls.CATEGORIES'),
-    ('src/pdsfile/pdsfile.py', 1620, 'return cls.from_logical_path(logical_path,'),
-    ('src/pdsfile/pdsfile.py', 1624, 'return cls.from_abspath(abspath,'),
-    ('src/pdsfile/pdsfile.py', 1733, 'if ancestor and ancestor.abspath:'),
-    ('src/pdsfile/pdsfile.py', 1907, 'if len(parts) == 0:'),
-    ('src/pdsfile/pdsfile.py', 1928, 'def _from_absolute_or_logical_path'),
-    ('src/pdsfile/pdsfile.py', 1954, 'fix_case=False, must_exist=False,'),
-    ('src/pdsfile/pdsfile.py', 1958, 'fix_case=False, must_exist=False,'),
-    ('src/pdsfile/pdsfile.py', 2108, 'part = parts[0].lower()'),
-    ('src/pdsfile/pdsfile.py', 2136, 'parts = parts[:-1]'),
-    ('src/pdsfile/pdsfile.py', 2238, "['$RANKS-' + this.category_][bundlename][-1]"),
-    ('src/pdsfile/pdsfile.py', 2243, "idx = bundlename.index('_') + 1"),
-    ('src/pdsfile/pdsfile.py', 2272, 'this_abspath = cls.CACHE'),
-    ('src/pdsfile/pdsfile.py', 2278, 'except KeyError:'),
-    ('src/pdsfile/pdsfile.py', 2321, "['$RANKS-' + this.category_][bundleset][-1]"),
+    ('src/pdsfile/pdsviewable.py', 94, 'self.width_over_height = float'),
+    ('src/pdsfile/pdsviewable.py', 95, 'self.height_over_width = float'),
+    ('src/pdsfile/pdsviewable.py', 354, 'for sub_viewable in viewable.viewables:'),
+    ('src/pdsfile/pdsviewable.py', 356, 'return'),
+    ('src/pdsfile/pdsviewable.py', 358, 'self.viewables.add(viewable)'),
+    ('src/pdsfile/pdsviewable.py', 361, 'if viewable.name:'),
+    ('src/pdsfile/pdsviewable.py', 479, 'viewable.for_frame(200,200)'),
+    ('src/pdsfile/pdsviewable.py', 496, 'viewable.for_frame(400,400)'),
+    ('src/pdsfile/pdsviewable.py', 689, 'full_viewable = viewable'),
+    ('src/pdsfile/pdsviewable.py', 691, 'viewables.append(viewable)'),
+    ('src/pdsfile/pdsviewable.py', 854, "rpartition('/png-')"),
+    ('src/pdsfile/pdsviewable.py', 856, "rpartition('/jpg-')"),
+    ('src/pdsfile/pdsviewable.py', 872, "not in ('.png', 'jpg')"),
+    ('src/pdsfile/pdsviewable.py', 880, 'except Image.UnidentifiedImageError:'),
+    ('src/pdsfile/pdsviewable.py', 883, 'continue'),
+    ('src/pdsfile/pdsviewable.py', 885, '(width, height) = im.size'),
+    ('src/pdsfile/pdsviewable.py', 907, "key_base.replace('document_', '')"),
+    ('src/pdsfile/pdsviewable.py', 908, "icon_name.replace('folder_', '')"),
+    ('src/pdsfile/pdsviewable.py', 925, 'ICON_SET_BY_TYPE[icon_name, is_open] = viewset'),
+    ('src/pdsfile/pdsviewable.py', 930, 'if (icon_name, True) not in ICON_SET_BY_TYPE:'),
+    ('src/pdsfile/pdsviewable.py', 1003, 'return ICON_SET_BY_TYPE[icon_type, is_open]'),
+    ('src/pdsfile/pdsfile.py', 331, 'DICTIONARY_CACHE_LIMIT = 200000'),
+    ('src/pdsfile/pdsfile.py', 506, 'self.permanent    = False'),
+    ('src/pdsfile/pdsfile.py', 742, 'this.disk_        = None'),
+    ('src/pdsfile/pdsfile.py', 767, 'this.permanent    = True'),
+    ('src/pdsfile/pdsfile.py', 1135, "return ''"),
+    ('src/pdsfile/pdsfile.py', 1144, "return ''"),
+    ('src/pdsfile/pdsfile.py', 1188, 'return None'),
+    ('src/pdsfile/pdsfile.py', 1306, "if '/' in self.logical_path:"),
+    ('src/pdsfile/pdsfile.py', 1349, 'self.permanent = True'),
+    ('src/pdsfile/pdsfile.py', 1599, "raise ValueError('Cannot define child from PDS root: '"),
+    ('src/pdsfile/pdsfile.py', 1638, 'if logical_path in cls.CATEGORIES'),
+    ('src/pdsfile/pdsfile.py', 1639, 'return cls.from_logical_path(logical_path,'),
+    ('src/pdsfile/pdsfile.py', 1643, 'return cls.from_abspath(abspath,'),
+    ('src/pdsfile/pdsfile.py', 1752, 'if ancestor and ancestor.abspath:'),
+    ('src/pdsfile/pdsfile.py', 1929, 'if len(parts) == 0:'),
+    ('src/pdsfile/pdsfile.py', 1950, 'def _from_absolute_or_logical_path'),
+    ('src/pdsfile/pdsfile.py', 1976, 'fix_case=False, must_exist=False,'),
+    ('src/pdsfile/pdsfile.py', 1980, 'fix_case=False, must_exist=False,'),
+    ('src/pdsfile/pdsfile.py', 2142, 'part = parts[0].lower()'),
+    ('src/pdsfile/pdsfile.py', 2170, 'parts = parts[:-1]'),
+    ('src/pdsfile/pdsfile.py', 2272, "['$RANKS-' + this.category_][bundlename][-1]"),
+    ('src/pdsfile/pdsfile.py', 2277, "idx = bundlename.index('_') + 1"),
+    ('src/pdsfile/pdsfile.py', 2306, 'this_abspath = cls.CACHE'),
+    ('src/pdsfile/pdsfile.py', 2312, 'except KeyError:'),
+    ('src/pdsfile/pdsfile.py', 2355, "['$RANKS-' + this.category_][bundleset][-1]"),
     ('src/pdsfile/_preload.py', 707, 'pdsdir.permanent = True'),
     ('src/pdsfile/_preload.py', 101, 'DICTIONARY_CACHE_LIMIT = 200000'),
     ('src/pdsfile/_preload.py', 103, 'def cache_lifetime_for_class(arg, cls=None):'),
@@ -279,6 +279,26 @@ def docstring_counts(path):
     return classes, functions, parameters
 
 
+# The commit PR-29 merged at. Its record's line counts describe that tree, so they are
+# checked against it rather than against a working tree a later PR has moved on.
+PR_29_HEAD = '9466dbc'
+
+
+def text_at(commit, path):
+    """Return one file's contents as of a commit.
+
+    Parameters:
+        commit (str): the commit to read from.
+        path (pathlib.Path): the file to read.
+
+    Returns:
+        str: the file's contents.
+    """
+
+    return subprocess.run(['git', 'show', f'{commit}:{path}'],
+                          capture_output=True, text=True, check=True).stdout
+
+
 def check_scope_table(problems):
     """Verify the record's scope table and its totals.
 
@@ -287,15 +307,20 @@ def check_scope_table(problems):
     """
 
     # The record's scope table gives base line counts, which this tree cannot answer;
-    # these are the head counts the same table carries.
+    # these are the head counts the same table carries. "Head" means PR-29's head, which
+    # is the merge commit named below: a line count is a fact about the tree the record
+    # describes, and a later PR that adds a docstring to one of these files does not make
+    # the record wrong. The counts are therefore read out of that commit rather than out
+    # of the working tree, which keeps the check falsifiable -- editing the record's table
+    # still fails it -- without demanding that every later PR rewrite an earlier record.
     expected_lines = {'pdsfile.py': 2435, 'pdscache.py': 1914, 'pdsviewable.py': 986,
                       '__init__.py': 39, 'preload_and_cache.py': 48}
     classes = functions = parameters = 0
     for name in IN_SCOPE:
         path = SRC / name
-        count = len(path.read_text().split('\n')) - 1
+        count = len(text_at(PR_29_HEAD, path).split('\n')) - 1
         if count != expected_lines[name]:
-            problems.append(f'{name} has {count} lines at head, record says '
+            problems.append(f'{name} has {count} lines at {PR_29_HEAD}, record says '
                             f'{expected_lines[name]}')
         c, f, p = docstring_counts(path)
         classes += c

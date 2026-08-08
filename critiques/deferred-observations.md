@@ -1112,7 +1112,7 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     passed, exactly as unmutated (§10). Unlike PR-18's entry 43, this is not the
     subprocess blindness — nothing calls it in-process either.
 
-    It is not dead code. `viewmaster/viewmaster.py:873`, `:1449` and `:1580` call
+    It is not dead code. `viewmaster/viewmaster.py:873`, `:1449` and `:1599` call
     it on every index-row page. So the one method in this extraction with no test
     is also one of the two that a live consumer depends on. The method is four
     lines over `data_abspath_associated_with_index_row` (which *is* covered) plus
@@ -2601,7 +2601,7 @@ these entries are read by the PRs that come after it.
     `ab1fa3b`**, the state that produced the observation; the code has since moved.
     `_common.py:229` for the archives pair, and the same
     set literal at `pdschecksums.py:836` and `:844`, `pdsinfoshelf.py:860` and
-    `:868`, `pdslinkshelf.py:1717`, `pdsdependency.py:1122`,
+    `:885`, `pdslinkshelf.py:1717`, `pdsdependency.py:1122`,
     `pds4checksums.py:808` and `:816`, `pds4infoshelf.py:841` and `:849`, and
     `pds4linkshelf.py:1210`; `re_validate.py:56` writes `set([…])` for the same
     thing. Each collects the `place='default'` and `place='parallel'` paths into a
@@ -3916,7 +3916,7 @@ of them has a module docstring at all.
 153. **`PdsViewSet.small` and `PdsViewSet.medium` raise `AttributeError` whenever their
      fallback is reached.** Each looks for a member whose path contains `_small` or
      `_med` and, finding none, executes `viewable = viewable.for_frame(200,200)` with
-     `viewable` bound to `None` (`pdsviewable.py:465`, `:482`). Two faults in one line:
+     `viewable` bound to `None` (`pdsviewable.py:479`, `:496`). Two faults in one line:
      the receiver is the value just tested as false, and `for_frame` is a method of
      `PdsViewSet`, not of `PdsViewable`, so `self.for_frame(...)` is what was meant.
      Verified by running: a two-member set with no `_small` in either path answers
@@ -3928,7 +3928,7 @@ of them has a module docstring at all.
 
 154. **`PdsViewSet.append` given a `PdsViewSet` adds exactly one of its members.** The
      recursive branch is `for sub_viewable in viewable.viewables: self.append(sub_viewable);
-     return`, with the `return` inside the loop (`pdsviewable.py:340-342`), so the first
+     return`, with the `return` inside the loop (`pdsviewable.py:354-356`), so the first
      iteration returns. Which member survives depends on the iteration order of a Python
      set, so the result is not even deterministic. Verified by running: appending a
      two-member set to an empty one leaves one member. Moving the `return` out of the loop
@@ -3936,10 +3936,10 @@ of them has a module docstring at all.
      currently mishandles silently. **Owner: a future pdsviewable PR.**
 
 155. **`load_icons` silently skips every JPEG icon.** The extension test is
-     `if ext.lower() not in ('.png', 'jpg'): continue` (`pdsviewable.py:855`) — the second
+     `if ext.lower() not in ('.png', 'jpg'): continue` (`pdsviewable.py:872`) — the second
      entry has no leading dot, and `os.path.splitext` always supplies one, so no file ever
      matches it. The surrounding code plainly expects JPEGs: the nominal-size guess looks
-     for a `jpg-<n>` directory component sixteen lines above, at `:837`. Verified by running: a
+     for a `jpg-<n>` directory component sixteen lines above, at `:854`. Verified by running: a
      directory holding `document_image.jpg` and `document_label.png` yields only the
      `LABEL` icon set. Adding the dot would start loading files that are not loaded today,
      which is a behavior change and not an executor's call. **Owner: a future pdsviewable
@@ -3947,7 +3947,7 @@ of them has a module docstring at all.
 
 156. **`load_icons` without a logger stores an unreadable image under the previous
      image's dimensions.** The handler is `except Image.UnidentifiedImageError:` followed
-     by `if logger:`, and the `continue` sits inside that `if` (`pdsviewable.py:863-866`).
+     by `if logger:`, and the `continue` sits inside that `if` (`pdsviewable.py:880-883`).
      With a logger the file is reported and skipped; without one, execution falls through
      to `(width, height) = im.size`, where `im` is still the last image successfully
      opened. Verified by running: a corrupt `broken.png` beside a valid 50x50 file
@@ -3976,7 +3976,7 @@ of them has a module docstring at all.
 
 158. **`MemcachedCache.flush`'s general error path raises before it can report.** In the
      `except pylibmc.Error` handler, `keys = mydict.keys()` (`pdscache.py:1185`) is
-     followed by `keys.sort()` (`:1187`); `dict_keys` has no `sort`, so with a logger
+     followed by `keys.sort()` (`:1188`); `dict_keys` has no `sort`, so with a logger
      present the handler raises `AttributeError`. The batches written before the failing
      one are already on the server, and the failing one and everything after it are left
      in the buffer. Without a logger the handler completes and the values in the failing
@@ -4006,8 +4006,8 @@ of them has a module docstring at all.
 161. **`PdsFile._from_absolute_or_logical_path` drops all four of its options.** The
      signature is `(cls, path, fix_case=False, must_exist=False, caching='default',
      lifetime=None)` and both branches call the constructor with those four names bound
-     to literals rather than to the arguments (`pdsfile.py:1928`, with the two calls at
-     `:1954` and `:1958`). Passing
+     to literals rather than to the arguments (`pdsfile.py:1950`, with the two calls at
+     `:1976` and `:1980`). Passing
      `must_exist=True` therefore does not make the call insist on anything. Because the
      literals equal the declared defaults, no caller passing defaults can tell; a caller
      passing anything else is silently ignored. The docstring written here says the
@@ -4016,7 +4016,7 @@ of them has a module docstring at all.
 
 162. **`PdsFile.parent` accepts `caching` and `lifetime` and passes neither on.** Both
      branches call `from_logical_path` or `from_abspath` with `must_exist` alone
-     (`pdsfile.py:1620` and `:1624`), so the parent is built with whatever caching defaults
+     (`pdsfile.py:1639` and `:1643`), so the parent is built with whatever caching defaults
      those constructors apply. Same shape as entry 161 and same reason for not fixing it
      here. **Owner: a future pdsfile PR.**
 
@@ -4032,7 +4032,7 @@ of them has a module docstring at all.
 164. **Two exported names are read by nothing.** `_preload.DICTIONARY_CACHE_LIMIT`
      (`_preload.py:101`) is re-exported by `preload_and_cache` and by `pdsfile.pdsfile`,
      but every cache in the package is built with `cls.DICTIONARY_CACHE_LIMIT`, a class
-     attribute defined separately and identically in `pdsfile.py:315`,
+     attribute defined separately and identically in `pdsfile.py:331`,
      `pds3file/__init__.py:59` and `pds4file/__init__.py:48`. Rebinding the module
      constant changes nothing. `pdscache.MEMCACHED_LOADED` (`pdscache.py:77`) is read
      nowhere; the flag the code actually consults is `_preload.HAS_PYLIBMC`, set by a
@@ -4042,15 +4042,15 @@ of them has a module docstring at all.
 
 165. **`PdsFile.from_relative_path`'s empty-path branch is unreachable.** After
      `path = path.rstrip('/')` and `parts = path.split('/')`, the guard is
-     `if len(parts) == 0` (`pdsfile.py:1907`). `''.split('/')` is `['']`, of length
+     `if len(parts) == 0` (`pdsfile.py:1929`). `''.split('/')` is `['']`, of length
      one, so the branch never runs and an empty relative path instead calls
      `self.child('')`. **Owner: a future pdsfile PR.**
 
 166. **`PdsFile.bundle_abspath` and `PdsFile.bundleset_abspath` return different things
      for the same kind of non-answer.** `bundle_abspath` returns `''` when this file
      belongs to no bundle and again when the category is a checksums-of-archives category
-     (`pdsfile.py:1116`, `:1125`); `bundleset_abspath` returns `None` when this file
-     belongs to no bundleset (`:1169`). Both are public, both are consumed by
+     (`pdsfile.py:1135`, `:1144`); `bundleset_abspath` returns `None` when this file
+     belongs to no bundleset (`:1188`). Both are public, both are consumed by
      `bundle_pdsfile` and `bundleset_pdsfile`, which test the result for truth and so
      cannot tell the two apart -- but a caller that tests `is None` can. The docstrings
      written here state each method's own answer. **Owner: a future pdsfile PR.**
@@ -4166,10 +4166,10 @@ of them has a module docstring at all.
 
 177. **`PdsViewSet.append` given an *empty* `PdsViewSet` puts the set object into the
      members and then raises.** Entry 154 covers the non-empty case, where the `return`
-     inside the loop (`pdsviewable.py:340`) leaves all but one member behind. With an
+     inside the loop (`pdsviewable.py:354`) leaves all but one member behind. With an
      empty set the loop body never runs at all, so control falls past the recursive
-     branch to `self.viewables.add(viewable)` (`:344`) and then to `if viewable.name:`
-     (`:347`), which raises `AttributeError`. Verified by running:
+     branch to `self.viewables.add(viewable)` (`:358`) and then to `if viewable.name:`
+     (`:361`), which raises `AttributeError`. Verified by running:
      `PdsViewSet().append(PdsViewSet())` raises, and the receiving set is left holding a
      `PdsViewSet` among its viewables, so every later size lookup on it fails too. The
      same one-line fix as entry 154 -- dedenting the `return` out of the `for` and
@@ -4181,7 +4181,7 @@ of them has a module docstring at all.
 178. **A second `load_icons` call does not replace the fallback open form of an icon
      type.** A closed set is stored under `(icon_name, True)` as a stand-in for a missing
      open form, guarded by `if (icon_name, True) not in ICON_SET_BY_TYPE:`
-     (`pdsviewable.py:913`). The dictionary it tests is module-global, so an entry left
+     (`pdsviewable.py:930`). The dictionary it tests is module-global, so an entry left
      by an *earlier call* blocks the write just as one left by this call does. Verified
      by running: loading two directories in turn, each holding only
      `document_label.png`, leaves `('LABEL', False)` and `'LABEL'` pointing at the second
@@ -4189,7 +4189,7 @@ of them has a module docstring at all.
      object identity.
 
      The scope is exactly that fallback. A directory read second that *does* hold a
-     `document_label_open.png` writes `('LABEL', True)` unconditionally at `:908` and
+     `document_label_open.png` writes `('LABEL', True)` unconditionally at `:925` and
      replaces the earlier entry -- verified the same way. So the stale mapping survives
      only for a type whose later directory supplies no open icon of its own, and what
      survives is an earlier *closed* set standing in for one. Since
@@ -4200,10 +4200,10 @@ of them has a module docstring at all.
      recorded.** Entry 156 covers the no-logger fall-through. Two further cases:
 
      * If the *first* image the walk reaches is unreadable and there is no logger, `im`
-       has never been bound, and `(width, height) = im.size` (`pdsviewable.py:868`)
+       has never been bound, and `(width, height) = im.size` (`pdsviewable.py:885`)
        raises `UnboundLocalError` rather than mis-sizing anything. Verified by running
        against a tree whose only `.png` is a text file.
-     * Only `Image.UnidentifiedImageError` is caught (`:863`). A broken symlink, a
+     * Only `Image.UnidentifiedImageError` is caught (`:880`). A broken symlink, a
        missing file or a permission error propagates out of `load_icons` even with a
        logger. Verified by running: a broken symlink named `document_label.png` gives
        `FileNotFoundError` with a logger supplied.
@@ -4214,22 +4214,22 @@ of them has a module docstring at all.
      for the open state being asked for.** The fallback type `UNKNOWN` is never checked
      for existence -- `_priority_of_icon_type` answers 0 for a missing key rather than
      excluding the type -- so the final `ICON_SET_BY_TYPE[icon_type, is_open]`
-     (`pdsviewable.py:984`) can fail on the fallback. Verified by running: after loading
+     (`pdsviewable.py:1003`) can fail on the fallback. Verified by running: after loading
      a tree holding only `document_cube.png`, both `iconset_for` on a file whose icon
      type is `TABLE` and `iconset_for([])` raise `KeyError: ('UNKNOWN', False)`. The
      failure is not confined to a caller who forgot to load icons; it reaches a caller
      who loaded a partial set. **Owner: a future pdsviewable PR.**
 
 181. **`PdsViewSet.from_pdsfiles` drops every "full" product but the last.**
-     `full_viewable = viewable` (`pdsviewable.py:675`) overwrites on each match, and a
-     viewable named "full" never reaches `viewables.append` (`:677`, the `else` branch),
+     `full_viewable = viewable` (`pdsviewable.py:689`) overwrites on each match, and a
+     viewable named "full" never reaches `viewables.append` (`:691`, the `else` branch),
      so a replaced one is not in the set at all rather than merely unindexed. Verified by
      running: a group of `x_full.png`, `y_full.jpg` and `z_small.png` yields a set holding
      only `y_full.jpg` and `z_small.png`. **Owner: a future pdsviewable PR.**
 
 182. **`PdsViewable.copy` recomputes the aspect ratios, so a copy of a scaled copy is not
      equivalent to it.** The constructor derives both ratios from the width and height it
-     is given (`pdsviewable.py:92-93`), and `copy` passes the eight stored attributes and
+     is given (`pdsviewable.py:94-95`), and `copy` passes the eight stored attributes and
      nothing else. A viewable from `for_width()` carries the *source image's* ratios by
      design, which is what makes a second scaling of it correct; copying it replaces them
      with its own. Verified by running: a 1000x1 source scaled to width 1 has ratios
@@ -4238,7 +4238,7 @@ of them has a module docstring at all.
 
 183. **`load_icons` strips `document_` and `folder_` from anywhere in an icon basename,
      not just the front.** `key_base.replace('document_', '')` and the `folder_` line
-     after it (`pdsviewable.py:890-891`) are `str.replace`, which is not anchored.
+     after it (`pdsviewable.py:907-908`) are `str.replace`, which is not anchored.
      Verified by running: `my_document_thing.png` supplies the icon type `MY_THING` and
      `x_folder_y.png` supplies `X_Y`. A custom icon named for a folder in the middle of
      its name gets a type its author would not predict. **Owner: a future pdsviewable
@@ -4247,26 +4247,26 @@ of them has a module docstring at all.
 ### Added by the PR-29 adversarial review (round 3, `pdsfile.py`)
 
 184. **`from_path` raises `UnboundLocalError` for a bundle name no preload recorded, and
-     `from_lid` inherits it.** The rank lookup at `pdsfile.py:2238` raises `KeyError` for
+     `from_lid` inherits it.** The rank lookup at `pdsfile.py:2272` raises `KeyError` for
      an unrecorded bundle name; the recovery block that follows searches the recorded
      bundlesets for one whose pattern the name matches, and assigns `rank` only inside
      `if bundleset.startswith(updated_bundleset_prefix):`. When no bundleset matches,
-     `rank` is never bound, and `:2272` reads it. The `except KeyError` at `:2278` does
+     `rank` is never bound, and `:2306` reads it. The `except KeyError` at `:2312` does
      not catch that. Verified by running against the real holdings tree with a preload:
      `Pds3File.from_path('COISS_9999')` and `Pds3File.from_path('NOSUCH_2001')` both give
      `UnboundLocalError: cannot access local variable 'rank'`, and
      `Pds3File.from_lid('X:NOSUCH_0001:a:b')` gives the same. The bundle*set* branch
-     (`:2321`) does raise `KeyError`, so a caller guarding one of the two spellings is
+     (`:2355`) does raise `KeyError`, so a caller guarding one of the two spellings is
      protected and a caller guarding the other is not. Two smaller ones in the same
-     block: `bundlename.index('_')` at `:2243` raises `ValueError` for a bundle name with
-     no underscore, and the `[-1]` at `:2238` raises `IndexError` on an empty rank list.
+     block: `bundlename.index('_')` at `:2277` raises `ValueError` for a bundle name with
+     no underscore, and the `[-1]` at `:2272` raises `IndexError` on an empty rank list.
      **Owner: a future pdsfile PR.**
 
 185. **`PdsFile.parent()` raises `ValueError` on a physical category directory.** The
      branch test is `if logical_path in cls.CATEGORIES or not self.abspath:`
-     (`pdsfile.py:1619`). For a physical category directory the parent's logical path is
+     (`pdsfile.py:1638`). For a physical category directory the parent's logical path is
      the empty string, which is not in `CATEGORIES`, and the absolute path is truthy, so
-     control reaches `from_abspath()` at `:1624` with the holdings directory itself --
+     control reaches `from_abspath()` at `:1643` with the holdings directory itself --
      which has no logical path, and which `logical_path_from_abspath` refuses. Verified
      by running: `Pds3File.from_abspath('<holdings>/volumes').parent()` gives
      `ValueError: ('Not compatible with a logical path: ', '<holdings>')`. The *merged*
@@ -4280,13 +4280,13 @@ of them has a module docstring at all.
      other constructor of the same shape, sets all of them. Verified by running on
      `Pds3File.new_merged_dir('volumes')`: `html_path` and `url` raise
      `IndexError: list index out of range`, `all_version_abspaths` raises `TypeError`
-     because `root_` is None (`pdsfile.py:723`), and `iconset_open` reads the icon
+     because `root_` is None (`pdsfile.py:742`), and `iconset_open` reads the icon
      directory out of the holdings tree, which is the one thing a merged directory is
      built never to do. **Owner: a future pdsfile PR.**
 
 187. **`from_path`'s second scanning loop can never take effect.** The loop commented
      "among the trailing items of the pseudo-path" reads `part = parts[0].lower()`
-     (`pdsfile.py:2108`) but pops from the other end, `parts = parts[:-1]` (`:2136`). The
+     (`pdsfile.py:2142`) but pops from the other end, `parts = parts[:-1]` (`:2170`). The
      loop before it can only exit by failing to classify `parts[0]`, so this one re-tests
      the same element, fails the same way, and breaks on its first iteration every time.
      Verified by tracing eight inputs with `sys.settrace`: none of the loop's effect
@@ -4296,7 +4296,7 @@ of them has a module docstring at all.
      the loop should read `parts[-1]` or it should go. **Owner: a future pdsfile PR.**
 
 188. **`child`'s last `raise ValueError` is unreachable.** `raise ValueError('Cannot
-     define child from PDS root: ' ...)` sits at `pdsfile.py:1580`, after two blocks
+     define child from PDS root: ' ...)` sits at `pdsfile.py:1599`, after two blocks
      guarded by `if self.category_:` and `if not self.category_:` that are exact
      complements and each end in an unconditional `return`. Verified behaviorally: a
      blank object routes into the category branch, so `PdsFile().child('volumes')`
@@ -4304,8 +4304,8 @@ of them has a module docstring at all.
      inside that branch rather than this one. **Owner: a future pdsfile PR.**
 
 189. **`PdsFile.permanent` is written in four places and read in none.** It is
-     initialized False at `pdsfile.py:490`, set True at `:748` (`new_merged_dir`), at
-     `:1330` (`_update_ranks_and_vols`) and at `_preload.py:707`, and read nowhere in
+     initialized False at `pdsfile.py:506`, set True at `:767` (`new_merged_dir`), at
+     `:1349` (`_update_ranks_and_vols`) and at `_preload.py:707`, and read nowhere in
      `src/` or `tests/`. Its comment says "If True, never to be removed from cache",
      which nothing implements: `_complete` has already written the cache entry with an
      ordinary lifetime by the time `_update_ranks_and_vols` sets the flag. The
@@ -4315,7 +4315,7 @@ of them has a module docstring at all.
 
 190. **`from_logical_path` skips `must_exist` whenever the deepest cached ancestor has no
      absolute path.** The guard is `if ancestor and ancestor.abspath:`
-     (`pdsfile.py:1733`), and the fallback below it calls `from_abspath()` with literal
+     (`pdsfile.py:1752`), and the fallback below it calls `from_abspath()` with literal
      defaults. Merged category directories are permanent cache entries and have no
      absolute path, so a preloaded tree takes the fallback for any path whose bundleset
      entry has expired or been trimmed. Verified by running: after deleting the
@@ -4432,7 +4432,7 @@ of them has a module docstring at all.
      decision.
 
      **There is no documentation lever.** The file is one class occupying 2,247 of its
-     2,435 lines, starting at `pdsfile.py:174` and running to the end of the class body,
+     2,435 lines, starting at `pdsfile.py:185` and running to the end of the class body,
      holding 37 methods that account for 1,920 lines between them, against a module
      docstring of 87 lines. Deleting the module
      docstring outright would leave 1,567 code lines, still 567 over. Trimming
@@ -4769,3 +4769,310 @@ function and a dictionary cache does not, keeping it as a constant. **Owner: unc
      so needs its own regression test. Raised by the CodeRabbit re-review; the docstring
      documents it and no entry did.
      **Owner: a future pdsfile PR.**
+
+## From PR-29b (`docs: Google-style docstrings — the lazy properties`, Phase 7)
+
+### Amended by the PR-29b executor (2026-08-08) — entries 54, 68, 80 and 215
+
+**Entry 54's derivation is run against `_properties.py` by the PR that owns it, and the
+module measures clean.** `critiques/pr-29a/derive_state_contract.py` reports 114 names
+reached (114 read, 41 written) and 94 listed in the contract block, with **0 findings**, at
+base and again at head. That matters more at head than at base: this PR turns the contract
+block into a reStructuredText literal block, which was the only way to stop its
+trailing-underscore attribute names being read as references and its indentation as a
+definition list, and the identical 94 is what says the reformatting cost the contract
+nothing. `_properties.py` was PR-29a's read-only control for the derivation; it is now the
+first module whose own PR has run it as a gate before and after.
+
+**Entry 68 is closed as a documentation matter, and the code is untouched.** `version_ranks`
+still returns `None` for a file that does not exist, and its docstring now says so in those
+words, as the second paragraph of a section headed by the sentence "**A file that does not
+exist yields None rather than a list.**" Round 1 added the consequence the entry did not
+record: because the slot the property guards on stays `None`, the guard never fires either,
+so the whole body -- `exists`, the rank lookup and `_recache()` -- runs again on **every**
+access for such a file. The entry's remediation is unchanged: writing the instance
+attribute changes what the property returns on an existing input, so it is a behavior
+change and not a documentation one.
+
+**Entry 80 is closed.** `_properties.py` was the last module in `src/pdsfile/` without a
+module docstring, and it has one. The three description lines inside its banner comment
+were removed, because the rule requires that text be a docstring; every fact they carried
+is in the docstring that replaced them, and section 3.2 of `critiques/pr-29b-validation.md`
+enumerates them.
+
+**Entry 215 is closed.** `opus_type`'s docstring described a four-element tuple and gave two
+four-element examples; the value is a five-element tuple whose fifth member is the
+default-checked flag. The docstring now names all five and gives two five-element examples.
+The entry's own diagnosis was right and is what made this a five-minute fix rather than a
+rediscovery.
+
+### Added by the PR-29b executor's own measurements (2026-08-08)
+
+223. **Documenting a module does not cost a fixed amount per function, and the spread is
+     wide enough to matter to a projection.** Measured with an AST walk over the modules
+     already documented, each at the commit where its own PR left it so that this PR's
+     corrections are not folded into the figure they are compared against, a function
+     docstring runs **15.2** lines across PR-29's five public modules, **24.5** across
+     PR-29a's nine private ones and **18.6** across `_properties.py`'s 68 members.
+     Deviation (3)'s "roughly fourteen lines per function" is below all three. The figure
+     that made `_properties.py` a decision was not the length but the count: 68 members at
+     18.6 lines is 1,266 lines of function docstring, which is what took the file from
+     1,689 total lines to 2,817.
+
+     The method is worth keeping because it worked: ten representative members were
+     documented first, fitted to their code lines, and projected the finished file at about
+     2,720 against a ceiling of 2,000. Written out in full and then reviewed it landed at
+     **2,817**. The 97-line gap is the five review rounds' corrections, which a sample
+     cannot see because it is projected before it is read, so **a sample prices the
+     decision to within a few percent and should be read as a floor.** PR-30 has the rule
+     modules coming; the rule now carries the three per-module figures so the next
+     projection starts from a range rather than from an average.
+     **Owner: PR-30, as the next module-length question.**
+
+224. **`version_info`'s rank packing overflows once a version part reaches 100, and two
+     distinct versions then share a rank.** `_v1.100` and `_v2` both rank 20000, because
+     the rank is `major * 10000 + minor * 100 + micro` with nothing bounding the parts. Two
+     bundle sets of one stem on either side of that boundary would collide in the rank
+     dictionaries, and `all_versions()` would log "Duplicate version" and keep whichever it
+     saw first.
+
+     `version_info` also truncates a suffix past its third part, so `_v2.1.3` and
+     `_v2.1.3.4` share a rank and an id and differ only in the message. **That one is not
+     reachable through a path**, and round 4 is what established it: `BUNDLESET_PLUS_REGEX`
+     captures at most `_v[0-9]+\.[0-9]+\.[0-9]+`, so a fourth part never becomes a
+     `version_rank`. It is reachable only by calling the static method directly. The first
+     draft of this entry had the two the wrong way round, naming the truncation as the
+     collision mechanism and the arithmetic as an aside; `all_versions`' docstring made the
+     same mistake and both are corrected.
+
+     Measured, both are latent: a scan of every category directory of the holdings tree
+     computed the rank of every bundle-set suffix present and found no four-part suffix, no
+     part at or above 100, and no rank collision within any stem. The docstrings state both
+     limits. A fix changes what `version_info` returns for inputs it currently accepts, so
+     it needs a regression test of its own.
+     **Owner: a future pdsfile PR.**
+
+225. **`version_info`'s worked-example comment is arithmetically wrong and is left alone.**
+     The comment above the `_v` branch reads `_v2.1 -> 201000` and `_v2.1.3 -> 201030`;
+     measured, `version_info('_v2.1')` is 20100 and `version_info('_v2.1.3')` is 20103. Only
+     the first line, `_v2 -> 20000`, is right. A docstrings-only PR does not touch comment
+     text, and the docstring immediately below it now states the formula correctly, so a
+     reader has both a right answer and a wrong one three lines apart. That is the argument
+     for deleting the comment rather than repairing it: the docstring already carries what
+     it was for.
+     **Owner: whoever next edits that function.**
+
+226. **`label_basename`'s stem is the empty string for a basename with no extension.**
+     `rootname = self.basename[:-len(self.extension)]`, and `len(self.extension)` is zero
+     for a name the split rules give an empty third part, so the slice is `[:-0]`, which
+     Python evaluates as `[:0]`. The guessed label names are then the bare label extensions
+     -- `.lbl` and `.LBL` for PDS3 -- rather than the basename with a label extension. The
+     `PRODUCT_LBL_BASENAME_WO_EXT` rule short-circuits this wherever it answers, and a
+     directory is the common case that reaches it, for which no label exists either way. The
+     docstring states the behavior.
+     **Owner: a future pdsfile PR.**
+
+227. **`_volume_info`'s docstring gave the wrong tuple shape, in the same way entry 215
+     recorded for `opus_type`, and both are now fixed.** It described five fields,
+     "(description, icon_type, volume_date, list of data_set_ids, optional checksum]", with
+     a bracket that does not close the parenthesis it opened. The value is a six-element
+     tuple and `PdsFile.__init__`'s own comment names it correctly: `(desc, icon type,
+     version ID, pub date, list of dataset IDs, optional MD5 checksum)`. The docstring
+     omitted the version id, which shifted every field after it, so it labelled index 2 --
+     what `bundle_version_id` reads -- as the date, which is what `bundle_publication_date`
+     reads from index 3.
+
+     Two docstrings in one module describing a tuple with the wrong number of elements is a
+     pattern rather than a coincidence, and both were found by counting the consumers rather
+     than by reading the sentence. **A tuple's shape claim should be checked against every
+     subscript of it in the module**, which for these two is six and five sites
+     respectively.
+     **Owner: recorded; both are fixed.**
+
+228. **A probe can silently ignore the module it was asked to build, and report clean.**
+     `critiques/pr-29a/build_docs_probe.py` takes extra module names here so that
+     `_properties` can join its page list. Its first extended run reported a clean
+     fourteen-module build; it had in fact run a thirteen-module build, because it was
+     executed from the base tree, whose copy of the script predates the argument and drops
+     it. The repair is to verify the artifact rather than the exit status: the generated
+     `api.rst` is now grepped for the page. This is the same failure CodeRabbit caught in
+     PR-29a's probe -- a gate reporting success for work it did not do -- reached by a
+     different route, which is the argument for checking that a gate *ran* and not only what
+     it *said*.
+     **Owner: recorded, no action.**
+
+### Added by the PR-29b adversarial review (round 5, `pdsfile.py` and `pdsviewable.py` re-read)
+
+229. **The pickle rationale for keeping the `class PdsFile` statement in `pdsfile.py` does
+     not hold for the instances that are actually cached.** The module docstring said that
+     pickled `PdsFile` instances record `pdsfile.pdsfile` as the class's module, so moving
+     the statement would invalidate Viewmaster's memcached entries. Pickle records the
+     module of the **instance's own class**, and every object the package hands out is a
+     rule subclass: measured, `type(p).__module__` for an ordinary object is
+     `pdsfile.pds3file.rules.COISS_xxxx`, and the byte string `pdsfile.pdsfile` does not
+     appear anywhere in `pickle.dumps(p)`. Only an instance of `PdsFile` itself would
+     record it, and the class docstring says the class is not used directly.
+
+     The constraint may still be right for other reasons -- the class attributes the mixins
+     read are defined in that statement's body -- and the docstring now gives that reason
+     instead. What is recorded here is that a constraint the plan has treated as
+     load-bearing since Phase 5 was resting on a claim that does not reproduce, and that
+     nobody had run `pickle.dumps` on a real object to check it.
+     **Owner: a future pdsfile PR, if the constraint is ever revisited.**
+
+230. **`from_path('')` hardcodes the PDS3 category.** Every other voltype default in
+     `from_path` uses `cls.BUNDLE_DIR_NAME`, which is `volumes` on `Pds3File` and `bundles`
+     on `Pds4File`; the empty-description branch assigns the literal `'volumes'`. Measured,
+     `Pds4File.from_path('')` returns a logical path of `volumes`, which is not a PDS4
+     category. The docstring describes what happens rather than what was meant, because
+     what happens is what a caller gets.
+     **Owner: a future pdsfile PR.**
+
+231. **A claim stated in more than one place is corrected in one place, and this PR found
+     four more instances of it.** PR-29a's record named the partial fix as a pattern no
+     reviewer brief had asked about. This PR's briefs asked, and rounds 4 and 5 found it
+     four times, and in every case the copy left behind was the *summary* rather than the
+     detail. `full_size`'s own docstring correctly said it raises IndexError on a set with
+     nothing indexed by size; the `PdsViewSet` class docstring listed it among the lookups
+     a named-only set is served by. `IDX_EXT` and `LBL_EXT` being defined only on the
+     subclasses is stated explicitly in `_local_fs.py`, `_associations.py` and
+     `_properties.py`, and was denied by `pdsfile.py`'s module map, the fourth copy and the
+     one nobody looked at. `filename_keylen`'s own docstring said it is the one lazy
+     property with no `_recache()` and `_properties.py`'s module docstring said every lazy
+     property calls it. And **`filespec`'s body and its own `Returns:` disagreed after
+     round 3 fixed one and not the other**, which is the pattern inside a single
+     docstring.
+
+     **The rule this suggests is that a claim should be checked from the summary downward,
+     not from the detail upward**: the detailed docstring is the one whose author had the
+     code in front of them, and the summary is the one that gets stale. Both copies here
+     were found by a reviewer who was told to grep for other copies of a claim it had just
+     checked, which is the practice worth carrying into PR-30.
+     **Owner: PR-30, as a reviewer-brief instruction.**
+
+### Added by the PR-29b adversarial review (round 3, the 58 remaining members)
+
+232. **`index_pdslabel` parses a PDS4 index file as its own label, and raises.** The label's
+     path is guessed by replacing each index extension in this file's path with each label
+     extension. `str.replace` is a no-op when the substring is absent, so for a class with
+     more than one index extension the iteration for the extension the path does *not*
+     carry leaves the path unchanged and hands the index file itself to
+     `pdsparser.PdsLabel.from_file()`. `Pds3File` has one index extension and one label
+     extension and never reaches it; `Pds4File` has `('.csv', '.tab')` and
+     `('.xml', '.lblx')`.
+
+     Measured: every PDS4 index in the holdings copy raises
+     `SyntaxError: missing END statement in <the .csv itself>` out of the property. The
+     `except OSError` around the parse does not catch it. So the property does not return
+     None for a PDS4 index; it raises, and there is no path on which a PDS4 index label is
+     returned at all.
+
+     The fix is to skip the substitution where the path does not carry the index extension,
+     and to break out of both loops on success rather than the inner one. Both change what
+     the property returns for inputs it currently rejects, so it needs a regression test.
+     The docstring states the behavior and adds the `Raises:`.
+     **Owner: a future pdsfile PR.**
+
+233. **`childnames` on an index table caches an `info_basename` derived from a half-built
+     child list.** The index branch calls `sort_basenames(childnames)` with the class
+     defaults, whose `info_first` threshold makes the sort read `self.info_basename`, which
+     reads `self.childnames` -- and at that moment `_childnames_filled` still holds the
+     pre-index list, which for a table is empty. The `_info_basename_filled` that gets
+     stored and `_recache()`d was therefore derived from the wrong list, and it is not
+     recomputed afterwards.
+
+     Measured on a 3,745-row index: reading `childnames` fills `_info_basename_filled` with
+     `'COISS_2001_index.lbl'`, which is the answer the *label* rules give and happens to be
+     right, so the defect is currently invisible. It would not be for a table whose info
+     basename depends on its own children.
+     **Owner: a future pdsfile PR.**
+
+234. **A bundle the volume-info tables do not cover gets a description that is only the
+     volume-type prefix.** `description` prefixes the volume type where the table's
+     description does not already say it, and the fallback for an uncovered bundle is an
+     empty description, so the result is the prefix applied to nothing: `'Metadata for '`,
+     with a trailing space, and `icon_type` of `UNKNOWN`. Measured over 857 bundle and
+     bundle-set objects, five are uncovered, all under `metadata/RPX_xxxx_v1.0`.
+
+     The icon fallbacks do not rescue them either, and for a reason worth stating because it
+     is the opposite of what the code reads like: both are guarded on `icon_type is None`,
+     and the uncovered fallback supplies the string `'UNKNOWN'`, not None. The None case is
+     reached only where the table stores a blank icon column, which the preload converts.
+     `bundle_publication_date` makes exactly this None-versus-fallback distinction for its
+     own field and `description` does not.
+     **Owner: a future pdsfile PR.**
+
+235. **`all_versions` stores `self.abspath` for its own rank without testing it.** The
+     dictionary is seeded with `{self.version_rank: self.abspath}` before anything is
+     globbed, so an object with no absolute path writes None into `_all_version_abspaths`,
+     on itself and on every version it finds. The next call takes the remembered-paths
+     branch and passes that None to `cls.from_abspath()`. A merged directory does not reach
+     it -- the glob is rooted at a None `root_` and raises TypeError first, which is what
+     `all_version_abspaths`' docstring records -- so the reachable case is an object built
+     from a logical path no holdings directory holds.
+     **Owner: a future pdsfile PR.**
+
+236. **A claim about what a property costs, or about what a constructor pre-set, is
+     mechanically checkable, and checking it mechanically finds what reading does not.**
+     Round 3 established five of its twenty-two findings by instrumentation rather than by
+     reading: blanking every slot on a fresh object, reading one property and diffing the
+     slots, which found nine docstrings naming fewer slots than they fill; comparing each
+     body's assigned slots against `new_merged_dir()` and `new_index_row_pdsfile()`, which
+     found five saying nothing about a slot that is pre-set; counting the four link-path
+     prefixes over 400 real shelves, which found the resolution anchor the prose omitted;
+     and counting 5,972 volume-info entries, which found the 91 checksums that are not in
+     the documents tree.
+
+     None of those is reachable by careful reading, and all of them are cheap. **PR-30's
+     reviewer brief should ask for the instrumentation explicitly**, in the same way this
+     PR's briefs asked for relationship claims to be checked by reading the other end.
+     **Owner: PR-30, as a reviewer-brief instruction.**
+
+### Added by the PR-29b adversarial review (round 4, `_properties.py` re-read)
+
+237. **`local_viewset` stores None where every sibling stores False, and that object
+     re-derives forever.** `PdsViewSet.from_pdsfiles()` returns None when nothing it was
+     handed is displayable, and `PdsViewable.from_pdsfile()` raises ValueError -- which
+     `from_pdsfiles` swallows -- for any object whose width is zero. An existing file whose
+     name is viewable and whose recorded width is zero, which is what
+     `_repair_width_height` writes for an image PIL could not open, therefore stores None.
+     The guard at the top of the property is `is not None`, so it never fires and the whole
+     derivation runs on every access.
+
+     `viewset` has the guard `local_viewset` lacks: it converts a None answer to False
+     before storing. The two properties are written to look symmetric and are not.
+     Measured: forcing the shape to `(0, 0)` on a real preview file makes `local_viewset`
+     return None twice with the slot still None. A scan of 2,086,994 viewable entries in
+     the preview info shelves found no zero-width entry, so reaching it in this tree takes
+     a PIL failure. The docstring states it.
+     **Owner: a future pdsfile PR.**
+
+238. **`_recache()` fills `_isdir_filled` as a side effect, so every "fills these slots"
+     list in `_properties.py` is a lower bound for an object already in the cache.**
+     `_recache` calls `CACHE.set`, whose lifetime is computed by
+     `cache_lifetime_for_class`, which reads `arg.isdir` for any object with a non-empty
+     interior. So a property whose body never mentions `isdir` still fills that slot, by
+     way of the very call that makes the value survive.
+
+     This is worth recording beyond the docstrings it affects, because it is a cost that
+     does not appear anywhere in the module that pays it, and because it cost round 4 a
+     false lead before it was traced. Any future attempt to check the fills lists
+     mechanically -- which entry 236 recommends -- has to account for it or it will report
+     one spurious omission per property.
+     **Owner: PR-30, as a note for the instrumentation entry 236 asks for.**
+
+239. **A second adversarial read must start from a frozen tree, and this one did not.**
+     Round 4 was launched while the executor was still applying round 3's corrections, so
+     sixteen of the forty-four sentences its brief named were absent from the text it first
+     read. The reviewer noticed, re-read all 68 members and re-ran every measurement, and
+     said so in its report. The cost was its time; had it not noticed, its verdicts on those
+     sixteen would have described prose that was never in the branch, and they would have
+     been indistinguishable from verdicts on prose that was.
+
+     The rule this suggests is procedural and cheap: **commit the previous round's
+     corrections, and confirm the corrected phrases are actually in the file, before
+     launching the round that reviews them.** The confirmation matters as much as the
+     commit -- a separate defect in this PR was that a batched edit aborted on its first
+     pair and wrote nothing, so eight of round 3's corrections were claimed by a commit
+     message and were not in the tree until a phrase-by-phrase grep found them.
+     **Owner: PR-30, as a process note.**
