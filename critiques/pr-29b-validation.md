@@ -436,8 +436,9 @@ not part of this PR.
 
 26 passed. The four frozen files are byte-identical to `998a166`, checked with
 `git diff --quiet 998a166 -- <file>` on each. This PR turns three `#` header comment lines
-into part of a module docstring and rewrites 137 docstrings, which is freeze-neutral two
-ways rather than by assumption: the manifest has no docstring field, and
+into part of a module docstring and changes **80 of the 134 docstrings** in the three files
+-- all 70 in `_properties.py`, five in `pdsfile.py` and five in `pdsviewable.py` -- which is
+freeze-neutral two ways rather than by assumption: the manifest has no docstring field, and
 `tests/api/test_mixin_collisions.py` lists `__doc__` among the structural names it ignores,
 so the one test that walks a class body cannot see a docstring either.
 
