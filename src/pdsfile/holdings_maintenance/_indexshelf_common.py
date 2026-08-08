@@ -639,9 +639,11 @@ def index_targets(spec, paths):
     is how a metadata bundle-set directory expands to the tables of every bundle in it.
     A directory holding tables at both depths contributes only the shallower ones.
 
-    Everything is decided on the text of the path and its extension. The metadata test
-    looks for "/metadata/" anywhere in the absolute path, and the extension is the
-    spec's index_ext, which is the one place that field is read.
+    Everything that decides acceptance is the text of the path and its extension. The
+    metadata test looks for "/metadata/" anywhere in the absolute path, and the
+    extension is the spec's index_ext, which is the one place that field is read. A
+    PdsFile is built first, though, so a path that exists and lies outside any holdings
+    tree fails there rather than at either test.
 
     Parameters:
         spec (ToolSpec): The tool's specification. Its index_ext is the extension a
@@ -656,6 +658,10 @@ def index_targets(spec, paths):
         SystemExit: from ``sys.exit()``, with status 1 for a path that does not exist,
             is outside metadata/, is a directory holding no tables, or is a file whose
             extension is not the spec's.
+        ValueError: raised by ``from_abspath()`` for a path that exists and lies outside
+            any holdings tree. That call precedes both text tests, so such a path
+            raises rather than exiting.
+        OSError: raised by the same ``from_abspath()`` call on the same terms.
     """
 
     ext = spec.index_ext
@@ -735,6 +741,9 @@ def run_index_main(spec, tasks, argv):
             otherwise. A task that raises is logged and re-raised instead, so the
             original exception propagates and the closing ``sys.exit()`` is not
             reached.
+        ValueError: raised by ``index_targets()``, before any logging is open, for a
+            command-line path that exists and lies outside any holdings tree.
+        OSError: raised by the same ``index_targets()`` call on the same terms.
 
     The log path method these tools name raises ValueError for a target that is not an
     index file, and that cannot happen here: the test it applies is "under metadata/ and

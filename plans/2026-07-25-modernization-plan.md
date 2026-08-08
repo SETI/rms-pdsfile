@@ -1292,8 +1292,9 @@ split is deliberate: the rest of what this entry originally named is three separ
 surfaces with nothing in common but the phase, and the scarce resource is the review
 budget rather than the writing.
 
-The split below is two PRs rather than the three first named. `tools/` is 199 lines and
-two already-documented functions, too small to review on its own, and the shared
+The split below is two PRs rather than the three first named. `tools/` was 199 lines and
+two already-documented functions at `80f5e52`, too small to review on its own -- PR-30a's
+docstrings take it to 277 -- and the shared
 maintenance core turned out to belong with the subclasses rather than with the per-tool
 modules: both are about class and module contracts rather than about a dataset or a
 command line, and both are read by every other part of the subpackage.

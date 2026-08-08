@@ -164,15 +164,23 @@ the docstring in both directions.
 | code | check |
 |---|---|
 | S1 | the entry for a field names a reader that does not read it |
-| S2 | a module reads a field and the entry names no reader in that module |
+| S2 | a reader of a field is not named in the entry for it |
 | S3 | a field is read nowhere under the source root |
 
-**S2's unit is the module rather than the function, and that is a decision rather than an
-oversight.** `logname` is read by twenty functions across four modules and an entry that
-listed all twenty would be unreadable, while the claim that matters -- which shared module
-acts on this field, and therefore which of the ten tools it reaches -- is settled at module
-granularity. An entry that names one reader per module and describes the rest in prose
-passes; an entry silent about a whole module does not.
+**S2's unit depends on how widely the field is read, and that is a decision rather than an
+oversight.** For a field with five readers or fewer the unit is the function: every one
+must be named, so an entry cannot name the reader that supports its story and stay silent
+about one that would contradict it. Above that, the unit is the module -- `logname` is read
+by twenty functions across four modules and an entry listing all twenty would be
+unreadable, while the claim that matters, which shared module acts on this field and
+therefore which of the ten tools it reaches, is settled at module granularity. An entry
+that names one reader per module and describes the rest in prose passes there; an entry
+silent about a whole module does not.
+
+**A documented reader must carry its module qualifier**, checked as S4. A bare name would
+match a function of that name in any module, and this tree has several: `link_targets`
+exists in `_linkshelf_common` and in both link shelf tools, and `initialize` through
+`update` in all ten tool modules.
 
 **Every `name()` token in an entry is read as a claim**, including one written for some
 other reason. That is deliberate: an entry that names a function in parentheses reads as
