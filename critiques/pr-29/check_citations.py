@@ -48,6 +48,7 @@ IN_SCOPE = ('pdsfile.py', 'pdscache.py', 'pdsviewable.py', '__init__.py',
 # the cited line. A range is checked at both ends.
 CITATIONS = [
     ('src/pdsfile/pdsfile.py', 174, 'class PdsFile(_AssociationsMixin,'),
+    ('src/pdsfile/_index_rows.py', 489, 'abspath.replace(neighbor.basename, self.basename)'),
     ('src/pdsfile/pdscache.py', 77, 'MEMCACHED_LOADED = True'),
     ('src/pdsfile/pdscache.py', 175, 'self.keys = set()'),
     ('src/pdsfile/pdscache.py', 190, 'self.preload_eligible = True'),
