@@ -27,22 +27,66 @@ conflicts with a rule below, follow the rule below. See
    `tests/api/api_manifest.json` and enforced by `tests/api/test_api_freeze.py`.
    Never edit the manifest, the allowlist, `scripts/dump_public_api.py`, or the
    freeze test to make a diff vanish.
-3. **Module-length limits are waived** for an explicit list of files, which
-   overrides `python.mdc`'s "modules < 1000 lines". The list is enumerated rather
-   than described as a class, so that adding a file to it is a visible decision:
-   - `src/pdsfile/pdsfile.py`
-   - `src/pdsfile/_properties.py` — the whole lazy-property block lives in one
-     mixin by owner decision (plan §8, settled decision 3)
-   - `src/pdsfile/pdscache.py` — over the line before this effort began; no phase
-     has splitting it as a deliverable
-   - the per-dataset rule files, `src/pdsfile/pds{3,4}file/rules/*.py`
+3. **Module length is two limits, measured separately** (owner decision,
+   2026-08-07), which overrides `python.mdc`'s single "modules < 1000 lines".
 
-   Modules not on this list are held to the 1000-line limit. The maintenance
-   tools under `src/pdsfile/holdings_maintenance/` are **not** waived. The Phase 6
+   - **Code lines must not exceed 1,000** — the complexity budget. Code lines are
+     total lines minus the lines occupied by module, class and function
+     docstrings, with the spans taken from the AST so that a string which is not
+     a docstring is not deducted. A docstring adds no complexity; it lowers the
+     cost of the complexity that is there.
+   - **Total lines must not exceed 2,000** — the ingestion budget. A long file is
+     harder to navigate and harder to read whole: attention over a long input
+     falls off in the middle, and standard file-reading tooling truncates around
+     this point. This limit is on what a reader has to get through, so a
+     docstring does count against it.
+
+   One limit could not carry both jobs. Documenting a module costs roughly
+   fourteen lines per function, which grew `pdscache.py` by 83% and
+   `pdsviewable.py` by 68% without changing a statement in either. Under a single
+   total-line limit, documenting a module is a reason to split it, which is
+   backwards.
+
+   `critiques/pr-29a/measure_module_lines.py` measures both, so this is checkable
+   rather than asserted. **No gate enforces it.** `run-all-checks.sh` has no
+   module-length check and neither does CI; wiring one up is a decision nobody has
+   taken, and the absence is deliberate here rather than an oversight.
+
+   The waiver list stays enumerated rather than described as a class, so that
+   adding a file to it is a visible decision. Measured over every `.py` file under
+   `src/`, four are over a limit:
+
+   | file | total | docstring | code | over |
+   |---|---:|---:|---:|---|
+   | `src/pdsfile/pdsfile.py` | 2,435 | 781 | 1,654 | both |
+   | `src/pdsfile/_properties.py` | 1,689 | 297 | 1,392 | code |
+   | `src/pdsfile/holdings_maintenance/pds3/pdsdependency.py` | 1,165 | 30 | 1,135 | code |
+   | `src/pdsfile/pds3file/rules/VG_28xx.py` | 1,019 | 0 | 1,019 | code |
+
+   - `src/pdsfile/pdsfile.py` — **waived on both limits, and the split is
+     deferred** (owner, 2026-08-07). This is a code problem and not a
+     documentation one: the file is one class occupying 2,247 of its 2,435 lines,
+     37 methods holding 1,920 lines between them, against a module docstring of
+     87. There is no prose to relocate, and trimming docstrings would not bring
+     either number down far enough to matter. The available lever is a tenth
+     mixin; whether one exists is open. Deferred observation 199 holds it.
+   - `src/pdsfile/_properties.py` — waived on code lines. The whole lazy-property
+     block lives in one mixin by owner decision (plan §8, settled decision 3).
+   - the per-dataset rule files, `src/pdsfile/pds{3,4}file/rules/*.py` — waived as
+     a class. `VG_28xx.py` is the only one that currently needs it.
+
+   `src/pdsfile/pdscache.py` **is no longer waived.** At 1,914 total and 937 code
+   it passes both limits, so its entry is retired; the list means less the longer
+   it gets.
+
+   Modules not covered above are held to both limits. The maintenance tools under
+   `src/pdsfile/holdings_maintenance/` are **not** waived. The Phase 6
    consolidation brought every pds3/pds4 tool pair under the limit; the one module
-   left over it is `src/pdsfile/holdings_maintenance/pds3/pdsdependency.py` at
-   1,165 lines, which has no twin to consolidate with and so needs a decision of
-   its own — waiver or split. Deferred observation 66 holds it.
+   left over it is `src/pdsfile/holdings_maintenance/pds3/pdsdependency.py`, and
+   the two-limit measure sharpens rather than settles that: with 30 lines of
+   docstring against 1,135 of code, it is over on code alone, so it is a genuine
+   structural problem and not a documentation artifact. It still needs a decision
+   of its own — waiver or split. Deferred observation 66 holds it.
 4. **Rule modules and specific files carry permanent `ruff check` exemptions.**
    Rule modules carry permanent per-file-ignores; core files and the subpackage
    `__init__`s carry a smaller frozen set. (`ruff format` does not run at all —

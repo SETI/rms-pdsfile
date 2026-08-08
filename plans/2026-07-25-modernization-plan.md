@@ -1120,7 +1120,8 @@ against the code by a person, and 300 cannot be reviewed in one pass. The split
 point is not arbitrary: deferred entry 80 names exactly `pdsfile.py`,
 `preload_and_cache.py`, `pdscache.py` and `pdsviewable.py` as the module headers
 that narrate the port, so PR-29 is precisely the set that entry covers, plus the
-15-line `__init__.py`. PR-29a takes the ten private modules.
+15-line `__init__.py`. The ten private modules follow, split again between PR-29a
+and PR-29b for the same reason and recorded below.
 
 **PR-29 (L)** `docs: Google-style docstrings — the public modules` — **done**,
 record `critiques/pr-29-validation.md`
@@ -1169,12 +1170,72 @@ Three things that shaped the result and bind the PRs after it:
     brief for PR-29a should name that category explicitly; three of PR-29's four
     did not, and the one that did found the most.
 
-**PR-29a (L)** `docs: Google-style docstrings — the private modules`
-The ten `_*.py` mixin and extracted modules: 156 functions, 131 parameters, and
-ten module headers, none of which has a docstring at all. Entry 80 stays open for
-those headers. Reuse `critiques/pr-29/`'s checkers and `sphinx-conf.py`; the
-docstring/code disagreements to expect are the same shape as PR-29's, and entry
-167 names one already (`cache_lifetime_for_class`'s `cls` default).
+**PR-29a/PR-29b split.** PR-29a was to take all ten `_*.py` modules. It takes nine;
+`_properties.py` is PR-29b. The reason is again review load: that one file holds 68
+functions, more than `pdscache.py` carried in PR-29, and PR-29 needed two adversarial
+reads of `pdscache.py` and still found about twenty defects on the second. PR-29b
+therefore carries `_properties.py` **together with the second reads of `pdsfile.py`
+and `pdsviewable.py`** that PR-29 recommended and could not fit inside its round cap.
+Entry 80 stays open until PR-29b lands, because `_properties.py` is the one module in
+the package still without a module docstring.
+
+**PR-29a (L)** `docs: Google-style docstrings — the private modules` — **done**,
+record `critiques/pr-29a-validation.md`
+Nine `_*.py` modules: 88 functions, eight class docstrings and nine module headers,
+none of which had a docstring. 28 of the 88 functions had none either. The 88
+signatures declare **129** parameters counting neither `self` nor `cls`, which is
+what `critiques/pr-29/measure.py` reports and what sized the work; the docstrings
+carry **139** `Parameters:` entries, the extra ten being the `cls` that nine
+module-level functions and one closure take as an ordinary argument a caller has to
+pass. `critiques/pr-29/`'s checkers and `sphinx-conf.py` were reused rather than
+rewritten; the two changes made to them are enumerated in the record.
+
+Four things that shaped the result:
+
+  * **Docstrings only, proved the same way as PR-29.** The docstring-stripped AST
+    hashes identically at base and head for all nine files. Seventeen comment lines
+    were removed, and all seventeen are the description inside a module's banner
+    comment, which the rule requires be a module docstring.
+  * **A hundred and eleven prose defects and twenty-one code defects found by reading
+    the code against its own prose** — deferred entries 199 to 221 and the amendments
+    to 47, 54, 66 and 191. Four rounds: two slices, read twice each, every round a
+    fresh reviewer with no context from any other. Among the code defects are a shelf
+    cache whose trim is not least-recently-used because its counter is an int each rule
+    subclass rebinds onto itself, a cache lookup in `child_of_index` that can never
+    hit, and an index-row path built under a hard-coded `volumes` category that no PDS4
+    holdings tree has.
+  * **The second read of a slice is where the wrong corrections are caught.** Rounds 3
+    and 4 found 43 more prose defects in prose a full round had already passed over and
+    fixed, and **eleven of round 4's findings correct sentences round 2 had itself
+    rewritten**. The worst replaced a vague claim with a specific and false one, which
+    reads as freshly verified and is therefore worse than the error it replaced. No
+    mechanical gate here can catch that — the AST hash, the docstring checker, the
+    state-contract derivation and the Sphinx build all passed over it. **PR-29b should
+    plan for two reads of `_properties.py` and budget for the second finding as much as
+    the first.**
+  * **Entry 54's derivation is built and it works.**
+    `critiques/pr-29a/derive_state_contract.py` rebuilds each mixin's state-contract
+    paragraph from the AST and compares it against the docstring both ways. The
+    thing that makes it non-trivial is that the receiver decides and not the name:
+    `split` and `copy` are `PdsFile` members and also `str`/`list` methods, so a
+    name-matching walk scores all 19 `.split(` calls in these modules as PdsFile
+    reads. Four of the nine modules had no contract paragraph at all. No gate runs
+    it yet.
+  * **Module length became two limits** (owner, 2026-08-07), in
+    `.cursor/rules/pdsfile_overrides.mdc` deviation (3): code lines ≤ 1,000 and
+    total lines ≤ 2,000, measured separately, because documenting a module costs
+    about fourteen lines per function and a single total-line limit therefore made
+    documenting a module a reason to split it. `pdscache.py`'s waiver retires;
+    `pdsfile.py`'s stands with the split deferred (entry 199). No gate enforces
+    module length and this PR does not add one.
+
+**PR-29b (L)** `docs: Google-style docstrings — the lazy properties`
+`src/pdsfile/_properties.py`: 68 functions, the last module in the package without a
+module docstring, and the only one the mechanical checker still reports findings on
+(73 at PR-29a's head). Two adversarial reads of it, plus the **second reads of
+`pdsfile.py` and `pdsviewable.py`** PR-29 asked for. Entry 215 names one defect
+already: `opus_type`'s docstring describes a four-element tuple and the value has
+five elements. Closes entry 80.
 
 **PR-30 (L)** `docs: docstrings — rules, subclasses, maintenance tools`
 Rule modules get a standard header docstring (dataset, what each rule table

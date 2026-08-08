@@ -1,8 +1,29 @@
 ##########################################################################################
 # pdsfile/_associations.py
-# The category-crossing lookup layer: given one PdsFile, the files associated with it in
-# another category of the holdings tree
 ##########################################################################################
+
+"""Given one file, the files that go with it elsewhere in the holdings tree.
+
+A holdings tree keeps parallel copies of the same structure under different category
+names: the data itself under ``volumes`` or ``bundles``, and beside it ``previews``,
+``diagrams``, ``calibrated``, ``metadata``, and the ``checksums-`` and ``archives-``
+variants of each. A question this module answers is of the form "given this data file,
+which previews go with it", and the answer is a list rather than a single file, because
+one data file can have several previews and one metadata table can cover many data
+files.
+
+Two mechanisms produce the answer. The rule modules define association tables that map a
+logical path to the wildcard patterns naming its counterparts, and those patterns are
+matched against the tree. Where no rule applies, the same interior path is looked for in
+the parallel tree, and the deepest part of it that exists is used, so a file with no
+counterpart yields its directory rather than nothing.
+
+``associated_abspaths()`` is the general answer, with
+``associated_logical_paths()`` and ``associated_pdsfiles()`` as conversions of it.
+``associated_parallel()`` answers the narrower question of the single most similar file
+in one parallel tree, optionally at another version, and caches its answer on the object
+it resolves the question against, which is not always the one it was asked about.
+"""
 
 import os
 
@@ -23,7 +44,8 @@ class _AssociationsMixin:
     (associated_abspaths), logical paths (associated_logical_paths) or PdsFile
     objects (associated_pdsfiles). associated_parallel answers the narrower
     question of the single "most similar" file in a parallel tree, optionally at
-    another version rank, and caches its answer on the object.
+    another version rank, and caches its answer on the object it resolves the
+    question against, which is not always the one it was asked about.
 
     The association rules themselves are not here: the ASSOCIATIONS translator
     and the CATEGORIES set stay on PdsFile, where each rule subclass supplies its
@@ -31,24 +53,30 @@ class _AssociationsMixin:
 
     Every attribute these methods read or write on a PdsFile object or on a
     PdsFile class, and nothing else -- str, list, dict, translator and os.path
-    methods are not in scope:
+    methods are not in scope::
 
       lazy properties read        all_version_abspaths, data_abspaths, exists,
                                   is_category_dir, isdir, label_basename
       instance attributes read    abspath, bundlename, bundletype_, category_,
                                   interior, is_index_row, logical_path,
                                   version_rank
-      instance attributes WRITTEN _associated_parallels_filled, on self, which
+      instance attributes WRITTEN _associated_parallels_filled, which
                                   associated_parallel initializes to {} on first
-                                  use and then fills; _recache() writes the
-                                  object back to the cache afterwards
+                                  use and then fills; _recache() offers the
+                                  object back to the cache afterwards, which
+                                  keeps it only where the cache already held an
+                                  entry for it. The object offered is the one the
+                                  request resolved to, not necessarily the one
+                                  asked
       class attributes read       ASSOCIATIONS, CATEGORIES
       other methods called        _recache, all_versions, bundle_pdsfile,
                                   bundleset_pdsfile, parent, from_abspath,
                                   from_logical_path
 
-    All of those are defined on PdsFile. Nine more come from sibling mixins, and
-    they are why this is the deepest layer in the class:
+    All of those are available on a bare PdsFile rather than only on Pds3File and
+    Pds4File; all_versions, like the lazy properties above, is defined in
+    _PropertiesMixin rather than in the PdsFile class body. Nine more come from
+    sibling mixins, and they are why this is the deepest layer in the class::
 
       _DerivedPathsMixin          archive_path_and_lskip,
                                   checksum_path_and_lskip
@@ -67,8 +95,13 @@ class _AssociationsMixin:
     not on PdsFile; associated_abspaths reads it. A bare PdsFile never gets that
     far: ASSOCIATIONS is None on it, so the same method raises TypeError earlier,
     at the ASSOCIATIONS lookup, and never reaches IDX_EXT. Either way
-    associated_abspaths works on a subclass instance and not on a bare PdsFile,
-    which is how it has always behaved.
+    associated_abspaths works on a subclass instance and not on a bare PdsFile.
+
+    associated_parallel is the only method here that writes anything. It fills
+    _associated_parallels_filled on the object the request resolved to -- this
+    one where the volume type is unchanged, and this file's latest version where
+    it is not -- and calls _recache, so a lookup changes a cached object wherever
+    the cache was already holding that object; the other three read only.
     """
 
     ############################################################################
@@ -76,22 +109,118 @@ class _AssociationsMixin:
     ############################################################################
 
     def associated_logical_paths(self, category, must_exist=True):
+        """Return the logical paths of the files associated with this one.
+
+        The same answer as ``associated_abspaths()``, converted. The conversion drops the
+        holdings root from each path, so the result is the same on any machine hosting
+        the same holdings.
+
+        Parameters:
+            category (str): the category to look in, with any surrounding slashes
+                ignored.
+            must_exist (bool): whether to return only paths that exist, with the same
+                exception ``associated_abspaths()`` makes for a label.
+
+        Returns:
+            list: the logical paths, in the order ``associated_abspaths()`` produced
+            them. The duplicates were removed from the absolute paths, so two paths
+            under different holdings directories that share one logical path both
+            survive into this list.
+
+        Raises:
+            TypeError: raised by ``associated_abspaths()`` on a bare PdsFile, whose
+                association table is None.
+            ValueError: raised by ``logicals_for_abspaths()`` if an associated path does
+                not lie under a holdings directory.
+        """
+
         cls = type(self)
         abspaths = self.associated_abspaths(category, must_exist=must_exist)
         return cls.logicals_for_abspaths(abspaths)
 
     def associated_pdsfiles(self, category, must_exist=True):
+        """Return PdsFile objects for the files associated with this one.
+
+        The same answer as ``associated_abspaths()``, converted. Each object is
+        constructed from its path, so asking with ``must_exist`` False yields objects for
+        files that are not there.
+
+        Parameters:
+            category (str): the category to look in, with any surrounding slashes
+                ignored.
+            must_exist (bool): whether to return only paths that exist, with the same
+                exception ``associated_abspaths()`` makes for a label.
+
+        Returns:
+            list: the PdsFile objects, without duplicates, in the order
+            ``associated_abspaths()`` produced them.
+
+        Raises:
+            TypeError: raised by ``associated_abspaths()`` on a bare PdsFile, whose
+                association table is None.
+            ValueError: raised by ``pdsfiles_for_abspaths()`` if an associated path does
+                not lie under a holdings directory.
+        """
+
         cls = type(self)
         abspaths = self.associated_abspaths(category, must_exist=must_exist)
         return cls.pdsfiles_for_abspaths(abspaths)
 
     def associated_abspaths(self, category, must_exist=True):
-        """A list of logical or absolute paths to associated files in the
-        specified category.
+        """Return the absolute paths of the files associated with this one.
 
-        Keyword arguments:
-            category   -- the category of the associated paths
-            must_exist -- True to return only paths that exist (default True)
+        Absolute paths only, never logical ones; ``associated_logical_paths()`` is the
+        one that converts.
+
+        An index row is not itself associated with anything, so it is first replaced by
+        the data file its row describes, or, where that cannot be found, by the index
+        file that holds it. A checksums or archives category is answered by asking for
+        its plain category first and then mapping each answer to its checksum or archive
+        file; an answer that has none -- a cumulative metadata file, which belongs to a
+        bundle set rather than to a bundle -- is dropped rather than reported.
+
+        Otherwise the class's association table turns this file's logical path into
+        patterns, which are matched against the tree, case-sensitively. If the table
+        yields nothing, the parallel-tree search is used instead, and its single answer
+        becomes the whole list. A pattern naming a row of an index table is split at the
+        extension and the row part is resolved through the index, so a row that the
+        index does not hold is dropped.
+
+        The matching runs once per index extension the class defines, so a class with
+        two of them does the work twice. Duplicates are removed at the end, which is what
+        keeps the repetition invisible where both passes match the same files. A pattern
+        naming an index row can escape that: the pass that recognizes the row rewrites
+        the pattern down to the index file itself, and that rewrite persists into any
+        later pass, which finds no extension of its own in the shortened pattern and so
+        matches the bare index file. The row and the index file are different paths, so
+        the dedup keeps both. It takes a later pass to run, so it cannot happen at all
+        for a class that defines a single index extension, and where a class defines
+        more than one it happens only for a row of an index whose extension is not the
+        last of them.
+
+        Asking for this file's own volume type also brings in its label, if it has one,
+        and the data files it points at. The data files are filtered by ``must_exist``
+        and the label is not, and ``label_basename`` guesses a name for a file that is
+        not there, so a request that asked for existing paths only can come back holding
+        a label that does not exist.
+
+        Parameters:
+            category (str): the category to look in, with any surrounding slashes
+                ignored.
+            must_exist (bool): whether to return only paths that exist, apart from the
+                label described above, which is appended without a test either way.
+                False still globs a pattern that holds a wildcard, because there is
+                nothing else to expand it against; it changes the answer only for a
+                pattern that names one file.
+
+        Returns:
+            list: the absolute paths, without duplicates, in the order they were found.
+
+        Raises:
+            TypeError: on a bare PdsFile, whose association table is None, from the
+                item read ``__getitem__()`` on it.
+            KeyError: from the same item read ``__getitem__()``, if the class has an
+                association table but no entry for the category asked for.
         """
         cls = type(self)
         category = category.strip('/')
@@ -215,29 +344,85 @@ class _AssociationsMixin:
         return abspaths
 
     def associated_parallel(self, category=None, rank=None):
-        """Return a PdsFile of the "most similar" absolute path in a parallel directory
-        tree, specified by category and/or version rank. If the rank is unspecified, it
-        will match the version of self when the voltype of the new category matches the
-        voltype of self; otherwise, it will return the latest version.
+        """Return the single most similar file in one parallel tree.
 
-        In addition to numeric values for the rank, values of "next", "previous", and
-        "latest" can also be used when the voltype of the returned object matches that
-        of this object.
+        Where ``associated_abspaths()`` returns every counterpart, this returns one: the
+        deepest path in the requested tree that exists and matches this file as far as
+        it can. A file whose exact counterpart is missing yields the deepest directory
+        above it that is there. A file whose bundle has no counterpart falls back to its
+        bundle set's, and the answer is None only where that too is missing or does not
+        exist.
 
-        Keyword arguments:
-            category -- the category of the associated paths (default None)
-            rank     -- the version rank (default None)
+        Asking for no category asks about this file's own, which is how the version
+        ranks are reached. Asking for a category with a different volume type first
+        moves to this file's latest version, because a cross-type match is defined only
+        against the latest; that is also why the word ranks are rejected for such a
+        request, apart from "latest", which is what the move already did.
+
+        A rank of None means the latest version wherever the category asked for is this
+        file's own, and wherever the volume type differs, since the move to the latest
+        has already happened by then. It means the version this object already has only
+        where the category differs and the volume type does not, because the path built
+        for the counterpart carries the version suffix over. A numeric rank names a
+        version directly. The words "latest", "previous" and "next" are resolved against
+        the list of versions this file has, and "previous" at the oldest and "next" at
+        the newest return that same version rather than failing.
+
+        Answers are cached under the category and rank asked for, on the object the
+        request resolved to: this one where the volume type is unchanged, and this file's
+        latest version where it is not. That object is offered back to the shared cache
+        when an answer is recorded, and the cache keeps it only where it already held an
+        entry for that object's logical path. Under the default caching policy an
+        ordinary data file is not in the cache, so its answers live on the one object
+        that computed them and the next constructor call recomputes them; a directory is
+        in the cache, and there the answers do survive. The deepest-directory search
+        records both of its outcomes, what it finds and the None it reaches by running
+        off the top.
+
+        Two paths return before the dictionary of answers is created at all, and so
+        record nothing: a category the class does not recognize returns None, and a
+        category directory returns the requested category's own directory. A return of
+        an answer the dictionary already holds records nothing either.
+
+        Parameters:
+            category (str): the category to look in, with any trailing slash ignored,
+                or None for this file's own.
+            rank: the version to look for. None, an integer rank, or one of the words
+                "latest", "previous" and "next".
+
+        Returns:
+            PdsFile: the parallel file, or None.
+
+        Raises:
+            ValueError: for a word rank when the volume type is changing, and for a
+                string rank that is not one of the three words.
         """
 
         cls = type(self)
 
         def _cache_and_return(pdsf):
-            """Return a PdsFile. For internal use. Convert to PdsFile if necessary, cache
-            under one or two ranks (rank and rankstr), return. Also, if pdsf matches self,
-            cache and return None instead.
+            """Record one answer in the cache of the object the request resolved to.
 
-            Keyword arguments:
-                pdsf -- a PdsFile instance
+            The argument may be a PdsFile, an absolute path, or None; a path is turned
+            into a PdsFile. An object whose file does not exist is replaced by None, and
+            None is what gets recorded, so a later call on this same object gets the
+            same answer without looking again.
+
+            The answer is filed under the numeric rank asked for, and also under the
+            spelling asked for when that was a word such as "latest", and also under the
+            answer's own version rank when no rank was asked for at all. The object is
+            then offered back to the shared cache, because the dictionary it just
+            changed lives on the object; the cache keeps it only where it already held
+            an entry for that object's logical path.
+
+            An answer equal to this object is cached and returned like any other; it is
+            not turned into None.
+
+            Parameters:
+                pdsf: the answer, as a PdsFile, an absolute path, or None.
+
+            Returns:
+                PdsFile: the answer, or None if it does not exist.
             """
 
             # Interpret the pdsf and get the abspath (both might be None)

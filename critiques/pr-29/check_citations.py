@@ -31,6 +31,13 @@ import sys
 import tomllib
 
 SRC = pathlib.Path('src/pdsfile')
+
+# The two documents whose citations are checked, and the scope is deliberate. A validation
+# record and a deferred observation are both standing claims about the code as it is, so a
+# citation that drifts inside one makes it wrong. A review round is a record of what one
+# reviewer saw at one moment, kept so the reading can be audited rather than repeated; its
+# line numbers describe the tree it read and are not maintained afterwards. Adding the
+# round records here would demand that history be rewritten every time a docstring grows.
 RECORD = pathlib.Path('critiques/pr-29-validation.md')
 DEFERRED = pathlib.Path('critiques/deferred-observations.md')
 
@@ -40,6 +47,8 @@ IN_SCOPE = ('pdsfile.py', 'pdscache.py', 'pdsviewable.py', '__init__.py',
 # Every file-and-line citation the two documents make, with a token that must appear on
 # the cited line. A range is checked at both ends.
 CITATIONS = [
+    ('src/pdsfile/pdsfile.py', 174, 'class PdsFile(_AssociationsMixin,'),
+    ('src/pdsfile/_index_rows.py', 489, 'abspath.replace(neighbor.basename, self.basename)'),
     ('src/pdsfile/pdscache.py', 77, 'MEMCACHED_LOADED = True'),
     ('src/pdsfile/pdscache.py', 175, 'self.keys = set()'),
     ('src/pdsfile/pdscache.py', 190, 'self.preload_eligible = True'),
@@ -97,9 +106,9 @@ CITATIONS = [
     ('src/pdsfile/pdscache.py', 1677, "self.wait_for_unblock('delete_multi')"),
     ('src/pdsfile/pdscache.py', 1909, "Permanent object is TooBig"),
     ('src/pdsfile/pdscache.py', 1914, 'del self.permanent_values[k]'),
-    ('src/pdsfile/_preload.py', 369, 'lifetime=cls.cache_lifetime'),
-    ('src/pdsfile/_preload.py', 401, 'lifetime=cls.cache_lifetime'),
-    ('src/pdsfile/_preload.py', 582, 'def cache_lifetime(cls, arg):'),
+    ('src/pdsfile/_preload.py', 573, 'lifetime=cls.cache_lifetime'),
+    ('src/pdsfile/_preload.py', 605, 'lifetime=cls.cache_lifetime'),
+    ('src/pdsfile/_preload.py', 804, 'def cache_lifetime(cls, arg):'),
     ('src/pdsfile/pdsviewable.py', 92, 'self.width_over_height = float'),
     ('src/pdsfile/pdsviewable.py', 93, 'self.height_over_width = float'),
     ('src/pdsfile/pdsviewable.py', 340, 'for sub_viewable in viewable.viewables:'),
@@ -146,10 +155,10 @@ CITATIONS = [
     ('src/pdsfile/pdsfile.py', 2272, 'this_abspath = cls.CACHE'),
     ('src/pdsfile/pdsfile.py', 2278, 'except KeyError:'),
     ('src/pdsfile/pdsfile.py', 2321, "['$RANKS-' + this.category_][bundleset][-1]"),
-    ('src/pdsfile/_preload.py', 485, 'pdsdir.permanent = True'),
-    ('src/pdsfile/_preload.py', 60, 'DICTIONARY_CACHE_LIMIT = 200000'),
-    ('src/pdsfile/_preload.py', 62, 'def cache_lifetime_for_class(arg, cls=None):'),
-    ('src/pdsfile/_preload.py', 91, "get_now('$PRELOADING')"),
+    ('src/pdsfile/_preload.py', 707, 'pdsdir.permanent = True'),
+    ('src/pdsfile/_preload.py', 101, 'DICTIONARY_CACHE_LIMIT = 200000'),
+    ('src/pdsfile/_preload.py', 103, 'def cache_lifetime_for_class(arg, cls=None):'),
+    ('src/pdsfile/_preload.py', 164, "get_now('$PRELOADING')"),
     ('src/pdsfile/pds3file/__init__.py', 59, 'DICTIONARY_CACHE_LIMIT = 200000'),
     ('src/pdsfile/pds4file/__init__.py', 48, 'DICTIONARY_CACHE_LIMIT = 200000'),
     ('scripts/automated_tests/pdsfile_main_test.sh', 75, '--mode s'),

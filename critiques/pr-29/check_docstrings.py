@@ -7,8 +7,11 @@ is not attempted.
 Checks:
 
     P1  Every name in a `Parameters:` block is a real parameter of the signature.
-    P2  Every parameter other than `self` and `cls` appears in `Parameters:` exactly
-        once. `*args` and `**kwargs` count as parameters.
+    P2  Every parameter appears in `Parameters:` exactly once. `*args` and `**kwargs`
+        count as parameters. The one exception is the implicit receiver -- the first
+        positional parameter of an instance or class method, which the interpreter
+        supplies. A `self` or `cls` anywhere else counts: on a module-level function, on
+        a `@staticmethod`, and in any position after the first.
     P3  The section is spelled `Parameters:`; `Args:`, `Arguments:` and
         `Keyword arguments:` are rejected.
     R1  `Returns:` is present if and only if the body has a `return <expr>`, a `yield`
@@ -135,14 +138,24 @@ def entries_of(body, pattern):
     return [(name, '\n'.join(text)) for name, text in result]
 
 
-def signature_names(node):
-    """Return the parameter names of a function definition, in order.
+def signature_names(node, has_receiver):
+    """Return the parameter names a caller has to supply, in order.
 
-    `*args` and `**kwargs` are returned with their stars attached. `self` and `cls` are
-    omitted.
+    `*args` and `**kwargs` are returned with their stars attached.
+
+    What is dropped is the **implicit receiver**, and only that: the first positional
+    parameter of an instance method or a class method, whatever it is named, because the
+    interpreter supplies the argument and a caller passes nothing. Nothing is dropped from
+    a module-level function or a static method, where a parameter that happens to be
+    spelled `self` or `cls` is an ordinary argument the caller has to pass, and nothing is
+    dropped from a later position, where such a parameter is caller-supplied whatever it
+    is called.
 
     Parameters:
         node (ast.FunctionDef): the function definition.
+        has_receiver (bool): whether the interpreter supplies the first positional
+            parameter, which is true of an instance method and a class method and false
+            of a static method and of any function outside a class body.
 
     Returns:
         list: the parameter names.
@@ -155,7 +168,34 @@ def signature_names(node):
     if args.kwarg:
         names.append('**' + args.kwarg.arg)
 
-    return [n for n in names if n not in ('self', 'cls')]
+    # Dropped by position, not by name: the interpreter supplies the first positional
+    # parameter of a bound method whatever it is called, so a method written `def m(this)`
+    # has nothing for a caller to pass either.
+    if has_receiver and (args.posonlyargs or args.args):
+        return names[1:]
+
+    return names
+
+
+def is_static(node):
+    """Report whether a definition is decorated `@staticmethod`.
+
+    A static method takes no implicit receiver, so a parameter of its spelled `self` or
+    `cls` is one the caller has to pass.
+
+    Parameters:
+        node (ast.FunctionDef): the function definition.
+
+    Returns:
+        bool: True if it is.
+    """
+
+    for item in node.decorator_list:
+        name = item.attr if isinstance(item, ast.Attribute) else getattr(item, 'id', '')
+        if name == 'staticmethod':
+            return True
+
+    return False
 
 
 def returns_a_value(node):
@@ -185,11 +225,87 @@ def returns_a_value(node):
     return False
 
 
+def bound_names(node):
+    """Return the names a function body binds locally.
+
+    Every way a name can come to hold an exception object counts, because `raise <name>`
+    on any of them re-raises a value rather than naming a class: the function's own
+    parameters, an `except ... as`, an assignment however it destructures, a `for` or
+    comprehension target, a `with ... as`, a walrus, and an `import ... as`. Nested
+    definitions are not searched, matching `raised_names`, so a name bound only inside a
+    nested function does not mask a class of the same spelling raised outside it.
+
+    Parameters:
+        node (ast.FunctionDef): the function definition.
+
+    Returns:
+        set: the locally bound names.
+    """
+
+    args = node.args
+    names = {a.arg for a in args.posonlyargs + args.args + args.kwonlyargs}
+    if args.vararg:
+        names.add(args.vararg.arg)
+    if args.kwarg:
+        names.add(args.kwarg.arg)
+
+    stack = list(node.body)
+    while stack:
+        item = stack.pop()
+        if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            continue
+        if isinstance(item, ast.ExceptHandler) and item.name:
+            names.add(item.name)
+        elif isinstance(item, ast.Assign):
+            for target in item.targets:
+                names |= target_names(target)
+        elif isinstance(item, (ast.AnnAssign, ast.AugAssign, ast.For, ast.AsyncFor,
+                               ast.comprehension, ast.NamedExpr)):
+            names |= target_names(item.target)
+        elif isinstance(item, ast.withitem) and item.optional_vars is not None:
+            names |= target_names(item.optional_vars)
+        elif isinstance(item, (ast.Import, ast.ImportFrom)):
+            for alias in item.names:
+                names.add((alias.asname or alias.name).split('.')[0])
+        stack.extend(ast.iter_child_nodes(item))
+
+    return names
+
+
+def target_names(node):
+    """Return every name one assignment target binds.
+
+    A target can be a bare name or a nest of tuples, lists and stars, so
+    `exc, _ = pair` binds `exc` as surely as `exc = pair[0]` does.
+
+    Parameters:
+        node (ast.AST): the assignment target.
+
+    Returns:
+        set: the names it binds.
+    """
+
+    names = set()
+    stack = [node]
+    while stack:
+        item = stack.pop()
+        if isinstance(item, ast.Name):
+            names.add(item.id)
+        elif isinstance(item, ast.Starred):
+            stack.append(item.value)
+        elif isinstance(item, (ast.Tuple, ast.List)):
+            stack.extend(item.elts)
+
+    return names
+
+
 def raised_names(node):
     """Return the exception class names raised directly in a function body.
 
     A bare `raise` re-raises whatever is being handled and names nothing, so it
-    contributes no name. Nested definitions are not searched.
+    contributes no name. Neither does `raise <local>`, which re-raises an exception the
+    body caught and stored: the name is a variable, not a class, and what it holds is
+    whatever the call inside the `try` produced. Nested definitions are not searched.
 
     Parameters:
         node (ast.FunctionDef): the function definition.
@@ -197,6 +313,8 @@ def raised_names(node):
     Returns:
         set: the class names appearing in `raise` statements.
     """
+
+    local = bound_names(node)
 
     names = set()
     stack = list(node.body)
@@ -209,7 +327,8 @@ def raised_names(node):
             if isinstance(exc, ast.Call):
                 exc = exc.func
             if isinstance(exc, ast.Name):
-                names.add(exc.id)
+                if exc.id not in local:
+                    names.add(exc.id)
             elif isinstance(exc, ast.Attribute):
                 names.add(exc.attr)
         stack.extend(ast.iter_child_nodes(item))
@@ -296,32 +415,36 @@ def definitions(tree):
         tree (ast.Module): the parsed module.
 
     Returns:
-        list: triples of qualified name, node, and node kind.
+        list: triples of qualified name, node, and node kind. The kind is `method` only
+        where the interpreter supplies the first parameter, so a `@staticmethod` in a
+        class body is a `function`: every parameter it declares is one a caller passes.
     """
 
     found = [('<module>', tree, 'module')]
 
-    def walk(node, prefix):
+    def walk(node, prefix, in_class):
         """Append every definition below one node, qualifying its name with a prefix.
 
         Parameters:
             node (ast.AST): the node to search below.
             prefix (str): the dotted prefix to put in front of each name found.
+            in_class (bool): whether this node is a class body.
         """
 
         for child in ast.iter_child_nodes(node):
             if isinstance(child, ast.ClassDef):
                 name = prefix + child.name
                 found.append((name, child, 'class'))
-                walk(child, name + '.')
+                walk(child, name + '.', True)
             elif isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 name = prefix + child.name
-                found.append((name, child, 'function'))
-                walk(child, name + '.')
+                receiver = in_class and not is_static(child)
+                found.append((name, child, 'method' if receiver else 'function'))
+                walk(child, name + '.', False)
             else:
-                walk(child, prefix)
+                walk(child, prefix, in_class)
 
-    walk(tree, '')
+    walk(tree, '', False)
 
     return found
 
@@ -372,13 +495,13 @@ def check_file(path, findings):
                 findings.append((path, where, f'P3: section "{banned}:" is not '
                                               'Google style; use "Parameters:"'))
 
-        if kind != 'function':
+        if kind not in ('function', 'method'):
             if 'Parameters' in found:
                 findings.append((path, where,
                                  'P1: a Parameters: section on a ' + kind))
             continue
 
-        expected = signature_names(node)
+        expected = signature_names(node, kind == 'method')
         documented = [n for n, _ in entries_of(found.get('Parameters', []),
                                                PARAM_ENTRY_RE)]
 

@@ -4021,7 +4021,7 @@ of them has a module docstring at all.
      here. **Owner: a future pdsfile PR.**
 
 163. **`is_preloading()` reads a cache key that nothing in the package ever writes.**
-     `_preload.py:91` is `return cls.CACHE.get_now('$PRELOADING')`, and `$PRELOADING`
+     `_preload.py:164` is `return cls.CACHE.get_now('$PRELOADING')`, and `$PRELOADING`
      appears nowhere else in `src/` or `tests/`. The call therefore answers `None` for
      every caller, which reads as "not preloading" and cannot become anything else
      without an external writer. The name is public: it is re-exported by
@@ -4030,7 +4030,7 @@ of them has a module docstring at all.
      to PR-29a, so its own docstring is not written here. **Owner: a future preload PR.**
 
 164. **Two exported names are read by nothing.** `_preload.DICTIONARY_CACHE_LIMIT`
-     (`_preload.py:60`) is re-exported by `preload_and_cache` and by `pdsfile.pdsfile`,
+     (`_preload.py:101`) is re-exported by `preload_and_cache` and by `pdsfile.pdsfile`,
      but every cache in the package is built with `cls.DICTIONARY_CACHE_LIMIT`, a class
      attribute defined separately and identically in `pdsfile.py:315`,
      `pds3file/__init__.py:59` and `pds4file/__init__.py:48`. Rebinding the module
@@ -4056,7 +4056,7 @@ of them has a module docstring at all.
      written here state each method's own answer. **Owner: a future pdsfile PR.**
 
 167. **`cache_lifetime_for_class`'s docstring gives the wrong default for `cls`.**
-     `_preload.py:62` is `def cache_lifetime_for_class(arg, cls=None)` and the docstring
+     `_preload.py:103` is `def cache_lifetime_for_class(arg, cls=None)` and the docstring
      two lines below says "cls -- the class calling the method (default True)". The
      function is public, re-exported by `preload_and_cache` and by `pdsfile.pdsfile`.
      `_preload.py` is PR-29a's file, so the correction belongs there. **Owner: PR-29a.**
@@ -4305,7 +4305,7 @@ of them has a module docstring at all.
 
 189. **`PdsFile.permanent` is written in four places and read in none.** It is
      initialized False at `pdsfile.py:490`, set True at `:748` (`new_merged_dir`), at
-     `:1330` (`_update_ranks_and_vols`) and at `_preload.py:485`, and read nowhere in
+     `:1330` (`_update_ranks_and_vols`) and at `_preload.py:707`, and read nowhere in
      `src/` or `tests/`. Its comment says "If True, never to be removed from cache",
      which nothing implements: `_complete` has already written the cache entry with an
      ordinary lifetime by the time `_update_ranks_and_vols` sets the flag. The
@@ -4335,9 +4335,9 @@ of them has a module docstring at all.
      constant branch, and `set()` then evaluates `time.time() + <method>`.
      `MemcachedCache` tests `in ('function', 'method')` and accepts the same argument.
 
-     This is not hypothetical. `_preload.py:369` and `_preload.py:401` construct
+     This is not hypothetical. `_preload.py:573` and `_preload.py:605` construct
      `pdscache.DictionaryCache(lifetime=cls.cache_lifetime, ...)`, and `cache_lifetime`
-     is a classmethod (`_preload.py:582`). Verified by running: building the cache
+     is a classmethod (`_preload.py:804`). Verified by running: building the cache
      exactly as those lines do and calling `set('a', 1)` gives
      `TypeError: unsupported operand type(s) for +: 'float' and 'method'`. It is reached
      only on the fallback from a memcached cache to a dictionary cache -- the class-level
@@ -4420,3 +4420,352 @@ of them has a module docstring at all.
      whenever the threshold is crossed, including when the count is zero (`:224`),
      verified by capturing `('%d items trimmed from DictionaryCache', 0)`. Both are now
      documented. **Owner: a future pdscache PR.**
+
+### Added by the PR-29a executor's own measurements (2026-08-07)
+
+199. **`pdsfile.py` is over both module-length limits and the overage is code, not
+     prose.** Measured with `critiques/pr-29a/measure_module_lines.py`: 2,435 total
+     lines, 781 of them docstring, **1,654 code** — over the 1,000-line code budget by
+     654 and over the 2,000-line ingestion budget by 435. It is the only file under
+     `src/` over both. The owner deferred the split on 2026-08-07 and its waiver stands;
+     this entry records what a future split has to work with rather than reopening the
+     decision.
+
+     **There is no documentation lever.** The file is one class occupying 2,247 of its
+     2,435 lines, starting at `pdsfile.py:174` and running to the end of the class body,
+     holding 37 methods that account for 1,920 lines between them, against a module
+     docstring of 87 lines. Deleting the module
+     docstring outright would leave 1,567 code lines, still 567 over. Trimming
+     docstrings cannot fix either number, and under the two-limit rule it would not even
+     move the code figure.
+
+     The available lever is structural: a tenth mixin, on the pattern Phase 5
+     established. Whether one exists — whether any coherent group of those 37 methods
+     can leave without dragging the rest — is open and nothing here answers it.
+     **Owner: whoever takes the `pdsfile.py` split.**
+
+200. **The permanent-ruff-set table in `pdsfile_overrides.mdc` deviation (4) cites line
+     numbers that have drifted, and one of its counts is wrong.** The table's caption
+     says the line numbers are "at the merge commit", meaning PR-23's and PR-24's, and
+     eight PRs have moved code since. Measured at `9466dbc`, before this PR, by running
+     `ruff check --config 'lint.per-file-ignores = {}'` over the fifteen core modules and
+     comparing the reported sites against the table:
+
+     | row | table says | actual line at `9466dbc` |
+     |---|---|---|
+     | `__init__.py` `F403` | 10, 12, 13 — **three of them** | 38 and 39 — **two** |
+     | `_derived_paths.py` `A002` | 264, 281, 297 | 299, 316, 332 |
+     | `pdscache.py` `RUF015` / `UP031` | 622 / 324 | 1201 / 775 |
+     | `pdsfile.py` `B904` / `I001` | 1418, 1824, 1874 / 84 | 1825, 2305, 2355 / 94 |
+     | `pdsviewable.py` `B006` | 52, 114, 205 | 133, 248, 390 |
+
+     The other six rows — for `_index_rows.py`, `_opus.py`, `_preload.py`,
+     `_properties.py`, `_shelves.py` and `_sorting.py` — were exact at `9466dbc`. This
+     PR's docstrings move five of the six: the `RUF005` sites go to lines 228, 344 and
+     449 in the first three, the `B904` site to line 299 in `_shelves.py`, and
+     `_sorting.py`'s four to lines 283, 291, 295 and 300. `_properties.py` is not
+     documented here, so its row alone still points at the right line.
+
+     **The `F403` count is the part that is not a drift.** `__init__.py` has two star
+     imports, not three; the third import the row's prose describes,
+     `from pdsfile.pdsfile import PdsFile as PdsFile`, is an explicit aliased re-export
+     and raises no `F403` at all. So "the three star imports are what bind `Pds3File`,
+     `Pds4File` and the rule modules" is wrong about the mechanism as well as the count:
+     two star imports bind the subpackages, and `PdsFile` arrives by name.
+
+     Nothing is broken by this — the enforced copy is the `per-file-ignores` block in
+     `pyproject.toml`, which lists codes and not lines, and it is correct. The table is
+     documentation. This PR does not renumber it, because re-deriving rows that PR-23,
+     PR-24 and PR-29 wrote is not a docstring PR's work and a half-renumbered table is
+     worse than a consistently historical one. **Owner: whichever PR next revises
+     deviation (4)** — either re-derive every row, or say in the caption that the
+     numbers are the sites as of the PR that derived each row and will drift.
+
+### Added by the PR-29a adversarial review (round 1, the path-and-shelf modules)
+
+201. **The open-shelf cache is not trimmed by least-recent use, because its counter is
+     per-subclass.** `_get_shelf` and `shelf_lookup` do `cls.SHELF_ACCESS_COUNT += 1`,
+     where `cls` is `type(self)` -- a per-bundleset rule subclass for any real object.
+     `SHELF_ACCESS_COUNT` is an **int** on `PdsFile`, so `+=` rebinds it onto the calling
+     class, while `SHELF_CACHE` and `SHELF_ACCESS` are **dicts** mutated in place and so
+     genuinely shared. Verified by running: after opening one COISS index shelf and then
+     one COVIMS index shelf, `COISS_xxxx` and `COVIMS_0xxx` each held their own
+     `SHELF_ACCESS_COUNT` of 1, `PdsFile`'s stayed 0, and both wrote serial 1 into the one
+     shared `SHELF_ACCESS`. So the trim orders shelves by the activity of whichever class
+     opened each one, and a shelf just opened by a quiet class can carry a lower serial
+     than one a busy class opened earlier and be the one discarded. The docstrings now say
+     this instead of claiming the newest is safe. **Owner: a future pdsfile PR** -- the fix
+     is to keep the counter somewhere it is not rebound, which is a code change.
+
+202. **`child_of_index`'s cache lookup can never hit.** It builds
+     `_clean_join(self.abspath, key)` and looks that up as `cls.CACHE[key.lower()]`, but
+     objects are stored only under `logical_path.lower()`, and the only other keys are the
+     `$RANKS-`/`$VOLS-`/`$VOLINFO-`/`$PRELOADED` bookkeeping names and the merged category
+     names. Verified by running: no key in the live cache begins with `/`, the row's own
+     abspath key is absent, and two identical `child_of_index` calls return distinct
+     objects. Every index-row request therefore rebuilds the object and re-reads the
+     table span, including the one each index-row existence test makes. **Owner: a future
+     pdsfile PR** -- either look up the logical path or drop the branch.
+
+203. **`find_selected_row_key`'s invalid-flag guard raises `TypeError`, not the
+     `ValueError` it names.** The statement is
+     `raise ValueError(f'Invalid flag "{flag}"' % flag)`: the f-string is already
+     interpolated, so `%` is applied to a string with no conversion. Verified by running
+     with `flag='bogus'`: `TypeError: not all arguments converted during string
+     formatting`. Which exception comes out depends on the caller's own text -- a flag
+     containing `%s` produces the intended `ValueError`, and one containing `%d` produces
+     a `TypeError` from the conversion instead. The docstring documents all three cases.
+     **Owner: a future pdsfile PR** -- drop the `% flag`.
+
+204. **`shelf_type='index'` builds a path no index shelf occupies.**
+     `SHELF_PATH_INFO['index']` gives `('_indexshelf-', '_index')`, so
+     `shelf_path_and_lskip('index')` for a bundle yields
+     `_indexshelf-<category>/<set>/<bundle>_index.pickle`. Real index shelves are written
+     one per index **table**, inside a directory named for the bundle, which is what
+     `indexshelf_abspath` finds; the shelf directory holds directories, not `.pickle`
+     files. The key is wrong too: a real index shelf is keyed by row selection keys, not
+     by a table basename. Nothing in `src/` or `tests/` passes `'index'` to any of the
+     four methods that accept it -- every call site passes `'info'` or `'link'` -- so this
+     is a latent trap rather than a live fault, and the docstrings now say so rather than
+     advertising `'index'` as supported. **Owner: a future pdsfile PR.**
+
+205. **The PDS3/PDS4 column-name choice fails for the class the PDS4 registry hands out
+     by default.** `data_abspath_associated_with_index_row` decides with
+     `cls.__bases__[0].__name__ == 'Pds4File'`. `Pds4File.SUBCLASSES['default']` is
+     `Pds4File` itself, whose first base is named `'PdsFile'`, so a row in any PDS4 bundle
+     set without a rule module of its own is read with the PDS3 column-name lists, which
+     are not the same. Only six PDS4 bundle sets have rule modules. Reachable by
+     construction; no PDS4 index table in the test holdings exercises it. **Owner: a
+     future pdsfile PR** -- the fragility was already noted, but not that the default
+     class is one of the failing cases.
+
+206. **`archive_logpath` clears a marker the log path never reads.** It copies the object,
+     sets `checksums_` to `''`, and then rewrites `category_` only inside the
+     `archives_` branch. The log path is built from `category_`, `bundleset_` and
+     `bundlename` alone, so the `checksums_` assignment changes nothing: a checksum file
+     logs under `archives/checksums-volumes/...` rather than under `archives/volumes/...`.
+     On a `checksums-archives-*` file both markers are set, the archives branch fires, and
+     the answer still comes entirely from that branch. **Owner: a future pdsfile PR.**
+
+207. **Three smaller things in the path helpers and the shelf lookup.**
+     `construct_category_list` iterates its argument four times, once per prefix
+     combination, so a one-shot iterator yields only the bare names and then fails the
+     removals -- verified: a generator gives `ValueError: list.remove(x): x not in list`,
+     while the same names as a list give the documented `4*n - 3` categories.
+     `formatted_file_size` chooses its unit before it rounds, so a value that rounds up to
+     a thousand of its own unit keeps that unit and is written in scientific notation --
+     verified: 999999 gives `1e+03 KB`, not `1000 KB` and not `1 MB`.
+     `shelf_path_and_key_for_abspath` and the instance method it mirrors disagree in the
+     documents tree, where a PdsFile carries no bundle name: the instance method raises
+     `ValueError` and the classmethod returns a shelf path built from the file's own
+     basename, which no holdings tree holds. All three are documented; none is fixed.
+     **Owner: a future pdsfile PR.**
+
+### Added by the PR-29a adversarial review (round 2, the sorting, preload and association modules)
+
+208. **`os_path_isdir` raises `KeyError` under `SHELVES_ONLY` where `os_path_exists`
+     answers `False`.** The existence test asks `key in shelf`; the directory test
+     subscripts, `(_, _, _, checksum, _) = shelf[key]`, and `_get_shelf` returns a plain
+     dict. The handler around it catches `(ValueError, IndexError, OSError)` and not
+     `KeyError`. Verified by running under `SHELVES_ONLY` on a path that does not exist:
+     the existence test gives `False` and the directory test raises
+     `KeyError('NOSUCHDIR')`. `sort_basenames(dirs_first=True)` reaches it. The docstring
+     now carries the `Raises:` entry and states the asymmetry. **Owner: a future pdsfile
+     PR** -- either add `KeyError` to the handler or use `.get`.
+
+209. **`preload()` warns "Not a directory, ignored" and does not ignore it.** The missing
+     branch has a `continue` and this one does not, so a category path that exists but is
+     not a directory falls through to `from_abspath(..., caching='all', lifetime=0)` and
+     is cached permanently and merged into the category-level merged directory's child
+     list. Nothing below it is walked, because the directory walker returns on its first
+     statement for a non-directory, so the cost is a bad entry rather than a traversal.
+     **Owner: a future pdsfile PR** -- add the `continue`.
+
+210. **`get_permanent_values` raises `AttributeError` on a dictionary cache.** Its success
+     path logs `len(cls.CACHE.permanent_values)`, and `permanent_values` exists only on
+     `MemcachedCache` -- verified: a `DictionaryCache` has no such attribute. `preload()`
+     only calls the method when the memcached port is truthy, so the guard exists, but it
+     is in the caller and the method's own signature and docstring implied none. The
+     docstring now states the restriction. **Owner: a future pdsfile PR.**
+
+211. **`sort_logical_paths` raises `KeyError` on any single-component path.** A path with
+     no slash enters the top-level name set but the loop that fills the child-name table
+     does not run for it, and the recursive walk immediately reads that table. Verified by
+     running: `Pds3File.sort_logical_paths(['volumes'])` raises `KeyError: 'volumes'`. A
+     category-level logical path is an ordinary input for this API. The docstring now
+     carries the `Raises:` entry. **Owner: a future pdsfile PR.**
+
+212. **`associated_abspaths` re-globs a truncated index-row pattern on the second index
+     extension.** `pattern` is rebound inside the `for ext in cls.IDX_EXT` loop, so once
+     the first extension has stripped the row selection key the shortened pattern persists
+     into the next iteration, where no suffix is found and the glob returns the bare index
+     file. That path differs from the row's, so the dedup at the end keeps both. `Pds4File`
+     has two index extensions and so is the class this reaches. The mechanism is certain
+     from the code; whether a PDS4 association rule actually emits an index-row pattern was
+     not exercised. **Owner: a future pdsfile PR** -- bind the rewrite to a fresh name.
+
+213. **`associated_parallel` caches its answer on a different object than the one it was
+     called on.** The caching closure captures the *variable* `self`, which the method
+     rebinds to this file's latest version whenever the requested volume type differs from
+     this file's. Both the initialization of `_associated_parallels_filled` and every write
+     to it then land on that object, and the write-back to the shared cache stores that
+     object. Verified by running: after two cross-type lookups on a `_v2` bundle, the
+     dictionary held four entries on the latest-version object and the object called on had
+     none. So a repeat call on the original object re-does the work. **Owner: a future
+     pdsfile PR.**
+
+214. **`bundle_abspath` and `os_listdir` disagree about how a `checksums-bundles` file is
+     named.** The path builder gives `<BUNDLE>_bundles_md5.txt`, because `bundles` is one
+     of the volume types; the shelf-backed directory listing gives `<BUNDLE>_md5.txt`,
+     reserving the bare form for `volumes` and `bundles` alike. `_non_checksum_abspath`
+     reduces the first form and leaves the second naming nothing. Neither test tree holds a
+     `checksums-bundles` directory, so nothing exercises it. The docstrings describe what
+     each function does and do not pick a side. **Owner: a future pdsfile PR.**
+
+215. **`_properties.py`'s `opus_type` docstring gives the wrong tuple shape.** It describes
+     a four-element tuple, "(dataset name, priority, type ID, description)", and gives two
+     four-element examples. Measured, the value is a **five**-element tuple, the fifth
+     being the default-checked flag, which `_opus.py`'s own key documentation names
+     correctly. `_properties.py` is not documented here, so this is not fixed.
+     **Owner: the PR that documents `_properties.py`.**
+
+### Amended by the PR-29a executor (2026-08-07) — entries 47, 54, 66 and 191
+
+**Entry 47 is closed as a documentation matter.** Both first lines it names are rewritten:
+`log_path_for_index` opens "Return the log file path for this index file", and
+`dirpath_and_prefix_for_archive` opens "Return the directory an archive file was made
+from, and its parent" with a `Returns:` that says `tuple`. The entry's instruction to treat
+`_derived_paths.py` as a file with more than one of these was right: an adversarial read of
+the rewritten prose found five further statements in that module that disagreed with the
+code, and one of them is a code defect, recorded as entry 206. The methods themselves are
+untouched, so nothing the entry says about behavior has changed.
+
+**Entry 54 is closed, and the derivation it predicted exists.**
+`critiques/pr-29a/derive_state_contract.py` rebuilds each mixin's contract paragraph from
+the AST and compares it against the docstring in both directions, plus a third report for
+an attribute read off `self` or `cls` that no class body in the package defines -- which is
+the failure the entry says the "class attributes stay on PdsFile" rule exists to prevent.
+
+The entry's estimate of "about twenty lines" was low by an order of magnitude, and the
+reason is the one it did not anticipate: **the receiver decides, not the name.** `split` is
+a `PdsFile` property and also `str.split`; `copy` is a `PdsFile` method and also
+`list.copy`; `abspath`, `basename`, `exists` and `isdir` are `PdsFile` members and also
+`os.path` functions. There are 19 `.split(` calls in these nine modules, and a walk that
+matches on the attribute name scores every one of them as a `PdsFile` read. Resolving the
+root of each attribute chain scores none of them, while `self.split` written directly still
+counts. Module-level functions a mixin calls by name have to be subtracted too, or
+`_sorting.py`'s four sort helpers are reported as contract entries the docstring failed to
+claim.
+
+Measured at `9466dbc`, **four of the nine modules had no contract paragraph at all** --
+`_derived_paths.py`, `_local_fs.py`, `_shelves.py` and `_path_utils.py` -- accounting for 34
+of the 35 names the derivation reports as reached but never mentioned; the thirty-fifth is
+`_preload.py`'s `interior`. `_properties.py` and `_opus.py` measure clean and are the
+controls. All nine now report zero in both directions.
+
+Two things about it are not settled. **No gate runs it**: `run-all-checks.sh` does not, and
+wiring it up is a decision nobody has taken. And the reverse direction reads only an
+enumerated block, which the script finds by looking for a lead-in paragraph containing
+`not in scope` or `sibling mixin`; a docstring written with a different lead-in would pass
+that half vacuously, so the script reports such a file rather than passing it.
+**Owner: whoever wires it into a gate.**
+
+**Entry 66 is sharpened, not resolved.** Measured with
+`critiques/pr-29a/measure_module_lines.py`, `pdsdependency.py` is 1,165 total lines of which
+**30 are docstring and 1,135 are code**. Under the two-limit rule in
+`pdsfile_overrides.mdc` deviation (3) it is over on the code budget alone, so its length is
+a structural problem and not a documentation artifact -- documenting it would push its total
+up without moving the number that matters. It remains the only module under
+`holdings_maintenance/` over a limit, and it still needs a decision of its own.
+**Owner: unchanged.**
+
+**Entry 191 is confirmed by a second route and is now documented in the code.** An
+independent read of `_preload.py` reproduced it: `type(Pds3File.cache_lifetime).__name__` is
+`'method'`, a `DictionaryCache` built with it has `lifetime_func` None, and `set('x', 'v')`
+raises `TypeError: unsupported operand type(s) for +: 'float' and 'method'`. The two
+construction sites are `_preload.py:573` and `_preload.py:605`. Three docstrings had
+described `cache_lifetime` as the lifetime function every cache built by `preload()` is
+given; all three now say that a memcached cache accepts a class method as a lifetime
+function and a dictionary cache does not, keeping it as a constant. **Owner: unchanged.**
+
+### Added by the PR-29a adversarial review (rounds 3 and 4, the second reads)
+
+216. **`data_abspath_associated_with_index_row` builds its answer under a hard-coded
+     `volumes` category.** The line is `parts = [self.bundleset_abspath('volumes')]`, not
+     `self.bundleset_abspath(cls.BUNDLE_DIR_NAME)`. Measured: `Pds3File.BUNDLE_DIR_NAME` is
+     `volumes` and `Pds4File.BUNDLE_DIR_NAME` is `bundles`, and a PDS4 holdings tree has no
+     `volumes` directory at all. So a PDS4 index row is given a path that can never exist,
+     and `data_pdsfile_for_index_row` returns a PdsFile for it, since it does not test
+     existence. `get_keys()` in the same method **does** branch on PDS3 versus PDS4, so a
+     PDS4 row reads the right columns and then puts them in a tree that is not there.
+     **Owner: a future pdsfile PR.**
+
+217. **Three bundle-set-level directory kinds get a checksum path and an info shelf path
+     but are excluded from the two methods that ask whether those exist.**
+     `checksum_path_and_lskip` covers a `checksums_*`, `superseded*` or `*_support`
+     directory, and `shelf_path_and_lskip` builds an info shelf path for it under its own
+     name. But `checksum_path_if_exact` recognizes only a bundle directory and an archives
+     bundle set, and `info_shelf_expected` is `bool(self.bundlename)`, which is empty for
+     all three. Verified by running on the live directory
+     `bundles/uranus_occs_earthbased/uranus_occ_support`: `checksum_path_and_lskip()`
+     returns a real path and `checksum_path_if_exact()` returns `''`;
+     `shelf_path_and_lskip('info')` returns
+     `_infoshelf-bundles/uranus_occs_earthbased/uranus_occ_support_info.pickle` and
+     `info_shelf_expected` is `False`, so `shelf_exists_if_expected()` reports that no
+     entry is expected for a directory that has its own shelf. **Owner: a future pdsfile
+     PR** -- one of each pair is wrong and which one is a decision.
+
+218. **`find_selected_row_key`'s empty-flag return sits ahead of the ambiguity check.**
+     The `if flag == '': return selection` arm comes before
+     `if len(child_keys) > 1: raise OSError('Index selection is ambiguous')`, so under the
+     empty flag an ambiguous selection is accepted as a literal row key rather than
+     reported. That is the flag `_local_fs.os_path_exists` uses for an index-row path, so
+     an ambiguous path is answered by building a row that does not exist. It may be
+     deliberate, since the empty flag means "do not fail"; nothing says so.
+     **Owner: a future pdsfile PR.**
+
+219. **Splitting a bundle set name that carries a volume type returns parts that do not
+     rejoin into the name, and the branch that would use the regular expression's groups
+     is unreachable.** Two findings in `split_basename`, both measured.
+     `COISS_2xxx_previews.tar.gz` gives `('COISS_2xxx', '_previews.tar.gz', '_previews')`,
+     so concatenating the three parts does not reproduce the input, which the family's
+     other cases do. And the bundle-name branch returns the regular expression's groups
+     only where `SPLIT_RULES.first(basename)` answers with the name it was given; every
+     split rule in the tree answers with a three-element tuple, so that comparison is a
+     tuple against a string and is never true. Verified:
+     `SPLIT_RULES.first('COISS_2001_previews.tar.gz')` is
+     `('COISS_2001_previews.tar', '', '.gz')`. **Owner: a future pdsfile PR.**
+
+220. **`associated_abspaths` filters the data files by `must_exist` and does not filter the
+     label it adds.** `label_basename` guesses a name for a label whether or not the file
+     is there, and the label is appended after the existence filter has run, so a call that
+     asked for existing paths only can return a path that does not exist. **Owner: a future
+     pdsfile PR.**
+
+221. **Two smaller things the second reads turned up, both documented and neither fixed.**
+     `formatted_file_size` chooses its unit from a logarithm without a floor, so a value
+     between zero and one drives the unit index negative and indexes the unit list from its
+     end -- `0.5` returns `500 YB` with no error -- and a positive value below `1e-27`
+     drives the index past the end of the list and raises `IndexError`. And
+     `_preload_dir` sets `permanent` on every directory it visits, which nothing in the
+     package reads; what actually keeps those entries out of the trim is the zero lifetime
+     they were stored with, which is entry 189's subject from the other side.
+     **Owner: a future pdsfile PR.**
+
+### Added by the CodeRabbit re-review of PR #129 (2026-08-08)
+
+222. **`data_abspath_associated_with_index_row`'s neighbor rewrite replaces every
+     occurrence of the basename, not the last path component.**
+     `src/pdsfile/_index_rows.py:489` builds the answer for a missing row as
+     `abspath.replace(neighbor.basename, self.basename)`, so a basename that also appears
+     in a parent directory name is substituted there too and the result names a different
+     directory rather than a sibling file. The `cls.os_path_exists(abspath)` guard on the
+     next line is what keeps a corrupted path from being returned -- the rewrite is
+     accepted only if it resolves -- so the failure mode is a missed answer rather than a
+     wrong one, and a holdings tree whose row basenames never appear as directory
+     components never sees it. The docstring states the behavior, including that the
+     replacement is not scoped to the last component. The fix is to rewrite only the final
+     component, which changes what the method returns for inputs it currently rejects and
+     so needs its own regression test. Raised by the CodeRabbit re-review; the docstring
+     documents it and no entry did.
+     **Owner: a future pdsfile PR.**

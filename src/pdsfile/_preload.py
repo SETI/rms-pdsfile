@@ -1,8 +1,49 @@
 ##########################################################################################
 # pdsfile/_preload.py
-# Preload management: the cache the PdsFile classes share, the lifetimes it assigns,
-# and the traversal that fills it from one or more holdings directories
 ##########################################################################################
+
+"""Filling the cache the PdsFile classes share, from one or more holdings directories.
+
+Walking a holdings tree is expensive and its top is stable, so a process that will serve
+many requests walks the top once at startup and keeps what it found. That walk is the
+preload, and this module is it.
+
+``preload()`` is the entry point. It chooses the cache implementation, walks each
+holdings directory down through its bundle sets, constructs and caches what it finds,
+loads the bundle descriptions and the icons, and records which holdings it has covered so
+that a second call does not repeat the work. The walk deliberately stops at the bundle:
+it constructs the children of every bundle set, so every bundle is cached, and it goes no
+deeper, so anything inside a bundle is built on demand.
+
+What makes several physical holdings directories look like one tree is the **merged
+directory**: for each category there is one cache entry whose children are the union of
+that category's children in every holdings directory.
+``cache_category_merged_dirs()`` creates the ones a category does not have yet, and it
+runs at import time, so a tree that is never preloaded still has them. ``preload()``
+does not go through it: it rebuilds every category's merged directory unconditionally,
+discarding whatever the import-time call left there.
+
+The cache holds four kinds of permanent entry beside the PdsFile objects themselves --
+the version ranks per category, the directory paths per version, the list of holdings
+already preloaded, and the bundle descriptions read from the ``_volinfo`` tables. The
+comment block below names their keys. ``get_permanent_values()`` re-reads the first two
+of them, along with the category, bundle set and bundle objects, and preloads again if
+any of those has gone missing, which is how a shared memcached that has been trimmed or
+restarted is repaired. It reads neither the list of preloaded holdings nor the bundle
+descriptions, so a cache that has lost only those is not repaired by it.
+
+``cache_lifetime_for_class()`` decides, per object, how long that object should be kept,
+and the four lifetimes are the module constants below. What ``preload()`` hands a cache
+it builds is not that function but ``cache_lifetime()``, the class method that wraps it.
+A memcached cache takes a method as a lifetime function; a dictionary cache does not, and
+stores it as a constant default instead, so a store into such a cache that needs the
+default raises TypeError. That cache is rarely the one in use: each PdsFile class builds
+a dictionary cache of its own around the plain function when the class is defined, and
+``preload()`` builds one only where the cache in place is not already a dictionary cache.
+
+``is_preloading()``, ``pause_caching()`` and ``resume_caching()`` are the small
+operations a caller outside the package reaches through ``pdsfile.preload_and_cache``.
+"""
 
 import os
 import time
@@ -60,12 +101,31 @@ FOEVER_FILE_CACHE_LIFETIME = 0                   # forever
 DICTIONARY_CACHE_LIMIT = 200000
 
 def cache_lifetime_for_class(arg, cls=None):
-    """Return the default cache lifetime in seconds with a given object. A returned
-    lifetime of zero means keep forever.
+    """Return how long an object should be kept in the cache, in seconds.
 
-    Keyword arguments:
-        arg -- an object
-        cls -- the class calling the method (default True)
+    Zero means forever, which is what the cache classes read a zero lifetime as.
+
+    Six cases, in the order they are tested. A string is a rendered page and lives the
+    default lifetime. Anything that is not an instance of the class given lives forever,
+    which is what keeps the bookkeeping entries -- the rank and version tables, the list
+    of preloaded holdings, the bundle descriptions -- from expiring. A bundle set or
+    bundle, recognized by having no interior path, lives a long time. A directory below
+    that whose name ends in ``data`` also lives a long time, because it is the one most
+    often revisited; any other directory lives a short time. Anything else lives the
+    default lifetime.
+
+    **The class is what separates the second case from the rest, and it is optional.**
+    Called without one, no object is recognized as a bookkeeping entry, so a bookkeeping
+    value reaches the third test and raises AttributeError on the interior attribute it
+    does not have.
+
+    Parameters:
+        arg: the object about to be cached.
+        cls: the PdsFile subclass whose instances are the objects being cached. None
+            skips the bookkeeping case entirely.
+
+    Returns:
+        int: the lifetime in seconds, or zero for forever.
     """
 
     # Keep Viewmaster HTML for 12 hours
@@ -88,12 +148,44 @@ def cache_lifetime_for_class(arg, cls=None):
         return DEFAULT_FILE_CACHE_LIFETIME
 
 def is_preloading(cls):
+    """Return whatever the cache records under the preloading flag.
+
+    The value is read past any local buffer, so a flag set by another process sharing a
+    memcached is seen. Nothing in this package ever writes that entry, so the answer is
+    None unless something outside it has.
+
+    Parameters:
+        cls: the PdsFile subclass whose cache to read.
+
+    Returns:
+        the value stored under the flag, or None.
+    """
+
     return cls.CACHE.get_now('$PRELOADING')
 
 def pause_caching(cls):
+    """Stop a cache from writing through to its external store.
+
+    While paused, a dictionary cache stops trimming and a memcached cache buffers its
+    writes locally instead of sending them. Pauses nest, so an inner pause does not
+    release an outer one.
+
+    Parameters:
+        cls: the PdsFile subclass whose cache to pause.
+    """
+
     cls.CACHE.pause()
 
 def resume_caching(cls):
+    """Let a cache write through to its external store again.
+
+    This undoes one pause. A cache that was paused more than once stays paused until the
+    last pause has been resumed, and the buffered writes are sent then.
+
+    Parameters:
+        cls: the PdsFile subclass whose cache to resume.
+    """
+
     cls.CACHE.resume()
 
 
@@ -114,34 +206,45 @@ class _PreloadMixin:
     load_volume_info reads the "|"-separated _volinfo tables that describe each
     bundleset and bundle. cache_category_merged_dirs seeds the category-level
     merged directories, which is what makes one logical tree out of several
-    physical ones. get_permanent_values re-reads the entries that are supposed to
-    be permanent and preloads again if any has gone missing. cache_lifetime is the
-    per-object lifetime function preload hands to a cache it creates, and it
-    delegates to the module-level cache_lifetime_for_class above.
+    physical ones. get_permanent_values re-reads the rank and version tables and
+    the category, bundleset and bundle entries, and preloads again if any of
+    those has gone missing. cache_lifetime is
+    what preload hands a cache it creates as that cache's default lifetime, and it
+    delegates to the module-level cache_lifetime_for_class above. Being a class
+    method rather than a plain function, it counts as a lifetime function to a
+    MemcachedCache but not to a DictionaryCache, which keeps it as a constant
+    default and raises TypeError on a store that needs one. Such a
+    DictionaryCache is rarely built: each class binds one of its own around the
+    module-level plain function when the class is defined, and preload replaces
+    the cache in place only where it is not already a DictionaryCache.
 
-    Every attribute these methods read or write on a PdsFile object or on a
-    PdsFile class, and nothing else -- str, list, dict, file, os, os.path,
-    pdscache, pdsviewable, pylibmc, time and logger methods are not in scope:
+    Every attribute these methods and the module-level functions above them read
+    or write on a PdsFile object or on a PdsFile class, and nothing else -- str,
+    list, dict, file, os, os.path, pdscache, pdsviewable, pylibmc, time and logger
+    methods are not in scope::
 
-      class attributes read       CATEGORY_LIST, DICTIONARY_CACHE_LIMIT,
-                                  EXTRA_README_BASENAMES, LOGGER, PRELOAD_TRIES,
-                                  VOLTYPES, and the one the interpreter supplies,
-                                  __name__
+      class attributes read       CACHE, CATEGORY_LIST, DICTIONARY_CACHE_LIMIT,
+                                  EXTRA_README_BASENAMES, LOCAL_PRELOADED, LOGGER,
+                                  MEMCACHE_PORT, PRELOAD_TRIES, VOLTYPES, and the
+                                  one the interpreter supplies, __name__
       class attributes WRITTEN    CACHE, DEFAULT_CACHING, FS_IS_CASE_INSENSITIVE,
-                                  LOCAL_PRELOADED, MEMCACHE_PORT
+                                  LOCAL_PRELOADED, MEMCACHE_PORT. The first, the
+                                  fourth and the fifth are read as well as written
       lazy properties read        childnames, is_bundleset, is_category_dir, isdir
-      instance attributes read    abspath, logical_path
+      instance attributes read    abspath, interior, logical_path
       instance attributes WRITTEN permanent, on every directory preload visits;
                                   and _childnames_filled, whose list is mutated in
                                   place when a child turns out to be out of place
       other methods called        child, from_abspath, new_merged_dir
 
     Every one of those is defined on PdsFile itself rather than only on Pds3File
-    and Pds4File, which is what makes the module tail's PdsFile.cache_category_merged_dirs()
-    call work on the bare class at import time. Two more come from a sibling
-    mixin: os_path_exists and os_path_isdir from _LocalFsMixin. All of them are
-    attribute lookups on cls or on a PdsFile object at run time, not imports,
-    which is what lets the layers live in different modules.
+    and Pds4File, which is what makes cache_category_merged_dirs work on the bare
+    class: pdsfile.py calls it at the foot of that file, and each subclass
+    package calls it again at the foot of its own. Two more
+    come from a sibling mixin: os_path_exists and os_path_isdir from
+    _LocalFsMixin. All of them are attribute lookups on cls or on a PdsFile object
+    at run time, not imports, which is what lets the layers live in different
+    modules.
 
     preload decides whether to look for _volinfo by comparing cls.__name__ against
     'Pds4File' -- the name, not the class object, the same way _index_rows.py
@@ -155,6 +258,13 @@ class _PreloadMixin:
     PRELOAD_TRIES retry loop, pylibmc.Error and DEFAULT_CACHING = 'all' are
     reached by no test here; they are live in deployment, where Viewmaster passes
     port=.
+
+    The case-sensitivity test preload runs at the end works by capitalizing the
+    substring "/holdings" in each preloaded path and asking whether the result
+    still exists. A holdings directory whose path does not contain that exact
+    substring is therefore compared against itself, which always exists, so the
+    class is marked case-insensitive whatever the filesystem is. The PDS4 tree,
+    conventionally at a path ending "pds4-holdings", is such a case.
     """
 
     ############################################################################
@@ -162,14 +272,34 @@ class _PreloadMixin:
     ############################################################################
     @classmethod
     def get_permanent_values(cls, holdings_list, port):
-        """Load the most obvious set of permanent values from the cache to ensure
-        we have current local copies.
+        """Re-read the entries that are supposed to be permanent, and repair the cache
+        if any is gone.
 
-        Keyword arguments:
-            holdings_list -- the path of holdings dir that we will preload if the permanent
-                            value from cache is missing
-            port          -- value for the class attribute
-            cls           -- the class calling the method
+        A shared memcached can lose entries that were meant to last -- it can be trimmed,
+        restarted, or written by another program -- and a cache missing one of them
+        answers wrongly rather than slowly. So these are read back: the version rank
+        and directory tables for each category, each category directory itself, each
+        bundle set inside it, and each bundle inside that. Names ending ``.txt`` or
+        ``.tar.gz`` are not directories and are skipped.
+
+        Two of the values are used to drive the walk: the category directory supplies the
+        bundle sets to visit, and each bundle set supplies its bundles. The rank and
+        version tables and the bundle-level entry are read and discarded. What matters
+        for all of them is whether the read succeeds: the first one that does not
+        triggers a warning and a fresh preload of the whole holdings list. Caching is
+        paused around the reads, so re-reading does not itself cost writes, and is
+        resumed however the call ends.
+
+        Where every read succeeds, the count that is logged is taken from the cache's
+        ``permanent_values``, which only a memcached cache has, so the whole-success path
+        raises AttributeError on a dictionary cache. ``preload()`` reaches this method
+        only when the class carries a non-zero memcached port; a direct call carries no
+        such guard, and the ``port`` argument is passed on rather than checked.
+
+        Parameters:
+            holdings_list: the holdings directories to preload again if a value is
+                missing, in whatever form ``preload()`` accepts.
+            port (int): the memcached port to preload with.
         """
 
         try:
@@ -216,7 +346,8 @@ class _PreloadMixin:
     def load_volume_info(cls, holdings):
         """Load bundle info associated with this holdings directory.
 
-        Each record contains a sequence of values separated by "|":
+        Each record contains a sequence of values separated by "|"::
+
             key: bundleset, bundleset/bundlename, category/bundleset, or
                  category/bundleset/bundlename
             description
@@ -227,20 +358,42 @@ class _PreloadMixin:
             additional data set IDs (if any)
 
         This creates and caches a dictionary based on the key identified above. Each
-        entry is a tuple with five elements:
+        entry is a tuple with six elements::
+
             description,
-            icon_type or blank for default,
+            icon_type or None for default,
             version ID or None,
             publication date or None,
             list of data set IDs,
             MD5 checksum or ''
 
-        A value only containing a string of dashes "-" is replaced by None.
-        Blank records and those beginning with "#" are ignored.
+        An icon_type that is empty or contains only dashes "-" is replaced by None, and
+        so is a version ID or a publication date that contains only dashes. An empty
+        version ID and an empty publication date stay empty strings. An empty data set
+        ID field is not a list holding an empty string: it becomes an empty list, the
+        same value a record with no data set IDs at all gets.
 
-        Keyword arguments:
-            holdings -- the path of the holdings directory
-            cls      -- the class calling the method
+        Blank records and those beginning with "#" are ignored. Every ``.txt`` file
+        directly inside the ``_volinfo`` directory is read, and files whose names begin
+        with a period are skipped.
+
+        A record with no data set IDs of its own inherits them from the same bundle in
+        another category: the bundle set name is reduced to its first two underscore-
+        separated parts, and the entry for that bundle with no category, and then the one
+        under ``volumes/``, are tried in turn. Only records whose category is a known
+        volume type are given this treatment.
+
+        Every entry is written to the cache with a lifetime of zero, so the descriptions
+        never expire.
+
+        Parameters:
+            holdings (str): the path of the holdings directory whose ``_volinfo``
+                directory to read.
+
+        Raises:
+            OSError: raised by ``listdir()`` if the holdings directory has no
+                ``_volinfo`` directory, and by ``open()`` if a table disappears between
+                the listing and the read.
         """
 
         volinfo_path = _clean_join(holdings, '_volinfo')
@@ -335,6 +488,19 @@ class _PreloadMixin:
 
     @classmethod
     def cache_category_merged_dirs(cls):
+        """Create the merged directory for each category that has none yet.
+
+        A merged directory is one cache entry per category whose children are the union
+        of that category's children across every holdings directory, which is what makes
+        several physical trees look like one. They are stored with a lifetime of zero, so
+        they never expire.
+
+        A category that already has an entry is left alone, so this can be called at any
+        time and will not discard a merged directory a preload has already filled.
+        ``preload()`` does not go through this method: it overwrites every category's
+        entry itself.
+        """
+
         for category in cls.CATEGORY_LIST:
             if category not in cls.CACHE:
                 cls.CACHE.set(category, cls.new_merged_dir(category), lifetime=0)
@@ -342,19 +508,57 @@ class _PreloadMixin:
     @classmethod
     def preload(cls, holdings_list, port=0, clear=False, force_reload=False,
                 icon_url=None, icon_color='blue'):
-        """Cache the top-level directories, starting from the given holdings directories.
+        """Fill the cache from one or more holdings directories.
 
-        Keyword arguments:
-            holdings_list -- a single abslute path to a holdings directory, or else a list
-                             of absolute paths
-            port          -- port to use for memcached; zero to prevent use of memcached
-            clear         -- True to clear the cache before preloading
-            force_reload  -- Re-load the cache regardless of whether the cache appears to
-                             contain the needed holdings
-            icon_url      -- URL root to use for loading icons; defaults to
-                             "/holdings/_icons" or "/holdings<n>/_icons" as needed
-            icon_color    -- color of the icons to load from each holdings directory
-                             (default 'blue')
+        The cache implementation is chosen first. A memcached cache is used when pylibmc
+        imported and a non-zero port is available, either from the argument or from a
+        port a previous call recorded on the class; a failure to connect is retried, with
+        the wait doubling each time, and a dictionary cache is used if the tries run out.
+        Anything else uses a dictionary cache. Which one is chosen also sets the default
+        caching policy, since only a shared cache is worth filling with everything. A
+        dictionary cache is constructed only where the cache in place is not already one,
+        which usually leaves the one the class built for itself alone. A cache this
+        method does construct is given ``cache_lifetime()`` as its default; that is a
+        class method, which such a cache keeps as a constant rather than calling, so a
+        store into it that needs the default raises TypeError.
+
+        Then the holdings list is compared with what has already been loaded. Nothing to
+        do means returning early, after re-reading the permanent values on a memcached
+        cache in case any has been lost. Otherwise the cache is blocked against other
+        processes and paused against its own writes for the duration.
+
+        The walk itself overwrites the category-level merged directories and creates an
+        empty rank and version table for each category that has none yet, then, per
+        holdings directory, reads the bundle descriptions, descends each category
+        directory through its bundle sets to the bundles inside them, and loads the
+        icons. Everything it caches is permanent. A child that cannot be constructed is
+        dropped from its parent's child list rather than reported. A category directory
+        that is missing is warned about and skipped. **One that exists but is not a
+        directory is warned about as ignored and is not ignored**: that branch has no
+        skip, so the object is constructed anyway. Nothing below it is walked, because
+        the walk returns at once on anything that is not a directory.
+
+        The list of preloaded holdings is written, the pause lifted and the block
+        released however the walk ends, so a failure part way through does not leave the
+        cache blocked.
+
+        Last, the class is marked according to whether its filesystem is case-sensitive,
+        by the test the class docstring describes.
+
+        Parameters:
+            holdings_list: one absolute path to a holdings directory, or a list or tuple
+                of them. Each is resolved against the working directory and written with
+                forward slashes.
+            port (int): the memcached port. Zero asks for a dictionary cache, unless the
+                class already carries a port from an earlier call.
+            clear (bool): whether to empty the cache first, holding the block from then
+                until the preload finishes.
+            force_reload (bool): whether to walk the holdings again even if they are
+                recorded as already loaded.
+            icon_url: the URL root the icons are served from. None builds one per
+                holdings directory, ``/holdings/_icons`` for the first and
+                ``/holdings<n>/_icons`` for the rest.
+            icon_color (str): which color set of icons to load.
         """
 
         # Convert holdings to a list of absolute paths
@@ -466,6 +670,24 @@ class _PreloadMixin:
         ########################################################################
 
         def _preload_dir(pdsdir, cls):
+            """Cache one directory and, if it is shallow enough, its children.
+
+            The walk stops below the bundle set: a category directory and a bundle set
+            are descended into, and anything else returns at once, which is what keeps
+            the preload from reading the whole tree. Each directory it does visit has
+            its ``permanent`` attribute set, which nothing in the package reads; what
+            keeps these entries out of the trim is the zero lifetime they were stored
+            with.
+
+            A child whose construction raises is taken to be a file that does not belong
+            where it is, and is **removed from its parent's child list**, so the cached
+            listing does not show it.
+
+            Parameters:
+                pdsdir: the directory to cache.
+                cls: the PdsFile subclass the walk is being done for.
+            """
+
             if not pdsdir.isdir:
                 return
 
@@ -580,4 +802,24 @@ class _PreloadMixin:
 
     @classmethod
     def cache_lifetime(cls, arg):
+        """Return how long an object should be kept in this class's cache, in seconds.
+
+        This is what ``preload()`` hands a cache it builds as that cache's default
+        lifetime. It is the module-level rule with this class supplied, so an object that
+        is not an instance of this class is treated as a bookkeeping entry and kept
+        forever.
+
+        It is a class method rather than a plain function. A memcached cache accepts that
+        as a lifetime function; a dictionary cache does not, and keeps it as a constant
+        default, so a store into such a cache that needs the default raises TypeError.
+        ``preload()`` hands this to a cache only where it builds one, and it builds a
+        dictionary cache only where the cache in place is not already one.
+
+        Parameters:
+            arg: the object about to be cached.
+
+        Returns:
+            int: the lifetime in seconds, or zero for forever.
+        """
+
         return cache_lifetime_for_class(arg, cls)
