@@ -13,12 +13,11 @@ what OPUS calls it.
 Most of these are properties, and most of those are lazy in one particular sense. Each
 holds a slot that ``PdsFile.__init__()`` creates and sets to None; the first access
 derives the value, stores it in the slot, and calls ``self._recache()`` so that the copy
-of this object in the shared cache is the filled one rather than the empty one.
-``filename_keylen`` is the one exception: it fills its slot and does not call
-``_recache()``. A second
-access returns the slot. The saving is not the arithmetic but the shelf reads, the
-filesystem calls and the globs the derivations make, and ``_recache()`` is what spreads
-it past the lifetime of one object.
+of this object in the shared cache is the filled one rather than the empty one, and a
+second access returns the slot. ``filename_keylen`` is the one exception: it fills its
+slot and does not call ``_recache()``. The saving is not the arithmetic but the shelf
+reads, the filesystem calls and the globs the derivations make, and ``_recache()`` is what
+spreads it past the lifetime of one object.
 
 Three consequences run through the whole module and are worth knowing before reading any
 one docstring:
