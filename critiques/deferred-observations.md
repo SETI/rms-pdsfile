@@ -4769,3 +4769,122 @@ function and a dictionary cache does not, keeping it as a constant. **Owner: unc
      so needs its own regression test. Raised by the CodeRabbit re-review; the docstring
      documents it and no entry did.
      **Owner: a future pdsfile PR.**
+
+## From PR-29b (`docs: Google-style docstrings — the lazy properties`, Phase 7)
+
+### Amended by the PR-29b executor (2026-08-08) — entries 54, 68, 80 and 215
+
+**Entry 54's derivation is run against `_properties.py` by the PR that owns it, and the
+module measures clean.** `critiques/pr-29a/derive_state_contract.py` reports 114 names
+reached (114 read, 41 written) and 94 listed in the contract block, with **0 findings**, at
+base and again at head. That matters more at head than at base: this PR turns the contract
+block into a reStructuredText literal block, which was the only way to stop its
+trailing-underscore attribute names being read as references and its indentation as a
+definition list, and the identical 94 is what says the reformatting cost the contract
+nothing. `_properties.py` was PR-29a's read-only control for the derivation; it is now the
+first module whose own PR has run it as a gate before and after.
+
+**Entry 68 is closed as a documentation matter, and the code is untouched.** `version_ranks`
+still returns `None` for a file that does not exist, and its docstring now says so in those
+words, as the second paragraph of a section headed by the sentence "**A file that does not
+exist yields None rather than a list.**" Round 1 added the consequence the entry did not
+record: because the slot the property guards on stays `None`, the guard never fires either,
+so the whole body -- `exists`, the rank lookup and `_recache()` -- runs again on **every**
+access for such a file. The entry's remediation is unchanged: writing the instance
+attribute changes what the property returns on an existing input, so it is a behavior
+change and not a documentation one.
+
+**Entry 80 is closed.** `_properties.py` was the last module in `src/pdsfile/` without a
+module docstring, and it has one. The three description lines inside its banner comment
+were removed, because the rule requires that text be a docstring; every fact they carried
+is in the docstring that replaced them, and section 3.2 of `critiques/pr-29b-validation.md`
+enumerates them.
+
+**Entry 215 is closed.** `opus_type`'s docstring described a four-element tuple and gave two
+four-element examples; the value is a five-element tuple whose fifth member is the
+default-checked flag. The docstring now names all five and gives two five-element examples.
+The entry's own diagnosis was right and is what made this a five-minute fix rather than a
+rediscovery.
+
+### Added by the PR-29b executor's own measurements (2026-08-08)
+
+223. **Documenting a module does not cost a fixed amount per function, and the spread is
+     wide enough to matter to a projection.** Measured at head with an AST walk over the
+     modules already documented, a function docstring runs **15.2** lines across PR-29's
+     five public modules, **24.5** across PR-29a's nine private ones and **17.3** across
+     `_properties.py`'s 68 members. Deviation (3)'s "roughly fourteen lines per function"
+     is below all three. The figure that made `_properties.py` a decision was not the length
+     but the count: 68 members at 17.3 lines is 1,175 lines of function docstring, which is
+     what took the file from 1,689 total lines to 2,720.
+
+     The method is worth keeping because it worked: ten representative members were
+     documented first, fitted to their code lines, and projected the finished file at about
+     2,720 against a ceiling of 2,000. Written out in full it landed at **2,720**. A
+     ten-member sample priced a decision to within four lines, and PR-30 has the rule
+     modules coming. The rule now carries the three per-module figures so the next
+     projection starts from a range rather than from an average.
+     **Owner: PR-30, as the next module-length question.**
+
+224. **`version_info` truncates a version suffix past its third part, so two distinct
+     versions can share a rank and an id.** `_v2.1.3` and `_v2.1.3.4` both rank 20103 and
+     both report version id `2.1.3`; only the message distinguishes them. Two bundle sets of
+     one stem differing only in a fourth part would therefore collide in the rank
+     dictionaries, and `all_versions()` would log "Duplicate version" and keep whichever it
+     saw first. The same packing fails from the other direction once a part reaches 100:
+     `_v1.100` and `_v2` both rank 20000.
+
+     Measured, this is latent rather than live: a scan of every category directory of the
+     holdings tree computed the rank of every bundle-set suffix present and found no
+     four-part suffix, no part at or above 100, and no rank collision within any stem. The
+     docstring states both limits. A fix changes what `version_info` returns for inputs it
+     currently accepts, so it needs a regression test of its own.
+     **Owner: a future pdsfile PR.**
+
+225. **`version_info`'s worked-example comment is arithmetically wrong and is left alone.**
+     The comment above the `_v` branch reads `_v2.1 -> 201000` and `_v2.1.3 -> 201030`;
+     measured, `version_info('_v2.1')` is 20100 and `version_info('_v2.1.3')` is 20103. Only
+     the first line, `_v2 -> 20000`, is right. A docstrings-only PR does not touch comment
+     text, and the docstring immediately below it now states the formula correctly, so a
+     reader has both a right answer and a wrong one three lines apart. That is the argument
+     for deleting the comment rather than repairing it: the docstring already carries what
+     it was for.
+     **Owner: whoever next edits that function.**
+
+226. **`label_basename`'s stem is the empty string for a basename with no extension.**
+     `rootname = self.basename[:-len(self.extension)]`, and `len(self.extension)` is zero
+     for a name the split rules give an empty third part, so the slice is `[:-0]`, which
+     Python evaluates as `[:0]`. The guessed label names are then the bare label extensions
+     -- `.lbl` and `.LBL` for PDS3 -- rather than the basename with a label extension. The
+     `PRODUCT_LBL_BASENAME_WO_EXT` rule short-circuits this wherever it answers, and a
+     directory is the common case that reaches it, for which no label exists either way. The
+     docstring states the behavior.
+     **Owner: a future pdsfile PR.**
+
+227. **`_volume_info`'s docstring gave the wrong tuple shape, in the same way entry 215
+     recorded for `opus_type`, and both are now fixed.** It described five fields,
+     "(description, icon_type, volume_date, list of data_set_ids, optional checksum]", with
+     a bracket that does not close the parenthesis it opened. The value is a six-element
+     tuple and `PdsFile.__init__`'s own comment names it correctly: `(desc, icon type,
+     version ID, pub date, list of dataset IDs, optional MD5 checksum)`. The docstring
+     omitted the version id, which shifted every field after it, so it labelled index 2 --
+     what `bundle_version_id` reads -- as the date, which is what `bundle_publication_date`
+     reads from index 3.
+
+     Two docstrings in one module describing a tuple with the wrong number of elements is a
+     pattern rather than a coincidence, and both were found by counting the consumers rather
+     than by reading the sentence. **A tuple's shape claim should be checked against every
+     subscript of it in the module**, which for these two is six and five sites
+     respectively.
+     **Owner: recorded; both are fixed.**
+
+228. **A probe can silently ignore the module it was asked to build, and report clean.**
+     `critiques/pr-29a/build_docs_probe.py` takes extra module names here so that
+     `_properties` can join its page list. Its first extended run reported a clean
+     fourteen-module build; it had in fact run a thirteen-module build, because it was
+     executed from the base tree, whose copy of the script predates the argument and drops
+     it. The repair is to verify the artifact rather than the exit status: the generated
+     `api.rst` is now grepped for the page. This is the same failure CodeRabbit caught in
+     PR-29a's probe -- a gate reporting success for work it did not do -- reached by a
+     different route, which is the argument for checking that a gate *ran* and not only what
+     it *said*.
+     **Owner: recorded, no action.**
