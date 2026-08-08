@@ -4051,7 +4051,7 @@ of them has a module docstring at all.
      (`_preload.py:101`) is re-exported by `preload_and_cache` and by `pdsfile.pdsfile`,
      but every cache in the package is built with `cls.DICTIONARY_CACHE_LIMIT`, a class
      attribute defined separately and identically in `pdsfile.py:331`,
-     `pds3file/__init__.py:157` and `pds4file/__init__.py:132`. Rebinding the module
+     `pds3file/__init__.py:169` and `pds4file/__init__.py:143`. Rebinding the module
      constant changes nothing. `pdscache.MEMCACHED_LOADED` (`pdscache.py:77`) is read
      nowhere; the flag the code actually consults is `_preload.HAS_PYLIBMC`, set by a
      second `try: import pylibmc` in a second module. Both names are in the frozen API,
@@ -5632,3 +5632,64 @@ rediscovery.
      **Owner: a reviewer-brief and executor instruction -- the freeze is the executor's
      to hold, and "I found it myself first" is not a reason to break it, because it
      destroys the measurement the round exists to produce.**
+
+### Added by PR-30a's second reads
+
+290. **`remove_path()` is called speculatively and its mutation is never undone.** Both
+     link shelf tools look up a repair for a link, and where the link's text carries a
+     directory and the first lookup misses they call `LinkInfo.remove_path()`, which
+     rewrites both `linktext` and `linkname` to the basename **in place**, and try again.
+     When the second lookup also misses the loop moves on, and nothing restores the text.
+     The truncated text is then what resolves the link and what is shelved.
+
+     Measured by round 3, which instrumented `remove_path` and ran `generate_links` over
+     every volume of the test holdings that fit a 220-second budget: **493 volumes, 1,412
+     truncating calls.** VG_2801 alone shelves ten triples whose middle element is not
+     what the file says -- `GEOMINFO.TXT` wrote `DOCUMENT/POLES.TXT` and the shelf records
+     `POLES.TXT` -- and at least one resolves to the wrong file: `SOFTINFO.TXT` record 24
+     wrote `OAL/AAREADME.TXT` and the shelf targets the volume-root `AAREADME.TXT`.
+
+     This is why the PR's own prose could not settle on what the middle element of a
+     triple is: it is the text as written for most links and the basename for a link that
+     carried a directory and reached the repair table. **Owner: PR-30b, which documents
+     the two tools, or a later link shelf PR that may fix it.**
+
+291. **`_indexshelf_common.index_targets()` rejects the top-level metadata directory.**
+     The test is `'/metadata/' not in path` and `os.path.abspath()` leaves no trailing
+     slash, so `<holdings>/metadata` prints "Not a metadata directory" and exits 1 while
+     every directory below it is accepted. Measured by round 3. The docstring describes
+     the test accurately, so this is an observation about the code.
+     **Owner: PR-30b or a later maintenance-tool PR.**
+
+292. **`_common.LOGDIRS`'s comment names a caller that does not exist.** It says
+     "any other tool that versions a file does it in its own `main()`". No other tool
+     does: `set_log_dirs` is called at `_common.py` and `_shelf_common.py` only, and every
+     `move_old` caller is one of the eight tools those two drivers serve. Identical at
+     `80f5e52`, so pre-existing. **Owner: a later maintenance-tool PR; PR-30a changes no
+     comment whose block it did not move.**
+
+293. **`_local_fs.glob_glob()`'s `Raises:` is narrower than its own prose.** It omits the
+     `AssertionError` its last paragraph describes, and it attributes `OSError` to the
+     shelf-backed branch alone; with SHELVES_ONLY off, the filesystem branch reaches
+     `os_listdir` through the case repair and raises there too, which round 4 reproduced
+     with a `PermissionError` on both the wildcard and the no-wildcard path.
+     `_local_fs.os_path_exists()` has the same shape of gap for its own unguarded
+     `os.listdir(parent)`. PR-30a's `Pds4File.archive_dirs()` inherited the narrower claim
+     and now states the wider one; the two source docstrings are out of scope here.
+     **Owner: a later PR that revisits `_local_fs.py`.**
+
+294. **A second read finds most of its yield in the first read's corrections, and the
+     share is still rising.** PR-29a measured 11 of 23, PR-29b 10 of 21, PR-30 34 of 57.
+     PR-30a measures **15 of 22**, the highest yet as a share. The two second reads were
+     given the correction diff by commit range and told to attack it first, which is what
+     PR-30's record recommended and what produced the result; the eight round-3 findings
+     and seven round-4 findings in that class include the sharpest defects of the whole
+     PR, among them a claim about a link shelf triple that was **less** true than the
+     sentence it replaced.
+
+     The lesson is not that corrections are unusually error-prone in the abstract. It is
+     that a correction is written under the impression that the matter has just been
+     settled, and is therefore written more confidently and checked less. **Owner: a
+     reviewer-brief instruction, already followed here and worth keeping: give the second
+     reader the correction diff by commit range, name the claims it makes, and say that
+     they are unproven.**

@@ -56,7 +56,8 @@ follow the class body, because every rule module subclasses ``Pds3File`` and so 
 class that is already built. Nothing forces the other two into their places. Every rule
 module does reach ``SUBCLASSES`` -- each ends by assigning its own key into it -- but
 none reads the "default" entry, so registering that entry after the import would serve
-equally; and the merged-directory call reads only what the class body binds.
+equally; and the merged-directory call reads only the category list and the
+cache, both bound before any rule module is imported.
 
 The import is wrapped in a handler for ``AttributeError``. The in-code comment beside it
 says that is what a recursive import of ``pdsfile`` raises when a rule module is tested
@@ -104,13 +105,16 @@ class Pds3File(PdsFile):
       * Five regular expressions naming a volume set and a volume, each with a
         case-insensitive twin, and ten aliases of the ten under the volume vocabulary.
         The three that extend the plain forms do not extend them alike.
-        ``BUNDLESET_PLUS_REGEX`` takes all four kinds of part, each optional: a version
-        suffix, a category suffix, and a ``.tar.gz`` or ``_md5.txt`` ending.
-        ``BUNDLENAME_PLUS_REGEX`` takes only the last two -- a lower-case category word
-        and an archive or checksum ending, which are the names sitting beside a volume
-        -- and matches no version suffix at all, so ``COISS_1001_v1`` fails it.
-        ``BUNDLENAME_VERSION`` is the pattern for that: it matches a volume name and
-        requires one of the seven version suffixes on it.
+        ``BUNDLESET_PLUS_REGEX`` appends three optional groups: one of seven version
+        suffixes, one of four category suffixes, and one ending, which is ``.tar.gz`` or
+        ``_md5.txt``. The last two are alternatives within one group, so a name can
+        carry at most one of them. ``BUNDLENAME_PLUS_REGEX`` appends two groups rather
+        than three -- a lower-case word and the same choice of ending -- and no version
+        suffix at all, so ``COISS_1001_v1`` fails it. Its word group is
+        ``(|_[a-z]+)``, which enumerates nothing, so it takes ``COISS_1001_foo`` as
+        readily as ``COISS_1001_previews``; that is the difference between the two
+        patterns and not merely their length. ``BUNDLENAME_VERSION`` is the pattern for a
+        version: it matches a volume name and requires one of the seven suffixes on it.
       * ``LOGGER`` and ``CACHE``, the second built with the shared cache-lifetime rule
         and holding a direct reference to the logger, which is why replacing ``LOGGER``
         later does not change where the cache logs.

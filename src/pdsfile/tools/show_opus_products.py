@@ -3,9 +3,10 @@
 
 For each path it is given, this instantiates a Pds3File or a Pds4File and prints what
 ``opus_products()`` returns for it: the files OPUS would offer alongside that one,
-grouped by OPUS type. The output is a table by default, and can be a narrower table,
-a pprint dump or the raw dictionary instead. The pprint form exists to be compared
-against the OPUS-products golden files in this package's tests.
+grouped by OPUS type. There are three output forms -- a table, a pprint dump and the raw
+dictionary -- and a fourth option, --narrow-table, that changes the shape of the table
+rather than selecting a form of its own. The table is the default. The pprint form exists
+to be compared against the OPUS-products golden files in this package's tests.
 
 Both holdings roots are read straight from the environment, PDS3_HOLDINGS_DIR and
 PDS4_HOLDINGS_DIR, and both are required whichever kind of path is asked about.
@@ -38,9 +39,10 @@ def build_arg_parser():
 
     Returns:
         argparse.ArgumentParser: The parser. It holds --paths, which is required and
-        takes one or more paths; --opus-types, which narrows what is printed; the four
-        output forms --table, --narrow-table, --pprint and --raw, which are independent
-        flags rather than a mutually exclusive group; and --debug.
+        takes one or more paths; --opus-types, which narrows what is printed; the three
+        output forms --table, --pprint and --raw, plus --narrow-table, which reshapes
+        the table form; and --debug. The four are independent flags rather than a
+        mutually exclusive group.
     """
 
     # Set up parser
@@ -118,11 +120,14 @@ def main(argv=None):
             can go wrong, before either holdings root is read.
         KeyError: from the item read ``__getitem__()`` on the environment, if either
             PDS3_HOLDINGS_DIR or PDS4_HOLDINGS_DIR is unset.
-        IndexError: from the item read ``__getitem__()`` on a product category, for a
-            file whose ``opus_products()`` returns a key that is not a five-element
-            tuple. The key is subscripted for its OPUS type in three places without
-            being checked, and a few real paths do return such a key, so this escapes
-            and nothing is returned for that run.
+        IndexError: from the item read ``__getitem__()`` on a product category. Every
+            key is subscripted at index 2 for its OPUS type, without being checked, and
+            the contract ``opus_products()`` states admits one key that is not a
+            five-element tuple: the empty string, which carries the volume set's
+            documents. A few real paths do return it, and ``''[2]`` raises, so the run
+            ends there and nothing is returned. The ``--raw`` form subscripts further,
+            at indices 3 and 4, so a key of three or four elements would reach only
+            that branch.
     """
 
     if argv is None:

@@ -257,19 +257,19 @@ is recorded rather than left unaddressed.
 
 | file | total base | total head | docstring head | code base | code head |
 |---|---:|---:|---:|---:|---:|
-| `holdings_maintenance/__init__.py` | 0 | 31 | 31 | 0 | 0 |
-| `_common.py` | 398 | 528 | 287 | 251 | 241 |
-| `_archives_common.py` | 242 | 366 | 151 | 219 | 215 |
-| `_indexshelf_common.py` | 598 | 788 | 295 | 500 | 493 |
-| `_linkshelf_common.py` | 729 | 1,093 | 444 | 655 | 649 |
-| `_shelf_common.py` | 501 | 640 | 261 | 384 | 379 |
-| `pds3file/__init__.py` | 273 | 581 | 314 | 246 | 267 |
-| `pds4file/__init__.py` | 237 | 361 | 176 | 183 | 185 |
+| `holdings_maintenance/__init__.py` | 0 | 36 | 36 | 0 | 0 |
+| `_common.py` | 398 | 576 | 335 | 251 | 241 |
+| `_archives_common.py` | 242 | 378 | 163 | 219 | 215 |
+| `_indexshelf_common.py` | 598 | 816 | 323 | 500 | 493 |
+| `_linkshelf_common.py` | 729 | 1,113 | 464 | 655 | 649 |
+| `_shelf_common.py` | 501 | 650 | 271 | 384 | 379 |
+| `pds3file/__init__.py` | 273 | 626 | 359 | 246 | 267 |
+| `pds4file/__init__.py` | 237 | 407 | 222 | 183 | 185 |
 | `tools/__init__.py` | 0 | 12 | 12 | 0 | 0 |
-| `tools/show_opus_products.py` | 199 | 249 | 67 | 181 | 182 |
+| `tools/show_opus_products.py` | 199 | 265 | 83 | 181 | 182 |
 
-The largest is `_linkshelf_common.py` at 1,093 total against a limit of 2,000 and 649 code
-lines against a limit of 1,000, so the tightest margin in the PR is 351 lines.
+The largest is `_linkshelf_common.py` at 1,113 total against a limit of 2,000 and 649 code
+lines against a limit of 1,000, so the tightest margin in the PR is 887 lines.
 
 **Five of the ten lose code lines and three gain them**, which needs saying because a
 docstring-only change should not move a measure defined as "total minus docstring lines".
@@ -278,8 +278,8 @@ line is a comment and counts as code, so moving one into a docstring takes a cod
 away: that is the whole of the five decreases, and `_common.py`'s eleven removed comment
 lines against one added blank gives exactly the ten it loses. A docstring inserted above a
 body that had no blank line adds one, and the blank is not part of the docstring's own
-span: `pds3file/__init__.py` gains 21 code lines for its 21 new function docstrings, and
-`pds4file/__init__.py` two for its two.
+span: `pds3file/__init__.py` gains 21 code lines for the 21 new function docstrings that
+needed one, and `pds4file/__init__.py` two for its two.
 
 ## 7. The Sphinx build
 
@@ -350,10 +350,9 @@ run;` was a real warning at base.
 
 ### 7.3 The head build is not vacuous
 
-`api.html` from the `-n` build is 1,048,874 bytes and holds 20 matches for "index shelf",
-19 for "The PDS3 name for", three for "multiple-target list", two for "Accepted and not
-used", and one each for the exact sentences "Three drivers serve the ten" and "OPUS
-products of the paths". The base page holds **zero** matches for "The PDS3 name for".
+`api.html` from the `-n` build holds 19 matches for "The PDS3 name for", against **zero**
+on the base page, and one each for the exact sentences "Three drivers serve the ten" and
+"OPUS products of the paths".
 
 ## 8. What the docstrings had to correct about the code they describe
 
@@ -528,7 +527,117 @@ checker's own scope list. Section 12 records that this number was handed as zero
 
 ## 11. Review
 
-[to be completed]
+Four rounds, each run by a fresh reviewer subagent with no context from this session or
+from any other round. Records: `critiques/pr-30a/round-1.md` through `-4`.
+
+| round | slice | surface | disproved | of those, in the corrections | code defects |
+|---|---|---|---:|---:|---:|
+| 1 | the six shared-core modules | 4 classes, 47 functions | 14 | — | 5 |
+| 2 | the two subclasses and `tools/` | 2 classes, 35 functions | 14 | — | 3 |
+| 3 | the same six, re-read | the same | 11 | **8** | 5 |
+| 4 | the same four, re-read | the same | 11 | **7** | 4 |
+| | | | **50** | **15 of 22** | **17** |
+
+Rounds 1 and 2 include seven findings each that the reviewer classed as misleading rather
+than false; all were acted on. Every finding was re-verified by the executor before it was
+acted on, and six further defects were found by the executor between rounds and are
+counted in neither column.
+
+### The second reads found most of their yield in the first reads' corrections
+
+**Fifteen of the second reads' 22 disproved claims are in sentences the first reads'
+corrections wrote** -- eight of round 3's eleven and seven of round 4's. PR-29a measured
+11 of 23 on this question, PR-29b 10 of 21 and PR-30 34 of 57; **as a share this is the
+highest yet, and the trend the previous three records describe is unbroken.**
+
+Both second-read briefs were given the correction commits by range, told which claims
+those commits make, and told to treat every one as unproven until measured. That is what
+PR-30's record recommended, and it is what produced the result: round 3's own tally
+separates the two classes without being asked twice, and round 4 attributed every finding
+with `git blame`.
+
+**The sharpest of them made a sentence less true than the one it replaced.** Round 1
+found that a link shelf triple's middle element is not a basename and produced 313
+counterexamples out of 431,386 real triples; the correction said it is "the text the file
+was written with ... it carries a directory wherever the link did". Round 3 then
+instrumented `LinkInfo.remove_path()` and ran the real scan over 493 volumes: **1,412
+calls truncate that text in place**, speculatively, while a repair is looked for, and
+nothing restores it when none is found. So the element is the text as written for most
+links and the basename for a link that carried a directory and reached the repair table,
+and the word the correction removed -- "basename" -- was closer to the truth than what
+replaced it. Deferred observation 290 holds the code defect behind it.
+
+Four more of the same shape are worth naming because each reads as freshly checked:
+
+* `run_main()`'s handler directory was corrected to "the directory of the target's own
+  log file, so each target gets its own". The directory is the **bundle set's**, shared by
+  every unit in it, and expanding a unit set into its units is exactly what that driver
+  does -- so the contrast the correction drew with `run_index_main` does not separate the
+  two drivers at all.
+* `setup_run()` was said to attach the spec's handler factories "once at the log root".
+  It attaches none when no log root is configured, and the drivers attach them once per
+  **log file**, which is twice per target when one is.
+* `new_pdsfile()` was said to build its result with `__new__` and never reach `__init__`.
+  It runs `__init__` on every call, through `source = cls()`.
+* The OPUS-type collision in `show_opus_products` was softened, on the strength of two
+  scans that found none, to "nothing here prevents the collision; a scan of 6,674 files
+  produced none". Round 4 found six files that do collide, and the rule that makes them is
+  two lines apart in `VG_28xx.py`: two categories differing only in rank both carry the
+  type `vgrss_occ_inv0_2`.
+
+### What the angles returned
+
+* **Relationship claims** were the largest category in all four rounds, as they were in
+  all four earlier docstring PRs. The ones that failed were almost never the ones a
+  careful reading would catch: which of two directories a driver builds handlers in, which
+  of five tasks writes a file, whether a mutation is undone. Section 9 lists the contracts
+  that had to be measured to get right in the first place.
+* **Exceptions from something other than `raise`** produced two whole contracts that were
+  missing: `setup_run()` raises `ValueError` when a logger of the spec's logname already
+  exists, which round 3 demonstrated in one process and which means two tools of a kind
+  cannot share one; and both `run_main()` and `run_selection_main()` can raise
+  `ValueError` or `OSError` out of path resolution before any logging is open. It also
+  produced the `EOFError` that escapes `load_indexdict()` unlogged, and the `IndexError`
+  that ends a `show_opus_products` run on four real holdings paths.
+* **Inert or unread parameters** held up: `read_links`'s logger and `link_targets`'s spec
+  are both accepted and unused, confirmed by AST over all 22 functions in the six modules
+  that take a logger. What did not hold up was the reverse direction -- `pdslogger`
+  classifies by level value, not by level name, so a dot-underscore file gives a run a
+  nonzero exit status exactly as a backup file does, and the contrast a correction drew
+  between them was false.
+* **Arithmetic and boundaries** were mostly confirmed rather than broken, which is the one
+  angle that behaved differently here: the modification-time tolerances, the tenth-of-a-day
+  threshold, the `_v###` collision above 999, the `../` arithmetic round-tripped through
+  `load_links`, and the walk that stops at the unit directory all measured as documented.
+  The counts did not: nineteen aliases rather than a dozen, four tasks that write rather
+  than three, five spec fields differing rather than one, three rule tables without a
+  `PdsFile` counterpart rather than two.
+
+### One round read this PR's own checker, and it was worth it
+
+Deferred entry 275 asks that a PR shipping a checker point one round at the checker.
+Round 3 did, found the map it derives correct, and then answered the question that
+matters -- can it pass while the prose is wrong -- with five ways it can. Two are closed
+here: a documented reader must now carry a module qualifier, since this tree has
+same-named functions in several modules, and for a field with five or fewer readers every
+one must be named rather than one per module. The other three are written into the
+script's own docstring rather than left to be found, and the first of them is the honest
+limit of the whole idea: **the gate checks attribution and never assertion**, so the two
+`handler_factories` defects above sat inside an entry it scored as fully correct
+throughout.
+
+### The freeze rule was followed once and broken once
+
+Deferred entry 239 asks that the previous round's corrections be committed, and the tree
+left alone, before the round that reviews them is launched. **Rounds 1 and 2 were launched
+against `2fd40c4` and the tree then moved under them**, reaching `bd5b192` eight commits
+later before round 1 finished. Round 1 noticed, read the frozen text through `git show`,
+re-checked its findings against the moved tree and reported the drift at the top of its
+own record, so the experiment survived -- but two of its fourteen findings had already
+been fixed by the executor independently, which makes its yield harder to attribute.
+Rounds 3 and 4 were launched against a frozen `e8af080` with nothing committed to `src/`
+until both returned, and they are the two rounds whose numbers this section relies on.
+Deferred observation 289 records it.
 
 ## 12. Numbers this PR was handed that did not reproduce
 

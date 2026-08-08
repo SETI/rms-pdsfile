@@ -44,7 +44,8 @@ follow the class body, because every rule module subclasses ``Pds4File`` and so 
 class that is already built. Nothing forces the other two into their places. Every rule
 module does reach ``SUBCLASSES`` -- each ends by assigning its own key into it -- but
 none reads the "default" entry, so registering that entry after the import would serve
-equally; and the merged-directory call reads only what the class body binds.
+equally; and the merged-directory call reads only the category list and the
+cache, both bound before any rule module is imported.
 
 The import is wrapped in a handler for ``AttributeError``. The in-code comment beside it
 says that is what a recursive import of ``pdsfile`` raises when a rule module is tested
@@ -91,9 +92,11 @@ class Pds4File(PdsFile):
         by the PDS4_HOLDINGS_DIR environment variable.
       * Five regular expressions naming a bundle set and a bundle, with a
         case-insensitive twin of three of them. ``BUNDLESET_REGEX`` enumerates the six
-        bundle sets by name rather than matching a shape, and its "plus" form adds the
-        two forms of version suffix and nothing else, where the PDS3 side's admits a
-        category suffix, an archive extension and a checksum basename too.
+        bundle sets by name rather than matching a shape, and its "plus" form adds two
+        forms of version suffix and nothing else, where the PDS3 side's admits seven
+        version suffixes, a category suffix and an archive or checksum ending. The
+        group is quantified with a star rather than a question mark, so it repeats:
+        ``cassini_iss_v1.0_v2.0`` matches.
         ``BUNDLENAME_PLUS_REGEX`` is built exactly as the PDS3 one is: it appends an
         optional lower-case word and then an optional ``.tar.gz`` or ``_md5.txt``, so
         it takes the names sitting beside a bundle and no version suffix at all.
