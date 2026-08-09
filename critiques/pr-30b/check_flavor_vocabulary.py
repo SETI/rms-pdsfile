@@ -118,6 +118,12 @@ ALLOWED = (
      'PdsFile.is_bundle_file has no volume-spelled alias'),
     ('pds3', 'bundlename',
      'PdsFile.bundlename is what run_selection_main tests to pick a log path method'),
+
+    # A cross-flavor fact, scoped to the one module whose prose forces it.
+    ('pds4checksums', 'pdsinfoshelf',
+     "pds4checksums.main() substitutes the literal 'pdsinfoshelf' into its own argv, so "
+     'the docstring describing that substitution has to name it. The substitution never '
+     'fires for this tool, and saying so is the point'),
     ('pds3', 'bundletype_',
      'PdsFile.bundletype_ is what resolve_holdings_paths compares against spec.unit'),
 
