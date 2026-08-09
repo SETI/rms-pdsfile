@@ -198,12 +198,12 @@ for re-interpretation by the executor:
 | Clean-install import check | **Active** (PR-08) | `pip install .` with no extras; `import pdsfile` + every manifest module imports (runtime-dep leak guard) |
 | `ruff format --check` | **Never enabled** — the churn checkpoint ran on 2026-08-03 and the owner dropped the reformat entirely (`plans/2026-08-03-addendum-pr23-24-owner-decisions.md`) | — |
 | Hosted lint/no-holdings CI job | **Active** (PR-14) | ruff + pyroma + API-freeze + clean-install + the holdings-free test subset on stock GitHub runners (it runs `run-all-checks.sh`, so it is whatever that enables) |
-| sphinx -W -n build | PR-31 | Docs build clean |
+| sphinx `-W` and `-n -W` builds | **Active** (PR-31) | Two builds from `docs/conf.py`, each accepted only if it exits 0, writes its HTML, and prints the module-coverage line `conf.py` emits. `-n` alone reports every unresolved cross-reference and still exits 0, so it is never run without `-W` (deferred 326), and the second build needs its own `BUILDDIR` or it re-reads nothing and reports nothing (deferred 327) |
 | Adversarial pre-PR review loop | **Active** (every PR) | A fresh, no-context reviewer cannot prove the PR misses its stated goal — zero Major and no new un-rebutted Minor findings (§6.6) |
 
 `scripts/run-all-checks.sh` is the single source of truth for the enabled set
 (`ENABLE_*` flags; currently on: ruff-check, pytest, pyroma, api-freeze,
-clean-install). Each PR that introduces a gate flips its flag and keeps CI in
+clean-install, sphinx). Each PR that introduces a gate flips its flag and keeps CI in
 exact correspondence (`environment.mdc`). `ENABLE_MYPY`, `ENABLE_BANDIT`,
 `ENABLE_VULTURE` stay false permanently (ground rules / overrides).
 
@@ -1144,8 +1144,11 @@ Three things that shaped the result and bind the PRs after it:
     mocked. The working `conf.py` is at `critiques/pr-29/sphinx-conf.py` for PR-31
     to inherit. Two hazards it exposed are deferred entries 168 and 169: a
     trailing underscore in a docstring is an RST reference, and cross-reference
-    roles cannot be used until the full API reference exists, so PR-31 must sweep
-    the inline literals these docstrings use instead.
+    roles cannot be used until the full API reference exists, so the inline
+    literals these docstrings use instead have to be swept once it does. PR-31
+    built the reference and measured that sweep at 3,651 literal occurrences, of
+    which 2,384 name something the package defines; entry 168 is re-owned to
+    PR-31a.
   * **Forty-five defects found by reading the code against its own prose** —
     sixteen by the executor (deferred entries 152–167) and twenty-nine by the four
     review rounds (170–198) — plus two notes for the documentation PRs that follow
@@ -1354,10 +1357,11 @@ worse than a short accurate one because it is published as API reference and rea
 authoritative. `critiques/pr-30-validation.md` sections 9 and 10 record where each
 claim came from and which modules could not be described beyond their tables.
 
-**PR-31 (M)** `docs: Sphinx scaffolding + API reference`
-**This is where Phase 7 resumes: the docstring work on `src/` finished with PR-30c, and
-what is left of the phase is the `docs/` tree, the Sphinx gate, and the guides of PR-32
-onward.**
+**PR-31 (M)** `docs: Sphinx scaffolding + API reference` -- **done**, record
+`critiques/pr-31-validation.md`
+**This is where Phase 7 resumed: the docstring work on `src/` finished with PR-30c, and
+what is left of the phase is the guides of PR-32 onward, the README rewrite of PR-34, and
+the cross-reference sweep of PR-31a below.**
 `docs/` per template: `conf.py` (autodoc/napoleon/intersphinx/mermaid/myst),
 `index.rst` including the README past its `<!-- start-after-point -->` marker,
 `api/` autodoc pages per subpackage. **The current README has no such
@@ -1366,7 +1370,47 @@ PR-34) so the include target exists. Builds clean under `-W` and `-n`. Enable
 the sphinx gate in `run-all-checks.sh` and the CI lint job;
 `.readthedocs.yaml` goes live.
 
-**It inherits one problem already measured and two fixes already known.** Every docstring
+**What it built, and the four decisions worth carrying forward.** `docs/` holds one
+`conf.py`, an index page and five API pages grouped by subpackage -- core 15 modules,
+`holdings_maintenance` 23, `pds3file` 27, `pds4file` 11, `tools` 2 -- covering all 78
+modules under `src/pdsfile`. Zero warnings under both `sphinx-build -W` and
+`sphinx-build -n -W`.
+
+  * **`napoleon_use_ivar = True`** for deferred 276's 27 warnings, because the other
+    measured fix breaks `doc_dev_guide.mdc` section 6's requirement of `:undoc-members:`.
+    It costs five cross-reference targets (deferred 328).
+  * **A per-module `:private-members:` naming one mixin each**, which publishes the nine
+    classes `PdsFile` inherits from and nothing else. The bare option reaches the same
+    zero and publishes 30 further private members.
+  * **`conf.py` registers its own coverage check** on `build-finished`, so a module added
+    without a page entry fails the build -- which is `doc_python.mdc` section 7 made
+    mechanical. It checks modules, not members (deferred 335, 340).
+  * **The gate reads its builds rather than restating them:** each build is accepted only
+    if it exits 0, writes its HTML and prints that coverage line. `sphinx-build -n` alone
+    exits 0 while reporting every unresolved reference (deferred 326), and two builds
+    sharing a `BUILDDIR` make the second one report nothing (deferred 327).
+
+`sphinxcontrib.mermaid` is **not** enabled: with no page drawing a diagram it put a
+third-party CDN script into 70 of the 77 built pages, and `doc_python.mdc` section 3 asks
+for a diagram extension when the guides use diagrams. PR-32 or PR-33 turns it on with the
+first diagram. `.readthedocs.yaml` needed no edit and got none. Round 3's list of what the
+gate does **not** catch is `critiques/pr-31/round-3.md` and deferred 333-341; PR-32
+through PR-34 all lean on this gate and should read it.
+
+**PR-31a (M)** `docs: inline literals to cross-reference roles`
+Deferred **168**, re-owned from PR-31 with its scope measured rather than assumed. Every
+docstring in `src/` uses inline literals where `doc_python.mdc` section 5 wants a
+cross-reference role; the roles could not resolve until the full API reference existed,
+and now it does. Measured over the 78 modules: **3,651 inline-literal occurrences, 1,260
+distinct**, of which **2,384 occurrences (652 distinct) name something the package
+defines**; `_properties.py` holds 380 and `pdsfile.py` 299. Each is a judgment -- is this
+an object we own, does the role resolve, is `:meth:` or `:attr:` right -- over docstring
+text that has just been through a two-reads review, and the `-n -W` gate is what verifies
+the result. Two known non-resolvers to plan around: the five `LinkInfo` attributes
+`napoleon_use_ivar` leaves without a target (deferred 328), and the 43 docstrings that
+are not published at all, whose roles nothing checks (deferred 333).
+
+**It inherited one problem already measured and two fixes already known.** Every docstring
 PR from PR-30a on has reported the same 27 `-n` problems from the throwaway build probe,
 one for each dataclass field of `ToolSpec`, `VersionedFile` and `RunResult`: Napoleon
 renders an `Attributes:` entry as an attribute directive, autodoc renders the annotated
