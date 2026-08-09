@@ -1324,8 +1324,10 @@ command line, and both are read by every other part of the subpackage.
     `critiques/pr-30b-validation.md` is the record.
   * **PR-30c (S)** `docs: Google-style docstrings, the four standalone maintenance tools`
     — `re_validate.py`, `pdsdependency.py`, `crlf.py` and `shelf_consistency_check.py`:
-    31 functions, 73 parameters, and the remaining 92 findings plus the two zero-byte
-    `__init__.py` files. They declare no `ToolSpec` and reach no shared driver, each
+    31 functions, one class, 73 parameters and the remaining 92 findings, plus one
+    finding each for the two zero-byte `__init__.py` files. Unlike PR-30b's eleven they
+    are not undocumented: 25 docstrings exist and 13 carry a Google section, nine of them
+    spelled `Args:`. They declare no `ToolSpec` and reach no shared driver, each
     parsing its own command line, so nothing PR-30a or PR-30b documented carries over and
     the vocabulary checker has no pair to compare. `pdsdependency.py` is 1,165 lines and
     is the one maintenance module over a length limit, so this PR is where that is either
