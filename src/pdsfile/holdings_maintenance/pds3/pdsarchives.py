@@ -1,12 +1,46 @@
 #!/usr/bin/env python3
 ################################################################################
-# pdsarchives.py library and main program
-#
-# Syntax:
-#   pdsarchives.py --task path [path ...]
-#
-# Enter the --help option to see more information.
+# pdsfile/holdings_maintenance/pds3/pdsarchives.py
 ################################################################################
+
+"""pdsarchives: pack a PDS3 volume into a .tar.gz file, and check that the two agree.
+
+One archive file holds one volume directory tree, and sits under the ``archives-``
+parallel of the category the volume came from. **A validation compares the two by metadata
+alone** -- absolute path, byte count and modification time -- and never reads a file's
+contents, which is what makes checking a whole volume set affordable and is what the
+``--help`` text says.
+
+What both flavors of this tool do alike is in ``_archives_common``: the walk that
+inventories a directory tree, the tarfile member filter that decides what is archived, the
+rejection of a command-line path naming checksum or archive files, and the comparison of
+the two inventories. What is here is reading a ``.tar.gz`` file back, writing one, and the
+five tasks that combine those with the shared pieces.
+
+The two halves diverge more than the shape of the file suggests, and the reason is
+structural rather than historical: one PDS3 volume is one archive, so everything here
+works on a single archive path, while the PDS4 tool looks its archives up in a table and
+loops over however many cover the target.
+
+The driver is ``_common.run_main()``. Its own ``archive_targets()`` is what a command-line
+path is expanded by, so each of the five tasks is called with one volume directory and
+nothing else, and the True or False each returns is discarded: only a library caller sees
+it, and ``re_validate`` is the one that does.
+
+**The specification's log suffix is '_links', not '_archives'.** A run writes
+``<volume>_links_<time tag>_<task>.log``, which is the suffix ``pdslinkshelf`` passes for
+the same volume and the same task names. The two do not collide, because the tool's
+``progname`` becomes a directory component of the log path and the two prognames differ.
+The PDS4 tool passes '_archives'.
+
+Two fields of the specification are set here and read nowhere a run of this tool reaches:
+``index_ext``, which only the index shelf tools' target expansion reads, and
+``holdings_sentinel``, which only the other two families read. ``file_log_level`` is the
+opposite case: 'info' is the method three of the four shared functions report each file
+through, so the ``{'info': 100}`` entries in the shared default limits cap this tool's
+per-file lines, while the same lines in a PDS4 run go through 'normal', which no entry in
+those defaults names.
+"""
 
 import os
 import sys
@@ -25,8 +59,44 @@ LOGNAME = 'pds.validation.archives'
 ################################################################################
 
 def read_archive_info(tarpath, *, logger=None, limits=None):
-    """Return a list of tuples (abspath, dirpath, nbytes, modtime) from a
-    .tar.gz file.
+    """Return what one archive file holds, as the tuples a directory tree is compared to.
+
+    This is the other half of the pair ``_archives_common.validate_tuples()`` compares:
+    that function's first argument comes from a walk of the filesystem and its second from
+    a call to this. The two are built to the same shape, so a member's absolute path is
+    reconstructed by joining the prefix the archive was written under to the member's own
+    interior name, and a directory member contributes a byte count and a modification time
+    of zero exactly as a directory on disk does.
+
+    **Three kinds of member are logged and then inventoried anyway.** A ``.DS_Store`` and
+    a dot-underscore file are each reported as an error, and an invisible file under a
+    level of its own, but none of the three is left out of the result. Since the walk this
+    is compared against does leave the first two out, such a member is reported twice:
+    once here, and again as "Missing from directory".
+
+    A missing archive file is reported at critical level, which the run's tally counts as
+    a fatal, and the result is an empty list rather than an exception. So a validation of
+    a volume that has never been archived reports the absence, gives the comparison
+    nothing to match, and ends the run with a nonzero exit status. The check is made
+    before the log level for this scope is opened, so the message is written at the level
+    the caller had open. The PDS4 tool makes no such check.
+
+    Parameters:
+        tarpath (str): The archive file to read. A relative path is made absolute.
+        logger: The logger to report through. Defaults to the tool's own.
+        limits (dict): Message limits for this scope, merged over the shared defaults.
+
+    Returns:
+        list: (absolute path, interior path, nbytes, modtime) tuples, in the order the
+        tarfile lists its members, and an empty list if the file does not exist.
+
+    Raises:
+        ValueError: raised by ``from_abspath()``, before any log line is written, for a
+            path outside every holdings tree.
+        OSError: raised by ``tarfile.open()`` for a file that exists and cannot be read.
+        tarfile.ReadError: raised by the same ``tarfile.open()`` call for a file that is
+            not a gzipped tar. Both it and the OSError above are logged through
+            ``exception()`` and re-raised, as is anything else the read raises.
     """
 
     if limits is None:
@@ -86,7 +156,43 @@ def read_archive_info(tarpath, *, logger=None, limits=None):
 
 def write_archive(pdsdir, *, clobber=True, archive_invisibles=True,
                   logger=None, limits=None):
-    """Write an archive file containing all the files in the directory."""
+    """Write the .tar.gz file for one volume, replacing what is there or refusing to.
+
+    One call writes one archive. The whole tree is handed to ``tarfile`` in a single
+    ``add()`` with the shared member filter attached, so what is left out is the filter's
+    decision and not this function's, and the interior name each member gets is its
+    absolute path with the leading characters ``archive_lskip()`` counts removed.
+
+    The parent directory is created if it is not there, so the first archive of a volume
+    set does not need the archives tree to exist first.
+
+    **With ``clobber`` false and an archive already there, this logs an error and returns
+    without writing.** Its caller does not learn that: ``initialize()`` returns True
+    either way.
+
+    The "Written" line is logged before the file is closed, so it records that the members
+    were added rather than that the archive is complete on disk.
+
+    Parameters:
+        pdsdir: The volume directory to archive. Its abspath is the tree that is added and
+            its ``root_`` is what the logger reports paths relative to.
+        clobber (bool): True to replace an archive that is already there, False to log an
+            error and leave it alone.
+        archive_invisibles (bool): True to archive files with a dot component in their
+            path, False to skip them. Every call in this package leaves it True.
+        logger: The logger to report through. Defaults to the tool's own.
+        limits (dict): Message limits for this scope, merged over the shared defaults.
+
+    Raises:
+        ValueError: raised by ``archive_path_and_lskip()`` for a directory that is a
+            checksum or archive path, or that has no volume name. A command line cannot
+            reach the first two, which ``archive_targets()`` rejects before any task runs.
+        OSError: raised by ``makedirs()`` if the archives tree cannot be created, and by
+            ``tarfile.open()`` or ``add()`` if the archive cannot be written. Each is
+            logged through ``exception()`` and re-raised, as is anything else the write
+            raises. The partly written archive is left in place, and so is the open file
+            object, which is closed only on the path where nothing was raised.
+    """
 
     if limits is None:
         limits = {}
@@ -132,18 +238,69 @@ def write_archive(pdsdir, *, clobber=True, archive_invisibles=True,
 ################################################################################
 
 def initialize(pdsdir, *, logger=None, limits=None):
+    """Write the archive for one volume, refusing to replace one already there.
+
+    The refusal is ``write_archive()``'s, which logs an error and writes nothing when the
+    file exists. **This returns True whether it wrote an archive or refused to**, so the
+    return value reports that the task ran rather than that anything was written; what
+    distinguishes the two is the error line, and through it the run's exit status.
+
+    Parameters:
+        pdsdir: The volume directory to archive.
+        logger: The logger to report through. Defaults to the tool's own.
+        limits (dict): Message limits, passed on to the write.
+
+    Returns:
+        bool: True, always.
+    """
+
     if limits is None:
         limits = {}
     write_archive(pdsdir, clobber=False, logger=logger, limits=limits)
     return True
 
 def reinitialize(pdsdir, *, logger=None, limits=None):
+    """Write the archive for one volume, replacing whatever is there.
+
+    This is ``initialize()`` with the refusal turned off. Nothing is versioned first: the
+    old archive is overwritten in place, and the log-directory versioning the checksum and
+    shelf tools do through ``_shelf_common.move_old()`` has no counterpart for archives.
+
+    Parameters:
+        pdsdir: The volume directory to archive.
+        logger: The logger to report through. Defaults to the tool's own.
+        limits (dict): Message limits, passed on to the write.
+
+    Returns:
+        bool: True, always.
+    """
+
     if limits is None:
         limits = {}
     write_archive(pdsdir, clobber=True, logger=logger, limits=limits)
     return True
 
 def validate(pdsdir, *, logger=None, limits=None):
+    """Report every way one volume and its archive disagree.
+
+    The directory tree is walked, the archive is read, and the two inventories are
+    compared. Nothing is written whatever the answer, and every disagreement is logged, so
+    one call reports all of them rather than the first.
+
+    This is also the entry point ``re_validate`` reaches, as a library function rather
+    than through the command line, for each volume type it was asked to re-validate.
+
+    Parameters:
+        pdsdir: The volume directory to check.
+        logger: The logger to report through. Defaults to the tool's own.
+        limits (dict): Message limits, passed on to the walk, the read and the comparison.
+
+    Returns:
+        bool: True if the two agree on every entry, False if any error was logged. A
+        volume with no archive at all comes back False, since the empty inventory the read
+        returns leaves every real file "Missing from tar file".
+    """
+
     if limits is None:
         limits = {}
     dir_tuples = _archives_common.load_directory_info(SPEC, pdsdir, logger=logger,
@@ -156,6 +313,27 @@ def validate(pdsdir, *, logger=None, limits=None):
                                    limits=limits)
 
 def repair(pdsdir, *, logger=None, limits=None):
+    """Rewrite one volume's archive if it disagrees with the directory, and not otherwise.
+
+    Both inventories are sorted and compared as whole lists, so this reports that
+    something differs and not what: ``validate()`` is the task that names the
+    disagreements one by one. Where they differ, the archive is rewritten from scratch;
+    where they agree, nothing is written and nothing is touched, which is unlike the
+    checksum and shelf tools' repair tasks, since an archive carries no modification date
+    of its own to fall behind the files in it.
+
+    A volume with no archive at all is a warning rather than an error, and is handed to
+    ``initialize()``.
+
+    Parameters:
+        pdsdir: The volume directory to repair the archive of.
+        logger: The logger to report through. Defaults to the tool's own.
+        limits (dict): Message limits, passed on to the read, the walk and the write.
+
+    Returns:
+        bool: True if an archive was written or initialized, False if the two agreed and
+        the repair was canceled.
+    """
 
     if limits is None:
         limits = {}
@@ -188,6 +366,23 @@ def repair(pdsdir, *, logger=None, limits=None):
     return True
 
 def update(pdsdir, *, logger=None, limits=None):
+    """Write the archive for one volume only if there is not one already.
+
+    An archive that is there is left exactly as it is, and its contents are not read: this
+    task never discovers that an existing archive is out of date, which is what the
+    ``--help`` text means by saying that pre-existing archive files are not updated. Its
+    use is a command line naming a volume set, which ``archive_targets()`` expands into
+    every volume in it, so a set that has gained a volume gets that one archived and the
+    rest untouched.
+
+    Parameters:
+        pdsdir: The volume directory to archive if it has no archive.
+        logger: The logger to report through. Defaults to the tool's own.
+        limits (dict): Message limits, passed on to the write.
+
+    Returns:
+        bool: True if an archive was written, False if one was already there.
+    """
 
     if limits is None:
         limits = {}
@@ -207,12 +402,60 @@ def update(pdsdir, *, logger=None, limits=None):
 ################################################################################
 
 def archive_lskip(pdsdir):
-    """Return the length of the path prefix that archive-relative paths drop."""
+    """Return the length of the path prefix that archive-relative paths drop.
+
+    This is the specification's ``lskip_for``, and it is read in one place:
+    ``_archives_common.load_directory_info()`` calls it once per walk and slices that many
+    characters off each absolute path to form the interior path the tuple carries.
+    ``write_archive()`` takes the same count from the same method for the interior names
+    it gives the members, so the two agree by construction rather than by arrangement.
+
+    The count ends before the volume name, so an interior path begins with it. It counts
+    characters of the **archived directory's** path and not of the archive file's, which
+    carries an extra "archives-" component; the two are the two halves of one call and
+    only the second one is used here.
+
+    Parameters:
+        pdsdir: The volume directory being archived.
+
+    Returns:
+        int: The number of leading characters to drop.
+
+    Raises:
+        ValueError: raised by ``archive_path_and_lskip()`` for a directory that is a
+            checksum or archive path, or that has no volume name.
+    """
 
     return pdsdir.archive_path_and_lskip()[1]
 
 def archive_targets(pdsf, path):
-    """Return the volume directories one command-line path names."""
+    """Return the volume directories one command-line path names.
+
+    This is the specification's ``expand_target``, which ``_common.run_main()`` calls once
+    per command-line path, and it is what makes a command line naming a volume set do the
+    work for every volume in it.
+
+    A path resolving to a volume gives that volume. Anything else is taken as naming a
+    volume set, whose directory children are returned and whose files are not, which is
+    what leaves a volume-set level readme out.
+
+    Parameters:
+        pdsf: The PdsFile the command-line path resolved to.
+        path (str): The absolute path it resolved to, for the rejection messages.
+
+    Returns:
+        list: The volume directories to archive, which is one directory or all of a volume
+        set's.
+
+    Raises:
+        SystemExit: from ``sys.exit()`` inside
+            ``_archives_common.reject_checksum_and_archive_paths()``, with status 1 for a
+            path naming checksum files or archive files.
+        AttributeError: from the ``childnames`` read, for a path that has neither a volume
+            nor a volume set above it, such as a category directory: ``volset_pdsfile()``
+            answers None there and nothing checks it. The PDS4 tool cannot reach this, as
+            its own expansion returns the path itself.
+    """
 
     _archives_common.reject_checksum_and_archive_paths(pdsf, path)
 
@@ -249,6 +492,18 @@ TASKS = {'initialize': initialize,
          'update': update}
 
 def main():
+    """Run the tool: hand this module's specification and tasks to the generic driver.
+
+    This is the ``pdsarchives`` console script's entry point. It does not return: the
+    driver exits with status 1 if the run logged a fatal or an error and 0 otherwise, and
+    exits before opening a log for a command line that names no task or a path that does
+    not exist.
+
+    Raises:
+        SystemExit: from ``_common.run_main()``, on every path out of a run that is not an
+            exception.
+    """
+
     _common.run_main(SPEC, TASKS, sys.argv)
 
 if __name__ == '__main__':
