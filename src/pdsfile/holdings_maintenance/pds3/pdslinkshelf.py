@@ -1,12 +1,51 @@
 #!/usr/bin/env python3
 ################################################################################
-# # pdslinkshelf.py library and main program
-#
-# Syntax:
-#   pdslinkshelf.py --task path [path ...]
-#
-# Enter the --help option to see more information.
+# pdsfile/holdings_maintenance/pds3/pdslinkshelf.py
 ################################################################################
+
+"""pdslinkshelf: find the links inside a PDS3 volume's files, and shelve them.
+
+A link shelf records, for every file in a volume, either the list of files that file
+points at or the label that describes it. What is here is the scan that finds them, which
+is the one thing the two flavors of this tool do differently, because a PDS3 label names
+the file it describes in ``KEYWORD = FILENAME`` syntax and a PDS4 label in an XML element.
+Everything that reads, writes, compares or drives a link shelf is in
+``_linkshelf_common``, and so are all five tasks; the driver is ``_common.run_main()``.
+
+Four tables here say what the scan means by a link:
+
+  * ``TARGET_REGEX1`` recognizes a label naming the file it describes, and is what the
+    specification carries as ``link_target_regex``. It is the shared file-name pattern
+    with the PDS3 ``keyword = `` prefix in front of it, so it also admits the opening
+    bracket or brace that starts a list of targets running over several records.
+  * ``EXTS_WO_LABELS`` is the five extensions a file is searched for links in --
+    ``.LBL``, ``.CAT``, ``.TXT``, ``.FMT`` and ``.SFD`` -- and is at the same time the set
+    of extensions a file does not need a label of its own for. The one test serves both,
+    which is why a ``.TXT`` file that has a label is reported as carrying an unnecessary
+    one rather than as satisfying a requirement.
+  * ``KNOWN_MISSING_LABELS`` names the files a label is not looked for: "missing" for one
+    that has no label and is not expected to, and "unneeded" for one that carries a PDS3
+    label inside itself.
+  * ``REPAIRS``, imported from ``linkshelf_repairs``, is the table of published links that
+    are wrong and what each was meant to say. That module documents how an entry works.
+
+The specification names ``_shelf_common.UNIT_LOG_PATH_METHOD`` as its log path method,
+which is ``log_path_for_bundle`` on the shared PdsFile base rather than the
+``log_path_for_volume`` alias ``Pds3File`` also carries; the two are the same method,
+since the alias forwards. Its log suffix is '_links',
+which ``pdsarchives`` also passes, and the two do not collide because each tool's
+``progname`` becomes a directory component of the log path.
+
+One field of the specification is set here and read nowhere a run of this tool reaches:
+``index_ext``, which only the index shelf tools' target expansion reads. Both of the
+others that differ by flavor do reach something: ``holdings_sentinel`` is where the
+upward search for a non-local link stops, and ``file_log_level`` is the method a created
+directory is reported through when a shelf is written.
+
+The five shared tasks are bound to this module's own names with this specification
+supplied. ``re_validate`` reaches ``validate`` that way, as a library function rather than
+through a command line.
+"""
 
 import datetime
 import os
@@ -80,22 +119,62 @@ EXTS_WO_LABELS = {'.LBL', '.CAT', '.TXT', '.FMT', '.SFD'}
 ################################################################################
 
 def generate_links(dirpath, old_links=None, *, logger=None, limits=None):
-    """Generate a dictionary keyed by the absolute file path for files in the
-    given directory tree, which must correspond to a volume.
+    """Return what every file in one volume points at, or what points at it.
 
-    Keys ending in .LBL, .CAT and .TXT return a list of tuples
-        (recno, link, target)
-    for each link found. Here,
-        recno = record number in file;
-        link = the text of the link;
-        target = absolute path to the target of the link.
+    This is the specification's ``generate_links``, and the five shared tasks call nothing
+    else to learn what a volume holds. It walks the volume once and does two passes over
+    each directory: the first reads every file with one of the five link-bearing
+    extensions and resolves what it names, and the second decides which label, if any,
+    describes each of the remaining files.
 
-    Other keys return a single string, which indicates the absolute path to the
-    label file describing this file.
+    **Resolving a link is a search, and it can end four ways.** A name matching a file in
+    the same directory resolves there, case-insensitively, and the shelved name takes the
+    case the filesystem has. A name that matches nothing local is put through the repair
+    table first, then discarded if it parses as a float or as a Fortran format code such
+    as ``F10.3``, and only then searched up the tree. A search that fails is an error for
+    a ``.FMT`` or a ``.CAT`` name and a debug line for anything else, on the reasoning
+    that most unresolved candidates are not links at all.
 
-    Unlabeled files not ending in .LBL, .CAT or .TXT return an empty string.
+    A label is credited to a file on one of three grounds, in order: the label's own name
+    matches the file's up to the extension; exactly one label in the directory named the
+    file in a target position; or, failing both, the file is reported as having a missing
+    or an ambiguous label and is shelved with an empty string. ``KNOWN_MISSING_LABELS``
+    excuses a file from the search altogether.
 
-    Also return the latest modification date among all the files checked.
+    **The modification time is the newest among every file the walk sees**, taken before
+    any skip test and whether or not the file is opened, so a ``.DS_Store`` or a backup
+    file touched today moves it. Four kinds of file are skipped after that: a
+    ``.DS_Store``, a dot-underscore file, a backup file, and any file whose basename
+    begins with a dot.
+
+    ``old_links`` is what makes an update affordable and is the one argument that changes
+    the shape of the answer. A file already keyed in it is not re-read, and its shelved
+    triples are carried through as they are. **The result is still assembled from the
+    files the walk found**, so an entry in ``old_links`` for a file that has since been
+    deleted is dropped rather than carried.
+
+    Parameters:
+        dirpath (str): The volume directory to walk. A relative path is made absolute.
+        old_links (dict): What the shelf already holds, keyed by absolute path, or None
+            for a scan from scratch. Its string values seed the label map and its list
+            values are carried through untouched.
+        logger: The logger to report through. Defaults to the tool's own.
+        limits (dict): Message limits for this scope, merged over the shared defaults.
+
+    Returns:
+        tuple: the links keyed by absolute path, and the newest modification time as a
+        timestamp. A file that points at others maps to a list of (record number, link
+        text, absolute path) triples; a file that is pointed at maps to the absolute path
+        of its label; a file that neither points nor is pointed at maps to the empty
+        string, and so does one whose label is missing or ambiguous.
+
+    Raises:
+        ValueError: raised by ``from_abspath()``, before any log line is written, for a
+            directory outside every holdings tree.
+        OSError: raised by ``getmtime()`` on a file the walk listed and that is gone by
+            the time it is measured, by ``read_links()`` on one that cannot be read, and
+            by the ``listdir()`` calls inside the upward search. Each is logged through
+            ``exception()`` and re-raised, as is anything else the scan raises.
     """
 
     if old_links is None:
@@ -431,7 +510,26 @@ def generate_links(dirpath, old_links=None, *, logger=None, limits=None):
 ################################################################################
 
 def link_targets(pdsf, path):
-    """Return the volume directories one command-line path names."""
+    """Return the volume directories one command-line path names.
+
+    This is the specification's ``expand_target``, and it exists to supply the
+    specification to the shared expansion: ``_common.run_main()`` calls ``expand_target``
+    with the PdsFile and the path alone, so the three-argument shared function cannot be
+    named directly. It is the reason both link shelf tools carry a function of this name
+    that does nothing else.
+
+    Parameters:
+        pdsf: The PdsFile the command-line path resolved to.
+        path (str): The absolute path it resolved to, for the rejection messages.
+
+    Returns:
+        list: The volume directories to shelve, which is a volume set's directory
+        children, the path itself if it is a directory, and nothing otherwise.
+
+    Raises:
+        SystemExit: from ``sys.exit()`` inside ``_linkshelf_common.link_targets()``, with
+            status 1 if the path names checksum files or archive files.
+    """
 
     return _linkshelf_common.link_targets(SPEC, pdsf, path)
 
@@ -465,6 +563,18 @@ repair = TASKS['repair']
 update = TASKS['update']
 
 def main():
+    """Run the tool: hand this module's specification and tasks to the generic driver.
+
+    This is the ``pdslinkshelf`` console script's entry point. It does not return: the
+    driver exits with status 1 if the run logged a fatal or an error and 0 otherwise, and
+    exits before opening a log for a command line that names no task or a path that does
+    not exist.
+
+    Raises:
+        SystemExit: from ``_common.run_main()``, on every path out of a run that is not an
+            exception.
+    """
+
     _common.run_main(SPEC, TASKS, sys.argv)
 
 if __name__ == '__main__':

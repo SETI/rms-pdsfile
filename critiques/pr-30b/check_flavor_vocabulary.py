@@ -119,7 +119,11 @@ ALLOWED = (
     ('pds3', 'bundlename',
      'PdsFile.bundlename is what run_selection_main tests to pick a log path method'),
 
-    # A cross-flavor fact, scoped to the one module whose prose forces it.
+    # Cross-flavor facts, each scoped to the one module whose prose forces it.
+    ('pds4linkshelf', 'linkshelf_repairs',
+     'the pds3 repair table has no counterpart here because this tool declares REPAIRS as '
+     'an empty translator; the asymmetry is a recorded decision and this module is where '
+     'a reader looking for the missing module arrives'),
     ('pds4checksums', 'pdsinfoshelf',
      "pds4checksums.main() substitutes the literal 'pdsinfoshelf' into its own argv, so "
      'the docstring describing that substitution has to name it. The substitution never '
