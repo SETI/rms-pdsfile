@@ -5802,11 +5802,15 @@ rediscovery.
      rounds 1, 2 and 4, each independently.
      **Owner: a later maintenance-tool PR.**
 
-305. **`pdsinfoshelf.get_info()`'s `checkdict` parameter is accepted, threaded through the
-     recursion and read by nothing.** The digest lookup is in `get_info_for_file()`, a
-     sibling nested function, which reads the enclosing call's `checkdict` from its
-     closure. It is the same object, so the argument is inert rather than wrong. Identical
-     in `pds4infoshelf`.
+305. **`pdsinfoshelf.get_info()`'s `checkdict` parameter is never read for its value.**
+     It has exactly one load site in that function, as an argument to the recursive call,
+     and nothing else. The digest lookup is in `get_info_for_file()`, which is a
+     **sibling** nested function rather than one nested inside `get_info()`, so its free
+     `checkdict` binds to `generate_infodict()`'s local and not to this parameter.
+     Measured two ways: an AST count of the load sites, and a mutated copy in which the
+     recursive call is handed a decoy dictionary, which leaves every digest unchanged. The
+     parameter is inert -- the digests still come from the enclosing scope -- rather than
+     wrong. Identical in `pds4infoshelf`.
      **Owner: a later maintenance-tool PR.**
 
 306. **Two different derivations of the sidecar path in one module.** `write_infodict()`

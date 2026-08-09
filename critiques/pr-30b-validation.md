@@ -507,9 +507,12 @@ would be the defect concentration, and several of them are where the reviewers f
 * **`_shelves.shelf_lookup()` reads the info shelf's `.py` sidecar**, taking its second
   line to answer a question about the unit rather than unpickling the shelf. Two properties
   of `write_infodict()` are load-bearing for that and neither is obvious from it: the
-  entries are sorted by absolute path, and the unit directory's own path is a prefix of
-  every other, so its entry -- the one keyed by the empty string -- is always written first
-  and is the file's second line. Confirmed against a production sidecar.
+  entries are sorted by absolute path, and where the dictionary covers a whole unit the
+  unit directory's own path is a prefix of every other, so its entry -- the one keyed by
+  the empty string -- is written first and is the file's second line. Confirmed against a
+  production sidecar. **The ordering is the caller's to supply and not this function's to
+  enforce**, and one caller does not: `reinitialize()` on a selection hands it a
+  single-entry dictionary, and the pair it writes has no empty key at all.
 * **`file_log_level` is set by all four checksum and info shelf specifications and read by
   none of them.** Its four readers are all in the archive and link shelf machinery, and the
   per-file lines in those four modules name `info()` and `normal()` directly. The field is
@@ -542,12 +545,21 @@ would be the defect concentration, and several of them are where the reviewers f
 * **The repair table is reached once per file, not once per link.** With an empty table --
   which is `pds4linkshelf`'s -- the per-link loop never runs, so no link is looked up at
   all, and `LinkInfo.remove_path()`, which lives inside that loop, is unreachable.
-* **A label is credited only where it names the file**, in both flavors. A name match on
-  its own produces a "does not point to file" error and a missing-label report.
-* **`pds4linkshelf` credits by name first and by `<file_name>` element second.** The later
-  pass skips any file the earlier one credited.
-* **`get_info()`'s `checkdict` parameter is inert**: the digest lookup reads the enclosing
-  call's dictionary from its closure.
+* **A label is credited only where it mentions the file**, in both flavors, and neither
+  flavor's first crediting path asks how the mention was matched: a file named in a prose
+  note or an XML comment credits the label as surely as one named in a target position.
+  Only the last path, the candidate list, requires a target position. A name match with no
+  mention produces a "does not point to file" error and a missing-label report, and only
+  where a label is required.
+* **`pds4linkshelf` credits by name first and by any mention second.** The later pass
+  compares the file's basename against every link the label yielded, general-pattern
+  matches included, and skips any file the earlier pass credited; the log line calls it a
+  file_name tag and the comparison never reads one.
+* **`get_info()`'s `checkdict` parameter is never read for its value**: it is passed to
+  the recursive call and nowhere else, and the digest lookup is in `get_info_for_file()`,
+  a **sibling** nested function whose closure reaches `generate_infodict()`'s local of the
+  same name. Handing the recursive call a decoy dictionary leaves every digest
+  unchanged.
 * **`generate_checksums()`'s modification time is the newest among every file the walk
   sees**, taken before any skip test, so a `.DS_Store` touched today dates the unit. The
   same is true of both link shelf scans. It is what makes the "out of date" comparison in
@@ -659,8 +671,9 @@ reviewers were given.
 
 ## 12. What remains of Phase 7's docstring work
 
-Measured at `4a59b74` over all 17 modules under `holdings_maintenance/pds3/` and `pds4/`:
-**271 findings over 17 files**, 105 functions, 54 of them undocumented, 291 parameters.
+Measured at `4a59b74` over all 17 files under `holdings_maintenance/pds3/` and `pds4/` --
+15 tool modules and the two zero-byte `__init__.py` beside them: **271 findings over 17
+files**, 105 functions, 54 of them undocumented, 291 parameters.
 **177 of the 271 are this PR's eleven files**, and they are now zero.
 
 What is left is the four standalone tools -- `re_validate.py`, `pdsdependency.py`,
