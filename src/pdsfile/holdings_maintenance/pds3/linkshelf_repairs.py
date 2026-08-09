@@ -1,17 +1,76 @@
 ##########################################################################################
 # pdsfile/holdings_maintenance/pds3/linkshelf_repairs.py
-#
-# The table of known-bad links in PDS3 volumes, and what each one should have said.
-#
-# pdslinkshelf consults this while it scans a file for links: a substring that looks
-# like a link is looked up here first, and any replacement found is used in place of
-# what the file says. The keys are volume paths, matched as regular expressions; the
-# values map the text found to the text meant.
-#
-# This is a data table, not code. It lives apart from the tool because it is a third
-# of the tool's length and grows every time a volume is found to carry a bad link,
-# whereas the tool itself does not.
 ##########################################################################################
+
+"""The known-bad links in the published PDS3 volumes, and what each one was meant to say.
+
+A PDS3 label, catalog file or text file names the files it points at, and some of those
+names are wrong in the volume as it was published: a format file named without the
+directory it sits in, a catalog file named for the wrong spacecraft, a figure named with
+a dot where the file has an underscore. A published volume is not corrected, so the
+correction lives here and ``pdslinkshelf`` applies it as it scans.
+
+``linkshelf_repairs`` is a data table and nothing else: it defines no function and holds
+no logic, and it sits apart from ``pdslinkshelf`` because it is longer than the tool and
+grows whenever another volume is found to carry a bad link, while the tool does not.
+
+``REPAIRS`` is a ``translator.TranslatorByRegex`` of 141 entries, each a triple:
+
+  * a regular expression matched against the **absolute path of the file being scanned**.
+    The translator anchors it at both ends, so a pattern describes a whole path rather
+    than a substring of one, which is why nearly every entry begins ``.*/``;
+  * the ``re`` flags for that pattern, which is 0 on 139 of the 141 entries. The two that
+    carry ``re.I`` are both ``COUVIS_8xxx`` entries; measured against the published
+    holdings, each matches exactly the same files with the flag and without it, so what
+    the flag buys them is not visible in the tree as it stands;
+  * a second translator, from the text a link was written with to the text it was meant to
+    carry. 77 entries carry a ``translator.TranslatorByDict``, whose 267 entries between
+    them name one link text each; 64 carry a nested ``translator.TranslatorByRegex``,
+    whose 90 entries between them describe a family of link texts and can rewrite one by
+    group.
+
+``pdslinkshelf.generate_links()`` calls ``REPAIRS.all()`` once for each file it scans,
+which returns the second translator of every entry whose pattern matched that path, and
+then asks each of those in turn for a replacement for one link's text. **The first one
+that answers is applied and the rest are not consulted**, so where two entries match the
+same file, the one written earlier in this table wins.
+
+What a replacement does depends on what it is rather than on which entry produced it:
+
+  * a bare basename becomes the name the link is resolved under, and the search for a file
+    of that name proceeds as though the label had been written that way;
+  * a name carrying a slash is joined to the directory the scanned file is in and checked
+    for existence immediately, so a repair that points at nothing is reported as an error
+    rather than left to fail later as an unresolvable link;
+  * the empty string, which 24 of the 267 dictionary entries use, marks the link as one to
+    drop, so it is left out of the link shelf instead of being reported as missing.
+
+A link written with a directory in front of it is looked up as written and, failing that,
+cut back to its basename by ``LinkInfo.remove_path()`` and looked up again. **The
+truncation is made in place and stands whether or not the second lookup finds anything**,
+so an entry written for the basename form does reach a link that carried a directory, and
+a link cut back by an entry that then failed to match it is shelved under its basename.
+That is reached only where the **file** matched at least one entry of this table: where it
+matched none there is nothing to look a link up in, the truncation never happens, and a
+link keeps the directory it was written with.
+
+Only the files ``pdslinkshelf`` reads for links reach this table, which are those whose
+last four characters, upper-cased, are ``.LBL``, ``.CAT``, ``.TXT``, ``.FMT`` or ``.SFD``.
+
+**An entry is added when a run reports a link it cannot resolve** -- "Unable to locate
+.FMT file", "Unable to locate .CAT file", or a label that does not point at the file named
+after it -- and the volume itself cannot be changed. Entries are grouped by mission, in
+roughly the alphabetical order of the volume set names, each group under a comment naming
+it. Most of the JNOJIR group is generated by a comprehension over 50 volumes rather than
+written out, because those 50 entries differ from one another only in a volume number;
+three more are written out beside them.
+
+There is no PDS4 counterpart to this module. ``pds4linkshelf`` declares its own
+``REPAIRS`` as an empty translator, so its one lookup per file matches nothing and the
+loop over the matched entries, which sits inside the loop over the file's links, never has
+a body to run; no link is looked up at all. That asymmetry is deliberate rather than an
+omission.
+"""
 
 import re
 

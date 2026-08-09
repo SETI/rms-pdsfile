@@ -1,12 +1,65 @@
 #!/usr/bin/env python3
 ################################################################################
-# pdschecksums.py library and main program
-#
-# Syntax:
-#   pds4checksums.py --task path [path ...]
-#
-# Enter the --help option to see more information.
+# pdsfile/holdings_maintenance/pds4/pds4checksums.py
 ################################################################################
+
+"""pds4checksums: write and check the MD5 manifest of a PDS4 bundle.
+
+A checksum file is a text manifest, one line per file, holding a 32-character MD5 digest
+and the file's path below the bundle set. It sits in the ``checksums-<category>/``
+parallel of the tree it describes, and what one manifest covers is
+``checksum_path_and_lskip()``'s answer rather than this tool's: one file per bundle in an
+ordinary category, one for the whole bundle set in an archives category, and one for each
+of the three kinds of directory that sit under a bundle set without being a bundle -- a
+name starting ``checksums_``, a name starting ``superseded``, or a name ending
+``_support``. This tool writes those manifests and checks a tree against one.
+
+The driver is ``_shelf_common.run_selection_main()``, which this tool reaches because a
+command-line path here can name **one file inside a bundle** as well as a whole bundle or
+bundle set. Every task below therefore takes a ``selection``, which is a basename and
+not a path, and a task given one narrows its work to the file of that name while leaving
+every other entry in the manifest as it was. The driver enforces the one case where that
+is not safe by itself: ``reinitialize`` on a selection is run as ``update`` instead, since
+rebuilding a whole manifest from one named file would erase the rest of it.
+
+``--archives`` redirects a command-line path to the archive files of the same target.
+``--infoshelf`` is declared here too, and **the chain it asks for does not happen**: what
+``main()`` does with it is described there.
+
+Beyond the driver and the path resolution, what this tool shares with the rest is small
+and specific: ``_shelf_common.hashfile()`` computes a digest, ``_shelf_common.move_old()``
+versions the manifest a task is about to replace into the run's log directories, and
+``CHECKSUM_FILE`` is the record that says how. Everything else here -- the walk, the
+manifest format, the comparison -- is this module's, and is a near-copy of the PDS3
+tool's. The differences between the two are worth knowing and none of them is a difference
+of purpose; they are recorded on the functions that carry them.
+
+**A run's exit status does not report what a task found.** The driver returns rather than
+exiting and ``main()`` never reads the status it computed, so a ``--validate`` that
+reported every file in a bundle as a mismatch still exits 0. What a run does exit nonzero
+for is everything settled before a task starts -- a command line naming no task exits 1, a
+command line the parser cannot classify exits 2, and a path outside a holdings tree or
+naming checksum files exits 1 -- and a task that raises ends the process through the
+traceback. That is deliberate in the driver, which leaves the decision to the tool, and
+the silence about what a task found is a property of these two tools rather than of the
+other eight.
+
+Two fields of the specification are set here and read nowhere a run of this tool reaches.
+``index_ext`` is read only by the index shelf tools' target expansion. And
+``file_log_level`` is set to 'normal' and reaches nothing: its four readers are all in the
+archive and link shelf machinery, and the per-file lines below name their level directly,
+which is why the same lines go through ``normal()`` here and through ``info()`` in the
+PDS3 tool without either tool reading the field that says so. ``log_path_method`` is a
+third field this driver never consults, and it is not set here at all: it stays at its
+empty default, because the driver picks between the bundle and the bundle set log path per
+target instead.
+
+``progname`` is 'pdschecksums', not this module's name, which is the convention all five
+PDS4 tools follow: it is what the ``--help`` description and the "Missing task" error call
+the tool, and it names the subdirectory of every log root, so both flavors write into one
+directory. Both also share the logger name 'pds.validation.checksums', which is what stops
+the two from being driven from a single process.
+"""
 
 import datetime
 import os
@@ -34,21 +87,53 @@ BACKUP_FILENAME = re.compile(r'.*[-_](20\d\d-\d\d-\d\dT\d\d-\d\d-\d\d'
 
 def generate_checksums(pdsdir, selection=None, oldpairs=None, *, regardless=True,
                        logger=None, limits=None):
-    """Generate a list of tuples (abspath, checksum) recursively from the given
-    directory tree.
+    """Return the MD5 digest of every file in one bundle, and the newest date seen.
 
-    If a selection is specified, it is interpreted as the basename of a file,
-    and only that file is processed.
+    The walk is recursive and covers files only; a directory has no digest and contributes
+    nothing. Four kinds of file are left out: a ``.DS_Store``, a dot-underscore file, a
+    backup file matching ``BACKUP_FILENAME`` or carrying " copy" in its basename, and,
+    with a selection, everything not named by it. An invisible file is logged and kept.
 
-    The optional oldpairs is a list of (abspath, checksum) pairs. For any file
-    that already has a checksum in the shortcut list, the checksum is copied
-    from this list rather than re-calculated. This list is merged with the
-    selection if a selection is identified.
+    **A digest is computed only where one is not already known.** ``oldpairs`` seeds a
+    dictionary of what is known, so a file already in it is copied across rather than
+    re-read, which is what makes an update of a large bundle affordable. ``regardless``
+    overrides that for a selection alone: with both set, the named file is re-read even
+    though its digest is there.
 
-    If regardless is True, then the checksum of a selection is calculated
-    regardless of whether it is already in abspairs.
+    **The modification time is the newest among every file the walk sees**, taken before
+    any of the four skip tests and whether or not the file is opened. A ``.DS_Store`` or a
+    backup file touched today therefore moves it, and so does a file excluded by the
+    selection. The callers that compare it against the manifest's own date rely on that
+    reading: it answers "has anything under here changed", not "has anything checksummed
+    here changed".
 
-    Also return the latest modification date among all the files checked.
+    The order of the result is the order of ``oldpairs`` first, in full, and then the
+    files the walk found that were not already in it, in walk order.
+
+    Parameters:
+        pdsdir: The bundle directory to walk. Its abspath is the root of the walk and its
+            ``root_`` is what the logger reports paths relative to.
+        selection (str): The basename of the one file to digest, or None for all of them.
+        oldpairs (list): (absolute path, digest) pairs already known. None is read as none
+            known, and the PDS3 tool has a mutable default of ``[]`` in this position.
+        regardless (bool): True to digest a selection even where ``oldpairs`` already
+            carries it.
+        logger: The logger to report through. Defaults to the tool's own.
+        limits (dict): Message limits for this scope, merged over this module's defaults.
+
+    Returns:
+        tuple: the (absolute path, digest) pairs, and the newest modification time as a
+        timestamp. A selection that matched no file, or more than one, gives an empty
+        list.
+
+    Raises:
+        OSError: raised by ``getmtime()`` on a file the walk listed and that is gone by
+            the time it is measured, and by ``hashfile()`` on one that cannot be read.
+            Each is logged through ``exception()`` and re-raised, as is anything else the
+            walk raises.
+        KeyError: from the ``__getitem__()`` that re-reads the digest dictionary while
+            restoring the original order, if ``oldpairs`` names one path twice: the first
+            occurrence deletes the entry the second needs.
     """
 
     if limits is None:
@@ -150,10 +235,47 @@ def generate_checksums(pdsdir, selection=None, oldpairs=None, *, regardless=True
 
 def read_checksums(check_path, selection=None, *, logger=None, limits=None):
 
-    """Return a list of tuples (abspath, checksum) from a checksum file.
+    """Return what one MD5 manifest holds, as the pairs a fresh walk is compared to.
 
-    If a selection is specified, then only the checksum with this file name
-    is returned."""
+    **The manifest is parsed by fixed offsets, not by splitting.** A record's first 32
+    characters are the digest and everything from the 35th to the end of the line,
+    stripped of trailing whitespace, is the path; the two characters between are the
+    separator this module writes and are not examined. **A record too short to hold a
+    path, a blank line among them, ends the whole read**: the basename it yields is empty
+    and the test for an invisible file subscripts it. With a selection given, such a
+    record is dropped by the basename comparison above that test and the read completes,
+    so whether a manifest can be read at all depends on the task.
+
+    Each path is made absolute by putting the manifest's own prefix in front of it, which
+    is the counterpart of the trimming ``write_checksums()`` does.
+
+    A ``.DS_Store`` entry and a dot-underscore entry are each reported as an error and
+    left out; an invisible entry is logged and kept. A manifest that is not there is an
+    error and an empty list, and so is a selection that no record names.
+
+    Parameters:
+        check_path (str): The manifest to read. A relative path is made absolute.
+        selection (str): The basename of the one entry to return, or None for all of them.
+        logger: The logger to report through. Defaults to the tool's own.
+        limits (dict): Message limits for this scope, merged over this module's defaults.
+
+    Returns:
+        list: the (absolute path, digest) pairs, in the order the records were read, and
+        an empty list for a missing manifest or an unmatched selection.
+
+    Raises:
+        IndexError: from the ``__getitem__()`` that tests a basename's first character,
+            for a record with no path in it.
+        ValueError: raised by ``from_abspath()``, before any log line is written, for a
+            path outside every holdings tree.
+        OSError: raised by ``open()`` for a manifest that exists and cannot be read. It is
+            logged through ``exception()`` and re-raised, as is anything else the read
+            raises. A ``KeyboardInterrupt`` is not: this handler catches ``Exception``
+            alone, so an interrupt here closes the log level and propagates unlogged. Of
+            the ten other functions in this module, three catch and log an interrupt and
+            seven install no handler at all, so this is the only one whose handler is
+            narrower than what it lets past.
+    """
 
     if limits is None:
         limits = {}
@@ -218,6 +340,35 @@ def read_checksums(check_path, selection=None, *, logger=None, limits=None):
 ################################################################################
 
 def checksum_dict(dirpath, logger=None):
+    """Return one bundle's shelved digests, keyed by absolute path.
+
+    This is the accessor ``pds4infoshelf`` uses rather than one this module's own tasks
+    need: an info shelf entry carries the file's digest, and this is where it comes from.
+    It resolves the manifest's path from the directory, reads it, and turns the pairs into
+    a dictionary, so a path listed twice keeps the digest of its last record.
+
+    Unlike the two functions here that read or write a manifest, it opens no log level
+    of its own, so its "Loading checksums for" and "Checksum load completed" lines are
+    written at whatever level the caller had open, and both are forced past any message
+    limit. It takes no ``limits``, so the read it makes always uses this module's own
+    defaults for that scope.
+
+    Parameters:
+        dirpath (str): The bundle directory whose manifest is to be read. A relative path
+            is made absolute.
+        logger: The logger to report through. Defaults to the tool's own.
+
+    Returns:
+        dict: the digest of each file, keyed by absolute path, and empty if the manifest
+        is not there.
+
+    Raises:
+        ValueError: raised by ``from_abspath()`` for a path outside every holdings tree,
+            and by ``checksum_path_and_lskip()`` for one inside a holdings tree that has
+            no bundle name or that already names checksum files.
+        OSError: raised by ``read_checksums()`` for a manifest that exists and cannot be
+            read.
+    """
 
     dirpath = os.path.abspath(dirpath)
     pdsdir = pdsfile.Pds4File.from_abspath(dirpath)
@@ -239,7 +390,35 @@ def checksum_dict(dirpath, logger=None):
 ################################################################################
 
 def write_checksums(check_path, abspairs, *, logger=None, limits=None):
-    """Write a checksum table containing the given pairs (abspath, checksum)."""
+    """Write one MD5 manifest, in the order the pairs are given.
+
+    Each record is the digest, two spaces, and the path with the manifest's own prefix
+    trimmed off the front, which is what ``read_checksums()`` puts back. The pairs are
+    written as they arrive, so the order of the manifest is the order
+    ``generate_checksums()`` built.
+
+    A ``.DS_Store`` pair and a dot-underscore pair are logged and left out, so a manifest
+    never records one however it got into the list; an invisible file is logged and
+    written. The parent directory is created if it is not there.
+
+    Nothing is versioned here. A caller replacing a manifest that matters calls
+    ``_shelf_common.move_old()`` first, and the three tasks that replace one do.
+
+    Parameters:
+        check_path (str): The manifest to write. A relative path is made absolute.
+        abspairs (list): The (absolute path, digest) pairs to record.
+        logger: The logger to report through. Defaults to the tool's own.
+        limits (dict): Message limits for this scope, merged over this module's defaults.
+
+    Raises:
+        ValueError: raised by ``from_abspath()``, before any log line is written, for a
+            path outside every holdings tree.
+        OSError: raised by ``makedirs()`` if the checksums tree cannot be created and by
+            ``open()`` if the manifest cannot be written. Each is logged through
+            ``exception()`` and re-raised, as is anything else the write raises. The file
+            is closed on every path, so a failure part way through leaves a truncated
+            manifest rather than an open one; the PDS3 tool does not have that guarantee.
+    """
 
     if limits is None:
         limits = {}
@@ -294,9 +473,32 @@ def write_checksums(check_path, abspairs, *, logger=None, limits=None):
 
 def validate_pairs(pairs1, pairs2, selection=None, *, logger=None,
                    limits=None):
-    """Validate the first checksum list against the second.
+    """Report every way a fresh walk's digests and a manifest's disagree.
 
-    If a selection is specified, only a file with that basename is checked."""
+    The second list becomes a dictionary and the first is walked against it. A path the
+    manifest does not carry is "Missing checksum"; a path both carry with different
+    digests is "Checksum mismatch"; a path left in the manifest when the walk has been
+    accounted for is "Extra file". Every disagreement is its own error line and the walk
+    continues, so one call reports all of them.
+
+    **With a selection, the sweep for extra files is skipped entirely.** That is what
+    makes a narrowed run safe: the manifest's other entries are not compared against a
+    walk that was never asked about them, and so are not reported as extra.
+
+    Parameters:
+        pairs1 (list): The (absolute path, digest) pairs a fresh walk found.
+        pairs2 (list): The pairs the manifest holds.
+        selection (str): The basename of the one file to check, or None for all of them.
+        logger: The logger to report through. Defaults to the tool's own.
+        limits (dict): Message limits for this scope. This module's defaults for this
+            scope are empty and are merged into a value that is then not passed, so what
+            reaches the log level is this argument itself.
+
+    Returns:
+        bool: True if the two agree on every entry compared, False if any error was
+        logged. An exception raised part way through propagates instead, where the PDS3
+        tool returns the flag as it stood.
+    """
 
     if limits is None:
         limits = {}
@@ -351,6 +553,30 @@ def validate_pairs(pairs1, pairs2, selection=None, *, logger=None,
 ################################################################################
 
 def initialize(pdsdir, selection=None, logger=None):
+    """Write one bundle's MD5 manifest, refusing to replace one already there.
+
+    A manifest already in place is an error and nothing is walked. **A selection is
+    refused by raising rather than by logging**: there is no sense in creating a manifest
+    that covers one named file, and the exception is what a run of this task on a
+    selection ends with. No other task here refuses a selection at all, and
+    ``pds4infoshelf``'s ``initialize`` refuses one by logging and returning, where its
+    PDS3 twin ends in ``AttributeError`` because it has no logger resolved on that path.
+
+    The driver reaches this on a selection only for the ``initialize`` task itself, since
+    it demotes ``reinitialize`` on a selection to ``update``.
+
+    Parameters:
+        pdsdir: The bundle directory to walk.
+        selection (str): The basename of one file. Anything but None raises.
+        logger: The logger to report through. Defaults to the tool's own.
+
+    Returns:
+        bool: True if a manifest was written, False if one was already there or the walk
+        found no files at all.
+
+    Raises:
+        ValueError: if a selection is given.
+    """
 
     check_path = pdsdir.checksum_path_and_lskip()[0]
 
@@ -375,6 +601,32 @@ def initialize(pdsdir, selection=None, logger=None):
     return True
 
 def reinitialize(pdsdir, selection=None, logger=None):
+    """Rebuild one bundle's MD5 manifest, versioning and replacing what is there.
+
+    Every digest is computed afresh: the walk is given nothing to copy from, so this is
+    the task that finds a manifest entry which is right in the manifest and wrong on disk.
+    The old manifest is copied into the run's log directories before the new one is
+    written.
+
+    A bundle with no manifest is a warning and is handed to ``initialize()``, unless a
+    selection was given, which makes it an error instead, since there is nothing to
+    preserve around the named file.
+
+    **On a selection this rebuilds only the named file's digest and copies the rest**, by
+    reading the existing manifest first and handing it to the walk to copy from. The
+    driver does not let a command line reach this path: a selection turns ``reinitialize``
+    into ``update``, so what runs here on a selection is a direct call rather than a run.
+
+    Parameters:
+        pdsdir: The bundle directory to walk.
+        selection (str): The basename of the one file to rebuild, or None for all of them.
+        logger: The logger to report through. Defaults to the tool's own.
+
+    Returns:
+        bool: True if a manifest was written, and False if there was none to replace and a
+        selection was given, if a selection's own read came back empty, or if the walk
+        found no files.
+    """
 
     check_path = pdsdir.checksum_path_and_lskip()[0]
 
@@ -408,6 +660,24 @@ def reinitialize(pdsdir, selection=None, logger=None):
     return True
 
 def validate(pdsdir, selection=None, logger=None):
+    """Report every way one bundle and its MD5 manifest disagree.
+
+    The manifest is read and the tree is walked from scratch, every file being digested,
+    and the two are compared. Nothing is written whatever the answer.
+
+    **A False here does not reach the exit status of a command-line run**, and it does not
+    reach anything else either: ``main()`` reads the run's outcome only to decide on a
+    chain that never happens, so a run of this task exits 0 whatever it found.
+
+    Parameters:
+        pdsdir: The bundle directory to check.
+        selection (str): The basename of the one file to check, or None for all of them.
+        logger: The logger to report through. Defaults to the tool's own.
+
+    Returns:
+        bool: True if the two agree, and False if there is no manifest, if the read or the
+        walk came back empty, or if any disagreement was logged.
+    """
 
     check_path = pdsdir.checksum_path_and_lskip()[0]
 
@@ -431,6 +701,42 @@ def validate(pdsdir, selection=None, logger=None):
     return validate_pairs(dirpairs, md5pairs, selection, logger=logger)
 
 def repair(pdsdir, selection=None, logger=None):
+    """Rewrite one bundle's MD5 manifest if it disagrees, or re-date it if it does not.
+
+    The manifest and a fresh walk are sorted and compared as whole lists, so this reports
+    that something differs and not what; ``validate()`` is the task that names the
+    disagreements one by one. Where they differ, the old manifest is versioned into the
+    run's log directories and a new one is written.
+
+    Where they agree the content is right and only the dates can be wrong, so the manifest
+    is compared against the newest file the walk **saw**, which is not the same as the
+    newest it digested: the walk takes each file's modification time before any skip test,
+    so a ``.DS_Store`` or a backup file touched today dates the bundle.
+
+      * If the holdings are newer, the manifest is touched to now and the run reports how
+        far behind it was. The report is in days at or above a tenth of a day, which is
+        8,640 seconds, and in minutes below that. The time it says it set is read from the
+        clock just before the touch rather than from the file afterwards.
+      * If the holdings are not newer, the repair is canceled and nothing is touched.
+        Equal times take this branch, since the test is strict.
+
+    On a selection the walk is given the existing manifest to copy from and told to digest
+    the named file regardless, so only that file's digest is recomputed and the comparison
+    then covers the whole manifest.
+
+    A bundle with no manifest is a warning and is handed to ``initialize()``, unless a
+    selection was given, which makes it an error instead.
+
+    Parameters:
+        pdsdir: The bundle directory to repair the manifest of.
+        selection (str): The basename of the one file to re-digest, or None for all.
+        logger: The logger to report through. Defaults to the tool's own.
+
+    Returns:
+        bool: True if a manifest was written, initialized, touched or found up to date,
+        and False if there was none and a selection was given, if the read came back
+        empty, or if the walk found no files.
+    """
 
     check_path = pdsdir.checksum_path_and_lskip()[0]
 
@@ -506,6 +812,42 @@ def repair(pdsdir, selection=None, logger=None):
     return True
 
 def update(pdsdir, selection=None, logger=None):
+    """Add the digest of any file the manifest does not already carry.
+
+    The existing manifest is handed to the walk as what is already known, and
+    ``regardless`` is off, so every file already recorded keeps the digest it was recorded
+    with and only a file the manifest lacks is read. A file whose contents have changed is
+    therefore not noticed here; that is ``validate()``'s and ``repair()``'s work, and is
+    what the ``--help`` text means by saying checksums of pre-existing files are not
+    checked.
+
+    **It does not notice a deletion either.** The walk rebuilds its result from the whole
+    of what it was handed, and only then appends what it found, so an entry for a file
+    that is no longer there survives; and because it survives, the comparison this task
+    makes still holds and the run reports that the manifest is complete. An update
+    therefore adds new files and does nothing else. Only ``reinitialize`` or ``repair``
+    clears a stale entry.
+
+    Where the walk returns exactly what the manifest held, nothing is written or touched
+    and that is reported at info level; the "out of date" re-dating ``repair()`` does has
+    no counterpart here.
+
+    A bundle with no manifest is a warning and is handed to ``initialize()``, unless a
+    selection was given, which makes it an error instead. That is also the task this one
+    stands in for: the driver runs ``reinitialize`` on a selection as ``update``.
+
+    Parameters:
+        pdsdir: The bundle directory to walk.
+        selection (str): The basename of one file. It reaches the walk, where with
+            ``regardless`` off it narrows the walk to that file without forcing a
+            re-digest, so a file already in the manifest contributes its old digest.
+        logger: The logger to report through. Defaults to the tool's own.
+
+    Returns:
+        bool: True if a manifest was written, initialized, or found already complete, and
+        False if there was none and a selection was given, if the read came back empty, or
+        if the walk found no files.
+    """
 
     check_path = pdsdir.checksum_path_and_lskip()[0]
 
@@ -576,6 +918,37 @@ TASKS = {'initialize': initialize,
          'update': update}
 
 def main():
+    """Run the tool, and re-run this same tool where --infoshelf asks for another.
+
+    This is the ``pds4checksums`` console script's entry point. The driver returns rather
+    than exiting, so what happens next is decided here, and it is decided by two things
+    together: the last task has to have returned something true, and ``--infoshelf`` has
+    to have been given.
+
+    **What that chain then runs is this tool again, not the info shelf tool.** The command
+    line is rebuilt by replacing the string "pdschecksums" with "pdsinfoshelf" throughout
+    ``sys.argv`` and dropping the ``--infoshelf`` flag. No PDS4 command line carries
+    "pdschecksums": the console script is ``pds4checksums`` and the module path ends
+    ``pds4/pds4checksums.py``, and neither contains that text. So the substitution changes
+    nothing, and the subprocess is this same tool running the same task over the same
+    paths a second time, with the flag that would chain again removed. The process then
+    exits with that run's return code.
+
+    **The status the driver computed is not read here at all**, so a ``--validate`` that
+    reported every file as a mismatch exits 0 unless the chain ran, and the chain's own
+    status is a second checksum run's. What a run does exit nonzero for is everything
+    settled before a task starts: 1 for a command line naming no task, 2 for one the
+    parser cannot classify, and 1 for a path outside a holdings tree or naming checksum
+    files.
+
+    Raises:
+        SystemExit: from ``sys.exit()`` with the subprocess's return code on the path that
+            chains; from ``setup_run()`` with 1 for a missing task, 0 for --help and 2 for
+            a command line the parser cannot classify; and from the two path helpers with
+            1 for a path they reject. Every other path returns, and the interpreter exits
+            0.
+    """
+
     result = _shelf_common.run_selection_main(SPEC, TASKS, sys.argv)
 
     # If everything went well, execute pdsinfoshelf too

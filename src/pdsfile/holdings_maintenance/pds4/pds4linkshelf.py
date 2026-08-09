@@ -1,12 +1,74 @@
 #!/usr/bin/env python3
 ################################################################################
-# # pds4linkshelf.py library and main program
-#
-# Syntax:
-#   pds4linkshelf.py --task path [path ...]
-#
-# Enter the --help option to see more information.
+# pdsfile/holdings_maintenance/pds4/pds4linkshelf.py
 ################################################################################
+
+"""pds4linkshelf: find the links inside a PDS4 bundle's files, and shelve them.
+
+A link shelf records, for every file in a bundle, either the list of files that file
+points at or the label that describes it. What is here is the scan that finds them, which
+is the largest of the things the two flavors of this tool do differently, because a PDS4
+label names the file it describes in a ``<file_name>`` element and a PDS3 label in
+``KEYWORD = FILENAME`` syntax. Everything that reads, writes, compares or drives a link
+shelf is in ``_linkshelf_common``, and so are all five tasks; the driver is
+``_common.run_main()``.
+
+Four tables here say what the scan means by a link, and two of them are empty:
+
+  * ``TARGET_REGEX1`` recognizes a label naming the file it describes, and is what the
+    specification carries as ``link_target_regex``. It is the shared file-name pattern
+    wrapped in a ``<file_name>`` element, matched case-insensitively.
+  * ``EXTS_WO_LABELS`` is the five extensions a file is searched for links in --
+    ``.XML``, ``.LBLX``, ``.CAT``, ``.FMT`` and ``.SFD`` -- and is at the same time the
+    set of extensions a file does not need a label of its own for.
+  * ``REPAIRS`` is an **empty** translator. One lookup is made per file scanned and it
+    matches nothing, so the loop over the matched entries, which sits inside the loop over
+    the file's links, never has a body to run and no link is ever looked up or repaired.
+    That is why there is no counterpart here to the PDS3 tool's ``linkshelf_repairs``
+    module: the machinery is in place and the table is empty.
+  * ``KNOWN_MISSING_LABELS`` is empty for the same reason, so no file is excused from the
+    label search on the strength of being known to have none.
+
+What takes their place is the collection inventory. A PDS4 collection lists its members in
+a ``collection*.csv`` file, and this scan reads every such file it walks past and keeps
+the last component of each listed identifier. Before reporting that a file has no label at
+all or an ambiguous one, it asks whether a collection file whose path begins with that
+file's own directory or the one above it lists the file, and **a file no such collection
+lists is passed over**: an errata file or a checksum manifest is not part of the archive
+and is not expected to be labeled. It is passed over rather than passed over silently --
+the question itself is logged for every file that reaches it, and the separate "does not
+point to file" error for a mismatched label is raised before the question is asked.
+
+The other thing this scan does that the PDS3 one does not is credit a label by what it
+says rather than by what it is called: a file whose name appears anywhere in a label in
+the same directory is shelved as described by that label. It is a fallback and not a first
+resort, because the name-matching credit is settled in the earlier pass and this one skips
+any file already credited there. **It is the label's own text and not its
+``<file_name>`` elements** that this matches against, even though the log line calls it a
+file_name tag: the comparison runs over every link the label yielded, and the general
+pattern's matches are among them.
+
+The specification names ``_shelf_common.UNIT_LOG_PATH_METHOD`` as its log path method and
+'_links' as its log suffix. Nine fields of this specification differ from the PDS3 tool's,
+and one of the nine is read nowhere a run of this tool reaches: ``index_ext``, which only
+the index shelf tools' target expansion reads. Three of the other eight are worth naming
+because what they reach is not obvious from the name. ``holdings_sentinel`` is where the
+upward search for a non-local link stops. ``file_log_level`` is the method a created
+directory is reported through when a shelf is written. And ``handler_factories`` adds a
+warning handler ahead of the error handler, so a run leaves a warning file in each of its
+log directories that a PDS3 run does not. The remaining five -- ``pdsfile_cls``, ``unit``,
+``expand_target``, ``generate_links`` and ``link_target_regex`` -- are what makes this the
+PDS4 tool at all.
+
+``progname`` is 'pdslinkshelf', not this module's name, which is the convention all five
+PDS4 tools follow: it is what the ``--help`` description and the "Missing task" error call
+the tool, and it names the subdirectory of every log root, so both flavors write into one
+directory. Both also share the logger name 'pds.validation.links', which is what stops the
+two from being driven from a single process.
+
+The five shared tasks are bound to this module's own names with this specification
+supplied. Nothing in this package calls them that way.
+"""
 
 import csv
 import datetime
@@ -39,22 +101,84 @@ EXTS_WO_LABELS = {'.XML', '.LBLX', '.CAT', '.FMT', '.SFD'}
 ################################################################################
 
 def generate_links(dirpath, old_links=None, *, logger=None, limits=None):
-    """Generate a dictionary keyed by the absolute file path for files in the
-    given directory tree, which must correspond to a bundle.
+    """Return what every file in one bundle points at, or what points at it.
 
-    Keys ending in .XML, .CAT, .FMT, .SFD return a list of tuples
-        (recno, link, target)
-    for each link found. Here,
-        recno = record number in file;
-        link = the text of the link;
-        target = absolute path to the target of the link.
+    This is the specification's ``generate_links``, and the five shared tasks call nothing
+    else to learn what a bundle holds. It walks the bundle once and does two passes over
+    each directory: the first reads every file with one of the five link-bearing
+    extensions and resolves what it names, and the second decides which label, if any,
+    describes each of the remaining files. **An extension here is what follows the last
+    dot**, so a five-character one such as ``.LBLX`` is recognized; the PDS3 tool takes
+    the last four characters instead.
 
-    Other keys return a single string, which indicates the absolute path to the
-    label file describing this file.
+    **Resolving a link is a search, and it can end four ways.** A name matching a file in
+    the same directory resolves there, case-insensitively, and the shelved name takes the
+    case the filesystem has. A name that matches nothing local is discarded if it parses
+    as a float or as a Fortran format code such as ``F10.3``, and only then searched up
+    the tree. A search that fails is an error for a ``.FMT`` or a ``.CAT`` name and a
+    debug line for anything else, on the reasoning that most unresolved candidates are not
+    links at all. The repair table is consulted once per file before any of that, matches
+    nothing, and so never reaches a link.
 
-    Unlabeled files not ending in .XML, .CAT or .TXT return an empty string.
+    **A label is credited to a file on one of three grounds, in this order.** First, in
+    the earlier pass, a label that mentioned the file and whose own name matches the
+    file's up to the extension. Second, in the later pass and only for a file the first
+    left uncredited, **any** label in the same directory that mentioned the file, whatever
+    that label is called; the PDS3 tool has no equivalent of this one. Third, the only
+    label in the directory that mentioned the file **in a target position**. Failing all
+    three, the file is reported as having a missing or an ambiguous label -- but only if
+    the collection inventory lists it.
 
-    Also return the latest modification date among all the files checked.
+    Only the third ground asks how the mention was matched. The first two accept any link
+    the scan found in the label, so a file named in a comment credits the label as surely
+    as one named in a ``<file_name>`` element does, although the log line for the second
+    calls it a file_name tag.
+
+    **The second ground is case-sensitive at both ends.** The labels of a directory are
+    collected by testing each basename for the literal '.xml' or '.lblx', so a label named
+    in upper case is not among them; and the mention is compared to the file's basename
+    exactly, so a label naming ``FOO.DAT`` does not credit a ``foo.dat``. The collection
+    inventory is read and matched case-sensitively too. Everything to do with resolving a
+    link, and the extension tests above, upper-case first.
+
+    **The modification time is the newest among every file the walk sees**, taken before
+    any skip test and whether or not the file is opened, so a ``.DS_Store`` or a backup
+    file touched today moves it. Four kinds of file are skipped after that: a
+    ``.DS_Store``, a dot-underscore file, a backup file, and any file whose basename
+    begins with a dot.
+
+    ``old_links`` is what makes an update affordable and is the one argument that changes
+    the shape of the answer. A file already keyed in it is not re-read, and its shelved
+    triples are carried through as they are. **The result is still assembled from the
+    files the walk found**, so an entry in ``old_links`` for a file that has since been
+    deleted is dropped rather than carried.
+
+    Parameters:
+        dirpath (str): The bundle directory to walk. A relative path is made absolute.
+        old_links (dict): What the shelf already holds, keyed by absolute path, or None
+            for a scan from scratch. Its string values seed the label map and its list
+            values are carried through untouched.
+        logger: The logger to report through. Defaults to the tool's own.
+        limits (dict): Message limits for this scope, merged over the shared defaults.
+
+    Returns:
+        tuple: the links keyed by absolute path, and the newest modification time as a
+        timestamp. A file that points at others maps to a list of (record number, link
+        text, absolute path) triples; a file that is pointed at maps to the absolute path
+        of its label; a file that neither points nor is pointed at maps to the empty
+        string, and so does one whose label is missing or ambiguous.
+
+    Raises:
+        ValueError: raised by ``from_abspath()``, before any log line is written, for a
+            directory outside every holdings tree.
+        OSError: raised by ``getmtime()`` on a file the walk listed and that is gone by
+            the time it is measured, by ``read_links()`` on one that cannot be read, by
+            the ``open()`` of a collection inventory, and by the ``listdir()`` calls
+            inside the upward search. Each is logged through ``exception()`` and
+            re-raised, as is anything else the scan raises.
+        UnicodeDecodeError: raised by the ``reader()`` iteration over a collection
+            inventory that is not decodable in the platform's default encoding, which is
+            the one file this scan opens as text without naming an encoding.
     """
 
     if old_links is None:
@@ -485,7 +609,26 @@ def generate_links(dirpath, old_links=None, *, logger=None, limits=None):
 ################################################################################
 
 def link_targets(pdsf, path):
-    """Return the bundle directories one command-line path names."""
+    """Return the bundle directories one command-line path names.
+
+    This is the specification's ``expand_target``, and it exists to supply the
+    specification to the shared expansion: ``_common.run_main()`` calls ``expand_target``
+    with the PdsFile and the path alone, so the three-argument shared function cannot be
+    named directly. It is the reason both link shelf tools carry a function of this name
+    that does nothing else.
+
+    Parameters:
+        pdsf: The PdsFile the command-line path resolved to.
+        path (str): The absolute path it resolved to, for the rejection messages.
+
+    Returns:
+        list: The bundle directories to shelve, which is a bundle set's directory
+        children, the path itself if it is a directory, and nothing otherwise.
+
+    Raises:
+        SystemExit: from ``sys.exit()`` inside ``_linkshelf_common.link_targets()``, with
+            status 1 if the path names checksum files or archive files.
+    """
 
     return _linkshelf_common.link_targets(SPEC, pdsf, path)
 
@@ -518,6 +661,18 @@ repair = TASKS['repair']
 update = TASKS['update']
 
 def main():
+    """Run the tool: hand this module's specification and tasks to the generic driver.
+
+    This is the ``pds4linkshelf`` console script's entry point. It does not return: the
+    driver exits with status 1 if the run logged a fatal or an error and 0 otherwise, and
+    exits before opening a log for a command line that names no task or a path that does
+    not exist.
+
+    Raises:
+        SystemExit: from ``_common.run_main()``, on every path out of a run that is not an
+            exception.
+    """
+
     _common.run_main(SPEC, TASKS, sys.argv)
 
 if __name__ == '__main__':
