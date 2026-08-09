@@ -134,25 +134,43 @@ What a path may name depends on the program, and the three groups differ:
   which is expanded into the tables inside it.
 
 **Relative paths are accepted** and resolved against the working directory before
-anything else happens. A path that does not exist ends the run before any log file is
-created, and how it says so splits the ten programs in two: the archive, link shelf and
-index shelf programs print a message,
+anything else happens. An unusable path then ends the run before any log file is created,
+always with status 1, but what the ten programs say about it depends on two things: which
+of two families the program belongs to, and **where the path is**, not whether it exists.
+
+The families are the four checksum and info shelf programs on one side, and the two
+archive, two link shelf and two index shelf programs on the other. The first thing the
+first family does is look for ``/holdings/`` or ``/pds4-holdings/`` in the path, so for
+that family the question is location; the second family resolves the path first, so for
+it the question is existence.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 34 33 33
+
+   * - The path
+     - Checksum and info shelf
+     - Archive, link shelf and index shelf
+   * - is outside any holdings tree, whether or not it exists
+     - ``Not a holdings subdirectory:`` and the absolute path
+     - an unhandled :exc:`ValueError` traceback, ``Not compatible with a logical path:``
+   * - is inside a holdings tree but does not exist
+     - an unhandled :exc:`OSError` traceback, ``File not found:``, naming the path as it
+       looks from the holdings root
+     - ``No such file or directory:`` and the absolute path
+
+So the tidy message and the traceback swap sides according to where the bad path is:
 
 .. code-block:: console
 
    $ pdsarchives --validate /no/such/volume
    No such file or directory: /no/such/volume
 
-while the checksum and info shelf programs end in an unhandled :exc:`OSError`
-traceback, ``File not found:``, naming the path as it looks from the holdings root. Both
-exit 1.
+   $ pdschecksums --validate /no/such/volume
+   Not a holdings subdirectory: /no/such/volume
 
-A path that exists but lies outside any holdings tree ends the run before the first task
-starts. The same two groups divide it, but which one prints and which one crashes is the
-other way round: the checksum and info shelf programs print ``Not a holdings
-subdirectory:`` and exit 1, while the archive, link shelf and index shelf programs end in
-an unhandled :exc:`ValueError` traceback, also with status 1. A path naming checksum or
-archive files where the program does not work on them is rejected with a message.
+A path naming checksum or archive files where the program does not work on them is
+rejected with a message.
 
 ``--log`` and ``--quiet``
 -------------------------
@@ -175,9 +193,12 @@ Every program in this guide also takes ``--help``, ``-h``, which prints the usag
 exits 0 without doing anything else. It is not repeated in the option tables.
 
 ``--quiet`` silences every level of the log below the run's own. The per-target header,
-the ``Log file:`` lines and all the per-file detail go with it; what still reaches the
-terminal is the run's opening ``HEADER`` and its closing ``SUMMARY`` lines, counts and
-all:
+the ``Log file:`` lines and all the per-file detail go with it. What survives depends on
+whether a log root is configured: **with none, the run's own opening ``HEADER`` and
+closing ``SUMMARY`` lines still reach the terminal**, counts and all, because with no
+handler attached anywhere the outermost level falls back to printing. Add ``--log`` or
+``PDS_LOG_ROOT`` and a handler exists, so ``--quiet`` leaves nothing on the terminal at
+all. The run below had no log root:
 
 .. code-block:: console
 
@@ -356,17 +377,22 @@ carries:
      - ``CRITICAL``, ``EXCEPTION``, ``FATAL``
      - ``FATAL`` is another name for ``CRITICAL``
 
-That is every registered level name.
+Those twelve are every registered level name. Two further names are aliases rather
+than levels of their own: ``WARN`` for ``WARNING`` and ``FATAL`` for ``CRITICAL``.
 
 ``DOT_`` is the one worth knowing. It carries **ERROR's severity**, so a stray
 ``._something`` file inside a unit is enough on its own to make one of the eight programs
 that report their outcome exit 1, under a level name that does not look like an error.
 
-``SUMMARY`` is the exception to the table: it is not a level at all, but a literal tag
-the logger writes into the message text when it closes a level, logged at the severity
-its ``HEADER`` was opened with. So a ``SUMMARY`` line's own severity is the level's, not
-one of its own. Some phases cap how many messages of a level they will print and say so
-when they close, which is what a summary line like this reports:
+``SUMMARY`` is the exception to the table: it is the only thing appearing in the level
+field that is not a registered level. The logger writes it as a literal tag when it
+closes a level, and emits those lines at ``HEADER``'s severity of 20. **A summary line
+counting errors therefore carries severity 20 itself**, which matters to anything
+filtering a log by severity: ``ERRORS.log`` holds the individual errors, not the summary
+line that counts them.
+
+Some phases cap how many messages of a level they will print and say so when they close,
+which is what a summary line like this reports:
 
 .. code-block:: text
 

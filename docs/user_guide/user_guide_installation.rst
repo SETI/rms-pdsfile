@@ -66,10 +66,17 @@ The basenames are a requirement of the *directory*, not of the variable, and the
 requirement rather than a habit. Every absolute path is turned into
 the *logical path* the package works in by splitting it at the first ``/holdings/`` or
 ``/pds4-holdings/`` component, so a root directory named anything else makes every path
-under it unusable. The thirteen programs that resolve holdings paths all fail on such a
-path, but not alike: the checksum and info shelf programs print ``Not a holdings
-subdirectory:`` and exit 1, while the archive, link shelf, index shelf and dependency
-programs end in an unhandled :exc:`ValueError` traceback, also with status 1.
+under it unusable. Thirteen of the fifteen programs resolve holdings paths, and each of
+them notices, in one of three ways:
+
+* the four checksum and info shelf programs print ``Not a holdings subdirectory:`` and
+  exit 1;
+* the archive, link shelf and index shelf programs, ``pdsdependency`` and
+  ``re_validate`` -- eight in all -- end in an unhandled :exc:`ValueError` traceback,
+  also with status 1;
+* :doc:`user_guide_show_opus_products` neither refuses nor crashes: it prints a
+  ``WARNING:`` line for the path, carries on to the next one, and still exits 0.
+
 :doc:`user_guide_crlf` and :doc:`user_guide_shelf_consistency_check` are the two that
 never resolve a holdings path at all, and a root's name is nothing to them.
 
@@ -77,19 +84,22 @@ never resolve a holdings path at all, and a root's name is nothing to them.
 :doc:`user_guide_show_opus_products`, which reads both, whichever kind of path it is
 asked about, and fails with a :exc:`KeyError` if either is unset.
 
-The other fourteen take absolute paths on their command lines, and the thirteen of them
+The other fourteen take absolute paths on their command lines, and the twelve of them
 that work in a holdings tree find their way around it by splitting the path at its
 ``/holdings/`` or ``/pds4-holdings/`` component rather than by consulting a variable.
-Every run in this guide was made with both variables set, and the runs that resolve a
-path this way behave the same with them unset. Setting them is worth doing in any case --
-it is what lets you write ``$PDS3_HOLDINGS_DIR/volumes/...`` rather than typing the root
-each time, which is how every example in this guide is written.
+(Twelve, not thirteen: the thirteen above counts ``show_opus_products``, which is not
+one of these fourteen.) Every run in this guide was made with both variables set, and the
+runs that resolve a path this way behave the same with them unset. Setting them is worth
+doing in any case -- it is what lets you write ``$PDS3_HOLDINGS_DIR/volumes/...`` rather
+than typing the root each time, which is how every example in this guide is written.
 
 One qualification, because "reads no environment variable" is easy to overstate: the
-library underneath these programs does have a path that reads a holdings root from the
-environment. It is reached when a shelved link has to be resolved back to an absolute
-path from a logical one. No example in this guide exercises it, and no run recorded here
-needed it, but a command over data that does reach it may.
+library underneath these programs turns a logical path back into an absolute one by
+consulting, in order, a preloaded list of holdings directories, a cached one, and then
+the holdings environment variable. Several library operations reach it, among them
+resolving a link recorded in a link shelf. No example in this guide exercises that path,
+and no run recorded here needed the variable, but a command over data that does reach it
+may.
 
 .. code-block:: bash
 
@@ -166,9 +176,10 @@ is the subset its data needs:
        _indexshelf-metadata/
 
 Which of these a tree actually holds is up to its data. The three link shelf
-directories above are the ones :doc:`user_guide_pdsdependency` requires of a volume, but
-nothing in :doc:`user_guide_pdslinkshelf` restricts it to those three: point it at a
-``previews`` volume and it writes ``_linkshelf-previews/``.
+directories in the PDS3 listing -- ``_linkshelf-volumes/``, ``_linkshelf-calibrated/``
+and ``_linkshelf-metadata/`` -- are the ones :doc:`user_guide_pdsdependency` requires of
+a volume, but nothing in :doc:`user_guide_pdslinkshelf` restricts it to those three:
+point it at a ``previews`` volume and it writes ``_linkshelf-previews/``.
 
 ``setup_new_holdings.sh``, described in :doc:`user_guide_shell_scripts`, creates the
 empty PDS3 directories in one command.

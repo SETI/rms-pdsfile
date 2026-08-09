@@ -102,8 +102,12 @@ Building a manifest
 
 Seven of this volume's nine files, and the per-phase summary lines, are elided above. The
 run reports one ``MD5=`` line per file at ``INFO`` as it hashes it, then one ``Written:``
-line per file at ``DEBUG`` as it writes the manifest. The closing summary counts them
-separately, which is where the ``12 INFO`` and ``9 DEBUG`` above come from.
+line per file at ``DEBUG`` as it writes the manifest. The ``9 DEBUG`` is exactly those
+nine ``Written:`` lines; the ``12 INFO`` is the nine ``MD5=`` lines plus the three other
+``INFO`` lines visible above -- ``Log file:``, ``Lastest holdings file modification
+date:`` and ``Creating directory:``. The last of those appears only when the destination
+directory has to be made, so the same command over a volume set that already has one
+reports ``11 INFO``.
 
 Checking a volume against its manifest
 --------------------------------------

@@ -55,15 +55,22 @@ and the published tree below that:
 
 For example, ``$PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001/INDEX/INDEX.TAB``.
 
-The other categories do not have that shape. Each derived product is one file per unit,
-per unit set or per table, so where a bare type has a directory a derived category
-usually has a file, and the depth changes with it:
+Nothing else in the tree has that shape. Each derived product is written per unit, per
+unit set or per table rather than as a tree, so where a bare type has a directory a
+derived one has a file -- a file per product for the archive and checksum trees, and two
+files, a ``.pickle`` and a ``.py``, for each of the three kinds of shelf. The depth
+changes with it.
+
+The table below covers every top-level directory of a holdings tree. Four of its rows
+name the shelf trees, which are top-level directories but not categories: the 25
+category names are the ones the prefix rule above generates, and no shelf tree is among
+them.
 
 .. list-table::
    :header-rows: 1
    :widths: 40 60
 
-   * - Category
+   * - Top-level directory
      - What a path under it looks like
    * - ``volumes``, ``calibrated``, ``diagrams``, ``metadata``, ``previews``,
        ``bundles``
@@ -78,13 +85,14 @@ usually has a file, and the depth changes with it:
    * - ``checksums-archives-<type>``, ``_infoshelf-archives-<type>``
      - ``<file named for the unit set>``: no unit set directory either, because these
        describe the unit set's archive files collectively, as in
-       ``checksums-archives-volumes/COUVIS_0xxx_md5.txt``.
+       ``checksums-archives-volumes/COCIRS_0xxx_md5.txt``.
    * - ``_indexshelf-metadata``
      - ``<unit set>/<unit>/<file named for the table>``: one level deeper than the rest,
        because it holds one shelf per metadata table rather than one per unit.
 
-So a rule of thumb for reading a path: count the directory levels to find out whether
-you are looking at published data or at something derived from it.
+Depth alone does not tell you which of these you are looking at -- a ``documents`` file
+and a checksum file sit at the same depth, and so do a metadata table and its index
+shelf. **The first component is what tells you**, and the table above is how to read it.
 
 Published data and derived products
 -----------------------------------

@@ -77,8 +77,9 @@ reproduce them, and the empty-file case further down:
 
 The three runs below are consecutive rather than independent: each starts where the one
 before it left off. ``--repair`` rewrites ``BAD.LBL`` in place, which is exactly why the
-third run finds it ``OK``. To run any of them on its own, re-create the files from the
-recipe above first.
+third run finds it ``OK``. Re-creating the files from the recipe above puts you back at
+the start of the sequence, so it reproduces the first run and not the other two; to see
+the third, run all three in order.
 
 Without ``--verbose``, only ``INVALID`` and ``REPAIRED`` files are listed:
 

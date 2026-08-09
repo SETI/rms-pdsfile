@@ -48,10 +48,13 @@ mapping is keyed by each file's path inside the unit, and the value is a five-el
 tuple: byte count, child count, modification time, MD5 digest, and a ``(width, height)``
 pair.
 
-The three shelf excerpts below are each the first few entries of a real file with the
-rest elided, and each has had its key column narrowed: the real files pad that column to
-the widest key in the whole file, which for a volume of any size is far wider than this
-page. Nothing else about them is changed.
+The three shelf excerpts below are entries taken from real files, with a ``...`` line
+where the rest has been left out. Each has had its key column narrowed, because the real
+files pad that column to the widest key in the whole file, which for a volume of any size
+is far wider than this page. The info shelf and index shelf excerpts are each a file's
+first three entries. The link shelf excerpt is two entries chosen to show one of each
+value shape rather than the first two, and its second column has been un-padded as well.
+Nothing about the values themselves is changed.
 
 .. code-block:: python
 

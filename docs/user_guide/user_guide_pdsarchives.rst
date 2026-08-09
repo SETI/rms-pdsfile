@@ -105,7 +105,9 @@ of those reports. The exception is logged and re-raised, so the run ends in a tr
 and the process exits 1. Which exception it names depends on how the file is broken: a
 zero-byte archive gives :exc:`tarfile.ReadError`, ``empty file``, while a truncated one
 gives :exc:`EOFError`, ``Compressed file ended before the end-of-stream marker was
-reached`` -- the gzip layer fails before the tar layer is reached at all.
+reached``. In the truncated case the archive opens and the walk over its members begins;
+what fails is the gzip layer running out of data underneath it, so the exception comes
+from decompression rather than from anything about the tar format.
 
 Task by task
 ------------

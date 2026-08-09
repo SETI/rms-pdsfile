@@ -31,7 +31,7 @@ Two consequences matter when choosing what to put on the command line.
   and a bundle path inside it resolves to no archives at all.
 
 A target that resolves to no archives puts the five tasks into three behaviors, and
-four of the five say nothing at all about the absence. ``--update`` does no work: it has
+three of the five say nothing at all about the absence. ``--update`` does no work: it has
 no archive to loop over and stops there. ``--validate`` and ``--repair`` walk the whole
 directory tree first and only then find there is nothing to compare it with, so they
 cost what a real run costs and report nothing. Only ``--initialize`` and
@@ -47,8 +47,8 @@ cost what a real run costs and report nothing. Only ``--initialize`` and
    RuntimeError: No active exception to reraise
 
 The ``ERROR`` line above is the one to read; the :exc:`RuntimeError` that follows carries
-no further information about what went wrong. Naming the bundle **set** instead is what this
-bundle set's rules describe:
+no further information about what went wrong. Naming the bundle **set** instead is what
+this bundle set's rules describe:
 
 .. code-block:: console
 
@@ -120,9 +120,9 @@ Two differences from the PDS3 program that are visible in the output
 --------------------------------------------------------------------
 
 * The per-file lines are ``NORMAL``, not ``INFO``, so nothing caps them: where the
-  PDS3 program stops after 100 lines in each of three phases -- the directory walk, the
-  read of the archive and the comparison of the two -- this one prints one line per file
-  however large the target is.
+  PDS3 program stops after 100 ``INFO`` lines in each of three phases -- the directory
+  walk, the read of the archive and the comparison of the two -- this one prints one line
+  per file however large the target is.
 * A ``WARNINGS.log`` is written in each log directory, beside the ``ERRORS.log`` that
   both flavors write.
 

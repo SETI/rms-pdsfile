@@ -2,13 +2,17 @@ The Shell Scripts
 =================
 
 Twelve shell scripts ship alongside the PDS3 programs. They are operator tools rather
-than parts of the package: nothing imports them, ``pip`` puts none of them on ``PATH``,
-and several of them only work when run from the directory they live in.
+than parts of the package: nothing imports them, and ``pip`` puts none of them on
+``PATH``.
 
 They do ship, so an installed copy has them: they land in the installed package, at
 ``<site-packages>/pdsfile/holdings_maintenance/pds3/``. In a checkout of this repository
-the same twelve are at ``src/pdsfile/holdings_maintenance/pds3/``. Either way that
-directory is where a run of one has to start.
+the same twelve are at ``src/pdsfile/holdings_maintenance/pds3/``. Ten of them take
+absolute paths and run from anywhere. **Two must be run from that directory**:
+``copy_all_except_metadata.sh``, which calls its siblings as ``./copy_documents.sh`` and
+``./copy_shelves.sh``, and ``update_holdings_for_new_metadata.sh``, which invokes the
+programs as ``python pdsarchives.py`` and so on. Each is flagged again where it is
+described below.
 
 They fall into four groups, which are the four sections below.
 

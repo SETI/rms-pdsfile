@@ -139,8 +139,10 @@ can be run top to bottom:
 
 Nineteen lines, of which three are not runnable as they stand, and that is deliberate.
 The last six are three pairs. A cumulative metadata table is built by concatenating the
-per-volume tables with ``cat``, and those three ``cat`` lines are written out in full and
-run as they are. The ``<LABEL>`` line beneath each one is the placeholder: writing the
+per-volume tables with ``cat``, and those three ``cat`` lines are written out in full as
+ordinary shell commands, needing only that the cumulative volume's directory already
+exists for the redirect to land. The ``<LABEL>`` line beneath each one is the
+placeholder: writing the
 label of the table just concatenated is a manual step this package does not automate, so
 there is no command to print.
 

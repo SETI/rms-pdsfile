@@ -179,8 +179,9 @@ The two ``INFO`` lines after the volume's own header are the run stating what it
 on: the volume types and the tests, both defaulted here because the command line named
 neither.
 
-The nested logger names are the individual validations' own -- ``pds.validation.checksums``
-here, and ``pds.validation.archives``, ``pds.validation.fileinfo``,
+The nested logger names are the individual validations' own --
+``pds.validation.checksums`` here, and ``pds.validation.archives``,
+``pds.validation.fileinfo``,
 ``pds.validation.links`` and ``pds.validation.dependencies`` further down, one per
 section -- so one log carries all five and each section is identifiable by its logger.
 
@@ -242,6 +243,7 @@ that cannot be reached ends the run in the exception instead.
 Three things still exit 1 in batch mode, all of them decided from the command line
 before any validation starts: naming no path at all (``No holdings path identified``),
 naming one that does not exist (``Holdings path not found:``), and naming one that does
-exist but whose resolved path does not end in ``holdings`` (``Not a holdings
-directory:``). The guarantee is about what the validations found, not about the command
-line being usable.
+exist but whose resolved path does not end in ``/holdings`` (``Not a holdings
+directory:``) -- the test is on the last path component, so a directory named
+``pdsholdings`` is rejected too. The guarantee is about what the validations found, not
+about the command line being usable.
