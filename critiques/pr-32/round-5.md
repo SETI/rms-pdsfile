@@ -33,10 +33,12 @@ possible.
 | passages checked | 45 |
 | defects | 16 |
 | lower-confidence or minor findings | 4 |
-| **share of findings inside the corrections** | **16 of 16** |
+| **share of findings inside the corrections** | **20 of 20** |
 
 Every finding was in the corrections, which is what naming the scope by hand was for. The
-reviewer raised four items outside the diff and kept them separate, as asked.
+reviewer was invited to raise anything it noticed outside the diff, separately and
+briefly, and raised nothing: all four of its lower-confidence items are about corrected
+passages too.
 
 ## The two that matter most
 
