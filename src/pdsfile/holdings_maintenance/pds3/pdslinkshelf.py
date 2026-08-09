@@ -16,7 +16,7 @@ Four tables here say what the scan means by a link:
 
   * ``TARGET_REGEX1`` recognizes a label naming the file it describes, and is what the
     specification carries as ``link_target_regex``. It is the shared file-name pattern
-    with the PDS3 ``keyword = `` prefix in front of it, so it also admits the opening
+    with the PDS3 ``KEYWORD =`` prefix in front of it, so it also admits the opening
     bracket or brace that starts a list of targets running over several records.
   * ``EXTS_WO_LABELS`` is the five extensions a file is searched for links in --
     ``.LBL``, ``.CAT``, ``.TXT``, ``.FMT`` and ``.SFD`` -- and is at the same time the set
