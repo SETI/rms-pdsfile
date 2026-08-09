@@ -17,13 +17,14 @@ had eleven entries at `3d044b2` and has eleven now.
 The "head" column is what `critiques/pr-28/check_record_numbers.py` compares against the
 tree it is run in, so it is the current line count rather than a frozen one, and a later
 PR that changes one of these files updates its row. PR-30a's module docstring for
-`show_opus_products.py` took that row from 199 to **265**; nothing else in the table has
-moved since.
+`show_opus_products.py` took that row from 199 to **265**, and PR-30c's docstrings for
+the two tools this PR gave a `main()` took theirs from 169 to **246** and from 132 to
+**198**. Nothing else in the table has moved.
 
 | file | base | head | today's entry point |
 |---|---:|---:|---|
-| `src/pdsfile/holdings_maintenance/pds3/crlf.py` | 121 | 169 | `build_arg_parser()`, `main(argv=None)`, `__main__` |
-| `src/pdsfile/holdings_maintenance/pds3/shelf_consistency_check.py` | 90 | 132 | same |
+| `src/pdsfile/holdings_maintenance/pds3/crlf.py` | 121 | 246 | `build_arg_parser()`, `main(argv=None)`, `__main__` |
+| `src/pdsfile/holdings_maintenance/pds3/shelf_consistency_check.py` | 90 | 198 | same |
 | `src/pdsfile/tools/show_opus_products.py` | 162 | 265 | same |
 | `tests/holdings_maintenance/support.py` | 710 | 830 | — |
 | `tests/holdings_maintenance/test_crlf.py` | 142 | 395 | — |

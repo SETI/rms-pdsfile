@@ -1324,19 +1324,28 @@ command line, and both are read by every other part of the subpackage.
     sentence pasted between the two halves of one, which is why
     `critiques/pr-30b/check_flavor_vocabulary.py` exists.
     `critiques/pr-30b-validation.md` is the record.
-  * **PR-30c (S)** `docs: Google-style docstrings, the four standalone maintenance tools`
-    — `re_validate.py`, `pdsdependency.py`, `crlf.py` and `shelf_consistency_check.py`:
-    31 functions, one class, 73 parameters and the remaining 92 findings, plus one
-    finding each for the two zero-byte `__init__.py` files. Unlike PR-30b's eleven they
-    are not undocumented: 25 docstrings exist and 13 carry a Google section, nine of them
-    spelled `Args:`. They declare no `ToolSpec` and reach no shared driver, each
-    parsing its own command line, so nothing PR-30a or PR-30b documented carries over and
-    the vocabulary checker has no pair to compare. `pdsdependency.py` is 1,165 lines and
-    is the one maintenance module over a length limit, so this PR is where that is either
-    recorded again or acted on.
+  * **PR-30c (done)** — the four standalone tools **and the two zero-byte
+    `__init__.py` files beside them**: 6 files, 2,453 lines, one class, 31 functions,
+    73 parameters and the remaining **94** findings. Scoping it as four files, which is
+    what this entry originally said, would have left two findings behind and made the
+    completion claim below false, so the two initializers were folded in;
+    `critiques/pr-30c-validation.md` section 13 records it. Unlike PR-30b's eleven these
+    are not undocumented: 25 docstrings existed and 13 carried a Google section, nine
+    spelled `Args:` and one `Inputs:`. None declares a `ToolSpec` or reaches a shared
+    driver, so nothing PR-30a or PR-30b documented carried over and the vocabulary
+    checker had no pair to compare -- it was run anyway and its three residual findings
+    are recorded rather than fixed, because they are the checker applied outside the
+    premise its own docstring states.
+    `critiques/pr-30c-validation.md` is the record.
 
-    With PR-30c done, the checker reports zero over every module under `src/pdsfile/`
-    except `_version.py`, which setuptools_scm generates and `.gitignore` excludes.
+    **`pdsdependency.py` was already over the code-line limit and this PR did not move
+    it**: 1,135 code lines at base and 1,135 at head, with the total going 1,165 to
+    1,475 against a limit of 2,000. Deferred **66** still holds the waiver-or-split
+    decision and now carries that measurement.
+
+    **With PR-30c done, `check_docstrings.py` reports zero over every module under
+    `src/pdsfile/`** except `_version.py`, which setuptools_scm generates and
+    `.gitignore` excludes. That closes Phase 7's docstring work on `src/`.
 
 The dataset accuracy problem is what makes the rule modules a PR of their own. There
 is no gate for "this sentence names the right instrument", the holdings tree is the
@@ -1346,6 +1355,9 @@ authoritative. `critiques/pr-30-validation.md` sections 9 and 10 record where ea
 claim came from and which modules could not be described beyond their tables.
 
 **PR-31 (M)** `docs: Sphinx scaffolding + API reference`
+**This is where Phase 7 resumes: the docstring work on `src/` finished with PR-30c, and
+what is left of the phase is the `docs/` tree, the Sphinx gate, and the guides of PR-32
+onward.**
 `docs/` per template: `conf.py` (autodoc/napoleon/intersphinx/mermaid/myst),
 `index.rst` including the README past its `<!-- start-after-point -->` marker,
 `api/` autodoc pages per subpackage. **The current README has no such
@@ -1353,6 +1365,17 @@ marker;** add a minimal one in this PR (the full `doc_readme` rewrite is
 PR-34) so the include target exists. Builds clean under `-W` and `-n`. Enable
 the sphinx gate in `run-all-checks.sh` and the CI lint job;
 `.readthedocs.yaml` goes live.
+
+**It inherits one problem already measured and two fixes already known.** Every docstring
+PR from PR-30a on has reported the same 27 `-n` problems from the throwaway build probe,
+one for each dataclass field of `ToolSpec`, `VersionedFile` and `RunResult`: Napoleon
+renders an `Attributes:` entry as an attribute directive, autodoc renders the annotated
+field again because the page carries `:undoc-members:`, and the two collide. PR-30a
+isolated the cause with a two-class control and measured two fixes that each take it to
+zero -- `napoleon_use_ivar = True`, or dropping `:undoc-members:` from the page. Neither
+could be applied while `conf.py` did not exist and five records depended on the probe's
+behavior. **Deferred observation 276 holds both, and PR-31 is the PR that owns them**, so
+the first `docs/` build should not rediscover the warning.
 
 **PR-32 (L)** `docs: user guide (CLI tools)` (closes issue #45)
 `docs/user_guide/`: concepts chapter (holdings layout, volumes vs bundles,

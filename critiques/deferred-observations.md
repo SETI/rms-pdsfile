@@ -1686,6 +1686,17 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     consolidate it against. So it is a live question rather than a waiting one:
     waive it, or split it in a later phase. `pdsfile_overrides.mdc` deviation (3)
     now says the same rather than pointing at a phase that has ended.
+
+    **PR-30c documents the file and does not move the number.** Measured with
+    `critiques/pr-29a/measure_module_lines.py` at both ends of that PR:
+    **1,135 code lines at base and 1,135 at head**, against a limit of 1,000, while
+    the total goes from 1,165 to 1,475 against a limit of 2,000. That is the two
+    limits behaving as they are meant to — a docstring line is not a code line —
+    and it is recorded because a reader who sees this file grow by 310 lines in a
+    docstring PR would otherwise assume the breach got worse. It did not, and the
+    file is still 525 lines under the total limit. The question this entry holds is
+    unchanged and unaddressed: the 1,135 code lines are the tool's own, and no PR of
+    Phase 7 was going to reduce them.
     **Owner: open — `pdsdependency.py` needs a waiver-or-split decision, and no
     phase currently owns it.**
 
@@ -2877,6 +2888,11 @@ these entries are read by the PRs that come after it.
      as they migrate each tool onto `run_main`. This entry exists so that the count
      is on the record: if either of those PRs lands and the grep still finds nine,
      something was missed.
+
+     **The count was taken again at `0f5d9ae` and is one, not nine.** The grep returns
+     one line in `_common.py` and one in `pdsdependency.py` and nothing else, so eight went
+     as predicted. The ninth is the tool the migration was never going to reach, because
+     it declares no `ToolSpec` and reaches no driver. Entry 315 carries it.
      **Owner: recorded, not open.**
 
 107. **`re_validate` batch mode cannot handle a holdings root whose path contains
@@ -5884,3 +5900,150 @@ rediscovery.
      recorded because the value being formatted is `obvious_label_basename`'s and the index
      is redundant. Found by round 4.
      **Owner: a later maintenance-tool PR.**
+
+### Added by PR-30c
+
+313. **`pdsdependency.PdsDependency.get_modtime()`'s backup-file skip is dead code.** The
+     block that logs "Backup file skipped" and skips a file matching `BACKUP_FILENAME` or
+     carrying " copy" sits **inside** the dot-underscore branch and **after** that branch's
+     `continue`, so it can never execute. Confirmed from the AST: the `If` testing
+     `BACKUP_FILENAME.match(file)` is the third statement of the body of the `If` testing
+     `'/._' in absfile`, whose second statement is a `Continue`. The four tool families that walk a directory
+     listing the same way carry the identical block one level out, where it runs:
+     `pdschecksums`, `pdsinfoshelf`, `pdslinkshelf` and `_archives_common`, and the pds4
+     twins of the first three. `_indexshelf_common` is not among them -- it has no
+     `.DS_Store` branch and no dot-underscore branch at all, and tests for a backup file
+     in `run_index_main()` against a whole absolute path. Found by round 4.
+
+     Two consequences. A backup file dates the directory it is in exactly as its original
+     does, so one stale `X_2024-01-01T00-00-00.tab` beside `X.tab` can make every file
+     derived from that directory report "out of date". And `BACKUP_FILENAME`, which this
+     module declares its own copy of just below its imports, has no reachable use. The docstring says so
+     rather than describing the exclusion as if it worked; the fix is one dedent.
+     Found by round 2. **Owner: a later maintenance-tool PR.**
+
+314. **`pdsdependency.main()` carries two rejections that cannot fire.** The
+     `if pdsf.checksums_:` and `if pdsf.archives_:` branches print "No pdsdependency for
+     checksum files" and "No pdsdependency for archive files" and exit 1. Neither message
+     can print: `category_` is `checksums_ + archives_ + bundletype_`, so any path with a
+     non-empty `checksums_` or `archives_` fails the `pdsdir.category_ != 'volumes/'` test
+     in the earlier validation loop and exits there. Measured:
+     `pdsdependency <holdings>/archives-volumes/COISS_2xxx` prints
+     "not a volume or volume set directory" and exits 1. Found by round 2.
+     **Owner: a later maintenance-tool PR.**
+
+315. **`pdsdependency` is the last module carrying a private `LOGROOT_ENV`, which is the
+     count entry 106 asked for.** That entry recorded nine tool modules with their own
+     `LOGROOT_ENV = 'PDS_LOG_ROOT'` and their own copy of the five-line log-root
+     resolution block, and predicted that PR-26 and PR-27 would retire them as they
+     migrated each tool onto a shared driver. Measured at `0f5d9ae`,
+     `grep -rn '^LOGROOT_ENV' --include=*.py src/` returns two lines, one in `_common.py`
+     and one in `pdsdependency.py`. Eight of the nine are gone. The ninth survived because
+     `pdsdependency` was never migrated -- it declares no `ToolSpec` and reaches no driver
+     -- so nothing carried it past. Its inline block is character-for-character the body of
+     `_common.resolve_log_root()`. **Owner: recorded; amends 106, which can now be closed
+     against this one file.**
+
+316. **`PdsDependency.purge_cache()` has no caller.**
+     `grep -rn 'purge_cache' --include=*.py src/ tests/ scripts/` finds the definition and
+     nothing else. It empties `MODTIME_DICT`, a class attribute that lives for the process,
+     so the only caller it could have is one that changes the tree between two dependency
+     tests, and nothing here does: the tool reports what to do and does not do it.
+     **Owner: recorded, not open.**
+
+317. **`PdsDependency` writes two instance attributes that nothing reads.** `self.suite` and
+     `self.regex_pattern` are assigned in `__init__` and never read;
+     `grep -rnE 'regex_pattern|\.suite\b'` over `src/` and `tests/` finds only the two
+     assignments. What carries the suite membership is the registration in
+     `DEPENDENCY_SUITES` a few lines above, and what carries the pattern is `self.regex`.
+     **Owner: recorded, not open.**
+
+318. **`re_validate.key_from_log_path()` is called only by tests.** `get_all_log_info()`
+     performs the same derivation inline rather than calling it, and
+     `grep -rn 'key_from_log_path' --include=*.py src/ tests/` finds the definition and two
+     tests -- one of which,
+     `test_key_from_log_path_agrees_with_the_key_get_all_log_info_builds`, exists to hold
+     the inline derivation to the function. **Owner: recorded, not open.**
+
+319. **`re_validate.report_missing_volumes()` reports trees the run was not asked about.**
+     The qualification test, `if not (holdings_abspaths & holdings_for_key): continue`, is
+     applied once for the whole key, and the loop below it then logs one "Missing volume"
+     error for **every** tree the key's logs name, filtered by nothing. Demonstrated with
+     one key holding two logs, one naming `/treeA/holdings` and one `/treeB/holdings`, and
+     a run validating `/treeA/holdings` alone: both errors are logged. In batch mode those
+     errors become the error mail, so an operator is told a volume is missing from a tree
+     this run never looked at. Found by round 1.
+     **Owner: a later maintenance-tool PR.**
+
+320. **`re_validate` batch mode can validate one volume twice in one run.**
+     `find_modified_volumes()` builds the modified set as `holdings_modtimes -
+     log_modtimes`, a set of `(date, key)` pairs, and then maps each surviving key through
+     `holdings_dict`. Two holdings trees carrying the same volume at **different** dates
+     contribute two surviving pairs with one key, so the key appears twice in
+     `modified_keys` and the same path is looked up twice and scheduled twice.
+     `holdings_dict[key]` has already collapsed the two trees to whichever was seen last,
+     so the two schedule entries are identical and the run validates one path twice. Found
+     by round 1; it is the second half of entry 107's "the same volume in two trees"
+     problem, seen from the scheduling side rather than the reporting side.
+     **Owner: a later maintenance-tool PR; belongs with 107.**
+
+321. **`re_validate --batch` ends nonzero when its mail relay is unreachable, defeating the
+     one guarantee it is built around.** The tool exits 0 whatever a validation found,
+     because a nonzero status would cancel the launch daemon that schedules it. But
+     `send_email()` is called from the same `finally` block that reaches `sys.exit(0)`, and
+     nothing catches what it raises: with `send_email` stubbed to raise `OSError`, the
+     exception propagates out of `run_batch()` and out of `main()` and the process ends in
+     a traceback with status 1. So the status is insulated from what the run found and not
+     from whether the report could be sent. Found by round 1.
+     **Owner: a later maintenance-tool PR.**
+
+322. **`re_validate` dies on one log file that is not valid UTF-8, in one of its two
+     readers and not the other.** `volume_abspath_from_log()` opens in text mode with the
+     default encoding, so `readline()` raises `UnicodeDecodeError` on a corrupt log; its
+     only caller, `report_missing_volumes()`, does not catch it, and a batch run ends
+     mid-report. The same file is survivable through `get_log_info()`, because
+     `get_all_log_info()` catches `ValueError` and `UnicodeDecodeError` is a subclass of
+     it, so that path skips the file and continues. One corrupt log is fatal on one path
+     and invisible on the other. Both docstrings now say so. Found by round 1.
+     **Owner: a later maintenance-tool PR.**
+
+323. **`re_validate.get_log_info()` scans every log record for a string pdslogger never
+     writes.** The scan is `fatal |= ('| FATAL |' in rec)`, and pdslogger renders a fatal
+     record as `| CRITICAL |` and a logged exception as `| EXCEPTION |`; "fatal" is a level
+     alias in `_DEFAULT_LEVEL_NAME_ALIASES` and not a rendered name. Reproduced by writing
+     a log through a real `PdsLogger` with `error()`, `fatal()` and `exception()` calls:
+     `| ERROR |`, `| CRITICAL |` and `| EXCEPTION |` are all present and `| FATAL |` is
+     not.
+
+     So the flag `get_log_info()` returns as "had a fatal" is true exactly when the log has
+     no elapsed time. **The consequence is in the scheduler.** `validate_one_volume()`
+     catches an exception, logs it through `logger.exception()` and returns a fatal count
+     to its caller, which prints and mails an error line -- but the log file it wrote
+     records the failure as `| EXCEPTION |`, so the *next* batch run reads that same log
+     back as a clean, completed validation with neither an error nor a fatal, and schedules
+     the volume as though it had passed. The error scan misses the same case, so
+     `print_batch_status`'s "error logged" note is absent for it too. The three docstrings
+     that describe the scan now say what it does rather than what it was meant to do. Found
+     by round 3. **Owner: a later maintenance-tool PR.**
+
+324. **`pdsdependency.main()` announces log paths that nothing writes.** The handler loop
+     rebinds its loop variable, `logfile = logfile.replace('/volumes/', '/')`, and builds
+     the file handler from the rebound value; the loop that announces the paths then
+     re-iterates the original `logfiles` list. So a run prints
+     `Log file: <root>/pdsdependency/volumes/VG_28xx/VG_2810_dependency_<tag>.log` and
+     writes `<root>/pdsdependency/VG_28xx/VG_2810_dependency_<tag>.log`. Measured by round
+     4 against a sandbox holdings tree. The announced path does not exist, and an operator
+     following it finds nothing. **Owner: a later maintenance-tool PR.**
+
+325. **`shelf_consistency_check` maps a shelf whose path holds no underscore to the empty
+     string and always reports it.** The counterpart is derived with
+     `holdings_path.rpartition('_')[0]`, and `str.rpartition` on a string with no separator
+     returns `('', '', s)`, so the result is `''`. `os.path.exists('')` is False, so such a
+     shelf is reported extraneous however complete the holdings tree beside it is.
+     Reproduced by round 4 on `<root>/shelves/info/abc.pickle` with `<root>/holdings/abc`
+     present, under a scratch path containing no underscore: `*** Extraneous shelf`,
+     `Errors found: 1`. It needs a path with no underscore *anywhere*, which no real
+     holdings tree has, so this is latent rather than live -- and it is the same
+     unguarded-`rpartition` shape as the extension strip two lines above it.
+     **Owner: a later maintenance-tool PR; belongs with entry 6, which holds the layout
+     question this tool's whole search rests on.**
