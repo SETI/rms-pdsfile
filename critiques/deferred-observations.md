@@ -5693,3 +5693,151 @@ rediscovery.
      reviewer-brief instruction, already followed here and worth keeping: give the second
      reader the correction diff by commit range, name the claims it makes, and say that
      they are unproven.**
+
+### Added by PR-30b
+
+295. **`pdsinfoshelf --initialize` on a file inside a volume ends in `AttributeError`.**
+     `initialize()` resolves its logger only inside the branch that finds an existing
+     shelf, so on the path that reaches the selection check the logger is still whatever
+     the caller passed, and `_shelf_common.run_selection_main()` calls a task as
+     `tasks[task](pdsdir, selection)` and passes none. The
+     `logger.error('File selection is disallowed for task "initialize"', selection)` call
+     is then made on None. Demonstrated against a stub: the pds3 tool raises
+     `AttributeError: 'NoneType' object has no attribute 'error'` and `pds4infoshelf` logs
+     the error and returns, because it resolves its logger before either test. The driver
+     reaches this for the `initialize` task alone, since it demotes `reinitialize` on a
+     selection to `update`. The fix is one line, hoisting the `logger = logger or …` above
+     the first test as the pds4 half already does; it is a behavior change on a frozen
+     surface and this PR documents it rather than making it.
+     **Owner: a later maintenance-tool PR.**
+
+296. **A blank line in a checksum manifest ends the read with `IndexError`.**
+     `read_checksums()` parses by fixed offsets, so a short record yields an empty
+     `filepath` and an empty `basename`, and `if basename[0] == '.':` then subscripts an
+     empty string. Reproduced in both flavors with a manifest holding one blank line:
+     `IndexError: string index out of range`, logged through `exception()` and re-raised.
+     With a selection given the record is skipped by the basename test above it and the
+     read completes, so the failure depends on the task. `basename.startswith('.')` is the
+     one-character fix. Found by round 1.
+     **Owner: a later maintenance-tool PR.**
+
+297. **`update` cannot see a deletion, in all four checksum and info shelf tools.**
+     `generate_checksums()` rebuilds its result from `old_keys = [p[0] for p in oldpairs]`,
+     all of them, and `generate_infodict()` starts from `old_infodict.copy()`, so an entry
+     for a file that is no longer on disk survives every update. Because it survives, the
+     comparison the task then makes still holds and the run reports "update canceled": a
+     deletion is not merely un-removed, it is invisible. Measured in both pairs with an
+     `oldpairs`/`old_infodict` naming a file that does not exist. Only `reinitialize` or
+     `repair` clears it. The link shelf tools do drop such an entry, because
+     `generate_links()` assembles its result from the paths the walk found; that asymmetry
+     between the three families is what made this hard to see. Found by round 1.
+     **Owner: a later maintenance-tool PR.**
+
+298. **The info shelf `update` never refreshes a directory entry.** `get_info()` recomputes
+     a directory's byte count, child count and date from the children the walk found, and
+     the merge that follows writes a key only `if key not in merged`, so a directory
+     already in the shelf keeps the entry it was shelved with and the recomputation is
+     discarded. Measured with a deliberately stale directory entry: the fresh walk computed
+     one value and the returned dictionary carried the old one. A unit that has gained or
+     lost a file therefore keeps a wrong child count and byte total for every ancestor
+     directory until a `reinitialize` or a `repair`, and `validate` reports those as "Child
+     count mismatch" and "File size mismatch", so the two tasks disagree about the same
+     shelf. Found by round 1.
+     **Owner: a later maintenance-tool PR.**
+
+299. **`pdschecksums.generate_checksums()` returns an empty dict where its own contract is
+     a list.** The two paths where a selection matched no file, or more than one, return
+     `({}, latest_mtime)`; every other return is a list of pairs, and `pds4checksums`
+     returns `([], latest_mtime)` on the same two paths. Every caller tests the value for
+     truth alone, so nothing breaks today; a caller that iterated it would get keys rather
+     than pairs.
+     **Owner: a later maintenance-tool PR.**
+
+300. **`pdschecksums.validate_pairs()` and `pdsinfoshelf.validate_infodict()` return from
+     their `finally` clause, so nothing raised inside them escapes.** The `except` above
+     each re-raises and the `return` in the `finally` discards it, including a
+     `KeyboardInterrupt`. `validate_pairs` then reports the flag as it stood, which for a
+     failure part way through a comparison that had so far agreed is True. Both are why
+     `B012` is on `pdschecksums.py`'s and `pdsinfoshelf.py`'s ruff ignore lists, and both
+     pds4 twins get it right -- `pds4checksums.validate_pairs` returns after the `try` and
+     `pds4infoshelf.validate_infodict` assigns in the `finally` and returns after it.
+     **Owner: a later maintenance-tool PR; the two ratchet codes retire with the fix.**
+
+301. **`validate_pairs()` computes a merged limits dictionary and then passes the unmerged
+     one**, in both flavors: `merged_limits` is built from `VALIDATE_PAIRS_LIMITS` and the
+     argument, and `logger.open(…, limits=limits)` is what runs. `VALIDATE_PAIRS_LIMITS` is
+     empty, so the two are equal today and the defect is latent: an entry added to that
+     constant would have no effect.
+     **Owner: a later maintenance-tool PR.**
+
+302. **`pdsarchives.read_archive_info()`'s "skip" comments do not skip.** The `.DS_Store`
+     and dot-underscore branches carry `# skip .DS_Store files` and
+     `# skip dot-underscore files` and neither has a `continue`, so both members are logged
+     as errors and then inventoried. The walk they are compared against does skip them, so
+     such a member is reported twice, once there and again as "Missing from directory".
+     Identical in `pds4archives`. The behavior is defensible and the comments are not.
+     **Owner: a later maintenance-tool PR.**
+
+303. **`pdsarchives.archive_targets()` raises `AttributeError` on a category-level path.**
+     A path with neither a volume nor a volume set above it, such as `<holdings>/volumes`,
+     makes `volset_pdsfile()` answer None and nothing checks it before `pdsdir.childnames`
+     is read. Reproduced against the test holdings: `AttributeError: 'NoneType' object has
+     no attribute 'childnames'`. `pds4archives.archive_targets()` cannot reach this, since
+     it returns the path itself.
+     **Owner: a later maintenance-tool PR.**
+
+304. **`pds4linkshelf` collects a directory's labels by a lower-case substring test.**
+     `local_labels = [f for f in local_basenames if '.xml' in f or '.lblx' in f]` is the
+     one test in `generate_links()` that does not upper-case first, so a label named
+     `FOO.XML` is not among a directory's labels and cannot be credited to a file through
+     its `<file_name>` elements; and it is a substring test rather than a suffix test, so a
+     `foo.xml.bak` is collected as a label. Every other extension test in the same function
+     upper-cases the basename and compares a true extension. Found by rounds 1 and 2.
+     **Owner: a later maintenance-tool PR.**
+
+305. **`pdsinfoshelf.get_info()`'s `checkdict` parameter is accepted, threaded through the
+     recursion and read by nothing.** The digest lookup is in `get_info_for_file()`, a
+     sibling nested function, which reads the enclosing call's `checkdict` from its
+     closure. It is the same object, so the argument is inert rather than wrong. Identical
+     in `pds4infoshelf`.
+     **Owner: a later maintenance-tool PR.**
+
+306. **Two different derivations of the sidecar path in one module.** `write_infodict()`
+     builds it as `info_path.rpartition('.')[0] + '.py'` and `repair()` as
+     `info_path.replace('.pickle', '.py')`; `_shelves.shelf_lookup()` uses the second form
+     too. They diverge for any path with `.pickle` in a directory component, which
+     `replace()` would rewrite. Identical in both info shelf tools. Found by round 1.
+     **Owner: a later maintenance-tool PR.**
+
+307. **`pds4checksums.GENERATE_CHECKSUMS_LIMITS = {'info': -1}` controls nothing.** That
+     module writes its per-file lines through `normal()`, so the `info` cap applies only to
+     the one forced summary line. Measured: a `{'normal': 0}` entry does cap normal-level
+     messages, so the levels are capped independently and this default is inert. The pds3
+     constant of the same name is live. Found by round 1.
+     **Owner: a later maintenance-tool PR.**
+
+308. **`critiques/pr-29/check_docstrings.py` has no mechanism for a bare `raise`.** E1
+     accepts a `Raises:` entry whose class is raised by name in the body or attributed to a
+     call, an item read or an unpacking. A bare `raise` with no exception to re-raise
+     produces a `RuntimeError` that is neither, so documenting it needs a sentence naming
+     some other call the body makes. `pds4archives.write_archive()` is the one function in
+     this PR in that position, and its entry attributes the catch rather than the raise. A
+     `raise` token alongside `unpacking` would close it; the checker is inherited and five
+     records depend on its numbers, so it is not amended here.
+     **Owner: a later PR that revises the docstring checkers.**
+
+309. **`pds4archives` writes archives its own `validate()` cannot match, for two of the
+     three archive shapes installed in this repository.** `write_archive()` gives each
+     member the basename of its packaged directory and the path below it, while
+     `read_archive_info()` rebuilds an absolute path by putting the **bundle set's** prefix
+     in front of that member name. The two agree only where the packaged directory is a
+     bundle directory sitting directly under the bundle set. Measured by writing an archive
+     with `initialize()` and validating it immediately, on all three shapes the rule modules
+     define: `cassini_vims` cruise, whose `ARCHIVE_DIRS` packages a bundle directory, round
+     trips; `cassini_uvis_solarocc_beckerjarmak2023`, whose table packages the bundle set
+     itself, gives 8 errors on a two-file tree; and `cassini_vims` saturn, whose table
+     packages collections two levels down, gives 11, the bundle name being dropped from
+     every rebuilt path. Deferred observation 1 already records that the pds4 archive
+     round trip has never worked in production; this is the mechanism, measured, and it is
+     a property of the pair of rules rather than of either function alone. Found by round
+     2. **Owner: a later maintenance-tool PR, together with entry 1.**

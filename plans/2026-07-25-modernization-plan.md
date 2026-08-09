@@ -1242,8 +1242,8 @@ and could not fit. Closes entries 68, 80 and 215; amends 54.
 `src/pdsfile/`**, so the docstring work for that directory is finished. What remained of
 Phase 7's docstrings was the rule modules, the two subclasses and the maintenance tools;
 PR-30 took the rule modules and PR-30a the subclasses, the shared maintenance core and
-`tools/`, leaving PR-30b the 17 per-tool modules. PR-31 onward are the Sphinx tree and
-the guides.
+`tools/`, leaving the 17 per-tool modules, which PR-30b and PR-30c divide between them.
+PR-31 onward are the Sphinx tree and the guides.
 
 Four things that shaped the result:
 
@@ -1307,17 +1307,31 @@ command line, and both are read by every other part of the subpackage.
     which of ten tools each driver and each `ToolSpec` field reaches, which is why
     `critiques/pr-30a/check_spec_readers.py` exists.
     `critiques/pr-30a-validation.md` is the record.
-  * **PR-30b** — the 17 per-tool modules under
-    `src/pdsfile/holdings_maintenance/pds3/` and `pds4/`: 105 functions, 72 of them
-    undocumented, 291 parameters, and `critiques/pr-29/check_docstrings.py` reports
-    **271 findings over 17 files** against them. This is the largest remaining
-    docstring surface in the package. It splits naturally into the ten
-    specification-driven tools, whose shared behavior PR-30a has already described, and
-    the four that parse their own command lines -- `crlf.py`, `pdsdependency.py`,
-    `re_validate.py` and `shelf_consistency_check.py` -- plus `linkshelf_repairs.py`,
-    which is a data table.
+  * The 17 per-tool modules under `src/pdsfile/holdings_maintenance/pds3/` and `pds4/`
+    are 105 functions, 54 of them undocumented, and 291 parameters, and
+    `critiques/pr-29/check_docstrings.py` reports **271 findings over 17 files** against
+    them at `4a59b74`. This was the largest remaining docstring surface in the package,
+    and it splits where the entry says it does: the ten specification-driven tools, whose
+    shared behavior PR-30a has already described, the four that parse their own command
+    lines, and `linkshelf_repairs.py`, which is a data table. It is done in two PRs
+    rather than one.
+  * **PR-30b (done)** — the five tool-family pairs and the repair table: 11 modules,
+    4,681 lines, 74 functions, 48 of them undocumented, 218 parameters, and not one of
+    the eleven with a module docstring. **177 of the 271 findings are here.** These are
+    five near-identical pairs, so the defect a docstring PR is most exposed to is a
+    sentence pasted between the two halves of one, which is why
+    `critiques/pr-30b/check_flavor_vocabulary.py` exists.
+    `critiques/pr-30b-validation.md` is the record.
+  * **PR-30c (S)** `docs: Google-style docstrings, the four standalone maintenance tools`
+    — `re_validate.py`, `pdsdependency.py`, `crlf.py` and `shelf_consistency_check.py`:
+    31 functions, 73 parameters, and the remaining 92 findings plus the two zero-byte
+    `__init__.py` files. They declare no `ToolSpec` and reach no shared driver, each
+    parsing its own command line, so nothing PR-30a or PR-30b documented carries over and
+    the vocabulary checker has no pair to compare. `pdsdependency.py` is 1,165 lines and
+    is the one maintenance module over a length limit, so this PR is where that is either
+    recorded again or acted on.
 
-    With PR-30b done, the checker reports zero over every module under `src/pdsfile/`
+    With PR-30c done, the checker reports zero over every module under `src/pdsfile/`
     except `_version.py`, which setuptools_scm generates and `.gitignore` excludes.
 
 The dataset accuracy problem is what makes the rule modules a PR of their own. There
