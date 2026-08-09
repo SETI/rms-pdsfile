@@ -312,20 +312,20 @@ module over a limit, is not in this PR.
 
 | file | total base | total head | docstring head | code base | code head |
 |---|---:|---:|---:|---:|---:|
-| `pdsinfoshelf.py` | 651 | 1,080 | 447 | 636 | 633 |
-| `pds4infoshelf.py` | 630 | 1,052 | 440 | 615 | 612 |
-| `pdschecksums.py` | 621 | 1,001 | 407 | 597 | 594 |
+| `pdsinfoshelf.py` | 651 | 1,091 | 458 | 636 | 633 |
+| `pds4infoshelf.py` | 630 | 1,063 | 451 | 615 | 612 |
+| `pdschecksums.py` | 621 | 1,006 | 412 | 597 | 594 |
 | `pds4checksums.py` | 589 | 962 | 400 | 565 | 562 |
 | `pdsarchives.py` | 255 | 519 | 270 | 249 | 249 |
-| `pds4archives.py` | 275 | 548 | 279 | 270 | 269 |
-| `pdslinkshelf.py` | 471 | 593 | 143 | 453 | 450 |
-| `pds4linkshelf.py` | 524 | 666 | 163 | 506 | 503 |
+| `pds4archives.py` | 275 | 552 | 283 | 270 | 269 |
+| `pdslinkshelf.py` | 471 | 602 | 152 | 453 | 450 |
+| `pds4linkshelf.py` | 524 | 679 | 176 | 506 | 503 |
 | `pdsindexshelf.py` | 53 | 105 | 55 | 53 | 50 |
 | `pds4indexshelf.py` | 57 | 115 | 61 | 57 | 54 |
-| `linkshelf_repairs.py` | 555 | 612 | 67 | 555 | 545 |
+| `linkshelf_repairs.py` | 555 | 614 | 69 | 555 | 545 |
 
-The largest is `pdsinfoshelf.py` at 1,080 total against a limit of 2,000 and 633 code lines
-against a limit of 1,000, so the tightest margin in the PR is 367 lines.
+The largest is `pdsinfoshelf.py` at 1,091 total against a limit of 2,000 and 633 code
+lines against a limit of 1,000, so the tightest margin in the PR is 367 lines.
 
 **Ten of the eleven lose code lines and one holds level**, which needs saying because a
 docstring-only change should not move a measure defined as "total minus docstring lines".
@@ -359,6 +359,9 @@ exactly as the head build renders their documented ones.
 **The exit status is 1 at both ends and this record says so rather than rounding it to a
 pass.** It was read from the probe's own return value; the probe appends a line of its own
 when `sphinx-build` exits nonzero, and that line is the 28th `-W` problem.
+
+The corrections rounds 3 and 4 produced were measured through the probe again and moved
+neither number.
 
 **All 27 remaining problems at each end are one warning repeated**, filtered mechanically
 by dropping every line matching "duplicate object description" and finding nothing left:
@@ -553,7 +556,106 @@ would be the defect concentration, and several of them are where the reviewers f
 
 ## 11. Review
 
-<!-- FILLED IN BELOW -->
+Four rounds, each run by a fresh reviewer subagent with no context from this session or
+from any other round. Records: `critiques/pr-30b/round-1.md` through `-4`.
+
+| round | slice | surface | disproved | of those, in the corrections | misleading | code defects |
+|---|---|---|---:|---:|---:|---:|
+| 1 | the checksum and info shelf pairs | 4 files, 46 functions, 159 parameters | 10 | -- | 9 | 7 |
+| 2 | the archive, link shelf and index shelf pairs, and the repair table | 7 files, 28 functions, 59 parameters | 11 | -- | 7 | 7 |
+| 3 | the same four, re-read | the same | 7 | **5** | 3 | 4 |
+| 4 | the same seven, re-read | the same | 6 | **5** | 5 | 5 |
+| | | | **34** | **10 of 13** | **24** | |
+
+Every finding was re-verified by the executor before it was acted on, and the four with
+the widest consequences in each round were re-derived from scratch rather than read. Both
+second-read briefs carried the correction commit range, an enumeration of the claims those
+commits make -- thirteen for round 3 and seventeen for round 4 -- and the instruction to
+treat every one as unproven and to attribute each finding with `git blame`.
+
+### The second reads found most of their yield in the first reads' corrections
+
+**Ten of the second reads' thirteen disproved claims are in sentences the first reads'
+corrections wrote**, five of round 3's seven and five of round 4's six; and of the eight
+sentences they classed as misleading, seven are, including all five of round 4's. PR-29a
+measured 11 of 23 on this question, PR-29b 10 of 21, PR-30 34 of 57 and PR-30a 15 of 22.
+**As a share this is the highest yet -- 10 of 13, where the previous high was 15 of 22 --
+and the trend the four previous records describe is unbroken.**
+
+The sharpest of them is not the largest. Round 1 disproved
+`pdschecksums`'s "that is the only way a run of this tool reaches a nonzero exit status",
+and the correction pass applied that finding to the module docstring of the same file and
+to the PDS4 twin's `main()` and **missed the PDS3 `main()` it came from**, leaving one
+docstring contradicting another 900 lines above it in the same file. Round 3 found it. A
+correction pass is not only more error-prone than a first draft; it is prone to a kind of
+error a first draft cannot make, which is applying a finding to three of the four places it
+belongs.
+
+Four more of the same shape are worth naming because each reads as freshly checked:
+
+* **the shelf-scan citation.** Round 1's finding that no shelf carries a dashed digest was
+  right, and the correction wrote up the numbers of the slice actually run -- "80 shelves
+  and 391,444 entries in the test holdings" -- as though they were the tree. Round 3
+  measured the tree: 6,723 shelves and 21,711,938 entries. It also noticed that the same
+  sentence stood in the PDS4 module citing a measurement the PDS4 tree cannot produce,
+  since it holds no info shelves at all.
+* **"is always written first."** The correction built a load-bearing property out of two
+  mechanical facts and asserted it of every call. `reinitialize()` on a selection hands
+  `write_infodict()` one entry, and round 3 ran it: no empty key at all, and
+  `shelf_lookup()` returning the named file's entry as the volume's.
+* **the label-crediting grounds, in both flavors.** Round 2 disproved "a name match alone
+  credits a label" and the correction replaced it with "the label named it in a target
+  position", which is the *other* branch's condition. Round 4 demonstrated it with a label
+  whose only mention of the file is inside a prose note, and with a PDS4 label whose only
+  mention is inside a `<comment>`: both credit, and neither is a target-position match.
+* **the `re.I` reason.** Round 2 disproved "the two entries that match a lower-case
+  basename" by finding that one is upper-case. The correction invented a reason -- that
+  they must match either case -- and round 4 measured it against 5,912 published files:
+  each pattern matches exactly the same files with the flag and without it.
+
+### What the angles returned
+
+* **Relationship claims** were the largest category in all four rounds, as in all five
+  earlier docstring PRs. The one that mattered most is the one that told a maintainer a
+  file nothing reads is read on the preload path, and that two properties of the write that
+  the shortcut depends on do not matter.
+* **Cross-version claims** produced the defect the vocabulary checker cannot see, twice in
+  each direction: a sentence true of `pds4infoshelf.initialize` asserted of `pdsinfoshelf`,
+  a repair ordering stated correctly in the PDS4 scan and backwards in the PDS3 one, an
+  "update drops a deleted entry" that is true of the link shelf family and false of the
+  other two, and a "shortest of the ten" true in one twin and false in the other. **The
+  gate caught none of these and was never going to: it checks the vocabulary and never the
+  meaning**, which is what section 4 says of it and what these four findings are the
+  evidence for.
+* **Exceptions from something other than `raise`** produced two whole contracts that were
+  missing -- the `IndexError` a blank line in a manifest gives, and the `AttributeError`
+  `pdsinfoshelf --initialize` on a file ends in -- and one that was wrong, the `EOFError`
+  attributed to a truncated pickle that gives `UnpicklingError` seven times out of eight.
+* **Arithmetic and counts** behaved as they did in PR-30a: the boundary claims held --
+  the tenth-of-a-day threshold, the strict comparison at equal times, the 32-and-35
+  character manifest offsets, the modification-time tolerance -- and the counts did not.
+  Three, four, five and "the fifth of four" were each wrong somewhere.
+
+### The counted claims about the repair table held twice
+
+`linkshelf_repairs.py`'s module docstring makes eight counted claims, and rounds 2 and 4
+each measured all eight independently by importing the table. All eight held both times:
+141 entries, 2 carrying `re.I`, 77 dictionary translators and 64 nested regular-expression
+ones, 267 dictionary entries of which 24 map to the empty string, 90 nested regex entries,
+and a comprehension over `range(0, 50)`. **Every prose claim in that docstring that a round
+disproved was about what the table means rather than about what is in it** -- which
+translator loop runs, when a truncation is reachable, why two entries carry a flag, what
+order the groups are in. The numbers were never the risk.
+
+### The freeze rule was followed
+
+Deferred entry 239 asks that the previous round's corrections be committed and the tree
+left alone before the round that reviews them is launched, after PR-29b and PR-30a each
+broke it. Rounds 1 and 2 were launched against a frozen `5acbf85` and rounds 3 and 4
+against a frozen `748eae4`; `git diff --stat <sha> -- src/` was empty at every check while
+a round was running. Records, deferred observations and the plan amendment were written
+during rounds 3 and 4, and none of them is under `src/` or reachable from the diff the two
+reviewers were given.
 
 ## 12. What remains of Phase 7's docstring work
 

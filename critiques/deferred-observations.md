@@ -5786,13 +5786,20 @@ rediscovery.
      it returns the path itself.
      **Owner: a later maintenance-tool PR.**
 
-304. **`pds4linkshelf` collects a directory's labels by a lower-case substring test.**
-     `local_labels = [f for f in local_basenames if '.xml' in f or '.lblx' in f]` is the
-     one test in `generate_links()` that does not upper-case first, so a label named
-     `FOO.XML` is not among a directory's labels and cannot be credited to a file through
-     its `<file_name>` elements; and it is a substring test rather than a suffix test, so a
-     `foo.xml.bak` is collected as a label. Every other extension test in the same function
-     upper-cases the basename and compares a true extension. Found by rounds 1 and 2.
+304. **`pds4linkshelf.generate_links()` is case-sensitive in four places, in a function
+     whose link resolution is not.** All four defeat the label credit that is this tool's
+     one advantage over the pds3 scan.
+     - `local_labels = [f for f in local_basenames if '.xml' in f or '.lblx' in f]`
+       collects a directory's labels by a lower-case **substring** test, so a label named
+       `FOO.XML` is not among them and a `foo.xml.bak` is.
+     - the credit itself compares `link_text_of(info) == basename` exactly, so a label
+       naming `FOO.DAT` does not credit a `foo.dat` on disk.
+     - a collection inventory is recognized by `basename.startswith('collection')` and
+       `endswith('.csv')`, so a `COLLECTION_DATA.CSV` is never read, and every file in that
+       directory is then treated as unlisted and its missing-label report suppressed.
+     - membership is `basename.rpartition('.')[0] in csv_basenames`, exact again.
+     Every extension test elsewhere in the same function upper-cases first. Found by
+     rounds 1, 2 and 4, each independently.
      **Owner: a later maintenance-tool PR.**
 
 305. **`pdsinfoshelf.get_info()`'s `checkdict` parameter is accepted, threaded through the
@@ -5837,7 +5844,39 @@ rediscovery.
      trips; `cassini_uvis_solarocc_beckerjarmak2023`, whose table packages the bundle set
      itself, gives 8 errors on a two-file tree; and `cassini_vims` saturn, whose table
      packages collections two levels down, gives 11, the bundle name being dropped from
-     every rebuilt path. Deferred observation 1 already records that the pds4 archive
-     round trip has never worked in production; this is the mechanism, measured, and it is
-     a property of the pair of rules rather than of either function alone. Found by round
-     2. **Owner: a later maintenance-tool PR, together with entry 1.**
+     every rebuilt path. Round 4 enumerated the installed tables rather than sampling them:
+     of the **seven**, one round trips. `cassini_vims`'s cruise rule packages a bundle
+     directory; `uranus_occs_earthbased` and `cassini_uvis_solarocc_beckerjarmak2023`
+     package the bundle set itself; and `cassini_iss`, `cassini_vims` (saturn),
+     `cassini_iss_spokes_hedman_hamilton_2024` and
+     `cassini_iss_fring_mosaics_rsfrench2025` package collections two levels down. Round 4
+     also reproduced it end to end on a six-file copy of the uvis set: 18 errors, 9 from
+     each side. Deferred observation 1 already records that the pds4 archive round trip has
+     never worked in production; this is the mechanism, measured, and it is a property of
+     the pair of rules rather than of either function alone.
+     **Owner: a later maintenance-tool PR, together with entry 1.**
+
+310. **`pdsinfoshelf.repair()` logs "content is up to date" on the out-of-date branch.**
+     Where the shelf and the walk agree but the holdings are newer, the first line written
+     is `!!! Info shelf file content is up to date` and the fourth is
+     `!!! Info shelf file is out of date %.1f days`. The two say opposite things about the
+     same run, and only the second is about the dates the branch was entered for.
+     Identical in `pds4infoshelf`. Found by round 3.
+     **Owner: a later maintenance-tool PR; changing either line moves log output.**
+
+311. **The test holdings hold 6,723 info shelf pickles and no `.py` sidecars at all.**
+     `_shelves.shelf_lookup()` answers a question about a bundle by reading the sidecar's
+     second line and has no fallback to the pickle, so that shortcut raises
+     `FileNotFoundError` against the tree this project tests on. Measured by globbing
+     `_infoshelf-*/**/*_info.py` under `/seti/opus/pdsdata/holdings`: zero. The published
+     tree does carry them. Whether the fixture tree should carry sidecars, or
+     `shelf_lookup()` should fall back, is a question this PR raises and does not answer.
+     Found by round 3. **Owner: open.**
+
+312. **`local_basenames[k]` is indexed with a loop variable that escapes two nested loops
+     and a directory boundary**, in `pdslinkshelf.generate_links()` and
+     `pds4linkshelf.generate_links()`. It cannot fire today: the guard above it,
+     `if obvious_label_basename:`, is truthy only on an iteration that set `k`. It is
+     recorded because the value being formatted is `obvious_label_basename`'s and the index
+     is redundant. Found by round 4.
+     **Owner: a later maintenance-tool PR.**
