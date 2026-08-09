@@ -70,7 +70,8 @@ checkout:
 Counted from the tree, not from the brief: `find src/pdsfile -name '*.py' | wc -l` is 78,
 and the grouping is by the second component of the dotted name. The brief's module table
 was right this time, to the module. Each entry carries `:members:`, `:undoc-members:` and
-`:show-inheritance:`, which `doc_dev_guide.mdc` section 6 requires on every `automodule`.
+`:show-inheritance:`, which `doc_dev_guide.mdc` section 6 requires on every `automodule`,
+plus `:special-members: __init__`, which section 8 explains.
 
 ## 3. The two warning families, reproduced and fixed
 
@@ -235,13 +236,16 @@ exited 0. All three are fixed and all three are re-measured above.
       78 of 78 modules under <source root> documented)
     ✓ Sphinx nitpicky build passed (exit 0, problem lines: 0, API reference: 78 of 78
       modules under <source root> documented)
-    ✓ Sphinx build passed: 0 problem lines under -W and 0 under -n -W, and the build
-      reports API reference: 78 of 78 modules under <source root> documented
+    ✓ Sphinx build passed: 0 problem lines under -W and 0 under -n -W, and both builds
+      report API reference: 78 of 78 modules under <source root> documented
 
-Every number there is read out of the build's own output. A build is accepted only if it
+Every number there is read out of the builds' own output. A build is accepted only if it
 exited 0, **wrote its HTML**, and **printed that coverage line** -- so a `make` that
 resolves to nothing, or a `conf.py` whose check has been removed, fails rather than
-passing quietly.
+passing quietly -- and the two builds' coverage lines must agree, because they document
+one tree. Two of the three numbers cannot vary: under `-W` any problem line fails the
+build, so the success path can only print two zeros. Deferred entry 345 says so rather
+than letting a reader take them for evidence.
 
 ## 5. The gate runs in CI, quoted from the job log
 
@@ -253,29 +257,36 @@ back. Sphinx arrives through `pip install -e ".[dev]"`, because the `dev` extra 
 and `Collecting sphinx>=7 (from rms-pdsfile==0.1.dev1)`, so it resolves from the local
 tree rather than from PyPI.
 
-From `gh api repos/SETI/rms-pdsfile/actions/jobs/93209650343/logs`, job **Lint and
-holdings-free tests (3.13)** of run `31299405781`, verbatim (timestamps trimmed to the
-minute):
+From `gh api repos/SETI/rms-pdsfile/actions/jobs/93214804715/logs`, job **Lint and
+holdings-free tests (3.13)** of run `31301447320` at the head commit, verbatim (timestamps
+trimmed to the second):
 
-    06:41:28 >>> Sphinx Build
-    06:41:28 ℹ Building documentation (warnings as errors)...
-    06:41:28 Running Sphinx v9.1.0
-    06:41:29 building [html]: targets for 7 source files that are out of date
-    06:41:29 updating environment: [new config] 7 added, 0 changed, 0 removed
-    06:41:34 checking consistency... API reference: 78 of 78 modules under
+    07:35:30 >>> Sphinx Build
+    07:35:30 ℹ Emptying docs/_build...
+    07:35:30 ℹ Building documentation (warnings as errors)...
+    07:35:43 Running Sphinx v9.1.0
+    07:35:43 building [html]: targets for 7 source files that are out of date
+    07:35:43 API reference: 78 of 78 modules under
              /home/runner/work/rms-pdsfile/rms-pdsfile/src documented
-    06:41:38 build succeeded.
-    06:41:39 ✓ Sphinx warnings-as-errors build passed (exit 0)
-    06:41:39 ℹ Building documentation (nitpicky, warnings as errors)...
-    06:41:39 building [html]: targets for 7 source files that are out of date
-    06:41:49 ✓ Sphinx nitpicky build passed (exit 0)
-    06:41:49 ✓ SUCCESS - All checks completed successfully
+    07:35:43 ✓ Sphinx warnings-as-errors build passed (exit 0, problem lines: 0,
+             API reference: 78 of 78 modules under .../src documented)
+    07:35:43 ℹ Building documentation (nitpicky, warnings as errors)...
+    07:35:57 Running Sphinx v9.1.0
+    07:35:57 building [html]: targets for 7 source files that are out of date
+    07:35:57 API reference: 78 of 78 modules under .../src documented
+    07:35:57 ✓ Sphinx nitpicky build passed (exit 0, problem lines: 0, API reference:
+             78 of 78 modules under .../src documented)
+    07:35:57 ✓ Sphinx build passed: 0 problem lines under -W and 0 under -n -W, and the
+             build reports API reference: 78 of 78 modules under .../src documented
+    07:35:57 ✓ SUCCESS - All checks completed successfully
+    07:35:57 ℹ Total time: 1m 5s
 
-Round 2 was asked to hunt the vacuity signature in that log and reported it absent:
-`grep -c "no targets are out of date"` is **0** in both lint legs, and both builds in both
-legs report `7 source files that are out of date`. The 3.10 leg runs the same gate on
-**Sphinx 8.1.3** and `myst-parser 4.0.1`; both legs pass. The pytest gate in the same job
-reports **318 passed, 817 skipped**, which is the recorded no-holdings figure.
+Round 2 was asked to hunt the vacuity signature in the equivalent log of the previous run
+and reported it absent: `grep -c "no targets are out of date"` is **0** in both lint legs,
+and both builds in both legs report `7 source files that are out of date`. The 3.10 leg
+runs the same gate on **Sphinx 8.1.3** and `myst-parser 4.0.1`; both legs pass. The pytest
+gate in the same job reports **318 passed, 817 skipped**, which is the recorded
+no-holdings figure. The two documentation builds cost about 27 s of the job's 65 s.
 
 **Which invocations reach the gate.** `--sequential` and a bare invocation both take the
 default-all branch, so both run it. `-c` does not: it selects the code scope, and Sphinx is
@@ -295,15 +306,18 @@ Measured by pointing `intersphinx_mapping` at a host that does not resolve:
 | flags | exit | problems |
 |---|---:|---:|
 | `-W` | 1 | 1 (`failed to reach any of the inventories`) |
-| `-n -W` | 1 | 35 (that one, plus the 34 references the inventory was resolving) |
+| `-n -W` | 1 | 37 (that one, plus the 36 references the inventory was resolving) |
 
-The 34 are all standard-library names: `collections.abc.Callable` ten times,
-`argparse.Namespace` eight, `argparse.ArgumentParser` five, `re.Pattern` three,
+The 36 are all standard-library names: `collections.abc.Callable` eleven times,
+`argparse.Namespace` eight, `argparse.ArgumentParser` five, `re.Pattern` four,
 `tarfile.ReadError` and `pickle.UnpicklingError` twice each, and one each of
 `smtplib.SMTPException`, `pickle.PickleError`, `pathlib.Path` and `datetime.datetime`.
 They come from `Parameters:`, `Returns:` and `Raises:` entries -- round 1 established the
 section of origin for 13 of them and corrected `conf.py`'s comment, which had named only
-`Parameters:`.
+`Parameters:`. **It was 34 until the constructor docstrings were published**, and round 4
+caught the comment still saying 34 after the same commit had made it 36: measured at 36
+with the constructors published and 34 with that one line deleted and nothing else
+changed.
 
 So a transient outage at `docs.python.org` turns the hosted lint job red, and the message
 names the inventory rather than anything about this tree. **This is left as a known flake
@@ -381,7 +395,7 @@ with. What differs, and why:
 | `html_theme` | absent | `sphinx_rtd_theme` | the theme the `docs` extra installs and the one ReadTheDocs serves |
 | `html_show_copyright` | absent | `False` | the repository names no copyright holder -- `LICENSE` is the stock Apache-2.0 text with no holder line and there is no `NOTICE` -- and the theme was rendering "(c) Copyright ." on every page |
 | `napoleon_use_ivar` | absent | `True` | section 3.2 |
-| `autoclass_content` | absent | `'both'` | nine `__init__` docstrings, six with a `Parameters:` block, were written and never published; all nine now are |
+| the `automodule` options | `:members: :undoc-members: :show-inheritance:` | those three plus `:special-members: __init__` | nine `__init__` docstrings, six with a `Parameters:` block, were written and never published; all nine now are, one copy each |
 | `autodoc_mock_imports` | absent | `['tabulate']` | section 6.2 |
 | `intersphinx_timeout` | absent | `30` | section 6.1 |
 | `exclude_patterns` | absent | `['_build']` | the build tree is inside the source directory |
@@ -399,6 +413,18 @@ PR-33 turns it on with the first diagram.
 `nitpick_ignore` is carried over and stays **empty**. Nothing in this tree needs an entry,
 and section 3 permits one only for a symbol with no resolvable target, never for a symbol
 this package owns.
+
+**The constructor docstrings are published by a page option, not by
+`autoclass_content`.** `autoclass_content = 'both'` publishes them and also appends the
+base class's `__init__` docstring to every subclass entry that inherits it -- 26 copies of
+`Pds3File.__init__`'s on the PDS3 page and 7 of `Pds4File.__init__`'s on the PDS4 page,
+because `autodoc_inherit_docstrings` defaults to true and setting it false does not change
+that. `:special-members: __init__` on the `automodule` entries documents `__init__` only
+for a class that defines one, because `:inherited-members:` is not set. Measured: nine
+constructor docstrings published and none missing, twelve `__init__` entries in the
+inventory (the nine plus the generated constructors of `ToolSpec`, `RunResult` and
+`VersionedFile`), and one copy of each. The option is on all 78 entries rather than on the
+seven modules that need it, so every entry carries the same four options.
 
 **The coverage check runs from `build-finished`, not `env-check-consistency`.** Sphinx
 guards the consistency event with `if updated_docnames:`; adding a `.py` file changes no
@@ -425,7 +451,7 @@ and 77 built HTML pages:
 | `sphinx-build -b html -E -n -W docs <out>` | 0 | 0 |
 | the shipped gate, both builds | 0 | 0 |
 
-The published inventory holds **993 objects**, and all nine `__init__` docstrings appear
+The published inventory holds **1,005 objects**, and all nine `__init__` docstrings appear
 on the pages (verified by matching each one's first line against the built HTML: 9
 published, 0 missing).
 
@@ -510,7 +536,11 @@ Nothing moved, and `pyproject.toml` is byte-identical to `8f8d825`
 
 `critiques/pr-29/check_docstrings.py` over the 78 modules under `src/pdsfile`: **0 findings
 over 78 files**, unchanged. Over `docs/conf.py`, which is a new Python file: **0 findings
-over 1 file**. The checker should cover it -- its rules are the mechanically checkable half
+over 1 file**. The 78 excludes `src/pdsfile/_version.py`, which is not in a checkout but
+which a local full run writes, because the clean-install gate builds the project and
+`setuptools_scm` puts it there; with it present the same command reports 79 files and one
+M1 finding, and the Sphinx build still reports 78 of 78 modules documented. Deferred entry
+346. The checker should cover it -- its rules are the mechanically checkable half
 of `doc_python.mdc` section 4, and a `conf.py` with a module docstring and three functions
 is exactly what they are for -- so it was run. Nothing automates that: round 3 found the
 checker is wired into no gate at all, which is deferred entry 337.
@@ -542,7 +572,7 @@ corrections the first three produced.
 | 1 | `conf.py`, the API pages, the `Makefile`, the README marker | 12 | 9 |
 | 2 | the gate, the CI wiring, and whether the two correspond | 5 | 7 |
 | 3 | one job: prove the gate is vacuous | 12 | -- |
-| 4 | a second read of what rounds 1-3 changed | see below | |
+| 4 | a second read of what rounds 1-3 changed | 10 | 9 |
 
 Records at `critiques/pr-31/round-N.md`.
 
@@ -558,8 +588,8 @@ different way, green over a build that never happened.
 
 **Round 3's list of what the gate does not catch is the most valuable output of this PR**,
 because PR-32, PR-33 and PR-34 all lean on this gate. Twelve defects pass it, of which one
-was fixed here (`autoclass_content`), one was a false claim in the gate's own comment, and
-the rest are recorded as deferred entries 333-341: docstring-against-signature drift in
+was fixed here (the unpublished constructor docstrings), one was a false claim in the
+gate's own comment, and the rest are recorded as deferred entries 333-341: docstring-against-signature drift in
 every shape; cross-references inside the 43 docstrings that are never published; a
 dev-only import in any of the 35 modules no dependency gate imports; `__all__` narrowing a
 module to one member; a missing `:members:` taking a module from 46 published objects to 0;
@@ -567,20 +597,51 @@ a decorator without `functools.wraps`; `.. note:` with one colon deleting its ow
 a duplicate `automodule` with `:no-index:`; a module exempted by name in `conf.py`; and a
 moved README marker emptying the front page.
 
+**Round 4 says how well the first three rounds' corrections held: nine of its ten defects
+were in the corrections themselves.** The intersphinx comment's number was made wrong by a
+change in the same commit that rewrote it -- 34 became 36. The regex that reads the
+coverage line rejected any project path containing a space, turning a clean build into a
+gate failure. `autoclass_content = 'both'`, added to publish nine constructor docstrings,
+also appended a base class's constructor docstring to 33 subclass entries that never wrote
+one; the fix for that is now a page option, `:special-members: __init__`, which documents
+`__init__` only for a class that defines one. The rewritten `docs/api/index.rst`
+contradicted the `conf.py` docstring rewritten beside it. A comment named `pipefail` where
+the option was `errexit`; one claimed an extension set the pages do not rely on; one
+over-corrected a page intro into saying the maintenance tools build a holdings tree; the
+skill file's new snippet was not runnable as a block; and a docstring said a failed build
+is not asked about its coverage, which is false for the way `-W` fails in Sphinx 9. All are
+fixed and re-measured, and round 4's record lists the seven corrections it checked and
+found sound. Nine in ten is the same ratio six docstring PRs recorded, and it is why a
+fourth round exists.
+
 **Ask every reviewer what it could not verify.** All four did, and the recurring answer is
 ReadTheDocs: nobody ran a build there, `.readthedocs.yaml` sets no `fail_on_warning`, and
-several findings have teeth only in CI. That is stated rather than papered over.
+several findings have teeth only in CI. That is stated rather than papered over. Round 4
+also could not verify what `src/pdsfile/_version.py` holds in this tree, since it is
+gitignored -- and a local full run has since written it, which is deferred entry 346 and
+which turns the coverage check's exemption for it from theoretical into load-bearing: with
+the file present the build still reports **78 of 78**.
 
 ### 10.1 The grep after each correction
 
 Every correction was grepped for across the whole repository before this record was
 written, because a fix that reaches the code and not the record is how three of
-CodeRabbit's PR-30b findings survived. The two that reached more than one place: the
-"6 files under docs/api" figure appeared in the script's pass line and in round 3's quoted
-baseline, and the false "the two flags catch different defects" claim appeared in
-`run-all-checks.sh`, in this record's draft and in the PR body. Both were corrected in
-every place. The rest -- the four page intros, the three `conf.py` comments, the skill
-file's three docs-gate mentions -- each lived in one file.
+CodeRabbit's PR-30b findings survived. Four reached more than one place:
+
+* **"6 files under docs/api"** -- the script's pass line and round 3's quoted baseline.
+* **"the two flags catch different defects"** -- `run-all-checks.sh`, this record's draft
+  and the PR body.
+* **the intersphinx count** -- `conf.py`'s comment, deferred entry 329 and section 6.1 of
+  this record all said 34 and all now say 36.
+* **the docs-gate command** -- `run-all-checks.sh`'s header, `docs/Makefile` and three
+  places in `.cursor/skills/run-all-checks/SKILL.md`.
+
+The rest -- the four page intros, the remaining `conf.py` comments, the two shell comments
+-- each lived in one file. One correction had to be made twice for a reason worth
+recording: the sentence in deferred entry 330 that cites `show_opus_products` was rewritten
+to drop its line number because `check_citations.py` reads every entry after PR-29's, and
+then entry 343, which explains that, tripped the same check by quoting the citation. It
+now describes the pattern instead of showing it.
 
 ## 11. What this closes, and what remains of Phase 7
 
@@ -598,7 +659,8 @@ of section 7).
 ## 12. What the owner might decide differently
 
 * **The diagram extension.** It is off, with the CDN measurement as the reason. Turning it
-  on is one line whenever a guide draws a diagram.
+  on is one line whenever a guide draws a diagram. `sphinxcontrib-mermaid` stays in the
+  `docs` extra, so it is installed and unused until then (deferred 344).
 * **`html_show_copyright = False`.** The alternative is stating a holder and a year, which
   the repository does not state anywhere today.
 * **The intersphinx network dependency** (6.1) is kept, with the local-inventory fallback

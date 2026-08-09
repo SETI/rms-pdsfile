@@ -634,46 +634,55 @@ run_sphinx_build() {
         return 1
     fi
 
-    # Each build's output is captured, printed, and then read: it is accepted only if it
-    # exited 0, wrote the HTML it was asked for, and printed the line docs/conf.py emits
-    # when it has compared the source tree against the modules the build documented. Exit
-    # status alone would accept a `make` that resolved to nothing at all. Each verdict is
-    # printed directly under the build it judges, so the log reads in order.
+    # Each build streams to the log and is captured at the same time, then read: it is
+    # accepted only if it exited 0, wrote the HTML it was asked for, and printed the line
+    # docs/conf.py emits when it has compared the source tree against the modules the
+    # build documented. Exit status alone would accept a `make` that resolved to nothing
+    # at all. `set -o pipefail` is what carries make's status through the tee, and each
+    # verdict is printed directly under the build it judges.
     print_info "Building documentation (warnings as errors)..."
-    (cd docs && make html SPHINXOPTS="-W") > "$warnings_log" 2>&1 || warnings_status=$?
-    cat "$warnings_log"
+    (cd docs && make html SPHINXOPTS="-W") 2>&1 | tee "$warnings_log" || warnings_status=$?
     _sphinx_build_verdict "warnings-as-errors" "$warnings_status" "$warnings_log" \
         docs/_build/html/index.html "$status_file" || warnings_status=1
 
     print_info "Building documentation (nitpicky, warnings as errors)..."
-    (cd docs && make html BUILDDIR=_build/nitpicky SPHINXOPTS="-n -W") \
-        > "$nitpicky_log" 2>&1 || nitpicky_status=$?
-    cat "$nitpicky_log"
+    (cd docs && make html BUILDDIR=_build/nitpicky SPHINXOPTS="-n -W") 2>&1 \
+        | tee "$nitpicky_log" || nitpicky_status=$?
     _sphinx_build_verdict "nitpicky" "$nitpicky_status" "$nitpicky_log" \
         docs/_build/nitpicky/html/index.html "$status_file" || nitpicky_status=1
 
     deactivate 2>/dev/null || true
 
     if [ "$warnings_status" -eq 0 ] && [ "$nitpicky_status" -eq 0 ]; then
-        local warn_problems nitpick_problems coverage
+        local warn_problems nitpick_problems coverage nitpicky_coverage
         warn_problems=$(_sphinx_problem_count "$warnings_log")
         nitpick_problems=$(_sphinx_problem_count "$nitpicky_log")
         coverage=$(_sphinx_coverage_line "$warnings_log")
-        print_success "Sphinx build passed: $warn_problems problem lines under -W and $nitpick_problems under -n -W, and the build reports $coverage"
+        nitpicky_coverage=$(_sphinx_coverage_line "$nitpicky_log")
+        # The two builds document one tree, so a disagreement means one of them was not
+        # the build it claimed to be.
+        if [ "$coverage" != "$nitpicky_coverage" ]; then
+            print_error "Sphinx builds disagree about coverage: '$coverage' against '$nitpicky_coverage'"
+            if [ -n "$status_file" ]; then
+                echo "Sphinx - builds disagree about coverage" >> "$status_file"
+            fi
+            return 1
+        fi
+        print_success "Sphinx build passed: $warn_problems problem lines under -W and $nitpick_problems under -n -W, and both builds report $coverage"
         return 0
     fi
     return 1
 }
 
 # Number of WARNING/ERROR lines a Sphinx build printed. grep reports none by exiting 1,
-# which under `set -o pipefail` would otherwise take the caller down with it.
+# which under `set -e` would otherwise take the caller down with it.
 _sphinx_problem_count() {
     grep -cE 'WARNING:|ERROR:' "$1" || true
 }
 
 # The coverage line docs/conf.py prints once per build, or the empty string if it did not.
 _sphinx_coverage_line() {
-    { grep -oE 'API reference: [0-9]+ of [0-9]+ modules under [^ ]+ documented' "$1" \
+    { grep -oE 'API reference: [0-9]+ of [0-9]+ modules under .+ documented' "$1" \
         || true; } | tail -1
 }
 
@@ -686,7 +695,7 @@ _sphinx_build_verdict() {
     coverage=$(_sphinx_coverage_line "$log")
 
     if [ "$status" -ne 0 ]; then
-        print_error "Sphinx $label build failed (exit $status, problem lines: $problems)"
+        print_error "Sphinx $label build failed (exit $status, problem lines: $problems)${coverage:+, $coverage}"
     elif [ ! -f "$html" ]; then
         print_error "Sphinx $label build exited 0 but wrote no $html"
     elif [ -z "$coverage" ]; then

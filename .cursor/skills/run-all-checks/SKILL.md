@@ -53,15 +53,19 @@ Use the script’s `-m` option to run only Markdown lint.
 ### Documentation (Sphinx)
 
 ```bash
-cd docs && make clean
-cd docs && make html SPHINXOPTS="-W"
-cd docs && make html BUILDDIR=_build/nitpicky SPHINXOPTS="-n -W"
+cd docs
+make clean
+make html SPHINXOPTS="-W"
+make html BUILDDIR=_build/nitpicky SPHINXOPTS="-n -W"
 ```
 
-Two builds, and both exit statuses count. `-W` makes any warning fatal; `-n` reports every
-cross-reference that resolves to nothing, and on its own it reports them and still exits 0,
-so it is never run without `-W`. The second build needs its own `BUILDDIR`: two builds that
-share one share its doctree cache, and the second then re-reads nothing and reports nothing.
+Two builds, and neither exit status is the whole answer. `-W` makes any warning fatal;
+`-n` reports every cross-reference that resolves to nothing, and on its own it reports
+them and still exits 0, so it is never run without `-W`. The second build needs its own
+`BUILDDIR`: two builds that share one share its doctree cache, and the second then
+re-reads nothing and reports nothing. A build counts as passing only if it exits 0, writes
+its HTML, **and** prints the `API reference: N of N modules ... documented` line that
+`docs/conf.py` emits -- a `make` that resolves to nothing satisfies the exit status alone.
 The script’s `-d` option runs the docs build plus Markdown lint.
 
 ## Using the Script
@@ -171,4 +175,5 @@ All checks pass when:
 - `pytest` → All tests pass; coverage meets target if configured
 - `pymarkdown scan` → No violations
 - `make html SPHINXOPTS="-W"` and `make html BUILDDIR=_build/nitpicky SPHINXOPTS="-n -W"`
-  (in docs/, after `make clean`) → both complete with exit 0
+  (in docs/, after `make clean`) → both exit 0, both write their HTML, and both print
+  `API reference: N of N modules ... documented`

@@ -6135,11 +6135,12 @@ rediscovery.
      standard-library names in `Parameters:`, `Returns:` and `Raises:` entries resolve.
      Measured by pointing it at a host that does not resolve: `-W` alone exits **1** with
      one warning (`failed to reach any of the inventories`), and `-n -W` exits **1** with
-     **35** -- that one plus the 34 references the inventory was resolving
-     (`collections.abc.Callable` x10, `argparse.Namespace` x8,
-     `argparse.ArgumentParser` x5, `re.Pattern` x3, `tarfile.ReadError` x2,
+     **37** -- that one plus the 36 references the inventory was resolving
+     (`collections.abc.Callable` x11, `argparse.Namespace` x8,
+     `argparse.ArgumentParser` x5, `re.Pattern` x4, `tarfile.ReadError` x2,
      `pickle.UnpicklingError` x2, and one each of `smtplib.SMTPException`,
-     `pickle.PickleError`, `pathlib.Path`, `datetime.datetime`). So a transient outage at
+     `pickle.PickleError`, `pathlib.Path`, `datetime.datetime`). It was 34 before the
+     constructor docstrings were published; publishing them added two. So a transient outage at
      `docs.python.org` turns the hosted lint job red, and the message names the inventory
      rather than anything about this tree. `intersphinx_timeout = 30` bounds the case
      where the host accepts the connection and never answers, which would otherwise stall
@@ -6319,3 +6320,35 @@ rediscovery.
      finding. The alternative is to extend `CITATIONS`, which means a PR-29
      tool acquiring later PRs' citations. **Owner: whoever next needs a line citation in
      a deferred entry.**
+
+### Added by the PR-31 adversarial review (round 4, a second read of the first three rounds' corrections)
+
+344. **`sphinxcontrib-mermaid` is still in the `docs` extra, and no configuration enables
+     it.** `docs/conf.py` drops the extension because no page draws a diagram (the CDN
+     measurement is in the comment there), but `pyproject.toml`'s `docs` extra still
+     lists the package, so `.readthedocs.yaml`'s `pip install .[docs]` and CI's
+     `pip install -e ".[dev]"` both install it. Nothing breaks -- an installed extension
+     that no `extensions` list names does nothing -- and the guides of the next two PRs
+     will want it. It is left in place rather than removed and re-added.
+     **Owner: PR-32 or PR-33, whichever draws the first diagram.**
+
+345. **Two of the gate's three published numbers cannot vary.** The pass line reads
+     `N problem lines under -W and M under -n -W`, and under `-W` any `WARNING:` or
+     `ERROR:` line makes the build exit non-zero, so the success path can only ever
+     print `0` and `0`. The number that carries information is the coverage line, which
+     is why the gate requires it and compares the two builds' copies of it. The counts do
+     carry information on the failure path, where they say how many problems a failing
+     build reported. This is a property of `-W`, not a defect, and it is recorded so that
+     nobody reads two zeros as evidence of anything they are not.
+
+346. **A local full run materializes `src/pdsfile/_version.py`, which makes the coverage
+     check's exemption load-bearing rather than theoretical.** The clean-install gate
+     builds the project, `setuptools_scm`'s `write_to` writes the file into the source
+     tree, and it stays there: it is gitignored, so nothing notices. With the file
+     present, `check_docstrings.py` over `find src/pdsfile -name '*.py'` reports **79
+     files and one M1 finding** (the generated file has no module docstring), and the
+     Sphinx build still reports **78 of 78 modules documented**, because
+     `_GENERATED_MODULES` excludes it. Any later checker that walks `src/pdsfile/*.py`
+     has to exclude it too, and any later measurement of "the number of modules" has to
+     say which of the two numbers it means. **Owner: whoever writes the next such
+     checker.**

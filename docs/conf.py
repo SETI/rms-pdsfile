@@ -8,9 +8,8 @@ One configuration file serves the whole tree. Four of the things it does are wor
 knowing before reading the settings: it puts the source root on `sys.path` so `autodoc`
 imports the package from the checkout being documented; it reads the version from the
 installed distribution metadata, which can therefore describe a different tree from the
-one being documented; it selects the extension set, some of which the documentation rules
-require rather than the pages using; and it registers a check that warns when a module
-under the source root is documented by no page.
+one being documented; it selects the extension set; and it registers a check that warns
+when a module under the source root is documented by no page.
 
 The documentation build is a gate. `scripts/run-all-checks.sh` runs two builds from this
 configuration, one with `-W` and one with `-n -W`, and reads both exit statuses. `-n`
@@ -37,9 +36,9 @@ sys.path.insert(0, str(_SRC))
 _DISTRIBUTION = 'rms-pdsfile'
 
 # Written by setuptools_scm at build time, absent from a source checkout, and gitignored
-# (`write_to` in pyproject.toml puts it here). It holds the version in half a dozen
-# spellings and nothing else, and it is not part of the documented surface, so the
-# coverage check below does not ask for a page entry for it.
+# (`write_to` in pyproject.toml puts it here). It holds four spellings of the version and
+# two of the commit id, and nothing else, so it is not part of the documented surface and
+# the coverage check below does not ask for a page entry for it.
 _GENERATED_MODULES = frozenset({'pdsfile._version'})
 
 # -- Project information -----------------------------------------------------------------
@@ -58,11 +57,11 @@ version = release
 
 # -- General configuration ---------------------------------------------------------------
 
-# A diagram extension belongs here once a page draws a diagram. None does: enabling
-# sphinxcontrib.mermaid with no diagram in the tree put a script tag pointing at a
-# third-party CDN into 70 of the 77 built pages, because the extension skips only the
-# pages whose doctree it can see has no diagram in it, and every viewcode page and every
-# generated index falls outside that test.
+# A diagram extension belongs here once a page draws a diagram. None does, and adding one
+# before then has a cost: sphinxcontrib.mermaid with no diagram in the tree puts a script
+# tag pointing at a third-party CDN into 70 of the 77 built pages, because it skips only
+# the pages whose doctree it can see has no diagram in it, and every viewcode page and
+# every generated index falls outside that test.
 extensions = [
     'sphinx.ext.autodoc',        # the API reference is generated from the docstrings
     'sphinx.ext.napoleon',       # the docstrings are Google style
@@ -91,10 +90,6 @@ napoleon_use_rtype = True
 napoleon_use_ivar = True
 
 autodoc_member_order = 'bysource'
-# Nine classes document their constructor in `__init__`'s docstring, six of them with a
-# `Parameters:` block. autodoc's default renders the class docstring alone, so all of
-# that is written, maintained, and never published. 'both' concatenates the two.
-autoclass_content = 'both'
 # tabulate is imported by pdsfile.tools.show_opus_products and is a development
 # dependency, not a runtime one, so it is absent wherever the documentation is built
 # from the `docs` extra alone. Mocking it documents that module from its docstrings
@@ -104,7 +99,7 @@ autodoc_mock_imports = ['tabulate']
 # Reaching this inventory is what makes the standard-library names in the `Parameters:`,
 # `Returns:` and `Raises:` entries resolve under `-n`, so the build needs network access
 # to it, and a build that cannot reach it fails: not reaching it is one warning, and the
-# names it would have resolved are 34 more. The timeout bounds that failure -- without it
+# names it would have resolved are 36 more. The timeout bounds that failure -- without it
 # a host that accepts the connection and never answers stalls the build rather than
 # failing it.
 intersphinx_mapping = {'python': ('https://docs.python.org/3', None)}
@@ -175,8 +170,9 @@ def _check_api_reference_coverage(app, exception):
     Parameters:
         app: the Sphinx application, whose build environment holds the documented
             modules.
-        exception: the exception that ended the build, or None if it succeeded. A build
-            that already failed is not asked about its coverage.
+        exception: the exception an error handler passed on, or None. It is None even
+            for a build that `-W` is about to fail, because warnings are counted rather
+            than raised; what it excludes is a build that died.
     """
     if exception is not None:
         return

@@ -7,8 +7,10 @@ Every module in the :mod:`pdsfile.tools` subpackage.
    :members:
    :undoc-members:
    :show-inheritance:
+   :special-members: __init__
 
 .. automodule:: pdsfile.tools.show_opus_products
    :members:
    :undoc-members:
    :show-inheritance:
+   :special-members: __init__
