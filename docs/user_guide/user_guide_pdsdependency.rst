@@ -1,8 +1,9 @@
 pdsdependency
 =============
 
-``pdsdependency`` checks that every file a PDS3 volume implies actually exists and is no
-older than what it is derived from. The other maintenance programs each own one kind of
+``pdsdependency`` checks that every file a PDS3 volume implies actually exists, and that
+it is no older than what it is derived from wherever the rule requiring it asks for
+that. The other maintenance programs each own one kind of
 derived file and check it against what it describes; this one owns the *relationships*
 between them.
 

@@ -84,9 +84,11 @@ never resolve a holdings path at all, and a root's name is nothing to them.
 :doc:`user_guide_show_opus_products`, which reads both, whichever kind of path it is
 asked about, and fails with a :exc:`KeyError` if either is unset.
 
-The other fourteen take absolute paths on their command lines, and the twelve of them
-that work in a holdings tree find their way around it by splitting the path at its
-``/holdings/`` or ``/pds4-holdings/`` component rather than by consulting a variable.
+The other fourteen take their paths on the command line, and the twelve of them that
+work in a holdings tree find their way around it by splitting the path at its
+``/holdings/`` or ``/pds4-holdings/`` component rather than by consulting a variable. A
+relative path is resolved against the working directory first, so it is the resolved path
+that has to sit under a root.
 (Twelve, not thirteen: the thirteen above counts ``show_opus_products``, which is not
 one of these fourteen.) Every run in this guide was made with both variables set, and the
 runs that resolve a path this way behave the same with them unset. Setting them is worth
@@ -187,13 +189,21 @@ empty PDS3 directories in one command.
 The log tree
 ------------
 
-Every maintenance program writes a log file per target, and it writes it in a directory
-that is **not** inside the holdings tree. The default place is a ``logs`` directory
-beside the holdings root:
+Twelve of the fifteen programs write log files: the ten of
+:doc:`user_guide_maintenance_tools`, plus :doc:`user_guide_pdsdependency` and
+:doc:`user_guide_re_validate`. Each writes one per target, in a directory that is **not**
+inside the holdings tree, and the default place is a ``logs`` directory beside the
+holdings root:
 
 .. code-block:: text
 
    $PDS3_HOLDINGS_DIR/../logs/<program>/<category>/<unit set>/<log file>
+
+The ten use that shape. ``pdsdependency`` and ``re_validate`` drop the ``<category>``
+component, so their logs sit directly under a directory named for the volume set; each
+chapter shows its own. :doc:`user_guide_crlf`,
+:doc:`user_guide_shelf_consistency_check` and :doc:`user_guide_show_opus_products` write
+no log files at all and report to the terminal only.
 
 A log root, from ``--log`` or ``PDS_LOG_ROOT``, adds a second copy of the same file
 under that root, in the same shape. :doc:`user_guide_maintenance_tools` gives the file
@@ -204,9 +214,15 @@ names and the ``ERRORS.log`` and ``WARNINGS.log`` files that accompany them.
 How to read the examples in this guide
 --------------------------------------
 
-Every command shown in this guide was run, and every block of output is what that run
-printed. Three kinds of substitution are made in what is published, and nothing else is
-changed:
+Every block of output in this guide is what a real run printed, and every command that
+could be run here was run. **Five of the 56 command lines published were not run**: the
+three ``pip`` and ``pipx`` install lines and a repeat of one of them, which would have
+replaced the very tree being documented, and the ``pdsdata-sync-volset.sh`` line in
+:doc:`user_guide_shell_scripts`, which needs macOS and two mounted drives. Each of those
+five is quoted from a program's own usage rather than from a run, and none of them has a
+block of output beneath it.
+
+Three kinds of substitution are made in what is published, and nothing else is changed:
 
 * the PDS3 and PDS4 holdings roots are written ``$PDS3_HOLDINGS_DIR`` and
   ``$PDS4_HOLDINGS_DIR``, and the directory containing a root -- where the log tree

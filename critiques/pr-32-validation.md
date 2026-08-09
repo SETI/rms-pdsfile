@@ -114,10 +114,19 @@ It found five documentation defects before it went green.
 | change a short form (`-q` → `-Q`) | 2 findings, both directions |
 | change a documented default (`60` → `90`) | 1 finding |
 | delete a documented default (`Default **60**.` → `Default sixty.`) | 1 finding |
+| delete it from the option's row but leave the value in unrelated prose | **1 finding** |
 | run against a directory with no guide in it | **exit 2**, "cannot run the comparison" |
 
 The last row is the check on the check: a checker that reports a clean pass over zero
 files is worse than no checker. It raises rather than passing.
+
+The second-to-last row is CodeRabbit's, and it was a real weakness: comparison 3
+originally asked whether the default's value appeared **anywhere in the chapter**, so a
+`60` in an example or in another option's row would have stood in for the statement it
+was looking for. It now parses the chapter's list-table rows and searches only the row
+whose first cell carries one of that option's flag spellings, falling back to the shared
+chapter. The mutation above is the check on that, and it fails under the old rule and
+passes under the new one.
 
 ### 3.1 The bug round 4 found in the checker itself
 
@@ -401,6 +410,30 @@ The four frozen files are md5-identical to `532f65d`:
 
 `git status --porcelain -uall` is empty after both full runs, so `docs/_build/` stayed
 out of the index.
+
+## 7.4 CodeRabbit
+
+CodeRabbit left 12 inline comments on PR #137. **Ten were valid and applied; two were
+rejected on measurement**, which is the same discipline the rounds were held to.
+
+| # | subject | disposition |
+|---|---|---|
+| 1 | the default check searched the whole chapter rather than the option's row | applied; a sixth mutation added, section 3 |
+| 2 | "a task that versions one versions the other" reads badly | applied |
+| 3 | "the other fourteen take **absolute** paths" contradicts the driver chapter, which documents relative paths | applied |
+| 4 | "**Every** maintenance program writes a log file per target", with one path shape | applied: twelve of the fifteen write logs, ten in that shape, two without the category component, three not at all |
+| 5 | "**Every** command shown in this guide was run" | applied — the five that were not are now named on the page, not only in this record |
+| 6 | the severity table lists `FATAL` as a registered level and the next paragraph calls it an alias | applied |
+| 7 | two sentences in `pds4indexshelf` are incomplete | **rejected**: "naming which flavor to be" and "depends on their existing" are both complete sentences that wrap across a line break |
+| 8 | `--infoshelf` chains even when the checksum task logged validation errors | **rejected**: the driver sets `proceed = False` when a run logs any error, and `main()` chains only on `result.proceed`. Measured: `pdschecksums --validate --infoshelf` over a volume with 3 `ERROR` lines produced **0** `pds.validation.fileinfo` lines, so the chain did not run |
+| 9 | the opening claims freshness for every rule where most rules require it | applied |
+| 10 | "ten of them take absolute paths" conflates argument type with where a script can run | applied |
+| 11 | `--table`, `--pprint` and `--raw` have a precedence and `--narrow-table` is not a fourth form | applied |
+| 12 | exit 0 is for any run that reaches the end, not only one that produced output | applied |
+
+Comments 3, 4, 5, 9, 10 and 12 are all the same defect: **a universal quantifier over a
+set whose members differ.** That is the failure this PR's five rounds kept finding, and
+CodeRabbit found six more instances of it after all five had run.
 
 ## 8. Standing rules
 

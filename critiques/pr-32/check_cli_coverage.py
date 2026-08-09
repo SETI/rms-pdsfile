@@ -183,6 +183,45 @@ def parser_actions(parser):
     return actions
 
 
+def option_rows(text, strings):
+    """Return the list-table rows that document one option, as whole strings.
+
+    A row runs from its ``* - `` marker to the marker of the next row or the end of the
+    table, so a row's own continuation lines and its second cell are inside it and the
+    neighbouring rows are not. A row belongs to this option when its first cell carries
+    one of the option's flag spellings in inline literal markup.
+
+    Parameters:
+        text (str): The chapter's reStructuredText.
+        strings (list): One option's flag spellings, as argparse holds them.
+
+    Returns:
+        list: The matching rows, each a single string. Empty if the chapter documents
+        this option outside a list-table, which is why the caller falls back to the
+        shared chapter before reporting anything.
+    """
+
+    rows = []
+    current = None
+    for line in text.splitlines():
+        if ROW_START.match(line):
+            if current is not None:
+                rows.append('\n'.join(current))
+            current = [line]
+        elif current is not None:
+            if line.strip() and not line.startswith((' ', '\t')):
+                rows.append('\n'.join(current))
+                current = None
+            else:
+                current.append(line)
+    if current is not None:
+        rows.append('\n'.join(current))
+
+    wanted = [f'``{flag}' for flag in strings]
+    return [row for row in rows
+            if any(token in row.split('\n')[0] for token in wanted)]
+
+
 def documented_flags(text, prog, all_progs):
     """Return the flags a page documents for one program, and where each was found.
 
@@ -299,12 +338,16 @@ def check(docs_dir):
                     f'{prog}: the parser has {flag} and no chapter documents it '
                     f'for {prog}')
 
-        # 3. A substantive default the guide does not state.
+        # 3. A substantive default the guide does not state. The search is scoped to
+        # the option's own table row rather than to the whole chapter, so a value that
+        # happens to appear in prose, in an example or in another option's row does not
+        # stand in for the statement this asks for.
         for _first, (strings, default) in sorted(actions.items()):
             if default in (None, False, True, '', 0) or default == []:
                 continue
             n_defaults += 1
-            if str(default) not in chapter_text:
+            rows = option_rows(chapter_text, strings) or option_rows(shared_text, strings)
+            if not any(str(default) in row for row in rows):
                 flags = '/'.join(strings)
                 findings.append(
                     f'{prog}: {flags} defaults to {default!r} and the chapter does '

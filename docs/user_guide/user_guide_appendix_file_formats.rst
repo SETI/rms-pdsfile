@@ -34,8 +34,9 @@ Shelf files: ``.pickle`` and its ``.py`` sidecar
 
 Every shelf is written twice: a ``.pickle``, which is what the package reads, and a
 ``.py`` beside it holding the same mapping as readable Python. The two are written in one
-pass and travel together -- a task that versions one versions the other -- so the ``.py``
-is a reliable way to read a shelf without unpickling anything.
+pass and travel together: a task that versions one of them versions the other in the
+same operation, so the ``.py`` is a reliable way to read a shelf without unpickling
+anything.
 
 The ``.py`` file is a single assignment. Its variable name is the shelf's basename
 without the extension, so a file can be read with ``exec`` or simply looked at.

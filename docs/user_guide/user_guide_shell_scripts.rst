@@ -7,8 +7,9 @@ than parts of the package: nothing imports them, and ``pip`` puts none of them o
 
 They do ship, so an installed copy has them: they land in the installed package, at
 ``<site-packages>/pdsfile/holdings_maintenance/pds3/``. In a checkout of this repository
-the same twelve are at ``src/pdsfile/holdings_maintenance/pds3/``. Ten of them take
-absolute paths and run from anywhere. **Two must be run from that directory**:
+the same twelve are at ``src/pdsfile/holdings_maintenance/pds3/``. Ten of them can be
+run from anywhere, whether they take holdings paths or the drive names the
+``pdsdata-sync-*`` scripts take. **Two must be run from that directory**:
 ``copy_all_except_metadata.sh``, which calls its siblings as ``./copy_documents.sh`` and
 ``./copy_shelves.sh``, and ``update_holdings_for_new_metadata.sh``, which invokes the
 programs as ``python pdsarchives.py`` and so on. Each is flagged again where it is

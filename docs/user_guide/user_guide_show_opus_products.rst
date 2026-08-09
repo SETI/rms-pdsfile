@@ -73,8 +73,11 @@ rather than a request for help.
                                 [--debug]
    show_opus_products.py: error: the following arguments are required: --paths
 
-``--table``, ``--narrow-table``, ``--pprint`` and ``--raw`` are four output forms; naming
-none of them gives the table.
+``--table``, ``--pprint`` and ``--raw`` are three output forms, and ``--narrow-table``
+reshapes the table rather than being a fourth. Naming none of the three gives the table,
+and so does ``--narrow-table`` on its own, since it is not one of the three the choice
+looks at. **Naming more than one is not an error**: the first true flag in the order
+``--table``, ``--pprint``, ``--raw`` wins and the others are ignored.
 
 Absolute and logical paths
 --------------------------
@@ -201,8 +204,9 @@ element of the key tuple.
 Exit status
 -----------
 
-0 for a run that produced output, 2 for a command line :mod:`argparse` cannot classify
--- including one with no ``--paths``.
+**0 for any run that reaches the end**, whatever it printed and whatever it found, and 2
+for a command line :mod:`argparse` cannot classify -- including one with no ``--paths``.
+The only other status comes from an unhandled exception.
 
 A path that cannot be turned into a :class:`~pdsfile.pdsfile.PdsFile`, and one that
 resolves to a file that does not exist, are each reported as a ``WARNING:`` line and the

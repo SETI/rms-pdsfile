@@ -374,11 +374,12 @@ carries:
      - ``ERROR``, ``DOT_``
      - a skipped dot-underscore file
    * - 50
-     - ``CRITICAL``, ``EXCEPTION``, ``FATAL``
-     - ``FATAL`` is another name for ``CRITICAL``
+     - ``CRITICAL``, ``EXCEPTION``
+     - ``EXCEPTION`` is what a logged traceback carries
 
-Those twelve are every registered level name. Two further names are aliases rather
-than levels of their own: ``WARN`` for ``WARNING`` and ``FATAL`` for ``CRITICAL``.
+Those twelve names are every registered level. Two more names work but are aliases
+rather than levels of their own: ``FATAL`` for ``CRITICAL`` and ``WARN`` for
+``WARNING``.
 
 ``DOT_`` is the one worth knowing. It carries **ERROR's severity**, so a stray
 ``._something`` file inside a unit is enough on its own to make one of the eight programs
