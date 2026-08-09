@@ -194,11 +194,11 @@ exits 0 without doing anything else. It is not repeated in the option tables.
 
 ``--quiet`` silences every level of the log below the run's own. The per-target header,
 the ``Log file:`` lines and all the per-file detail go with it. What survives depends on
-whether a log root is configured: **with none, the run's own opening ``HEADER`` and
-closing ``SUMMARY`` lines still reach the terminal**, counts and all, because with no
-handler attached anywhere the outermost level falls back to printing. Add ``--log`` or
-``PDS_LOG_ROOT`` and a handler exists, so ``--quiet`` leaves nothing on the terminal at
-all. The run below had no log root:
+whether a log root is configured. **With none, the run's own opening and closing lines
+still reach the terminal** -- its ``HEADER`` and its ``SUMMARY`` lines, counts and all --
+because with no handler attached anywhere the outermost level falls back to printing. Add
+``--log`` or ``PDS_LOG_ROOT`` and a handler exists, so ``--quiet`` leaves **nothing** on
+the terminal at all. The run below had no log root:
 
 .. code-block:: console
 

@@ -189,6 +189,17 @@ over a page whose every flag is smart-quoted into an unpastable en dash; deferre
 records that, and the check that catches it is one grep against `docs/_build` that no gate
 runs.
 
+That grep was run at the final head, and it caught one:
+
+    grep -chE '<strong>[^<]*``' docs/_build/nitpicky/html/user_guide/*.html   # 1, then 0
+    grep -ohE '–[a-z-]+'        docs/_build/nitpicky/html/user_guide/*.html   # 0
+
+The one was in the `--quiet` paragraph that round 5's second finding produced, three
+commits after round 5 ran. Both builds passed over it. It is now **0 and 0**, and the fact
+that a correction written in full knowledge of deferred 351 still made one is the argument
+for turning that grep into a gate — which is PR-33's to do, since it writes more prose of
+the same kind.
+
 ## 5. The reviews
 
 Five rounds, every one a fresh no-context subagent, with the tree frozen and
