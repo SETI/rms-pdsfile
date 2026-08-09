@@ -408,6 +408,10 @@ class PdsDependency:
                 holdings tree the current environment knows.
             OSError: from ``get_modtime()``, if a file disappears between the glob and
                 the date check.
+            KeyboardInterrupt: from anything this runs, ``get_modtime()`` included. It is
+                caught alongside Exception only so that it can be logged, and is
+                re-raised like the rest, so an interrupt during a long walk still leaves
+                the rule's log section closed.
         """
 
         dirpath = os.path.abspath(dirpath)
@@ -565,6 +569,8 @@ class PdsDependency:
             OSError: from ``test1()``, which logs it and re-raises; it is logged again
                 here and re-raised again, so it reaches the caller having been logged
                 three times.
+            KeyboardInterrupt: from ``test1()``, on the same terms, so an interrupt ends
+                the suite rather than skipping to the next rule.
         """
 
         dirpath = os.path.abspath(dirpath)
@@ -1289,6 +1295,8 @@ def test(pdsdir, logger=None, limits={}, check_newer=True, handlers=[]):
         OSError: from ``test_suite()``, if a file disappears between a rule's glob and its
             date check. Nothing here catches it, so it ends the run for every suite the
             volume had left.
+        KeyboardInterrupt: from ``test_suite()``, likewise uncaught here, so an interrupt
+            ends the volume rather than the suite.
     """
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
@@ -1350,6 +1358,9 @@ def main():
             log is closed and the repair commands printed. The status assigned in the
             handler is not reached, because the exception propagates instead of the
             function returning to its ``sys.exit()``.
+        KeyboardInterrupt: from ``test()``, on exactly the same terms. It is caught
+            beside Exception, which does not cover it, so that it too is logged before
+            it is re-raised.
     """
 
     # Set up parser

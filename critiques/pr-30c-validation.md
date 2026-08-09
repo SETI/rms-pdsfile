@@ -244,8 +244,8 @@ below was produced by extracting that commit's files into a throwaway directory 
 
 | file | total base | total head | docstring head | code base | code head |
 |---|---:|---:|---:|---:|---:|
-| `pdsdependency.py` | 1,165 | 1,509 | 374 | **1,135** | **1,135** |
-| `re_validate.py` | 987 | 1,442 | 577 | 868 | 865 |
+| `pdsdependency.py` | 1,165 | 1,520 | 385 | **1,135** | **1,135** |
+| `re_validate.py` | 987 | 1,450 | 585 | 868 | 865 |
 | `crlf.py` | 169 | 246 | 116 | 140 | 130 |
 | `shelf_consistency_check.py` | 132 | 198 | 85 | 118 | 113 |
 | `pds3/__init__.py` | 0 | 34 | 34 | 0 | 0 |
@@ -254,9 +254,9 @@ below was produced by extracting that commit's files into a throwaway directory 
 **`pdsdependency.py` fails the code-line limit at both ends and this PR did not move it.**
 Deviation (3) sets code lines at 1,000 and total lines at 2,000. The file measures 1,135
 code lines at base and **1,135 at head** -- the same number, not a similar one -- while its
-total goes from 1,165 to 1,509. Docstrings move the total and leave the code count alone,
-which is what the two limits are for; a reader seeing this file grow past 1,400 in a
-docstring PR should read the last two columns. It is still under the total limit by 491
+total goes from 1,165 to 1,520. Docstrings move the total and leave the code count alone,
+which is what the two limits are for; a reader seeing this file grow past 1,500 in a
+docstring PR should read the last two columns. It is still under the total limit by 480
 lines, and deferred **66** still holds the waiver-or-split decision, which is not this
 PR's to make.
 
@@ -404,7 +404,7 @@ names.
 | findings with `per-file-ignores = {}` | 2,249 | 2,249 |
 | `[project.scripts]` entries | 11 | 11 |
 
-Nothing moved. Two of the six files carry an entry. `pdsdependency.py` names `B006`,
+Nothing moved. Three of the six files carry an entry. `pdsdependency.py` names `B006`,
 `PT028`, `RUF012` and `UP031`; `re_validate.py` names `RUF005` and `UP031`; `crlf.py`
 names `PT028`; `shelf_consistency_check.py` names nothing, its `F821` having gone when
 PR-28 fixed the undefined name behind it.
@@ -429,7 +429,7 @@ stale at base and 6 at head, byte-identical outputs, with no repair needed.**
 
 Before the repair, head reported 17. The two extra were PR-28's own line-count table, whose
 "head" column that checker compares against the tree it runs in rather than against PR-28's
-head: `crlf.py` went from 169 lines to 246 and `shelf_consistency_check.py` from 132 to 194
+head: `crlf.py` went from 169 lines to 246 and `shelf_consistency_check.py` from 132 to 198
 when they gained module docstrings. Both rows are re-derived and the paragraph above the
 table, which already named PR-30a's move of the `show_opus_products.py` row, now names
 these two as well. This is the repair PR-29a, PR-30 and PR-30a each had to make for the
@@ -540,9 +540,11 @@ what they found.
   16 across five real volumes, 29 for a fully populated one, and 19 for the test fixture --
   which is where the number the first correction quoted as a fact about volumes came from.
 * **`re_validate`'s batch status is insulated from what a run found and not from whether it
-  could mail the report.** `send_email()` is called from the same `finally` that reaches
-  `sys.exit(0)` and nothing catches it, so an unreachable relay ends the run in an
-  exception and status 1 -- the outcome the design exists to prevent. Deferred **321**.
+  could mail the report.** `send_email()` is called from the `finally` that runs just
+  before the `sys.exit(0)` below it -- not from inside the block that exits -- and nothing
+  catches it, so an unreachable relay ends the run in an exception and status 1, the
+  outcome the design exists to prevent. `smtplib.SMTPException` is an `OSError` subclass,
+  so a relay that refuses the message arrives the same way. Deferred **321**.
 * **`shelf_consistency_check` matches `shelves` as a substring of the whole path.** A tree
   holding `myshelves-backup/` reports one error per directory in it, and a root whose own
   path contains `shelves` reports most of the tree below it -- not all, because a directory
@@ -742,7 +744,7 @@ Recorded because every number was re-derived rather than inherited.
   an oversight.
 
 * **The brief projected `pdsdependency.py` at "roughly 1,280" total lines and it is
-  1,475.** The projection was offered as an estimate rather than a measurement, and the
+  1,520.** The projection was offered as an estimate rather than a measurement, and the
   point it was making -- that the total moves and the code count does not -- holds exactly:
   1,135 code lines at both ends. The estimate is 195 lines low, which is the same direction
   and roughly the same share as PR-29b's ten-member sample, and for the same reason: a

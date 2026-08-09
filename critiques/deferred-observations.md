@@ -1690,11 +1690,11 @@ against all five mixins (`critiques/phase5-validation.md`, PR-19 §11).
     **PR-30c documents the file and does not move the number.** Measured with
     `critiques/pr-29a/measure_module_lines.py` at both ends of that PR:
     **1,135 code lines at base and 1,135 at head**, against a limit of 1,000, while
-    the total goes from 1,165 to 1,475 against a limit of 2,000. That is the two
+    the total goes from 1,165 to 1,520 against a limit of 2,000. That is the two
     limits behaving as they are meant to — a docstring line is not a code line —
-    and it is recorded because a reader who sees this file grow by 310 lines in a
+    and it is recorded because a reader who sees this file grow by 355 lines in a
     docstring PR would otherwise assume the breach got worse. It did not, and the
-    file is still 525 lines under the total limit. The question this entry holds is
+    file is still 480 lines under the total limit. The question this entry holds is
     unchanged and unaddressed: the 1,135 code lines are the tool's own, and no PR of
     Phase 7 was going to reduce them.
     **Owner: open — `pdsdependency.py` needs a waiver-or-split decision, and no

@@ -1333,14 +1333,14 @@ command line, and both are read by every other part of the subpackage.
     are not undocumented: 25 docstrings existed and 13 carried a Google section, nine
     spelled `Args:` and one `Inputs:`. None declares a `ToolSpec` or reaches a shared
     driver, so nothing PR-30a or PR-30b documented carried over and the vocabulary
-    checker had no pair to compare -- it was run anyway and its three residual findings
-    are recorded rather than fixed, because they are the checker applied outside the
-    premise its own docstring states.
+    checker had no pair to compare -- it was run anyway and its two residual findings are
+    recorded rather than fixed, because they are the checker applied outside the premise
+    its own docstring states.
     `critiques/pr-30c-validation.md` is the record.
 
     **`pdsdependency.py` was already over the code-line limit and this PR did not move
     it**: 1,135 code lines at base and 1,135 at head, with the total going 1,165 to
-    1,475 against a limit of 2,000. Deferred **66** still holds the waiver-or-split
+    1,520 against a limit of 2,000. Deferred **66** still holds the waiver-or-split
     decision and now carries that measurement.
 
     **With PR-30c done, `check_docstrings.py` reports zero over every module under

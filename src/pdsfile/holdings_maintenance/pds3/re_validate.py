@@ -175,6 +175,14 @@ def validate_one_volume(pdsdir, voltypes, tests, args, logger):
         other one. It is the path a batch run puts in its error mail. The two counts are
         read from the close of the volume's log, so they cover every test the volume ran
         and nothing outside it.
+
+    Raises:
+        KeyboardInterrupt: from any of the ``validate()`` calls, which the handler here
+            does not cover; the volume's log is closed on the way out and the interrupt
+            reaches the caller. Nothing an ordinary test raises escapes, because
+            everything covered by Exception is logged and swallowed.
+        ValueError: from ``from_abspath()``, for a volume type whose substituted path is
+            outside every holdings tree the environment knows.
     """
 
     tests_performed = 0
