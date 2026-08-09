@@ -199,11 +199,13 @@ holdings root:
 
    $PDS3_HOLDINGS_DIR/../logs/<program>/<category>/<unit set>/<log file>
 
-The ten use that shape. ``pdsdependency`` and ``re_validate`` drop the ``<category>``
-component, so their logs sit directly under a directory named for the volume set; each
-chapter shows its own. :doc:`user_guide_crlf`,
-:doc:`user_guide_shelf_consistency_check` and :doc:`user_guide_show_opus_products` write
-no log files at all and report to the terminal only.
+Eight of the ten use exactly that shape. The two index shelf programs go one component
+deeper, because their target is a table inside a unit rather than the unit; and
+``pdsdependency`` and ``re_validate`` go one shallower, dropping ``<category>`` so their
+logs sit directly under a directory named for the volume set. Each of those four chapters
+shows its own. :doc:`user_guide_crlf`, :doc:`user_guide_shelf_consistency_check` and
+:doc:`user_guide_show_opus_products` write no log files at all and report to the terminal
+only.
 
 A log root, from ``--log`` or ``PDS_LOG_ROOT``, adds a second copy of the same file
 under that root, in the same shape. :doc:`user_guide_maintenance_tools` gives the file
