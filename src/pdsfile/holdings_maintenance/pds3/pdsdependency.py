@@ -1,12 +1,48 @@
 #!/usr/bin/env python3
 ################################################################################
-# pdsdependency.py library and main program
-#
-# Syntax:
-#   pdsdependency.py volume_path [volume_path ...]
-#
-# Enter the --help option to see more information.
+# pdsfile/holdings_maintenance/pds3/pdsdependency.py
 ################################################################################
+
+"""Check that every file a PDS3 volume implies exists, and is no older than its source.
+
+The other maintenance tools each own one kind of derived file and check it against what
+it describes. This one owns the relationships between them: given a volume, it works out
+what else the holdings tree ought to contain -- checksums, archives, shelves, previews,
+diagrams, calibrated images, metadata tables and the cumulative versions of those tables
+-- and reports whatever is missing or stale. It creates nothing and repairs nothing. What
+it produces instead is a list of the commands an operator would have to type, printed
+under "Steps required" at the end of a run.
+
+Run it as::
+
+    pdsdependency volume_path [volume_path ...]
+
+Each path names a volume or a volume set, and a volume set is expanded into its volumes.
+Checksum and archive directories are refused, because the dependencies are stated from
+the volume's side.
+
+**What is checked is decided by the volume's path, not by its contents.** Two tables do
+that. ``TESTS`` maps a path to the names of the test suites that apply to it, so a path
+under ``COISS_2xxx`` picks up the Cassini imaging suites and one under ``VGISS_7xxx``
+picks up the Voyager-at-Uranus ones; every volume picks up ``general``, which is the
+suite of derived files every volume has regardless of what is in it. Each suite is then a
+list of ``PdsDependency`` objects, each of which is one rule: a glob that finds the files
+the rule is about, a regular expression that takes such a file apart, and one or more
+substitutions that name the files that must exist because of it.
+
+A rule can also require the derived file to be no older than its source. That is the
+majority of them, and it is what ``--timeless`` in ``re_validate`` turns off, through the
+``check_newer`` argument threaded down from ``test()``. Modification times of directories
+are taken recursively, over every file below them, and cached.
+
+``TESTS`` has 49 rows and names 41 suites between them, and a volume picks up as many of
+them as its path matches. The rules themselves are the documentation of what each suite
+requires: every one carries a title, a run's log is organized by those titles, and a
+rule that finds nothing to test says nothing at all.
+
+Nothing here is imported by another tool except ``re_validate``, which calls ``test()``
+as the last of its five per-volume validations.
+"""
 
 import argparse
 import glob
@@ -108,38 +144,87 @@ TESTS = translator.TranslatorByRegex([
 
 class PdsDependency:
 
+    """One rule saying which files a volume must hold because it holds some other file.
+
+    A rule is a glob, a regular expression and a list of substitutions. The glob, once
+    the volume set and volume name have been substituted into it, finds the files the
+    rule is about. Each is then matched against the regular expression, and each
+    substitution turns that match into the path of a file that must exist. So one rule
+    can name several required files per file found -- four preview sizes for one image,
+    a pickle and its sidecar for one shelf -- and a rule finding nothing to match tests
+    nothing and logs nothing.
+
+    Every rule constructed at import time registers itself in a named suite, and the
+    class holds those suites. Nothing outside this module constructs one: the module
+    body builds all of them, ``TESTS`` decides which suites a volume reaches, and
+    ``test_suite()`` runs a suite by name.
+
+    Three pieces of state are the class's rather than an instance's, and all three
+    outlive a single test:
+
+      * ``DEPENDENCY_SUITES`` maps a suite name to the rules registered under it, in
+        construction order, which is the order they run in.
+      * ``MODTIME_DICT`` caches the recursive modification time of every directory
+        looked at, so that a directory scanned for one rule is not walked again for the
+        next. ``purge_cache()`` empties it and nothing calls it.
+      * ``COMMANDS_TO_TYPE`` accumulates the repair commands a run has worked out, in
+        first-seen order and without duplicates. It is never emptied, so a process that
+        tests several volumes prints one combined list covering all of them.
+    """
+
     DEPENDENCY_SUITES = {}
     MODTIME_DICT = {}
     COMMANDS_TO_TYPE = []
 
     def __init__(self, title, glob_pattern, regex, sublist, messages=[],
                  suite=None, newer=True, func=None, args=(), exceptions=[]):
-        """Constructor for a PdsDependency.
+        """Build one rule and register it in its suite.
 
-        Inputs:
-            title           a short description of the dependency.
-            glob_pattern    a glob pattern for finding files.
-            regex           regular expression to match path returned by glob.
-            sublist         a list of substitution strings returning paths to
-                            files that must exist.
-            messages        a list of commands the user must type to solve the
-                            problem, with "[c]" replacing the command
-                            "initialize" or "repair", [C] replacing
-                            "initialize" or "reinitialize", and "[d]"
-                            replacing the leading directory path. "[x]" marks
-                            where to truncate the message if the command is
-                            "initialize" or "reinitialize".
-            suite           optional name of a test suite to which this
-                            dependency belongs.
-            newer           True if the file file must be newer; False to
-                            suppress a check of the modification date.
-            func            A function to transform the volume ID before
-                            applying the test. Used to test cumulative indices
-                            by transforming, e.g., COISS_1010 to COISS_1999.
-            args            Any arguments to pass to `func` after the volume ID.
-            exceptions      a list of zero or more regular expressions. If a
-                            file path matches one of these patterns, then it
-                            will not trigger a test.
+        Registration is the constructor's real work: an instance is appended to its
+        suite's list and the caller has no further use for the object, which is why
+        every construction in this module assigns to a throwaway name.
+
+        Parameters:
+            title (str): A short description of what the rule requires, used as the
+                heading of the rule's own log section. A title beginning "Newer " is
+                rewritten when a run is not checking modification dates, so titles
+                should be written for the checking case.
+            glob_pattern (str): The pattern that finds the files this rule is about,
+                relative to the holdings root. Its first "$" is replaced by the volume
+                set directory name, and a second "$" by the volume name, so a pattern
+                names neither. A pattern with one "$" is deliberate rather than
+                incomplete: it is how a rule is written to cover a whole volume set at
+                once.
+            regex (str or re.Pattern): What each file found is matched against, as a
+                path relative to the holdings root. A string is anchored at both ends
+                and compiled case-insensitively; a compiled pattern is taken as it is,
+                anchors and flags included.
+            sublist (str or list): One or more replacement templates. Each is applied to
+                the match to name a file that must exist, so the count of required files
+                is the count of templates, not one.
+            messages (str or list): One or more command lines an operator would type to
+                supply what is missing. Four markers are substituted: "[c]" becomes
+                "initialize" for a missing file and "repair" for a stale one, "[C]"
+                becomes "initialize" for a missing file and "reinitialize" for a stale
+                one, "[d]" becomes the holdings root, and "[x]" marks a truncation
+                point. The message is cut at "[x]" in every case except a stale file
+                whose message carries "[C]", where the marker is removed and the rest of
+                the line kept. Group references are substituted first, so a marker can
+                follow one.
+            suite (str): The name of the suite to register in. A rule with no suite is
+                registered nowhere and can never run.
+            newer (bool): Whether the required file must also be no older than the file
+                that implies it. False checks existence alone.
+            func (collections.abc.Callable): An optional transformation of the volume
+                name, applied before the name is substituted into the glob. This is how
+                a rule about cumulative indexes is written: the rule is registered
+                against the volumes it is triggered by, and ``func`` turns a volume name
+                into the name of the cumulative volume the requirement is about.
+            args (tuple): Further arguments for ``func``, after the volume name.
+            exceptions (list): Regular expressions for files this rule does not apply
+                to. Each is compiled case-insensitively and matched against the whole
+                absolute path, so a pattern has to account for the holdings root, which
+                is why every one of them begins with a wildcard.
         """
 
         self.glob_pattern = glob_pattern
@@ -168,12 +253,49 @@ class PdsDependency:
 
     @staticmethod
     def purge_cache():
+        """Empty the cache of directory modification times.
+
+        The cache is a class attribute and lives for the life of the process, so a
+        program that tests a volume, changes the tree and tests it again would read the
+        first pass's times in the second. Nothing in this repository calls this, because
+        nothing changes the tree between tests: the tool reports what to do and does not
+        do it.
+        """
+
         PdsDependency.MODTIME_DICT = {}
 
     @staticmethod
     def get_modtime(abspath, logger):
-        """Return the Unix-style modification time for a file, recursively for
-        a directory. Cache results for directories."""
+        """Return one path's modification time, recursively for a directory.
+
+        A file's time is its own. A directory's is the newest among everything below it,
+        found by walking the whole subtree, and is cached under the directory's path so
+        that the walk happens once per run however many rules ask for it.
+
+        Two kinds of file are logged and left out of the comparison. A ``.DS_Store`` is
+        logged at debug level, so it does not affect the run's status. A dot-underscore
+        file is logged at error level, so **one of them anywhere below a directory gives
+        the whole run a nonzero exit status**, whatever the dependencies turn out to be.
+        Nothing else is excluded: backup and " copy" files date a directory exactly as
+        their originals do.
+
+        Parameters:
+            abspath (str): The file or directory to time. A path that is neither an
+                existing file nor a listable directory reaches the listing and fails
+                there.
+            logger: Where the two excluded kinds are logged. It is
+                used for nothing else and is not optional.
+
+        Returns:
+            float: The Unix modification time in seconds. An empty directory, and one
+            holding nothing but the two excluded kinds, gives -1.0e99, which compares
+            older than any real time; the value is cached like any other.
+
+        Raises:
+            OSError: from the ``listdir()`` of a path that is not an existing file and
+                cannot be listed, which includes a path that does not exist at all and a
+                symbolic link with nothing at the end of it.
+        """
 
         if os.path.isfile(abspath):
             return os.path.getmtime(abspath)
@@ -204,7 +326,68 @@ class PdsDependency:
         return modtime
 
     def test1(self, dirpath, check_newer=True, logger=None, limits={}):
-        """Perform one test and log the results."""
+        """Apply this one rule to one volume and log what it finds.
+
+        The glob is built first, from the holdings root of the volume named, and if it
+        matches nothing the call returns at once having logged nothing at all -- not
+        even the rule's title. That is the usual outcome for most rules on most volumes,
+        and it is what keeps a log about the dependencies a volume actually has.
+
+        Every file the glob matched is then taken through every substitution, in that
+        order: the outer loop is over the substitutions and the inner over the files, so
+        a rule requiring four preview sizes reports all the missing thumbnails together
+        rather than all four sizes of one image together. Each required file is logged
+        as one of four things:
+
+          * skipped, if the file that implies it matches one of the rule's exceptions;
+          * an invalid test, if the rule's regular expression does not match the file
+            the rule's own glob found. This is an error rather than a skip, because the
+            two patterns disagreeing is a defect in the rule;
+          * missing, if the required file does not exist;
+          * out of date, if it exists and is older than its source, which is checked
+            only when the rule asks for it and the run has not turned the check off;
+          * confirmed otherwise.
+
+        The last three are reported once per required path however many files imply it,
+        so a rule over a thousand images that all require one metadata table reports
+        that table once. The first two are not deduplicated: a skipped file is logged
+        once for each substitution the rule carries, and so is an invalid test.
+
+        A missing or stale file also contributes the rule's repair commands to the
+        class-level list the run prints at the end. They differ between the two cases:
+        the missing case asks for an initialize, the stale case for a repair or a
+        reinitialize.
+
+        Parameters:
+            dirpath (str): The volume directory. It is made absolute, and everything
+                else -- the holdings root, the volume set and the volume name -- is
+                derived from it.
+            check_newer (bool): Whether to check modification dates at all. False
+                suppresses the check for every rule, including those that ask for it,
+                and rewrites a title beginning "Newer " so the log does not claim a
+                check that did not happen.
+            logger: The logger to write to. Defaults to the named logger this module
+                uses, which is what a caller running one rule on its own gets.
+            limits (dict): Per-level message limits for this rule's log section, passed
+                through to the logger.
+
+        Returns:
+            tuple: (critical count, error count, warning count, total messages), from
+            closing this rule's own log section. All four are zero for a rule whose glob
+            matched nothing, which is not the same as a rule that ran and found nothing
+            wrong: that one confirms each required file and so has messages to report.
+            The caller in this module discards the result.
+
+        An exception is logged on the way out and re-raised rather than swallowed, and
+        it is logged by each nesting level it passes: twice here, and again by the suite
+        above, so one failure appears three times in the log.
+
+        Raises:
+            ValueError: from ``from_abspath()``, if the path given is not inside a
+                holdings tree the current environment knows.
+            OSError: from ``get_modtime()``, if a file disappears between the glob and
+                the date check.
+        """
 
         dirpath = os.path.abspath(dirpath)
         pdsdir = pdsfile.Pds3File.from_abspath(dirpath)
@@ -327,6 +510,38 @@ class PdsDependency:
     @staticmethod
     def test_suite(key, dirpath, check_newer=True, logger=None, limits={},
                    handlers=[]):
+        """Run every rule of one suite against one volume, inside one log section.
+
+        The rules run in the order they were constructed in, and a rule that fails does
+        not stop the suite only in the sense that a failed dependency is a logged error
+        rather than an exception; anything that does raise is logged and re-raised, and
+        the rest of the suite does not run.
+
+        Parameters:
+            key (str): The suite's name, which must be one a rule registered under.
+            dirpath (str): The volume directory, passed to each rule.
+            check_newer (bool): Whether to check modification dates, passed to each
+                rule.
+            logger: The logger to write to. Defaults to the named logger this module
+                uses.
+            limits (dict): Per-level message limits, applied to this section and to each
+                rule's section inside it.
+            handlers (list): Extra log handlers for the duration of this section, which
+                is how a run gets one log file per volume.
+
+        Returns:
+            tuple: (critical count, error count, warning count, total messages), from
+            closing the suite's section. These cover every rule in the suite, since the
+            rules' own sections are nested inside it.
+
+        Raises:
+            KeyError: from the ``__getitem__()`` that looks the name up in
+                ``DEPENDENCY_SUITES``, for a suite no rule registered under. Every name
+                ``TESTS`` produces is registered, so this reaches a caller that names
+                its own suite and no other.
+            ValueError: from ``from_abspath()``, if the path given is not inside a
+                holdings tree the current environment knows.
+        """
 
         dirpath = os.path.abspath(dirpath)
         pdsdir = pdsfile.Pds3File.from_abspath(dirpath)
@@ -483,6 +698,31 @@ for (name, suffix, newer) in [
 ################################################################################
 
 def cumname(volname, nines):
+    """Return the name of the cumulative volume a volume's tables are gathered into.
+
+    A cumulative index gathers the tables of a group of volumes under one volume name
+    whose numeric part is all nines. Which digits are replaced is what ``nines`` says:
+    its length is the number of trailing characters of the volume name that the nines
+    stand in for, so "999" turns COISS_1010 into COISS_1999 and "99" turns RPX_0001 into
+    RPX_0099.
+
+    The New Horizons volumes are the exception, and their name is assembled from fixed
+    positions rather than by counting from the end: "NHxx", then the volume name's fifth
+    through eighth characters, then "999". So NHJULO_1001 becomes NHxxLO_1999 -- the two
+    characters naming the target replaced, the instrument and mission phase kept, the
+    last three digits replaced. That form is selected by passing "NH" rather than a run
+    of nines, and it is right only for a name of the length these volumes have.
+
+    Parameters:
+        volname (str): The volume name, which is not checked. The nines case reads its
+            last characters and the New Horizons case its fifth through eighth.
+        nines (str): Either a run of nines, optionally with an underscore in it, or the
+            literal "NH". The choice is made on the first character alone.
+
+    Returns:
+        str: The cumulative volume's name.
+    """
+
     if nines[0] == '9':
         return volname[:-len(nines)] + nines
     return 'NHxx' + volname[4:8] + '999'
@@ -996,6 +1236,32 @@ _ = PdsDependency(
 ################################################################################
 
 def test(pdsdir, logger=None, limits={}, check_newer=True, handlers=[]):
+    """Run every suite one volume's path selects, in the order the table lists them.
+
+    This is the library entry point, and the one ``re_validate`` calls. It is the only
+    place the path-to-suite table is consulted: a caller that already knows which suite
+    it wants goes to ``PdsDependency.test_suite()`` instead.
+
+    Each suite gets its own log section, and the results of each are discarded here.
+    What a run found is read off the logger by the caller, or off the class-level list
+    of repair commands, rather than returned.
+
+    Parameters:
+        pdsdir: The volume. Only its absolute path is used, both to select the suites
+            and as each suite's target.
+        logger: The logger to write to. Defaults to the named logger this module
+            uses.
+        limits (dict): Per-level message limits, passed to each suite.
+        check_newer (bool): Whether to check modification dates. ``re_validate`` passes
+            False for its ``--timeless`` option.
+        handlers (list): Extra log handlers, passed to each suite, which is how a run
+            gets one log file per volume.
+
+    Raises:
+        ValueError: from ``test_suite()``, if the path is not inside a holdings tree the
+            current environment knows.
+    """
+
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
     path = pdsdir.abspath
     for suite in TESTS.all(path):
@@ -1007,6 +1273,41 @@ def test(pdsdir, logger=None, limits={}, check_newer=True, handlers=[]):
 ################################################################################
 
 def main():
+    """Check every volume named on the command line and print what would repair it.
+
+    The command line is read from ``sys.argv`` directly rather than through a parameter,
+    so this takes no arguments and a caller wanting to drive it has to set ``sys.argv``.
+
+    Everything is validated before anything is tested, and each failure ends the run
+    with a message and status 1: a path that is neither a volume nor a volume set
+    directory, one outside ``volumes/``, one that does not exist, one under a checksum
+    or archive category, and a volume whose name is not a volume ID. A volume set is
+    expanded into its volumes at that point, so what is tested is always volumes.
+
+    The run's own log is opened once and each volume's log file is attached for the
+    duration of that volume, so a volume's findings are in its own file as well as in
+    the run's. The repair commands are printed at the end, after the log is closed,
+    across every volume of the run and in the order they were first worked out.
+
+    Where ``--log`` goes when it is not given is worked out here rather than through the
+    shared helper the other tools call, against a copy of the environment variable's
+    name that this module declares for itself. The behavior is the same one: the
+    variable if it is set, and no duplicate log tree if it is not.
+
+    Raises:
+        SystemExit: from ``sys.exit()``, with status 1 for any of the rejected command
+            lines above, status 2 from ``parse_args()`` for one argparse cannot classify
+            and 0 for ``--help``, and at the end of a completed run with status 1 if
+            anything was logged as critical or as an error and 0 if nothing was. **A
+            missing or stale dependency is an error, so a run that finds work to do
+            exits 1.**
+        ValueError: from ``from_abspath()``, for a path no holdings tree the current
+            environment contains.
+        Exception: whatever ``test()`` raises escapes, after being logged and after the
+            log is closed and the repair commands printed. The status assigned in the
+            handler is not reached, because the exception propagates instead of the
+            function returning to its ``sys.exit()``.
+    """
 
     # Set up parser
     parser = argparse.ArgumentParser(
