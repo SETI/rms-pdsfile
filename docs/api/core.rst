@@ -1,8 +1,9 @@
 Core package
 ============
 
-Every module directly under :mod:`pdsfile`, including the mixin classes that
-:class:`~pdsfile.pdsfile.PdsFile` inherits most of its behavior from.
+The :mod:`pdsfile` package and every module directly under it, including the nine
+mixin classes that :class:`~pdsfile.pdsfile.PdsFile` inherits most of its behavior
+from.
 
 .. automodule:: pdsfile
    :members:

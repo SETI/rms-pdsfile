@@ -2,7 +2,8 @@ Holdings maintenance
 ====================
 
 Every module in the :mod:`pdsfile.holdings_maintenance` subpackage: the tools that
-build and check the files derived from a holdings tree, and the modules they share.
+build, check and repair a holdings tree and the files derived from it, and the modules
+they share.
 
 .. automodule:: pdsfile.holdings_maintenance
    :members:

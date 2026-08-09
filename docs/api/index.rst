@@ -1,9 +1,11 @@
 API reference
 =============
 
-Every module the package ships, grouped by subpackage. The entries are generated from
-the docstrings in the source, and the build fails when a module has no entry here, so
-this page set covers the whole importable surface.
+Every module the package ships, one page per top-level package and subpackage. The
+entries are generated from the docstrings in the source, and the documentation gate
+fails when a module has no entry, so no module is missing from this page set. That is a
+claim about modules and not about their contents: a member the source does not export,
+or that no directive asks for, is absent from these pages without anything saying so.
 
 .. toctree::
    :maxdepth: 2

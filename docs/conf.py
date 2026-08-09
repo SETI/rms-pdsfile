@@ -4,15 +4,18 @@
 
 """Sphinx configuration for the rms-pdsfile documentation tree.
 
-One configuration file serves the whole tree. It does four things beyond naming the
-project: it puts the source root on `sys.path` so `autodoc` imports the package from the
-checkout being documented, it reads the version from the installed distribution metadata,
-it selects the extension set the pages rely on, and it registers a consistency check that
-fails the build when a module under the source root has no entry in the API reference.
+One configuration file serves the whole tree. Four of the things it does are worth
+knowing before reading the settings: it puts the source root on `sys.path` so `autodoc`
+imports the package from the checkout being documented; it reads the version from the
+installed distribution metadata, which can therefore describe a different tree from the
+one being documented; it selects the extension set, some of which the documentation rules
+require rather than the pages using; and it registers a check that warns when a module
+under the source root is documented by no page.
 
 The documentation build is a gate. `scripts/run-all-checks.sh` runs two builds from this
-configuration, one with `-W` and one with `-n -W`, and reads both exit statuses; `-n`
-alone reports unresolved cross-references without failing, so it is never run alone.
+configuration, one with `-W` and one with `-n -W`, and reads both exit statuses. `-n`
+alone reports unresolved cross-references without failing, so it is never run alone, and
+`-W` is what turns this file's own warning into a failure.
 """
 
 import importlib.metadata
@@ -33,9 +36,10 @@ sys.path.insert(0, str(_SRC))
 # `import pdsfile`.
 _DISTRIBUTION = 'rms-pdsfile'
 
-# Written by setuptools_scm at build time, absent from a source checkout, and gitignored.
-# It holds one string and is not part of the documented surface, so the coverage check
-# below does not ask for a page entry for it.
+# Written by setuptools_scm at build time, absent from a source checkout, and gitignored
+# (`write_to` in pyproject.toml puts it here). It holds the version in half a dozen
+# spellings and nothing else, and it is not part of the documented surface, so the
+# coverage check below does not ask for a page entry for it.
 _GENERATED_MODULES = frozenset({'pdsfile._version'})
 
 # -- Project information -----------------------------------------------------------------
@@ -54,13 +58,17 @@ version = release
 
 # -- General configuration ---------------------------------------------------------------
 
+# A diagram extension belongs here once a page draws a diagram. None does: enabling
+# sphinxcontrib.mermaid with no diagram in the tree put a script tag pointing at a
+# third-party CDN into 70 of the 77 built pages, because the extension skips only the
+# pages whose doctree it can see has no diagram in it, and every viewcode page and every
+# generated index falls outside that test.
 extensions = [
     'sphinx.ext.autodoc',        # the API reference is generated from the docstrings
     'sphinx.ext.napoleon',       # the docstrings are Google style
     'sphinx.ext.viewcode',       # each documented object links to its highlighted source
     'sphinx.ext.intersphinx',    # names from the standard library resolve to python.org
     'myst_parser',               # Markdown, which is what README.md is
-    'sphinxcontrib.mermaid',     # diagrams, rendered in the browser rather than by a tool
 ]
 
 source_suffix = {
@@ -83,17 +91,22 @@ napoleon_use_rtype = True
 napoleon_use_ivar = True
 
 autodoc_member_order = 'bysource'
+# Nine classes document their constructor in `__init__`'s docstring, six of them with a
+# `Parameters:` block. autodoc's default renders the class docstring alone, so all of
+# that is written, maintained, and never published. 'both' concatenates the two.
+autoclass_content = 'both'
 # tabulate is imported by pdsfile.tools.show_opus_products and is a development
 # dependency, not a runtime one, so it is absent wherever the documentation is built
 # from the `docs` extra alone. Mocking it documents that module from its docstrings
 # instead of dropping it from the reference.
 autodoc_mock_imports = ['tabulate']
 
-# Reaching this inventory is what makes the standard-library type names in `Parameters:`
-# entries resolve under `-n`, so the build needs network access to it, and a build that
-# cannot reach it fails: not reaching it is one warning, and the names it would have
-# resolved are 34 more. The timeout bounds that failure -- without it a host that accepts
-# the connection and never answers stalls the build rather than failing it.
+# Reaching this inventory is what makes the standard-library names in the `Parameters:`,
+# `Returns:` and `Raises:` entries resolve under `-n`, so the build needs network access
+# to it, and a build that cannot reach it fails: not reaching it is one warning, and the
+# names it would have resolved are 34 more. The timeout bounds that failure -- without it
+# a host that accepts the connection and never answers stalls the build rather than
+# failing it.
 intersphinx_mapping = {'python': ('https://docs.python.org/3', None)}
 intersphinx_timeout = 30
 
@@ -102,14 +115,16 @@ intersphinx_timeout = 30
 # package owns hides a documentation defect rather than fixing it.
 nitpick_ignore = []
 
-# Client-side rendering: the directive emits the diagram source and the browser draws it,
-# so no headless browser or diagram binary has to be present to build the HTML.
-mermaid_output_format = 'raw'
-
 # -- HTML output -------------------------------------------------------------------------
 
 # The theme the `docs` extra installs, and the one ReadTheDocs serves.
 html_theme = 'sphinx_rtd_theme'
+
+# The repository names no copyright holder: LICENSE is the Apache-2.0 text with no holder
+# line and there is no NOTICE file. With `copyright` unset the theme renders a footer
+# reading "(c) Copyright ." on every page, so the footer is turned off rather than filled
+# in with a holder and a year this tree does not state anywhere.
+html_show_copyright = False
 
 
 def _module_names_under(root):
@@ -137,39 +152,54 @@ def _module_names_under(root):
     return names
 
 
-def _check_api_reference_coverage(app, env):
-    """Warn for every module on disk that no page in the API reference documents.
+def _check_api_reference_coverage(app, exception):
+    """Warn for every module on disk that no page in this tree documents.
 
     Sphinx has no opinion about a module nobody wrote an `automodule` directive for: a
     page set that has fallen behind the package builds clean and publishes an API
-    reference with holes in it. This compares the modules the build actually documented,
-    which the Python domain records, against the source tree, and warns about the
-    difference. Under `-W` that warning fails the build, which is what makes adding a
-    module without adding its entry a build failure rather than a silent omission.
+    reference with holes in it. This compares the source tree against the modules the
+    Python domain recorded, and warns about the difference. Under `-W` that warning fails
+    the build, which is what makes adding a module without adding its entry a build
+    failure rather than a silent omission.
+
+    What it establishes is that each module has a target in the Python domain, which is
+    weaker than establishing that its members are published: a directive that names the
+    module and documents none of its contents satisfies this, and so does one on a page
+    other than the API reference.
+
+    It runs from `build-finished` rather than from `env-check-consistency` because the
+    consistency event fires only when at least one document was re-read. Adding a `.py`
+    file changes no Sphinx source, so on an incremental build nothing is out of date and
+    a check on that event would not run at all -- which is exactly the case it exists for.
 
     Parameters:
-        app: the Sphinx application. Unused; the handler signature supplies it.
-        env: the build environment, whose Python domain holds the documented modules.
+        app: the Sphinx application, whose build environment holds the documented
+            modules.
+        exception: the exception that ended the build, or None if it succeeded. A build
+            that already failed is not asked about its coverage.
     """
+    if exception is not None:
+        return
+
     if not _SRC.is_dir():
         logger.warning('source root %s does not exist, so the API reference was not '
                        'checked for missing modules', _SRC)
         return
 
     on_disk = _module_names_under(_SRC) - _GENERATED_MODULES
-    documented = set(env.domains['py'].modules)
+    documented = set(app.env.domains['py'].modules)
     missing = sorted(on_disk - documented)
     for name in missing:
-        logger.warning('%s has no automodule entry under docs/api/, so it is absent '
-                       'from the API reference', name)
+        logger.warning('%s is documented by no page in this tree, so it is absent from '
+                       'the API reference', name)
     logger.info('API reference: %d of %d modules under %s documented',
                 len(on_disk) - len(missing), len(on_disk), _SRC)
 
 
 def setup(app):
-    """Register this configuration's own consistency check with the build.
+    """Register this configuration's own coverage check with the build.
 
     Parameters:
         app: the Sphinx application to register the handler on.
     """
-    app.connect('env-check-consistency', _check_api_reference_coverage)
+    app.connect('build-finished', _check_api_reference_coverage)

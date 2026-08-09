@@ -2,8 +2,9 @@ PDS4 support
 ============
 
 Every module in the :mod:`pdsfile.pds4file` subpackage:
-:class:`~pdsfile.pds4file.Pds4File`, the rule tables it starts from, and one rule
-module per PDS4 bundle set.
+:class:`~pdsfile.pds4file.Pds4File`, the rule tables every subclass of it starts from,
+the six dataset modules under :mod:`pdsfile.pds4file.rules`, and the three modules
+beside them that hold a bundle set's primary filespec list.
 
 .. automodule:: pdsfile.pds4file
    :members:

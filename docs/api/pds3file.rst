@@ -2,8 +2,9 @@ PDS3 support
 ============
 
 Every module in the :mod:`pdsfile.pds3file` subpackage:
-:class:`~pdsfile.pds3file.Pds3File`, the rule tables it starts from, and one rule
-module per PDS3 volume set.
+:class:`~pdsfile.pds3file.Pds3File`, the rule tables every subclass of it starts from,
+and the 25 dataset modules under :mod:`pdsfile.pds3file.rules`, each of which serves one
+or more PDS3 volume sets.
 
 .. automodule:: pdsfile.pds3file
    :members:

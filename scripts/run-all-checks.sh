@@ -73,8 +73,9 @@
 # Checks (each run separately; -d runs both Sphinx and Markdown):
 #   Code:     optional: ruff check, ruff format --check, mypy, pytest, pyroma,
 #             api-freeze, clean-install, bandit, vulture (see ENABLE_* above)
-#   Sphinx:   two builds, both statuses read: make -C docs html SPHINXOPTS="-W",
-#             then the same build with SPHINXOPTS="-n -W" into its own BUILDDIR
+#   Sphinx:   make clean, then two builds whose statuses, output and HTML are all
+#             read: make html SPHINXOPTS="-W", then the same with SPHINXOPTS="-n -W"
+#             into its own BUILDDIR (all three run from docs/)
 #   Markdown: pymarkdown scan docs/ .cursor/ README.md CONTRIBUTING.md
 #
 # Exit codes:
@@ -605,48 +606,98 @@ run_sphinx_build() {
     # shellcheck source=/dev/null
     source "$VENV/bin/activate"
 
-    # Two builds, because the two flags catch different defects and neither implies the
-    # other. -W fails the build on any warning: a malformed directive, a duplicate
-    # target, a toctree entry naming a page that is not there. -n additionally reports
-    # every cross-reference that resolves to no known target -- and on its own it
-    # reports them and still exits 0, so it is run with -W and never alone.
+    # Two builds, and the reason is not that each catches something the other misses:
+    # -n only adds the unresolved-cross-reference warnings to what -W already fails on,
+    # so the second build's findings are a superset of the first's. What the first build
+    # supplies is docs/_build/html, which is the tree a reader opens, and a failure
+    # attributable to something other than a cross-reference. The documentation rules ask
+    # for both builds; running -n without -W would be the mistake, because on its own it
+    # reports every unresolved reference and still exits 0.
     #
     # The second build gets its own BUILDDIR. Two builds that share one share its
     # doctree cache, Sphinx then re-reads only what changed, and a build that re-reads
     # nothing re-reports nothing.
+    local clean_status=0
     local warnings_status=0
     local nitpicky_status=0
-    local pages modules
-    pages=$(find docs/api -name '*.rst' | wc -l)
-    modules=$(grep -rh '^\.\. automodule::' docs/api | wc -l)
+    local warnings_log="$TEMP_DIR/sphinx-warnings-build.log"
+    local nitpicky_log="$TEMP_DIR/sphinx-nitpicky-build.log"
+
+    print_info "Emptying docs/_build..."
+    (cd docs && make clean) || clean_status=$?
+    if [ "$clean_status" -ne 0 ]; then
+        print_error "Sphinx: make clean failed (exit $clean_status); neither build ran"
+        if [ -n "$status_file" ]; then
+            echo "Sphinx - make clean" >> "$status_file"
+        fi
+        deactivate 2>/dev/null || true
+        return 1
+    fi
 
     print_info "Building documentation (warnings as errors)..."
-    (cd docs && make clean && make html SPHINXOPTS="-W") || warnings_status=$?
-    if [ "$warnings_status" -eq 0 ]; then
-        print_success "Sphinx warnings-as-errors build passed (exit 0)"
-    else
-        print_error "Sphinx warnings-as-errors build failed (exit $warnings_status)"
-        if [ -n "$status_file" ]; then
-            echo "Sphinx - warnings-as-errors build" >> "$status_file"
-        fi
-    fi
+    (cd docs && make html SPHINXOPTS="-W") > "$warnings_log" 2>&1 || warnings_status=$?
+    cat "$warnings_log"
 
     print_info "Building documentation (nitpicky, warnings as errors)..."
-    (cd docs && make html BUILDDIR=_build/nitpicky SPHINXOPTS="-n -W") || nitpicky_status=$?
-    if [ "$nitpicky_status" -eq 0 ]; then
-        print_success "Sphinx nitpicky build passed (exit 0)"
-    else
-        print_error "Sphinx nitpicky build failed (exit $nitpicky_status)"
-        if [ -n "$status_file" ]; then
-            echo "Sphinx - nitpicky build" >> "$status_file"
-        fi
-    fi
+    (cd docs && make html BUILDDIR=_build/nitpicky SPHINXOPTS="-n -W") \
+        > "$nitpicky_log" 2>&1 || nitpicky_status=$?
+    cat "$nitpicky_log"
 
     deactivate 2>/dev/null || true
 
+    # Read the builds rather than restating them. A build is accepted only if it exited
+    # 0, wrote the HTML it was asked for, and printed the line docs/conf.py emits when it
+    # has compared the source tree against the modules the build documented. Exit status
+    # alone would accept a `make` that resolved to nothing at all.
+    _sphinx_build_verdict "warnings-as-errors" "$warnings_status" "$warnings_log" \
+        docs/_build/html/index.html "$status_file" || warnings_status=1
+    _sphinx_build_verdict "nitpicky" "$nitpicky_status" "$nitpicky_log" \
+        docs/_build/nitpicky/html/index.html "$status_file" || nitpicky_status=1
+
     if [ "$warnings_status" -eq 0 ] && [ "$nitpicky_status" -eq 0 ]; then
-        print_success "Sphinx build passed: 0 warnings under -W and under -n -W, over $modules automodule entries in $pages files under docs/api"
+        local warn_problems nitpick_problems coverage
+        warn_problems=$(_sphinx_problem_count "$warnings_log")
+        nitpick_problems=$(_sphinx_problem_count "$nitpicky_log")
+        coverage=$(_sphinx_coverage_line "$warnings_log")
+        print_success "Sphinx build passed: $warn_problems problem lines under -W and $nitpick_problems under -n -W, and the build reports $coverage"
         return 0
+    fi
+    return 1
+}
+
+# Number of WARNING/ERROR lines a Sphinx build printed. grep reports none by exiting 1,
+# which under `set -o pipefail` would otherwise take the caller down with it.
+_sphinx_problem_count() {
+    grep -cE 'WARNING:|ERROR:' "$1" || true
+}
+
+# The coverage line docs/conf.py prints once per build, or the empty string if it did not.
+_sphinx_coverage_line() {
+    { grep -oE 'API reference: [0-9]+ of [0-9]+ modules under [^ ]+ documented' "$1" \
+        || true; } | tail -1
+}
+
+# Accept one Sphinx build. Prints its verdict and returns non-zero unless the build
+# exited 0, produced its HTML, and reported its module coverage.
+_sphinx_build_verdict() {
+    local label=$1 status=$2 log=$3 html=$4 status_file=$5
+    local problems coverage
+    problems=$(_sphinx_problem_count "$log")
+    coverage=$(_sphinx_coverage_line "$log")
+
+    if [ "$status" -ne 0 ]; then
+        print_error "Sphinx $label build failed (exit $status, problem lines: $problems)"
+    elif [ ! -f "$html" ]; then
+        print_error "Sphinx $label build exited 0 but wrote no $html"
+    elif [ -z "$coverage" ]; then
+        print_error "Sphinx $label build exited 0 but reported no API-reference coverage"
+    else
+        print_success "Sphinx $label build passed (exit 0, problem lines: $problems, $coverage)"
+        return 0
+    fi
+
+    if [ -n "$status_file" ]; then
+        echo "Sphinx - $label build" >> "$status_file"
     fi
     return 1
 }
