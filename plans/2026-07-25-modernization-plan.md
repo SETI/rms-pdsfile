@@ -1435,6 +1435,35 @@ a chapter documenting the sync shell scripts (document-only, per ground
 rule 7); appendix: file formats (shelf `.pickle`/`.py` sidecar, `*_md5.txt`,
 `_volinfo`).
 
+**Done**, record `critiques/pr-32-validation.md`. **21 pages**, one per program as
+planned, plus the landing page, concepts, installation, the shell-script chapter and the
+file-format appendix -- and **one page the plan did not call for**,
+`user_guide_maintenance_tools.rst`. Ten of the fifteen programs build no parser of their
+own: they declare a `ToolSpec` and `_common.build_arg_parser()` builds one, so all ten
+share an identical surface (five task flags, two of which carry a second spelling, the
+unit positional, `--log/-l` and `--quiet/-q`). Writing that ten times would have been the
+pasted-between-near-identical-halves defect in prose. It is written once and each of the
+ten chapters covers only its unit noun, its extra options, its products and paths, and
+its exit status. Measured duplication between those ten, after normalizing the
+volume/bundle vocabulary so a pasted sentence cannot hide behind the noun: the most
+similar pair is 0.360, and 70 of 895 non-blank lines recur across two or more pages.
+
+**What the reviews cost and returned.** Four rounds, all fresh no-context subagents. The
+two findings worth carrying forward: the holdings environment variables are read by
+**one** of the fifteen programs, not by all of them, and the other fourteen run with both
+unset; and reStructuredText does not nest inline markup inside `**bold**`, so a span like
+`` **``--infoshelf`` does not chain** `` renders with visible backticks and with the flag
+smart-quoted to an en dash that cannot be pasted -- over which **both Sphinx builds pass
+with 0 problem lines** (deferred 351). The gate PR-31 built cannot see it; only the built
+HTML can. PR-33 and PR-34 write more prose of the same kind and should grep
+`docs/_build` for it.
+
+`critiques/pr-32/check_cli_coverage.py` captures each program's real parser out of its own
+`main()` and compares it against what the guide documents, in both directions. It found
+five documentation defects before it went green and reports **0 findings over 15 programs,
+108 options, 175 option strings, 1 default** -- one, because 107 of the 108 options default
+to false, empty or None (deferred 352).
+
 **PR-33 (L)** `docs: developer guide` (closes issue #43)
 `docs/dev_guide/`, with an **explicit required chapter + diagram list** (so
 the synthesis is bounded, not open-ended):
