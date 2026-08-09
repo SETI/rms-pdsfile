@@ -13,8 +13,10 @@ is a validation, and a failure is logged rather than repaired.
 
 **Five is not all of them.** ``pdsindexshelf`` offers a validate task under the same name
 as the four it does call, and this tool neither imports nor runs it, so the index shelves
-of a volume's metadata tables are never re-validated here. Nor is
-``shelf_consistency_check``, which is not task-shaped.
+of a volume's metadata tables are never re-validated here. Two more checks in this
+package go unrun for a different reason, having no task to call:
+``shelf_consistency_check``, which looks for shelves with nothing left to describe, and
+``crlf``, which checks the line terminators of text files.
 
 Run it as::
 
@@ -144,8 +146,11 @@ def validate_one_volume(pdsdir, voltypes, tests, args, logger):
     What is caught is ``Exception``, so anything outside it, KeyboardInterrupt included,
     escapes with the volume's log already closed. **A test that raises skips every
     remaining test of the volume**, not just the rest of its own group: the handler is
-    around the whole sequence rather than around each test, so one failure early on can
-    leave eighteen of nineteen tests unrun and still report the volume as done.
+    around the whole sequence rather than around each test. How much is lost depends on
+    the volume, since the number of tests it runs is three per volume-type directory that
+    exists, two per archive group that found a tarball, one per link-shelf type present
+    and one for the dependency check; a failure on the first test loses all but one of
+    them, and the count reported is 1.
 
     Parameters:
         pdsdir: The volume directory, which must be under ``volumes/``. The paths of
@@ -157,8 +162,11 @@ def validate_one_volume(pdsdir, voltypes, tests, args, logger):
             ``args``.
         args (argparse.Namespace): The parsed command line after ``derive_options()``,
             read for its five test attributes and for ``timeless``.
-        logger: The run's logger. The volume's own file handler and error handler are
-            attached for the duration of this call and removed when it returns.
+        logger: The run's logger. One file handler and one error handler are built and
+            attached per log path, so a run with a log root configured attaches four
+            handlers and the two error handlers point at two different directories. All
+            of them are attached for the duration of this call and removed when it
+            returns.
 
     Returns:
         tuple: (log path, fatal count, error count). The log path is the last of the one
@@ -410,15 +418,18 @@ def get_log_info(log_path):
 
     Four things are read from fixed positions: the start time and the logger name from
     the first record, the volume path from the end of that same record, and the
-    volume's modification time from the second. The rest is a scan for three markers --
-    an error record, a fatal record, and the elapsed time the closing record carries.
-    The last elapsed time in the file wins, so a log holding several is summarized by
-    its final one.
+    volume's modification time from the second. The rest is a scan for three markers, of
+    which only two can ever be found. The last elapsed time in the file wins, so a log
+    holding several is summarized by its final one.
 
-    A log with no elapsed time at all is reported as fatal whether or not it holds a
-    fatal record, because a run that never wrote a closing record did not finish. That
-    is the state an interrupted or still-running validation leaves, and it is how batch
-    mode's scheduler is kept from treating one as a completed validation.
+    **The fatal marker is a string no log this tool writes contains.** The scan looks for
+    ``| FATAL |``, and pdslogger renders a fatal record as ``| CRITICAL |`` and a logged
+    exception as ``| EXCEPTION |``; "fatal" is a level alias and not a rendered name. So
+    the fatal flag is true exactly when there is no elapsed time, which is the state an
+    interrupted or still-running validation leaves, and a validation whose every test
+    raised writes a log that reads back here as neither fatal nor in error. Only the
+    error scan is unaffected, and it too misses a run that failed by exception rather
+    than by logging an error.
 
     Parameters:
         log_path (str): The log file to read.
@@ -434,7 +445,10 @@ def get_log_info(log_path):
             different logger, one with only a single record, and one whose second
             record is not the modification time. Three messages cover those four cases,
             so a log naming another logger and a log with one record cannot be told
-            apart; every caller here treats them alike in any event.
+            apart; every caller here treats them alike in any event. A fifth case carries
+            no message of this function's at all: a log that is not valid UTF-8 raises
+            ``UnicodeDecodeError``, which is a subclass of this and reaches the same
+            handlers.
         OSError: from the ``open()`` of a log file that does not exist or cannot be
             read.
     """
@@ -492,7 +506,10 @@ def get_all_log_info(logroot):
 
     For each key the search then runs backwards from the newest, and takes the first
     log that summarizes cleanly, is not fatal, and names a volume whose own key matches
-    the key the path gave. The last of those three matters after a holdings tree has
+    the key the path gave. "Is not fatal" is in practice "has an elapsed time", for the
+    reason ``get_log_info()`` gives: the fatal marker it scans for is a string these logs
+    never carry, so a validation that ended in an exception is taken here for a completed
+    one. The last of those three matters after a holdings tree has
     been reorganized, when a log's path and the volume path inside it can disagree; such
     a log is passed over rather than trusted. A key whose logs all fail these tests
     contributes nothing to the first result and still appears in the second.
@@ -763,8 +780,9 @@ def build_parser():
     this tool does is a validation, and what a command line selects is which validations
     over which directory trees. What it does share is the text of ``--log`` and
     ``--quiet``, taken from the same two constants the shared parser uses. That covers
-    twelve of the fourteen tool modules in this subpackage; ``pdsdependency`` carries its
-    own copy of both texts, byte-identical today and tied to nothing, and ``crlf`` and
+    eleven of the fourteen tool modules in this subpackage -- the ten specification driven
+    ones and this. Of the other three, ``pdsdependency`` carries its own copy of both
+    texts, byte-identical today and tied to nothing, and ``crlf`` and
     ``shelf_consistency_check`` have neither option.
 
     Every selection flag stores true and defaults to false, so "none given" and "not
@@ -1200,17 +1218,19 @@ def run_batch(args, voltypes, tests, logger, argv):
     reported. Under ``--batch-status`` the schedule is printed at that point and the run
     ends without validating anything.
 
-    The time limit is checked after each volume rather than before, so a run that has
-    anything to do overruns by however long its last volume took, and a run whose
-    schedule is empty validates nothing and reports a timeout anyway. The elapsed time is
-    read as the seconds component of the interval rather than its whole length, so a
-    limit of 1,440 minutes or more is never reached.
+    The time limit is checked after each volume rather than before, so a run that reaches
+    the limit stops somewhere past it, by at most the length of the volume that carried
+    it over. A run that exhausts its schedule first never tests the limit at all, and a
+    run whose schedule is empty validates nothing and reports a timeout anyway. The
+    elapsed time is read as the seconds component of the interval rather than its whole
+    length, so a limit of 1,440 minutes or more is never reached.
 
-    Whatever happens, the report is mailed from a ``finally``: a full report to each
-    ``--email`` address, subject-lined according to whether anything failed, and an
-    error-only report to each ``--error-email`` address if anything did. The summary
-    line printed at the end says "Timeout" whether the run stopped on the limit or ran
-    out of volumes.
+    Once the main loop has been entered, the report is mailed from a ``finally``: a full
+    report to each ``--email`` address, subject-lined according to whether anything
+    failed, and an error-only report to each ``--error-email`` address if anything did.
+    Nothing that goes wrong while the schedule is still being built reaches that block,
+    and neither does ``--batch-status``, which exits before it. The summary line printed
+    at the end says "Timeout" whether the run stopped on the limit or ran out of volumes.
 
     Parameters:
         args (argparse.Namespace): The parsed command line, after ``derive_options()``.
@@ -1227,10 +1247,13 @@ def run_batch(args, voltypes, tests, logger, argv):
             ``--batch-status`` path. **The status is 0 even for a run that logged
             errors**, because a nonzero status would cancel the launch daemon that
             schedules it; the errors are reported by mail instead.
-        OSError: from ``send_email()``, if the mail relay cannot be reached. It is raised
-            from the same ``finally`` that would have exited 0 and nothing catches it, so
-            an unreachable relay is the one way a batch run ends nonzero. What the run
-            logged does not reach the status; whether the report could be sent does.
+        OSError: from ``send_email()``, if the relay cannot be reached or refuses the
+            message; ``smtplib.SMTPException`` is a subclass of it, so the refusal cases
+            arrive under this name too. It is raised from the ``finally`` that runs just
+            before the ``sys.exit(0)`` below it, and nothing catches it, so it is the one
+            way a run that got as far as validating something ends nonzero. The three
+            entries around this one are the others, and all of them fire before any
+            volume is validated.
         TypeError: from ``get_all_log_info()`` when no log root is configured, before
             any volume is validated.
         KeyboardInterrupt: from ``validate_one_volume()``, which does not catch it. It
@@ -1376,8 +1399,13 @@ def main(argv=None):
             cannot classify and 0 for ``--help``, before either mode is reached; and
             otherwise from ``run_interactive()`` or ``run_batch()``, each of which exits
             rather than returning. Their docstrings give the statuses they choose.
+        ValueError: from ``run_interactive()`` on a path outside every holdings tree, and
+            from ``run_batch()`` on a log whose recorded volume path is.
         TypeError: from ``run_batch()`` when no log root is configured.
-        OSError: from ``run_batch()``, if its report cannot be mailed.
+        OSError: from ``run_batch()``, if its report cannot be mailed, and from either
+            mode on a log file that cannot be read.
+        KeyboardInterrupt: from ``run_interactive()`` or ``run_batch()``, each of which
+            logs it and re-raises rather than turning it into a status.
     """
 
     if argv is None:

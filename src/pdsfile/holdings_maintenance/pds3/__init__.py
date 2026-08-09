@@ -25,10 +25,10 @@ holdings root; the first two build their log paths through
 The tenth module, ``linkshelf_repairs``, is a table of known bad links in the published
 volumes rather than a tool; ``pdslinkshelf`` reads it.
 
-Twelve shell scripts sit beside these modules. They copy, sync and set up holdings
-trees, and one of them, ``update_holdings_for_new_metadata.sh``, also runs five of the
-tools above, by source file name rather than by console-script name. Nothing in Python
-names any of the twelve.
+Twelve shell scripts sit beside these modules. They copy, sync and set up holdings trees,
+and one of them, ``update_holdings_for_new_metadata.sh``, also runs five of the tools
+above, by source file name rather than by console-script name. No Python in this package
+imports or executes any of the twelve.
 
 This module is a namespace and defines nothing. Import a tool by its module path.
 """

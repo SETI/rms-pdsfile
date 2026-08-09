@@ -25,23 +25,27 @@ of the whole path string, so ``myshelves-backup`` matches as surely as ``shelves
 -- contains no such substring anywhere, so a run over one walks every directory, examines
 nothing, and reports ``Tests performed: 0`` and ``Errors found: 0``. That is a clean
 report about an empty search rather than about the shelves. Name a root that happens to
-have ``shelves`` in its own path, though, and every directory under it is reported
-instead.
+have ``shelves`` in its own path, though, and the run reports most of the tree instead:
+every directory below it whose kind is unrecognized, which is all of them except the ones
+whose own name ends in ``shelves``, which are skipped without comment, and any that do sit
+under a recognized kind.
 
 Where the layout does match, the counterpart is derived by textual substitution:
 ``shelves/`` and the kind is replaced by ``holdings`` wherever it occurs in the shelf's
 path, and the extension is dropped. For ``index``, what must then exist is that path plus
 ``.lbl``, the label of the index table. For ``info`` and ``links``, everything after the
-last underscore goes too -- which is the ``_info`` or ``_links`` on a shelf named the way
-these tools name them, and is whatever else follows an underscore on one that is not --
-and what must exist is that path, as a file or a directory alike, since only existence is
-asked.
+last underscore goes too. That is the ``_info`` or ``_links`` on a shelf named the way
+these tools name one; it is whatever else follows the last underscore on a shelf named
+otherwise; and on a path with no underscore anywhere it is the whole path, leaving the
+empty string, which exists nowhere, so such a shelf is always reported. What must exist is
+that path, as a file or a directory alike, since only existence is asked.
 
 Three things are reported as errors: a directory under ``shelves/`` that is none of the
 three kinds, a file that is neither a ``.py`` nor a ``.pickle``, and a shelf whose
 counterpart is missing. A ``.DS_Store`` is counted and passed over. The run prints how
-many things it examined -- files, plus one for each directory of an unrecognized kind --
-and how many errors it found, and exits 1 if it found any.
+many things it examined -- files inside a directory of a recognized kind, plus one for
+each directory of an unrecognized kind, and nothing for the files inside those -- and how
+many errors it found, and exits 1 if it found any.
 
 This module imports nothing from the rest of the package and reads no holdings root: the
 trees to walk are the ones named on the command line, and the mapping above is done on

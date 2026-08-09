@@ -9,9 +9,12 @@ The other maintenance tools each own one kind of derived file and check it again
 it describes. This one owns the relationships between them: given a volume, it works out
 what else the holdings tree ought to contain -- checksums, archives, shelves, previews,
 diagrams, calibrated images, metadata tables and the cumulative versions of those tables
--- and reports whatever is missing or stale. It creates nothing and repairs nothing. What
-it produces instead is a list of the commands an operator would have to type, printed
-under "Steps required" at the end of a run.
+-- and reports whatever is missing or stale. It repairs nothing and creates no holdings
+product. What it does write is logs: a per-volume log and an ``ERRORS.log`` beside the
+holdings tree, the same pair again under the log root when one is configured, and one more
+``ERRORS.log`` at the log root's own ``pdsdependency`` directory. What it produces for the
+operator is a list of the commands that would supply what is missing, printed under
+"Steps required" at the end of a run.
 
 Run it as::
 
@@ -35,10 +38,13 @@ majority of them, and it is what ``--timeless`` in ``re_validate`` turns off, th
 ``check_newer`` argument threaded down from ``test()``. Modification times of directories
 are taken recursively, over every file below them, and cached.
 
-``TESTS`` has 49 rows and names 41 suites between them, and a volume picks up as many of
-them as its path matches. The rules themselves are the documentation of what each suite
-requires: every one carries a title, a run's log is organized by those titles, and a
-rule that finds nothing to test says nothing at all.
+``TESTS`` has 49 rows and names 41 suites between them, and a volume picks up every
+distinct suite its path matches. Distinct is the operative word: the lookup drops a name
+it has already collected, so two rows that match one path and name one suite give that
+suite once. Four volumes exercise that -- ``GO_0020`` through ``GO_0023`` reach ``body``
+through two rows apiece and run it once. The rules themselves document what each suite
+requires: every one carries a title, a run's log is organized by those titles, and a rule
+that finds nothing to test says nothing at all.
 
 Nothing here is imported by another tool except ``re_validate``, which calls ``test()``
 as the last of its five per-volume validations.
@@ -190,11 +196,13 @@ class PdsDependency:
                 rewritten when a run is not checking modification dates, so titles
                 should be written for the checking case.
             glob_pattern (str): The pattern that finds the files this rule is about,
-                relative to the holdings root. Its first "$" is replaced by the volume
-                set directory name, and a second "$" by the volume name, so a pattern
-                names neither. A pattern with one "$" is deliberate rather than
-                incomplete: it is how a rule is written to cover a whole volume set at
-                once.
+                relative to the holdings root. Its first "$" is replaced by the volume set
+                directory name and a second "$" by the volume name, and only the first two
+                are substituted. Eight of the rules registered here carry one "$": five
+                cover a whole volume set, and **three spell a VG_28xx volume into the
+                pattern**, so those three test whichever volume they name rather than the
+                one the command line did. Running the ``vg_28xx`` suite against VG_2810
+                globs and tests files inside VG_2802 and VG_2803.
             regex (str or re.Pattern): What each file found is matched against, as a
                 path relative to the holdings root. A string is anchored at both ends
                 and compiled case-insensitively; a compiled pattern is taken as it is,
@@ -274,15 +282,20 @@ class PdsDependency:
 
         Two kinds of file are logged and left out of the comparison. A ``.DS_Store`` is
         logged at debug level, so it does not affect the run's status. A dot-underscore
-        file is logged at error level, so **one of them anywhere below a directory gives
-        the whole run a nonzero exit status**, whatever the dependencies turn out to be.
+        file is logged at error level, so **one of them anywhere below a directory this
+        function walks gives the whole run a nonzero exit status**, whatever that
+        directory's dependencies turn out to be. Which directories are walked is itself
+        decided by the dependencies: this is reached only for a rule that asks for a date
+        check, in a run that has date checks on, and only after the required file has been
+        found to exist. A run with the check off walks nothing and logs neither kind.
 
         Nothing else is excluded, and one exclusion that looks present is not. The block
-        that would skip a backup or " copy" file sits inside the dot-underscore branch
-        and after its ``continue``, so it cannot run; every sibling tool carries the same
-        block one level out, where it does. A backup file therefore dates a directory
-        exactly as its original does here and nowhere else, and a stale dated copy of a
-        table can make every file derived from that directory look out of date.
+        that would skip a backup or " copy" file sits inside the dot-underscore branch and
+        after its ``continue``, so it cannot run. The four tool families that walk a
+        directory listing the same way carry the identical block one level out, where it
+        does run. So a backup file dates a directory exactly as its original does here and
+        in none of those, and a stale dated copy of a table can make every file derived
+        from that directory look out of date.
 
         Parameters:
             abspath (str): The file or directory to time. A path that is neither an
@@ -341,13 +354,16 @@ class PdsDependency:
         Every file the glob matched is then taken through every substitution, in that
         order: the outer loop is over the substitutions and the inner over the files, so
         a rule requiring four preview sizes reports all the missing thumbnails together
-        rather than all four sizes of one image together. Each required file is logged
-        as one of five things:
+        rather than all four sizes of one image together. Five verdicts are logged, of
+        which only the last three are about a required file at all; the first two name the
+        file the glob found, having no required path to name. They are:
 
-          * skipped, if the file that implies it matches one of the rule's exceptions;
-          * an invalid test, if the rule's regular expression does not match the file
-            the rule's own glob found. This is an error rather than a skip, because the
-            two patterns disagreeing is a defect in the rule;
+          * skipped, if the file the glob found matches one of the rule's exceptions. It
+            is logged before any substitution runs, so it names that file;
+          * an invalid test, if the rule's regular expression does not match the file the
+            rule's own glob found. The substitution returns its subject unchanged, so what
+            is logged is that file again rather than a requirement. This is an error and
+            not a skip, because the two patterns disagreeing is a defect in the rule;
           * missing, if the required file does not exist;
           * out of date, if it exists and is older than its source, which is checked
             only when the rule asks for it and the run has not turned the check off;
@@ -546,6 +562,9 @@ class PdsDependency:
                 its own suite and no other.
             ValueError: from ``from_abspath()``, if the path given is not inside a
                 holdings tree the current environment knows.
+            OSError: from ``test1()``, which logs it and re-raises; it is logged again
+                here and re-raised again, so it reaches the caller having been logged
+                three times.
         """
 
         dirpath = os.path.abspath(dirpath)
@@ -1265,6 +1284,11 @@ def test(pdsdir, logger=None, limits={}, check_newer=True, handlers=[]):
     Raises:
         ValueError: from ``test_suite()``, if the path is not inside a holdings tree the
             current environment knows.
+        KeyError: from ``test_suite()``, which cannot arise through this function, since
+            every name the table produces is a registered suite.
+        OSError: from ``test_suite()``, if a file disappears between a rule's glob and its
+            date check. Nothing here catches it, so it ends the run for every suite the
+            volume had left.
     """
 
     logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
@@ -1293,10 +1317,16 @@ def main():
 
     The run's own log is opened once, and each volume's log handlers are handed down to
     the suites rather than attached here, so they go on and come off once per suite and
-    are detached between them. A volume's findings therefore reach its own file, and the
-    two lines naming that file, logged from here before the suites start, do not. The
-    repair commands are printed at the end, after the log is closed, across every volume
-    of the run and in the order they were first worked out.
+    are detached between them. A volume's findings therefore reach its own log file, and
+    the lines announcing where that file is -- one per log path, so two when a log root is
+    configured -- are logged before the first suite opens and reach none of them.
+
+    **Those lines do not name the files that get written.** The category component is
+    stripped from each path as the handler for it is built, and the announcement iterates
+    the paths as they were before that, so what is printed is a path carrying a
+    ``volumes/`` component that nothing creates. The repair commands are printed at the
+    end, after the log is closed, across every volume of the run and in the order they
+    were first worked out.
 
     Where ``--log`` goes when it is not given is worked out here rather than through the
     shared helper the other tools call, against a copy of the environment variable's
@@ -1312,6 +1342,10 @@ def main():
             exits 1.**
         ValueError: from ``from_abspath()``, for a path no holdings tree the current
             environment contains.
+        OSError: from ``error_handler()`` and ``file_handler()``, if a log directory
+            cannot be created or a log file cannot be opened. Both are called outside
+            every ``try``, so an unusable ``--log`` root ends the run with no message and
+            no log.
         Exception: whatever ``test()`` raises escapes, after being logged and after the
             log is closed and the repair commands printed. The status assigned in the
             handler is not reached, because the exception propagates instead of the
