@@ -21,38 +21,44 @@ Four tables here say what the scan means by a link, and two of them are empty:
   * ``EXTS_WO_LABELS`` is the five extensions a file is searched for links in --
     ``.XML``, ``.LBLX``, ``.CAT``, ``.FMT`` and ``.SFD`` -- and is at the same time the
     set of extensions a file does not need a label of its own for.
-  * ``REPAIRS`` is an **empty** translator. One lookup is made per file scanned, it
-    matches nothing, and the per-link loop inside it therefore never runs, so no link is
-    looked up at all and none is ever repaired. That is why there is no counterpart here
-    to the PDS3 tool's ``linkshelf_repairs`` module: the machinery is in place and the
-    table is empty.
+  * ``REPAIRS`` is an **empty** translator. One lookup is made per file scanned and it
+    matches nothing, so the loop over the matched entries, which sits inside the loop over
+    the file's links, never has a body to run and no link is ever looked up or repaired.
+    That is why there is no counterpart here to the PDS3 tool's ``linkshelf_repairs``
+    module: the machinery is in place and the table is empty.
   * ``KNOWN_MISSING_LABELS`` is empty for the same reason, so no file is excused from the
     label search on the strength of being known to have none.
 
 What takes their place is the collection inventory. A PDS4 collection lists its members in
 a ``collection*.csv`` file, and this scan reads every such file it walks past and keeps
 the last component of each listed identifier. Before reporting that a file has no label at
-all, it asks whether a collection file whose path begins with that file's own directory or
-the one above it lists the file, and **a file no such collection lists is passed over**:
-an errata file or a checksum manifest is not part of the archive and is not expected to be
-labeled. It is passed over rather than passed over silently -- the question itself is
-logged for every file that reaches it, and the separate "does not point to file" error for
-a mismatched label is raised before the question is asked.
+all or an ambiguous one, it asks whether a collection file whose path begins with that
+file's own directory or the one above it lists the file, and **a file no such collection
+lists is passed over**: an errata file or a checksum manifest is not part of the archive
+and is not expected to be labeled. It is passed over rather than passed over silently --
+the question itself is logged for every file that reaches it, and the separate "does not
+point to file" error for a mismatched label is raised before the question is asked.
 
 The other thing this scan does that the PDS3 one does not is credit a label by what it
-says rather than by what it is called: a file whose name appears in a ``<file_name>``
-element of a label in the same directory is shelved as described by that label. It is a
-fallback and not a first resort, because the name-matching credit is settled in the
-earlier pass and this one skips any file already credited there.
+says rather than by what it is called: a file whose name appears anywhere in a label in
+the same directory is shelved as described by that label. It is a fallback and not a first
+resort, because the name-matching credit is settled in the earlier pass and this one skips
+any file already credited there. **It is the label's own text and not its
+``<file_name>`` elements** that this matches against, even though the log line calls it a
+file_name tag: the comparison runs over every link the label yielded, and the general
+pattern's matches are among them.
 
 The specification names ``_shelf_common.UNIT_LOG_PATH_METHOD`` as its log path method and
-'_links' as its log suffix. One field is set here and read nowhere a run of this tool
-reaches: ``index_ext``, which only the index shelf tools' target expansion reads. The
-three other fields that differ by flavor all reach something: ``holdings_sentinel`` is
-where the upward search for a non-local link stops, ``file_log_level`` is the method a
-created directory is reported through when a shelf is written, and ``handler_factories``
-adds a warning handler ahead of the error handler, so a run leaves a warning file in each
-of its log directories that a PDS3 run does not.
+'_links' as its log suffix. Nine fields of this specification differ from the PDS3 tool's,
+and one of the nine is read nowhere a run of this tool reaches: ``index_ext``, which only
+the index shelf tools' target expansion reads. Three of the other eight are worth naming
+because what they reach is not obvious from the name. ``holdings_sentinel`` is where the
+upward search for a non-local link stops. ``file_log_level`` is the method a created
+directory is reported through when a shelf is written. And ``handler_factories`` adds a
+warning handler ahead of the error handler, so a run leaves a warning file in each of its
+log directories that a PDS3 run does not. The remaining five -- ``pdsfile_cls``, ``unit``,
+``expand_target``, ``generate_links`` and ``link_target_regex`` -- are what makes this the
+PDS4 tool at all.
 
 ``progname`` is 'pdslinkshelf', not this module's name, which is the convention all five
 PDS4 tools follow: it is what the ``--help`` description and the "Missing task" error call
@@ -115,18 +121,25 @@ def generate_links(dirpath, old_links=None, *, logger=None, limits=None):
     nothing, and so never reaches a link.
 
     **A label is credited to a file on one of three grounds, in this order.** First, in
-    the earlier pass, a label that named the file in a ``<file_name>`` element and whose
-    own name matches the file's up to the extension. Second, in the later pass and only
-    for a file the first left uncredited, **any** label in the same directory that named
-    the file in a ``<file_name>`` element, whatever that label is called; the PDS3 tool
-    has no equivalent of this one. Third, the only label in the directory that named the
-    file in a target position. Failing all three, the file is reported as having a missing
-    or an ambiguous label -- but only if the collection inventory lists it.
+    the earlier pass, a label that mentioned the file and whose own name matches the
+    file's up to the extension. Second, in the later pass and only for a file the first
+    left uncredited, **any** label in the same directory that mentioned the file, whatever
+    that label is called; the PDS3 tool has no equivalent of this one. Third, the only
+    label in the directory that mentioned the file **in a target position**. Failing all
+    three, the file is reported as having a missing or an ambiguous label -- but only if
+    the collection inventory lists it.
 
-    **The search by ``<file_name>`` element considers only lower-case label names.** The
-    labels of a directory are collected by testing each basename for the literal '.xml' or
-    '.lblx', so a label named in upper case is not among them and cannot be credited that
-    way, although every other test in this function upper-cases first.
+    Only the third ground asks how the mention was matched. The first two accept any link
+    the scan found in the label, so a file named in a comment credits the label as surely
+    as one named in a ``<file_name>`` element does, although the log line for the second
+    calls it a file_name tag.
+
+    **The second ground is case-sensitive at both ends.** The labels of a directory are
+    collected by testing each basename for the literal '.xml' or '.lblx', so a label named
+    in upper case is not among them; and the mention is compared to the file's basename
+    exactly, so a label naming ``FOO.DAT`` does not credit a ``foo.dat``. The collection
+    inventory is read and matched case-sensitively too. Everything to do with resolving a
+    link, and the extension tests above, upper-case first.
 
     **The modification time is the newest among every file the walk sees**, taken before
     any skip test and whether or not the file is opened, so a ``.DS_Store`` or a backup

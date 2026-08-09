@@ -347,7 +347,7 @@ def checksum_dict(dirpath, logger=None):
     It resolves the manifest's path from the directory, reads it, and turns the pairs into
     a dictionary, so a path listed twice keeps the digest of its last record.
 
-    Unlike the three functions here that read or write a manifest, it opens no log level
+    Unlike the two functions here that read or write a manifest, it opens no log level
     of its own, so its "Loading checksums for" and "Checksum load completed" lines are
     written at whatever level the caller had open, and both are forced past any message
     limit. It takes no ``limits``, so the read it makes always uses this module's own

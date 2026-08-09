@@ -36,13 +36,16 @@ which the archive tool names instead; the path built is the same either way. Thi
 log suffix is '_links', which ``pdsarchives`` also passes, and the two do not collide
 because each tool's ``progname`` becomes a directory component of the log path.
 
-One field of the specification is set here and read nowhere a run of this tool reaches:
-``index_ext``, which only the index shelf tools' target expansion reads. The three other
-fields that differ by flavor all reach something: ``holdings_sentinel`` is where the
-upward search for a non-local link stops, ``file_log_level`` is the method a created
-directory is reported through when a shelf is written, and ``handler_factories`` is the
-error handler alone, where the PDS4 tool adds a warning handler ahead of it, so a PDS3 run
-leaves one fewer file in each of its log directories.
+Nine fields of this specification differ from the PDS4 tool's, and one of the nine is read
+nowhere a run of this tool reaches: ``index_ext``, which only the index shelf tools'
+target expansion reads. Three of the other eight are worth naming because what they reach
+is not obvious from the name. ``holdings_sentinel`` is where the upward search for a
+non-local link stops. ``file_log_level`` is the method a created directory is reported
+through when a shelf is written. And ``handler_factories`` is the error handler alone,
+where the PDS4 tool adds a warning handler ahead of it, so a PDS3 run leaves one fewer
+file in each of its log directories. The remaining five -- ``pdsfile_cls``, ``unit``,
+``expand_target``, ``generate_links`` and ``link_target_regex`` -- are what makes this the
+PDS3 tool at all.
 
 The five shared tasks are bound to this module's own names with this specification
 supplied. ``re_validate`` reaches ``validate`` that way, as a library function rather than
@@ -143,15 +146,21 @@ def generate_links(dirpath, old_links=None, *, logger=None, limits=None):
     debug line for anything else, on the reasoning that most unresolved candidates are not
     links at all.
 
-    **A label is credited to a file only where that label names the file**, on one of two
-    grounds. Either the label named it in a target position and the label's own name
-    matches the file's up to the extension, which is settled during the first pass; or the
-    label is the only one in the directory that named it in a target position, which the
-    second pass settles from the candidates the first collected. A name match on its own
-    credits nothing: a ``.LBL`` whose basename matches a file it never mentions is
-    reported as a label that "does not point to file", and the file it was named for is
-    then reported as having no label. Failing both grounds the file is shelved with an
-    empty string, and ``KNOWN_MISSING_LABELS`` excuses it from the search altogether.
+    **A label is credited to a file only where that label mentions the file**, on one of
+    two grounds. Either the label mentioned it and the label's own name matches the file's
+    up to the extension, which is settled during the first pass and does not care how the
+    mention was matched; or the label is the only one in the directory that mentioned it
+    **in a target position**, which the second pass settles from the candidates the first
+    collected. So the first ground admits a file named anywhere in the label, including in
+    a comment, and the second admits only a file the target pattern or its continuation
+    matched.
+
+    A name match on its own credits nothing. A ``.LBL`` whose basename matches a file it
+    never mentions is reported as a label that "does not point to file" and the file is
+    then reported as having no label -- but only where a label is required, so a file
+    whose extension is in ``EXTS_WO_LABELS`` produces neither error. Failing both grounds
+    the file is shelved with an empty string, and ``KNOWN_MISSING_LABELS`` excuses it from
+    the search altogether.
 
     **The modification time is the newest among every file the walk sees**, taken before
     any skip test and whether or not the file is opened, so a ``.DS_Store`` or a backup

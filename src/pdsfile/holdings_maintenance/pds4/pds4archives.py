@@ -10,14 +10,18 @@ derived.** A bundle set's rule module installs an ``ARCHIVE_PATHS`` table saying
 archive files cover a logical path and an ``ARCHIVE_DIRS`` table saying which directories
 each of those packages, and every task here loops over what those two answer. It is the
 **largest** difference between this tool and the PDS3 one, and it runs through all five
-tasks; the smaller ones are recorded on the functions that carry them, and the module
-docstring of the PDS3 tool lists the specification fields the two do not share.
+tasks; the smaller ones are recorded on the functions that carry them. Ten fields of the
+two specifications differ, and the two module docstrings name between them the four whose
+effect is not obvious: ``index_ext`` and ``holdings_sentinel``, which reach nothing here,
+``file_log_level``, and ``handler_factories``. The log suffix differs too, and this
+tool's is the one that matches its own name.
 
 A target that no rule matches resolves to no archive paths at all, and the five tasks do
 not agree about that. ``update()`` reports nothing and returns False. ``validate()`` and
-``repair()`` walk the whole directory tree first and only then find there is nothing to
-compare it with, so a target with no archives still costs a full walk and a log line per
-file. ``initialize()`` and ``reinitialize()`` reach ``write_archive()``, which logs an
+``repair()`` both walk the whole directory tree and only then find there is nothing to
+compare it with -- ``validate()`` walking before it looks the archives up and ``repair()``
+after -- so a target with no archives costs a full walk and a log line per file either
+way. ``initialize()`` and ``reinitialize()`` reach ``write_archive()``, which logs an
 error and then raises.
 
 Validation compares an archive against the directories it packages by metadata alone --

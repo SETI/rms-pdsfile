@@ -19,9 +19,10 @@ grows whenever another volume is found to carry a bad link, while the tool does 
   * a regular expression matched against the **absolute path of the file being scanned**.
     The translator anchors it at both ends, so a pattern describes a whole path rather
     than a substring of one, which is why nearly every entry begins ``.*/``;
-  * the ``re`` flags for that pattern, which is 0 on all but two entries. Those two carry
-    ``re.I`` because they have to match a basename written in either case; every other
-    entry spells the case it wants into the pattern;
+  * the ``re`` flags for that pattern, which is 0 on 139 of the 141 entries. The two that
+    carry ``re.I`` are both ``COUVIS_8xxx`` entries; measured against the published
+    holdings, each matches exactly the same files with the flag and without it, so what
+    the flag buys them is not visible in the tree as it stands;
   * a second translator, from the text a link was written with to the text it was meant to
     carry. 77 entries carry a ``translator.TranslatorByDict``, whose 267 entries between
     them name one link text each; 64 carry a nested ``translator.TranslatorByRegex``,
@@ -65,9 +66,10 @@ written out, because those 50 entries differ from one another only in a volume n
 three more are written out beside them.
 
 There is no PDS4 counterpart to this module. ``pds4linkshelf`` declares its own
-``REPAIRS`` as an empty translator, so its one lookup per file matches nothing, the
-per-link loop inside it never runs, and no link is looked up at all; that asymmetry is
-deliberate rather than an omission.
+``REPAIRS`` as an empty translator, so its one lookup per file matches nothing and the
+loop over the matched entries, which sits inside the loop over the file's links, never has
+a body to run; no link is looked up at all. That asymmetry is deliberate rather than an
+omission.
 """
 
 import re

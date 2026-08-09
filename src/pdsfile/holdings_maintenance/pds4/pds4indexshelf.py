@@ -31,7 +31,7 @@ its log directories that the PDS3 tool's run does not. The other two,
 ``holdings_sentinel`` and ``file_log_level``, are read nowhere along this tool's path: no
 code that a run of this tool reaches ever looks at them, which is why '/pds4-holdings/'
 here has no effect. Of the four other PDS4 tools, two split a command-line path on that
-same field, one stops an upward search at it, and the fifth does not read it either.
+same field, one stops an upward search at it, and the fourth does not read it either.
 
 ``log_path_for_index`` builds the log path, from the table's own logical path, and
 ``log_suffix`` is empty because that method takes no suffix argument; an empty

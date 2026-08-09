@@ -352,16 +352,19 @@ def generate_infodict(pdsdir, selection, old_infodict=None, *, logger=None,
 def load_infodict(pdsdir, *, logger=None, limits=None):
     """Return one bundle's shelved entries, with every stored path made absolute again.
 
-    The shelf stores each key as the path below the bundle set, so reading it is the
-    inverse of what ``write_infodict()`` does: the bundle's own prefix is put back in
-    front of each. The empty key is the bundle directory itself and is restored as such.
+    The shelf stores each key as the path below the bundle, so reading it is the inverse
+    of what ``write_infodict()`` does: the bundle's own prefix is put back in front of
+    each. The empty key is the bundle directory itself and is restored as such. An archive
+    target is the exception at both ends, since one shelf there covers a whole bundle set
+    and its keys are the paths below that.
 
     **A digest of dashes is read back as no digest.** Any value whose first character is a
     dash is replaced with the empty string, which is what a directory's entry carries.
     Nothing in this package writes a dashed digest -- ``write_infodict()`` stores the
-    empty string for a directory, and a scan of 80 shelves and 391,444 entries in the test
-    holdings found no dashes and 3,264 empty digests -- so this is a defensive read of
-    some other producer's output rather than a description of the format written here.
+    empty string for a directory, and a scan of every info shelf in the PDS3 test
+    holdings, 6,723 files and 21,711,938 entries, found no dashed digest and 186,305 empty
+    ones -- so this is a defensive read of some other producer's output rather than a
+    description of the format written here.
 
     The pickle is read straight from disk rather than through the PdsFile shelf cache, so
     what comes back is what the file holds now.
@@ -381,11 +384,11 @@ def load_infodict(pdsdir, *, logger=None, limits=None):
             archive path with no bundle set, and for anything else no bundle name can be
             found for.
         OSError: raised by ``open()`` for a shelf that exists and cannot be read.
-        pickle.UnpicklingError: raised by ``load()`` for a file that is not a pickle. It
-            is not an OSError, so a caller guarding only against the entry above will not
-            catch it, and neither will it catch the ``EOFError`` a truncated pickle gives.
-            Each is logged through ``exception()`` and re-raised, as is anything else the
-            read raises.
+        pickle.UnpicklingError: raised by ``load()`` for a file that is not a pickle, and
+            for most truncations of one: truncating a real shelf at 2,001 sampled prefixes
+            gave this 1,758 times and ``EOFError`` 243. It is not an OSError, so a caller
+            guarding only against the entry above catches neither. Each is logged through
+            ``exception()`` and re-raised, as is anything else the read raises.
     """
 
     if limits is None:
@@ -441,18 +444,24 @@ def write_infodict(pdsdir, infodict, *, logger=None, limits=None):
     """Write a new info shelf for one bundle, and its Python sidecar.
 
     Two files are written under two log levels: the pickle at the bundle's info shelf
-    path, keyed by the path below the bundle set rather than by absolute path, and a
+    path, keyed by the path below the bundle rather than by absolute path, and a
     readable ``.py`` beside it holding the same mapping as Python source. The parent
     directory is created if it is not there.
 
     **The sidecar is not only for a person to read.** ``_shelves.shelf_lookup()`` answers
     a question about the bundle itself by reading the sidecar's **second line** rather
-    than unpickling the whole shelf, which is what keeps a preload from opening every info
-    shelf in a tree. Two properties of the write below are load-bearing for that: the
-    entries are sorted by absolute path, and the bundle directory's own path is a prefix
-    of every other, so its entry -- the one keyed by the empty string -- is always written
-    first and is the file's second line. The sidecar is also what the versioning record
-    names as the file travelling with the pickle.
+    than unpickling the whole shelf. Two properties of the write below are load-bearing
+    for that: the entries are sorted by absolute path, and where the dictionary covers a
+    whole bundle the bundle directory's own path is a prefix of every other, so its entry
+    -- the one keyed by the empty string -- is written first and is the file's second
+    line.
+
+    **That holds of the dictionary a full walk produces and not of every dictionary this
+    is given.** ``reinitialize()`` on a selection hands it one entry, for the named file
+    alone, and the pair it then writes has no empty key at all; ``shelf_lookup()`` reads
+    that file's second line regardless and returns the named file's entry as though it
+    were the bundle's, because nothing on that path checks which key it got. The sidecar
+    is also what the versioning record names as the file travelling with the pickle.
 
     In the sidecar the keys are padded to a common width and the entries are written in
     sorted key order, which the pickle is not: the pickle is written in the order the
@@ -482,10 +491,11 @@ def write_infodict(pdsdir, infodict, *, logger=None, limits=None):
             ``open()`` if either file cannot be written. Each is logged through
             ``exception()`` and re-raised, as is anything else either write raises. **The
             pickle is written first and is not removed if the sidecar then fails**, so
-            such a call leaves a pickle with no sidecar or with an older one. Every later
-            operation on that pair then fails on the sidecar rather than on the shelf: the
-            repair task's dating of it, the versioning any replacing task does, and
-            ``_shelves.shelf_lookup()``'s bundle-level shortcut.
+            such a call leaves a pickle with no sidecar or with an older one. Reading the
+            shelf still works, and so do ``validate()`` and an ``update()`` with nothing
+            to write; what fails on the sidecar rather than on the shelf is the repair
+            task, the versioning any task that does write performs, and the shortcut
+            ``_shelves.shelf_lookup()`` takes for a question about the bundle itself.
     """
 
     if limits is None:
@@ -857,10 +867,11 @@ def repair(pdsdir, selection=None, logger=None):
     Raises:
         OSError: raised by the two ``getmtime()`` calls that date the pair, and
             ``FileNotFoundError`` in particular where the shelf pickle is present and its
-            ``.py`` sidecar is not. **Those two calls are inside the agreement branch**,
-            so a missing sidecar stops this task only where the shelf and the walk agree;
-            where they differ, the versioning that comes next raises the same exception
-            out of ``move_old()``, which copies the sidecar beside the pickle.
+            ``.py`` sidecar is not. **A missing sidecar stops this task on either branch,
+            from two different places.** The two ``getmtime()`` calls are inside the
+            agreement branch; where the shelf and the walk differ, the versioning that
+            comes next raises the same exception out of ``move_old()``, which copies the
+            sidecar beside the pickle.
     """
 
     info_path = pdsdir.shelf_path_and_lskip('info')[0]
@@ -943,9 +954,9 @@ def update(pdsdir, selection=None, logger=None):
     **A directory already shelved is not refreshed either.** The walk does recompute one
     from the children it found, and the merge then writes a key only where the shelf lacks
     it, so the recomputed value is discarded and every ancestor directory of a new file
-    keeps the child count and byte total it was shelved with. ``validate()`` reports those
-    as a child count and a file size mismatch, so the two tasks disagree about the same
-    shelf until a ``reinitialize`` or a ``repair``.
+    keeps the child count, the byte total and the modification time it was shelved with.
+    ``validate()`` reports all three as mismatches, so the two tasks disagree about the
+    same shelf until a ``reinitialize`` or a ``repair``.
 
     **A deletion is invisible.** The result starts from the whole of what the shelf held,
     so an entry for a file that is no longer there survives; and because it survives, and

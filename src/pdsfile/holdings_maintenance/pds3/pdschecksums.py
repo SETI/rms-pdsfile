@@ -342,7 +342,7 @@ def checksum_dict(dirpath, *, logger=None, limits=None):
     It resolves the manifest's path from the directory, reads it, and turns the pairs into
     a dictionary, so a path listed twice keeps the digest of its last record.
 
-    Unlike the three functions here that read or write a manifest, it opens no log level
+    Unlike the two functions here that read or write a manifest, it opens no log level
     of its own, so its "Loading checksums for" and "Checksum load completed" lines are
     written at whatever level the caller had open, and both are forced past any message
     limit.
@@ -972,10 +972,12 @@ def main():
     together: the last task has to have returned something true, and ``--infoshelf`` has
     to have been given. Either missing, and this returns and the process exits 0.
 
-    **That is the only way a run of this tool reaches a nonzero exit status.** The status
-    the driver computed is not read here at all, so a ``--validate`` that reported every
-    file as a mismatch exits 0 unless the chain ran, and if the chain ran it exits with
-    the chained run's status rather than with this run's.
+    **The status the driver computed is not read here at all**, so a ``--validate`` that
+    reported every file as a mismatch exits 0 unless the chain ran, and if the chain ran
+    it exits with the chained run's status rather than with this run's. What a run does
+    exit nonzero for is everything settled before a task starts: 1 for a command line
+    naming no task, 2 for one the parser cannot classify, and 1 for a path outside a
+    holdings tree or naming checksum files.
 
     The chained command line is this one with every occurrence of the string
     "pdschecksums" replaced by "pdsinfoshelf" and the ``--infoshelf`` flag dropped, run as
@@ -984,8 +986,11 @@ def main():
     holdings tree that carries it would be rewritten too.
 
     Raises:
-        SystemExit: from ``sys.exit()``, with the chained run's return code, on the one
-            path that chains. Every other path returns, and the interpreter exits 0.
+        SystemExit: from ``sys.exit()`` with the chained run's return code on the path
+            that chains; from ``setup_run()`` with 1 for a missing task, 0 for --help and
+            2 for a command line the parser cannot classify; and from the two path helpers
+            with 1 for a path they reject. Every other path returns, and the interpreter
+            exits 0.
     """
 
     result = _shelf_common.run_selection_main(SPEC, TASKS, sys.argv)
