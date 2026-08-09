@@ -1,12 +1,61 @@
 #!/usr/bin/env python3
 ################################################################################
-# re_validate.py library and main program
-#
-# Syntax:
-#   python -m pdsfile.holdings_maintenance.pds3.re_validate path [path ...]
-#
-# Enter the --help option to see more information.
+# pdsfile/holdings_maintenance/pds3/re_validate.py
 ################################################################################
+
+"""Re-run every validation the other PDS3 maintenance tools offer, one volume at a time.
+
+The tools this package installs each validate one kind of derived file. This one is the
+scheduler over all of them: for a volume it runs the checksum, archive, info shelf, link
+shelf and dependency validations in turn, writes one log per volume covering all of
+them, and reports how many tests it performed. It fixes nothing -- every task it calls
+is a validation, and a failure is logged rather than repaired.
+
+Run it as::
+
+    python -m pdsfile.holdings_maintenance.pds3.re_validate path [path ...]
+
+Two modes share that command line.
+
+**Interactive mode** is the default. Each path names a volume, or a volume set that is
+expanded into its volumes, and every one named is validated before the run exits. The
+status is 1 if a path is unusable, or if the run logged a fatal or an error, and 0
+otherwise.
+
+**Batch mode**, selected by ``--batch``, takes holdings roots rather than volumes. It
+reads the logs of previous runs, works out which volumes have changed since they were
+last validated and which have gone longest without one, and validates them in that
+order until ``--minutes`` is up. It then mails a report to each ``--email`` address, and
+an error-only report to each ``--error-email`` address if anything failed. **Its exit
+status is 0 even when the run logged errors**, because a nonzero status would cancel the
+launch daemon that schedules it. ``--batch-status`` prints the same schedule without
+validating anything.
+
+Which trees are examined is chosen by the five volume-type flags -- ``--volumes``,
+``--calibrated``, ``--diagrams``, ``--metadata`` and ``--previews`` -- and which tests
+are run by the five test flags -- ``--checksums``, ``--archives``, ``--info``,
+``--links`` and ``--dependencies``. Naming none of a group selects all of it, and so
+does the group's own ``--all`` or ``--full``. Two tests are then narrowed to the trees
+they can run against: link shelves exist only for volumes, calibrated and metadata, and
+the dependency test only makes sense over volumes.
+
+Every volume gets its own log file, in the ``re-validate`` subdirectory of a "logs"
+directory beside its holdings tree and, when a log root is configured, in the same
+subdirectory under that root as well. The volume's category component is dropped from
+the path, so a volume's logs sit directly under a directory named for its volume set;
+that is the shape batch mode reads a volume set and a volume name back out of.
+
+Batch mode's schedule is those logs. It walks the log root -- the one place, not the
+directories beside the holdings trees -- and every decision it makes about what to
+validate next comes from what it finds there rather than from anything stored elsewhere.
+So a batch run against a log root holding no logs treats every volume as never
+validated, and a batch run with no log root at all has nothing to walk and ends in a
+TypeError.
+
+Nothing here is specific to one dataset. The tests are the other tools' own, called as
+library functions rather than as subprocesses, so a change in what one of them validates
+changes what this reports without any change here.
+"""
 
 import argparse
 import datetime
@@ -62,7 +111,51 @@ DEPENDENCY_LIMITS = {'info': 20, 'debug': 10}
 ################################################################################
 
 def validate_one_volume(pdsdir, voltypes, tests, args, logger):
-    """Validates one volume."""
+    """Run every selected test over one volume, into a log file of that volume's own.
+
+    The tests are run in a fixed order that is not the order the command line lists
+    them in: for each volume type, the checksum and archive validations; then the
+    checksums of the archive files themselves; then, for each volume type again, the
+    info shelf and link shelf validations; then the info shelves of the archive files;
+    then the dependency check. So a volume type's directory is visited twice, and the
+    archive tests are grouped by what they read rather than by the type they belong to.
+
+    Which of them actually run depends on what the parsed command line carries, and two
+    of the groups need two flags rather than one: the checksums of the archive files
+    require both ``--checksums`` and ``--archives``, and their info shelves require both
+    ``--info`` and ``--archives``. A volume type whose directory does not exist is
+    skipped without a test being counted, and an archive group finding no ``.tar.gz``
+    is skipped the same way; where more than one archive file matches, the first the
+    glob returns is the one validated.
+
+    Nothing an ordinary test failure does stops a run. Every test is closed in a
+    ``finally``, so a test that raises still counts as performed, and the exception is
+    logged and swallowed rather than propagated -- a batch run moves on to the next
+    volume, and the caller sees the failure only as a fatal in the returned counts.
+    What is caught is ``Exception``, so anything outside it, KeyboardInterrupt included,
+    escapes with the volume's log already closed. A test that raises does skip the rest
+    of its own group, because the exception is caught around the whole sequence rather
+    than around each test.
+
+    Parameters:
+        pdsdir: The volume directory, which must be under ``volumes/``. The paths of
+            the other volume types are built from its absolute path by substituting the
+            category component.
+        voltypes (list): The volume types to visit, as derived by ``derive_options()``.
+        tests (list): The names of the selected tests. Written into the log header and
+            not otherwise read; which tests run is decided by the attributes of
+            ``args``.
+        args (argparse.Namespace): The parsed command line after ``derive_options()``,
+            read for its five test attributes and for ``timeless``.
+        logger: The run's logger. The volume's own file handler and error handler are
+            attached for the duration of this call and removed when it returns.
+
+    Returns:
+        tuple: (log path, fatal count, error count). The log path is the last of the
+        one or two written, which is the parallel one when a log root is configured.
+        The two counts are the volume's own, from the close of the volume's log rather
+        than of any test's.
+    """
 
     tests_performed = 0
 
@@ -219,8 +312,25 @@ def validate_one_volume(pdsdir, voltypes, tests, args, logger):
 ################################################################################
 
 def volume_abspath_from_log(log_path):
-    """Return the absolute path within the holdings directory of the PDS volume
-    described by this validation log.
+    """Return the volume path a validation log says it is about.
+
+    The path is recovered from the log's first record, whose text is the volume's
+    absolute path preceded by a fixed phrase. The record is split on the pipe that
+    separates a pdslogger record's fields, the last field is taken, and its last
+    space-separated token is the answer. **A holdings root whose path contains a space
+    is therefore truncated to whatever follows its last space**, because the record
+    carries no quoting to recover the path by.
+
+    Parameters:
+        log_path (str): The log file to read. Only its first line is read.
+
+    Returns:
+        str: The volume's absolute path, or the empty string for a log file that is
+        empty, which is what an interrupted run can leave behind.
+
+    Raises:
+        OSError: from the ``open()`` of a log file that does not exist or cannot be
+            read.
     """
 
     with open(log_path) as f:
@@ -231,7 +341,20 @@ def volume_abspath_from_log(log_path):
 
 
 def key_from_volume_abspath(abspath):
-    """Return 'volset/bundlename' from this absolute path.
+    """Return the volume set and volume name a volume path ends in, as one key.
+
+    This is the key batch mode organizes everything by: it identifies a volume without
+    saying which holdings tree the volume is in, which is what lets a log written
+    against one tree be matched against the same volume in another.
+
+    Parameters:
+        abspath (str): A volume's absolute path. Only its last two components are read,
+            and neither is checked, so a path that is not a volume path yields a key
+            just the same.
+
+    Returns:
+        str: The last two components joined by a slash. A path with fewer than two
+        components yields what it has.
     """
 
     parts = abspath.split('/')
@@ -239,7 +362,25 @@ def key_from_volume_abspath(abspath):
 
 
 def key_from_log_path(log_path):
-    """Return 'volset/bundlename' from this log path.
+    """Return the same volume set and volume name key, from a log file's path instead.
+
+    A log file's name is the volume name followed by ``_re-validate_`` and a time tag,
+    and its directory is named for the volume set, because the category component is
+    dropped when the log path is built. So the key can be read off the path without
+    opening the file.
+
+    This is the arithmetic ``get_all_log_info()`` performs inline when it groups the
+    logs it finds. Nothing in this module calls this function; it is the public form of
+    that step, and it is what the tests hold the grouping to.
+
+    Parameters:
+        log_path (str): A log file's path, or any path of the same shape. Neither the
+            directory nor the basename is checked.
+
+    Returns:
+        str: The parent directory's name and the part of the basename before
+        ``_re-validate_``, joined by a slash. A basename without that marker yields the
+        whole basename, since the split leaves it in the first element.
     """
 
     parts = log_path.split('/')
@@ -249,8 +390,36 @@ def key_from_log_path(log_path):
 
 
 def get_log_info(log_path):
-    """Return info from the log:
-        (start, elapsed, modtime, abspath, had_error, had_fatal).
+    """Summarize one validation log, reading the whole of it.
+
+    Four things are read from fixed positions: the start time and the logger name from
+    the first record, the volume path from the end of that same record, and the
+    volume's modification time from the second. The rest is a scan for three markers --
+    an error record, a fatal record, and the elapsed time the closing record carries.
+    The last elapsed time in the file wins, so a log holding several is summarized by
+    its final one.
+
+    A log with no elapsed time at all is reported as fatal whether or not it holds a
+    fatal record, because a run that never wrote a closing record did not finish. That
+    is the state an interrupted or still-running validation leaves, and it is how batch
+    mode's scheduler is kept from treating one as a completed validation.
+
+    Parameters:
+        log_path (str): The log file to read.
+
+    Returns:
+        tuple: (start time, elapsed time, volume modification time, volume absolute
+        path, whether an error was logged, whether the log counts as fatal). The three
+        times are the strings the log carries, not parsed values.
+
+    Raises:
+        ValueError: for a file this cannot summarize -- one that is empty or whose
+            first record has no field separator, one whose first record names a
+            different logger, one with only a single record, and one whose second
+            record is not the modification time. The message distinguishes the cases,
+            and every caller here treats them alike.
+        OSError: from the ``open()`` of a log file that does not exist or cannot be
+            read.
     """
 
     with open(log_path) as f:
@@ -295,12 +464,38 @@ def get_log_info(log_path):
 
 
 def get_all_log_info(logroot):
-    """Return a list of info about the latest version of every log file,
-    skipping those that recorded a FATAL error. Each log file is described by
-    the tuple:
-      (start, elapsed, modtime, abspath, had_error, had_fatal).
-    Also return a dictionary that provides the complete list of existing log
-    files, in chronological order, keyed by volset/bundlename.
+    """Find every validation log under one root and summarize the newest usable one.
+
+    The walk collects every file whose name ends in ``.log`` and holds
+    ``_re-validate_`` exactly once, keyed by the name of the directory holding it and
+    the part of the basename before that marker. Within a key the paths come out in
+    chronological order, and nothing sorts them by time to achieve it: the time tag is
+    written most-significant-first, so sorting the names of one directory sorts them by
+    date, and one volume's logs under one log root are all in one directory.
+
+    For each key the search then runs backwards from the newest, and takes the first
+    log that summarizes cleanly, is not fatal, and names a volume whose own key matches
+    the key the path gave. The last of those three matters after a holdings tree has
+    been reorganized, when a log's path and the volume path inside it can disagree; such
+    a log is passed over rather than trusted. A key whose logs all fail these tests
+    contributes nothing to the first result and still appears in the second.
+
+    Parameters:
+        logroot (str): The directory tree to walk. Everything below it is searched, so
+            logs of more than one holdings tree under one root are all found.
+
+    Returns:
+        tuple: (list of log summaries, dictionary of log paths). Each summary is what
+        ``get_log_info()`` returns, one per key that had a usable log, in the order the
+        walk found the keys. The dictionary is keyed the same way and holds every log
+        path found, usable or not, in chronological order.
+
+    Raises:
+        TypeError: from the ``walk()`` when the log root is None, which is what
+            ``_common.resolve_log_root()`` leaves when neither ``--log`` nor the
+            environment variable is set.
+        OSError: from ``get_log_info()`` on a log file that is found by the walk and
+            then cannot be read.
     """
 
     # Create a dictionary keyed by volset/bundlename that returns the chronological
@@ -344,8 +539,25 @@ def get_all_log_info(logroot):
 
 
 def get_volume_info(holdings):
-    """Return a list of tuples (volume abspath, modtime) for every volume in
-    the given holdings directory."""
+    """Return every volume under one holdings tree, with the date each was last changed.
+
+    Volumes are found by globbing ``volumes/*_*/*_*``, so a directory qualifies by
+    having an underscore in its name at both levels rather than by any check of what it
+    holds. The date is the PdsFile object's own ``date``, a display string of the form
+    ``YYYY-MM-DD HH:MM:SS`` rather than a number, and the empty string where there is no
+    recorded modification time. It is compared as a string everywhere it is used, which
+    that format makes safe.
+
+    Parameters:
+        holdings (str): The holdings directory, joined to the glob pattern as given.
+            Its path is carried into the result unchanged, so a relative path or an
+            unresolved symlink comes back the way it was passed in.
+
+    Returns:
+        list: One (path, date) pair per volume, in the order the glob returned them,
+        which is neither sorted nor guaranteed. An empty list for a tree with no
+        ``volumes/`` directory.
+    """
 
     path = os.path.join(holdings, 'volumes/*_*/*_*')
     abspaths = glob.glob(path)
@@ -359,8 +571,40 @@ def get_volume_info(holdings):
 
 
 def find_modified_volumes(holdings_info, log_info):
-    """Compare the information in the holdings info and log info; return a tuple
-    (modified_holdings, current_log_info, missing_keys)."""
+    """Work out what a batch run should validate, and in what order.
+
+    A volume counts as modified when the (date, key) pair the holdings tree gives is not
+    one of the pairs the logs give. That is a set difference on the pair, not a
+    comparison of dates, so a volume whose date has moved in either direction counts,
+    and a volume validated at one date and then reverted to it does not.
+
+    The result is in two lists and a third thing that is neither. Modified volumes come
+    first, sorted oldest date first, because a volume nothing has validated at its
+    current date is the more urgent. Everything else is sorted by its log summary, whose
+    first field is the start time of that validation, so the volume longest since
+    validated leads. A key in the logs with no volume in holdings is in neither list and
+    is reported separately.
+
+    One correction is applied on the way through. A log summary whose volume path is not
+    the path holdings currently gives for that key has the holdings path substituted, so
+    a volume that has moved between trees is validated where it is now rather than where
+    its last log says it was.
+
+    A key names a volume and not the tree it is in, which is what makes that correction
+    possible and also its cost: where two holdings trees of one run carry the same
+    volume, the second one seen replaces the first and only one of them is scheduled.
+
+    Parameters:
+        holdings_info (list): The (path, date) pairs from ``get_volume_info()``, over
+            every holdings tree of the run.
+        log_info (list): The log summaries from ``get_all_log_info()``.
+
+    Returns:
+        tuple: (modified volumes, other volumes, missing keys). The first is (path,
+        date) pairs as they came from holdings. The second is log summaries, corrected
+        as above. The third is the keys the logs know and holdings does not, in the
+        order the log dictionary held them.
+    """
 
     # Create a dictionary of log info organized by volset/volume
     # Also create the set (modtime, volset/volume) for each log volume
@@ -420,16 +664,25 @@ def find_modified_volumes(holdings_info, log_info):
 
 
 def format_email(to_addr, subject, message, date=None):
-    """Return the (recipient list, message text) an email report is sent as.
+    """Return the recipient list and the message text an email report is sent as.
 
-    Args:
-        to_addr: One address as a string, or a list of addresses.
-        subject: The subject line.
-        message: The body.
-        date: The value of the Date header. Defaults to now.
+    The message is assembled as text rather than through the email package: a From, To,
+    Subject and Date header, a blank line, and the body. The To header names every
+    recipient, and the same text goes to each of them, so a recipient sees who else
+    received it.
+
+    Parameters:
+        to_addr (str or list): One address, or a list of them. A string is wrapped in a
+            list, so the two forms behave alike from here on.
+        subject (str): The subject line.
+        message (str): The body, inserted after one blank line and not wrapped.
+        date (str): The value of the Date header. Defaults to the current local time
+            written day-first, which is not the format the mail standards specify; a
+            caller wanting a conforming header has to supply one.
 
     Returns:
-        tuple: (list[str], str), the recipients and the complete message text.
+        tuple: (recipients, message text). The recipients are a list whatever was passed
+        in, and the text is one string with no trailing newline.
     """
 
     if date is None:
@@ -447,6 +700,27 @@ def format_email(to_addr, subject, message, date=None):
 
 
 def send_email(to_addr, subject, message):
+    """Mail one report, one message per recipient.
+
+    The connection is opened to a fixed host and port, unauthenticated and unencrypted,
+    which is what an internal mail relay accepts. The message is built once and sent once
+    per address, so a failure part way through the list leaves the earlier recipients
+    mailed and the later ones not.
+
+    Parameters:
+        to_addr (str or list): One address, or a list of them, as ``format_email()``
+            takes it. Every address named appears in the To header of every copy.
+        subject (str): The subject line.
+        message (str): The body.
+
+    Raises:
+        OSError: from ``connect()``, if the mail host cannot be reached. Nothing here
+            catches it, so a batch run that cannot mail its report ends in it, after the
+            validations are done and the log is closed.
+        smtplib.SMTPException: from ``sendmail()`` or ``quit()``, if the host refuses the
+            message or the session.
+    """
+
     smtp = SMTP()
     smtp.connect(SERVER, 25)
 
@@ -462,7 +736,25 @@ def send_email(to_addr, subject, message):
 ################################################################################
 
 def build_parser():
-    """Return the argument parser for this tool."""
+    """Return the argument parser for this tool.
+
+    The parser is this tool's own rather than the shared one the ten specification
+    driven tools use, because none of their five task flags applies here: everything
+    this tool does is a validation, and what a command line selects is which validations
+    over which directory trees. What it does share is the text of ``--log`` and
+    ``--quiet``, taken from the same constants, so those two options read alike across
+    every tool in the package.
+
+    Every selection flag stores true and defaults to false, so "none given" and "not
+    wanted" are one state at this point; ``derive_options()`` is what turns it into a
+    selection. Abbreviations are left enabled, unlike the two tools here that switch
+    them off, so a prefix of an option name is accepted where it is unambiguous.
+
+    Returns:
+        argparse.ArgumentParser: The parser, holding the positional paths, the two
+        shared options, the mode options, the two email options, the five test flags and
+        the five volume-type flags.
+    """
 
     parser = argparse.ArgumentParser(
         description='re-validate: Perform various validation tasks on an online '  +
@@ -571,14 +863,22 @@ def derive_options(args):
     the tests are then narrowed to the trees they can run against at all, and
     --timeless survives only for as long as the dependency test does.
 
-    Args:
-        args: The parsed command line. The five test attributes and the timeless
-            attribute are overwritten with the derived values, because
-            validate_one_volume reads the tests back off it.
+    Parameters:
+        args (argparse.Namespace): The parsed command line. Five attributes are
+            overwritten with the derived values -- ``checksums``, ``archives``,
+            ``infoshelves``, ``linkshelves`` and ``dependencies`` -- and so is
+            ``timeless``. Two of those names are not the ones the parser wrote:
+            ``--info`` parses into ``info`` and ``--links`` into ``links``, and both of
+            those are read once here and then left holding what the command line said
+            while the derived values go to the longer names. ``validate_one_volume()``
+            reads the longer names.
 
     Returns:
-        tuple: (voltypes, tests), the selected directory trees and the names of
-        the selected tests, each in a fixed order.
+        tuple: (volume types, test names), each in this module's own fixed order rather
+        than the order the command line named them. The volume types are the directory
+        trees each test is run over, and both lists are written into the log header.
+        Which tests run is not read from the second list but from the attributes above,
+        so the list names the tests and does not select them.
     """
 
     # Interpret file types
@@ -644,16 +944,32 @@ def derive_options(args):
 def run_interactive(args, voltypes, tests, logger, argv):
     """Validate every volume named on the command line, then exit.
 
-    Args:
-        args: The parsed command line, after derive_options.
-        voltypes: The selected directory trees.
-        tests: The names of the selected tests.
-        logger: The run's logger.
-        argv: The full command line, echoed into the top of the log.
+    Every path is checked before any of them is validated, and a bad one ends the run
+    with a message and no log written at all: no path given, a path that does not exist,
+    and a path that is not a volume or volume set directory under ``volumes/``. A volume
+    set is expanded into its volumes at that point, so the run validates volumes only.
+
+    Parameters:
+        args (argparse.Namespace): The parsed command line, after
+            ``derive_options()``. Its ``volume`` list is the paths, and its derived test
+            attributes are passed through to each volume.
+        voltypes (list): The selected directory trees.
+        tests (list): The names of the selected tests, for the log header.
+        logger: The run's logger. Each path's holdings root is added to it, so the log
+            abbreviates absolute paths.
+        argv (list): The full command line, echoed as the top line of the log.
 
     Raises:
-        SystemExit: Always, with status 1 if a path is unusable or if the run
-            logged a fatal or an error, and 0 otherwise.
+        SystemExit: from ``sys.exit()``, which every path out of this function reaches.
+            The status is 1 for an unusable path, and after that 1 if the run logged a
+            fatal or an error and 0 if it did not. What a volume's own tests found is
+            not consulted directly; the counts come from closing the run's log.
+        ValueError: from ``from_abspath()``, before any of the above, for a path it
+            cannot place in a holdings tree at all. That is a different failure from the
+            "not a volume path" message, which is this function's own.
+        KeyboardInterrupt: from ``validate_one_volume()``, which does not catch it. It
+            is logged here and re-raised rather than turned into a status, so an
+            interrupted run ends in a traceback with the run's log closed.
     """
 
     # Stop if a volume or volume set doesn't exist
@@ -707,16 +1023,23 @@ def run_interactive(args, voltypes, tests, logger, argv):
 def resolve_holdings_paths(paths):
     """Return the holdings roots the given command-line paths name, deduplicated.
 
-    Args:
-        paths: The command line's positional arguments.
+    Each path is resolved through its symlinks and made absolute, and the result must
+    end in ``holdings``. Resolving first is what makes two names for one tree collapse
+    to one entry; it also means the paths returned are not the paths the user typed, and
+    the rest of a batch run reads the raw arguments rather than these, so the two forms
+    are both in play in one run.
+
+    Parameters:
+        paths (list): The command line's positional arguments, which in batch mode are
+            holdings roots rather than volumes.
 
     Returns:
-        list[str]: One absolute path per distinct holdings root, in the order
-        first named.
+        list: One resolved absolute path per distinct holdings root, in the order first
+        named.
 
     Raises:
-        SystemExit: With status 1 if no path is given, if one does not exist, or
-            if one is not a holdings directory.
+        SystemExit: from ``sys.exit()``, with status 1, if no path is given, if one does
+            not exist, or if one does not resolve to a path ending in ``holdings``.
     """
 
     if not paths:
@@ -750,12 +1073,25 @@ def report_missing_volumes(missing_keys, logs_for_volset_volname,
     is the one its logs were written against; a key whose logs all came from some
     other tree is not this run's business.
 
-    Args:
-        missing_keys: The volset/volname keys found in the logs and not in
-            holdings.
-        logs_for_volset_volname: Every log path, keyed by volset/volname.
-        holdings_abspaths: The holdings roots this run is validating, as a set.
-        logger: The run's logger.
+    Which trees a key's logs were written against is recovered from the logs themselves,
+    one open per log file, by taking the part of each recorded volume path before
+    ``/volumes``. Where more than one tree qualifies, one error is logged per tree, in
+    sorted order, so a volume that has been dropped from two trees is reported twice.
+    Empty log files contribute nothing.
+
+    Parameters:
+        missing_keys (list): The keys found in the logs and not in holdings, from
+            ``find_modified_volumes()``.
+        logs_for_volset_volname (dict): Every log path found by the walk, keyed the same
+            way, from ``get_all_log_info()``. Every key passed in must be present here.
+        holdings_abspaths (set): The holdings roots this run is validating. It has to be
+            a set rather than a list, because it is intersected.
+        logger: The run's logger, which the errors are logged to. Nothing is printed
+            and nothing is returned.
+
+    Raises:
+        OSError: from ``volume_abspath_from_log()``, if a log file the walk found has
+            since been removed or cannot be read.
     """
 
     for key in missing_keys:
@@ -785,10 +1121,24 @@ def report_missing_volumes(missing_keys, logs_for_volset_volname,
 def print_batch_status(modified_holdings, current_logs):
     """Print what a batch run would do now, then exit.
 
+    One numbered line per volume, in the order a batch run would take them: the modified
+    volumes first, then the rest. The two groups print different lines, because a
+    modified volume has no previous validation to describe -- the second group's line
+    carries the date of the last validation, how long it took, and a note where that run
+    logged an error.
+
+    Parameters:
+        modified_holdings (list): The (path, date) pairs of the volumes with no
+            validation at their current date.
+        current_logs (list): The log summaries of the rest, oldest validation first.
+
     Raises:
-        SystemExit: Always, raised by sys.exit() with no argument. Its code is None
-            and its process status is 0, which is not the same call as sys.exit(0)
-            at the end of a batch run.
+        SystemExit: raised by ``sys.exit()`` with no argument. Its code is None and its
+            process status is 0, which is not the same call as the ``sys.exit(0)`` at
+            the end of a batch run.
+        ValueError: from ``from_abspath()``, for a volume path that no holdings tree the
+            current environment knows contains. A log written against a tree that has
+            since moved holds exactly such a path.
     """
 
     fmt = '%4d %20s%-11s  modified %s, not previously validated'
@@ -814,17 +1164,43 @@ def print_batch_status(modified_holdings, current_logs):
 def run_batch(args, voltypes, tests, logger, argv):
     """Validate the volumes whose logs are oldest, until the time limit is up.
 
-    Args:
-        args: The parsed command line, after derive_options.
-        voltypes: The selected directory trees.
-        tests: The names of the selected tests.
+    The schedule is built before any volume is validated: the logs are read, the current
+    holdings are globbed, the two are compared, and volumes missing from holdings are
+    reported. Under ``--batch-status`` the schedule is printed at that point and the run
+    ends without validating anything.
+
+    The time limit is checked after each volume rather than before, so a run always
+    validates at least one volume and always overruns by however long the last one took.
+    The elapsed time is read as the seconds component of the interval rather than its
+    whole length, so a limit of 1,440 minutes or more is never reached.
+
+    Whatever happens, the report is mailed from a ``finally``: a full report to each
+    ``--email`` address, subject-lined according to whether anything failed, and an
+    error-only report to each ``--error-email`` address if anything did. The summary
+    line printed at the end says "Timeout" whether the run stopped on the limit or ran
+    out of volumes.
+
+    Parameters:
+        args (argparse.Namespace): The parsed command line, after ``derive_options()``.
+            Its ``volume`` list is the holdings roots, its ``log`` is the log tree to
+            read the schedule from, and its ``minutes`` is the limit.
+        voltypes (list): The selected directory trees.
+        tests (list): The names of the selected tests, for each volume's log header.
         logger: The run's logger.
-        argv: The full command line, echoed into the top of the log.
+        argv (list): The full command line, echoed as the top line of the log.
 
     Raises:
-        SystemExit: Always, with status 1 if a path is unusable and 0 otherwise --
-            including when the run logged errors, because a nonzero status would
-            cancel the launch daemon that schedules it.
+        SystemExit: from ``sys.exit()``, with status 1 for an unusable path, 0 at the
+            end of a batch run whatever it logged, and a code of None from the
+            ``--batch-status`` path. **The status is 0 even for a run that logged
+            errors**, because a nonzero status would cancel the launch daemon that
+            schedules it; the errors are reported by mail instead.
+        TypeError: from ``get_all_log_info()`` when no log root is configured, before
+            any volume is validated.
+        KeyboardInterrupt: from ``validate_one_volume()``, which does not catch it. It
+            is logged here and re-raised, but only after the ``finally`` has closed the
+            log and mailed the report, so an interrupted batch run still mails what it
+            had done.
     """
 
     holdings_abspaths = resolve_holdings_paths(args.volume)
@@ -946,11 +1322,23 @@ def run_batch(args, voltypes, tests, logger, argv):
 def main(argv=None):
     """Parse the command line, set up logging, and run the mode it selects.
 
-    Args:
-        argv: The full command line, defaulting to sys.argv.
+    The logger is built here and the two mode functions are handed it, so a run has one
+    logger whatever mode it is in. Terminal output is attached unless ``--quiet``, and an
+    error handler under the log root is attached when there is one. The log root is also
+    set on the PdsFile class, which is what makes each volume's log path resolve under
+    it.
+
+    Batch mode is selected by ``--batch`` or by ``--batch-status``, so asking what a
+    batch run would do does not also need ``--batch``.
+
+    Parameters:
+        argv (list): The full command line, its first element the program name.
+            Defaults to sys.argv.
 
     Raises:
-        SystemExit: Always. See run_interactive and run_batch for the statuses.
+        SystemExit: from ``run_interactive()`` or ``run_batch()``, each of which exits
+            rather than returning. Their docstrings give the statuses.
+        TypeError: from ``run_batch()`` when no log root is configured.
     """
 
     if argv is None:
