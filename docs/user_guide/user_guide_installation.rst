@@ -1,0 +1,187 @@
+Installation and Setup
+======================
+
+Supported Python versions
+-------------------------
+
+``rms-pdsfile`` requires **Python 3.10 or later**.
+
+Installing
+----------
+
+For use as a library, install into the environment that will import it:
+
+.. code-block:: bash
+
+   pip install rms-pdsfile
+
+To have the command-line programs available system-wide without putting the package on
+any project's dependency list, install it as an application instead:
+
+.. code-block:: bash
+
+   pipx install rms-pdsfile
+
+Either way the eleven console scripts land on ``PATH``:
+
+.. code-block:: text
+
+   pdsarchives    pdschecksums   pdsdependency  pdsindexshelf  pdsinfoshelf   pdslinkshelf
+   pds4archives   pds4checksums  pds4indexshelf pds4infoshelf  pds4linkshelf
+
+Four further programs ship as modules rather than as console scripts and are run with
+``python -m``: ``crlf``, ``re_validate``, ``shelf_consistency_check`` and
+``show_opus_products``. Their chapters give the full module path each one needs.
+
+One program needs the ``dev`` extra
+-----------------------------------
+
+``show_opus_products`` formats its output with ``tabulate``, which is not a runtime
+dependency of the package. Install the ``dev`` extra to run it:
+
+.. code-block:: bash
+
+   pip install "rms-pdsfile[dev]"
+
+Without it, every other program in this guide works and ``show_opus_products`` fails at
+import.
+
+Environment variables
+---------------------
+
+.. list-table::
+   :header-rows: 1
+   :widths: 26 74
+
+   * - Variable
+     - What it names
+   * - ``PDS3_HOLDINGS_DIR``
+     - The root of the PDS3 holdings tree. Its basename must be ``holdings``.
+   * - ``PDS4_HOLDINGS_DIR``
+     - The root of the PDS4 holdings tree. Its basename must be ``pds4-holdings``.
+   * - ``PDS_LOG_ROOT``
+     - Optional. The root of a duplicate log tree, used when ``--log`` is not given.
+
+The basenames are a requirement rather than a habit. Every absolute path is turned into
+the *logical path* the package works in by splitting it at the first ``/holdings/`` or
+``/pds4-holdings/`` component, so a root directory named anything else makes every path
+under it unusable and each program rejects it.
+
+The two holdings variables are what every holdings-aware program resolves a path
+through. A program that reads only PDS3 paths needs only ``PDS3_HOLDINGS_DIR``, and one
+that reads only PDS4 paths only ``PDS4_HOLDINGS_DIR``; ``show_opus_products`` is the
+exception, reading both whichever kind of path it is asked about. ``crlf`` and
+``shelf_consistency_check`` read neither: they work on the paths named on their command
+line and never look for a holdings tree.
+
+.. code-block:: bash
+
+   export PDS3_HOLDINGS_DIR=/path/to/holdings
+   export PDS4_HOLDINGS_DIR=/path/to/pds4-holdings
+
+``PDS_LOG_ROOT`` and ``--log`` are two ways of setting the same thing, and the flag wins:
+a program takes ``--log`` if it is given, falls back to ``PDS_LOG_ROOT`` if it is not,
+and writes no duplicate log tree if neither is set.
+:doc:`user_guide_maintenance_tools` covers what a log root does.
+
+The holdings tree layout
+------------------------
+
+A PDS3 holdings tree, at its top level, looks like this. Every directory is optional in
+the sense that a tree holds the ones its data needs:
+
+.. code-block:: text
+
+   $PDS3_HOLDINGS_DIR/
+       volumes/                        published PDS3 volumes
+       calibrated/                     calibrated versions of them
+       diagrams/                       diagram images
+       metadata/                       index tables and other metadata
+       previews/                       preview images
+       documents/                      documentation, not archived or checksummed
+       archives-volumes/               one .tar.gz per volume
+       archives-calibrated/
+       archives-diagrams/
+       archives-metadata/
+       archives-previews/
+       checksums-volumes/              one *_md5.txt per volume
+       checksums-calibrated/
+       checksums-diagrams/
+       checksums-metadata/
+       checksums-previews/
+       checksums-archives-volumes/     one *_md5.txt per volume set of archives
+       checksums-archives-calibrated/
+       checksums-archives-diagrams/
+       checksums-archives-metadata/
+       checksums-archives-previews/
+       _infoshelf-volumes/             info shelves, one tree per category above
+       _infoshelf-calibrated/
+       _infoshelf-diagrams/
+       _infoshelf-metadata/
+       _infoshelf-previews/
+       _infoshelf-archives-volumes/
+       _infoshelf-archives-calibrated/
+       _infoshelf-archives-diagrams/
+       _infoshelf-archives-metadata/
+       _infoshelf-archives-previews/
+       _linkshelf-volumes/             link shelves: volumes, calibrated, metadata only
+       _linkshelf-calibrated/
+       _linkshelf-metadata/
+       _indexshelf-metadata/           index shelves, for metadata tables only
+       _volinfo/                       one text file per volume set
+
+A PDS4 tree has the same shape with ``bundles`` in place of ``volumes``:
+
+.. code-block:: text
+
+   $PDS4_HOLDINGS_DIR/
+       bundles/
+       metadata/
+       previews/
+       diagrams/
+       archives-bundles/
+       checksums-bundles/
+       _infoshelf-bundles/
+       _linkshelf-bundles/
+       _indexshelf-metadata/
+
+``setup_new_holdings.sh``, described in :doc:`user_guide_shell_scripts`, creates the
+empty PDS3 directories in one command.
+
+The log tree
+------------
+
+Every maintenance program writes a log file per target, and it writes it in a directory
+that is **not** inside the holdings tree. The default place is a ``logs`` directory
+beside the holdings root:
+
+.. code-block:: text
+
+   $PDS3_HOLDINGS_DIR/../logs/<program>/<category>/<unit set>/<log file>
+
+A log root, from ``--log`` or ``PDS_LOG_ROOT``, adds a second copy of the same file
+under that root, in the same shape. :doc:`user_guide_maintenance_tools` gives the file
+names and the ``ERRORS.log`` and ``WARNINGS.log`` files that accompany them.
+
+.. _reading-the-examples:
+
+How to read the examples in this guide
+--------------------------------------
+
+Every command shown in this guide was run, and every block of output is what that run
+printed. Three substitutions are made in what is published, and nothing else is changed:
+
+* the PDS3 and PDS4 holdings roots are written ``$PDS3_HOLDINGS_DIR`` and
+  ``$PDS4_HOLDINGS_DIR``, and the directory containing a root -- where the log tree
+  sits -- is written ``$PDS3_HOLDINGS_DIR/..`` or ``$PDS4_HOLDINGS_DIR/..``, according
+  to which root the program derived it from. The two roots shared one parent directory
+  in these runs, so both forms name the same directory there and would name two in a
+  tree whose roots sit apart;
+* the directory the installed program was run from is dropped, so a console script
+  appears by name even where the program echoes the absolute path it was invoked with;
+* where a run's output is too long to show whole, the lines left out are replaced by a
+  line reading ``...`` and the surrounding prose says what was cut.
+
+The runs were made against a copy of a holdings tree rather than a production one, since
+several of the tasks write into the tree. A timestamp, an elapsed time and an MD5 digest
+in an example are that run's, and will differ in yours.
