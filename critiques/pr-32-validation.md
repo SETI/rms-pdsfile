@@ -24,7 +24,7 @@ section 6.6 allows.
 | files changed under `src/` | **0** |
 | new checker | `critiques/pr-32/check_cli_coverage.py` |
 | deferred observations added | 347–356 |
-| commits | 9 |
+| commits | 13 |
 
 The 21 pages are one per program (15), the landing page, concepts, installation, the
 shell-script chapter, the file-format appendix — and one the plan did not call for,
