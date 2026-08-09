@@ -305,9 +305,9 @@ def check(docs_dir):
                 continue
             n_defaults += 1
             if str(default) not in chapter_text:
-                names = '/'.join(strings)
+                flags = '/'.join(strings)
                 findings.append(
-                    f'{prog}: {names} defaults to {default!r} and the chapter does '
+                    f'{prog}: {flags} defaults to {default!r} and the chapter does '
                     f'not state it')
 
     measured = {'programs': len(PROGRAMS), 'options': n_actions,
