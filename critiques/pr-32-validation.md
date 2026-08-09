@@ -342,8 +342,14 @@ Ten deferred observations, 347–356. The three the guide most visibly had to wo
 
 ## 7. Gates at the final head
 
-Every gate was re-run at this head. The previous executor's "all gates green" was reported
-from `5cefb3d`, three commits back and 34 corrections ago, and was not carried forward.
+Every gate was re-run rather than carried forward. The previous executor's "all gates
+green" was reported from `5cefb3d`, several commits and 34 corrections back.
+
+Two heads appear below and the difference is stated rather than smoothed over. The test
+suites were run at `b4c7526`; the only later commit, `4b4c30d`, rewrites one prose
+paragraph in `user_guide_installation.rst` and touches nothing any test reads. The Sphinx
+builds, the coverage checker, `ruff` and the two record checkers were all run at
+`4b4c30d`, and CI runs the whole suite there as well.
 
 ### 7.1 The test suites, id sets diffed base to head
 
@@ -434,6 +440,12 @@ rejected on measurement**, which is the same discipline the rounds were held to.
 Comments 3, 4, 5, 9, 10 and 12 are all the same defect: **a universal quantifier over a
 set whose members differ.** That is the failure this PR's five rounds kept finding, and
 CodeRabbit found six more instances of it after all five had run.
+
+The correction to comment 4 then made a seventh, which is the ratio holding one more
+time: the rewritten paragraph said "the ten use that shape", and eight do. The two index
+shelf programs go one component deeper because their target is a table inside a unit, as
+their own chapter has said all along. Caught by re-reading the correction rather than by
+any gate, and fixed in `4b4c30d`.
 
 ## 8. Standing rules
 
