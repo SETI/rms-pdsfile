@@ -38,18 +38,20 @@ Two modes
 **Interactive mode** is the default. Each path names a volume, or a volume set that is
 expanded into its volumes, and every volume named is validated before the run exits.
 
-**Batch mode**, selected by ``--batch``, takes **holdings roots** rather than volumes. It
+**Batch mode**, selected by ``--batch`` *or* by ``--batch-status``, takes **holdings
+roots** rather than volumes. It
 works out which volumes have changed since they were last validated and which have gone
 longest without one, validates them in that order until ``--minutes`` is up, and mails a
 report.
 
-The positional argument therefore means two different things depending on ``--batch``,
-and this is the one place in the guide where a path's meaning changes with a flag.
+The positional argument therefore means two different things depending on whether the
+run is in batch mode. It is not the only flag in the guide that changes what a path
+means: ``--archives`` does the same for the four checksum and info shelf programs.
 
 Options
 -------
 
-Twenty options, in five groups.
+Twenty options, in four groups.
 
 Logging
 ~~~~~~~
@@ -128,19 +130,21 @@ Batch mode
    * - Option
      - Meaning
    * - ``--batch``, ``-b``
-     - Operate in batch mode. The positional paths become holdings roots.
+     - Operate in batch mode. The positional paths become holdings roots. Default: off.
    * - ``--minutes N``
      - Rough upper limit on the run, in minutes. Default **60**. A volume already started
        when the limit passes is finished; no new one is begun.
    * - ``--batch-status``
-     - Print the schedule batch mode would follow, and validate nothing.
+     - Print the schedule batch mode would follow, and validate nothing. This also puts
+       the run in batch mode, so the positional paths are holdings roots. Default: off.
    * - ``--email ADDRESS``
      - Address to mail a report to when a batch job completes. Repeat for more than one.
    * - ``--error-email ADDRESS``
      - Address to mail an error-only report to. Nothing is sent if no errors were found.
        Repeat for more than one.
 
-``--email`` and ``--error-email`` accumulate; every other option here is a plain switch.
+``--email`` and ``--error-email`` accumulate, and ``--minutes`` takes a whole number of
+minutes; every other option in this group is a plain switch.
 Mail is sent through a fixed relay host on port 25, unauthenticated, from a fixed sender
 address. There is no option for either.
 

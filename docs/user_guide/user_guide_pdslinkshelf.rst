@@ -16,8 +16,12 @@ The command line is the shared one, described in
 What it writes
 --------------
 
-Two files per volume, in the ``_linkshelf-`` parallel of the category. Only three
-categories have link shelves at all: ``volumes``, ``calibrated`` and ``metadata``.
+Two files per volume, in the ``_linkshelf-`` parallel of whatever category the target
+came from. In practice a holdings tree carries ``_linkshelf-volumes/``,
+``_linkshelf-calibrated/`` and ``_linkshelf-metadata/``, because those are the three
+categories :doc:`user_guide_re_validate` re-validates and the three
+``setup_new_holdings.sh`` creates. Nothing in this program restricts it to them: pointed
+at a ``previews/`` volume it will build ``_linkshelf-previews/``.
 
 .. code-block:: text
 
@@ -69,6 +73,7 @@ Checking a shelf
 
    $ pdslinkshelf --validate $PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001
    2026-08-09 01:43:24.000120 | pds.validation.links || HEADER | pdslinkshelf --validate $PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001
+   2026-08-09 01:43:24.000653 | pds.validation.links |-| HEADER | Task validate for: $PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001
    2026-08-09 01:43:24.000719 | pds.validation.links |--| INFO | Log file: $PDS3_HOLDINGS_DIR/../logs/pdslinkshelf/volumes/COUVIS_0xxx/COUVIS_0001_links_2026-08-09T01-43-24_validate.log
    2026-08-09 01:43:24.000841 | pds.validation.links |--| HEADER | Reading link shelf file for: volumes/COUVIS_0xxx/COUVIS_0001
    2026-08-09 01:43:24.000871 | pds.validation.links |---| INFO | Link shelf file: _linkshelf-volumes/COUVIS_0xxx/COUVIS_0001_links.pickle

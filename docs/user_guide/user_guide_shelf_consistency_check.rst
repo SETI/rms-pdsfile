@@ -12,7 +12,7 @@ It is not a console script. Run it as a module:
 
 .. code-block:: text
 
-   python -m pdsfile.holdings_maintenance.pds3.shelf_consistency_check [--verbose] <shelf_root> [<shelf_root> ...]
+   python -m pdsfile.holdings_maintenance.pds3.shelf_consistency_check [--verbose] [<shelf_root> ...]
 
 **It reads no holdings root.** The trees to walk are the ones named on the command line,
 and every conclusion is drawn from the path strings alone. Nothing is opened.
@@ -99,8 +99,8 @@ plus an unrelated ``holdings/`` directory:
    Tests performed: 4
    Errors found: 4
 
-Three of those four errors are not about shelves at all. **Naming a root whose own path
-contains ``shelves`` makes the whole tree eligible**, and every directory in it whose
+Three of those four errors are not about shelves at all. Naming a root whose own path
+contains ``shelves`` makes the whole tree eligible, and every directory in it whose
 first component after ``shelves/`` is unrecognized is reported -- one error per
 directory, not one per tree, because the walk is not pruned at the first. Directories
 whose own name ends in ``shelves`` are skipped without comment.
@@ -123,5 +123,5 @@ clean tree.
 Exit status
 -----------
 
-1 if any error was reported, 0 otherwise. 2 for a command line ``argparse`` cannot
-classify.
+1 if any error was reported, 0 otherwise. 2 for a command line :mod:`argparse` cannot
+classify. A run naming no root at all is accepted, examines nothing and exits 0.

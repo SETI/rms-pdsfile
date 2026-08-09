@@ -109,8 +109,12 @@ What a path may name depends on the program, and the three groups differ:
   separately -- except for ``pds4archives``, where what one archive covers is decided by
   the bundle set's own rules and a path is not expanded at all.
 * ``pdschecksums``, ``pds4checksums``, ``pdsinfoshelf`` and ``pds4infoshelf`` take those
-  and one more thing: **a single file inside a unit**. A run given one narrows its work
-  to that file and leaves every other entry in the product alone.
+  and one more thing: **a single top-level file of a unit**, or a unit's own archive or
+  checksum file. A run given one narrows its work to that file and leaves every other
+  entry in the product alone. A file deeper inside the unit is refused, with
+  ``Invalid file for checksumming:`` and status 1, and so is ``--initialize``, which does
+  not accept a selection at all. ``--reinitialize`` on one is run as ``--update``
+  instead, because rebuilding a whole product from one named file would erase the rest.
 * ``pdsindexshelf`` and ``pds4indexshelf`` take an index table or a metadata directory,
   which is expanded into the tables inside it.
 
@@ -123,9 +127,12 @@ created:
    $ pdsarchives --validate /no/such/volume
    No such file or directory: /no/such/volume
 
-A path that exists but lies outside any holdings tree, or that names checksum or archive
-files where the program does not work on them, is also rejected before the first task
-starts.
+A path that exists but lies outside any holdings tree ends the run before the first task
+starts, and the two driver families end it differently: the checksum and info shelf
+programs print ``Not a holdings subdirectory:`` and exit 1, while the archive and link
+shelf programs end in an unhandled ``ValueError`` traceback, also with status 1. A path
+naming checksum or archive files where the program does not work on them is rejected with
+a message.
 
 ``--log`` and ``--quiet``
 -------------------------
@@ -138,9 +145,11 @@ starts.
      - Meaning
    * - ``--log LOG``, ``-l LOG``
      - Root directory for a *duplicate* of the log files. Defaults to the value of
-       ``PDS_LOG_ROOT``; with neither set, no duplicate tree is written.
+       ``PDS_LOG_ROOT``; with neither set, no duplicate tree is written. Default: empty,
+       which means "consult the environment variable".
    * - ``--quiet``, ``-q``
-     - Do not also log to the terminal. The log files are written either way.
+     - Do not also log to the terminal. The log files are written either way. Default:
+       off.
 
 ``--quiet`` suppresses the per-file detail but not the run's own opening and closing
 lines, which still reach the terminal:
@@ -161,30 +170,42 @@ Where the logs go
 
 Each target of each run gets its own log file, and a run writes it in one place or two.
 
-**The default place** is a ``logs`` directory beside the holdings root -- not inside it:
+A ``logs`` directory beside the holdings root -- not inside it -- always gets a copy:
 
 .. code-block:: text
 
    $PDS3_HOLDINGS_DIR/../logs/<program>/<category>/<unit set>/<unit>_<suffix>_<timestamp>_<task>.log
 
-**The parallel place** is the same shape under the log root, when ``--log`` or
-``PDS_LOG_ROOT`` supplies one. The two are the same file when no log root is configured,
-and the program writes it once.
+A configured log root, from ``--log`` or ``PDS_LOG_ROOT``, gets a second copy in the same
+shape below it. With no log root the two collapse to one path and the program writes it
+once. When both exist the program reports the log-root copy **first**:
 
-A run also appends to an ``ERRORS.log`` in each directory it writes a log file in, and
-the PDS4 programs add a ``WARNINGS.log`` beside it that the PDS3 programs do not. Both
-accumulate across runs. Where a log root is configured, one more ``ERRORS.log`` is
-created directly under ``<log root>/<program>/``, covering the run as a whole.
+.. code-block:: text
 
-A ``--log`` run, showing both trees after one validation:
+   ... | INFO | Log file: <log root>/pdsarchives/volumes/COUVIS_0xxx/COUVIS_0001_links_..._initialize.log
+   ... | INFO | Log file: $PDS3_HOLDINGS_DIR/../logs/pdsarchives/volumes/COUVIS_0xxx/COUVIS_0001_links_..._initialize.log
+
+Eight of the ten programs also append to an ``ERRORS.log`` in each directory they write a
+log file in, and the PDS4 programs add a ``WARNINGS.log`` beside it that the PDS3
+programs do not. Both accumulate across runs rather than being replaced.
+
+``pdsindexshelf`` and ``pds4indexshelf`` are the exception. They attach those files to
+the program's own directory instead, so a run produces one of each however many tables it
+shelves, and the directory holding a table's log file holds no ``ERRORS.log`` at all.
+
+Where a log root is configured, one more set is created directly under
+``<log root>/<program>/``, covering the run as a whole: an ``ERRORS.log`` for a PDS3
+program, and an ``ERRORS.log`` and a ``WARNINGS.log`` for a PDS4 one.
+
+A ``pdschecksums --log`` run, showing both trees after one validation:
 
 .. code-block:: text
 
    $PDS3_HOLDINGS_DIR/../logs/pdschecksums/volumes/COUVIS_0xxx/COUVIS_0001_md5_2026-08-09T01-44-21_validate.log
    $PDS3_HOLDINGS_DIR/../logs/pdschecksums/volumes/COUVIS_0xxx/ERRORS.log
-   $PDS3_HOLDINGS_DIR/../logroot/pdschecksums/volumes/COUVIS_0xxx/COUVIS_0001_md5_2026-08-09T01-44-21_validate.log
-   $PDS3_HOLDINGS_DIR/../logroot/pdschecksums/volumes/COUVIS_0xxx/ERRORS.log
-   $PDS3_HOLDINGS_DIR/../logroot/pdschecksums/ERRORS.log
+   <log root>/pdschecksums/volumes/COUVIS_0xxx/COUVIS_0001_md5_2026-08-09T01-44-21_validate.log
+   <log root>/pdschecksums/volumes/COUVIS_0xxx/ERRORS.log
+   <log root>/pdschecksums/ERRORS.log
 
 The timestamp has one-second resolution and both copies of one run's log carry the same
 one, so the two trees can be compared file for file.
@@ -203,9 +224,11 @@ as ``pdsarchives``.
 writes ``<volume>_links_<timestamp>_<task>.log``, which is the same suffix
 ``pdslinkshelf`` uses; the two do not collide because the program directory above them
 differs. ``pds4archives`` writes ``_archives``. The other suffixes are ``_md5`` for the
-checksum programs, ``_info`` for the info shelf programs and ``_index`` for the index
-shelf programs, and the index shelf log path is built from the table's own path, so it
-carries one more directory level than the rest.
+checksum programs and ``_info`` for the info shelf programs. The two index shelf programs
+insert **no suffix at all**: their log path is built from the table's own path, so it
+carries one more directory level than the rest and the file is named for the table. A
+table named ``COUVIS_0001_versions.tab`` therefore produces a log with no ``_index``
+anywhere in it.
 
 Exit statuses
 -------------
@@ -223,7 +246,7 @@ Exit statuses
      - The command line named no task, or named a path that does not exist or that the
        program refuses, or the run logged an error or a fatal.
    * - ``2``
-     - The command line could not be parsed. ``argparse`` prints the usage and the
+     - The command line could not be parsed. :mod:`argparse` prints the usage and the
        reason.
 
 .. code-block:: console
@@ -261,6 +284,11 @@ Every line of a run's output has the same shape:
 
    <timestamp> | <logger name> |<depth>| <level> | <message>
 
+**The order of the per-file lines is the order the filesystem lists a directory in**, so
+two runs over one unit can report the same files in a different order; only the counts in
+the closing ``SUMMARY`` lines are stable. Each example in this guide shows one run's
+order.
+
 The depth marker is a run of hyphens between two vertical bars, one per open level, so
 ``||`` is the run itself, ``|-|`` one target within it, and ``|--|`` a phase of that
 target's work. ``HEADER`` opens a level and ``SUMMARY`` closes it, reporting the elapsed
@@ -273,10 +301,39 @@ One consequence is visible from a script: the two flavors of one program cannot 
 driven from a single Python process, because the second attempt to register the shared
 logger name raises.
 
-The levels these programs emit, from least to most serious, are ``DEBUG``, ``INFO``,
-``NORMAL``, ``WARNING``, ``ERROR``, ``CRITICAL`` and ``EXCEPTION``; ``FATAL`` is another
-name for ``CRITICAL``. ``HEADER`` and ``SUMMARY`` are not severities: they are the lines
-that open and close a level. Some phases cap how many messages of a level they will
+The level names are not a ladder of distinct rungs. Several share one severity, and the
+name in the log is the one the message was written with rather than the severity it
+carries:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 16 44 40
+
+   * - Severity
+     - Names at that severity
+     - What the second name is for
+   * - 10
+     - ``DEBUG``, ``DS_STORE``
+     - a skipped ``.DS_Store``
+   * - 20
+     - ``INFO``, ``NORMAL``
+     - the per-file line of a PDS4 program
+   * - 30
+     - ``WARNING``, ``INVISIBLE``
+     - a file whose name begins with a dot
+   * - 40
+     - ``ERROR``, ``DOT_``
+     - a skipped dot-underscore file
+   * - 50
+     - ``CRITICAL``, ``EXCEPTION``, ``FATAL``
+     - ``FATAL`` is another name for ``CRITICAL``
+
+``DOT_`` is the one worth knowing. It carries **ERROR's severity**, so a stray
+``._something`` file inside a unit is enough on its own to make one of the eight programs
+that report their outcome exit 1, under a level name that does not look like an error.
+
+``HEADER`` and ``SUMMARY`` are not severities at all: they are the lines that open and
+close a level. Some phases cap how many messages of a level they will
 print and say so when they close, which is what a summary line like this reports:
 
 .. code-block:: text

@@ -126,6 +126,8 @@ The products are not independent, and one dependency is hard:
 
 The order a full build takes is therefore: checksums, then info shelves, then archives,
 then the archives' own checksums and info shelves, then link shelves and index shelves.
+(``update_holdings_for_new_metadata.sh``, described in
+:doc:`user_guide_shell_scripts`, does not follow this order.)
 :doc:`user_guide_pdsdependency` checks that ordering after the fact and prints the exact
 commands that would repair it.
 

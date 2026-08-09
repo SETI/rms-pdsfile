@@ -66,7 +66,17 @@ Reporting
 ---------
 
 The runs below are in a directory holding two files made for the purpose: ``BAD.LBL``,
-whose records end in a bare line feed, and ``GOOD.LBL``, whose records end in CR LF.
+whose records end in a bare line feed, and ``GOOD.LBL``, whose records end in CR LF. To
+reproduce them, and the empty-file case further down:
+
+.. code-block:: bash
+
+   printf 'PDS_VERSION_ID = PDS3\nEND\n'     > BAD.LBL
+   printf 'PDS_VERSION_ID = PDS3\r\nEND\r\n' > GOOD.LBL
+   : > EMPTY.LBL
+
+Each example below starts from that state; ``--repair`` rewrites ``BAD.LBL`` in place, so
+re-create it before running an earlier example again.
 
 Without ``--verbose``, only ``INVALID`` and ``REPAIRED`` files are listed:
 
@@ -123,15 +133,15 @@ Exit status
 -----------
 
 **0, whatever the files turn out to be.** Nothing a file can contain, including being
-binary or invalid, changes the status. 2 for a command line ``argparse`` cannot classify,
-and 0 for ``--help``.
+binary or invalid, changes the status. 2 for a command line :mod:`argparse` cannot
+classify, and 0 for ``--help``.
 
 Two file conditions end the run in a traceback, and the interpreter's status is then 1:
 
-* a **zero-byte** file raises ``ZeroDivisionError``, because the binary fraction is
+* a **zero-byte** file raises :exc:`ZeroDivisionError`, because the binary fraction is
   computed over the file's length;
 * a file that cannot be read, or under ``--repair`` cannot be rewritten, raises
-  ``OSError``.
+  :exc:`OSError`.
 
 Either leaves the files named after it unexamined and prints no summary:
 

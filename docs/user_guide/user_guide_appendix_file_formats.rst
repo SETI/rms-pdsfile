@@ -65,7 +65,7 @@ Four properties of the entries are worth knowing:
 * **A directory carries a child count and an empty digest.** A file carries a digest and
   a child count of zero. A zero-byte file is not a special case: it carries the digest of
   the empty string.
-* **The ``(width, height)`` pair is ``(0, 0)``** for anything that is not an image whose
+* The ``(width, height)`` pair is ``(0, 0)`` for anything that is not an image whose
   dimensions were read.
 * **The modification time is formatted in the local time zone**, and is compared as a
   string. A unit shelved under one setting of ``TZ`` disagrees with itself when validated
@@ -91,7 +91,10 @@ shapes:
      "DATA/D1999_007/FUV1999_007_16_57.DAT"  : "DATA/D1999_007/FUV1999_007_16_57.LBL",
    }
 
-A file that is neither a label nor described by one has no entry.
+A file that is neither a label nor described by one still gets an entry, whose value is
+the empty string. In the volume above, the unlabeled ``HDAC1999_007_16_33.DAT`` and
+``INDEX/INDEX.TAB`` both appear that way -- which is the same fact
+:doc:`user_guide_pdslinkshelf` reports as two ``Label is missing`` errors.
 
 Index shelves
 ~~~~~~~~~~~~~
@@ -127,10 +130,14 @@ Directories are archived as members in their own right, not only implied by the 
 inside them, which is why an archive of a volume holding nine files lists sixteen
 members.
 
-Three kinds of file are dropped as the archive is written, each reported in the log: a
-``.DS_Store``; a dot-underscore file, recognized by its own basename or by any component
-of its path; and, unless the run asked otherwise, any other invisible file, meaning one
-whose basename or any path component begins with a dot.
+Two kinds of file are dropped as the archive is written, each reported in the log: a
+``.DS_Store``, and a dot-underscore file, recognized by its own basename or by any
+component of its path.
+
+Other invisible files -- those whose basename or any path component begins with a dot --
+are **archived**, and reported as ``Invisible file archived``. The programs take an
+argument that would skip them instead, but no command line exposes it, so from the
+command line an invisible file always goes in.
 
 Every member's ownership is rewritten to ``root`` before it is added, so an archive does
 not record who ran the program.
@@ -197,5 +204,7 @@ message, in the format:
 
    <timestamp> | <logger name> |<depth>| <level> | <message>
 
-``ERRORS.log`` and ``WARNINGS.log`` hold the same records filtered to those levels, and
-both accumulate across runs rather than being replaced.
+``ERRORS.log`` and ``WARNINGS.log`` are **thresholds, not filters**: each holds every
+record at its level or above. So ``WARNINGS.log`` contains all of the errors as well, and
+on a run with no warnings the two files hold the same records. Both accumulate across
+runs rather than being replaced.

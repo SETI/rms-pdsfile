@@ -20,11 +20,13 @@ What differs from the PDS3 program
 
 Three things, and only one of them is visible on the command line:
 
-* **The index extension is ``.csv``**, not ``.tab``. A metadata directory is globbed for
+* The index extension is ``.csv``, not ``.tab``. A metadata directory is globbed for
   ``.csv`` files and a file named on the command line is checked against that extension.
 * Paths resolve through the PDS4 rules, so the tree is ``$PDS4_HOLDINGS_DIR``.
-* A ``WARNINGS.log`` is written in each log directory, which the PDS3 program does not
-  write.
+* A ``WARNINGS.log`` is written, which the PDS3 program does not write. As in the PDS3
+  program, it and the ``ERRORS.log`` go in this program's own log directory rather than
+  beside each table's log file, so a run produces one of each however many tables it
+  shelves.
 
 What it writes
 --------------
@@ -46,9 +48,10 @@ separate suffix.
 
 .. warning::
 
-   **Neither of the PDS4 bundle sets this package's rules cover can be shelved by this
-   program today.** Both fail, for two different reasons, and neither is about the
-   command line:
+   **Neither of the two PDS4 bundle sets available for testing can be shelved by this
+   program.** The package's rules cover six bundle sets; these are the two with holdings
+   to run against, and both fail, for two different reasons, neither about the command
+   line:
 
    * A bundle set whose metadata ``.csv`` files carry **no label at all** fails when the
      table is read, because the reader is given an empty label path.

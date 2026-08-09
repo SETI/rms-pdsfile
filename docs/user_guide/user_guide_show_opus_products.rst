@@ -27,8 +27,10 @@ Both holdings roots are required
 --------------------------------
 
 ``PDS3_HOLDINGS_DIR`` **and** ``PDS4_HOLDINGS_DIR`` are read straight from the
-environment, and both are needed whichever kind of path is asked about. This is the only
-program in the guide with that requirement.
+environment, and both are needed whichever kind of path is asked about. **This is the
+only program in the guide that reads either variable**, and it fails immediately with a
+``KeyError`` if one is unset; the other fourteen work from the absolute paths on their
+command lines and never consult the environment.
 
 Options
 -------
@@ -55,8 +57,9 @@ Options
    * - ``--raw``, ``-r``
      - Show the raw dictionary.
    * - ``--debug``
-     - Print a traceback when building a :class:`~pdsfile.pdsfile.PdsFile` raises,
-       instead of reporting the failure and moving on.
+     - Ask for a traceback when building a :class:`~pdsfile.pdsfile.PdsFile` fails.
+       Default: off. The ``WARNING:`` line and the move to the next path happen either
+       way; see below for what it actually prints.
 
 There is no positional argument: paths go after ``--paths``, and omitting it is an error
 rather than a request for help.
@@ -204,7 +207,10 @@ including one with no ``--paths``.
 A path that cannot be turned into a :class:`~pdsfile.pdsfile.PdsFile`, and one that
 resolves to a file that does not exist, are each reported as a ``WARNING:`` line and the
 run continues to the next path. Neither changes the status, so a run in which every path
-failed still exits 0. ``--debug`` adds the traceback to the first of the two. An
-``--opus-types`` value that is not among the types the file actually has is likewise a
+failed still exits 0. ``--debug`` is meant to add a traceback to the first of the two, and does not: it prints
+the line ``NoneType: None`` instead, because the traceback is requested after the failure
+has already been handled. The ``WARNING:`` line still follows and the run still continues.
+
+An ``--opus-types`` value that is not among the types the file actually has is likewise a
 ``WARNING:``, and a run in which none of the given types matched prints the valid values
 and skips that file.

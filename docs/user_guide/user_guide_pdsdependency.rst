@@ -26,9 +26,11 @@ does take carry the same meanings they have for the ten programs of
      - Meaning
    * - ``--log LOG``, ``-l LOG``
      - Root directory for a duplicate of the log files. Defaults to the value of
-       ``PDS_LOG_ROOT``; with neither set, no duplicate tree is written.
+       ``PDS_LOG_ROOT``; with neither set, no duplicate tree is written. Default: empty,
+       which means "consult the environment variable".
    * - ``--quiet``, ``-q``
-     - Do not also log to the terminal. The log files are written either way.
+     - Do not also log to the terminal. The log files are written either way. Default:
+       off.
 
 What a path may name
 --------------------
@@ -50,9 +52,12 @@ naming 41 distinct suites between them, and a volume picks up every distinct sui
 path matches -- distinct being the operative word, since a suite named by two matching
 rows is still run once.
 
-Every volume picks up ``general``, the suite of derived files every volume has whatever
-is in it: checksums, archives, info shelves, link shelves, previews, diagrams, calibrated
-images, metadata tables and the cumulative versions of those tables.
+Every volume picks up ``general``, which holds 28 rules: for each of the five volume
+types, that its checksum file, its archive and its info shelf exist and are current, and
+for ``volumes``, ``calibrated`` and ``metadata``, that its link shelf does too. Index
+shelves and the cumulative metadata tables are **not** in ``general`` -- they are in the
+``metadata``, ``obsindex`` and four ``cumindex*`` suites, which a volume picks up only if
+its path matches them.
 
 Each suite is a list of rules. A rule is a glob that finds the files it is about, a
 regular expression that takes such a file apart, and one or more substitutions naming the
@@ -113,25 +118,45 @@ can be run top to bottom:
       pdslinkshelf --initialize $PDS3_HOLDINGS_DIR/metadata/COUVIS_0xxx/COUVIS_0001
       cat $PDS3_HOLDINGS_DIR/metadata/COUVIS_0xxx/COUVIS_0???/COUVIS_0???_supplemental_index.tab > $PDS3_HOLDINGS_DIR/metadata/COUVIS_0xxx/COUVIS_0999/COUVIS_0999_supplemental_index.tab
       <LABEL> $PDS3_HOLDINGS_DIR/metadata/COUVIS_0xxx/COUVIS_0999/COUVIS_0999_supplemental_index.tab
+      cat $PDS3_HOLDINGS_DIR/metadata/COUVIS_0xxx/COUVIS_0???/COUVIS_0???_index.tab > $PDS3_HOLDINGS_DIR/metadata/COUVIS_0xxx/COUVIS_0999/COUVIS_0999_index.tab
+      <LABEL> $PDS3_HOLDINGS_DIR/metadata/COUVIS_0xxx/COUVIS_0999/COUVIS_0999_index.tab
+      cat $PDS3_HOLDINGS_DIR/metadata/COUVIS_0xxx/COUVIS_0???/COUVIS_0???_versions.tab > $PDS3_HOLDINGS_DIR/metadata/COUVIS_0xxx/COUVIS_0999/COUVIS_0999_versions.tab
+      <LABEL> $PDS3_HOLDINGS_DIR/metadata/COUVIS_0xxx/COUVIS_0999/COUVIS_0999_versions.tab
 
-Two of the lines above are not runnable as they stand, and that is deliberate. A
-cumulative metadata table is built by concatenating the per-volume tables with ``cat``,
-which the run writes out in full; the ``<LABEL>`` line beneath it is a placeholder for
-writing the label of the table just concatenated, which is a manual step this package does
-not automate.
+Nineteen lines, of which the last six are not runnable as they stand, and that is
+deliberate. A cumulative metadata table is built by concatenating the per-volume tables
+with ``cat``, which the run writes out in full; each ``<LABEL>`` line beneath one is a
+placeholder for writing the label of the table just concatenated, which is a manual step
+this package does not automate.
 
 Where the logs go
 -----------------
 
 Under ``logs/pdsdependency/``, with ``_dependency`` as the suffix and **no task component
-in the file name**, since there is no task:
+in the file name**, since there is no task. This program also drops the category
+component, so a volume's log sits directly under a directory named for its volume set:
 
 .. code-block:: text
 
-   $PDS3_HOLDINGS_DIR/../logs/pdsdependency/volumes/COUVIS_0xxx/COUVIS_0001_dependency_2026-08-09T01-44-24.log
+   $PDS3_HOLDINGS_DIR/../logs/pdsdependency/COUVIS_0xxx/COUVIS_0001_dependency_2026-08-09T01-44-24.log
 
-An ``ERRORS.log`` accompanies it, and where a log root is configured a third one is
-written at that root's own ``pdsdependency`` directory.
+.. warning::
+
+   The ``Log file:`` line the run itself prints names a **different** path, one with a
+   ``volumes/`` component in it. That path is not written and the directory is not
+   created: the program builds the path with the category in it, strips the category
+   before opening the file, and reports the unstripped version. Look for the log at the
+   path above.
+
+An ``ERRORS.log`` accompanies it in the same directory. A run given ``--log`` writes three
+in all -- one beside each of the two log files, and one more at the log root's own
+``pdsdependency`` directory:
+
+.. code-block:: text
+
+   $PDS3_HOLDINGS_DIR/../logs/pdsdependency/COUVIS_0xxx/ERRORS.log
+   <log root>/pdsdependency/COUVIS_0xxx/ERRORS.log
+   <log root>/pdsdependency/ERRORS.log
 
 Exit status
 -----------

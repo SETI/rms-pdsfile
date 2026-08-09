@@ -39,8 +39,11 @@ They fall into three groups.
    * - ``pdsdata-sync-volset-previews.sh``
      - Syncs one volume set's previews only.
 
-Every one of them prints its usage and exits when given the wrong number of arguments,
-so running it bare is a safe way to see what it wants.
+The six in the first group print their usage and exit when given the wrong number of
+arguments, so running one of those bare is a safe way to see what it wants. The six
+``pdsdata-sync-*`` scripts do not check their arguments at all: run one bare and it
+proceeds with empty drive and volume-set names, against paths such as
+``/Volumes/pdsdata-/holdings/``. Read the usage comment at the top of the file instead.
 
 Setting up a holdings tree
 --------------------------
@@ -85,12 +88,20 @@ directory for each volume the metadata tree has, so that
 :class:`~pdsfile.pds3file.Pds3File` acknowledges those volumes exist. Nothing is copied;
 the directories stay empty.
 
-``update_holdings_for_new_metadata.sh`` is the destructive one. It **deletes** the
-volume set's entries under ``archives-metadata/``, ``checksums-archives-metadata/``,
-``checksums-metadata/``, ``_indexshelf-metadata/``, ``_infoshelf-archives-metadata/``,
-``_infoshelf-metadata/`` and ``_linkshelf-metadata/``, and then rebuilds them all with
-``--initialize``, in the order :doc:`user_guide_concepts` describes. It ends with
-``ALL COMPLETED WITH NO ERRORS``.
+``update_holdings_for_new_metadata.sh`` is the destructive one. It **deletes** the volume
+set's entries under seven directories -- ``archives-metadata/``,
+``checksums-archives-metadata/``, ``checksums-metadata/``, ``_indexshelf-metadata/``,
+``_infoshelf-archives-metadata/``, ``_infoshelf-metadata/`` and ``_linkshelf-metadata/``
+-- and then runs six ``--initialize`` commands, in this order: ``pdsarchives`` over
+``metadata/``, ``pdschecksums`` over ``archives-metadata/``, ``pdschecksums`` over
+``metadata/``, ``pdsinfoshelf`` over ``metadata/``, ``pdsindexshelf`` over ``metadata/``
+and ``pdslinkshelf`` over ``metadata/``. It ends with ``ALL COMPLETED WITH NO ERRORS``.
+
+Two things follow from seven deletions and six rebuilds.
+``_infoshelf-archives-metadata/`` is deleted and never rebuilt, so the archive info
+shelf has to be restored by hand with ``pdsinfoshelf --initialize --archives``. And the
+order is not the one :doc:`user_guide_concepts` recommends: the archive is written before
+the checksums the info shelf will read.
 
 .. note::
 
@@ -127,11 +138,12 @@ Four things are worth knowing before running one.
 * **They are zsh scripts, and they assume macOS.** The interpreter line is
   ``#! /bin/zsh``, the paths are ``/Volumes/pdsdata-<name>``, and the ``._*`` files they
   exclude and then delete at the destination are the resource forks a Mac leaves behind.
-* **``--dry-run`` and ``--delete`` are passed through to ``rsync``** rather than parsed.
-  They are read as the fourth and fifth positional arguments, so they must come after the
-  required ones and cannot be given in any other position. ``-a`` and ``-v`` are always
-  included.
-* **A destination drive named ``production`` is remounted read-write** for the duration
+* ``--dry-run`` and ``--delete`` are passed through to ``rsync`` rather than parsed.
+  They are read as positional arguments -- the fourth and fifth for the four volume-set
+  scripts, the fifth and sixth for the two volume scripts -- so they must come after the
+  required arguments and cannot be given in any other position. ``-a`` and ``-v`` are
+  always included.
+* A destination drive named ``production`` is remounted read-write for the duration
   and remounted read-only on exit, through ``sudo``. If either remount fails the script
   stops and says so.
 * **Syncing a versioned volume set is not enough by itself.** The scripts say so when

@@ -30,8 +30,9 @@ bundle set whose name begins ``checksums_`` or ``superseded`` or ends ``_support
 What a path may name
 --------------------
 
-A bundle, a bundle set, or a single file inside a bundle. As in the PDS3 program,
-``--reinitialize`` on a single file is run as ``--update``.
+A bundle, a bundle set, or a single top-level file of a bundle. As in the PDS3 program,
+``--reinitialize`` on a single file is run as ``--update``, and ``--initialize`` refuses
+a selection outright.
 
 Options
 -------
@@ -44,19 +45,32 @@ Options
      - Meaning
    * - ``--archives``, ``-a``
      - Work on the archive file of the named bundle rather than on the bundle itself.
+       Default: off.
    * - ``--infoshelf``, ``-i``
-     - Accepted, and has no effect. See below.
+     - Runs ``pds4checksums`` a second time. Default: off. See below.
 
 .. warning::
 
-   **``--infoshelf`` does not chain a second run here.** The option is declared and
-   accepted, and the help text describes the PDS3 behavior, but a run given it does the
-   checksum task and stops; no ``pds4infoshelf`` run follows. Run the two programs in
-   sequence instead:
+   ``--infoshelf`` **does not chain an info shelf run here -- it chains a second**
+   ``pds4checksums`` **run.** The chain rebuilds the command line by replacing the string
+   ``pdschecksums`` with ``pdsinfoshelf`` and dropping ``--infoshelf``. No PDS4 command
+   line contains that string: the console script is ``pds4checksums`` and the module path
+   ends ``pds4/pds4checksums.py``. The substitution therefore changes nothing, and the
+   subprocess is this same program running the same task over the same paths a second
+   time. The process exits with that second run's status.
+
+   Measured on one bundle: 796 log lines against the 398 of the same command without the
+   flag, with two run headers, the second reading ``pds4checksums --validate <bundle>``.
+   Under ``--initialize`` the second run additionally reports
+   ``Checksum file already exists``, an error the first run did not produce.
+
+   Run the two programs in sequence instead. Do not join them with ``&&``: this program
+   exits 0 whatever a task found, so ``&&`` guards nothing.
 
    .. code-block:: bash
 
-      pds4checksums --initialize "$BUNDLE" && pds4infoshelf --initialize "$BUNDLE"
+      pds4checksums --initialize "$BUNDLE"
+      pds4infoshelf --initialize "$BUNDLE"
 
 Building a manifest
 -------------------
@@ -82,7 +96,7 @@ it and at ``DEBUG`` while writing its line, which with the one ``NORMAL`` line f
 directory it created is where the closing counts of 185 and 184 come from. All but two of
 those lines are elided above.
 
-**Note the log directory: ``logs/pdschecksums/``, not ``logs/pds4checksums/``.** Every
+Note the log directory: ``logs/pdschecksums/``, not ``logs/pds4checksums/``. Every
 PDS4 program in this guide writes under its PDS3 counterpart's name, so the two flavors
 share one log tree and are told apart by the category component beneath it --
 ``bundles/`` here, ``volumes/`` for the PDS3 program.
@@ -91,11 +105,11 @@ share one log tree and are told apart by the category component beneath it --
 Two differences from the PDS3 program that are visible in the output
 --------------------------------------------------------------------
 
-* **The per-file lines are ``NORMAL``, not ``INFO``.** The PDS3 program reports each
-  file at ``INFO``, which is subject to a message cap of 100 per phase; this one reports
-  at ``NORMAL``, which is not capped. A large bundle therefore prints one line per file
-  however large it is.
-* **A ``WARNINGS.log`` is written** in each log directory, beside the ``ERRORS.log`` that
+* **The per-file lines are** ``NORMAL``, **not** ``INFO``, where the PDS3 program's are
+  ``INFO``. Neither is capped -- the PDS3 program sets its hashing phase to unlimited
+  explicitly -- so both print one line per file however large the target is. What differs
+  is the level name in the log, not the volume of it.
+* A ``WARNINGS.log`` is written in each log directory, beside the ``ERRORS.log`` that
   both flavors write.
 
 Checking a bundle against its manifest

@@ -21,7 +21,7 @@ It reads the checksum file rather than hashing
 file, so every entry it writes is only as current as :doc:`user_guide_pdschecksums` left
 it, and a volume with no checksum file cannot be shelved at all: the run reports
 ``Missing entry in checksum file`` for every file and then ends in
-``FileNotFoundError``, because it dates the volume partly by the checksum file's own
+:exc:`FileNotFoundError`, because it dates the volume partly by the checksum file's own
 modification time.
 
 So ``pdschecksums`` runs first, always. ``pdschecksums --infoshelf`` does both in one
@@ -60,8 +60,10 @@ task to that file's entry and leaves the rest of the shelf alone; as in
    * - Option
      - Meaning
    * - ``--archives``, ``-a``
-     - Shelve the archive file of the named volume rather than the volume itself. The
-       shelf lands under ``_infoshelf-archives-<category>/``.
+     - Shelve the archive file of the named volume rather than the volume itself.
+       Default: off. The shelf lands under ``_infoshelf-archives-<category>/``, and there
+       is one per **volume set** rather than one per volume, because that is the unit an
+       archive checksum and shelf cover.
 
 Building a shelf
 ----------------
@@ -89,25 +91,30 @@ per-phase summaries are elided.
 
 .. note::
 
-   **The logger name is ``pds.validation.fileinfo``**, not anything containing
+   The logger name is ``pds.validation.fileinfo``, not anything containing
    "infoshelf". Both flavors of this program share it, which is how a chained
    ``pdschecksums --infoshelf`` run is recognizable in a combined log.
 
 Modification times are local
 ----------------------------
 
-**Every modification time in the shelf is formatted in the local time zone**, and the
-comparison a validation makes is a string comparison. A volume shelved under one setting
-of ``TZ`` and validated under another therefore disagrees with itself, on every file. Set
-``TZ`` the same way for every run against one tree.
+**Every modification time in the shelf is formatted in the local time zone.** A
+validation parses the two times rather than comparing their text, and accepts a
+difference below one second, so two entries whose text differs can still agree. What that
+does not absorb is a whole-hour shift: a volume shelved under one setting of ``TZ`` and
+validated under another disagrees with itself on every file. Set ``TZ`` the same way for
+every run against one tree.
 
 Checking a shelf
 ----------------
 
-``--validate`` compares each of the five fields against the tree, and reports a
-disagreement per file. The comparison on the third field allows a shelf that is merely
-older than the file it describes to be reported separately from one that is wrong, which
-is why ``--repair`` can update a shelf's own modification date without rewriting it.
+``--validate`` compares each of the five fields against the tree and reports one
+``ERROR`` line **per field** that differs, so one file can produce as many as five.
+
+``--repair``'s ability to re-date a shelf without rewriting it comes from a separate
+comparison rather than from those fields: once the contents are found to agree, the
+newest modification time the walk saw is compared against the shelf pair's own, and only
+the timestamps are touched.
 
 Exit status
 -----------

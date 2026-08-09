@@ -93,6 +93,12 @@ class _ParserCapturedError(Exception):
     """Carries the parser out of the ``parse_args`` call that was about to consume it."""
 
     def __init__(self, parser):
+        """Carry one parser out of the call that was about to consume a command line.
+
+        Parameters:
+            parser (argparse.ArgumentParser): The parser to carry.
+        """
+
         super().__init__('parser captured')
         self.parser = parser
 
@@ -124,6 +130,18 @@ def capture_parser(module_name, prog):
     real_intermixed = argparse.ArgumentParser.parse_intermixed_args
 
     def intercept(self, *args, **kwargs):
+        """Raise instead of parsing, carrying the parser this was called on.
+
+        Parameters:
+            self (argparse.ArgumentParser): The parser the program built and was about
+                to parse with. It is what this carries out.
+            *args: Whatever the program passed; ignored.
+            **kwargs: Whatever the program passed; ignored.
+
+        Raises:
+            _ParserCapturedError: always.
+        """
+
         raise _ParserCapturedError(self)
 
     argparse.ArgumentParser.parse_args = intercept
@@ -234,8 +252,9 @@ def check(docs_dir):
         tuple: the list of finding strings, and a dict of what was measured.
 
     Raises:
-        FileNotFoundError: if the directory, the shared chapter or any program's chapter
-            is absent, so that a run over a tree with no guide in it cannot pass.
+        OSError: from the ``open()`` calls below, if the directory, the shared chapter or
+            any program's chapter is absent -- so that a run over a tree with no guide in
+            it cannot report a clean pass over nothing.
     """
 
     names = {prog for prog, _, _ in PROGRAMS}

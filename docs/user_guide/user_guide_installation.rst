@@ -62,17 +62,23 @@ Environment variables
    * - ``PDS_LOG_ROOT``
      - Optional. The root of a duplicate log tree, used when ``--log`` is not given.
 
-The basenames are a requirement rather than a habit. Every absolute path is turned into
+The basenames are a requirement of the *directory*, not of the variable, and they are a
+requirement rather than a habit. Every absolute path is turned into
 the *logical path* the package works in by splitting it at the first ``/holdings/`` or
 ``/pds4-holdings/`` component, so a root directory named anything else makes every path
 under it unusable and each program rejects it.
 
-The two holdings variables are what every holdings-aware program resolves a path
-through. A program that reads only PDS3 paths needs only ``PDS3_HOLDINGS_DIR``, and one
-that reads only PDS4 paths only ``PDS4_HOLDINGS_DIR``; ``show_opus_products`` is the
-exception, reading both whichever kind of path it is asked about. ``crlf`` and
-``shelf_consistency_check`` read neither: they work on the paths named on their command
-line and never look for a holdings tree.
+**Only one of the fifteen programs reads the two holdings variables:**
+:doc:`user_guide_show_opus_products`, which reads both, whichever kind of path it is
+asked about, and fails with a ``KeyError`` if either is unset.
+
+The other fourteen read neither. Each takes absolute paths on its command line and works
+out where in a holdings tree they sit by splitting the path at its ``/holdings/`` or
+``/pds4-holdings/`` component, so all fourteen run with both variables unset. Setting
+them is still worth doing -- it is what lets you write ``$PDS3_HOLDINGS_DIR/volumes/...``
+rather than typing the root each time, which is how every example in this guide is
+written -- but it is a convenience for the shell rather than something those programs
+consult.
 
 .. code-block:: bash
 
@@ -130,7 +136,9 @@ the sense that a tree holds the ones its data needs:
        _indexshelf-metadata/           index shelves, for metadata tables only
        _volinfo/                       one text file per volume set
 
-A PDS4 tree has the same shape with ``bundles`` in place of ``volumes``:
+A PDS4 tree uses the same category vocabulary -- the volume types and the two prefixes
+are one shared set -- with ``bundles`` in place of ``volumes``. What any given tree holds
+is the subset its data needs:
 
 .. code-block:: text
 
@@ -139,6 +147,7 @@ A PDS4 tree has the same shape with ``bundles`` in place of ``volumes``:
        metadata/
        previews/
        diagrams/
+       documents/
        archives-bundles/
        checksums-bundles/
        _infoshelf-bundles/
@@ -169,7 +178,7 @@ How to read the examples in this guide
 --------------------------------------
 
 Every command shown in this guide was run, and every block of output is what that run
-printed. Three substitutions are made in what is published, and nothing else is changed:
+printed. Four substitutions are made in what is published, and nothing else is changed:
 
 * the PDS3 and PDS4 holdings roots are written ``$PDS3_HOLDINGS_DIR`` and
   ``$PDS4_HOLDINGS_DIR``, and the directory containing a root -- where the log tree
@@ -178,7 +187,10 @@ printed. Three substitutions are made in what is published, and nothing else is 
   in these runs, so both forms name the same directory there and would name two in a
   tree whose roots sit apart;
 * the directory the installed program was run from is dropped, so a console script
-  appears by name even where the program echoes the absolute path it was invoked with;
+  appears by name even where the program echoes the absolute path it was invoked with,
+  and the directory the package was imported from is written ``<source root>``, which is
+  visible in the :doc:`user_guide_re_validate` example because a ``python -m`` run echoes
+  the module's own file path;
 * where a run's output is too long to show whole, the lines left out are replaced by a
   line reading ``...`` and the surrounding prose says what was cut.
 

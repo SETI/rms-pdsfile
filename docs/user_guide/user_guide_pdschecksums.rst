@@ -36,10 +36,15 @@ set without being a volume -- a name beginning ``checksums_``, a name beginning
 What a path may name
 --------------------
 
-A volume, a volume set, or **a single file inside a volume**. Naming one file narrows the
-task to that file's entry and leaves the rest of the manifest untouched. One combination
-is changed rather than obeyed: ``--reinitialize`` on a single file is run as ``--update``,
-because rebuilding a whole manifest from one named file would erase every other entry.
+A volume, a volume set, or **a single top-level file of a volume**, or a volume's own
+archive or checksum file. Naming one file narrows the task to that file's entry and
+leaves the rest of the manifest untouched.
+
+Two command lines are not obeyed as written. ``--reinitialize`` on a single file is run
+as ``--update``, because rebuilding a whole manifest from one named file would erase
+every other entry. And ``--initialize`` refuses a selection outright, raising
+``ValueError: File selection is disallowed for task "initialize"``. A file deeper inside
+the volume than its top level is refused too, with ``Invalid file for checksumming:``.
 
 Options
 -------
@@ -52,9 +57,10 @@ Options
      - Meaning
    * - ``--archives``, ``-a``
      - Work on the archive file of the named volume rather than on the volume itself.
-       The path given stays a ``volumes/`` path; the program redirects it.
+       The path given stays a ``volumes/`` path; the program redirects it. Default: off.
    * - ``--infoshelf``, ``-i``
      - After a successful run, also run the equivalent ``pdsinfoshelf`` command.
+       Default: off.
 
 ``--infoshelf`` is the answer to the ordering rule in :doc:`user_guide_concepts`: an info
 shelf reads the checksum file, so the two always run in that order, and this does both in
@@ -66,6 +72,7 @@ own logger name:
    $ pdschecksums --validate --infoshelf $PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001
    ...
    2026-08-09 01:44:56.051771 | pds.validation.fileinfo || HEADER | pdsinfoshelf --validate $PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001
+   2026-08-09 01:44:56.052175 | pds.validation.fileinfo |-| HEADER | Task "validate" for: $PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001
    2026-08-09 01:44:56.052227 | pds.validation.fileinfo |--| INFO | Log file: $PDS3_HOLDINGS_DIR/../logs/pdsinfoshelf/volumes/COUVIS_0xxx/COUVIS_0001_info_2026-08-09T01-44-56_validate.log
    ...
 
@@ -87,7 +94,7 @@ Building a manifest
    2026-08-09 01:40:04.719379 | pds.validation.checksums || SUMMARY | Completed: pdschecksums --initialize $PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001
    2026-08-09 01:40:04.719400 | pds.validation.checksums || SUMMARY | Elapsed time = 0:00:00.002717
    2026-08-09 01:40:04.719414 | pds.validation.checksums || SUMMARY | 12 INFO messages
-   2026-08-09 01:40:04.719425 | pds.validation.checksums || SUMMARY | 9 DEBUG messages reported of 9 total
+   2026-08-09 01:40:04.719425 | pds.validation.checksums || SUMMARY | 9 DEBUG messages
 
 Seven of this volume's nine files, and the per-phase summary lines, are elided above. The
 run reports one ``MD5=`` line per file as it hashes it, then one ``Written:`` line per

@@ -5,7 +5,7 @@ This guide is the manual for the command-line programs ``rms-pdsfile`` installs:
 each one builds or checks inside a PDS holdings tree, every option it takes, and what
 its output means. Read :doc:`user_guide_concepts` first if the words *volume*, *bundle*,
 *category* and *shelf* are not already familiar, and :doc:`user_guide_installation` for
-the two environment variables every holdings-aware program reads.
+the install, the expected directory layout and the environment.
 
 .. toctree::
    :maxdepth: 2

@@ -19,7 +19,8 @@ What a path may name
 --------------------
 
 An index table, or a metadata directory, which is expanded into the ``.tab`` files inside
-it. A metadata directory holding three tables is three targets, each with its own log
+it. A directory holding none directly is searched one level deeper instead, which is how
+a whole volume set's metadata directory expands into its volumes' tables. A metadata directory holding three tables is three targets, each with its own log
 level and its own log file:
 
 .. code-block:: console
@@ -41,11 +42,20 @@ Two of the three tables' levels are elided. The directory named on the command l
 ``COUVIS_0001_index.tab``, ``COUVIS_0001_supplemental_index.tab`` and
 ``COUVIS_0001_versions.tab``, and the run shelved all three.
 
-A backup copy of a table is skipped rather than shelved. What counts as one is a basename
-whose last component before the extension is a timestamp of the form
-``2026-08-09T01-41-18``, or the word ``backup`` or ``original``, separated from the rest
-by a hyphen or an underscore. The skip is reported inside the run, so it reaches the exit
-status like anything else.
+A backup copy of a table is skipped rather than shelved, and two separate rules decide
+what counts as one:
+
+* a **basename** whose last component before the extension is a timestamp of the form
+  ``2026-08-09T01-41-18``, or the word ``backup`` or ``original``, separated from the
+  rest by a hyphen or an underscore; or
+* an **absolute path** containing the text ``" copy"`` anywhere in it -- so a table under
+  a directory called ``metadata copy`` is skipped as a backup however it is named.
+
+The skip is reported at ``ERROR``, not as a note, so a run that skips one exits 1:
+
+.. code-block:: text
+
+   ... | pds.validation.indexshelf |-| ERROR | Backup file skipped: metadata/COUVIS_0xxx/COUVIS_0001/COUVIS_0001_index_backup.tab
 
 What it writes
 --------------
@@ -79,7 +89,7 @@ The log path is one level deeper too
 Because the target is a table, the log path is built from the table's own path rather
 than from a volume's, so it carries the volume as a directory component and the table's
 basename as the file name -- and there is no separate suffix in the file name, where the
-other nine programs insert one:
+other eight programs insert one. ``pds4indexshelf`` behaves exactly as this one does:
 
 .. code-block:: text
 

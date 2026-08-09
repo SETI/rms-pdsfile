@@ -30,8 +30,8 @@ Two consequences matter when choosing what to put on the command line.
   rules place one archive over the whole set, the bundle set path is the one that works,
   and a bundle path inside it resolves to no archives at all.
 
-A target that resolves to no archives is not a quiet no-op, and the five tasks do not
-agree on what it is. ``--update`` reports nothing and moves on. ``--validate`` and
+A target that resolves to no archives is handled differently by each of the five tasks,
+and only one of them is quiet about it. ``--update`` reports nothing and moves on. ``--validate`` and
 ``--repair`` walk the whole directory tree first and only then find there is nothing to
 compare it with. ``--initialize`` and ``--reinitialize`` log an error and then end the
 run in an exception:
@@ -62,9 +62,15 @@ bundle set's rules describe:
    2026-08-09 01:42:58.873361 | pds.validation.archives |--| SUMMARY | Elapsed time = 0:00:06.590632
    2026-08-09 01:42:58.873379 | pds.validation.archives |--| SUMMARY | 194 NORMAL messages
 
-Unlike the PDS3 program, this one logs no line naming the archive it wrote: the last
-``File archived:`` line is the last thing the write phase reports. The archive's path is
-the ``archives-`` parallel of the target, as in the next section.
+The line naming the archive comes at the **start** of the write phase here, where the
+PDS3 program's ``Written:`` line comes at the end:
+
+.. code-block:: text
+
+   2026-08-09 01:42:52.282856 | pds.validation.archives |---| NORMAL | Open for gzip compressed writing: archives-bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023.tar.gz
+
+After it the phase reports one ``File archived:`` line per member and closes, so the last
+line of the phase names a member rather than the archive.
 
 What it writes
 --------------
@@ -83,7 +89,7 @@ one-second tolerance on the time, and no file's contents are ever read.
 
 .. warning::
 
-   **A freshly written archive does not pass this program's own ``--validate``.** The
+   A freshly written archive does not pass this program's own ``--validate``. The
    two halves of the round trip disagree about how much of the path a member name
    carries: an archive is written with member names beginning at the bundle set, and
    validation rebuilds an absolute path by putting the bundle set's own prefix back in
@@ -109,10 +115,10 @@ one-second tolerance on the time, and no file's contents are ever read.
 Two differences from the PDS3 program that are visible in the output
 --------------------------------------------------------------------
 
-* **The per-file lines are ``NORMAL``, not ``INFO``**, so nothing caps them: where the
+* The per-file lines are ``NORMAL``, not ``INFO``, so nothing caps them: where the
   PDS3 program stops after 100 lines in the walk and the comparison, this one prints one
   per file however large the target is.
-* **A ``WARNINGS.log`` is written** in each log directory, beside the ``ERRORS.log`` that
+* A ``WARNINGS.log`` is written in each log directory, beside the ``ERRORS.log`` that
   both flavors write.
 
 Where the logs go

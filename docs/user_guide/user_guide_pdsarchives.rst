@@ -36,7 +36,7 @@ another derived product.
 Validation compares metadata, not contents
 ------------------------------------------
 
-**``--validate`` and ``--repair`` never read a file's bytes.** They compare, for each
+``--validate`` and ``--repair`` never read a file's bytes. They compare, for each
 entry, the absolute path, the byte count and the modification time recorded in the
 archive against the same three taken from the directory tree. A file whose contents
 changed without its size or its timestamp changing is reported as matching.
@@ -72,7 +72,7 @@ the volume's nine files.
 
 .. note::
 
-   **The log file is named ``COUVIS_0001_links_...``, not ``..._archives_...``.** This
+   The log file is named ``COUVIS_0001_links_...``, not ``..._archives_...``. This
    program writes its logs with the same ``_links`` suffix that
    :doc:`user_guide_pdslinkshelf` uses. The two do not overwrite each other, because the
    program's own directory sits above them: ``logs/pdsarchives/`` here and
@@ -102,7 +102,7 @@ whole seconds and the filesystem does not.
 
 An archive that cannot be read at all -- an empty or truncated ``.tar.gz`` -- is not one
 of those reports. The exception is logged and re-raised, so the run ends in a traceback
-naming ``tarfile.ReadError`` and the process exits 1.
+naming :exc:`tarfile.ReadError` and the process exits 1.
 
 Task by task
 ------------
