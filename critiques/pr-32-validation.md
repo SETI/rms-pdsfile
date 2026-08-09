@@ -24,11 +24,19 @@ section 6.6 allows.
 | files changed under `src/` | **0** |
 | new checker | `critiques/pr-32/check_cli_coverage.py` |
 | deferred observations added | 347–356 |
-| commits | 13 |
 
 The 21 pages are one per program (15), the landing page, concepts, installation, the
 shell-script chapter, the file-format appendix — and one the plan did not call for,
 `user_guide_maintenance_tools.rst`.
+
+The branch is a series of logical steps rather than a fixed number of commits, and the
+count is deliberately not stated here: a self-referential count in a document that ships
+inside the series it counts is always one behind its own last edit, which is how this
+effort has produced a wrong commit count twice already. `git rev-list --count
+532f65d..HEAD` is the answer, and it is the artifact rather than a recollection. The steps
+are: the guide and the checker; a first correction pass; deferred 347–353; the plan; the
+checker's shadowing fix; the four-round correction pass; the fifth round's corrections;
+the records; the gate measurements; and CodeRabbit's.
 
 That extra page exists because ten of the fifteen programs build no parser of their own:
 they declare a `ToolSpec` and `_common.build_arg_parser()` builds one from it, so all ten
