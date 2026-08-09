@@ -1,14 +1,45 @@
 ##########################################################################################
 # pdsfile/holdings_maintenance/_indexshelf_common.py
-#
-# What the two index shelf tools share.
-#
-# These shelve the row numbers of each product in a metadata index table. Their
-# target is a table file or a metadata directory rather than a unit, and their log
-# path is built from the table's own logical path, so they run on the driver at the
-# end of this module rather than on either of the two in _common.py and
-# _shelf_common.py.
 ##########################################################################################
+
+"""What the two index shelf tools share.
+
+These shelve the row numbers of each product in a metadata index table. Their target is
+a table file or a metadata directory rather than a unit, and their log path is built
+from the table's own logical path, so they run on ``run_index_main()`` at the end of
+this module rather than on either of the two drivers in ``_common.py`` and
+``_shelf_common.py``. They import nothing from ``_shelf_common.py``.
+
+An index shelf is a pickled ``{filename key: list of row numbers}`` dictionary written
+beside a readable ``.py`` file holding the same mapping as Python source. Both are
+written by one call and both are touched by one call, and the repair task takes the
+older of the two as the pair's age. Nothing in this package opens the ``.py`` file; it
+is there to be read by a person or by something outside the package. What does read a
+shelf pickle back is this module, and the shelf cache on the PdsFile classes.
+
+The five tasks are here rather than in the two tool modules, because nothing in them
+differs between PDS3 and PDS4: what a row is, how a key is formed and how a shelf is
+compared to its table are properties of ``pdstable``. ``index_tasks()`` binds a spec into
+each of the five and returns the table a driver takes.
+
+The two tools differ only in their spec, and their two specs differ in five fields:
+``pdsfile_cls``, ``holdings_sentinel``, ``index_ext``, ``file_log_level`` and
+``handler_factories``. Three of the five reach this module, and only two of those three
+change what it does. ``index_ext`` is '.tab' against '.csv', which is what a table is
+called; ``pdsfile_cls`` is the class every object is built from; and
+``handler_factories`` differs because the pds4 tools attach a warning handler the pds3
+tools do not, which changes what the log tree holds rather than what is shelved.
+``holdings_sentinel`` and ``file_log_level`` are read nowhere here, so their difference
+does not reach the index shelf tools at all.
+
+The five tasks do not all agree about an empty result. ``index_initialize()`` and
+``index_validate()`` test the fresh table dictionary against None, which
+``generate_indexdict()`` never returns, while ``index_reinitialize()`` and
+``index_repair()`` test it for emptiness. A table with no rows therefore stops the
+latter two before they write, and does not stop the former two -- which matters only
+for ``index_initialize()``, since ``index_validate()`` writes nothing whatever it
+finds and goes on to compare the empty table against the shelf.
+"""
 
 import datetime
 import functools
@@ -53,19 +84,32 @@ LOAD_INDEXDICT_LIMITS = {}
 def generate_indexdict(spec, pdsf, *, logger=None, limits=None):
     """Return the row numbers of every product in one index table, and its date.
 
-    Args:
-        spec: The tool's ToolSpec.
+    The table is read through its label rather than directly, and the keys are the
+    filename keys ``pdstable`` builds, truncated to the PdsFile's own
+    ``filename_keylen``. A key covering more than one row maps to all of them, which is
+    what makes the value a list rather than a number.
+
+    The date returned is the later of the table's and the label's modification times, so
+    editing either one dates the pair. It is a POSIX timestamp; the same value is also
+    logged, formatted.
+
+    Parameters:
+        spec (ToolSpec): The tool's specification. Only its logname is read here, as
+            the fallback logger's name.
         pdsf: The index table.
         logger: The logger to report through. Defaults to the tool's own.
-        limits: Message limits for this scope, merged over the defaults.
+        limits (dict): Message limits for this scope, merged over the defaults.
 
     Returns:
         tuple: The {filename key: list of row numbers} dictionary, and the later of
-        the table's and its label's modification times.
+        the table's and its label's modification times. The dictionary is empty for a
+        table with no rows and is never None.
 
     Raises:
-        OSError: If the table or its label cannot be read.
-        ValueError: If the table disagrees with its label.
+        OSError: from ``PdsTable()`` if the table or its label cannot be read, and from
+            ``getmtime()`` on either of them. It is logged as an error and re-raised.
+        ValueError: from ``PdsTable()`` if the table disagrees with its label. It is
+            logged and re-raised the same way.
     """
 
     if limits is None:
@@ -108,12 +152,33 @@ def generate_indexdict(spec, pdsf, *, logger=None, limits=None):
 def write_indexdict(spec, pdsf, index_dict, *, logger=None, limits=None):
     """Write a new shelf file, and its Python sidecar, for the rows of one index.
 
-    Args:
-        spec: The tool's ToolSpec.
+    Two files are written for one call: the pickled dictionary at the PdsFile's
+    ``indexshelf_abspath``, and a readable ``.py`` beside it under the same basename,
+    holding the same mapping as a Python dictionary literal named after the file. Keys
+    in the sidecar are padded to a common width so the values line up, a key covering
+    one row is written as a bare number and one covering several as a tuple, and the
+    sidecar is encoded latin-1. The parent directory is created if it is not there.
+
+    **An existing shelf is overwritten, not versioned.** Unlike the checksum, info shelf
+    and link shelf tools, nothing here copies the old file into the log directories
+    first, and ``run_index_main()`` records no log directories for it to copy into.
+
+    Every open shelf of the spec's class is closed before anything is written, so a
+    shelf already in the class's cache cannot be handed back in place of the file this
+    call replaces.
+
+    Parameters:
+        spec (ToolSpec): The tool's specification. Its pdsfile_cls is what the shelf
+            cache is cleared on, and its logname is the fallback logger's name.
         pdsf: The index table.
-        index_dict: The row numbers, as generate_indexdict() returned them.
+        index_dict (dict): The row numbers, as generate_indexdict() returned them.
         logger: The logger to report through. Defaults to the tool's own.
-        limits: Message limits for this scope, merged over the defaults.
+        limits (dict): Message limits for this scope, merged over the defaults.
+
+    Raises:
+        OSError: raised by ``open()`` or ``makedirs()`` if either file cannot be
+            written. It is logged through ``exception()`` and re-raised, as is anything
+            else the write raises.
     """
 
     if limits is None:
@@ -182,14 +247,33 @@ def write_indexdict(spec, pdsf, index_dict, *, logger=None, limits=None):
 def load_indexdict(spec, pdsf, *, logger=None, limits=None):
     """Return the row numbers an index shelf file already holds.
 
-    Args:
-        spec: The tool's ToolSpec.
+    The pickle is read straight from disk rather than through the PdsFile shelf cache,
+    so what comes back is what the file holds now.
+
+    A missing shelf file is logged as an **error**, which gives the run a nonzero exit
+    status, and reported as an empty dictionary. An empty dictionary is therefore two
+    situations at once here, a shelf that is absent and a shelf that covers nothing, and
+    the callers in this module treat both as a reason to stop.
+
+    Parameters:
+        spec (ToolSpec): The tool's specification. Only its logname is read here, as
+            the fallback logger's name.
         pdsf: The index table.
         logger: The logger to report through. Defaults to the tool's own.
-        limits: Message limits for this scope, merged over the defaults.
+        limits (dict): Message limits for this scope, merged over the defaults.
 
     Returns:
         dict: The shelved row numbers, empty if there is no shelf file.
+
+    Raises:
+        pickle.PickleError: from ``load()`` on a shelf file whose bytes are not a
+            pickle. It is logged through ``exception()`` and re-raised.
+        EOFError: from the same ``load()`` on a shelf file of zero length, which is
+            what an interrupted write leaves. It is not a PickleError, so the handler
+            below does not catch it and it escapes without being logged.
+        OSError: raised by ``open()`` if the file goes away between the existence test
+            and the read. This one escapes unlogged on the same terms. The PickleError
+            above is the only failure this function logs.
     """
 
     if limits is None:
@@ -229,11 +313,23 @@ def load_indexdict(spec, pdsf, *, logger=None, limits=None):
 def validate_indexdict(spec, pdsf, tabdict, shelfdict, *, logger=None):
     """Report every way the table and its shelf disagree.
 
-    Args:
-        spec: The tool's ToolSpec.
+    Equal dictionaries are reported as a success and nothing further is examined.
+    Otherwise each difference is its own error line: a key the shelf lacks, a key whose
+    row numbers differ, and a key the table lacks. A row list that differs only in order
+    counts as a difference, because the comparison is between lists.
+
+    Neither dictionary is modified, unlike ``_linkshelf_common.validate_links()``, which
+    empties both as it goes.
+
+    This takes no limits argument and opens no log level of its own, so its lines land
+    in whatever level the caller has open and are capped by that level's limits.
+
+    Parameters:
+        spec (ToolSpec): The tool's specification. Only its logname is read here, as
+            the fallback logger's name.
         pdsf: The index table.
-        tabdict: The row numbers read from the table.
-        shelfdict: The row numbers read from the shelf.
+        tabdict (dict): The row numbers read from the table.
+        shelfdict (dict): The row numbers read from the shelf.
         logger: The logger to report through. Defaults to the tool's own.
     """
 
@@ -263,7 +359,22 @@ def validate_indexdict(spec, pdsf, tabdict, shelfdict, *, logger=None):
 ##########################################################################################
 
 def index_initialize(spec, pdsf, *, logger=None, limits=None):
-    """Shelve one index table, refusing to replace a shelf that is already there."""
+    """Shelve one index table, refusing to replace a shelf that is already there.
+
+    A shelf file already in place is logged as an error and nothing is read or written.
+    Three of the five tasks never overwrite an existing shelf -- this one, which stops
+    at the error above, index_validate(), which writes nothing at all, and
+    index_update(), which reports an existing shelf and leaves it. A table with no rows
+    is shelved as an empty dictionary rather than skipped, which is where this differs
+    from index_reinitialize().
+
+    Parameters:
+        spec (ToolSpec): The tool's specification.
+        pdsf: The index table.
+        logger: The logger to report through. Defaults to the tool's own.
+        limits (dict): Message limits, passed on to the two functions that open a log
+            level.
+    """
 
     if limits is None:
         limits = {}
@@ -286,7 +397,19 @@ def index_initialize(spec, pdsf, *, logger=None, limits=None):
 
 
 def index_reinitialize(spec, pdsf, *, logger=None, limits=None):
-    """Shelve one index table, replacing whatever shelf is there."""
+    """Shelve one index table, replacing whatever shelf is there.
+
+    A table with no shelf is a warning rather than an error, and is handed to
+    index_initialize() instead. A table whose rows come back empty stops here without
+    writing, so a shelf that is already in place is left as it was.
+
+    Parameters:
+        spec (ToolSpec): The tool's specification.
+        pdsf: The index table.
+        logger: The logger to report through. Defaults to the tool's own.
+        limits (dict): Message limits, passed on to the functions that open a log
+            level.
+    """
 
     if limits is None:
         limits = {}
@@ -310,7 +433,22 @@ def index_reinitialize(spec, pdsf, *, logger=None, limits=None):
 
 
 def index_validate(spec, pdsf, *, logger=None, limits=None):
-    """Report every way one index table and its shelf disagree."""
+    """Report every way one index table and its shelf disagree.
+
+    A missing shelf file is an error and stops the task; so does a shelf that reads back
+    empty, which is what a shelf covering nothing and a shelf that has just gone missing
+    both look like. Only when both dictionaries are in hand is the comparison made.
+
+    Nothing is written whatever the answer; the disagreements are reported and that is
+    all.
+
+    Parameters:
+        spec (ToolSpec): The tool's specification.
+        pdsf: The index table.
+        logger: The logger to report through. Defaults to the tool's own.
+        limits (dict): Message limits, passed on to the two functions that open a log
+            level. The comparison itself takes none.
+    """
 
     if limits is None:
         limits = {}
@@ -336,7 +474,31 @@ def index_validate(spec, pdsf, *, logger=None, limits=None):
 
 
 def index_repair(spec, pdsf, *, logger=None, limits=None):
-    """Rewrite one index shelf if it disagrees with its table, or re-date it if not."""
+    """Rewrite one index shelf if it disagrees with its table, or re-date it if not.
+
+    Where the two dictionaries differ, the shelf and its sidecar are rewritten and the
+    repair is done. Where they agree, the content is right and only the dates can be
+    wrong, so the pair is compared against the table's:
+
+      * The pair's age is the **older** of the pickle's and the sidecar's modification
+        times, so a pair with one stale half is treated as stale.
+      * If the table is newer, both files are touched to now and the run reports how far
+        behind they were. The report is in days at or above a tenth of a day, which is
+        8,640 seconds, and in minutes below that.
+      * If the table is not newer, the repair is canceled and nothing is touched. Equal
+        times take this branch, since the test is strict.
+
+    A missing shelf file is a warning and is handed to index_initialize(). A table whose
+    rows come back empty, or a shelf that reads back empty, stops the task before the
+    comparison.
+
+    Parameters:
+        spec (ToolSpec): The tool's specification.
+        pdsf: The index table.
+        logger: The logger to report through. Defaults to the tool's own.
+        limits (dict): Message limits, passed on to the functions that open a log
+            level.
+    """
 
     if limits is None:
         limits = {}
@@ -404,7 +566,23 @@ def index_repair(spec, pdsf, *, logger=None, limits=None):
 
 
 def index_update(spec, pdsf, *, logger=None, limits=None):
-    """Shelve one index table if it has no shelf, and leave any existing shelf alone."""
+    """Shelve one index table if it has no shelf, and leave any existing shelf alone.
+
+    An existing shelf is reported and nothing else happens: its contents are not read,
+    not compared and not re-dated, which is what the task's help text means by "existing
+    index shelf files are not checked". A table with no shelf is handed to
+    index_initialize().
+
+    This is the one task of the five that reports an existing shelf at info level rather
+    than as a warning or an error, so a run over a directory of already-shelved tables
+    finishes with a zero exit status.
+
+    Parameters:
+        spec (ToolSpec): The tool's specification.
+        pdsf: The index table.
+        logger: The logger to report through. Defaults to the tool's own.
+        limits (dict): Message limits, passed on to index_initialize().
+    """
 
     if limits is None:
         limits = {}
@@ -428,8 +606,15 @@ _INDEX_TASKS = {'initialize': index_initialize,
 def index_tasks(spec):
     """Return one tool's index shelf task table, with its spec bound into each task.
 
-    Args:
-        spec: The tool's ToolSpec.
+    Each entry is a partial over the shared task with the spec already supplied, so what
+    a driver calls takes the index table and the keyword arguments and nothing more.
+    That is what lets both tools share one set of five task functions.
+
+    A fresh dictionary is built on every call, so a tool that alters its own table
+    afterwards does not alter the other's.
+
+    Parameters:
+        spec (ToolSpec): The tool's specification, bound into each task.
 
     Returns:
         dict: The task functions, keyed by task name, each taking one index table.
@@ -449,16 +634,34 @@ def index_targets(spec, paths):
     directly inside it, or failing that to the index tables one level down. A file
     must be an index table inside a metadata directory.
 
-    Args:
-        spec: The tool's ToolSpec.
-        paths: The command-line paths.
+    The directory search is two globs and stops at the first that matches: the tables
+    directly inside the directory, and failing that the tables one level below it, which
+    is how a metadata bundle-set directory expands to the tables of every bundle in it.
+    A directory holding tables at both depths contributes only the shallower ones.
+
+    Everything that decides acceptance is the text of the path and its extension. The
+    metadata test looks for "/metadata/" anywhere in the absolute path, and the
+    extension is the spec's index_ext, which is the one place that field is read. A
+    PdsFile is built first, though, so a path that exists and lies outside any holdings
+    tree fails there rather than at either test.
+
+    Parameters:
+        spec (ToolSpec): The tool's specification. Its index_ext is the extension a
+            table must carry, and its pdsfile_cls builds the objects.
+        paths (list): The command-line paths.
 
     Returns:
-        list: The PdsFile objects, in command-line order.
+        list: The PdsFile objects, in command-line order. A directory contributes its
+        tables in glob order.
 
     Raises:
-        SystemExit: With status 1 for a path that does not exist, is outside
-            metadata/, or is not an index table.
+        SystemExit: from ``sys.exit()``, with status 1 for a path that does not exist,
+            is outside metadata/, is a directory holding no tables, or is a file whose
+            extension is not the spec's.
+        ValueError: raised by ``from_abspath()`` for a path that exists and lies outside
+            any holdings tree. That call precedes both text tests, so such a path
+            raises rather than exiting.
+        OSError: raised by the same ``from_abspath()`` call on the same terms.
     """
 
     ext = spec.index_ext
@@ -512,17 +715,41 @@ def run_index_main(spec, tasks, argv):
     exit status; and their per-target handlers are created in the tool's own log
     directory rather than in the target's.
 
-    Args:
-        spec: The tool's ToolSpec.
-        tasks: The tool's task functions, keyed by task name, as index_tasks()
+    Two further differences are worth naming, neither of which follows from the three
+    above. This driver records no log directories; that is consistent with an index
+    shelf never being versioned, though it is not the cause, since nothing in this
+    module asks for a superseded file to be copied anywhere. And each task is called
+    with the logger as a keyword, which the other two drivers do not do, so the task's
+    lines land inside the level this opens for the target.
+
+    Every command-line path is resolved and expanded before the run's first log level is
+    opened, so a path this rejects exits before any per-target log file is created.
+
+    This function does not return. Every path out of it is an exception or an exit.
+
+    Parameters:
+        spec (ToolSpec): The tool's specification.
+        tasks (dict): The tool's task functions, keyed by task name, as index_tasks()
             builds them. Each is called with one index table.
-        argv: The full command line, sys.argv.
+        argv (list): The full command line, sys.argv.
 
     Raises:
-        SystemExit: On a normal return, with status 1 if the run logged a fatal or
-            an error and 0 otherwise. A task that raises is logged and re-raised
-            instead, so the original exception propagates and sys.exit is not
+        SystemExit: from ``sys.exit()``. Inside setup_run(): status 1 when the command
+            line names no task, 0 for --help and 2 for a command line the parser cannot
+            classify. Then status 1 from index_targets() on a path it rejects, and, on
+            a normal return, status 1 if the run logged a fatal or an error and 0
+            otherwise. A task that raises is logged and re-raised instead, so the
+            original exception propagates and the closing ``sys.exit()`` is not
             reached.
+        ValueError: raised by ``index_targets()``, before any logging is open, for a
+            command-line path that exists and lies outside any holdings tree.
+        OSError: raised by the same ``index_targets()`` call on the same terms.
+
+    The log path method these tools name raises ValueError for a target that is not an
+    index file, and that cannot happen here: the test it applies is "under metadata/ and
+    carrying one of the class's index extensions", which every path index_targets()
+    admits satisfies, since that function's own admission test is the same one applied
+    case-sensitively to a single extension.
     """
 
     (args, logger) = _common.setup_run(spec, argv)

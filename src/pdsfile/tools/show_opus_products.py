@@ -1,4 +1,28 @@
 #!/usr/bin/env python3
+"""Show the OPUS products of the paths named on the command line.
+
+For each path it is given, this instantiates a Pds3File or a Pds4File and prints what
+``opus_products()`` returns for it: the files OPUS would offer alongside that one,
+grouped by OPUS type. There are three output forms -- a table, a pprint dump and the raw
+dictionary -- and a fourth option, --narrow-table, that changes the shape of the table
+rather than selecting a form of its own. The table is the default. The pprint form exists
+to be compared against the OPUS-products golden files in this package's tests.
+
+Both holdings roots are read straight from the environment, PDS3_HOLDINGS_DIR and
+PDS4_HOLDINGS_DIR, and both are required whichever kind of path is asked about.
+
+**It is a process, not a library call, and its tests treat it as one.** Running
+``main()`` changes state that belongs to the whole interpreter and does not change back:
+it turns shelves-only mode on for ``Pds3File`` and off for ``Pds4File``, and it preloads
+both trees into the caches those classes hold as class attributes. Those caches are keyed
+by logical path, so a session that has preloaded one tree resolves a logical path to that
+tree whatever root a later caller has in mind. Calling this in process therefore changes
+how every later call in the same interpreter resolves a path, which is why the tests
+under ``tests/holdings_maintenance/`` drive every run that reads a holdings tree with
+``python -m`` in a subprocess, against a disposable copy. They do import ``main()`` and
+call it, but only for command lines argparse rejects before either root is read.
+"""
+
 import argparse
 import os
 import pprint
@@ -14,8 +38,11 @@ def build_arg_parser():
     """Return the argument parser for this tool.
 
     Returns:
-        argparse.ArgumentParser: The parser, holding --paths, --opus-types and the
-        five output-selection options.
+        argparse.ArgumentParser: The parser. It holds --paths, which is required and
+        takes one or more paths; --opus-types, which narrows what is printed; the three
+        output forms --table, --pprint and --raw, plus --narrow-table, which reshapes
+        the table form; and --debug. The four are independent flags rather than a
+        mutually exclusive group.
     """
 
     # Set up parser
@@ -51,17 +78,56 @@ def build_arg_parser():
 
 
 def main(argv=None):
-    """Print the opus products of every path named on the command line.
+    """Print the OPUS products of every path named on the command line.
 
-    Args:
-        argv: The full command line, defaulting to sys.argv.
+    Each path is tried as a Pds3File first and as a Pds4File second, and each of those
+    as an absolute path first and as a logical path second. A path that resolves under
+    none of the four is reported and skipped, and so is one that resolves to a file that
+    does not exist; neither fails the run.
+
+    Every path is resolved before any output is printed, so the warnings about paths
+    come first and the per-file output follows in the order the paths were given.
+
+    An OPUS type named with --opus-types that this file has none of is reported and
+    dropped. Where every named type is dropped, the file's output is skipped entirely
+    rather than printed unfiltered.
+
+    There are three output forms and the first true flag in the order table, pprint, raw
+    picks among them; --narrow-table only changes the shape of the table form. Giving
+    none of --table, --pprint and --raw turns the table form on, and giving
+    --narrow-table alone does the same, because --narrow-table is not one of the three
+    that test looks at.
+
+    **The table form is keyed by the OPUS type rather than by the whole product
+    category, and the collision that invites is real.** Two categories differing only in
+    their rank can carry one type -- VG_2803's Uranus ring occultations give two "200 m
+    inversion, old pole" categories the type "vgrss_occ_inv0_2" -- and the table then
+    prints one row, the later category's. The pprint and raw forms key on the whole
+    category tuple and show both.
+
+    Both holdings roots are read from the environment and both trees are preloaded,
+    whatever kinds of path were asked for.
+
+    Parameters:
+        argv (list): The full command line, defaulting to sys.argv.
 
     Returns:
-        int: 0. A path that cannot be instantiated, or that does not exist, is
-        reported and skipped rather than failing the run.
+        int: 0 on every path that reaches the end.
 
     Raises:
-        KeyError: If either holdings-root environment variable is unset.
+        SystemExit: raised by ``parse_args()`` for a command line it cannot classify,
+            with status 2, and for --help with status 0. This is the first thing that
+            can go wrong, before either holdings root is read.
+        KeyError: from the item read ``__getitem__()`` on the environment, if either
+            PDS3_HOLDINGS_DIR or PDS4_HOLDINGS_DIR is unset.
+        IndexError: from the item read ``__getitem__()`` on a product category. Every
+            key is subscripted at index 2 for its OPUS type, without being checked, and
+            the contract ``opus_products()`` states admits one key that is not a
+            five-element tuple: the empty string, which carries the volume set's
+            documents. A few real paths do return it, and ``''[2]`` raises, so the run
+            ends there and nothing is returned. The ``--raw`` form subscripts further,
+            at indices 3 and 4, so a key of three or four elements would reach only
+            that branch.
     """
 
     if argv is None:

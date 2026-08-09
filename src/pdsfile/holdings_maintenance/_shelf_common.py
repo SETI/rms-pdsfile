@@ -1,13 +1,35 @@
 ##########################################################################################
 # pdsfile/holdings_maintenance/_shelf_common.py
-#
-# What the checksum and shelf file tools share.
-#
-# The generic driver the tools of every family run on is in _common.py; this is
-# the part only the checksums, infoshelf, indexshelf and linkshelf tools use.
-# What one of those families shares with nobody else lives beside it, in
-# _indexshelf_common.py and _linkshelf_common.py.
 ##########################################################################################
+
+"""What the checksum, info shelf and link shelf tools share.
+
+The generic driver the tools of every family run on is in ``_common.py``. What one of
+those families shares with nobody else lives beside this, in ``_indexshelf_common.py``
+and ``_linkshelf_common.py``.
+
+Six of the ten tools reach something here, and not the same something:
+
+  * The two checksum tools and the two info shelf tools run on
+    ``run_selection_main()``, the driver at the end of this module, and take their
+    ``--help`` text, their ``--archives`` option and their path resolution from here.
+  * Those four and the two link shelf tools version a superseded file through
+    ``move_old()``, each naming the ``VersionedFile`` record that describes what it is
+    replacing.
+  * The two info shelf tools compare modification times through ``modtimes_agree()``,
+    and the two checksum tools compute digests through ``hashfile()``.
+  * The two link shelf tools also take ``LINKSHELF_LOGNAME`` and, as their spec's
+    log path method, ``UNIT_LOG_PATH_METHOD``.
+
+The archive tools and the index shelf tools use nothing here.
+
+**What makes these tools need their own driver is the shape of their target.** A
+command-line path can name one file inside a unit -- one archive file of a unit set, or
+one top-level file of a unit -- so a path expands to (unit, selection) pairs rather than
+to units, and each task function takes both. That is also why ``reinitialize`` on a
+selection is quietly demoted to ``update``: reinitializing a whole checksum file to
+cover one named file would erase every other entry in it.
+"""
 
 import argparse
 import datetime
@@ -63,7 +85,7 @@ def modtimes_agree(modtime1, modtime2, tolerance=MODTIME_TOLERANCE):
     comparing the two strings, so two sentinels agree and a sentinel never agrees
     with a real time.
 
-    Args:
+    Parameters:
         modtime1: One modification time.
         modtime2: The other.
         tolerance: How many seconds apart they must stay within, exclusive.
@@ -86,6 +108,10 @@ def modtimes_agree(modtime1, modtime2, tolerance=MODTIME_TOLERANCE):
 @dataclass(kw_only=True)
 class VersionedFile:
     """What move_old() needs to know about one kind of file it versions.
+
+    Three instances exist and they are the whole set: CHECKSUM_FILE, INFO_SHELF and
+    LINK_SHELF, each named by the tools that replace that kind of file. Nothing
+    constructs one anywhere else.
 
     Attributes:
         noun: How the file is named in the two log lines, e.g. 'Checksum file'.
@@ -113,13 +139,31 @@ def next_version_dest(log_dir, prefix, ext):
 
     ### is one past the highest version already there, and 001 when there is none.
 
-    Args:
-        log_dir: The directory the versioned copy goes in.
-        prefix: The superseded file's basename without its extension.
-        ext: That extension, including the dot.
+    The versions already there are found by globbing, and the three ``?`` of the pattern
+    match any three characters rather than three digits, so a file whose name follows
+    the shape but not the numbering is read as a version and fails the conversion. The
+    highest is read as three characters at a fixed offset from the end, which is why the
+    extension has to be the one the file actually carries.
+
+    Nothing prevents the result from existing: the number is one past the highest of
+    what the glob matched, and above 999 the name grows a fourth digit that the same
+    glob no longer matches, so a directory holding 999 versions is handed the same
+    ``_v1000`` path every time.
+
+    Parameters:
+        log_dir (str): The directory the versioned copy goes in.
+        prefix (str): The superseded file's basename without its extension.
+        ext (str): That extension, including the dot. An empty string makes the version
+            slice empty, which fails the conversion below.
 
     Returns:
         str: The path to copy to.
+
+    Raises:
+        ValueError: from the ``int()`` conversion, on any path the glob matched whose
+            three characters before the extension are not a number. An extension of ''
+            makes that slice empty, so the first match fails; where the glob matches
+            nothing, no conversion is attempted and '' is as good as any extension.
     """
 
     dest_template = log_dir + '/' + prefix + '_v???' + ext
@@ -138,11 +182,31 @@ def move_old(path, kind, *, logger=None):
     The file is copied rather than moved, despite what the log lines say: the
     original stays where it is and the task then overwrites it.
 
-    Args:
-        path: The file about to be replaced. Nothing happens if it does not exist,
-            or if no log directory has been recorded.
-        kind: The VersionedFile describing it.
+    The destinations are every directory in ``_common.LOGDIRS``, which the driver
+    refills for each target it is about to work on. A process that never reached a
+    driver, or that is between targets, leaves that list empty and this then versions
+    nothing and logs nothing, however real the file is.
+
+    The two log lines are not symmetric: "moved from" is written once for the whole
+    call and "moved to" once per destination, so one line names the original and one
+    names each copy. Both are forced past any message limit, because a change to the
+    filesystem should not be the thing a cap drops.
+
+    Parameters:
+        path (str): The file about to be replaced. Nothing happens if it does not
+            exist, or if no log directory has been recorded.
+        kind (VersionedFile): The record describing it: the noun for the log lines, the
+            fallback logger name, and the companion extensions.
         logger: The logger to report through. Defaults to the kind's own.
+
+    Raises:
+        FileNotFoundError: raised by ``copy()`` on a companion file that is not beside
+            the original, and on a recorded log directory that does not exist. The
+            versioned copy of the original is already in place by the time a companion
+            fails, so such a call leaves the destination directory partly filled.
+        ValueError: raised by ``next_version_dest()`` for a log directory already
+            holding a file whose three characters before the extension are not a
+            number.
     """
 
     if not os.path.exists(path):
@@ -176,6 +240,24 @@ def move_old(path, kind, *, logger=None):
 #       generating-an-md5-checksum-of-a-file
 
 def hashfile(fname, blocksize=65536):
+    """Return the MD5 digest of one file, as the checksum files record it.
+
+    The file is read in blocks rather than at once, so the memory a call needs does not
+    grow with the file. MD5 is what the PDS checksum manifests use; the digest is a
+    check against corruption in transfer or storage and nothing here treats it as
+    proof against tampering.
+
+    Parameters:
+        fname (str): The path of the file to read.
+        blocksize (int): How many bytes to read at a time.
+
+    Returns:
+        str: The digest, as 32 lowercase hexadecimal characters.
+
+    Raises:
+        OSError: raised by ``open()`` if the file cannot be read.
+    """
+
     hasher = hashlib.md5()
 
     with open(fname, 'rb') as f:
@@ -271,17 +353,41 @@ def resolve_holdings_paths(spec, paths, *, archives):
     resolve to anything gets one more chance, as a unit name standing in for that
     unit's .tar.gz archive.
 
-    Args:
-        spec: The tool's ToolSpec.
-        paths: The command-line paths.
-        archives: True if --archives was given.
+    The redirection under --archives is textual: the part of the path after the holdings
+    sentinel gets "archives-" put in front of it, so "volumes/COISS_1xxx" becomes
+    "archives-volumes/COISS_1xxx" and a path already under an archives category is left
+    alone. Nothing checks that the redirected path exists until it is resolved.
+
+    The second chance is for a path that names no file. Its last component is treated as
+    a unit name, and it is taken only when the parent directory is inside an archives
+    category and the component carries no dot. The basename is then the unit name plus
+    ".tar.gz" where the parent's bundletype is the spec's own unit, and the unit name
+    plus "_<bundletype>.tar.gz" anywhere else, which is what an archived metadata or
+    previews directory holds. The result is globbed, so a name that expands to several
+    archives contributes all of them, in glob order rather than in any order imposed
+    here.
+
+    Every path is checked and resolved before any is returned, so one bad path in a
+    command line stops the whole run.
+
+    Parameters:
+        spec (ToolSpec): The tool's specification.
+        paths (list): The command-line paths.
+        archives (bool): True if --archives was given.
 
     Returns:
-        list[str]: The absolute paths, in command-line order.
+        list[str]: The absolute paths, in command-line order. A path that took the
+        second chance contributes one entry per archive the glob matched.
 
     Raises:
-        SystemExit: With status 1 if a path is outside the holdings tree or names
-            checksum files.
+        SystemExit: from ``sys.exit()``, with status 1 if a path is outside the holdings
+            tree or names checksum files.
+        ValueError: from ``from_abspath()``. The first call's is caught and re-raised
+            for a path that is not an unresolved unit name inside an archives
+            directory, or that is one but matches no archive; the second call, on the
+            parent directory, can raise one of its own.
+        OSError: from the first ``from_abspath()`` call, caught and re-raised on the
+            same terms.
     """
 
     sentinel = spec.holdings_sentinel
@@ -337,15 +443,30 @@ def expand_selection_targets(spec, abspaths):
     files are handled as one group. A file expands to its own unit paired with its
     basename, which is the selection the task functions narrow their work to.
 
-    Args:
-        spec: The tool's ToolSpec.
-        abspaths: The absolute paths, as resolve_holdings_paths() returned them.
+    An archive unit set is the one directory that stays whole, and the reason holds for
+    both kinds of tool on this driver: an archive's derived file covers the whole unit
+    set rather than one unit, whether it is the checksum file the task help describes or
+    the info shelf that PdsFile builds from the unit set downward. Any other unit set
+    contributes its unit directories and nothing else, so a readme file sitting at
+    unit-set level is dropped rather than rejected.
+
+    A file is accepted on either of two grounds: it stands for a whole bundle, which is
+    a unit's own archive or checksum file, or its parent is a unit directory, which
+    makes it a top-level file of that unit. Either way the pair names the parent
+    directory and the file's basename, so the task works on the unit and narrows to the
+    one file. A file deeper inside a unit satisfies neither and is rejected.
+
+    Parameters:
+        spec (ToolSpec): The tool's specification. Its pdsfile_cls builds each object
+            and its two invalid-path messages are what a rejection prints.
+        abspaths (list): The absolute paths, as resolve_holdings_paths() returned them.
 
     Returns:
         list: (PdsFile, selection) pairs, where selection is None for a whole unit.
 
     Raises:
-        SystemExit: With status 1 for a directory or a file this tool cannot work on.
+        SystemExit: from ``sys.exit()``, with status 1 for a directory or a file this
+            tool cannot work on.
     """
 
     info = []
@@ -390,11 +511,18 @@ def expand_selection_targets(spec, abspaths):
 class RunResult:
     """What run_selection_main() finished with, for a tool that has more to do.
 
+    The three fields exist because the four tools on that driver disagree about what to
+    do next, and each reads a different one: the info shelf tools read status alone, and
+    the checksum tools read proceed and args together to decide whether to chain a
+    pdsinfoshelf run.
+
     Attributes:
         args: The parsed command line.
         status: 1 if the run logged a fatal or an error, 0 otherwise.
         proceed: What the last task returned, or None if no task ran; forced to
-            False when the run logged a fatal or an error.
+            False when the run logged a fatal or an error. It is one value for the
+            whole run rather than one per target, so on a command line naming several
+            targets it reports the last of them.
     """
 
     args: argparse.Namespace
@@ -403,21 +531,42 @@ class RunResult:
 
 
 def run_selection_main(spec, tasks, argv):
-    """Run one checksum or shelf tool: parse the command line, log, perform the task.
+    """Run one checksum or info shelf tool: parse the command line, log, do the task.
 
-    Args:
-        spec: The tool's ToolSpec.
-        tasks: The tool's task functions, keyed by task name. Each is called with
-            one target and its selection.
-        argv: The full command line, sys.argv.
+    This is the driver the two checksum tools and the two info shelf tools reach. It
+    resolves and expands every command-line path itself rather than through the spec, so
+    a tool on this driver leaves expand_target unset, and it picks the log path method
+    per target rather than reading spec.log_path_method: a target that names a unit logs
+    under that unit, one that names only a unit set logs under the set.
+
+    Each task is called with the unit and the selection, and its return value becomes
+    the run's ``proceed``. On a selection, a ``reinitialize`` task is run as ``update``
+    instead, so narrowing to one file cannot erase the entries for every other.
+
+    Unlike the other two drivers this returns rather than exiting, because what the four
+    tools do with the outcome differs: the info shelf tools exit with the status, and
+    the checksum tools read ``proceed`` to decide whether to chain a second run and
+    otherwise exit 0 whatever the status was.
+
+    Parameters:
+        spec (ToolSpec): The tool's specification.
+        tasks (dict): The tool's task functions, keyed by task name. Each is called
+            with one target and its selection.
+        argv (list): The full command line, sys.argv.
 
     Returns:
-        RunResult: What the run finished with. The caller decides the exit status,
-        because these tools do not all report one the same way.
+        RunResult: What the run finished with: the parsed command line, the status, and
+        what the last task returned.
 
     Raises:
-        SystemExit: With status 1 if no task was given, or from the command-line
-            paths. A task that raises is logged and re-raised.
+        SystemExit: from ``sys.exit()`` inside ``setup_run()`` with status 1 if no task
+            was given, 0 for --help and 2 for a command line the parser cannot
+            classify, and from the two path helpers on a path they reject. A task that
+            raises is logged and re-raised, so the result is not built at all.
+        ValueError: raised by ``resolve_holdings_paths()``, before any logging is open,
+            for a path that resolves to nothing and is not an unresolved unit name
+            inside an archives directory.
+        OSError: raised by the same ``resolve_holdings_paths()`` call on the same terms.
     """
 
     (args, logger) = _common.setup_run(spec, argv)
