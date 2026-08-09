@@ -6297,9 +6297,10 @@ rediscovery.
      and 80 from unrelated work, two of the nine -- `[_index_rows]` and `[_preload]` --
      raised `subprocess.TimeoutExpired ... timed out after 60 seconds` in the **base**
      tree at `8f8d825`, giving `2 failed, 1099 passed, 34 skipped` where the recorded
-     baseline is `1101 passed, 34 skipped`. The same nine cases pass in 1.64 s when
-     `tests/api/` is run on its own, pass on all four self-hosted CI legs of this PR's
-     run, and pass in both trees when the machine is quiet. The timeout is deliberate --
+     baseline is `1101 passed, 34 skipped`. That run took 38m 43s. The same nine cases
+     pass in 1.64 s when `tests/api/` is run on its own, pass on all four self-hosted CI
+     legs of this PR's run, and passed when the whole base pass was re-run on a quiet
+     machine: 4m 49s, `1101 passed, 34 skipped`. The timeout is deliberate --
      its comment says it keeps a module that blocks at import time a failure rather than
      a hang -- so the question is only whether 60 seconds is the right number for a
      machine that is also doing something else. **Owner: a later test PR, if it recurs.**
@@ -6310,9 +6311,11 @@ rediscovery.
      added by every later PR is inside its scope while `CITATIONS` still lists only
      PR-29's files. Any later entry that writes a `path/file.py:NN` citation for a file
      PR-29 did not cite therefore reports `cites <file>, which no entry covers` and the
-     count moves off the recorded 6. PR-31 hit it once, with
-     `src/pdsfile/tools/show_opus_products.py:32`, and rewrote the sentence to name the
-     file and the import without the line number; the checker then reproduced the base
-     output byte for byte. The alternative is to extend `CITATIONS`, which means a PR-29
+     count moves off the recorded 6. PR-31 hit it once, in entry 330, and rewrote the
+     sentence to name the file and the import without the line number; the checker then
+     reproduced the base output byte for byte. This entry cannot quote the citation that
+     tripped it, for the same reason -- the pattern is a backticked path ending in `.py`
+     followed by a colon and a line number, so writing the example re-triggers the
+     finding. The alternative is to extend `CITATIONS`, which means a PR-29
      tool acquiring later PRs' citations. **Owner: whoever next needs a line citation in
      a deferred entry.**

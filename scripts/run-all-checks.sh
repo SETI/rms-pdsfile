@@ -634,25 +634,25 @@ run_sphinx_build() {
         return 1
     fi
 
+    # Each build's output is captured, printed, and then read: it is accepted only if it
+    # exited 0, wrote the HTML it was asked for, and printed the line docs/conf.py emits
+    # when it has compared the source tree against the modules the build documented. Exit
+    # status alone would accept a `make` that resolved to nothing at all. Each verdict is
+    # printed directly under the build it judges, so the log reads in order.
     print_info "Building documentation (warnings as errors)..."
     (cd docs && make html SPHINXOPTS="-W") > "$warnings_log" 2>&1 || warnings_status=$?
     cat "$warnings_log"
+    _sphinx_build_verdict "warnings-as-errors" "$warnings_status" "$warnings_log" \
+        docs/_build/html/index.html "$status_file" || warnings_status=1
 
     print_info "Building documentation (nitpicky, warnings as errors)..."
     (cd docs && make html BUILDDIR=_build/nitpicky SPHINXOPTS="-n -W") \
         > "$nitpicky_log" 2>&1 || nitpicky_status=$?
     cat "$nitpicky_log"
-
-    deactivate 2>/dev/null || true
-
-    # Read the builds rather than restating them. A build is accepted only if it exited
-    # 0, wrote the HTML it was asked for, and printed the line docs/conf.py emits when it
-    # has compared the source tree against the modules the build documented. Exit status
-    # alone would accept a `make` that resolved to nothing at all.
-    _sphinx_build_verdict "warnings-as-errors" "$warnings_status" "$warnings_log" \
-        docs/_build/html/index.html "$status_file" || warnings_status=1
     _sphinx_build_verdict "nitpicky" "$nitpicky_status" "$nitpicky_log" \
         docs/_build/nitpicky/html/index.html "$status_file" || nitpicky_status=1
+
+    deactivate 2>/dev/null || true
 
     if [ "$warnings_status" -eq 0 ] && [ "$nitpicky_status" -eq 0 ]; then
         local warn_problems nitpick_problems coverage

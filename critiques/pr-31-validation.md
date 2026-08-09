@@ -436,25 +436,42 @@ from each tree in turn, one at a time.
 
 | mode | scope | base | head | ids only in base | ids only in head | outcome changed |
 |---|---|---|---|---|---|---|
-| `ns` | all seven directories | 2 failed, 1099 passed, 34 skipped (1135 ids) | see below | none | none | the two timeouts |
-| `s` | `tests/pds3file/ tests/rules/pds3/` | 555 passed, 3 skipped (558 ids) | 555 passed, 3 skipped (558 ids) | none | none | none |
+| `ns` | all seven directories | 1101 passed, 34 skipped (1135 ids) | 1101 passed, 34 skipped (1135 ids) | none | none | **none** |
+| `s` | `tests/pds3file/ tests/rules/pds3/` | 555 passed, 3 skipped (558 ids) | 555 passed, 3 skipped (558 ids) | none | none | **none** |
 
-**The two `ns` failures are in the base tree and are machine load, not defects.** Both are
-`subprocess.TimeoutExpired ... timed out after 60 seconds` from
+The per-test id sets are diffed, not the counts: the junit files are parsed and compared
+id by id with the outcome attached, so a test that changed from passed to skipped would
+show even though the totals would not.
+
+**The first `ns` run of the base tree reported two failures, and they were machine load,
+not defects.** Both were `subprocess.TimeoutExpired ... timed out after 60 seconds` from
 `tests/api/test_mixin_import_isolation.py`, whose nine parametrized cases each spawn an
-interpreter to import one mixin module. They ran while this machine carried a load average
-between 40 and 80 from unrelated work. The same nine cases pass in **1.64 s** when
-`tests/api/` is run on its own in the base tree (26 passed), and pass on all four
-self-hosted CI legs of this PR's run. Deferred entry 342 records the load sensitivity.
+interpreter to import one mixin module; that run took 38m 43s while this machine carried a
+load average between 40 and 80 from unrelated work. The same nine cases pass in **1.64 s**
+when `tests/api/` is run on its own in the base tree (26 passed), pass on all four
+self-hosted CI legs of this PR's run, and passed when the whole base `ns` pass was re-run
+on a quiet machine -- 4m 49s, **1101 passed, 34 skipped**, which is the row above.
+Deferred entry 342 records the load sensitivity.
 
 **The self-hosted CI legs are the independent full-data measurement at head**, and they
 reproduce the recorded baseline exactly: `1101 passed, 34 skipped` for the `ns` pass and
 `555 passed, 3 skipped` for the `s` pass, on each of Python 3.10, 3.11, 3.12 and 3.13.
 
-### 9.3 The code checks with no holdings
+### 9.3 The code checks with no holdings, and the whole enabled set
 
     env -u PDS3_HOLDINGS_DIR -u PDS4_HOLDINGS_DIR -u PDSFILE_TEST_HOLDINGS \
         VENV=/seti/all_repos/rms-pdsfile/venv bash scripts/run-all-checks.sh -c -s
+
+Exit 0: ruff, the indentation pass, pytest (**318 passed, 817 skipped**), pyroma, the
+API-freeze check and the clean-install gate. The same figure the hosted lint job reports.
+
+    env -u PDS3_HOLDINGS_DIR -u PDS4_HOLDINGS_DIR -u PDSFILE_TEST_HOLDINGS \
+        VENV=/seti/all_repos/rms-pdsfile/venv bash scripts/run-all-checks.sh -s
+
+Exit 0, and this is the run that matters for the new gate, because `-c` does not select
+it: the same six code gates plus **both Sphinx builds**, each reporting `problem lines: 0`
+and `API reference: 78 of 78 modules ... documented`. Run in the default parallel mode as
+well as sequentially, since the two modes reach the gate by different paths.
 
 ### 9.4 The API freeze
 
