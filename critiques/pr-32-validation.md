@@ -11,8 +11,9 @@ at `532f65d`, so base numbers were measured rather than recalled.
 **Nothing under `src/` changed**: `git diff 532f65d --name-only -- src/` is empty. The
 deliverable is 21 pages of prose about behavior the programs already have, so the defect
 this PR could most easily ship is a fluent, plausible, invented sentence — one that no
-build, no test and no linter can see. Sections 3, 5 and 6 are the evidence about that,
-and section 6 is the reason this PR took five review rounds rather than four.
+build, no test and no linter can see. Sections 2, 3 and 5 are the evidence about that,
+and section 5.3 is the reason this PR took five review rounds rather than the four
+section 6.6 allows.
 
 ## 1. What changed
 
@@ -23,7 +24,7 @@ and section 6 is the reason this PR took five review rounds rather than four.
 | files changed under `src/` | **0** |
 | new checker | `critiques/pr-32/check_cli_coverage.py` |
 | deferred observations added | 347–356 |
-| commits | 8 |
+| commits | 9 |
 
 The 21 pages are one per program (15), the landing page, concepts, installation, the
 shell-script chapter, the file-format appendix — and one the plan did not call for,
@@ -332,7 +333,74 @@ Ten deferred observations, 347–356. The three the guide most visibly had to wo
 
 ## 7. Gates at the final head
 
-*(filled in below)*
+Every gate was re-run at this head. The previous executor's "all gates green" was reported
+from `5cefb3d`, three commits back and 34 corrections ago, and was not carried forward.
+
+### 7.1 The test suites, id sets diffed base to head
+
+Both suites were run at head and their JUnit XML compared, id by id and outcome by
+outcome, against the base tree at `532f65d`:
+
+| | base `532f65d` | head | drift |
+|---|---:|---:|---:|
+| `ns` ids | 1,135 | **1,135** | 0 |
+| `ns` passed / skipped / failed | 1,101 / 34 / 0 | **1,101 / 34 / 0** | 0 |
+| `s` ids (`tests/pds3file/ tests/rules/pds3/ --mode s`) | 558 | **558** | 0 |
+| `s` passed / skipped / failed | 555 / 3 / 0 | **555 / 3 / 0** | 0 |
+| ids only in base | — | — | **0** |
+| ids only in head | — | — | **0** |
+| outcome changes | — | — | **0** |
+
+**One base run was discarded under the deferred-342 precedent and it is recorded here
+rather than dropped.** The first `ns` run at base reported 2 failed, 1,099 passed, both
+failures in `tests/api/test_mixin_import_isolation.py`, and took 2,323 s. It was re-run on
+a quiet machine, took 290 s and reported 1,101 passed / 34 skipped with an **identical id
+set**. The head run took 191 s and shows neither failure. So the two failures were load,
+not the tree; had they been recorded as a baseline, this PR would have looked like it
+fixed two tests it never touched.
+
+### 7.2 Everything else
+
+| gate | exit | measured |
+|---|---:|---|
+| `scripts/run-all-checks.sh`, full run, holdings set | **0** | every check passed: ruff, ruff indentation, pytest 1,101 passed / 34 skipped, pyroma, API freeze, clean-install, both Sphinx builds |
+| `scripts/run-all-checks.sh`, **no holdings variables** | **0** | /seti/newnav/capped-run.sh pytest 318 passed / 817 skipped — the holdings-free subset — and every other check passed |
+| `python -m pytest tests/api` | 0 | **26 passed** |
+| `ruff check .` | 0 | All checks passed |
+| `ruff check --preview --select E111,E112,E113 .` | 0 | All checks passed |
+| `critiques/pr-32/check_cli_coverage.py` | 0 | 0 findings over 15 programs, 108 options, 175 option strings, 1 default |
+| `critiques/pr-29/check_citations.py` | 1 | **6 stale at base and 6 at head** — unmoved |
+| `critiques/pr-28/check_record_numbers.py` | 1 | **15 stale at base and 15 at head** — unmoved |
+| `git diff 532f65d --name-only -- src/` | — | **empty** |
+
+Note that `run-all-checks.sh -c -s` does **not** run the Sphinx gate (deferred 330), so a
+docs PR cannot be reported clean on its strength. The runs above are full runs.
+
+The citation checker is the reason deferred 354 names the refusal by its code rather than
+by a line number: it scans the deferred file to its end, so a new entry citing
+`file.py:NNN` is a citation PR-29's table cannot cover and the count would have gone 6 → 7.
+It was caught by running the gate at both trees rather than only at head.
+
+### 7.3 The ratchet and the frozen files
+
+| | base `532f65d` | head |
+|---|---:|---:|
+| per-file-ignores entries | 66 | **66** |
+| code slots | 180 | **180** |
+| findings, `--config 'lint.per-file-ignores = {}'` | 2,249 | **2,249** |
+| `[project.scripts]` | 11 | **11** |
+
+`pyproject.toml` is byte-identical to `532f65d`, so the ratchet could not have moved; the
+four numbers above were measured anyway rather than inferred from that. The new checker,
+`critiques/pr-32/check_cli_coverage.py`, satisfies the configured gate with no new
+per-file-ignores entry.
+
+The four frozen files are md5-identical to `532f65d`:
+`tests/api/api_manifest.json`, `tests/api/manifest_allowlist.json`,
+`scripts/dump_public_api.py`, `tests/api/test_api_freeze.py`.
+
+`git status --porcelain -uall` is empty after both full runs, so `docs/_build/` stayed
+out of the index.
 
 ## 8. Standing rules
 
