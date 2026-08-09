@@ -53,10 +53,20 @@ Use the script’s `-m` option to run only Markdown lint.
 ### Documentation (Sphinx)
 
 ```bash
-cd docs && make clean && make html SPHINXOPTS="-W"
+cd docs
+make clean
+make html SPHINXOPTS="-W"
+make html BUILDDIR=_build/nitpicky SPHINXOPTS="-n -W"
 ```
 
-Warnings are treated as errors (`-W`). The script’s `-d` option runs docs build plus Markdown lint.
+Two builds, and neither exit status is the whole answer. `-W` makes any warning fatal;
+`-n` reports every cross-reference that resolves to nothing, and on its own it reports
+them and still exits 0, so it is never run without `-W`. The second build needs its own
+`BUILDDIR`: two builds that share one share its doctree cache, and the second then
+re-reads nothing and reports nothing. A build counts as passing only if it exits 0, writes
+its HTML, **and** prints the `API reference: N of N modules ... documented` line that
+`docs/conf.py` emits -- a `make` that resolves to nothing satisfies the exit status alone.
+The script’s `-d` option runs the docs build plus Markdown lint.
 
 ## Using the Script
 
@@ -69,7 +79,9 @@ From project root:
 Options:
 
 - **Default**: Run code checks and docs (Sphinx + PyMarkdown) in parallel.
-- `-c, --code`: Only ruff, mypy, pytest.
+- `-c, --code`: Only the code checks (ruff, ruff format, mypy, pytest, pyroma, the
+  API-freeze check, the clean-install gate, bandit, vulture), each still subject to its
+  `ENABLE_*` flag. It does not run the docs build.
 - `-d, --docs`: Only Sphinx build and PyMarkdown scan.
 - `-m, --markdown`: Only PyMarkdown scan.
 - `-s, --sequential`: Run code and docs sequentially (easier to read output).
@@ -87,7 +99,7 @@ Check Progress:
 - [ ] Mypy (src, tests, examples)
 - [ ] Pytest (tests)
 - [ ] PyMarkdown scan (docs/, .cursor/, README, CONTRIBUTING)
-- [ ] Sphinx build (docs/) with SPHINXOPTS="-W"
+- [ ] Sphinx build (docs/) with SPHINXOPTS="-W", then again with SPHINXOPTS="-n -W"
 - [ ] All errors fixed
 - [ ] Re-verify all checks pass
 ```
@@ -162,4 +174,6 @@ All checks pass when:
 - `mypy` → Success: no issues found
 - `pytest` → All tests pass; coverage meets target if configured
 - `pymarkdown scan` → No violations
-- `make html SPHINXOPTS="-W"` (in docs/) → Build completes with exit 0
+- `make html SPHINXOPTS="-W"` and `make html BUILDDIR=_build/nitpicky SPHINXOPTS="-n -W"`
+  (in docs/, after `make clean`) → both exit 0, both write their HTML, and both print
+  `API reference: N of N modules ... documented`

@@ -4105,7 +4105,24 @@ of them has a module docstring at all.
      point of section 5's rule, so this is a deliberate trade of cross-references for a
      build that passes. When PR-31 publishes the full API reference the roles become
      resolvable and every one of these literals should be swept into a role.
-     **Owner: PR-31.**
+
+     **AMENDED by PR-31, which built the reference and measured the sweep instead of
+     doing it.** The premise holds: the roles resolve now. The scope does not fit in the
+     PR that creates the tree. Measured over all 78 modules with an AST walk of every
+     module, class and function docstring: **3,651 inline-literal occurrences, 1,260
+     distinct**, of which **2,384 occurrences (652 distinct) name something the package
+     defines** by a classifier that accepts a module, class, function, method or
+     assigned module-level name and strips a trailing `()`. The remaining 1,267 are what
+     section 5 says must stay literals -- `.DS_Store`, `.py`, `--help`, `volumes/`,
+     `sys.exit()`, `open()`. `_properties.py` alone holds 380 of the 3,651, `pdsfile.py`
+     299, `pdsviewable.py` 141 and `re_validate.py` 138. Every one of the 2,384 is a
+     judgment -- is this a code object we own, does the role resolve, is `:meth:` or
+     `:attr:` right -- and every one edits docstring text in a file that has just been
+     through a two-reads review. Two of them are already known not to resolve: entry 328
+     records the five `LinkInfo` attributes that `napoleon_use_ivar` leaves without a
+     target, and entry 333 records the 43 docstrings that are not published at all, whose
+     roles nothing would check.
+     **Owner: PR-31a, to be scoped from the tree PR-31 created.**
 
 169. **A trailing underscore inside a docstring is a reStructuredText reference, and
      this package's attribute names are full of them.** At base, `sphinx-build -n` over
@@ -4116,6 +4133,15 @@ of them has a module docstring at all.
      `disk_`) all carry the same hazard, as does `LOG_ROOT_`. Wrapping the name in double
      backticks removes it. PR-30 writes several hundred more docstrings over files full
      of the same names. **Owner: PR-30 and PR-31, as advance warning.**
+
+     **RESOLVED by PR-31.** `sphinx-build -n -W` over all 78 modules under the full
+     extension set reports **zero** warnings, so no `Unknown target name` fires anywhere.
+     The hazard was handled rather than having gone quiet: 64 occurrences of a
+     trailing-underscore name now sit inside double backticks (`root_` 16 times,
+     `checksums_` 8, `bundletype_` 4), and of the 42 bare ones left in docstring text, 29
+     are inside `::` literal blocks, where RST parses no inline markup, and the other 13
+     are each followed by `*`, `[` or `<` -- `log_path_for_*`, `COCIRS_[01]`,
+     `uvis_euv_<year>` -- none of which can close a reference.
 
 ### Added by the PR-29 adversarial review (round 1, `pdscache.py`)
 
@@ -5508,6 +5534,17 @@ rediscovery.
      `Attributes:` sections in `_common.py` and `_shelf_common.py` should not have to
      change.**
 
+     **RESOLVED by PR-31: `napoleon_use_ivar = True`.** The choice is not a coin flip.
+     The other measured fix is dropping `:undoc-members:`, and `doc_dev_guide.mdc`
+     section 6 requires it -- "On each page use `automodule` directives with `:members:`,
+     `:undoc-members:`, and `:show-inheritance:` so the full public surface (including
+     as-yet-undocumented members) is visible." One fix satisfies the rule and the other
+     breaks it. Reproduced over all 78 modules before it was applied: 27 warnings under
+     `-W` with the setting off, 0 with it on, and flipping it off again in the finished
+     tree brings back exactly those 27 (21 `ToolSpec`, 3 `RunResult`, 3 `VersionedFile`).
+     The `Attributes:` sections did not change. What it costs is five cross-reference
+     targets, which entry 328 records.
+
 277. **`critiques/pr-29/strip_docstrings.py` cannot answer for a module that was empty.**
      `strip()` replaces a body its removal empties with a single `pass`, so that the tree
      stays valid: `node.body = body[1:] or [ast.Pass()]`. A zero-byte module has no body,
@@ -6047,3 +6084,271 @@ rediscovery.
      unguarded-`rpartition` shape as the extension strip two lines above it.
      **Owner: a later maintenance-tool PR; belongs with entry 6, which holds the layout
      question this tool's whole search rests on.**
+
+## From PR-31 (Sphinx scaffolding and the documentation gate, Phase 7)
+
+### Added by the PR-31 executor's own measurements (2026-08-09)
+
+326. **`sphinx-build -n` reports every unresolved cross-reference and exits 0, so a gate
+     that runs it and reads its exit status proves nothing.** `doc_python.mdc` section 6
+     prescribes two builds, `sphinx-build -W` and `sphinx-build -n`, and says "BOTH must
+     succeed with ZERO warnings". Succeeding is not the same condition as zero warnings:
+     `-n` turns nitpick checking on and does not make warnings fatal. Measured on this
+     tree with one broken cross-reference in `docs/api/pds3file.rst`
+     (`:class:`~pdsfile.pds3file.Pds3Filo``): `-W` alone exits **0** with **0** warnings,
+     because the reference is not checked at all; `-n` alone exits **0** while reporting
+     the warning; `-n -W` exits **2**. The gate this PR ships runs `-W` and `-n -W` and
+     reads both statuses. This is a property of the rule file, not of this PR, and the
+     next person to build a documentation gate from section 6 as written will build a
+     vacuous one. **Owner: the rule file, if it is ever revised.**
+
+327. **Two Sphinx builds that share a `BUILDDIR` share its doctree cache, and the second
+     one reports nothing.** With the same broken cross-reference in place,
+     `make html SPHINXOPTS="-W"` followed by `make html SPHINXOPTS="-n -W"` into the same
+     `_build` prints `updating environment: 0 added, 0 changed, 0 removed`, then `no
+     targets are out of date`, then `build succeeded`, and exits **0**. Nitpick warnings
+     are emitted while a document is resolved and written; a build that re-reads and
+     re-writes nothing emits none, and `nitpicky` is a configuration value with no
+     rebuild flag, so changing it between two builds does not invalidate the environment.
+     The gate gives the second build its own `BUILDDIR` for this reason and
+     `docs/Makefile` records it. Anything that reuses one build directory for two flag
+     settings -- a later gate, a CI cache, a developer running both by hand -- inherits
+     the same trap.
+
+328. **`napoleon_use_ivar = True` costs five cross-reference targets, all of them
+     `LinkInfo`'s.** The setting resolves entry 276's 27 duplicate-object warnings by
+     rendering an `Attributes:` section as a field list rather than as a run of attribute
+     directives, and a field list creates no target. Measured over the whole package by
+     diffing `objects.inv` at the two settings: 862 objects with the setting off, 857
+     with it on, and the five that go are
+     `pdsfile.holdings_maintenance._linkshelf_common.LinkInfo.recno`, `.linktext`,
+     `.linkname`, `.is_target` and `.target`. The three dataclasses lose nothing, because
+     autodoc emits their fields from the annotations regardless -- which is what the
+     duplicate was. `LinkInfo` is a plain class whose attributes are assigned in
+     `__init__`, so Napoleon's rendering was their only target. Nothing references them
+     today and the build is clean either way, but a later PR that writes `:attr:` roles
+     for them will find they do not resolve. **Owner: PR-31a, which is the PR that will
+     try to write those roles.**
+
+329. **The documentation gate depends on reaching `docs.python.org`, and an unreachable
+     inventory is a build failure.** `intersphinx_mapping` is what makes the
+     standard-library names in `Parameters:`, `Returns:` and `Raises:` entries resolve.
+     Measured by pointing it at a host that does not resolve: `-W` alone exits **1** with
+     one warning (`failed to reach any of the inventories`), and `-n -W` exits **1** with
+     **37** -- that one plus the 36 references the inventory was resolving
+     (`collections.abc.Callable` x11, `argparse.Namespace` x8,
+     `argparse.ArgumentParser` x5, `re.Pattern` x4, `tarfile.ReadError` x2,
+     `pickle.UnpicklingError` x2, and one each of `smtplib.SMTPException`,
+     `pickle.PickleError`, `pathlib.Path`, `datetime.datetime`). It was 34 before the
+     constructor docstrings were published; publishing them added two. So a transient outage at
+     `docs.python.org` turns the hosted lint job red, and the message names the inventory
+     rather than anything about this tree. `intersphinx_timeout = 30` bounds the case
+     where the host accepts the connection and never answers, which would otherwise stall
+     the build instead of failing it. The remedy if it ever flakes in practice is a second
+     inventory location in the mapping tuple pointing at a copy of `objects.inv` committed
+     here; that was not done, because it commits a binary that goes stale and the flake
+     has not been observed. **Owner: whoever sees it flake.**
+
+330. **A shipped module imports a development-only dependency at module level, and the
+     documentation build is the first thing that has to work around it.**
+     `src/pdsfile/tools/show_opus_products.py` carries `import tabulate` at module level,
+     and `tabulate` is
+     in the `dev` extra of `pyproject.toml`, not in the runtime dependencies and not in
+     the `docs` extra. ReadTheDocs installs the project with the `docs` extra alone, so
+     `tabulate` is absent there. Measured by building with a `tabulate` that raises
+     `ImportError`: without a mock the build exits **1** with two warnings -- `autodoc:
+     failed to import 'show_opus_products' from module 'pdsfile.tools'`, and this
+     configuration's own coverage check reporting the module absent, since a module that
+     fails to import is never recorded in the Python domain. With
+     `autodoc_mock_imports = ['tabulate']` the same build is clean, which is the fix
+     `doc_dev_guide.mdc` section 7 prescribes. The mock documents the module; it does not
+     answer whether a shipped module should import a dev-only dependency at module level
+     at all. No gate in the repository would have caught it -- see entry 334.
+     **Owner: a later packaging PR.**
+
+331. **`scripts/read-docs.sh` builds the documentation with half the gate, and this PR is
+     what makes it live.** The script has been in the tree since before `docs/` existed
+     and refuses to run without it, so it has never run. It runs
+     `make -C docs html SPHINXOPTS="-W"`: no `-n`, so no cross-reference is checked, and
+     no `make clean`, so a second run over an unchanged tree reports nothing at all
+     (entry 327 is the same mechanism, and entry 341's fix covers only the coverage
+     check). It is a preview tool rather than a gate -- it builds the HTML and opens it --
+     and the gate in `run-all-checks.sh` is what the repository's enabled set means. It
+     was left alone rather than quietly broadened. **Owner: the owner, if the two should
+     agree.**
+
+332. **The `docs` extra declares `sphinx>=7` and cannot install Sphinx 7.** `myst-parser`
+     5.1.0, which the same extra pulls in and which `doc_python.mdc` section 3 requires,
+     declares `sphinx>=8,<10`. The floor the extra can actually resolve is therefore 8.
+     pip resolves it correctly today: the local tree builds on Sphinx 9.1.0, and the two
+     hosted lint legs build on 9.1.0 (Python 3.13) and **8.1.3** (Python 3.10), both
+     clean. The declared floor is looser than the real one, which matters only to someone
+     who pins Sphinx and silently gets an older `myst-parser` than this tree was written
+     against. `pyproject.toml` is otherwise untouched by this PR.
+     **Owner: a later packaging PR.**
+
+### Added by the PR-31 adversarial review (round 3, whose job was to prove the gate vacuous)
+
+333. **Forty-three docstrings are written, maintained, and never checked by anything,
+     because they are never published.** Measured against `objects.inv` and an AST walk:
+     52 objects carry a docstring in the source and are absent from the published
+     reference -- 25 private names and 27 dunders, and zero public objects. Nine of the
+     27 were `__init__` docstrings, six with a `Parameters:` block, and those are now
+     published by `autoclass_content = 'both'` (verified: 9 published, 0 missing). The
+     other 43 remain unpublished, so a broken `:meth:` target, malformed RST or a stale
+     `:class:` reference inside one of them is invisible to `-n -W`. Demonstrated: a
+     `:meth:` naming a method that does not exist, placed in `_clean_join`'s docstring,
+     passes the gate; the identical lines in a published function fail it. This is the
+     price of not publishing private members, and it is worth knowing before a later PR
+     promotes one of those objects to the public surface. **Owner: nobody yet; it is a
+     standing limit of the gate.**
+
+334. **Thirty-five of the 78 documented modules are imported by no dependency gate.**
+     `scripts/check_runtime_imports.py::_module_set()` returns 43 names -- seven fixed top
+     modules plus the two `rules` packages and their members -- so neither
+     `pdsfile.holdings_maintenance.*` nor `pdsfile.tools.*` is ever imported without the
+     `dev` extra present. Demonstrated: `import pytest` added to `pdsarchives.py` leaves
+     the gate green, ruff clean, and the clean-install gate passing at exit 0; the same
+     tree with `pytest` unavailable loses **two** modules from the reference (the one with
+     the import, and one that imports it) and publishes 76 of 78. `.readthedocs.yaml` sets
+     no `sphinx: fail_on_warning`, so that build succeeds and publishes. Entry 330 is the
+     live instance of exactly this mechanism, found before the round.
+     **Owner: a later packaging PR; the cheap fix is to widen `_module_set()`.**
+
+335. **The documentation gate counts modules, not members, and five member-level defects
+     pass it.** Each was made and run through the shipped gate: `__all__` narrowed to one
+     name takes a module's published objects from 6 to 1; dropping `:members:` from one
+     `automodule` takes `pdscache` from 46 published objects to 0 and leaves the gate's
+     success line byte-identical to a clean run's; a decorator without `functools.wraps`
+     replaces a published signature with `(*args, **kwargs)` and deletes its docstring; a
+     second `automodule` for an already-documented module passes if it carries
+     `:no-index:` (without it the same edit fails with 47 duplicate-object warnings), and
+     puts 25 `DictionaryCache` entries on the page titled Tools; and an empty page carried
+     by the `toctree` is published and appears in the sidebar. Closing these needs an
+     assertion about published object counts, which is a golden-file gate and a PR of its
+     own. **Owner: a later documentation PR, if the owner wants it.**
+
+336. **`.. note:` with one colon silently deletes its whole block from the page.** One
+     missing colon turns the directive into an RST comment; the indented paragraph under
+     it vanishes from the rendered documentation with no diagnostic from `-W`, from
+     `-n`, or from `check_docstrings.py`. Demonstrated in `formatted_file_size`'s
+     docstring, where the deleted text was the caveat a caller has to read before trusting
+     the number. It is the easiest typo to make in this whole surface and nothing in the
+     repository can see it. **Owner: nobody; recorded so a reviewer knows to look.**
+
+337. **`critiques/pr-29/check_docstrings.py` is not wired into any gate.** `grep -rI
+     check_docstrings` outside `critiques/` and `.git/` returns nothing: it is not in
+     `scripts/run-all-checks.sh` and not in any workflow. It is the only thing in the
+     repository that catches docstring-against-signature drift, and the Sphinx gate
+     catches none of it: with the signature untouched, deleting a `Parameters:` entry,
+     inventing one, renaming one, and inverting a stated default all pass the
+     documentation gate with zero warnings, and the published page then shows the real
+     signature directly above a parameter list that contradicts it. The checker catches
+     four of those five shapes (P1, P2, R1) and not the wrong default. Wiring it in is a
+     one-line change to the code checks and a decision about where a `critiques/` tool
+     should live. **Owner: the owner.**
+
+338. **Where the README include marker sits decides what the documentation front page
+     says, and neither position warns.** Moving `<!-- start-after-point -->` past
+     `Supported versions: Python >= 3.10` removes the front page's only substantive line;
+     `:start-after:` swallowing content is not a warning. Placing it before the
+     `# rms-pdsfile` H1 instead renders the project title twice, `<h1>` then `<h2>`, also
+     without a warning. It sits after the H1 for that reason. The cost of that choice is
+     that the README's last line is a second H1 (`# PDS Ring-Moon Systems Node, SETI
+     Institute`), so the rendered landing page ends with a heading and nothing under it.
+     **Owner: PR-34, which rewrites the README and inherits the marker.**
+
+339. **Two escape hatches in the coverage check have no guard.** `_GENERATED_MODULES`
+     exempts a module by name with nothing asserting that the name is actually generated
+     or actually absent from disk, so removing a module from its page and adding its name
+     there is a two-line change that leaves the gate green (demonstrated on
+     `RES_xxxx`; the same edit on `pdsviewable` fails, but only because five other
+     docstrings cross-reference `PdsViewSet`). And `_module_names_under` treats every
+     `.py` file as a module, so a file named `template-example.py` would demand an
+     `automodule` for `pdsfile...template-example`, a name no directive can document,
+     with that same exemption set as the only way out. Both are latent: the set holds one
+     name and no such file exists. **Owner: a later documentation PR.**
+
+340. **The coverage check establishes that a module has a target in the Python domain,
+     which is weaker than establishing that anything of it is published.** An
+     `automodule` with none of the `:members:` options satisfies it, and so does a bare
+     `.. py:module::`, and so does a directive on a page outside `docs/api/` -- all three
+     measured, all three reporting `79 of 79 modules documented` with nothing rendered.
+     The check's docstring now says so, and `docs/api/index.rst` no longer claims the page
+     set covers members. Entry 335 is the same limit seen from the other side.
+
+341. **A Sphinx event that fires only when a document was re-read cannot check the source
+     tree.** The coverage check first ran from `env-check-consistency`, which
+     `sphinx/builders/__init__.py` guards with `if updated_docnames:`. Adding a `.py` file
+     changes no Sphinx source, so an incremental build re-read nothing, the handler never
+     ran, and `make html` over a tree with a brand-new undocumented module printed `no
+     targets are out of date` and exited **0** -- the one case the check exists for. The
+     gate itself was safe, because it runs `make clean` first; a developer's `make html`
+     loop and any CI that caches `docs/_build` were not. It now runs from
+     `build-finished`, which fires on every build: the same incremental build prints the
+     warning and exits **2**. Any later check that reads something outside `docs/`
+     inherits this trap.
+
+### Added by the PR-31 executor's full-data runs (2026-08-09)
+
+342. **`test_a_mixin_module_does_not_import_pdsfile_pdsfile`'s 60-second subprocess
+     timeout turns machine load into a test failure.** Each of the nine parametrized
+     cases spawns an interpreter that imports one mixin module, with
+     `subprocess.run(..., timeout=60)`. On a machine carrying a load average between 40
+     and 80 from unrelated work, two of the nine -- `[_index_rows]` and `[_preload]` --
+     raised `subprocess.TimeoutExpired ... timed out after 60 seconds` in the **base**
+     tree at `8f8d825`, giving `2 failed, 1099 passed, 34 skipped` where the recorded
+     baseline is `1101 passed, 34 skipped`. That run took 38m 43s. The same nine cases
+     pass in 1.64 s when `tests/api/` is run on its own, pass on all four self-hosted CI
+     legs of this PR's run, and passed when the whole base pass was re-run on a quiet
+     machine: 4m 49s, `1101 passed, 34 skipped`. The timeout is deliberate --
+     its comment says it keeps a module that blocks at import time a failure rather than
+     a hang -- so the question is only whether 60 seconds is the right number for a
+     machine that is also doing something else. **Owner: a later test PR, if it recurs.**
+
+343. **`critiques/pr-29/check_citations.py` reads every deferred entry written after
+     PR-29's, not only PR-29's.** It slices the file with
+     `block = text[text.index('## From PR-29 ('):]`, which runs to the end, so every entry
+     added by every later PR is inside its scope while `CITATIONS` still lists only
+     PR-29's files. Any later entry that writes a `path/file.py:NN` citation for a file
+     PR-29 did not cite therefore reports `cites <file>, which no entry covers` and the
+     count moves off the recorded 6. PR-31 hit it once, in entry 330, and rewrote the
+     sentence to name the file and the import without the line number; the checker then
+     reproduced the base output byte for byte. This entry cannot quote the citation that
+     tripped it, for the same reason -- the pattern is a backticked path ending in `.py`
+     followed by a colon and a line number, so writing the example re-triggers the
+     finding. The alternative is to extend `CITATIONS`, which means a PR-29
+     tool acquiring later PRs' citations. **Owner: whoever next needs a line citation in
+     a deferred entry.**
+
+### Added by the PR-31 adversarial review (round 4, a second read of the first three rounds' corrections)
+
+344. **`sphinxcontrib-mermaid` is still in the `docs` extra, and no configuration enables
+     it.** `docs/conf.py` drops the extension because no page draws a diagram (the CDN
+     measurement is in the comment there), but `pyproject.toml`'s `docs` extra still
+     lists the package, so `.readthedocs.yaml`'s `pip install .[docs]` and CI's
+     `pip install -e ".[dev]"` both install it. Nothing breaks -- an installed extension
+     that no `extensions` list names does nothing -- and the guides of the next two PRs
+     will want it. It is left in place rather than removed and re-added.
+     **Owner: PR-32 or PR-33, whichever draws the first diagram.**
+
+345. **Two of the gate's three published numbers cannot vary.** The pass line reads
+     `N problem lines under -W and M under -n -W`, and under `-W` any `WARNING:` or
+     `ERROR:` line makes the build exit non-zero, so the success path can only ever
+     print `0` and `0`. The number that carries information is the coverage line, which
+     is why the gate requires it and compares the two builds' copies of it. The counts do
+     carry information on the failure path, where they say how many problems a failing
+     build reported. This is a property of `-W`, not a defect, and it is recorded so that
+     nobody reads two zeros as evidence of anything they are not.
+
+346. **A local full run materializes `src/pdsfile/_version.py`, which makes the coverage
+     check's exemption load-bearing rather than theoretical.** The clean-install gate
+     builds the project, `setuptools_scm`'s `write_to` writes the file into the source
+     tree, and it stays there: it is gitignored, so nothing notices. With the file
+     present, `check_docstrings.py` over `find src/pdsfile -name '*.py'` reports **79
+     files and one M1 finding** (the generated file has no module docstring), and the
+     Sphinx build still reports **78 of 78 modules documented**, because
+     `_GENERATED_MODULES` excludes it. Any later checker that walks `src/pdsfile/*.py`
+     has to exclude it too, and any later measurement of "the number of modules" has to
+     say which of the two numbers it means. **Owner: whoever writes the next such
+     checker.**

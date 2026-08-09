@@ -23,6 +23,7 @@
 
 # rms-pdsfile
 
+<!-- start-after-point -->
 
 Supported versions: Python >= 3.10
 

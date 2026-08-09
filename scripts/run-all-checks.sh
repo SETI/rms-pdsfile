@@ -67,13 +67,15 @@
 #     ENABLE_CLEAN_INSTALL clean-install runtime-dep leak gate (default: true)
 #     ENABLE_BANDIT       (default: false — never)
 #     ENABLE_VULTURE      (default: false — never)
-#     ENABLE_SPHINX       (default: false — not enabled yet)
+#     ENABLE_SPHINX       Sphinx documentation build (default: true)
 #     ENABLE_PYMARKDOWN   PyMarkdown scan (default: false — not enabled yet)
 #
 # Checks (each run separately; -d runs both Sphinx and Markdown):
 #   Code:     optional: ruff check, ruff format --check, mypy, pytest, pyroma,
 #             api-freeze, clean-install, bandit, vulture (see ENABLE_* above)
-#   Sphinx:   make -C docs html SPHINXOPTS="-W"
+#   Sphinx:   make clean, then two builds whose statuses, output and HTML are all
+#             read: make html SPHINXOPTS="-W", then the same with SPHINXOPTS="-n -W"
+#             into its own BUILDDIR (all three run from docs/)
 #   Markdown: pymarkdown scan docs/ .cursor/ README.md CONTRIBUTING.md
 #
 # Exit codes:
@@ -115,9 +117,9 @@ SCOPE_SPECIFIED=false
 #
 # Gates are enabled as they become able to pass. Currently enabled: ruff-check
 # (which runs the configured rules and then a second, indentation-only pass over
-# the preview E1 rules), pytest, pyroma, api-freeze, and the clean-install gate.
-# Not enabled yet: ruff-format, sphinx, and pymarkdown. Never enabled: mypy,
-# bandit, vulture (ground rules / pdsfile_overrides.mdc).
+# the preview E1 rules), pytest, pyroma, api-freeze, the clean-install gate, and
+# the Sphinx build. Not enabled yet: ruff-format and pymarkdown. Never enabled:
+# mypy, bandit, vulture (ground rules / pdsfile_overrides.mdc).
 : "${ENABLE_RUFF_CHECK:=true}"
 : "${ENABLE_RUFF_FORMAT:=false}"
 : "${ENABLE_MYPY:=false}"
@@ -127,7 +129,7 @@ SCOPE_SPECIFIED=false
 : "${ENABLE_CLEAN_INSTALL:=true}"
 : "${ENABLE_BANDIT:=false}"
 : "${ENABLE_VULTURE:=false}"
-: "${ENABLE_SPHINX:=false}"
+: "${ENABLE_SPHINX:=true}"
 : "${ENABLE_PYMARKDOWN:=false}"
 
 # Get script directory and project root
@@ -401,8 +403,9 @@ run_code_checks() {
     local failed_checks=""
 
     # Lint the package under src/pdsfile, the top-level tests/ tree (which
-    # includes tests/conftest.py), and the standalone scripts.
-    RUFF_TARGETS="src/pdsfile tests scripts"
+    # includes tests/conftest.py), the standalone scripts, and docs/ for its
+    # conf.py, which is the one Python file the documentation tree carries.
+    RUFF_TARGETS="src/pdsfile tests scripts docs"
 
     if [ "$RUN_RUFF_CHECK" = true ] && [ "$ENABLE_RUFF_CHECK" = true ]; then
         print_info "Running ruff check..."
@@ -603,17 +606,109 @@ run_sphinx_build() {
     # shellcheck source=/dev/null
     source "$VENV/bin/activate"
 
-    print_info "Building documentation (warnings treated as errors)..."
-    if (cd docs && make clean && make html SPHINXOPTS="-W"); then
-        print_success "Sphinx build passed"
-        deactivate 2>/dev/null || true
-        return 0
-    else
-        print_error "Sphinx build failed"
-        [ -n "$status_file" ] && echo "Sphinx - Sphinx build" >> "$status_file"
+    # Two builds, and the reason is not that each catches something the other misses:
+    # -n only adds the unresolved-cross-reference warnings to what -W already fails on,
+    # so the second build's findings are a superset of the first's. What the first build
+    # supplies is docs/_build/html, which is the tree a reader opens, and a failure
+    # attributable to something other than a cross-reference. The documentation rules ask
+    # for both builds; running -n without -W would be the mistake, because on its own it
+    # reports every unresolved reference and still exits 0.
+    #
+    # The second build gets its own BUILDDIR. Two builds that share one share its
+    # doctree cache, Sphinx then re-reads only what changed, and a build that re-reads
+    # nothing re-reports nothing.
+    local clean_status=0
+    local warnings_status=0
+    local nitpicky_status=0
+    local warnings_log="$TEMP_DIR/sphinx-warnings-build.log"
+    local nitpicky_log="$TEMP_DIR/sphinx-nitpicky-build.log"
+
+    print_info "Emptying docs/_build..."
+    (cd docs && make clean) || clean_status=$?
+    if [ "$clean_status" -ne 0 ]; then
+        print_error "Sphinx: make clean failed (exit $clean_status); neither build ran"
+        if [ -n "$status_file" ]; then
+            echo "Sphinx - make clean" >> "$status_file"
+        fi
         deactivate 2>/dev/null || true
         return 1
     fi
+
+    # Each build streams to the log and is captured at the same time, then read: it is
+    # accepted only if it exited 0, wrote the HTML it was asked for, and printed the line
+    # docs/conf.py emits when it has compared the source tree against the modules the
+    # build documented. Exit status alone would accept a `make` that resolved to nothing
+    # at all. `set -o pipefail` is what carries make's status through the tee, and each
+    # verdict is printed directly under the build it judges.
+    print_info "Building documentation (warnings as errors)..."
+    (cd docs && make html SPHINXOPTS="-W") 2>&1 | tee "$warnings_log" || warnings_status=$?
+    _sphinx_build_verdict "warnings-as-errors" "$warnings_status" "$warnings_log" \
+        docs/_build/html/index.html "$status_file" || warnings_status=1
+
+    print_info "Building documentation (nitpicky, warnings as errors)..."
+    (cd docs && make html BUILDDIR=_build/nitpicky SPHINXOPTS="-n -W") 2>&1 \
+        | tee "$nitpicky_log" || nitpicky_status=$?
+    _sphinx_build_verdict "nitpicky" "$nitpicky_status" "$nitpicky_log" \
+        docs/_build/nitpicky/html/index.html "$status_file" || nitpicky_status=1
+
+    deactivate 2>/dev/null || true
+
+    if [ "$warnings_status" -eq 0 ] && [ "$nitpicky_status" -eq 0 ]; then
+        local warn_problems nitpick_problems coverage nitpicky_coverage
+        warn_problems=$(_sphinx_problem_count "$warnings_log")
+        nitpick_problems=$(_sphinx_problem_count "$nitpicky_log")
+        coverage=$(_sphinx_coverage_line "$warnings_log")
+        nitpicky_coverage=$(_sphinx_coverage_line "$nitpicky_log")
+        # The two builds document one tree, so a disagreement means one of them was not
+        # the build it claimed to be.
+        if [ "$coverage" != "$nitpicky_coverage" ]; then
+            print_error "Sphinx builds disagree about coverage: '$coverage' against '$nitpicky_coverage'"
+            if [ -n "$status_file" ]; then
+                echo "Sphinx - builds disagree about coverage" >> "$status_file"
+            fi
+            return 1
+        fi
+        print_success "Sphinx build passed: $warn_problems problem lines under -W and $nitpick_problems under -n -W, and both builds report $coverage"
+        return 0
+    fi
+    return 1
+}
+
+# Number of WARNING/ERROR lines a Sphinx build printed. grep reports none by exiting 1,
+# which under `set -e` would otherwise take the caller down with it.
+_sphinx_problem_count() {
+    grep -cE 'WARNING:|ERROR:' "$1" || true
+}
+
+# The coverage line docs/conf.py prints once per build, or the empty string if it did not.
+_sphinx_coverage_line() {
+    { grep -oE 'API reference: [0-9]+ of [0-9]+ modules under .+ documented' "$1" \
+        || true; } | tail -1
+}
+
+# Accept one Sphinx build. Prints its verdict and returns non-zero unless the build
+# exited 0, produced its HTML, and reported its module coverage.
+_sphinx_build_verdict() {
+    local label=$1 status=$2 log=$3 html=$4 status_file=$5
+    local problems coverage
+    problems=$(_sphinx_problem_count "$log")
+    coverage=$(_sphinx_coverage_line "$log")
+
+    if [ "$status" -ne 0 ]; then
+        print_error "Sphinx $label build failed (exit $status, problem lines: $problems)${coverage:+, $coverage}"
+    elif [ ! -f "$html" ]; then
+        print_error "Sphinx $label build exited 0 but wrote no $html"
+    elif [ -z "$coverage" ]; then
+        print_error "Sphinx $label build exited 0 but reported no API-reference coverage"
+    else
+        print_success "Sphinx $label build passed (exit 0, problem lines: $problems, $coverage)"
+        return 0
+    fi
+
+    if [ -n "$status_file" ]; then
+        echo "Sphinx - $label build" >> "$status_file"
+    fi
+    return 1
 }
 
 # ---- Markdown lint only (PyMarkdown) ----
