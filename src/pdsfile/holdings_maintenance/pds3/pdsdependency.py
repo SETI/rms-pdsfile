@@ -276,8 +276,13 @@ class PdsDependency:
         logged at debug level, so it does not affect the run's status. A dot-underscore
         file is logged at error level, so **one of them anywhere below a directory gives
         the whole run a nonzero exit status**, whatever the dependencies turn out to be.
-        Nothing else is excluded: backup and " copy" files date a directory exactly as
-        their originals do.
+
+        Nothing else is excluded, and one exclusion that looks present is not. The block
+        that would skip a backup or " copy" file sits inside the dot-underscore branch
+        and after its ``continue``, so it cannot run; every sibling tool carries the same
+        block one level out, where it does. A backup file therefore dates a directory
+        exactly as its original does here and nowhere else, and a stale dated copy of a
+        table can make every file derived from that directory look out of date.
 
         Parameters:
             abspath (str): The file or directory to time. A path that is neither an
@@ -337,7 +342,7 @@ class PdsDependency:
         order: the outer loop is over the substitutions and the inner over the files, so
         a rule requiring four preview sizes reports all the missing thumbnails together
         rather than all four sizes of one image together. Each required file is logged
-        as one of four things:
+        as one of five things:
 
           * skipped, if the file that implies it matches one of the rule's exceptions;
           * an invalid test, if the rule's regular expression does not match the file
@@ -1280,14 +1285,18 @@ def main():
 
     Everything is validated before anything is tested, and each failure ends the run
     with a message and status 1: a path that is neither a volume nor a volume set
-    directory, one outside ``volumes/``, one that does not exist, one under a checksum
-    or archive category, and a volume whose name is not a volume ID. A volume set is
-    expanded into its volumes at that point, so what is tested is always volumes.
+    directory, one outside ``volumes/``, one that does not exist, and a volume whose name
+    is not a volume ID. A volume set is expanded into its volumes at that point, so what
+    is tested is always volumes. Two further rejections are written for a checksum or an
+    archive path and neither can fire: a category component is what makes such a path,
+    and the category test above has already refused it.
 
-    The run's own log is opened once and each volume's log file is attached for the
-    duration of that volume, so a volume's findings are in its own file as well as in
-    the run's. The repair commands are printed at the end, after the log is closed,
-    across every volume of the run and in the order they were first worked out.
+    The run's own log is opened once, and each volume's log handlers are handed down to
+    the suites rather than attached here, so they go on and come off once per suite and
+    are detached between them. A volume's findings therefore reach its own file, and the
+    two lines naming that file, logged from here before the suites start, do not. The
+    repair commands are printed at the end, after the log is closed, across every volume
+    of the run and in the order they were first worked out.
 
     Where ``--log`` goes when it is not given is worked out here rather than through the
     shared helper the other tools call, against a copy of the environment variable's

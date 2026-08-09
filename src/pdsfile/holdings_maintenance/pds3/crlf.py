@@ -22,8 +22,11 @@ repaired are listed, unless ``--verbose`` is given, which lists every file exami
 A binary file has no line terminators to be wrong about, so one is recognized and left
 alone rather than being rewritten into nonsense. The recognition is a fraction: the file
 is read as bytes and decoded with a single-byte codec, so every byte is one character,
-and a file is treated as binary when more than one percent of its characters fall
-outside printable ASCII, counting carriage return, line feed and tab as ASCII.
+and a file is treated as binary when more than one percent of its characters are counted
+as non-ASCII. What is counted is everything below byte 32 and everything from 128 up,
+less carriage return, line feed and tab. Byte 127, delete, is in neither range and so is
+counted as text, which is the one place the rule and the phrase "printable ASCII" part
+company.
 
 The classifier is ``test_crlf()``, which is what a caller wanting one file's verdict
 should use; ``main()`` is the loop over a command line, and its summary line counts only
@@ -74,9 +77,10 @@ def test_crlf(filepath, task='test', threshold=0.01):
             it. Any other value is rejected before the file is opened.
         threshold (float): The fraction of non-ASCII characters above which the file is
             taken to be binary and is neither classified nor rewritten. A character
-            counts as non-ASCII when it is outside printable ASCII and is not a carriage
-            return, a line feed or a tab. The test is strict, so a file exactly at the
-            threshold is still treated as text.
+            counts as non-ASCII when its byte is below 32 or 128 or above, and is not a
+            carriage return, a line feed or a tab; byte 127 is in neither range and does
+            not count. The test is strict, so a file exactly at the threshold is still
+            treated as text.
 
     Returns:
         str: "BINARY" if the non-ASCII fraction is above the threshold; "REPAIRED" if

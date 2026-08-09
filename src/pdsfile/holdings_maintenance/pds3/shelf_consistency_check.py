@@ -16,26 +16,32 @@ Run it as::
     python -m pdsfile.holdings_maintenance.pds3.shelf_consistency_check \\
         [--verbose] shelf_root [shelf_root ...]
 
-**The layout it looks for is not the one this repository's holdings trees use.** A file
-is examined only if its directory path contains the component ``shelves``, and only if
-the component just below ``shelves/`` is ``info``, ``links`` or ``index``. A holdings
-tree that keeps its shelves in ``_infoshelf-volumes/``, ``_linkshelf-volumes/`` and
-``_indexshelf-metadata/`` -- which is what the trees here do -- contains no such path, so
-a run over one walks every directory, examines nothing, and reports
-``Tests performed: 0`` and ``Errors found: 0``. That is a clean report about an empty
-search rather than about the shelves.
+**The layout it looks for is not the one this repository's holdings trees use.** A
+directory is examined only if ``shelves`` appears anywhere in its path -- as a substring
+of the whole path string, so ``myshelves-backup`` matches as surely as ``shelves`` does
+-- and only if the first component after ``shelves/`` is ``info``, ``links`` or
+``index``. A holdings tree that keeps its shelves in ``_infoshelf-volumes/``,
+``_linkshelf-volumes/`` and ``_indexshelf-metadata/`` -- which is what the trees here do
+-- contains no such substring anywhere, so a run over one walks every directory, examines
+nothing, and reports ``Tests performed: 0`` and ``Errors found: 0``. That is a clean
+report about an empty search rather than about the shelves. Name a root that happens to
+have ``shelves`` in its own path, though, and every directory under it is reported
+instead.
 
 Where the layout does match, the counterpart is derived by textual substitution:
-``shelves/<kind>`` in the shelf's own path is replaced by ``holdings``, and the
-extension is dropped. For ``index``, what must then exist is that path plus ``.lbl``,
-the label of the index table. For ``info`` and ``links``, the trailing ``_info`` or
-``_links`` is dropped too and what must exist is the directory that is left.
+``shelves/`` and the kind is replaced by ``holdings`` wherever it occurs in the shelf's
+path, and the extension is dropped. For ``index``, what must then exist is that path plus
+``.lbl``, the label of the index table. For ``info`` and ``links``, everything after the
+last underscore goes too -- which is the ``_info`` or ``_links`` on a shelf named the way
+these tools name them, and is whatever else follows an underscore on one that is not --
+and what must exist is that path, as a file or a directory alike, since only existence is
+asked.
 
 Three things are reported as errors: a directory under ``shelves/`` that is none of the
 three kinds, a file that is neither a ``.py`` nor a ``.pickle``, and a shelf whose
 counterpart is missing. A ``.DS_Store`` is counted and passed over. The run prints how
-many files and directories it examined and how many errors it found, and exits 1 if it
-found any.
+many things it examined -- files, plus one for each directory of an unrecognized kind --
+and how many errors it found, and exits 1 if it found any.
 
 This module imports nothing from the rest of the package and reads no holdings root: the
 trees to walk are the ones named on the command line, and the mapping above is done on
@@ -76,11 +82,13 @@ def main(argv=None):
     """Walk each shelf root and report every shelf with no counterpart in holdings.
 
     Two summary lines are always printed, whatever was found and whether or not any root
-    was named: the number of files and directories examined, and the number of errors.
-    Both counts run across every root of the run rather than being reset per root, and
-    both are zero for a tree that holds no ``shelves/info``, ``shelves/links`` or
-    ``shelves/index`` directory, which is the case for the holdings trees this
-    repository is built against.
+    was named: the number of things examined, and the number of errors. The first counts
+    files, one per file inside a directory of a recognized kind, plus one for each
+    directory of an unrecognized kind; directories of a recognized kind are not counted,
+    so a ``shelves/info`` subtree of four directories holding no files reports zero. Both
+    counts run across every root of the run rather than being reset per root, and both
+    are zero for a tree whose paths never contain ``shelves``, which is the case for the
+    holdings trees this repository is built against.
 
     A directory under ``shelves/`` whose kind is none of the three is reported without
     its files being examined, but the walk is not pruned, so every directory below it is

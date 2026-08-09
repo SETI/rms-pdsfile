@@ -7,9 +7,10 @@ driver in ``pdsfile.holdings_maintenance``, and each is a console script named i
 ``[project.scripts]``.
 
 Every one has a PDS3 twin in the sibling ``pds3`` package, and each pair keeps the same
-five tasks and the same command line. What differs is the unit a target names -- a
-bundle rather than a volume -- and each module's docstring says where its own behavior
-parts company with its twin's.
+five tasks and the same command line. For four of the five pairs a target names a
+different unit on this side; the index shelf pair is the exception, because both halves
+of it take a table. Each module's docstring says where its own behavior parts company
+with its twin's.
 
 There is nothing here corresponding to the four standalone tools ``pds3`` also carries.
 ``pds4linkshelf`` has no repair table to read either, for the reason its own docstring
