@@ -257,36 +257,36 @@ back. Sphinx arrives through `pip install -e ".[dev]"`, because the `dev` extra 
 and `Collecting sphinx>=7 (from rms-pdsfile==0.1.dev1)`, so it resolves from the local
 tree rather than from PyPI.
 
-From `gh api repos/SETI/rms-pdsfile/actions/jobs/93216391958/logs`, job **Lint and
-holdings-free tests (3.13)** of run `31302085128` at the head commit, verbatim (timestamps
-trimmed to the second):
+From `gh api repos/SETI/rms-pdsfile/actions/jobs/93216654110/logs`, job **Lint and
+holdings-free tests (3.13)** of run `31302178436` -- the run of the head commit, all six
+jobs green -- verbatim, timestamps trimmed to the second:
 
-    07:51:31 >>> Sphinx Build
-    07:51:31 ℹ Emptying docs/_build...
-    07:51:31 ℹ Building documentation (warnings as errors)...
-    07:51:31 Running Sphinx v9.1.0
-    07:51:31 building [html]: targets for 7 source files that are out of date
-    07:51:42 API reference: 78 of 78 modules under
+    07:54:13 >>> Sphinx Build
+    07:54:13 ℹ Emptying docs/_build...
+    07:54:13 ℹ Building documentation (warnings as errors)...
+    07:54:13 Running Sphinx v9.1.0
+    07:54:14 building [html]: targets for 7 source files that are out of date
+    07:54:25 API reference: 78 of 78 modules under
              /home/runner/work/rms-pdsfile/rms-pdsfile/src documented
-    07:51:43 ✓ Sphinx warnings-as-errors build passed (exit 0, problem lines: 0,
+    07:54:26 ✓ Sphinx warnings-as-errors build passed (exit 0, problem lines: 0,
              API reference: 78 of 78 modules under .../src documented)
-    07:51:43 ℹ Building documentation (nitpicky, warnings as errors)...
-    07:51:43 Running Sphinx v9.1.0
-    07:51:44 building [html]: targets for 7 source files that are out of date
-    07:51:55 API reference: 78 of 78 modules under .../src documented
-    07:51:56 ✓ Sphinx nitpicky build passed (exit 0, problem lines: 0, API reference:
+    07:54:26 ℹ Building documentation (nitpicky, warnings as errors)...
+    07:54:26 Running Sphinx v9.1.0
+    07:54:26 building [html]: targets for 7 source files that are out of date
+    07:54:37 API reference: 78 of 78 modules under .../src documented
+    07:54:38 ✓ Sphinx nitpicky build passed (exit 0, problem lines: 0, API reference:
              78 of 78 modules under .../src documented)
-    07:51:56 ✓ Sphinx build passed: 0 problem lines under -W and 0 under -n -W, and both
+    07:54:38 ✓ Sphinx build passed: 0 problem lines under -W and 0 under -n -W, and both
              builds report API reference: 78 of 78 modules under .../src documented
-    07:51:56 ✓ SUCCESS - All checks completed successfully
-    07:51:56 ℹ Total time: 1m 1s
+    07:54:38 ✓ SUCCESS - All checks completed successfully
+    07:54:38 ℹ Total time: 1m 0s
 
 Round 2 was asked to hunt the vacuity signature in the equivalent log of an earlier run
 and reported it absent; it is absent here too. `grep -c "no targets are out of date"` is
 **0**, and both builds report `7 source files that are out of date`. The 3.10 leg runs the
 same gate on **Sphinx 8.1.3** and `myst-parser 4.0.1`; both legs pass. The pytest gate in
 the same job reports **318 passed, 817 skipped**, which is the recorded no-holdings
-figure. The two documentation builds cost about 25 s of the job's 61 s.
+figure. The two documentation builds cost about 25 s of the job's 60 s.
 
 **Which invocations reach the gate.** `--sequential` and a bare invocation both take the
 default-all branch, so both run it. `-c` does not: it selects the code scope, and Sphinx is
