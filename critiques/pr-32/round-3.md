@@ -19,6 +19,8 @@ the sandbox and confirmed it left the shared one untouched.
 The five not run are the three `pip`/`pipx` install lines, a duplicate of one of them, and
 `pdsdata-sync-volset.sh`, which is out of scope and assumes macOS.
 
+One of the five defects below was later disproved by measurement; see item 1.
+
 ## The state each example assumes
 
 Eleven `--initialize` examples reported "already exists" against the sandbox as handed
@@ -72,9 +74,16 @@ recorded rather than papered over:
 ## Defects in the pages
 
 1. **`user_guide_pdsindexshelf.rst`** published a `Backup file skipped:` line carrying a
-   logical path. The program logs `pdsf.abspath`, so the line carries an absolute path and
-   the guide's own substitution rule makes it `$PDS3_HOLDINGS_DIR/metadata/...`. The line
-   was hand-written rather than copied from a run — the only such line left in the guide.
+   logical path. The reviewer read `logger.error('Backup file skipped', pdsf.abspath)` and
+   concluded the line must carry an absolute path. **This finding was rejected on
+   measurement.** Round 4 raised it independently and was rejected on the same evidence.
+   The skip is decided before any task function runs, and it is the task functions that
+   call `logger.replace_root()`, so the path is absolute only while nothing has yet
+   registered the root — that is, only for a run's *first* target. The published example
+   names a metadata directory holding three tables and the backup is not the first of
+   them, so the published logical path is exactly what that run prints. Reproduced both
+   ways in a sandbox; deferred 356 records the inconsistency. The page now states the
+   rule rather than changing the line.
 2. **`user_guide_pdsdependency.rst`**: "the last six are not runnable as they stand". The
    reviewer ran one of the three `cat` lines verbatim; it exited 0 and wrote a
    156,701,895-byte table. Only the three `<LABEL>` lines are not runnable. Introduced by

@@ -6447,3 +6447,43 @@ rediscovery.
      leaves behind. Any later measurement of these programs against the shared tree has to
      build the products first. **Owner: whoever next documents or tests these programs
      against the shared testing tree.**
+
+### Added by the PR-32 finishing pass (2026-08-09)
+
+354. **`pdsinfoshelf --initialize` with a file selection crashes instead of refusing, and
+     its PDS4 twin does not.** `initialize()` in `holdings_maintenance/pds3/pdsinfoshelf.py`
+     binds its logger inside the `if os.path.exists(info_path)` branch, so a run that
+     reaches the `if selection:` refusal below it with no existing shelf still has
+     `logger` set to `None`. The driver calls the task functions without passing a
+     logger, so that is the ordinary case. Measured in a sandbox, with the shelf removed
+     and one top-level file named:
+     `AttributeError: 'NoneType' object has no attribute 'error'`, raised at the
+     `if selection:` refusal inside that module's `initialize()`, exit 1, with the
+     intended message `File selection is disallowed for task "initialize"` never printed.
+     `pds4infoshelf.py` binds the same logger unconditionally at the top of its own
+     `initialize()` and logs the message properly, exiting 1; both checksum programs
+     raise `ValueError` carrying the text. So one of the four is wrong and the fix is one
+     line, moving the binding above the first check. The guide documents the crash.
+     **Owner: whoever next touches `pdsinfoshelf`.**
+
+355. **`--quiet` prints nothing at all once a log root is configured.** The flag only
+     skips `logger.add_handler(pdslogger.stdout_handler)`; the run's own opening `HEADER`
+     and closing `SUMMARY` lines still reach the terminal, but only as `pdslogger`'s
+     fallback for a record with no handler anywhere in its ancestry. `--log` or
+     `PDS_LOG_ROOT` attaches the spec's file handlers at that same outermost level, so
+     the fallback stops firing and the terminal goes silent. Measured: the same
+     `pdschecksums --validate --quiet` printed 6 lines with no log root and 0 with one,
+     by either route. Whether an operator wants a `--quiet` run to be visible at all is
+     a design question, but it should not depend on an unrelated flag. The guide states
+     both behaviors. **Owner: whoever next touches the driver's handler setup.**
+
+356. **The `Backup file skipped:` line's path is absolute or holdings-relative depending
+     on where the skipped file falls in the run.** The index shelf driver decides the
+     skip before entering any task function, and it is the task functions that call
+     `logger.replace_root()`. So the first target of a run prints an absolute path and
+     every later one prints a logical path, in the same run and under the same message.
+     Measured in a sandbox: a backup table reached after another table had been shelved
+     printed `metadata/COUVIS_0xxx/COUVIS_0001/COUVIS_0001_index_backup.tab`; the same
+     file named alone printed the absolute path. Two PR-32 reviewers independently read
+     the published line as wrong because each had measured only one of the two positions.
+     The guide states the rule. **Owner: whoever next touches the index shelf driver.**
