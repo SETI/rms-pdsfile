@@ -6352,3 +6352,138 @@ rediscovery.
      has to exclude it too, and any later measurement of "the number of modules" has to
      say which of the two numbers it means. **Owner: whoever writes the next such
      checker.**
+
+## From PR-32 (the user guide for the fifteen command-line programs, Phase 7)
+
+### Added by the PR-32 executor's own measurements (2026-08-09)
+
+347. **All five PDS4 programs identify themselves as their PDS3 twin, and it is now
+     published.** `ToolSpec.progname` is `'pdsarchives'` on `pds4archives`,
+     `'pdschecksums'` on `pds4checksums`, and so on for all five. It is read in two
+     places: `_common.build_arg_parser()`, so `pds4archives --help` describes itself as
+     `pdsarchives`; and `_common.setup_run()`, which joins it to the log root, so
+     **`pds4archives` writes its logs into `<log root>/pdsarchives/`**, mixed with the
+     PDS3 program's and separated only by the category component below (`bundles/` vs
+     `volumes/`). Measured on a real run: `pds4checksums --initialize` wrote
+     `logs/pdschecksums/bundles/<bundle set>/<bundle>_md5_<time tag>_initialize.log`.
+
+     **It is pre-existing rather than a consolidation regression.** The original
+     standalone `holdings_maintenance/pds4/pds4archives.py` on `main` already joined the
+     log root to the literal `'pdsarchives'`, and all five originals did the same.
+
+     The guide states the behavior as it is, in the shared chapter and in each of the
+     five PDS4 chapters. Whether it may be fixed is an owner decision the frozen-CLI rule
+     does not settle: names, flags and exit codes are frozen and a log *directory* is
+     none of the three, while log text is explicitly unfrozen -- but operators may have
+     tooling pointed at those paths, and a fix would move every PDS4 log tree at once.
+     **Owner: the owner.**
+
+348. **`pds4checksums --infoshelf` does not do nothing; it runs `pds4checksums` a second
+     time.** The chain rebuilds the command line by replacing the string `pdschecksums`
+     with `pdsinfoshelf` throughout `sys.argv` and dropping `--infoshelf`. No PDS4
+     command line carries that string -- the console script is `pds4checksums` and the
+     module path ends `pds4/pds4checksums.py` -- so the substitution changes nothing and
+     the subprocess is the same program running the same task over the same paths again.
+     The process exits with the second run's status.
+
+     Measured: `pds4checksums --validate --infoshelf <bundle>` printed **796 timestamped
+     log lines** against the **398** of the same command without the flag, with two
+     `|| HEADER |` lines, the second naming `pds4checksums --validate <bundle>`. No
+     `pds.validation.fileinfo` line appears anywhere in it. Under `--initialize` the
+     second run additionally reports `Checksum file already exists`, an error the first
+     run did not produce.
+
+     The cost is a doubled run rather than a wrong answer. **Owner: whoever fixes the
+     PDS4 chain**, which is the same substitution `pdschecksums` uses correctly.
+
+349. **`pdsdependency` reports a log path it does not write.** Inside its `main()`, the
+     loop that creates the file handlers rewrites each log path with
+     `replace('/volumes/', '/')` before opening it, but the rewrite is a loop-local
+     rebinding; the `logger.info('Log file', ...)` loop a few lines below reports the
+     *unrewritten* list. So a run prints
+     `Log file: <root>/logs/pdsdependency/volumes/<volume set>/<volume>_dependency_<tag>.log`
+     and writes `<root>/logs/pdsdependency/<volume set>/<volume>_dependency_<tag>.log`.
+     The `volumes/` directory is never created. Found by the PR-32 review, which looked
+     for the file rather than trusting the line; the guide documents the real path and
+     warns about the printed one. **Owner: whoever next touches `pdsdependency`'s
+     logging.**
+
+350. **`pds4checksums --initialize` over an existing manifest logs an error and exits 0**,
+     which makes any `&&` chain onto it vacuous. Measured: the run reports
+     `Checksum file already exists: ...`, closes with `1 ERROR message`, and exits 0, so
+     `pds4checksums --initialize "$B" && pds4infoshelf --initialize "$B"` runs the second
+     command over a bundle whose manifest was not written. This is entry 5's exit-status
+     behavior seen from the operator's side; it is recorded separately because the
+     natural workaround for entry 348 is exactly that `&&`, and it does not work.
+     **Owner: PR-25's exit-status change, which fixes both.**
+
+351. **reStructuredText does not nest inline markup inside `**strong**`, and Sphinx does
+     not warn about it.** A span written `` **``--infoshelf`` does not chain** `` renders
+     with the backticks visible *and* with the flag smart-quoted to `–infoshelf`, because
+     `--` outside literal markup becomes an en dash. A reader copying that line gets a
+     command argparse rejects. The `-W` and `-n -W` builds both pass with **0 problem
+     lines** over a page full of them: the markup is well-formed, it just does not mean
+     what it looks like.
+
+     Measured on PR-32's first draft: **18 spans** across 20 pages, found by grepping the
+     built HTML for `<strong>[^<]*``` and for en-dashed flags, not by any gate. The check
+     that catches it is one line against `docs/_build`, and no gate runs it. **Owner:
+     PR-33 and PR-34, which write more prose of the same kind.**
+
+352. **Only one option across the fifteen programs has a substantive default**, which is
+     what makes the third comparison in `critiques/pr-32/check_cli_coverage.py` narrow.
+     Of 108 optional actions, 107 default to `False`, `''`, `None` or `[]`; the one that
+     does not is `re_validate --minutes`, which defaults to 60. A `store_true` flag's
+     `False` is not a fact a chapter can get wrong, so the check has one subject. Recorded
+     so that "0 findings over ... 1 defaults" is not read as wider coverage than it is.
+     **Owner: nobody, unless a later option acquires a default.**
+
+353. **The shared testing tree carries zero-byte placeholders for every `.tar.gz` and
+     every `*_md5.txt`**, so none of the three programs that read one can be demonstrated
+     or tested against it as it stands. `pdsarchives --validate` on such a volume ends in
+     `tarfile.ReadError: empty file`. PR-32's examples were therefore run against a copy
+     of the tree with the derived products built from scratch, in dependency order, which
+     is also the only way to show `--initialize` and the versioned copy a `--reinitialize`
+     leaves behind. Any later measurement of these programs against the shared tree has to
+     build the products first. **Owner: whoever next documents or tests these programs
+     against the shared testing tree.**
+
+### Added by the PR-32 finishing pass (2026-08-09)
+
+354. **`pdsinfoshelf --initialize` with a file selection crashes instead of refusing, and
+     its PDS4 twin does not.** `initialize()` in `holdings_maintenance/pds3/pdsinfoshelf.py`
+     binds its logger inside the `if os.path.exists(info_path)` branch, so a run that
+     reaches the `if selection:` refusal below it with no existing shelf still has
+     `logger` set to `None`. The driver calls the task functions without passing a
+     logger, so that is the ordinary case. Measured in a sandbox, with the shelf removed
+     and one top-level file named:
+     `AttributeError: 'NoneType' object has no attribute 'error'`, raised at the
+     `if selection:` refusal inside that module's `initialize()`, exit 1, with the
+     intended message `File selection is disallowed for task "initialize"` never printed.
+     `pds4infoshelf.py` binds the same logger unconditionally at the top of its own
+     `initialize()` and logs the message properly, exiting 1; both checksum programs
+     raise `ValueError` carrying the text. So one of the four is wrong and the fix is one
+     line, moving the binding above the first check. The guide documents the crash.
+     **Owner: whoever next touches `pdsinfoshelf`.**
+
+355. **`--quiet` prints nothing at all once a log root is configured.** The flag only
+     skips `logger.add_handler(pdslogger.stdout_handler)`; the run's own opening `HEADER`
+     and closing `SUMMARY` lines still reach the terminal, but only as `pdslogger`'s
+     fallback for a record with no handler anywhere in its ancestry. `--log` or
+     `PDS_LOG_ROOT` attaches the spec's file handlers at that same outermost level, so
+     the fallback stops firing and the terminal goes silent. Measured: the same
+     `pdschecksums --validate --quiet` printed 6 lines with no log root and 0 with one,
+     by either route. Whether an operator wants a `--quiet` run to be visible at all is
+     a design question, but it should not depend on an unrelated flag. The guide states
+     both behaviors. **Owner: whoever next touches the driver's handler setup.**
+
+356. **The `Backup file skipped:` line's path is absolute or holdings-relative depending
+     on where the skipped file falls in the run.** The index shelf driver decides the
+     skip before entering any task function, and it is the task functions that call
+     `logger.replace_root()`. So the first target of a run prints an absolute path and
+     every later one prints a logical path, in the same run and under the same message.
+     Measured in a sandbox: a backup table reached after another table had been shelved
+     printed `metadata/COUVIS_0xxx/COUVIS_0001/COUVIS_0001_index_backup.tab`; the same
+     file named alone printed the absolute path. Two PR-32 reviewers independently read
+     the published line as wrong because each had measured only one of the two positions.
+     The guide states the rule. **Owner: whoever next touches the index shelf driver.**

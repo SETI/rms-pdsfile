@@ -1435,6 +1435,54 @@ a chapter documenting the sync shell scripts (document-only, per ground
 rule 7); appendix: file formats (shelf `.pickle`/`.py` sidecar, `*_md5.txt`,
 `_volinfo`).
 
+**Done and open as PR #137 against `rewrite`, not merged**, record
+`critiques/pr-32-validation.md`. **21 pages**, one per program as planned, plus the landing page, concepts, installation, the shell-script chapter and the
+file-format appendix -- and **one page the plan did not call for**,
+`user_guide_maintenance_tools.rst`. Ten of the fifteen programs build no parser of their
+own: they declare a `ToolSpec` and `_common.build_arg_parser()` builds one, so all ten
+share an identical surface (five task flags, two of which carry a second spelling, the
+unit positional, `--log/-l` and `--quiet/-q`). Writing that ten times would have been the
+pasted-between-near-identical-halves defect in prose. It is written once and each of the
+ten chapters covers only its unit noun, its extra options, its products and paths, and
+its exit status. Measured duplication between those ten at the branch head, after
+normalizing the volume/bundle vocabulary so a pasted sentence cannot hide behind the
+noun: the most similar pair is **0.302** (`pdsinfoshelf`/`pds4infoshelf`), and **72 of
+991** non-blank lines recur across two or more pages.
+
+**What the reviews cost and returned. Five rounds, all fresh no-context subagents.**
+Section 6.6 caps a PR at four; the fifth was taken because rounds 1-4 produced 36 distinct
+defects whose correction rewrote a large share of the guide's factual sentences, and round
+4 had just measured that a correction pass introduces new defects at half the rate of the
+pass it corrects (12 of its 19 findings were in the previous corrections). The fifth round
+read only the correction commit, with each of its 45 changed passages named by hand, and
+found **16 more defects, all of them in the corrections.** Two were the same failure --
+a claim generalized from a single measurement -- and neither was visible to any gate.
+**On a PR whose deliverable is prose, four rounds was not enough**, and the reason was
+measurable in advance rather than in hindsight. PR-33 and PR-34 should budget for the
+second read of their own corrections.
+
+Three findings are worth carrying forward. Only **one** of the fifteen programs reads a
+holdings environment variable directly, and the twelve others that work in a holdings tree
+find their way around it by splitting the path -- but the library underneath them does
+have a path that consults the variable, so "reads no environment variable" is a claim to
+make about the programs and not about the package. reStructuredText does not nest inline
+markup inside `**bold**`, so a span like `` **``--infoshelf`` does not chain** `` renders
+with visible backticks and with the flag smart-quoted to an en dash that cannot be pasted
+-- over which **both Sphinx builds pass with 0 problem lines** (deferred 351); the gate
+PR-31 built cannot see it and only the built HTML can. And a checker's own latent bug can
+mimic a sensitivity in what it checks: the coverage checker's shadowed variable made a
+mutation cascade into 12 spurious findings, which was read as a weakness in its parsing
+until the shadowing was fixed and the same mutation isolated to exactly 1.
+
+`critiques/pr-32/check_cli_coverage.py` captures each program's real parser out of its own
+`main()` and compares it against what the guide documents, in both directions. It found
+five documentation defects before it went green and reports **0 findings over 15 programs,
+108 options, 175 option strings, 1 default** -- one, because 107 of the 108 options default
+to false, empty or None (deferred 352). Round 4 found a real bug in it, fixed in `824c01f`.
+
+The rounds are recorded at `critiques/pr-32/round-1.md` through `round-5.md`; deferred
+observations 347-356 carry what the guide had to document as behavior rather than fix.
+
 **PR-33 (L)** `docs: developer guide` (closes issue #43)
 `docs/dev_guide/`, with an **explicit required chapter + diagram list** (so
 the synthesis is bounded, not open-ended):
