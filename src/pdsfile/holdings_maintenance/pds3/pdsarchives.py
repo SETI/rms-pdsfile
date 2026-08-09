@@ -24,8 +24,10 @@ loops over however many cover the target.
 
 The driver is ``_common.run_main()``. Its own ``archive_targets()`` is what a command-line
 path is expanded by, so each of the five tasks is called with one volume directory and
-nothing else, and the True or False each returns is discarded: only a library caller sees
-it, and ``re_validate`` is the one that does.
+nothing else, and the True or False each returns is discarded. **Nothing anywhere reads
+it**: the driver drops it, and ``re_validate``, the one caller that reaches into this
+module as a library, calls ``validate()`` for its side effects and does not assign what
+comes back.
 
 **The specification's log suffix is '_links', not '_archives'.** A run writes
 ``<volume>_links_<time tag>_<task>.log``, which is the suffix ``pdslinkshelf`` passes for
@@ -35,11 +37,16 @@ The PDS4 tool passes '_archives'.
 
 Two fields of the specification are set here and read nowhere a run of this tool reaches:
 ``index_ext``, which only the index shelf tools' target expansion reads, and
-``holdings_sentinel``, which only the other two families read. ``file_log_level`` is the
-opposite case: 'info' is the method three of the four shared functions report each file
-through, so the ``{'info': 100}`` entries in the shared default limits cap this tool's
-per-file lines, while the same lines in a PDS4 run go through 'normal', which no entry in
-those defaults names.
+``holdings_sentinel``, whose two readers serve the other three families -- the checksum
+and info shelf tools through ``_shelf_common.resolve_holdings_paths()`` and the link shelf
+tools through ``_linkshelf_common.locate_nonlocal_link()``.
+
+``file_log_level`` is the opposite case: 'info' is the method three of the four shared
+functions report each file through, and the same lines in a PDS4 run go through 'normal'.
+That decides which of the shared default limits can reach them, and the three scopes do
+not agree: the walk and the comparison are capped at ``{'info': 100}`` for this tool and
+uncapped for the PDS4 one, while the archive write is ``{'info': -1}`` and so uncapped for
+both.
 """
 
 import os
@@ -288,7 +295,9 @@ def validate(pdsdir, *, logger=None, limits=None):
     one call reports all of them rather than the first.
 
     This is also the entry point ``re_validate`` reaches, as a library function rather
-    than through the command line, for each volume type it was asked to re-validate.
+    than through the command line, for each volume type it was asked to re-validate. It
+    does not read the value returned; what it takes from a call is the log the shared
+    logger wrote.
 
     Parameters:
         pdsdir: The volume directory to check.

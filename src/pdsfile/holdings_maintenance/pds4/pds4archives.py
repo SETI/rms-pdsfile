@@ -8,12 +8,17 @@
 **How many archives cover one target, and what goes in each, is looked up rather than
 derived.** A bundle set's rule module installs an ``ARCHIVE_PATHS`` table saying which
 archive files cover a logical path and an ``ARCHIVE_DIRS`` table saying which directories
-each of those packages, and every task here loops over what those two answer. That is the
-whole of the difference between this tool and the PDS3 one, and it runs through all five
-tasks. A target that no rule matches resolves to no archive paths at all, and the five do
-not agree about that: ``validate()``, ``repair()`` and ``update()`` iterate over an empty
-list and report nothing, while ``initialize()`` and ``reinitialize()`` reach
-``write_archive()``, which logs an error and then raises.
+each of those packages, and every task here loops over what those two answer. It is the
+**largest** difference between this tool and the PDS3 one, and it runs through all five
+tasks; the smaller ones are recorded on the functions that carry them, and the module
+docstring of the PDS3 tool lists the specification fields the two do not share.
+
+A target that no rule matches resolves to no archive paths at all, and the five tasks do
+not agree about that. ``update()`` reports nothing and returns False. ``validate()`` and
+``repair()`` walk the whole directory tree first and only then find there is nothing to
+compare it with, so a target with no archives still costs a full walk and a log line per
+file. ``initialize()`` and ``reinitialize()`` reach ``write_archive()``, which logs an
+error and then raises.
 
 Validation compares an archive against the directories it packages by metadata alone --
 absolute path, byte count and modification time -- and never reads a file's contents,
@@ -33,9 +38,13 @@ rather than as one target per bundle.
 
 Two fields of the specification are set here and read nowhere a run of this tool reaches:
 ``index_ext``, which only the index shelf tools' target expansion reads, and
-``holdings_sentinel``, which only the other two families read. ``file_log_level`` is
-'normal', so the ``{'info': N}`` entries in the shared default limits do not cap this
-tool's per-file lines, and ``handler_factories`` adds a warning handler ahead of the error
+``holdings_sentinel``, whose two readers serve the other three families -- the checksum
+and info shelf tools through ``_shelf_common.resolve_holdings_paths()`` and the link shelf
+tools through ``_linkshelf_common.locate_nonlocal_link()``.
+
+``file_log_level`` is 'normal', so the ``{'info': N}`` entries in the shared default
+limits do not reach this tool's per-file lines at all, where they cap the PDS3 tool's walk
+and comparison at 100. ``handler_factories`` adds a warning handler ahead of the error
 handler, so a run leaves a warning file in each log directory that a PDS3 run does not.
 
 ``progname`` is 'pdsarchives', not this module's name, which is the convention all five
@@ -445,11 +454,18 @@ def archive_lskip(pdsdir):
     name.
 
     **It is computed from the target's own path components rather than looked up**, which
-    is unlike everything else about this tool, and it is not the count the archives are
-    written with: ``write_archive()`` gives each member the basename of its own packaged
-    directory and the path below it. The two agree wherever an archive packages a bundle
-    directory sitting directly under the bundle set, and they are the reason a comparison
-    matches on absolute path rather than on the interior one.
+    is unlike everything else about this tool, and it is not the rule the archives are
+    written by: ``write_archive()`` gives each member the basename of its own packaged
+    directory and the path below it, while ``read_archive_info()`` rebuilds an absolute
+    path by putting the **bundle set's** prefix in front of that member name.
+
+    **The two agree only where an archive packages a bundle directory sitting directly
+    under the bundle set, and the installed archive tables do not all do that.** Where a
+    table packages the bundle set itself, or a collection two levels down, the rebuilt
+    paths do not match the ones the walk found and this tool's own ``validate()`` reports
+    every file of a freshly written archive as missing from one side or the other. That
+    is a defect in the pair of rules rather than in this function, which computes what its
+    one reader asks of it.
 
     Parameters:
         pdsdir: The target being archived.

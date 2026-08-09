@@ -7,9 +7,9 @@
 
 A link shelf records, for every file in a volume, either the list of files that file
 points at or the label that describes it. What is here is the scan that finds them, which
-is the one thing the two flavors of this tool do differently, because a PDS3 label names
-the file it describes in ``KEYWORD = FILENAME`` syntax and a PDS4 label in an XML element.
-Everything that reads, writes, compares or drives a link shelf is in
+is the largest of the things the two flavors of this tool do differently, because a PDS3
+label names the file it describes in ``KEYWORD = FILENAME`` syntax and a PDS4 label in an
+XML element. Everything that reads, writes, compares or drives a link shelf is in
 ``_linkshelf_common``, and so are all five tasks; the driver is ``_common.run_main()``.
 
 Four tables here say what the scan means by a link:
@@ -30,17 +30,19 @@ Four tables here say what the scan means by a link:
     are wrong and what each was meant to say. That module documents how an entry works.
 
 The specification names ``_shelf_common.UNIT_LOG_PATH_METHOD`` as its log path method,
-which is ``log_path_for_bundle`` on the shared PdsFile base rather than the
-``log_path_for_volume`` alias ``Pds3File`` also carries; the two are the same method,
-since the alias forwards. Its log suffix is '_links',
-which ``pdsarchives`` also passes, and the two do not collide because each tool's
-``progname`` becomes a directory component of the log path.
+which is the string ``'log_path_for_bundle'``. ``Pds3File`` carries a
+``log_path_for_volume`` of its own, which is a separate method forwarding to that one, and
+which the archive tool names instead; the path built is the same either way. This tool's
+log suffix is '_links', which ``pdsarchives`` also passes, and the two do not collide
+because each tool's ``progname`` becomes a directory component of the log path.
 
 One field of the specification is set here and read nowhere a run of this tool reaches:
-``index_ext``, which only the index shelf tools' target expansion reads. Both of the
-others that differ by flavor do reach something: ``holdings_sentinel`` is where the
-upward search for a non-local link stops, and ``file_log_level`` is the method a created
-directory is reported through when a shelf is written.
+``index_ext``, which only the index shelf tools' target expansion reads. The three other
+fields that differ by flavor all reach something: ``holdings_sentinel`` is where the
+upward search for a non-local link stops, ``file_log_level`` is the method a created
+directory is reported through when a shelf is written, and ``handler_factories`` is the
+error handler alone, where the PDS4 tool adds a warning handler ahead of it, so a PDS3 run
+leaves one fewer file in each of its log directories.
 
 The five shared tasks are bound to this module's own names with this specification
 supplied. ``re_validate`` reaches ``validate`` that way, as a library function rather than
@@ -127,19 +129,29 @@ def generate_links(dirpath, old_links=None, *, logger=None, limits=None):
     extensions and resolves what it names, and the second decides which label, if any,
     describes each of the remaining files.
 
+    **The repair table is consulted before anything is resolved.** Every link a file
+    yielded is looked up in the entries ``REPAIRS`` matched for that file, and a
+    replacement found there is what the rest of the pass works with -- **including where
+    the name as written does match a file in the same directory**, since nothing has
+    looked yet. Only then does resolution begin.
+
     **Resolving a link is a search, and it can end four ways.** A name matching a file in
     the same directory resolves there, case-insensitively, and the shelved name takes the
-    case the filesystem has. A name that matches nothing local is put through the repair
-    table first, then discarded if it parses as a float or as a Fortran format code such
-    as ``F10.3``, and only then searched up the tree. A search that fails is an error for
-    a ``.FMT`` or a ``.CAT`` name and a debug line for anything else, on the reasoning
-    that most unresolved candidates are not links at all.
+    case the filesystem has. A name that matches nothing local is discarded if it parses
+    as a float or as a Fortran format code such as ``F10.3``, and only then searched up
+    the tree. A search that fails is an error for a ``.FMT`` or a ``.CAT`` name and a
+    debug line for anything else, on the reasoning that most unresolved candidates are not
+    links at all.
 
-    A label is credited to a file on one of three grounds, in order: the label's own name
-    matches the file's up to the extension; exactly one label in the directory named the
-    file in a target position; or, failing both, the file is reported as having a missing
-    or an ambiguous label and is shelved with an empty string. ``KNOWN_MISSING_LABELS``
-    excuses a file from the search altogether.
+    **A label is credited to a file only where that label names the file**, on one of two
+    grounds. Either the label named it in a target position and the label's own name
+    matches the file's up to the extension, which is settled during the first pass; or the
+    label is the only one in the directory that named it in a target position, which the
+    second pass settles from the candidates the first collected. A name match on its own
+    credits nothing: a ``.LBL`` whose basename matches a file it never mentions is
+    reported as a label that "does not point to file", and the file it was named for is
+    then reported as having no label. Failing both grounds the file is shelved with an
+    empty string, and ``KNOWN_MISSING_LABELS`` excuses it from the search altogether.
 
     **The modification time is the newest among every file the walk sees**, taken before
     any skip test and whether or not the file is opened, so a ``.DS_Store`` or a backup

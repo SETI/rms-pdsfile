@@ -11,11 +11,11 @@ means reading the whole of it, so this tool records, once, which row numbers bel
 which product, and PdsFile reads that shelf instead of the table.
 
 **Everything this tool does is in ``_indexshelf_common``**, which holds the five tasks and
-the driver, and this module is the shortest of the ten because nothing about shelving an
-index table differs between PDS3 and PDS4: what a row is, how a key is made from one and
-how a shelf is compared against its table are all properties of ``pdstable``. What is here
-is the specification that says which flavor to be, and a ``main()`` that hands it to the
-driver.
+the driver, and this module and its PDS4 twin are the two shortest of the ten because
+nothing about shelving an index table differs between the two PDS versions: what a row is,
+how a key is made from one and how a shelf is compared against its table are all
+properties of ``pdstable``. What is here is the specification that says which flavor to
+be, and a ``main()`` that hands it to the driver.
 
 Its target is a table rather than a volume, which is why ``unit`` is 'table': a
 command-line path names an index table or a metadata directory, and a directory expands to

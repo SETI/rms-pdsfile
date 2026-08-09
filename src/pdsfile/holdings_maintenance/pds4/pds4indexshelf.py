@@ -11,11 +11,11 @@ means reading the whole of it, so this tool records, once, which row numbers bel
 which product, and PdsFile reads that shelf instead of the table.
 
 **Everything this tool does is in ``_indexshelf_common``**, which holds the five tasks and
-the driver, and this module is the shortest of the ten because nothing about shelving an
-index table differs between the two PDS versions: what a row is, how a key is made from
-one and how a shelf is compared against its table are all properties of ``pdstable``. What
-is here is the specification that says which flavor to be, and a ``main()`` that hands it
-to the driver.
+the driver, and this module and its PDS3 twin are the two shortest of the ten because
+nothing about shelving an index table differs between the two PDS versions: what a row is,
+how a key is made from one and how a shelf is compared against its table are all
+properties of ``pdstable``. What is here is the specification that says which flavor to
+be, and a ``main()`` that hands it to the driver.
 
 Its target is a table rather than a bundle, which is why ``unit`` is 'table': a
 command-line path names an index table or a metadata directory, and a directory expands to
@@ -30,8 +30,8 @@ handler ahead of the error handler, so a run of this tool leaves a warning file 
 its log directories that the PDS3 tool's run does not. The other two,
 ``holdings_sentinel`` and ``file_log_level``, are read nowhere along this tool's path: no
 code that a run of this tool reaches ever looks at them, which is why '/pds4-holdings/'
-here has no effect while the same field decides how a path is split for four of the other
-five PDS4 tools.
+here has no effect. Of the four other PDS4 tools, two split a command-line path on that
+same field, one stops an upward search at it, and the fifth does not read it either.
 
 ``log_path_for_index`` builds the log path, from the table's own logical path, and
 ``log_suffix`` is empty because that method takes no suffix argument; an empty

@@ -37,12 +37,13 @@ recorded on the functions that carry them.
 shelved under two settings of ``TZ`` produces two different shelves. The times are then
 compared as strings, which works because the format sorts the same way the times do.
 
-Three fields of the specification are set here and read nowhere a run of this tool
-reaches. ``index_ext`` is read only by the index shelf tools' target expansion.
-``log_path_method`` is left at its empty default and this driver never consults it,
-because it picks between the bundle and the bundle set log path per target instead. And
+Two fields of the specification are set here and read nowhere a run of this tool reaches.
+``index_ext`` is read only by the index shelf tools' target expansion. And
 ``file_log_level`` is set to 'normal' and reaches nothing: its four readers are all in the
 archive and link shelf machinery, and the per-file lines below name their level directly.
+``log_path_method`` is a third field this driver never consults, and it is not set here at
+all: it stays at its empty default, because the driver picks between the bundle and the
+bundle set log path per target instead.
 
 ``progname`` is 'pdsinfoshelf', not this module's name, which is the convention all five
 PDS4 tools follow: it is what the ``--help`` description and the "Missing task" error call
@@ -100,11 +101,12 @@ def generate_infodict(pdsdir, selection, old_infodict=None, *, logger=None,
     missing checksum entry and shelved with an empty digest.
 
     ``old_infodict`` is what makes an update affordable: a **file** already keyed in it
-    keeps its entry and is not measured again. A directory is always recomputed, since its
-    entry is derived from the children this walk found. The merge that follows adds every
-    key the walk produced that the old dictionary lacked, so the result is the old
-    dictionary plus what is new. **On a selection the merge is narrower**: only the named
-    file's own entry is written over the old dictionary, so nothing else moves.
+    keeps its entry and is not measured again. A directory is recomputed from the children
+    this walk found -- but only into the working dictionary. **The merge that follows adds
+    a key only where the old dictionary lacks it**, so a recomputed entry for a path the
+    old dictionary already carries, directory or file, is discarded, and the result is the
+    old dictionary plus what is new and nothing else. **On a selection the merge is
+    narrower still**: only the named file's own entry is written over the old dictionary.
 
     The newest date is taken over the entries merged in, and then compared against the
     checksum file's own modification time, the later of the two winning. That is what lets
@@ -156,8 +158,11 @@ def generate_infodict(pdsdir, selection, old_infodict=None, *, logger=None,
         A preview size is measured only for a file whose extension is in ``PREVIEW_EXTS``,
         and any failure to read one -- a file that is not an image, a truncated one, a
         format the library cannot open -- is caught, reported as "Preview size not found",
-        and shelved as (0, 0). The image is closed on every path, since it is opened as a
-        context manager; the PDS3 tool closes it only where nothing was raised.
+        and shelved as (0, 0). The image is opened as a context manager, so it is closed
+        on every path; the PDS3 tool closes it with a statement inside the guarded block
+        instead. Only one statement sits between its open and its close, an attribute
+        read, and no input was found that raises there, so the difference is one of shape
+        rather than one observed.
 
         The modification time is formatted in the local time zone, to microseconds.
 
@@ -351,9 +356,12 @@ def load_infodict(pdsdir, *, logger=None, limits=None):
     inverse of what ``write_infodict()`` does: the bundle's own prefix is put back in
     front of each. The empty key is the bundle directory itself and is restored as such.
 
-    **A digest of dashes is read back as no digest.** The shelf format marks a directory's
-    absent digest that way, and any value whose first character is a dash is replaced with
-    the empty string, which is what a freshly generated entry carries.
+    **A digest of dashes is read back as no digest.** Any value whose first character is a
+    dash is replaced with the empty string, which is what a directory's entry carries.
+    Nothing in this package writes a dashed digest -- ``write_infodict()`` stores the
+    empty string for a directory, and a scan of 80 shelves and 391,444 entries in the test
+    holdings found no dashes and 3,264 empty digests -- so this is a defensive read of
+    some other producer's output rather than a description of the format written here.
 
     The pickle is read straight from disk rather than through the PdsFile shelf cache, so
     what comes back is what the file holds now.
@@ -372,9 +380,12 @@ def load_infodict(pdsdir, *, logger=None, limits=None):
         ValueError: raised by ``shelf_path_and_lskip()`` for a checksum path, for an
             archive path with no bundle set, and for anything else no bundle name can be
             found for.
-        OSError: raised by ``open()`` for a shelf that exists and cannot be read, and
-            ``pickle.UnpicklingError`` for one that is not a pickle. Each is logged
-            through ``exception()`` and re-raised, as is anything else the read raises.
+        OSError: raised by ``open()`` for a shelf that exists and cannot be read.
+        pickle.UnpicklingError: raised by ``load()`` for a file that is not a pickle. It
+            is not an OSError, so a caller guarding only against the entry above will not
+            catch it, and neither will it catch the ``EOFError`` a truncated pickle gives.
+            Each is logged through ``exception()`` and re-raised, as is anything else the
+            read raises.
     """
 
     if limits is None:
@@ -431,10 +442,17 @@ def write_infodict(pdsdir, infodict, *, logger=None, limits=None):
 
     Two files are written under two log levels: the pickle at the bundle's info shelf
     path, keyed by the path below the bundle set rather than by absolute path, and a
-    readable ``.py`` beside it holding the same mapping as Python source. Nothing in this
-    package reads the sidecar; it is there for a person, and for the versioning record
-    that names it as the file travelling with the pickle. The parent directory is created
-    if it is not there.
+    readable ``.py`` beside it holding the same mapping as Python source. The parent
+    directory is created if it is not there.
+
+    **The sidecar is not only for a person to read.** ``_shelves.shelf_lookup()`` answers
+    a question about the bundle itself by reading the sidecar's **second line** rather
+    than unpickling the whole shelf, which is what keeps a preload from opening every info
+    shelf in a tree. Two properties of the write below are load-bearing for that: the
+    entries are sorted by absolute path, and the bundle directory's own path is a prefix
+    of every other, so its entry -- the one keyed by the empty string -- is always written
+    first and is the file's second line. The sidecar is also what the versioning record
+    names as the file travelling with the pickle.
 
     In the sidecar the keys are padded to a common width and the entries are written in
     sorted key order, which the pickle is not: the pickle is written in the order the
@@ -464,9 +482,10 @@ def write_infodict(pdsdir, infodict, *, logger=None, limits=None):
             ``open()`` if either file cannot be written. Each is logged through
             ``exception()`` and re-raised, as is anything else either write raises. **The
             pickle is written first and is not removed if the sidecar then fails**, so
-            such a call leaves a pickle with no sidecar or with an older one, and the
-            repair task reads a pair whose sidecar is missing as an error rather than as
-            work to do.
+            such a call leaves a pickle with no sidecar or with an older one. Every later
+            operation on that pair then fails on the sidecar rather than on the shelf: the
+            repair task's dating of it, the versioning any replacing task does, and
+            ``_shelves.shelf_lookup()``'s bundle-level shortcut.
     """
 
     if limits is None:
@@ -838,8 +857,10 @@ def repair(pdsdir, selection=None, logger=None):
     Raises:
         OSError: raised by the two ``getmtime()`` calls that date the pair, and
             ``FileNotFoundError`` in particular where the shelf pickle is present and its
-            ``.py`` sidecar is not. That is the one state this task cannot proceed from,
-            and it arises from a write that failed between the two files.
+            ``.py`` sidecar is not. **Those two calls are inside the agreement branch**,
+            so a missing sidecar stops this task only where the shelf and the walk agree;
+            where they differ, the versioning that comes next raises the same exception
+            out of ``move_old()``, which copies the sidecar beside the pickle.
     """
 
     info_path = pdsdir.shelf_path_and_lskip('info')[0]
@@ -919,13 +940,17 @@ def update(pdsdir, selection=None, logger=None):
     measured. A file whose size or date has changed is therefore not noticed here; that is
     ``validate()``'s and ``repair()``'s work.
 
-    A **directory** is not carried through, because the walk always recomputes one from
-    the children it found, so an update does notice a directory whose child count or total
-    size has changed. That is what makes an update of a bundle that has gained a file
-    differ from the shelf it started with in more than the one new key.
+    **A directory already shelved is not refreshed either.** The walk does recompute one
+    from the children it found, and the merge then writes a key only where the shelf lacks
+    it, so the recomputed value is discarded and every ancestor directory of a new file
+    keeps the child count and byte total it was shelved with. ``validate()`` reports those
+    as a child count and a file size mismatch, so the two tasks disagree about the same
+    shelf until a ``reinitialize`` or a ``repair``.
 
-    It is not a merge of old over new either: the result is assembled from the paths the
-    walk visited, so an entry for a file that has since been deleted is dropped.
+    **A deletion is invisible.** The result starts from the whole of what the shelf held,
+    so an entry for a file that is no longer there survives; and because it survives, and
+    because a directory's entry is not refreshed either, the comparison this task makes
+    still holds and the run reports that the shelf is complete.
 
     Where the walk returns exactly what the shelf held, nothing is written or touched and
     that is reported at info level; the "out of date" re-dating ``repair()`` does has no
@@ -1011,8 +1036,9 @@ def main():
     the result are not read, and one of them could not be useful here in any case, since
     all five of this tool's tasks return None.
 
-    That makes this the half of the pair that does report what it found. The two checksum
-    tools share this driver and exit 0 whatever they logged.
+    That makes this the half of the pair that does report what a task found. The two
+    checksum tools share this driver and never read the status it computed, so what they
+    exit nonzero for is only what was settled before a task started.
 
     Raises:
         SystemExit: from ``sys.exit()``, with the run's status, on every path out of a run

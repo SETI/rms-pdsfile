@@ -7,13 +7,16 @@
 
 A checksum file is a text manifest, one line per file, holding a 32-character MD5 digest
 and the file's path below the bundle set. It sits in the ``checksums-<category>/``
-parallel of the tree it describes, one file per bundle, except for an archives category,
-where one file covers the whole bundle set. This tool writes those manifests and checks a
-tree against one.
+parallel of the tree it describes, and what one manifest covers is
+``checksum_path_and_lskip()``'s answer rather than this tool's: one file per bundle in an
+ordinary category, one for the whole bundle set in an archives category, and one for each
+of the three kinds of directory that sit under a bundle set without being a bundle -- a
+name starting ``checksums_``, a name starting ``superseded``, or a name ending
+``_support``. This tool writes those manifests and checks a tree against one.
 
 The driver is ``_shelf_common.run_selection_main()``, which this tool reaches because a
 command-line path here can name **one file inside a bundle** as well as a whole bundle or
-bundle set. Every function below therefore takes a ``selection``, which is a basename and
+bundle set. Every task below therefore takes a ``selection``, which is a basename and
 not a path, and a task given one narrows its work to the file of that name while leaving
 every other entry in the manifest as it was. The driver enforces the one case where that
 is not safe by itself: ``reinitialize`` on a selection is run as ``update`` instead, since
@@ -31,20 +34,25 @@ manifest format, the comparison -- is this module's, and is a near-copy of the P
 tool's. The differences between the two are worth knowing and none of them is a difference
 of purpose; they are recorded on the functions that carry them.
 
-**A run's exit status does not report what it found.** The driver returns rather than
-exiting, and ``main()`` never exits with the status it computed, so a ``--validate`` that
-reported every file in a bundle as a mismatch still exits 0. That is deliberate in the
-driver, which leaves the decision to the tool, and is a property of these two tools rather
-than of the other eight.
+**A run's exit status does not report what a task found.** The driver returns rather than
+exiting and ``main()`` never reads the status it computed, so a ``--validate`` that
+reported every file in a bundle as a mismatch still exits 0. What a run does exit nonzero
+for is everything settled before a task starts -- a command line naming no task exits 1, a
+command line the parser cannot classify exits 2, and a path outside a holdings tree or
+naming checksum files exits 1 -- and a task that raises ends the process through the
+traceback. That is deliberate in the driver, which leaves the decision to the tool, and
+the silence about what a task found is a property of these two tools rather than of the
+other eight.
 
-Three fields of the specification are set here and read nowhere a run of this tool
-reaches. ``index_ext`` is read only by the index shelf tools' target expansion.
-``log_path_method`` is left at its empty default and this driver never consults it,
-because it picks between the bundle and the bundle set log path per target instead. And
+Two fields of the specification are set here and read nowhere a run of this tool reaches.
+``index_ext`` is read only by the index shelf tools' target expansion. And
 ``file_log_level`` is set to 'normal' and reaches nothing: its four readers are all in the
 archive and link shelf machinery, and the per-file lines below name their level directly,
 which is why the same lines go through ``normal()`` here and through ``info()`` in the
-PDS3 tool without either tool reading the field that says so.
+PDS3 tool without either tool reading the field that says so. ``log_path_method`` is a
+third field this driver never consults, and it is not set here at all: it stays at its
+empty default, because the driver picks between the bundle and the bundle set log path per
+target instead.
 
 ``progname`` is 'pdschecksums', not this module's name, which is the convention all five
 PDS4 tools follow: it is what the ``--help`` description and the "Missing task" error call
@@ -232,8 +240,11 @@ def read_checksums(check_path, selection=None, *, logger=None, limits=None):
     **The manifest is parsed by fixed offsets, not by splitting.** A record's first 32
     characters are the digest and everything from the 35th to the end of the line,
     stripped of trailing whitespace, is the path; the two characters between are the
-    separator this module writes and are not examined. A record shorter than that yields a
-    short digest and an empty path rather than an error.
+    separator this module writes and are not examined. **A record too short to hold a
+    path, a blank line among them, ends the whole read**: the basename it yields is empty
+    and the test for an invisible file subscripts it. With a selection given, such a
+    record is dropped by the basename comparison above that test and the read completes,
+    so whether a manifest can be read at all depends on the task.
 
     Each path is made absolute by putting the manifest's own prefix in front of it, which
     is the counterpart of the trimming ``write_checksums()`` does.
@@ -253,13 +264,17 @@ def read_checksums(check_path, selection=None, *, logger=None, limits=None):
         an empty list for a missing manifest or an unmatched selection.
 
     Raises:
+        IndexError: from the ``__getitem__()`` that tests a basename's first character,
+            for a record with no path in it.
         ValueError: raised by ``from_abspath()``, before any log line is written, for a
             path outside every holdings tree.
         OSError: raised by ``open()`` for a manifest that exists and cannot be read. It is
             logged through ``exception()`` and re-raised, as is anything else the read
             raises. A ``KeyboardInterrupt`` is not: this handler catches ``Exception``
-            alone, so an interrupt here closes the log level and propagates unlogged,
-            where every other function in this module logs it first.
+            alone, so an interrupt here closes the log level and propagates unlogged. Of
+            the ten other functions in this module, three catch and log an interrupt and
+            seven install no handler at all, so this is the only one whose handler is
+            narrower than what it lets past.
     """
 
     if limits is None:
@@ -332,10 +347,11 @@ def checksum_dict(dirpath, logger=None):
     It resolves the manifest's path from the directory, reads it, and turns the pairs into
     a dictionary, so a path listed twice keeps the digest of its last record.
 
-    Unlike everything else here it opens no log level of its own, so its two "Loading
-    checksums" lines are written at whatever level the caller had open, and both are
-    forced past any message limit. It takes no ``limits``, so the read it makes always
-    uses this module's own defaults for that scope.
+    Unlike the three functions here that read or write a manifest, it opens no log level
+    of its own, so its "Loading checksums for" and "Checksum load completed" lines are
+    written at whatever level the caller had open, and both are forced past any message
+    limit. It takes no ``limits``, so the read it makes always uses this module's own
+    defaults for that scope.
 
     Parameters:
         dirpath (str): The bundle directory whose manifest is to be read. A relative path
@@ -540,10 +556,11 @@ def initialize(pdsdir, selection=None, logger=None):
     """Write one bundle's MD5 manifest, refusing to replace one already there.
 
     A manifest already in place is an error and nothing is walked. **A selection is
-    refused by raising rather than by logging**, which is unlike every other task here and
-    unlike the info shelf tool's ``initialize``, which logs and returns: there is no sense
-    in creating a manifest that covers one named file, and the exception is what a run of
-    this task on a selection ends with.
+    refused by raising rather than by logging**: there is no sense in creating a manifest
+    that covers one named file, and the exception is what a run of this task on a
+    selection ends with. No other task here refuses a selection at all, and
+    ``pds4infoshelf``'s ``initialize`` refuses one by logging and returning, where its
+    PDS3 twin ends in ``AttributeError`` because it has no logger resolved on that path.
 
     The driver reaches this on a selection only for the ``initialize`` task itself, since
     it demotes ``reinitialize`` on a selection to ``update``.
@@ -804,10 +821,12 @@ def update(pdsdir, selection=None, logger=None):
     what the ``--help`` text means by saying checksums of pre-existing files are not
     checked.
 
-    It is not a merge of old over new either. The result is assembled by walking the files
-    that are there now, so an entry for a file that has since been deleted is dropped. An
-    update adds new files and removes gone ones while leaving every surviving file's
-    digest as it was.
+    **It does not notice a deletion either.** The walk rebuilds its result from the whole
+    of what it was handed, and only then appends what it found, so an entry for a file
+    that is no longer there survives; and because it survives, the comparison this task
+    makes still holds and the run reports that the manifest is complete. An update
+    therefore adds new files and does nothing else. Only ``reinitialize`` or ``repair``
+    clears a stale entry.
 
     Where the walk returns exactly what the manifest held, nothing is written or touched
     and that is reported at info level; the "out of date" re-dating ``repair()`` does has
@@ -915,14 +934,19 @@ def main():
     paths a second time, with the flag that would chain again removed. The process then
     exits with that run's return code.
 
-    **That is also the only way a run of this tool reaches a nonzero exit status.** The
-    status the driver computed is not read here at all, so a ``--validate`` that reported
-    every file as a mismatch exits 0 unless the chain ran, and the chain's own status is a
-    second checksum run's.
+    **The status the driver computed is not read here at all**, so a ``--validate`` that
+    reported every file as a mismatch exits 0 unless the chain ran, and the chain's own
+    status is a second checksum run's. What a run does exit nonzero for is everything
+    settled before a task starts: 1 for a command line naming no task, 2 for one the
+    parser cannot classify, and 1 for a path outside a holdings tree or naming checksum
+    files.
 
     Raises:
-        SystemExit: from ``sys.exit()``, with the subprocess's return code, on the one
-            path that chains. Every other path returns, and the interpreter exits 0.
+        SystemExit: from ``sys.exit()`` with the subprocess's return code on the path that
+            chains; from ``setup_run()`` with 1 for a missing task, 0 for --help and 2 for
+            a command line the parser cannot classify; and from the two path helpers with
+            1 for a path they reject. Every other path returns, and the interpreter exits
+            0.
     """
 
     result = _shelf_common.run_selection_main(SPEC, TASKS, sys.argv)
