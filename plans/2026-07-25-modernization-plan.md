@@ -1435,8 +1435,8 @@ a chapter documenting the sync shell scripts (document-only, per ground
 rule 7); appendix: file formats (shelf `.pickle`/`.py` sidecar, `*_md5.txt`,
 `_volinfo`).
 
-**Done**, record `critiques/pr-32-validation.md`. **21 pages**, one per program as
-planned, plus the landing page, concepts, installation, the shell-script chapter and the
+**Done and open as PR #137 against `rewrite`, not merged**, record
+`critiques/pr-32-validation.md`. **21 pages**, one per program as planned, plus the landing page, concepts, installation, the shell-script chapter and the
 file-format appendix -- and **one page the plan did not call for**,
 `user_guide_maintenance_tools.rst`. Ten of the fifteen programs build no parser of their
 own: they declare a `ToolSpec` and `_common.build_arg_parser()` builds one, so all ten
@@ -1444,7 +1444,7 @@ share an identical surface (five task flags, two of which carry a second spellin
 unit positional, `--log/-l` and `--quiet/-q`). Writing that ten times would have been the
 pasted-between-near-identical-halves defect in prose. It is written once and each of the
 ten chapters covers only its unit noun, its extra options, its products and paths, and
-its exit status. Measured duplication between those ten at the merged head, after
+its exit status. Measured duplication between those ten at the branch head, after
 normalizing the volume/bundle vocabulary so a pasted sentence cannot hide behind the
 noun: the most similar pair is **0.302** (`pdsinfoshelf`/`pds4infoshelf`), and **72 of
 991** non-blank lines recur across two or more pages.
