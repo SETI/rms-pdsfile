@@ -67,13 +67,14 @@
 #     ENABLE_CLEAN_INSTALL clean-install runtime-dep leak gate (default: true)
 #     ENABLE_BANDIT       (default: false — never)
 #     ENABLE_VULTURE      (default: false — never)
-#     ENABLE_SPHINX       (default: false — not enabled yet)
+#     ENABLE_SPHINX       Sphinx documentation build (default: true)
 #     ENABLE_PYMARKDOWN   PyMarkdown scan (default: false — not enabled yet)
 #
 # Checks (each run separately; -d runs both Sphinx and Markdown):
 #   Code:     optional: ruff check, ruff format --check, mypy, pytest, pyroma,
 #             api-freeze, clean-install, bandit, vulture (see ENABLE_* above)
-#   Sphinx:   make -C docs html SPHINXOPTS="-W"
+#   Sphinx:   two builds, both statuses read: make -C docs html SPHINXOPTS="-W",
+#             then the same build with SPHINXOPTS="-n -W" into its own BUILDDIR
 #   Markdown: pymarkdown scan docs/ .cursor/ README.md CONTRIBUTING.md
 #
 # Exit codes:
@@ -115,9 +116,9 @@ SCOPE_SPECIFIED=false
 #
 # Gates are enabled as they become able to pass. Currently enabled: ruff-check
 # (which runs the configured rules and then a second, indentation-only pass over
-# the preview E1 rules), pytest, pyroma, api-freeze, and the clean-install gate.
-# Not enabled yet: ruff-format, sphinx, and pymarkdown. Never enabled: mypy,
-# bandit, vulture (ground rules / pdsfile_overrides.mdc).
+# the preview E1 rules), pytest, pyroma, api-freeze, the clean-install gate, and
+# the Sphinx build. Not enabled yet: ruff-format and pymarkdown. Never enabled:
+# mypy, bandit, vulture (ground rules / pdsfile_overrides.mdc).
 : "${ENABLE_RUFF_CHECK:=true}"
 : "${ENABLE_RUFF_FORMAT:=false}"
 : "${ENABLE_MYPY:=false}"
@@ -127,7 +128,7 @@ SCOPE_SPECIFIED=false
 : "${ENABLE_CLEAN_INSTALL:=true}"
 : "${ENABLE_BANDIT:=false}"
 : "${ENABLE_VULTURE:=false}"
-: "${ENABLE_SPHINX:=false}"
+: "${ENABLE_SPHINX:=true}"
 : "${ENABLE_PYMARKDOWN:=false}"
 
 # Get script directory and project root
@@ -401,8 +402,9 @@ run_code_checks() {
     local failed_checks=""
 
     # Lint the package under src/pdsfile, the top-level tests/ tree (which
-    # includes tests/conftest.py), and the standalone scripts.
-    RUFF_TARGETS="src/pdsfile tests scripts"
+    # includes tests/conftest.py), the standalone scripts, and docs/ for its
+    # conf.py, which is the one Python file the documentation tree carries.
+    RUFF_TARGETS="src/pdsfile tests scripts docs"
 
     if [ "$RUN_RUFF_CHECK" = true ] && [ "$ENABLE_RUFF_CHECK" = true ]; then
         print_info "Running ruff check..."
@@ -603,17 +605,50 @@ run_sphinx_build() {
     # shellcheck source=/dev/null
     source "$VENV/bin/activate"
 
-    print_info "Building documentation (warnings treated as errors)..."
-    if (cd docs && make clean && make html SPHINXOPTS="-W"); then
-        print_success "Sphinx build passed"
-        deactivate 2>/dev/null || true
-        return 0
+    # Two builds, because the two flags catch different defects and neither implies the
+    # other. -W fails the build on any warning: a malformed directive, a duplicate
+    # target, a toctree entry naming a page that is not there. -n additionally reports
+    # every cross-reference that resolves to no known target -- and on its own it
+    # reports them and still exits 0, so it is run with -W and never alone.
+    #
+    # The second build gets its own BUILDDIR. Two builds that share one share its
+    # doctree cache, Sphinx then re-reads only what changed, and a build that re-reads
+    # nothing re-reports nothing.
+    local warnings_status=0
+    local nitpicky_status=0
+    local pages modules
+    pages=$(find docs/api -name '*.rst' | wc -l)
+    modules=$(grep -rh '^\.\. automodule::' docs/api | wc -l)
+
+    print_info "Building documentation (warnings as errors)..."
+    (cd docs && make clean && make html SPHINXOPTS="-W") || warnings_status=$?
+    if [ "$warnings_status" -eq 0 ]; then
+        print_success "Sphinx warnings-as-errors build passed (exit 0)"
     else
-        print_error "Sphinx build failed"
-        [ -n "$status_file" ] && echo "Sphinx - Sphinx build" >> "$status_file"
-        deactivate 2>/dev/null || true
-        return 1
+        print_error "Sphinx warnings-as-errors build failed (exit $warnings_status)"
+        if [ -n "$status_file" ]; then
+            echo "Sphinx - warnings-as-errors build" >> "$status_file"
+        fi
     fi
+
+    print_info "Building documentation (nitpicky, warnings as errors)..."
+    (cd docs && make html BUILDDIR=_build/nitpicky SPHINXOPTS="-n -W") || nitpicky_status=$?
+    if [ "$nitpicky_status" -eq 0 ]; then
+        print_success "Sphinx nitpicky build passed (exit 0)"
+    else
+        print_error "Sphinx nitpicky build failed (exit $nitpicky_status)"
+        if [ -n "$status_file" ]; then
+            echo "Sphinx - nitpicky build" >> "$status_file"
+        fi
+    fi
+
+    deactivate 2>/dev/null || true
+
+    if [ "$warnings_status" -eq 0 ] && [ "$nitpicky_status" -eq 0 ]; then
+        print_success "Sphinx build passed: 0 warnings under -W and under -n -W, over $modules automodule entries in $pages files under docs/api"
+        return 0
+    fi
+    return 1
 }
 
 # ---- Markdown lint only (PyMarkdown) ----
