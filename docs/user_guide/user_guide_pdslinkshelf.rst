@@ -95,8 +95,8 @@ looked like a filename and was not one.
 
 .. note::
 
-   **Errors here are usually about the volume, not about the shelf.** The three errors
-   above are the published volume's own, and they recur on every run:
+   **Errors here are usually about the data, not about the shelf.** The three errors
+   above recur on every run over this volume:
 
    .. code-block:: text
 
@@ -104,9 +104,15 @@ looked like a filename and was not one.
       ... | ERROR | Label is missing: .../HDAC1999_007_16_33.DAT
       ... | ERROR | Label is missing: .../INDEX/INDEX.TAB
 
+   The first two are the volume's own: both files are there in full, and the label simply
+   does not name the file beside it, which leaves that file with no label pointing at it.
+   The third is not the volume's fault at all -- it is an artifact of the tree these runs
+   were made against, where ``INDEX/INDEX.LBL`` is absent and ``INDEX.TAB`` is a
+   zero-length stand-in. A complete published volume has both.
+
    ``--initialize`` writes the shelf and reports them, then exits 1. A nonzero status
-   from this program means the scan logged something, which for a published volume with
-   known link problems is the normal outcome rather than a failure to shelve.
+   from this program means the scan logged something, which for a volume with known link
+   problems is the normal outcome rather than a failure to shelve.
 
 Log file naming
 ---------------

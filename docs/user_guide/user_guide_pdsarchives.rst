@@ -102,7 +102,10 @@ whole seconds and the filesystem does not.
 
 An archive that cannot be read at all -- an empty or truncated ``.tar.gz`` -- is not one
 of those reports. The exception is logged and re-raised, so the run ends in a traceback
-naming :exc:`tarfile.ReadError` and the process exits 1.
+and the process exits 1. Which exception it names depends on how the file is broken: a
+zero-byte archive gives :exc:`tarfile.ReadError`, ``empty file``, while a truncated one
+gives :exc:`EOFError`, ``Compressed file ended before the end-of-stream marker was
+reached`` -- the gzip layer fails before the tar layer is reached at all.
 
 Task by task
 ------------

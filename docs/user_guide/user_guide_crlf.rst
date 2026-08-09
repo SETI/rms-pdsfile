@@ -75,8 +75,10 @@ reproduce them, and the empty-file case further down:
    printf 'PDS_VERSION_ID = PDS3\r\nEND\r\n' > GOOD.LBL
    : > EMPTY.LBL
 
-Each example below starts from that state; ``--repair`` rewrites ``BAD.LBL`` in place, so
-re-create it before running an earlier example again.
+The three runs below are consecutive rather than independent: each starts where the one
+before it left off. ``--repair`` rewrites ``BAD.LBL`` in place, which is exactly why the
+third run finds it ``OK``. To run any of them on its own, re-create the files from the
+recipe above first.
 
 Without ``--verbose``, only ``INVALID`` and ``REPAIRED`` files are listed:
 

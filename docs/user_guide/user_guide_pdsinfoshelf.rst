@@ -45,10 +45,19 @@ that versions one versions the other.
 What a path may name
 --------------------
 
-A volume, a volume set, or **a single file inside a volume**. Naming one file narrows the
-task to that file's entry and leaves the rest of the shelf alone; as in
+A volume, a volume set, or **a single top-level file of a volume**. Naming one file
+narrows the task to that file's entry and leaves the rest of the shelf alone; as in
 :doc:`user_guide_pdschecksums`, ``--reinitialize`` on a single file is run as
-``--update``.
+``--update``. A file deeper inside the volume than its top level is refused, with
+``Invalid file for an infoshelf:`` and status 1, and a path under a ``checksums-``
+category is refused with ``No infoshelves for checksum files:``.
+
+``--initialize`` takes no selection at all, and this is the one place where saying so is
+not what happens. The refusal is written as a log message, but the run reaches it before
+a logger exists, so a shelf that does not already exist plus a named file ends the run in
+an :exc:`AttributeError` traceback rather than in the message. This program is alone in
+that: the two checksum programs raise :exc:`ValueError` in the same position, and
+``pds4infoshelf`` logs the message and exits 1.
 
 ``--archives``
 --------------

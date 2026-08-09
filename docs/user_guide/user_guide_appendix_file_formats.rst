@@ -48,12 +48,18 @@ mapping is keyed by each file's path inside the unit, and the value is a five-el
 tuple: byte count, child count, modification time, MD5 digest, and a ``(width, height)``
 pair.
 
+The three shelf excerpts below are each the first few entries of a real file with the
+rest elided, and each has had its key column narrowed: the real files pad that column to
+the widest key in the whole file, which for a volume of any size is far wider than this
+page. Nothing else about them is changed.
+
 .. code-block:: python
 
    COUVIS_0001_info = {
        ""                                   : (     145262,   3, "2020-05-13 00:30:45.000000", ""                                , (   0,   0)),
        "CALIB"                              : (      17851,   1, "2020-05-11 16:58:25.000000", ""                                , (   0,   0)),
        "CALIB/VERSION_3"                    : (      17851,   1, "2020-05-11 16:58:25.000000", ""                                , (   0,   0)),
+       ...
    }
 
 Four properties of the entries are worth knowing:
@@ -67,9 +73,15 @@ Four properties of the entries are worth knowing:
   the empty string.
 * The ``(width, height)`` pair is ``(0, 0)`` for anything that is not an image whose
   dimensions were read.
-* **The modification time is formatted in the local time zone**, and is compared as a
-  string. A unit shelved under one setting of ``TZ`` disagrees with itself when validated
-  under another.
+* **The modification time is formatted in the local time zone**, so a unit shelved under
+  one setting of ``TZ`` disagrees with itself when read back under another. How the
+  comparison is made depends on the task. ``--validate`` parses both sides and allows
+  them to differ by anything under one second, so a sub-second difference is forgiven and
+  a difference of a whole second is not; where either side will not parse as a time, the
+  two strings are compared instead, which is how the empty string a childless directory
+  carries is handled. ``--repair`` does not use that comparison at all: it compares the
+  whole shelf against a freshly generated one for exact equality, so a sub-second
+  difference ``--validate`` forgives is still enough to make ``--repair`` rewrite.
 
 Link shelves
 ~~~~~~~~~~~~
@@ -89,6 +101,7 @@ shapes:
    COUVIS_0001_links = {
      "DATA/D1999_007/FUV1999_007_16_57.LBL"  : [(  58, "FUV1999_007_16_57.DAT", "DATA/D1999_007/FUV1999_007_16_57.DAT")],
      "DATA/D1999_007/FUV1999_007_16_57.DAT"  : "DATA/D1999_007/FUV1999_007_16_57.LBL",
+     ...
    }
 
 A file that is neither a label nor described by one still gets an entry, whose value is
@@ -113,6 +126,7 @@ numbers where one product covers more than one row:
        "HSP1999_007_16_53"   : 0,
        "HDAC1999_007_16_31"  : 1,
        "HDAC1999_007_16_33"  : 2,
+       ...
    }
 
 Archive files: ``.tar.gz``
@@ -156,8 +170,9 @@ ignored; the first line of each file is conventionally a ``#`` record naming the
 
    # volset or volset/volname | description | optional icon type | version ID | publication date | data set ID if any | additional data set IDs if any, or checksum
 
-   COISS_2xxx            | Cassini Saturn image collection                                     || 1.0 | 2018-07-01
-   COISS_2xxx/COISS_2001 | Cassini ISS Saturn images 2004-02-06 to 2004-04-18                  || 1.0 | 2005-07-01 | CO-S-ISSNA/ISSWA-2-EDR-V1.0
+   COISS_2xxx            | Cassini Saturn image collection                                                     || 1.0 | 2018-07-01
+   COISS_2xxx/COISS_2001 | Cassini ISS Saturn images 2004-02-06 to 2004-04-18 (SC clock 1454725799-1460960370) || 1.0 | 2005-07-01 | CO-S-ISSNA/ISSWA-2-EDR-V1.0
+   ...
 
 The fields, in order:
 

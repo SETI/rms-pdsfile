@@ -20,8 +20,9 @@ What a path may name
 
 An index table, or a metadata directory, which is expanded into the ``.tab`` files inside
 it. A directory holding none directly is searched one level deeper instead, which is how
-a whole volume set's metadata directory expands into its volumes' tables. A metadata directory holding three tables is three targets, each with its own log
-level and its own log file:
+a whole volume set's metadata directory expands into its volumes' tables. A metadata
+directory holding three tables is three targets, each with its own log level and its own
+log file:
 
 .. code-block:: console
 
@@ -56,6 +57,11 @@ The skip is reported at ``ERROR``, not as a note, so a run that skips one exits 
 .. code-block:: text
 
    ... | pds.validation.indexshelf |-| ERROR | Backup file skipped: metadata/COUVIS_0xxx/COUVIS_0001/COUVIS_0001_index_backup.tab
+
+The path in that line is written relative to the holdings root only because an earlier
+table in the same run has already been shelved: the skip is decided before the work that
+registers the holdings root with the logger. Name the backup table by itself, so that it
+is the run's first target, and the same line carries the absolute path instead.
 
 What it writes
 --------------
@@ -125,7 +131,7 @@ directories and copies no superseded file into them. A ``--reinitialize`` or a
 
 .. note::
 
-   :doc:`user_guide_re_validate`, which re-runs four of the maintenance validations over
+   :doc:`user_guide_re_validate`, which re-runs five of the maintenance validations over
    whole volumes, does **not** run this one. Index shelves have to be validated by
    invoking this program directly.
 

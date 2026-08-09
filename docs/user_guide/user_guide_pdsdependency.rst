@@ -52,12 +52,26 @@ naming 41 distinct suites between them, and a volume picks up every distinct sui
 path matches -- distinct being the operative word, since a suite named by two matching
 rows is still run once.
 
-Every volume picks up ``general``, which holds 28 rules: for each of the five volume
-types, that its checksum file, its archive and its info shelf exist and are current, and
-for ``volumes``, ``calibrated`` and ``metadata``, that its link shelf does too. Index
-shelves and the cumulative metadata tables are **not** in ``general`` -- they are in the
-``metadata``, ``obsindex`` and four ``cumindex*`` suites, which a volume picks up only if
-its path matches them.
+Every volume picks up ``general``, which holds 28 rules. Twenty-five of them are five
+rules applied to each of five of the seven volume types -- ``volumes``, ``calibrated``,
+``diagrams``, ``metadata`` and ``previews``; ``documents`` and ``bundles`` are not
+covered here. For each of those five, ``general`` requires that
+
+* its checksum file,
+* its info shelf,
+* its archive,
+* the checksum file *of that archive*, under ``checksums-archives-<type>``, and
+* the info shelf *of that archive*, under ``_infoshelf-archives-<type>``
+
+exist and are no older than what they describe. The remaining three rules ask the same
+of the link shelf, for ``volumes``, ``calibrated`` and ``metadata`` only.
+
+Index shelves and the cumulative metadata tables are **not** in ``general``. An index
+shelf for each metadata table is required by the ``metadata`` suite and, for the
+cumulative tables, by the four ``cumindex*`` suites; the cumulative tables themselves are
+required only by the ``cumindex*`` suites. The ``obsindex`` suite is neither: it holds a
+single rule, requiring ``metadata/<volume set>/<volume>/<volume>_obsindex.tab`` for a
+volume. A volume reaches any of these only if its path matches the row that names them.
 
 Each suite is a list of rules. A rule is a glob that finds the files it is about, a
 regular expression that takes such a file apart, and one or more substitutions naming the
@@ -123,11 +137,12 @@ can be run top to bottom:
       cat $PDS3_HOLDINGS_DIR/metadata/COUVIS_0xxx/COUVIS_0???/COUVIS_0???_versions.tab > $PDS3_HOLDINGS_DIR/metadata/COUVIS_0xxx/COUVIS_0999/COUVIS_0999_versions.tab
       <LABEL> $PDS3_HOLDINGS_DIR/metadata/COUVIS_0xxx/COUVIS_0999/COUVIS_0999_versions.tab
 
-Nineteen lines, of which the last six are not runnable as they stand, and that is
-deliberate. A cumulative metadata table is built by concatenating the per-volume tables
-with ``cat``, which the run writes out in full; each ``<LABEL>`` line beneath one is a
-placeholder for writing the label of the table just concatenated, which is a manual step
-this package does not automate.
+Nineteen lines, of which three are not runnable as they stand, and that is deliberate.
+The last six are three pairs. A cumulative metadata table is built by concatenating the
+per-volume tables with ``cat``, and those three ``cat`` lines are written out in full and
+run as they are. The ``<LABEL>`` line beneath each one is the placeholder: writing the
+label of the table just concatenated is a manual step this package does not automate, so
+there is no command to print.
 
 Where the logs go
 -----------------

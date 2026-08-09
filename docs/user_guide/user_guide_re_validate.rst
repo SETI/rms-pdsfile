@@ -112,8 +112,9 @@ Which trees to examine
    * - ``--previews``, ``-p``
      - Check ``previews/`` directories.
    * - ``--all``, ``-a``
-     - All five, plus their checksums and archives. This is also what naming none of them
-       means.
+     - All five of the trees above. This is also what naming none of them means. The
+       help text adds "plus their checksums and archives", which describes what the
+       tests then cover for those trees rather than a sixth and seventh selection.
 
 **Naming none of a group selects all of it**, and so does the group's own ``--all`` or
 ``--full``. Two tests are then narrowed to the trees they can run against: link shelves
@@ -131,15 +132,15 @@ Batch mode
      - Meaning
    * - ``--batch``, ``-b``
      - Operate in batch mode. The positional paths become holdings roots. Default: off.
-   * - ``--minutes N``
+   * - ``--minutes MINUTES``
      - Rough upper limit on the run, in minutes. Default **60**. A volume already started
        when the limit passes is finished; no new one is begun.
    * - ``--batch-status``
      - Print the schedule batch mode would follow, and validate nothing. This also puts
        the run in batch mode, so the positional paths are holdings roots. Default: off.
-   * - ``--email ADDRESS``
+   * - ``--email ADDR``
      - Address to mail a report to when a batch job completes. Repeat for more than one.
-   * - ``--error-email ADDRESS``
+   * - ``--error-email ADDR``
      - Address to mail an error-only report to. Nothing is sent if no errors were found.
        Repeat for more than one.
 
@@ -179,9 +180,9 @@ on: the volume types and the tests, both defaulted here because the command line
 neither.
 
 The nested logger names are the individual validations' own -- ``pds.validation.checksums``
-here, and ``pds.validation.archives``, ``pds.validation.fileinfo`` and
-``pds.validation.links`` further down -- so one log carries all five and each section is
-identifiable by its logger.
+here, and ``pds.validation.archives``, ``pds.validation.fileinfo``,
+``pds.validation.links`` and ``pds.validation.dependencies`` further down, one per
+section -- so one log carries all five and each section is identifiable by its logger.
 
 Batch mode's schedule
 ---------------------
@@ -207,7 +208,7 @@ Two consequences follow directly:
 * A batch run against a log root holding no logs treats **every** volume as never
   validated.
 * A batch run with **no log root at all** has nothing to walk and ends in a
-  ``TypeError``. ``--log`` or ``PDS_LOG_ROOT`` is required in batch mode, and nothing
+  :exc:`TypeError`. ``--log`` or ``PDS_LOG_ROOT`` is required in batch mode, and nothing
   checks for it up front.
 
 Where the logs go
@@ -237,3 +238,10 @@ launch daemon that schedules it, so the status deliberately says nothing about w
 validations found -- the mailed report does. That covers anything a validation finds and
 not everything: the mail is sent from the same block that would exit 0, so a mail relay
 that cannot be reached ends the run in the exception instead.
+
+Three things still exit 1 in batch mode, all of them decided from the command line
+before any validation starts: naming no path at all (``No holdings path identified``),
+naming one that does not exist (``Holdings path not found:``), and naming one that does
+exist but whose resolved path does not end in ``holdings`` (``Not a holdings
+directory:``). The guarantee is about what the validations found, not about the command
+line being usable.

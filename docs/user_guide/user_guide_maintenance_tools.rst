@@ -57,7 +57,9 @@ The task flags
 --------------
 
 Exactly one task is performed per run. Each flag is spelled out in full below, and the
-first two also accept a shorter spelling.
+first two also accept a shorter spelling. **None of the five has a default**: all five
+write into one destination whose default is empty, which is what makes a command line
+naming no task an error rather than a run of some assumed task.
 
 .. list-table::
    :header-rows: 1
@@ -109,30 +111,48 @@ What a path may name depends on the program, and the three groups differ:
   separately -- except for ``pds4archives``, where what one archive covers is decided by
   the bundle set's own rules and a path is not expanded at all.
 * ``pdschecksums``, ``pds4checksums``, ``pdsinfoshelf`` and ``pds4infoshelf`` take those
-  and one more thing: **a single top-level file of a unit**, or a unit's own archive or
-  checksum file. A run given one narrows its work to that file and leaves every other
-  entry in the product alone. A file deeper inside the unit is refused, with
-  ``Invalid file for checksumming:`` and status 1, and so is ``--initialize``, which does
-  not accept a selection at all. ``--reinitialize`` on one is run as ``--update``
-  instead, because rebuilding a whole product from one named file would erase the rest.
+  and one more thing: **a single top-level file of a unit**, or a unit's own archive
+  file. A run given one narrows its work to that file and leaves every other entry in
+  the product alone. A file deeper inside the unit is refused with status 1, under
+  ``Invalid file for checksumming:`` from the two checksum programs and ``Invalid file
+  for an infoshelf:`` from the two info shelf programs. A path under a
+  ``checksums-`` category is refused before that, under ``No checksums for checksum
+  files:`` or ``No infoshelves for checksum files:``, also with status 1.
+  ``--reinitialize`` on a selection is run as ``--update`` instead, because rebuilding a
+  whole product from one named file would erase the rest.
+
+  ``--initialize`` does not accept a selection either, but it is not refused up front:
+  path resolution succeeds and the log files open before anything checks. If the product
+  already exists the run stops on that instead, since ``--initialize`` refuses to replace
+  one. Otherwise all four report ``File selection is disallowed for task "initialize"``,
+  and only three of them report it as intended: the two checksum programs raise
+  :exc:`ValueError` carrying that text, and ``pds4infoshelf`` logs it as an error and
+  exits 1. ``pdsinfoshelf`` means to log it too but reaches that line with no logger
+  open, so what an operator sees there is an :exc:`AttributeError` traceback -- an
+  unintended crash rather than a refusal.
 * ``pdsindexshelf`` and ``pds4indexshelf`` take an index table or a metadata directory,
   which is expanded into the tables inside it.
 
 **Relative paths are accepted** and resolved against the working directory before
 anything else happens. A path that does not exist ends the run before any log file is
-created:
+created, and how it says so splits the ten programs in two: the archive, link shelf and
+index shelf programs print a message,
 
 .. code-block:: console
 
    $ pdsarchives --validate /no/such/volume
    No such file or directory: /no/such/volume
 
+while the checksum and info shelf programs end in an unhandled :exc:`OSError`
+traceback, ``File not found:``, naming the path as it looks from the holdings root. Both
+exit 1.
+
 A path that exists but lies outside any holdings tree ends the run before the first task
-starts, and the two driver families end it differently: the checksum and info shelf
-programs print ``Not a holdings subdirectory:`` and exit 1, while the archive and link
-shelf programs end in an unhandled ``ValueError`` traceback, also with status 1. A path
-naming checksum or archive files where the program does not work on them is rejected with
-a message.
+starts. The same two groups divide it, but which one prints and which one crashes is the
+other way round: the checksum and info shelf programs print ``Not a holdings
+subdirectory:`` and exit 1, while the archive, link shelf and index shelf programs end in
+an unhandled :exc:`ValueError` traceback, also with status 1. A path naming checksum or
+archive files where the program does not work on them is rejected with a message.
 
 ``--log`` and ``--quiet``
 -------------------------
@@ -151,8 +171,13 @@ a message.
      - Do not also log to the terminal. The log files are written either way. Default:
        off.
 
-``--quiet`` suppresses the per-file detail but not the run's own opening and closing
-lines, which still reach the terminal:
+Every program in this guide also takes ``--help``, ``-h``, which prints the usage and
+exits 0 without doing anything else. It is not repeated in the option tables.
+
+``--quiet`` silences every level of the log below the run's own. The per-target header,
+the ``Log file:`` lines and all the per-file detail go with it; what still reaches the
+terminal is the run's opening ``HEADER`` and its closing ``SUMMARY`` lines, counts and
+all:
 
 .. code-block:: console
 
@@ -311,13 +336,16 @@ carries:
 
    * - Severity
      - Names at that severity
-     - What the second name is for
+     - What the extra names are for
+   * - 1
+     - ``HIDDEN``
+     - a message the default configuration does not print at all
    * - 10
      - ``DEBUG``, ``DS_STORE``
      - a skipped ``.DS_Store``
    * - 20
-     - ``INFO``, ``NORMAL``
-     - the per-file line of a PDS4 program
+     - ``INFO``, ``NORMAL``, ``HEADER``
+     - ``NORMAL`` is the per-file line of a PDS4 program; ``HEADER`` opens a level
    * - 30
      - ``WARNING``, ``INVISIBLE``
      - a file whose name begins with a dot
@@ -328,13 +356,17 @@ carries:
      - ``CRITICAL``, ``EXCEPTION``, ``FATAL``
      - ``FATAL`` is another name for ``CRITICAL``
 
+That is every registered level name.
+
 ``DOT_`` is the one worth knowing. It carries **ERROR's severity**, so a stray
 ``._something`` file inside a unit is enough on its own to make one of the eight programs
 that report their outcome exit 1, under a level name that does not look like an error.
 
-``HEADER`` and ``SUMMARY`` are not severities at all: they are the lines that open and
-close a level. Some phases cap how many messages of a level they will
-print and say so when they close, which is what a summary line like this reports:
+``SUMMARY`` is the exception to the table: it is not a level at all, but a literal tag
+the logger writes into the message text when it closes a level, logged at the severity
+its ``HEADER`` was opened with. So a ``SUMMARY`` line's own severity is the level's, not
+one of its own. Some phases cap how many messages of a level they will print and say so
+when they close, which is what a summary line like this reports:
 
 .. code-block:: text
 

@@ -1,12 +1,16 @@
 The Shell Scripts
 =================
 
-Twelve shell scripts ship alongside the PDS3 programs, under
-``src/pdsfile/holdings_maintenance/pds3/``. They are operator tools rather than parts of
-the package: nothing imports them, ``pip`` puts none of them on ``PATH``, and they are run
-from the directory they live in.
+Twelve shell scripts ship alongside the PDS3 programs. They are operator tools rather
+than parts of the package: nothing imports them, ``pip`` puts none of them on ``PATH``,
+and several of them only work when run from the directory they live in.
 
-They fall into three groups.
+They do ship, so an installed copy has them: they land in the installed package, at
+``<site-packages>/pdsfile/holdings_maintenance/pds3/``. In a checkout of this repository
+the same twelve are at ``src/pdsfile/holdings_maintenance/pds3/``. Either way that
+directory is where a run of one has to start.
+
+They fall into four groups, which are the four sections below.
 
 .. list-table::
    :header-rows: 1
@@ -39,9 +43,10 @@ They fall into three groups.
    * - ``pdsdata-sync-volset-previews.sh``
      - Syncs one volume set's previews only.
 
-The six in the first group print their usage and exit when given the wrong number of
-arguments, so running one of those bare is a safe way to see what it wants. The six
-``pdsdata-sync-*`` scripts do not check their arguments at all: run one bare and it
+The table is in that order: the first six rows are the first three groups and the last
+six are the fourth. Those first six print their usage and exit when given the wrong
+number of arguments, so running one of them bare is a safe way to see what it wants. The
+six ``pdsdata-sync-*`` scripts do not check their arguments at all: run one bare and it
 proceeds with empty drive and volume-set names, against paths such as
 ``/Volumes/pdsdata-/holdings/``. Read the usage comment at the top of the file instead.
 
@@ -146,9 +151,12 @@ Four things are worth knowing before running one.
 * A destination drive named ``production`` is remounted read-write for the duration
   and remounted read-only on exit, through ``sudo``. If either remount fails the script
   stops and says so.
-* **Syncing a versioned volume set is not enough by itself.** The scripts say so when
-  they finish: the ``documents/`` and ``_volinfo/`` entries belong to the unversioned
-  name, so that has to be synced too.
+* **Syncing a versioned volume set is not enough by itself.** The ``documents/`` and
+  ``_volinfo/`` entries belong to the unversioned name, so that has to be synced too.
+  Two of the six say so when they finish -- ``pdsdata-sync-volset.sh`` and
+  ``pdsdata-sync-volume.sh`` print a ``>>> NOTE:`` to that effect as their last act. The
+  other four print nothing about it, so the caveat is one to remember rather than one to
+  be reminded of.
 
 Each script walks the categories it covers in a fixed order -- for the full volume-set
 sync, ``metadata``, ``previews``, ``calibrated``, ``diagrams`` and ``volumes``, and inside

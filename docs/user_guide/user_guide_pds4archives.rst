@@ -30,11 +30,12 @@ Two consequences matter when choosing what to put on the command line.
   rules place one archive over the whole set, the bundle set path is the one that works,
   and a bundle path inside it resolves to no archives at all.
 
-A target that resolves to no archives is handled differently by each of the five tasks,
-and only one of them is quiet about it. ``--update`` reports nothing and moves on. ``--validate`` and
-``--repair`` walk the whole directory tree first and only then find there is nothing to
-compare it with. ``--initialize`` and ``--reinitialize`` log an error and then end the
-run in an exception:
+A target that resolves to no archives puts the five tasks into three behaviors, and
+four of the five say nothing at all about the absence. ``--update`` does no work: it has
+no archive to loop over and stops there. ``--validate`` and ``--repair`` walk the whole
+directory tree first and only then find there is nothing to compare it with, so they
+cost what a real run costs and report nothing. Only ``--initialize`` and
+``--reinitialize`` say so, logging an error and then ending the run in an exception:
 
 .. code-block:: console
 
@@ -45,8 +46,8 @@ run in an exception:
    ...
    RuntimeError: No active exception to reraise
 
-The ``ERROR`` line above is the one to read; the ``RuntimeError`` that follows carries no
-further information about what went wrong. Naming the bundle **set** instead is what this
+The ``ERROR`` line above is the one to read; the :exc:`RuntimeError` that follows carries
+no further information about what went wrong. Naming the bundle **set** instead is what this
 bundle set's rules describe:
 
 .. code-block:: console
@@ -93,8 +94,8 @@ one-second tolerance on the time, and no file's contents are ever read.
    two halves of the round trip disagree about how much of the path a member name
    carries: an archive is written with member names beginning at the bundle set, and
    validation rebuilds an absolute path by putting the bundle set's own prefix back in
-   front of the member name, which produces the bundle set component twice. Every entry
-   is then reported as ``Missing from tar file``:
+   front of the member name, which produces the bundle set component twice. All but one
+   entry is then reported missing, in both directions:
 
    .. code-block:: console
 
@@ -107,7 +108,10 @@ one-second tolerance on the time, and no file's contents are ever read.
    The run above closed with ``382 ERROR messages`` over an archive it had written itself
    minutes earlier, and exited 1: 191 ``Missing from tar file`` for the paths the walk
    found, and 191 ``Missing from directory`` for the same paths as the archive names
-   them. **The archives are written correctly** -- ``tar tzf`` lists every file -- so the
+   them. The archive holds 192 members, so exactly one survives the doubling, and only by
+   coincidence: this bundle set's single bundle carries the set's own name, so the
+   archive's outermost member doubles into a path that happens to exist.
+   **The archives are written correctly** -- ``tar tzf`` lists every file -- so the
    finding is about the comparison rather than about the archive.
    To check a PDS4 archive today, unpack it and compare, or use
    :doc:`user_guide_pds4checksums` on the archive file itself.
@@ -116,8 +120,9 @@ Two differences from the PDS3 program that are visible in the output
 --------------------------------------------------------------------
 
 * The per-file lines are ``NORMAL``, not ``INFO``, so nothing caps them: where the
-  PDS3 program stops after 100 lines in the walk and the comparison, this one prints one
-  per file however large the target is.
+  PDS3 program stops after 100 lines in each of three phases -- the directory walk, the
+  read of the archive and the comparison of the two -- this one prints one line per file
+  however large the target is.
 * A ``WARNINGS.log`` is written in each log directory, beside the ``ERRORS.log`` that
   both flavors write.
 

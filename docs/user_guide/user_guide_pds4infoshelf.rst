@@ -45,8 +45,14 @@ Two files per bundle, in the ``_infoshelf-`` parallel of the category:
 What a path may name
 --------------------
 
-A bundle, a bundle set, or a single file inside a bundle. ``--reinitialize`` on a single
-file is run as ``--update``.
+A bundle, a bundle set, or **a single top-level file of a bundle**. ``--reinitialize``
+on a single file is run as ``--update``. A file deeper inside the bundle is refused,
+with ``Invalid file for an infoshelf:`` and status 1, and a path under a
+``checksums-`` category is refused with ``No infoshelves for checksum files:``.
+``--initialize`` takes no selection either, and this program refuses one cleanly: it
+logs ``File selection is disallowed for task "initialize"`` as an error and exits 1.
+That is worth stating because its PDS3 twin does not manage it; see
+:doc:`user_guide_pdsinfoshelf`.
 
 ``--archives``
 --------------

@@ -66,19 +66,30 @@ The basenames are a requirement of the *directory*, not of the variable, and the
 requirement rather than a habit. Every absolute path is turned into
 the *logical path* the package works in by splitting it at the first ``/holdings/`` or
 ``/pds4-holdings/`` component, so a root directory named anything else makes every path
-under it unusable and each program rejects it.
+under it unusable. The thirteen programs that resolve holdings paths all fail on such a
+path, but not alike: the checksum and info shelf programs print ``Not a holdings
+subdirectory:`` and exit 1, while the archive, link shelf, index shelf and dependency
+programs end in an unhandled :exc:`ValueError` traceback, also with status 1.
+:doc:`user_guide_crlf` and :doc:`user_guide_shelf_consistency_check` are the two that
+never resolve a holdings path at all, and a root's name is nothing to them.
 
-**Only one of the fifteen programs reads the two holdings variables:**
+**Only one of the fifteen programs reads the two holdings variables directly:**
 :doc:`user_guide_show_opus_products`, which reads both, whichever kind of path it is
-asked about, and fails with a ``KeyError`` if either is unset.
+asked about, and fails with a :exc:`KeyError` if either is unset.
 
-The other fourteen read neither. Each takes absolute paths on its command line and works
-out where in a holdings tree they sit by splitting the path at its ``/holdings/`` or
-``/pds4-holdings/`` component, so all fourteen run with both variables unset. Setting
-them is still worth doing -- it is what lets you write ``$PDS3_HOLDINGS_DIR/volumes/...``
-rather than typing the root each time, which is how every example in this guide is
-written -- but it is a convenience for the shell rather than something those programs
-consult.
+The other fourteen take absolute paths on their command lines, and the thirteen of them
+that work in a holdings tree find their way around it by splitting the path at its
+``/holdings/`` or ``/pds4-holdings/`` component rather than by consulting a variable.
+Every run in this guide was made with both variables set, and the runs that resolve a
+path this way behave the same with them unset. Setting them is worth doing in any case --
+it is what lets you write ``$PDS3_HOLDINGS_DIR/volumes/...`` rather than typing the root
+each time, which is how every example in this guide is written.
+
+One qualification, because "reads no environment variable" is easy to overstate: the
+library underneath these programs does have a path that reads a holdings root from the
+environment. It is reached when a shelved link has to be resolved back to an absolute
+path from a logical one. No example in this guide exercises it, and no run recorded here
+needed it, but a command over data that does reach it may.
 
 .. code-block:: bash
 
@@ -130,7 +141,7 @@ the sense that a tree holds the ones its data needs:
        _infoshelf-archives-diagrams/
        _infoshelf-archives-metadata/
        _infoshelf-archives-previews/
-       _linkshelf-volumes/             link shelves: volumes, calibrated, metadata only
+       _linkshelf-volumes/             link shelves
        _linkshelf-calibrated/
        _linkshelf-metadata/
        _indexshelf-metadata/           index shelves, for metadata tables only
@@ -153,6 +164,11 @@ is the subset its data needs:
        _infoshelf-bundles/
        _linkshelf-bundles/
        _indexshelf-metadata/
+
+Which of these a tree actually holds is up to its data. The three link shelf
+directories above are the ones :doc:`user_guide_pdsdependency` requires of a volume, but
+nothing in :doc:`user_guide_pdslinkshelf` restricts it to those three: point it at a
+``previews`` volume and it writes ``_linkshelf-previews/``.
 
 ``setup_new_holdings.sh``, described in :doc:`user_guide_shell_scripts`, creates the
 empty PDS3 directories in one command.
@@ -178,7 +194,8 @@ How to read the examples in this guide
 --------------------------------------
 
 Every command shown in this guide was run, and every block of output is what that run
-printed. Four substitutions are made in what is published, and nothing else is changed:
+printed. Three kinds of substitution are made in what is published, and nothing else is
+changed:
 
 * the PDS3 and PDS4 holdings roots are written ``$PDS3_HOLDINGS_DIR`` and
   ``$PDS4_HOLDINGS_DIR``, and the directory containing a root -- where the log tree

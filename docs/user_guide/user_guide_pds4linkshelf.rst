@@ -51,9 +51,11 @@ manifest is not part of the archive and is not expected to be labeled. It is not
 over silently: the question is logged for every file that reaches it.
 
 One further difference: this scan will credit a label by what it says rather than by what
-it is called. A file whose name appears anywhere in a label in the same directory is
-shelved as described by that label. It is a fallback rather than a first resort, applied
-only to files that the earlier name-matching pass left uncredited.
+it is called. A file is shelved as described by a label in the same directory when its
+basename exactly equals one of the link values that label yielded -- the values the scan
+parsed out of the label, not any occurrence of the name in the label's text. It is a
+fallback rather than a first resort, applied only to files that the earlier
+name-matching pass left uncredited.
 
 What a path may name
 --------------------

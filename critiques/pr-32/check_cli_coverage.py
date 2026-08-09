@@ -351,9 +351,12 @@ def main(argv=None):
     for finding in findings:
         print(finding)
 
-    summary = ', '.join(f'{measured[key]} {key}'
+    # Singular where the count is one, so the pass line reads as a measurement rather
+    # than as a template: "1 default", not "1 defaults".
+    summary = ', '.join(f'{measured[key]} {key if measured[key] != 1 else key[:-1]}'
                         for key in ('programs', 'options', 'option strings', 'defaults'))
-    print(f'check_cli_coverage: {len(findings)} findings over {summary}')
+    n = len(findings)
+    print(f'check_cli_coverage: {n} finding{"" if n == 1 else "s"} over {summary}')
 
     return 1 if findings else 0
 

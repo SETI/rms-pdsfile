@@ -44,8 +44,10 @@ documents tree. That gives 25 category names in total, of which any one tree use
 subset its data needs: a PDS3 tree uses the ``volumes`` family and a PDS4 tree the
 ``bundles`` family, and both use ``metadata`` and ``previews``.
 
-Inside a category, the next two levels are the unit set and the unit. A file's path is
-therefore:
+Inside a category, the depth depends on the category. The bare volume types other than
+``documents`` -- ``volumes``, ``calibrated``, ``diagrams``, ``metadata``, ``previews``
+and ``bundles`` -- put a unit set directory and then a unit directory under the category,
+and the published tree below that:
 
 .. code-block:: text
 
@@ -53,12 +55,44 @@ therefore:
 
 For example, ``$PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001/INDEX/INDEX.TAB``.
 
+The other categories do not have that shape. Each derived product is one file per unit,
+per unit set or per table, so where a bare type has a directory a derived category
+usually has a file, and the depth changes with it:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 40 60
+
+   * - Category
+     - What a path under it looks like
+   * - ``volumes``, ``calibrated``, ``diagrams``, ``metadata``, ``previews``,
+       ``bundles``
+     - ``<unit set>/<unit>/<path inside the unit>``
+   * - ``documents``
+     - ``<unit set>/<file>``: no unit level at all, since a document describes the unit
+       set as a whole. A unit set may group its files into subdirectories.
+   * - ``archives-<type>``, ``checksums-<type>``, ``_infoshelf-<type>``,
+       ``_linkshelf-<type>``
+     - ``<unit set>/<file named for the unit>``: a file where the bare type has the
+       unit's directory, such as ``checksums-volumes/COUVIS_0xxx/COUVIS_0001_md5.txt``.
+   * - ``checksums-archives-<type>``, ``_infoshelf-archives-<type>``
+     - ``<file named for the unit set>``: no unit set directory either, because these
+       describe the unit set's archive files collectively, as in
+       ``checksums-archives-volumes/COUVIS_0xxx_md5.txt``.
+   * - ``_indexshelf-metadata``
+     - ``<unit set>/<unit>/<file named for the table>``: one level deeper than the rest,
+       because it holds one shelf per metadata table rather than one per unit.
+
+So a rule of thumb for reading a path: count the directory levels to find out whether
+you are looking at published data or at something derived from it.
+
 Published data and derived products
 -----------------------------------
 
-Only the bare volume types hold published data. Everything else in the tree is
+Only the bare volume types hold published data. Every *category* beyond them is
 **derived**: it is computed from the published data and can be rebuilt from it, and each
-kind has a program in this guide that builds and checks it.
+kind has a program in this guide that builds and checks it. (``_volinfo/`` is neither
+published data nor derived, and is described at the end of this chapter.)
 
 .. list-table::
    :header-rows: 1

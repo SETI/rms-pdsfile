@@ -37,14 +37,18 @@ What a path may name
 --------------------
 
 A volume, a volume set, or **a single top-level file of a volume**, or a volume's own
-archive or checksum file. Naming one file narrows the task to that file's entry and
-leaves the rest of the manifest untouched.
+archive file. Naming one file narrows the task to that file's entry and leaves the rest
+of the manifest untouched. A volume's *checksum* file is not a target: a path under a
+``checksums-`` category is refused before anything else, with ``No checksums for checksum
+files:`` and status 1.
 
 Two command lines are not obeyed as written. ``--reinitialize`` on a single file is run
 as ``--update``, because rebuilding a whole manifest from one named file would erase
-every other entry. And ``--initialize`` refuses a selection outright, raising
-``ValueError: File selection is disallowed for task "initialize"``. A file deeper inside
-the volume than its top level is refused too, with ``Invalid file for checksumming:``.
+every other entry. And ``--initialize`` does not accept a selection: it is not refused up
+front, but once the log is open and the manifest is found not to exist already, the run
+raises :exc:`ValueError`, ``File selection is disallowed for task "initialize"``. A file
+deeper inside the volume than its top level is refused too, with ``Invalid file for
+checksumming:``.
 
 Options
 -------
@@ -97,8 +101,9 @@ Building a manifest
    2026-08-09 01:40:04.719425 | pds.validation.checksums || SUMMARY | 9 DEBUG messages
 
 Seven of this volume's nine files, and the per-phase summary lines, are elided above. The
-run reports one ``MD5=`` line per file as it hashes it, then one ``Written:`` line per
-file as it writes the manifest, and the closing summary counts both.
+run reports one ``MD5=`` line per file at ``INFO`` as it hashes it, then one ``Written:``
+line per file at ``DEBUG`` as it writes the manifest. The closing summary counts them
+separately, which is where the ``12 INFO`` and ``9 DEBUG`` above come from.
 
 Checking a volume against its manifest
 --------------------------------------
@@ -125,8 +130,11 @@ A file whose digest disagrees is reported at ``ERROR``, one line per file:
    reports whether the command line and the paths were usable, not what the task found.
    The mismatch above was reported by a run that exited 0. A script that has to know
    whether a volume is intact must read the log, or the run's closing ``n ERROR
-   messages`` summary line, rather than the status. Every other program in this guide
-   except ``pds4checksums`` exits 1 in that situation.
+   messages`` summary line, rather than the status. This program and ``pds4checksums``
+   are the two of the ten maintenance programs that behave this way; the other eight
+   exit 1 when a run logs an error. Elsewhere in the guide, :doc:`user_guide_crlf`
+   returns 0 whatever it finds, and :doc:`user_guide_re_validate` returns 0 in batch
+   mode for a reason of its own.
 
 Superseded manifests are kept
 -----------------------------

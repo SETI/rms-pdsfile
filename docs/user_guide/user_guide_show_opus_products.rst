@@ -29,8 +29,8 @@ Both holdings roots are required
 ``PDS3_HOLDINGS_DIR`` **and** ``PDS4_HOLDINGS_DIR`` are read straight from the
 environment, and both are needed whichever kind of path is asked about. **This is the
 only program in the guide that reads either variable**, and it fails immediately with a
-``KeyError`` if one is unset; the other fourteen work from the absolute paths on their
-command lines and never consult the environment.
+:exc:`KeyError` if one is unset; the other fourteen work from the absolute paths on their
+command lines rather than from the environment.
 
 Options
 -------
@@ -201,15 +201,16 @@ element of the key tuple.
 Exit status
 -----------
 
-0 for a run that produced output, 2 for a command line ``argparse`` cannot classify --
-including one with no ``--paths``.
+0 for a run that produced output, 2 for a command line :mod:`argparse` cannot classify
+-- including one with no ``--paths``.
 
 A path that cannot be turned into a :class:`~pdsfile.pdsfile.PdsFile`, and one that
 resolves to a file that does not exist, are each reported as a ``WARNING:`` line and the
 run continues to the next path. Neither changes the status, so a run in which every path
-failed still exits 0. ``--debug`` is meant to add a traceback to the first of the two, and does not: it prints
-the line ``NoneType: None`` instead, because the traceback is requested after the failure
-has already been handled. The ``WARNING:`` line still follows and the run still continues.
+failed still exits 0. ``--debug`` is meant to add a traceback to the first of the two,
+and does not: it prints the line ``NoneType: None`` instead, because the traceback is
+requested after the failure has already been handled. The ``WARNING:`` line still follows
+and the run still continues.
 
 An ``--opus-types`` value that is not among the types the file actually has is likewise a
 ``WARNING:``, and a run in which none of the given types matched prints the valid values
