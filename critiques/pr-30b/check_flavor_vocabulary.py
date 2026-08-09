@@ -19,7 +19,7 @@ Checks:
     V1  A docstring in a `pds4` module uses a term of the PDS3 vocabulary.
     V2  A docstring in a `pds3` module uses a PDS4 term.
     V3  The module docstring does not name the module it documents.
-    V4  A docstring names a scope module of the opposite flavor.
+    V4  A docstring names a module of the opposite flavor that is not its own twin.
 
 V1 and V2 are the two directions the plan asks for, and they are checked over **every**
 docstring in the file -- module, class, function and nested function -- rather than over
@@ -29,29 +29,34 @@ PR's prose is and a per-parameter paste is the likeliest kind.
 V3 catches a wholesale copy whose vocabulary happens to be neutral, which V1 and V2 are
 both silent on. It reads the whole module docstring and not its summary line: these
 modules announce themselves by their `progname`, which for all five `pds4` tools is the
-`pds3` tool's name, so a summary line that has to carry the module's own stem would force
+`pds3` tool's name, so a summary line that had to carry the module's own stem would force
 prose that contradicts what the tool calls itself.
 
-V4 is what V3 cannot see: a docstring that names its twin instead of, or as well as,
-itself. It is a real relationship in three places -- a checksum tool chains a run of the
-info shelf tool of its own flavor, and an info shelf tool loads the checksums its own
-flavor's checksum tool wrote -- so the exceptions below carry those and no others.
+V4 is what V3 cannot see: a docstring that names some other module of the other flavor.
+Naming its **own twin** is not a finding and is what these docstrings are expected to do,
+since what a tool's specification declares is best said by what differs from the other
+half of the pair; naming a different tool of the other flavor is a paste.
 
-ALLOWED holds the terms that survive a scan. There are two kinds and they are separated
-in the table below, because they answer different objections:
+**The version numbers themselves -- "PDS3", "PDS4", "pds3", "pds4" -- are deliberately not
+in either vocabulary, and that is the one judgment in this script.** Every docstring here
+has to contrast its tool with its twin, so the version number by itself is not evidence of
+anything, while a `pds4` docstring saying "volume" or a `pds3` one saying "bundle" is. The
+cost is real and is stated rather than hidden: a paste that carried only the version
+number would pass V1 and V2. Nothing in this PR's prose is in that position, because a
+docstring long enough to be worth pasting names its unit several times, which is the term
+the vocabularies do carry.
 
-    * A **shared PdsFile name**. The PdsFile base class names its unit a bundle, so the
-      methods and attributes a PDS3 tool calls are spelled `is_bundle_dir`,
-      `log_path_for_bundle` and so on whatever the tool calls its unit in prose.
-      `Pds3File` aliases some of them to `volume` spellings and not others, so a `pds3`
-      docstring naming the method it actually calls has to write "bundle".
-    * A **cross-flavor fact**. A sentence in one flavor's module that is about the other
-      flavor and is true.
+ALLOWED holds the terms that survive a scan anyway. They are all of one kind: the PdsFile
+base class names its unit a bundle, so the methods and attributes a PDS3 tool calls are
+spelled `is_bundle_dir`, `log_path_for_bundle` and so on whatever the tool calls its unit
+in prose. `Pds3File` aliases some of them to `volume` spellings and not others, so a `pds3`
+docstring naming the method it actually calls has to write "bundle".
 
 Each entry is stripped from the text once per occurrence before the scan, so an entry
 licenses the exact string it names and nothing else: `log_path_for_bundle` is allowed and
-the bare word "bundle" left behind by an edit to it is not. The whole table is printed
-with the findings so that it cannot grow silently.
+the bare word "bundle" left behind by an edit to it is not. An entry is scoped either to a
+flavor or to one module by name. The whole table is printed with the findings so that it
+cannot grow silently.
 
 Usage:
     python check_flavor_vocabulary.py FILE [FILE ...]
@@ -65,12 +70,12 @@ import re
 import sys
 
 # Terms belonging to one flavor only. Each is matched with word boundaries, so
-# `pds4archives` does not match `pds4` and `volumes` does not match `volumeset`.
+# `bundlename` does not match `bundle` and `volumes` does not match `volumeset`.
 PDS3_TERMS = ('volume', 'volumes', 'volset', 'volsets', 'volumeset', 'volumesets',
-              'Pds3File', 'PDS3', 'pds3', '.tab', '/holdings/', 'log_path_for_volume',
+              'Pds3File', '.tab', '/holdings/', 'log_path_for_volume',
               'log_path_for_volset', 'volume_pdsfile', 'volset_pdsfile')
 
-PDS4_TERMS = ('bundle', 'bundles', 'bundleset', 'bundlesets', 'Pds4File', 'PDS4', 'pds4',
+PDS4_TERMS = ('bundle', 'bundles', 'bundleset', 'bundlesets', 'Pds4File',
               '.csv', '/pds4-holdings/', 'log_path_for_bundle',
               'log_path_for_bundleset', 'bundle_pdsfile', 'bundleset_pdsfile')
 
@@ -81,9 +86,20 @@ PDS3_MODULES = ('pdsarchives', 'pdschecksums', 'pdsindexshelf', 'pdsinfoshelf',
 PDS4_MODULES = ('pds4archives', 'pds4checksums', 'pds4indexshelf', 'pds4infoshelf',
                 'pds4linkshelf')
 
-# Terms a docstring of the named flavor may carry although they belong to the other.
-# Each entry is (flavor, term, reason); the term is stripped once per occurrence before
-# the scan, so it licenses itself and not the bare flavor word inside it.
+# Each module's twin: the module of the other flavor that does the same job. V4 reads
+# this. `linkshelf_repairs` has no twin of its own, and the tool whose absence of a
+# counterpart it exists to explain is `pds4linkshelf`.
+TWIN = {'pdsarchives': 'pds4archives', 'pdschecksums': 'pds4checksums',
+        'pdsindexshelf': 'pds4indexshelf', 'pdsinfoshelf': 'pds4infoshelf',
+        'pdslinkshelf': 'pds4linkshelf', 'linkshelf_repairs': 'pds4linkshelf',
+        'pds4archives': 'pdsarchives', 'pds4checksums': 'pdschecksums',
+        'pds4indexshelf': 'pdsindexshelf', 'pds4infoshelf': 'pdsinfoshelf',
+        'pds4linkshelf': 'pdslinkshelf'}
+
+# Terms a docstring may carry although they belong to the other flavor. Each entry is
+# (scope, term, reason), where the scope is a flavor name or one module's stem; the term
+# is stripped once per occurrence before the scan, so it licenses itself and not the bare
+# flavor word inside it.
 ALLOWED = (
     # Shared PdsFile names. The base class calls its unit a bundle, so a PDS3 tool that
     # names the method it calls has to spell it that way.
@@ -105,16 +121,6 @@ ALLOWED = (
     ('pds3', 'bundletype_',
      'PdsFile.bundletype_ is what resolve_holdings_paths compares against spec.unit'),
 
-    # Cross-flavor facts. Each is a sentence in one flavor's module that is about the
-    # other flavor and is true; each was added because the prose forced it, not in
-    # anticipation.
-    ('pds4', 'pdsinfoshelf',
-     "pds4checksums.main() substitutes the literal 'pdsinfoshelf' into its own argv, so "
-     'the docstring that describes that substitution has to name it. The substitution '
-     'never fires for this tool, and saying so is the point'),
-    ('pds4', 'pdschecksums',
-     "the same substitution replaces the literal 'pdschecksums', which no pds4 command "
-     'line carries'),
 )
 
 IDENTIFIER_CHAR = r'[A-Za-z0-9_]'
@@ -196,25 +202,37 @@ def docstrings_of(tree):
     return found
 
 
-def strip_allowed(text, flavor):
-    """Return one docstring with the terms allowed to its flavor removed.
+def allowed_terms(flavor, stem):
+    """Return the terms one module may carry although they belong to the other flavor.
 
-    Each allowed term is replaced by a space rather than deleted, so that removing it
-    cannot join two words into a third that then matches.
+    Parameters:
+        flavor (str): 'pds3' or 'pds4'.
+        stem (str): the module's file stem.
+
+    Returns:
+        set: the terms whose scope is this flavor or this module.
+    """
+
+    return {term for scope, term, _reason in ALLOWED if scope in (flavor, stem)}
+
+
+def strip_allowed(text, terms):
+    """Return one docstring with a given set of terms removed.
+
+    Each term is replaced by a space rather than deleted, so that removing it cannot join
+    two words into a third that then matches.
 
     Parameters:
         text (str): the docstring.
-        flavor (str): 'pds3' or 'pds4'.
+        terms (set): the terms to remove.
 
     Returns:
-        tuple: the text with the allowed terms removed, and the set of terms that were
-        found in it.
+        tuple: the text with those terms removed, and the set of terms that were found
+        in it.
     """
 
     used = set()
-    for entry_flavor, term, _reason in ALLOWED:
-        if entry_flavor != flavor:
-            continue
+    for term in sorted(terms):
         pattern = term_regex(term)
         if pattern.search(text):
             used.add(term)
@@ -264,10 +282,13 @@ def main(argv):
             report(path, 'V0', 'module has no docstring')
 
         wrong = PDS3_PATTERNS if flavor == 'pds4' else PDS4_PATTERNS
+        other_flavor = 'pds3' if flavor == 'pds4' else 'pds4'
         code = 'V1' if flavor == 'pds4' else 'V2'
+        licensed = allowed_terms(flavor, path.stem)
+        others = PDS3_MODULES if flavor == 'pds4' else PDS4_MODULES
 
         for label, text in docs:
-            (scanned, used) = strip_allowed(text, flavor)
+            (scanned, used) = strip_allowed(text, licensed)
             for term in used:
                 exceptions_used.setdefault(term, []).append(f'{path.name}:{label}')
 
@@ -276,25 +297,18 @@ def main(argv):
                 if hits:
                     report(path, code,
                            f'{label} docstring uses "{term}" {hits} time(s), which '
-                           f'belongs to the {"pds3" if flavor == "pds4" else "pds4"} '
-                           f'vocabulary')
+                           f'belongs to the {other_flavor} vocabulary')
+
+            for other in others:
+                if other in (path.stem, TWIN.get(path.stem)):
+                    continue
+                if term_regex(other).search(scanned):
+                    report(path, 'V4', f'{label} docstring names "{other}", a '
+                                       f'{other_flavor} module that is not its twin')
 
         module_doc = ast.get_docstring(tree) or ''
         if path.stem not in module_doc:
             report(path, 'V3', f'module docstring does not name "{path.stem}"')
-
-        others = PDS3_MODULES if flavor == 'pds4' else PDS4_MODULES
-        allowed_here = {term for entry_flavor, term, _ in ALLOWED
-                        if entry_flavor == flavor}
-        for label, text in docs:
-            (scanned, _used) = strip_allowed(text, flavor)
-            for other in others:
-                if other == path.stem or other in allowed_here:
-                    continue
-                if term_regex(other).search(scanned):
-                    report(path, 'V4',
-                           f'{label} docstring names "{other}", a {"pds3" if flavor == "pds4" else "pds4"} '
-                           f'module')
 
     for line in findings:
         print(line)
@@ -307,9 +321,9 @@ def main(argv):
 
     print()
     print(f'ALLOWED, {len(ALLOWED)} entries:')
-    for entry_flavor, term, reason in ALLOWED:
+    for scope, term, reason in ALLOWED:
         where = exceptions_used.get(term, [])
-        print(f'  [{entry_flavor}] {term}: {reason}')
+        print(f"  [{scope}] {term}: {reason}")
         print(f'      used in: {", ".join(where) if where else "(nowhere)"}')
 
     return 1 if total else 0
