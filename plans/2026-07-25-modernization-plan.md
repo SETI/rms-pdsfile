@@ -1357,8 +1357,8 @@ worse than a short accurate one because it is published as API reference and rea
 authoritative. `critiques/pr-30-validation.md` sections 9 and 10 record where each
 claim came from and which modules could not be described beyond their tables.
 
-**PR-31 (M)** `docs: Sphinx scaffolding + API reference` -- **done**, record
-`critiques/pr-31-validation.md`
+**PR-31 (M)** `docs: Sphinx scaffolding + API reference` -- **done and merged into
+`rewrite` as `532f65d` (PR #135)**, record `critiques/pr-31-validation.md`
 **This is where Phase 7 resumed: the docstring work on `src/` finished with PR-30c, and
 what is left of the phase is the guides of PR-32 onward, the README rewrite of PR-34, and
 the cross-reference sweep of PR-31a below.**
@@ -1392,8 +1392,15 @@ modules under `src/pdsfile`. Zero warnings under both `sphinx-build -W` and
 
 `sphinxcontrib.mermaid` is **not** enabled: with no page drawing a diagram it put a
 third-party CDN script into 70 of the 77 built pages, and `doc_python.mdc` section 3 asks
-for a diagram extension when the guides use diagrams. PR-32 or PR-33 turns it on with the
-first diagram. `.readthedocs.yaml` needed no edit and got none. Round 3's list of what the
+for a diagram extension when the guides use diagrams. PR-32 shipped no diagram, so
+**PR-33 turns it on**. **Owner decision (2026-08-09): use the CDN** — do not vendor
+`mermaid.esm.min.mjs`, do not pre-render through `mmdc`, do not commit static SVGs. The
+alternatives and what each costs are recorded in issue **#136** so the choice can be
+revisited without re-deriving it. Note the consequence PR-33 must accept: the script tag
+lands on *every* built page, not only the five with diagrams, and the published pages stop
+rendering diagrams if the CDN is unreachable. Only `mermaid_use_local` avoids a CDN
+(`sphinxcontrib/mermaid/__init__.py:443` — the other three branches all resolve to
+`cdn.jsdelivr.net`). `.readthedocs.yaml` needed no edit and got none. Round 3's list of what the
 gate does **not** catch is `critiques/pr-31/round-3.md` and deferred 333-341; PR-32
 through PR-34 all lean on this gate and should read it.
 
@@ -1435,7 +1442,7 @@ a chapter documenting the sync shell scripts (document-only, per ground
 rule 7); appendix: file formats (shelf `.pickle`/`.py` sidecar, `*_md5.txt`,
 `_volinfo`).
 
-**Done and open as PR #137 against `rewrite`, not merged**, record
+**Done and merged into `rewrite` as `50a886a` (PR #137)**, record
 `critiques/pr-32-validation.md`. **21 pages**, one per program as planned, plus the landing page, concepts, installation, the shell-script chapter and the
 file-format appendix -- and **one page the plan did not call for**,
 `user_guide_maintenance_tools.rst`. Ten of the fifteen programs build no parser of their
@@ -1532,6 +1539,21 @@ Badges, plain-prose introduction, features, installation, quick start (module
 usage AND a CLI invocation), documentation/contributing/license links. Enable
 the pymarkdown gate (run-all-checks + CI) once README/docs comply.
 
+Measured at `532f65d`, so nobody re-derives it. The gate as configured reports **exactly
+two findings, both in `README.md`** — `MD041` (22 lines of badges before any heading) and
+`MD025` (two `#` headings, `# rms-pdsfile` and `# PDS Ring-Moon Systems Node, SETI
+Institute`). The rewrite fixes both by construction, so enabling `ENABLE_PYMARKDOWN` costs
+nothing beyond the rewrite. **State what the gate actually covers rather than letting a
+green result imply more:** PyMarkdown selects by `.md`, so it reads **no `.rst` page under
+`docs/`** and **none of the fifteen `.mdc` rule files** — its scope is `README.md`,
+`CONTRIBUTING.md` and the five `SKILL.md` files.
+
+One interaction to respect: PR-31 put the `<!-- start-after-point -->` marker *after* the
+`# rms-pdsfile` H1, and that include feeds the Sphinx front page. Dropping the *second* H1
+to satisfy MD025 is safe; moving or removing the first is not — a moved marker empties the
+front page while both Sphinx builds still pass (deferred 341). PR-34 must re-run both
+builds and **look at the rendered front page**, not just the exit status.
+
 **PR-35 (M)** `feat: public API type stubs`
 Hand-written `.pyi` stubs for the public surface (ground rule 5):
 `__init__.pyi` plus stubs for `pdsfile.pdsfile`, `pds3file`, `pds4file`,
@@ -1542,6 +1564,17 @@ correct (`str | None`, `list[str]`, `Any` as last resort) — a wrong narrow
 type in a stub is worse than a broad one. Validated with `mypy.stubtest`
 (checks stub names/kinds against runtime; an allowlist covers unstubable
 dynamics) run locally/CI-lint. No inline annotations.
+
+**Owner decision (2026-08-09): mypy is approved as a dev dependency for this, and is
+already installed in the repo venv (mypy 2.3.0, `mypy.stubtest` importable).** It is not
+yet in `pyproject.toml` — PR-35 must add it to the `dev` extra **with a comment saying
+why**, because a reader will otherwise take it for the type checker ground rule 5 waives.
+`stubtest` compares stubs against the runtime objects; it does not type-check the
+implementation, and `ENABLE_MYPY` stays false. Sizes are already measured: the manifest's
+8,645 class entries are inheritance repeated across 36 rule subclasses — classes define
+only **745 members in their own bodies**, and the six named modules carry **140
+module-level names**. `stubtest` understands inheritance, so `class GO_0xxx(Pds3File): ...`
+satisfies every inherited name without repeating one.
 
 ### Phase 8 — Critique, hardening, merge
 
