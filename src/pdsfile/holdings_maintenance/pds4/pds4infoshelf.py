@@ -465,8 +465,9 @@ def write_infodict(pdsdir, infodict, *, logger=None, limits=None):
 
     In the sidecar the keys are padded to a common width and the entries are written in
     sorted key order, which the pickle is not: the pickle is written in the order the
-    dictionary was built. **The dictionary is named for the whole of the file's basename
-    with the ``.py`` taken off**, so the name in the sidecar matches the file it is in;
+    dictionary was built. **The dictionary is named for the whole of the file's
+    basename with the** ``.py`` **taken off**, so the name in the sidecar matches the
+    file it is in;
     the PDS3 tool names it for the first two underscore-separated parts with "_info"
     appended instead. The sidecar is written as latin-1.
 

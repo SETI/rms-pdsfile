@@ -16,7 +16,7 @@ The command line is the shared one, described in
 It reads the checksum file rather than hashing
 -----------------------------------------------
 
-**The dependency on :doc:`user_guide_pds4checksums` is hard**, exactly as in the PDS3
+**The dependency on** :doc:`user_guide_pds4checksums` **is hard**, exactly as in the PDS3
 program: the digests come out of the bundle's checksum file, and a bundle with no
 checksum file gets ``Missing entry in checksum file`` for every file and then ends in
 :exc:`FileNotFoundError`.

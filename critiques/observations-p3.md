@@ -2900,9 +2900,9 @@ risk for one call site. The narrower rule, "drop it unless the name matches the
 for one file. **Owner: whichever PR next edits the checker; the ratchet's `N805`
 row is the standing record that this function exists.**
 
-### 4302. `critiques/pr-29/check_docstrings.py` has no mechanism for a bare `raise`
+### 4302. `tests/docs/check_docstrings.py` has no mechanism for a bare `raise`
 
-**`critiques/pr-29/check_docstrings.py` has no mechanism for a bare `raise`.** E1
+**`tests/docs/check_docstrings.py` has no mechanism for a bare `raise`.** E1
 accepts a `Raises:` entry whose class is raised by name in the body or attributed to a
 call, an item read or an unpacking. A bare `raise` with no exception to re-raise
 produces a `RuntimeError` that is neither, so documenting it needs a sentence naming

@@ -10,7 +10,7 @@ rows for a product observed in more than one way. Looking a product up in such a
 means reading the whole of it, so this tool records, once, which row numbers belong to
 which product, and PdsFile reads that shelf instead of the table.
 
-**Everything this tool does is in ``_indexshelf_common``**, which holds the five tasks and
+**Everything this tool does is in** ``_indexshelf_common``, which holds the five tasks and
 the driver, and this module and its PDS3 twin are the two shortest of the ten because
 nothing about shelving an index table differs between the two PDS versions: what a row is,
 how a key is made from one and how a shelf is compared against its table are all
@@ -38,7 +38,7 @@ same field, one stops an upward search at it, and the fourth does not read it ei
 ``log_suffix`` is how a specification says so, and its driver passes a suffix only when
 there is one.
 
-**``progname`` is 'pdsindexshelf', not this module's name.** That is the convention all
+``progname`` **is 'pdsindexshelf', not this module's name.** That is the convention all
 five PDS4 tools follow, and it is not cosmetic: the name appears in the ``--help``
 description and in the "Missing task" error, and it names the subdirectory of every log
 root, so both flavors of this tool write into one directory. Both also share the logger

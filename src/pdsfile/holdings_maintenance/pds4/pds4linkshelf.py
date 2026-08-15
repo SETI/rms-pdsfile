@@ -42,11 +42,11 @@ point to file" error for a mismatched label is raised before the question is ask
 The other thing this scan does that the PDS3 one does not is credit a label by what it
 says rather than by what it is called: a file whose name appears anywhere in a label in
 the same directory is shelved as described by that label. It is a fallback and not a first
-resort, because the name-matching credit is settled in the earlier pass and this one skips
-any file already credited there. **It is the label's own text and not its
-``<file_name>`` elements** that this matches against, even though the log line calls it a
-file_name tag: the comparison runs over every link the label yielded, and the general
-pattern's matches are among them.
+resort, because the name-matching credit is settled in the earlier pass and this one
+skips any file already credited there. **It is the label's own text and not its**
+``<file_name>`` **elements** that this matches against, even though the log line
+calls it a file_name tag: the comparison runs over every link the label yielded, and
+the general pattern's matches are among them.
 
 The specification names ``_shelf_common.UNIT_LOG_PATH_METHOD`` as its log path method and
 '_links' as its log suffix. Nine fields of this specification differ from the PDS3 tool's,

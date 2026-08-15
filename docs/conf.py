@@ -66,7 +66,6 @@ extensions = [
     'sphinx.ext.autodoc',        # the API reference is generated from the docstrings
     'sphinx.ext.napoleon',       # the docstrings are Google style
     'sphinx.ext.viewcode',       # each documented object links to its highlighted source
-    'sphinx.ext.intersphinx',    # names from the standard library resolve to python.org
     'myst_parser',               # Markdown, which is what README.md is
 ]
 
@@ -102,13 +101,35 @@ autodoc_mock_imports = ['tabulate']
 # names it would have resolved are 36 more. The timeout bounds that failure -- without it
 # a host that accepts the connection and never answers stalls the build rather than
 # failing it.
-intersphinx_mapping = {'python': ('https://docs.python.org/3', None)}
-intersphinx_timeout = 30
 
-# Empty, and every entry added here has to name a symbol with no resolvable target and
-# carry the reason it has none. Silencing an unresolved reference to a symbol this
-# package owns hides a documentation defect rather than fixing it.
-nitpick_ignore = []
+# This project documents its own symbols and does not link to other projects'
+# documentation. `sphinx.ext.intersphinx` is deliberately not enabled: it made every
+# documentation build depend on reaching docs.python.org, where an unreachable
+# inventory is a build failure, and the only thing it bought was a hyperlink on a
+# standard-library name.
+#
+# The cost is that a standard-library name used in an annotation has no target, and
+# nitpicky mode reports each one. They are listed here rather than silenced wholesale,
+# so that the list stays a statement about external symbols only. Every entry names a
+# symbol this package does not own; an unresolved reference to a symbol it DOES own is
+# a documentation defect and must be fixed rather than added here.
+#
+# All of these arrive the same way: autodoc renders a dataclass field annotation as a
+# cross-reference, and the dataclass fields are the one place ground rule 5 allows an
+# annotation.
+nitpick_ignore = [
+    ('py:class', 'argparse.ArgumentParser'),
+    ('py:class', 'argparse.Namespace'),
+    ('py:class', 'collections.abc.Callable'),
+    ('py:class', 'datetime.datetime'),
+    ('py:class', 'pathlib.Path'),
+    ('py:class', 're.Pattern'),
+    ('py:exc', 'pickle.PickleError'),
+    ('py:exc', 'pickle.UnpicklingError'),
+    ('py:exc', 'smtplib.SMTPException'),
+    ('py:exc', 'tarfile.ReadError'),
+    ('py:mod', 'argparse'),
+]
 
 # -- HTML output -------------------------------------------------------------------------
 
