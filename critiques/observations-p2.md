@@ -25,41 +25,6 @@ is byte-identical through the move, its gate is the pass/fail set, and adding
 a test id is movement beyond the ten the a since-resolved observation check required.
 **Owner: unassigned (a future bug-fix PR, with a regression test).**
 
-### 3001. `pds4archives` writes archives it cannot read back
-
-**`pds4archives` cannot round-trip.** `write_archive()` adds members under
-`arcname=<bundle-set basename>` (`pds4archives.py:238-241`) while
-`read_archive_info()` rebuilds each member path with the prefix that already
-ends at the bundle set (`pds4archives.py:126-135`, via
-`dirpath_and_prefix_for_archive`). Every member comes back doubled
-(`bundles/<bs>/<bs>/…`), so `--validate` fails immediately after a successful
-`--initialize`. The complete holdings set's `archives-bundles/<bs>/` directory
-is empty, i.e. this has never round-tripped in production either.
-Pinned by `test_pds4_archives.test_validate_cannot_round_trip`. **Owner: PR-25.**
-
-**`pds4archives` writes archives its own `validate()` cannot match, for two of the
-three archive shapes installed in this repository.** `write_archive()` gives each
-member the basename of its packaged directory and the path below it, while
-`read_archive_info()` rebuilds an absolute path by putting the **bundle set's** prefix
-in front of that member name. The two agree only where the packaged directory is a
-bundle directory sitting directly under the bundle set. Measured by writing an archive
-with `initialize()` and validating it immediately, on all three shapes the rule modules
-define: `cassini_vims` cruise, whose `ARCHIVE_DIRS` packages a bundle directory, round
-trips; `cassini_uvis_solarocc_beckerjarmak2023`, whose table packages the bundle set
-itself, gives 8 errors on a two-file tree; and `cassini_vims` saturn, whose table
-packages collections two levels down, gives 11, the bundle name being dropped from
-every rebuilt path. Round 4 enumerated the installed tables rather than sampling them:
-of the **seven**, one round trips. `cassini_vims`'s cruise rule packages a bundle
-directory; `uranus_occs_earthbased` and `cassini_uvis_solarocc_beckerjarmak2023`
-package the bundle set itself; and `cassini_iss`, `cassini_vims` (saturn),
-`cassini_iss_spokes_hedman_hamilton_2024` and
-`cassini_iss_fring_mosaics_rsfrench2025` package collections two levels down. Round 4
-also reproduced it end to end on a six-file copy of the uvis set: 18 errors, 9 from
-each side. a since-resolved observation already records that the pds4 archive round trip has
-never worked in production; this is the mechanism, measured, and it is a property of
-the pair of rules rather than of either function alone.
-**Owner: a later maintenance-tool PR, together with a since-resolved observation.**
-
 ### 3002. `pdsinfoshelf --initialize` crashes on a file selection instead of refusing
 
 **`pdsinfoshelf --initialize` on a file inside a volume ends in `AttributeError`.**
@@ -287,58 +252,6 @@ and **not** exercised by the CI s-mode invocation, which is pds3-only
 (`tests/pds3file tests/rules/pds3 --mode s`). Sits in the full-holdings
 golden/shelf-reproducibility area the owner split out of PR-08. Owner:
 the deferred additive-coverage / golden-reproducibility follow-up.
-
-### 3010. The archive validator accepts a wrong member path in silence
-
-**`validate_tuples()` enters its mismatch branch on a `dirpath` difference and
-then reports nothing.** `_archives_common.py`: the branch is
-`elif (dirpath, nbytes, modtime) != tardict[abspath]:`, and inside it only
-`nbytes` and `modtime` are compared. If the archive-relative path is the only
-thing that differs, the branch runs, logs no error, leaves `valid` True, and
-`del`etes the entry — so an archive whose member path is wrong validates
-clean. Moved verbatim in PR-26's split; present at base and head alike.
-Not fixed here for the same reason as 116: the archive family is not this PR's
-scope, and adding an error changes the archive tools' observable output.
-**Owner: open.**
-
-**`_archives_common.validate_tuples()` accepts an interior-path-only mismatch in
-silence.** The comparison branches on the whole `(dirpath, nbytes, modtime)` triple
-but then checks only the byte count and the modification time, so an entry that
-agrees on absolute path, size and time is deleted from the tarfile dictionary and
-`valid` stays True however far apart the two interior paths are. Measured: with
-`dir_tuples=[('/a/x.txt', 'V/x.txt', 10, 100.0)]` and
-`tar_tuples=[('/a/x.txt', 'TOTALLY/DIFFERENT.txt', 10, 100.0)]` the function returns
-`True` and logs nothing. It cannot arise from the two archive tools as they stand,
-since each list derives its interior path from its own absolute path by a fixed
-rule, so this is a latent hole rather than a live bug. PR-30a documents the behavior
-rather than the intent. **Owner: a later archive-tool PR.**
-
-### 3011. The archive writers and the directory listing disagree about what to skip
-
-**`archive_filter()` archives the backup files `load_directory_info()` skips.**
-In `_archives_common.py`, `load_directory_info()` skips any name matching
-`BACKUP_FILENAME` or containing `' copy'`, and `archive_filter()` — the filter
-the archive writers add members through — does not. So a volume holding
-`FOO_2021-01-01T00-00-00.LBL` or `BAR copy.TXT` has that file written into the
-tarball but left out of the directory listing, and `validate_tuples()` then
-reports it as `Missing from directory`.
-
-Both functions moved verbatim into `_archives_common.py` in PR-26's split and
-are otherwise untouched by it; the divergence is at PR-26's base and at its
-head alike. Not fixed here because it changes what the archive tools *write*,
-which is neither a PR-26 scope item nor an enumerated behavior change, and
-because the right repair is not obvious: excluding them changes existing
-archives' contents on the next `--repair`, while including them in the
-directory listing changes what `pdschecksums` and `pdsinfoshelf` record.
-**Owner: open.**
-
-**`pdsarchives.read_archive_info()`'s "skip" comments do not skip.** The `.DS_Store`
-and dot-underscore branches carry `# skip .DS_Store files` and
-`# skip dot-underscore files` and neither has a `continue`, so both members are logged
-as errors and then inventoried. The walk they are compared against does skip them, so
-such a member is reported twice, once there and again as "Missing from directory".
-Identical in `pds4archives`. The behavior is defensible and the comments are not.
-**Owner: a later maintenance-tool PR.**
 
 ### 3012. The chained-run argv rewrite is broken in two ways
 
