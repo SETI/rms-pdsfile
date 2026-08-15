@@ -74,72 +74,81 @@ def _check(path, roots, what):
                 f'real root.')
 
 
+class _Guarded:
+    """A write call that refuses targets inside a protected root.
+
+    Deliberately a callable object rather than a function. A plain Python function
+    implements the descriptor protocol, so storing one on a class turns it into a
+    method and inserts the instance as a first argument -- which is exactly what
+    `pathlib` does on Python 3.10, where `Path.mkdir` calls
+    `self._accessor.mkdir(self, mode)` and `_accessor.mkdir` is whatever `os.mkdir`
+    was when `pathlib` was imported. A builtin does not bind that way, so replacing
+    one with a function changed the call's arity and broke every subprocess that
+    reached `Path.mkdir`. Python 3.11 removed `_accessor`, which is why this only
+    showed up on the older interpreters in the matrix.
+    """
+
+    def __init__(self, real, roots, what, args_to_check=(0,)):
+        self._real = real
+        self._roots = roots
+        self._what = what
+        self._args_to_check = args_to_check
+
+    def __call__(self, *args, **kwargs):
+        for index in self._args_to_check:
+            if index < len(args):
+                _check(args[index], self._roots, self._what)
+        return self._real(*args, **kwargs)
+
+
+class _GuardedOpen(_Guarded):
+    """`open()`, checked only when the mode can create or change the file."""
+
+    def __call__(self, file, mode='r', *args, **kwargs):
+        if _WRITE_FLAGS.intersection(mode):
+            _check(file, self._roots, self._what)
+        return self._real(file, mode, *args, **kwargs)
+
+
 def install():
     """Wrap the write entry points so a protected root cannot be written to.
 
     Reads are untouched: the tests read the real holdings constantly, to stage their
     source subsets. Only calls that can create or change something are checked, and
     only against the roots named in the environment, so everything outside them --
-    the temporary tree, pytest's own caches, coverage data -- is unaffected.
+    the temporary tree, pytest's caches, coverage data -- is unaffected.
 
-    Calling this more than once is harmless; the second call is ignored.
+    Calling this more than once is harmless: it restores the real entry points before
+    wrapping, so re-installing over a different set of roots works and nothing is ever
+    wrapped twice.
     """
 
     roots = _roots()
-    if not roots or getattr(builtins.open, '_pdsfile_guarded', False):
+    uninstall()
+    if not roots:
         return
 
-    real_open = builtins.open
-    real_mkdir = os.mkdir
-    real_makedirs = os.makedirs
-    real_rename = os.rename
-    real_replace = os.replace
-    real_remove = os.remove
-    real_unlink = os.unlink
-    real_rmdir = os.rmdir
+    builtins.open = _GuardedOpen(builtins.open, roots, 'open()')
+    os.mkdir = _Guarded(os.mkdir, roots, 'mkdir()')
+    os.makedirs = _Guarded(os.makedirs, roots, 'makedirs()')
+    os.remove = _Guarded(os.remove, roots, 'remove()')
+    os.unlink = _Guarded(os.unlink, roots, 'unlink()')
+    os.rmdir = _Guarded(os.rmdir, roots, 'rmdir()')
+    os.rename = _Guarded(os.rename, roots, 'rename()', args_to_check=(0, 1))
+    os.replace = _Guarded(os.replace, roots, 'replace()', args_to_check=(0, 1))
 
-    def guarded_open(file, mode='r', *args, **kwargs):
-        if _WRITE_FLAGS.intersection(mode):
-            _check(file, roots, 'open()')
-        return real_open(file, mode, *args, **kwargs)
 
-    guarded_open._pdsfile_guarded = True
+def uninstall():
+    """Put the real write entry points back, if this module replaced them.
 
-    def guarded_mkdir(path, *args, **kwargs):
-        _check(path, roots, 'mkdir()')
-        return real_mkdir(path, *args, **kwargs)
+    Installing is idempotent because it uninstalls first, which also lets a caller
+    re-install over a different set of roots -- what the tests of this module do.
+    """
 
-    def guarded_makedirs(name, *args, **kwargs):
-        _check(name, roots, 'makedirs()')
-        return real_makedirs(name, *args, **kwargs)
+    if isinstance(builtins.open, _Guarded):
+        builtins.open = builtins.open._real
 
-    def guarded_rename(src, dst, *args, **kwargs):
-        _check(dst, roots, 'rename()')
-        _check(src, roots, 'rename()')
-        return real_rename(src, dst, *args, **kwargs)
-
-    def guarded_replace(src, dst, *args, **kwargs):
-        _check(dst, roots, 'replace()')
-        _check(src, roots, 'replace()')
-        return real_replace(src, dst, *args, **kwargs)
-
-    def guarded_remove(path, *args, **kwargs):
-        _check(path, roots, 'remove()')
-        return real_remove(path, *args, **kwargs)
-
-    def guarded_unlink(path, *args, **kwargs):
-        _check(path, roots, 'unlink()')
-        return real_unlink(path, *args, **kwargs)
-
-    def guarded_rmdir(path, *args, **kwargs):
-        _check(path, roots, 'rmdir()')
-        return real_rmdir(path, *args, **kwargs)
-
-    builtins.open = guarded_open
-    os.mkdir = guarded_mkdir
-    os.makedirs = guarded_makedirs
-    os.rename = guarded_rename
-    os.replace = guarded_replace
-    os.remove = guarded_remove
-    os.unlink = guarded_unlink
-    os.rmdir = guarded_rmdir
+    for name in ('mkdir', 'makedirs', 'remove', 'unlink', 'rmdir', 'rename', 'replace'):
+        current = getattr(os, name)
+        if isinstance(current, _Guarded):
+            setattr(os, name, current._real)
