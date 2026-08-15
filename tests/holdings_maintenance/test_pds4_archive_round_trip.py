@@ -8,21 +8,18 @@
 # --repair rewrites an intact archive on every run, because it cancels only on an exact
 # tuple match.
 #
-# The anchor rule is checked against every archive every table defines, which needs no
-# bundle set installed because the rule tables answer from the path alone. The whole
-# round trip is then run end to end on a bundle set that is installed.
+# The anchor rule is checked here against every archive every table defines, which needs
+# no bundle set installed because the rule tables answer from the path alone. The round
+# trip itself is exercised end to end in test_pds4_archives.py, through the tool and
+# against the isolated tree its fixtures build.
 ##########################################################################################
 
 import importlib
 import os
 import pkgutil
-import shutil
 
 import pytest
 
-import pdsfile
-from pdsfile.holdings_maintenance import _archives_common
-from pdsfile.holdings_maintenance.pds4 import pds4archives
 from pdsfile.pds4file import rules as pds4_rules
 
 # Every pds4 rules module that defines an archive_dirs table.
@@ -136,45 +133,3 @@ def test_both_broken_shapes_are_represented():
         assert one.startswith('bundles/cassini_vims/cassini_vims_saturn/'), one
         bundle_set_dir = '/'.join(one.split('/')[:2])
         assert os.path.join(bundle_set_dir, os.path.basename(one)) != one
-
-
-@pytest.mark.full_holdings
-def test_an_archive_reads_back_exactly_as_it_was_written(tmp_path):
-    """Write an archive and read it back: the two tuple lists have to be equal.
-
-    Equality of the sorted lists is the condition `repair()` uses to decide whether an
-    archive needs rewriting, and it is stricter than validation reporting no errors:
-    validation compares field by field and can be made to agree while repair still
-    rewrites an intact archive on every run.
-    """
-
-    holdings_root = os.environ.get('PDS4_HOLDINGS_DIR')
-    if not holdings_root:
-        pytest.skip('PDS4_HOLDINGS_DIR is not set')
-
-    name = 'cassini_uvis_solarocc_beckerjarmak2023'
-    source = os.path.join(holdings_root, 'bundles', name)
-    if not os.path.isdir(source):
-        pytest.skip(f'{name} is not installed')
-
-    holdings = tmp_path / 'pds4-holdings'
-    (holdings / 'bundles').mkdir(parents=True)
-    shutil.copytree(source, holdings / 'bundles' / name)
-
-    pdsfile.Pds4File.preload(str(holdings))
-    try:
-        src = pdsfile.Pds4File.from_abspath(str(holdings / 'bundles' / name))
-        pds4archives.write_archive(src)
-
-        tarpath = src.archive_paths()[0]
-        assert os.path.exists(tarpath)
-
-        dir_tuples = _archives_common.load_directory_info(pds4archives.SPEC, src)
-        tar_tuples = pds4archives.read_archive_info(tarpath)
-        dir_tuples.sort()
-        tar_tuples.sort()
-
-        assert len(tar_tuples) == len(dir_tuples)
-        assert tar_tuples == dir_tuples
-    finally:
-        pdsfile.Pds4File.preload(holdings_root)

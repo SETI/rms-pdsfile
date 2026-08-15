@@ -121,10 +121,12 @@ def read_archive_info(tarpath, *, logger=None, limits=None):
 
     This is the other half of the pair ``_archives_common.validate_tuples()`` compares:
     that function's first argument comes from a walk of the filesystem and its second from
-    a call to this. The two are built to the same shape, so a member's absolute path is
-    reconstructed by joining the prefix the archive was written under to the member's own
-    interior name, and a directory member contributes a byte count and a modification time
-    of zero exactly as a directory on disk does.
+    a call to this. The two are built to the same shape. A member's absolute path is
+    rebuilt by joining its name to the parent of the directory that member was packaged
+    from, which ``_member_anchors()`` reads out of the same table the writer consulted,
+    and its interior path is then taken relative to the bundle set, which is where the
+    filesystem walk takes its own from. A directory member contributes a byte count and a
+    modification time of zero exactly as a directory on disk does.
 
     **Three kinds of member are logged and then inventoried anyway.** A ``.DS_Store`` and
     a dot-underscore file are each reported as an error, and an invisible file under a
@@ -509,18 +511,16 @@ def archive_lskip(pdsdir):
     name.
 
     **It is computed from the target's own path components rather than looked up**, which
-    is unlike everything else about this tool, and it is not the rule the archives are
-    written by: ``write_archive()`` gives each member the basename of its own packaged
-    directory and the path below it, while ``read_archive_info()`` rebuilds an absolute
-    path by putting the **bundle set's** prefix in front of that member name.
+    is unlike everything else about this tool. It agrees with what the archives are
+    written by because ``read_archive_info()`` anchors each member on the parent of the
+    directory it was packaged from, taken from the same ``archive_dirs`` table
+    ``write_archive()`` consulted, and then expresses the interior path relative to the
+    bundle set as this does.
 
-    **The two agree only where an archive packages a bundle directory sitting directly
-    under the bundle set, and the installed archive tables do not all do that.** Where a
-    table packages the bundle set itself, or a collection two levels down, the rebuilt
-    paths do not match the ones the walk found and this tool's own ``validate()`` reports
-    every file of a freshly written archive as missing from one side or the other. That
-    is a defect in the pair of rules rather than in this function, which computes what its
-    one reader asks of it.
+    The anchor used to be derived from the archive's own location instead, which lands on
+    the bundle set. That is right only where an archive packages a bundle directory
+    sitting directly under the set, and measured across every archive the six installed
+    tables define, 4 of 2,792 are that shape.
 
     Parameters:
         pdsdir: The target being archived.

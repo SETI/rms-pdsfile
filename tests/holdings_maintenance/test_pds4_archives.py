@@ -103,6 +103,27 @@ def test_validate_round_trips(archived_tree):
         assert name in run.output, name
 
 
+def test_repair_cancels_when_the_archive_matches(archived_tree):
+    """--repair over an intact archive does nothing, and says so.
+
+    This is a stricter check than validation passing. repair() cancels only when the
+    sorted tuple lists are exactly equal, so while the reader and the writer disagreed
+    about where a member name is anchored, repair rewrote every archive on every run --
+    intact or not, and write_archive(clobber=True) overwrites in place with no versioned
+    copy kept. Validation could have been made to report cleanly while that was still
+    true, which is why this asserts the cancellation rather than the absence of errors.
+    """
+
+    before = archived_tree.path(ARCHIVE).read_bytes()
+
+    run = support.run_tool(archived_tree, 'pds4archives', '--repair',
+                           archived_tree.path(BUNDLESET_DIR))
+    assert run.returncode == 0, run.describe()
+    assert 'repair canceled' in run.output, run.describe()
+    assert 'writing new file' not in run.output, run.describe()
+    assert archived_tree.path(ARCHIVE).read_bytes() == before
+
+
 def test_initialize_refuses_to_clobber(archived_tree):
     """A second --initialize reports the existing archive and exits non-zero."""
 

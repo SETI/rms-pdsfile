@@ -303,12 +303,6 @@ def validate_tuples(spec, dir_tuples, tar_tuples, *, logger=None, limits=None):
     is a whole-second time recovered from the tarfile. The test rejects a difference
     strictly greater than one second, so exactly one second passes.
 
-    **The interior path is part of neither comparison.** It is carried in the tuple and
-    is what the "Validated" line reports, but two entries that agree on absolute path,
-    byte count and modification time are accepted whatever their interior paths are.
-    That case cannot arise from the tools as they stand, since each list derives its
-    interior path from its own absolute path by a fixed rule.
-
     Every mismatch is logged and the walk continues, so one call reports all of them
     rather than the first.
 
