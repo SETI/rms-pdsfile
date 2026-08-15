@@ -15,9 +15,11 @@
 # differs, then copies the subset into a temporary tree with the declared mtimes.
 ##########################################################################################
 
+import os
+
 import pytest
 
-from tests.holdings_maintenance import support
+from tests.holdings_maintenance import readonly_roots, support
 
 
 @pytest.fixture(scope='session')
@@ -88,57 +90,34 @@ def golden_update(request):
     return bool(request.config.getoption('--update'))
 
 
-@pytest.fixture(scope='session')
-def _holdings_baseline(request):
-    """Return the mutable record of what each real holdings root holds.
+@pytest.fixture(scope='session', autouse=True)
+def _holdings_are_read_only():
+    """Refuse any write into a real holdings root, in this process and in tool subprocesses.
 
-    Snapshotting is the expensive half of the read-only guard, so the state left by
-    one test becomes the baseline for the next instead of being taken twice per test.
+    These tests drive tools that write -- archives, checksum files, shelves, logs -- and
+    are meant to write only into the temporary tree the fixtures build. Nothing enforced
+    that. A test that resolves a path through `Pds3File` or `Pds4File` gets whichever
+    root the class was preloaded with, and a second `preload()` does not re-root an
+    already-preloaded class, so a test that builds its own tree and preloads it still
+    resolves into the real holdings and writes there. Observation 3999 has the
+    measurements.
+
+    That is not hypothetical: it put an 80 MB archive into the shared PDS4 tree, passed
+    locally because that tree is writable, and failed four CI jobs with PermissionError
+    against the read-only one. The failure was the lucky case. Where the holdings are
+    writable, the damage is silent.
+
+    **The check is an interception rather than a scan.** Walking both roots before and
+    after each test cost about 53 seconds across this suite, and per module about 3, for
+    the same detection -- but either way the cost grows with the size of the holdings,
+    and these trees are a limited copy of something much larger. Wrapping the write
+    entry points costs one string comparison per write and does not grow at all.
+
+    A tool subprocess installs the same guard from `_subprocess_guard/sitecustomize.py`,
+    which Python imports at startup because `ToolTree.env` puts that directory on
+    PYTHONPATH.
     """
 
-    holdings = request.config._pdsfile_holdings
-    if not holdings.available:                                  # pragma: no cover
-        return None
-
-    roots = [str(r) for r in (holdings.pds3_root, holdings.pds4_root) if r]
-
-    return {root: support.snapshot_tree(root) for root in roots}
-
-
-@pytest.fixture(autouse=True)
-def _holdings_stay_read_only(request, _holdings_baseline):
-    """Fail any test that leaves a new file inside a real holdings root.
-
-    These tests drive tools that write -- archives, checksum files, shelves -- and
-    they are meant to write only into the temporary tree `tool_tree` builds. Nothing
-    enforced that. A test that resolves a path through `Pds3File` or `Pds4File` gets
-    whichever root the class was preloaded with, and a second `preload()` call does
-    not re-root an already-preloaded class, so a test that builds its own tree and
-    preloads it still resolves into the real holdings and writes there.
-
-    That is not hypothetical: it put an 80 MB archive into the shared PDS4 tree,
-    passed locally because that tree is writable, and failed four CI jobs with
-    PermissionError against the read-only one. The failure is the lucky case. On a
-    machine where the holdings are writable, the damage is silent.
-
-    Each root is walked once per test and the result carried forward as the next
-    test's baseline, so a violation is attributed to the test that caused it and the
-    baseline moves on rather than reporting the same paths for every test after it.
-    """
-
-    yield
-
-    if _holdings_baseline is None:                              # pragma: no cover
-        return
-
-    appeared = []
-    for root, before in _holdings_baseline.items():
-        after = support.snapshot_tree(root)
-        appeared += sorted(after - before)
-        _holdings_baseline[root] = after
-
-    assert not appeared, (
-        f'{request.node.nodeid} wrote into a real holdings root. Tools under test '
-        f'must write only into the temporary tree. New paths:\n  '
-        + '\n  '.join(appeared[:20])
-        + (f'\n  ... and {len(appeared) - 20} more' if len(appeared) > 20 else ''))
+    os.environ[readonly_roots.ENV_VAR] = os.pathsep.join(
+        support.readonly_holdings_roots())
+    readonly_roots.install()

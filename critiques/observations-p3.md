@@ -30,10 +30,14 @@ normally, so the misdirection is silent.
 **What it cost, so the risk is not theoretical.** A test that built a temporary holdings
 tree, preloaded it, and called `write_archive()` wrote an 80 MB archive into the shared
 PDS4 holdings on the machine where that tree is writable, and failed four CI jobs with
-`PermissionError` where it is not. The failure was the lucky outcome. `tests/holdings_
-maintenance/conftest.py` now walks both real roots around every test and fails any test
-that leaves a file in one, which costs about 52 seconds across that suite; the guard is a
-backstop rather than a fix, because the class still resolves the wrong root.
+`PermissionError` where it is not. The failure was the lucky outcome. `tests/holdings_maintenance/`
+now refuses the write at the point of the call: `readonly_roots.install()` wraps `open`
+and the `os` mutators and rejects any target inside a real root, and a tool subprocess
+installs the same guard from a `sitecustomize.py` on its `PYTHONPATH`. It was a walk of
+both roots first, which cost 52 seconds per test and 4 per module and, worse, grows with
+the size of the holdings; the interception costs one string comparison per write and
+measured at no detectable difference. The guard is a backstop rather than a fix, because
+the class still resolves the wrong root.
 
 Consumers preload too. `rms-viewmaster` preloads with a memcache port, and anything that
 preloads twice in one process -- a long-running service pointed at a new tree, a script
