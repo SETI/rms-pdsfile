@@ -47,29 +47,23 @@ Options
      - Work on the archive file of the named bundle rather than on the bundle itself.
        Default: off.
    * - ``--infoshelf``, ``-i``
-     - Runs ``pds4checksums`` a second time. Default: off. See below.
+     - After a successful run, chain a ``pds4infoshelf`` run over the same paths.
+       Default: off. See below.
 
-.. warning::
+``--infoshelf`` runs this program and then, if the run succeeded and the last task
+returned something, runs :doc:`user_guide_pds4infoshelf` over the same command line with
+the flag removed. Only the program name is rewritten, so a ``--log`` directory or a
+holdings path carrying this program's name is passed through untouched.
 
-   ``--infoshelf`` **does not chain an info shelf run here -- it chains a second**
-   ``pds4checksums`` **run.** The chain rebuilds the command line by replacing the string
-   ``pdschecksums`` with ``pdsinfoshelf`` and dropping ``--infoshelf``. No PDS4 command
-   line contains that string: the console script is ``pds4checksums`` and the module path
-   ends ``pds4/pds4checksums.py``. The substitution therefore changes nothing, and the
-   subprocess is this same program running the same task over the same paths a second
-   time. The process exits with that second run's status.
+The process exits with this run's status where that is nonzero, and with the chained
+run's status otherwise, so a failure in either half reaches the caller.
 
-   Measured on one bundle: 796 log lines against the 398 of the same command without the
-   flag, with two run headers, the second reading ``pds4checksums --validate <bundle>``.
-   Under ``--initialize`` the second run additionally reports
-   ``Checksum file already exists``, an error the first run did not produce.
+Running the two programs yourself does the same thing, and ``&&`` behaves as it reads,
+because this program exits 1 when a task logged an error:
 
-   Run the two programs in sequence instead. Do not join them with ``&&``: this program
-   exits 0 whatever a task found, so ``&&`` guards nothing.
+.. code-block:: bash
 
-   .. code-block:: bash
-
-      pds4checksums --initialize "$BUNDLE"
+   pds4checksums --initialize "$BUNDLE" && \
       pds4infoshelf --initialize "$BUNDLE"
 
 Building a manifest
@@ -126,11 +120,11 @@ Checking a bundle against its manifest
    2026-08-09 01:43:25.659147 | pds.validation.checksums || SUMMARY | 3 INFO messages
    2026-08-09 01:43:25.659156 | pds.validation.checksums || SUMMARY | 0 DEBUG messages reported of 184 total
 
-.. warning::
+.. note::
 
-   **A run exits 0 even when the validation failed**, exactly as in
-   :doc:`user_guide_pdschecksums`. Read the log or the closing ``n ERROR messages`` line,
-   not the status.
+   **A run that logs an error exits 1**, exactly as in :doc:`user_guide_pdschecksums`.
+   The log and the closing ``n ERROR messages`` line say which file was wrong; the exit
+   status says that one was.
 
 Superseded manifests are kept
 -----------------------------

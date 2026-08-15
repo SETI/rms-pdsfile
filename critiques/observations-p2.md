@@ -168,7 +168,7 @@ count mismatch" and "File size mismatch", so the two tasks disagree about the sa
 shelf. Found by round 1.
 **Owner: a later maintenance-tool PR.**
 
-### 3007. Four defects in `crlf`
+### 3007. Three defects in `crlf`
 
 **`crlf.test_crlf` raises `ZeroDivisionError` on a zero-byte file.** The
 non-ASCII fraction divides by the decoded length without guarding an empty
@@ -200,18 +200,6 @@ it would force duplication or a flag, and keeping this forces neither. Pinned
 as current behaviour by `test_two_repairs_print_no_summary_at_all` and by
 transcript record `crlf/repair-two-of-three`, whose docstring says a fix has to
 invert it.
-**Owner: open.**
-
-**`crlf` exits 0 whether or not it found anything.** Every transcript record
-that reaches the end of `main()` exits 0, including the ones that print
-`INVALID` for every file given. A caller that wants to know whether a tree is
-clean has to parse stdout; `find … -exec crlf {} +` in a shell script cannot
-branch on the result. `shelf_consistency_check` does return 1 on errors, and
-did before this PR, so the two halves of what is nominally the same job report
-differently. Preserved because an exit code is frozen and this one is
-load-bearing in the other direction: a tool that started exiting 1 on an
-invalid file would fail any pipeline that runs it over a tree expecting to read
-the report.
 **Owner: open.**
 
 **`crlf` can no longer be given a path that begins with `-`, and `--` only
@@ -419,52 +407,6 @@ chained run reads and writes. This is the same line as a since-resolved observat
 should be settled together: restricting the substitution to `argv[0]` fixes
 this one, and naming the target tool explicitly per flavor fixes 109.
 **Owner: open.**
-
-### 3013. The checksum tools exit 0 after logging errors
-
-**`pdschecksums` and `pds4checksums` never propagate errors into the exit
-   code.** Both compute a `proceed` flag from `fatal or errors` and then use it
-   only to gate the optional `--infoshelf` chain (`pdschecksums`'s `--infoshelf` chain,
-   `pds4checksums`'s `--infoshelf` chain at PR-25's head); neither ends in `sys.exit(status)` the way the
-   other nine tools do. A `--validate` that reports checksum mismatches still
-   exits 0. Pinned in both checksum test modules (see
-   `support.TOOLS_WITHOUT_EXIT_STATUS`). **Owner: PR-25** — its `run_main()` spec
-   says "set exit code from fatal/errors", which will change these two tools'
-   exit codes; that is an intended, plan-sanctioned behavior change and the pins
-   must be updated with it.
-
-Two further observations, not defects in a single tool:
-
-**`pdschecksums` and `pds4checksums` still exit 0 after logging errors.**
-`support.TOOLS_WITHOUT_EXIT_STATUS` records this and PR-13's tests assert it:
-a `--validate` that reports checksum mismatches exits 0. PR-26 **preserved it
-deliberately**. The shared driver returns its status rather than exiting, and
-each tool decides: `pdsinfoshelf`/`pds4infoshelf` call `sys.exit(result.status)`,
-the two checksums tools do not, exactly as before.
-
-Preserved rather than fixed because it is pinned current behavior that the plan
-does not enumerate as a PR-26 change, and because changing it would change the
-exit code of every failing checksums run — the most externally visible thing
-these tools do, and something a sync script or a cron wrapper may depend on.
-The one change PR-26 did make here is adjacent and enumerated: a **chained**
-`pdsinfoshelf` run's exit code now reaches the caller intact, where
-`os.system`'s wait status previously truncated every failure to 0. So
-`pdschecksums --infoshelf` now reports the chained run's failure while still
-not reporting its own.
-
-Giving these two tools an exit status is now a two-line change in one place
-each, and `expected_error_exit_code()` is the single point the tests would move
-through.
-**Owner: open.**
-
-**`pds4checksums --initialize` over an existing manifest logs an error and exits 0**,
-which makes any `&&` chain onto it vacuous. Measured: the run reports
-`Checksum file already exists: ...`, closes with `1 ERROR message`, and exits 0, so
-`pds4checksums --initialize "$B" && pds4infoshelf --initialize "$B"` runs the second
-command over a bundle whose manifest was not written. This is a since-resolved observation's exit-status
-behavior seen from the operator's side; it is recorded separately because the
-natural workaround for observation 3012 is exactly that `&&`, and it does not work.
-**Owner: PR-25's exit-status change, which fixes both.**
 
 ## Structure and duplication
 

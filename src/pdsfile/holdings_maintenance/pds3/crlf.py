@@ -194,8 +194,8 @@ def main(argv=None):
             Defaults to sys.argv.
 
     Returns:
-        int: 0, whatever the files turn out to be. Nothing a file can contain, including
-        being binary or invalid, changes the status.
+        int: 1 if any file was left INVALID, and 0 otherwise. A repaired file is not a
+        failure: the repair is what was asked for and it happened.
 
     Raises:
         SystemExit: from ``parse_intermixed_args()``, with status 2 for a command line
@@ -239,7 +239,10 @@ def main(argv=None):
         else:
             print(str(nfiles), 'files tested')
 
-    return 0
+    # A file left INVALID is one the run could not make right: in test mode nothing was
+    # asked of it beyond the verdict, and in repair mode the repair did not happen.
+    # Either way the tree is not clean, which is what a caller branches on.
+    return 1 if invalid else 0
 
 
 if __name__ == '__main__':

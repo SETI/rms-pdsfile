@@ -128,17 +128,17 @@ A file whose digest disagrees is reported at ``ERROR``, one line per file:
 
    ... | pds.validation.checksums |---| ERROR | Checksum mismatch: volumes/COUVIS_0xxx/COUVIS_0001/INDEX/INDEX.TAB
 
-.. warning::
+.. note::
 
-   **A run exits 0 even when the validation failed.** The exit status of this program
-   reports whether the command line and the paths were usable, not what the task found.
-   The mismatch above was reported by a run that exited 0. A script that has to know
-   whether a volume is intact must read the log, or the run's closing ``n ERROR
-   messages`` summary line, rather than the status. This program and ``pds4checksums``
-   are the two of the ten maintenance programs that behave this way; the other eight
-   exit 1 when a run logs an error. Elsewhere in the guide, :doc:`user_guide_crlf`
-   returns 0 whatever it finds, and :doc:`user_guide_re_validate` returns 0 in batch
-   mode for a reason of its own.
+   **A run that logs an error exits 1**, so the mismatch above makes the run fail. The
+   exit status is the run's own verdict rather than a statement about whether the
+   command line was usable, and a script can branch on it. Reading the log, or the run's
+   closing ``n ERROR messages`` summary line, still tells you *which* file was wrong;
+   the status tells you *that* one was.
+
+   Every maintenance program in this guide reports a logged fatal or error the same way.
+   :doc:`user_guide_re_validate` is the one exception, and it explains itself on its own
+   page.
 
 Superseded manifests are kept
 -----------------------------

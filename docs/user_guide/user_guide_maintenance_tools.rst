@@ -303,19 +303,17 @@ Exit statuses
                       volume [volume ...]
    pdsarchives: error: unrecognized arguments: --nosuchflag
 
-**The two checksum programs are the exception, and it matters.** ``pdschecksums`` and
-``pds4checksums`` exit **0 whatever a task found**. A ``--validate`` that reported every
-file in a volume as a mismatch still exits 0, so a script must read the log or the
-run's own summary line rather than the status. The other eight programs exit 1 when the
-run logged an error. Measured on one volume with one file deliberately altered:
+**Every program reports a logged fatal or error the same way**: 0 when the run logged
+neither, and 1 when it logged either. A ``--validate`` that reports a mismatch exits 1,
+so a script can branch on the status rather than parsing the log. Measured on one volume
+whose checksum file was written first and one of whose files was then altered:
 
 .. code-block:: console
 
-   $ pdschecksums --validate --quiet <volume> ; echo "exit=$?"
+   $ pdschecksums --initialize --quiet <volume> ; echo "exit=$?"
    exit=0
-   $ pdsinfoshelf --validate --quiet <volume> ; echo "exit=$?"
-   exit=1
-   $ pdsarchives --validate --quiet <volume> ; echo "exit=$?"
+   $ printf 'CORRUPTED\r\n' >> <volume>/INDEX/INDEX.TAB
+   $ pdschecksums --validate --quiet <volume> ; echo "exit=$?"
    exit=1
 
 A task that raises an exception ends the process through the traceback rather than

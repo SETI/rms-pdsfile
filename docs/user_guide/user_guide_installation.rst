@@ -75,7 +75,7 @@ them notices, in one of three ways:
   ``re_validate`` -- eight in all -- end in an unhandled :exc:`ValueError` traceback,
   also with status 1;
 * :doc:`user_guide_show_opus_products` neither refuses nor crashes: it prints a
-  ``WARNING:`` line for the path, carries on to the next one, and still exits 0.
+  ``WARNING:`` line for the path and carries on to the next one, and the run exits 1.
 
 :doc:`user_guide_crlf` and :doc:`user_guide_shelf_consistency_check` are the two that
 never resolve a holdings path at all, and a root's name is nothing to them.

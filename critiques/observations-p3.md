@@ -863,6 +863,12 @@ nothing catches what it raises: with `send_email` stubbed to raise `OSError`, th
 exception propagates out of `run_batch()` and out of `main()` and the process ends in
 a traceback with status 1. So the status is insulated from what the run found and not
 from whether the report could be sent. Found by round 1.
+
+The exit codes of every other program were standardized on 2026-08-15 -- 0 for a run
+that logged no fatal and no error, 1 for one that did -- and **this program was
+deliberately left out of that**, for the reason above: its status is a signal to the
+scheduler, not a verdict on the data. Whoever fixes the mail-relay path should keep
+that property rather than fold this tool into the general rule.
 **Owner: a later maintenance-tool PR.**
 
 **`re_validate` dies on one log file that is not valid UTF-8, in one of its two

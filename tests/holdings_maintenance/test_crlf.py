@@ -160,7 +160,7 @@ class TestCommandLine:
         bad = write(tmp_path, 'bad.txt', b'ONE\n')
 
         run = support.run_tool_in_process('crlf', ok, bad)
-        assert run.returncode == 0, run.describe()
+        assert run.returncode == 1, run.describe()
         assert f'{bad} INVALID' in run.stdout, run.describe()
         assert 'ok.txt' not in run.stdout, run.describe()
         assert '1/2 files invalid' in run.stdout, run.describe()
@@ -190,7 +190,7 @@ class TestCommandLine:
         bad = write(tmp_path, 'bad.txt', b'ONE\n')
 
         run = support.run_tool_in_process('crlf', bad)
-        assert run.returncode == 0, run.describe()
+        assert run.returncode == 1, run.describe()
         assert run.stdout == f'{bad} INVALID\n', run.describe()
 
     def test_two_repairs_print_no_summary_at_all(self, tmp_path):
@@ -285,7 +285,7 @@ class TestCommandLine:
         bad = write(tmp_path, 'bad.txt', b'ONE\n')
 
         run = support.run_tool_in_process('crlf', '--verbose', '--verbose', bad)
-        assert run.returncode == 0, run.describe()
+        assert run.returncode == 1, run.describe()
         assert f'{bad} INVALID' in run.stdout, run.describe()
 
     def test_a_path_beginning_with_a_dash_needs_a_path_and_a_separator_before_it(
@@ -310,7 +310,7 @@ class TestCommandLine:
         assert '-dash.txt' not in bare.stdout, bare.describe()
 
         after = support.run_tool_in_process('crlf', 'ok.txt', '--', '-dash.txt')
-        assert after.returncode == 0, after.describe()
+        assert after.returncode == 1, after.describe()
         assert '-dash.txt INVALID' in after.stdout, after.describe()
 
     def test_an_unreadable_file_raises_rather_than_being_reported(self, tmp_path):
@@ -352,7 +352,7 @@ class TestArgvContract:
         other = write(tmp_path, 'other.txt', b'TWO\n')
         monkeypatch.setattr(sys, 'argv', ['crlf.py', str(other)])
 
-        assert crlf.main(['crlf.py', str(bad)]) == 0
+        assert crlf.main(['crlf.py', str(bad)]) == 1
         captured = capsys.readouterr()
         assert captured.out == f'{bad} INVALID\n', captured.out
 
@@ -375,7 +375,7 @@ class TestArgvContract:
         bad = write(tmp_path, 'bad.txt', b'ONE\n')
         monkeypatch.setattr(sys, 'argv', ['crlf.py', str(bad)])
 
-        assert crlf.main() == 0
+        assert crlf.main() == 1
         captured = capsys.readouterr()
         assert captured.out == f'{bad} INVALID\n', captured.out
 

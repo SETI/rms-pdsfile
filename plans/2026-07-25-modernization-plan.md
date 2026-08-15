@@ -772,10 +772,15 @@ against at least one real volume/bundle. The phase record is
 `critiques/phase6-validation.md` for PR-25 and one file per PR thereafter
 (`critiques/pr-25a-validation.md`, `pr-26-`, `pr-27-`, `pr-28-`), which is how the
 phase actually ran once each PR needed its own tool-run enumeration.
-**CLI names, flags and exit codes are frozen**
-(tests assert them) — the exit-code freeze being over what a **valid** invocation
-returns, not over what a malformed command line happens to produce (owner,
-2026-08-07; §6.4 and deferred observation 135). **Log and output *text* is not** —
+**CLI names and flags are frozen** (tests assert them). **Exit codes were frozen and
+are not any more** — owner, 2026-08-15: they are standardized instead, on one rule for
+every program. 0 when the run did what was asked and logged no fatal and no error, 1
+when it logged either or left work undone, and 2 for a command line the parser cannot
+classify. `re_validate` is deliberately outside this: its exit behaviour is entangled
+with issue #85 and with the standing decision to leave that program alone. The change
+is pinned by the maintenance-tool tests, which previously pinned the opposite for the
+two checksum programs and said in their own comments that whichever change gave those
+tools an exit status had to update the expectations deliberately. **Log and output *text* is not** —
 owner, 2026-08-05:
 having versions that do and do not render a colon is not worth preserving, a
 small change in logged text is acceptable, and the code should be as common as

@@ -5,10 +5,9 @@
 # --initialize -> golden -> --validate clean -> corrupt -> --validate reports it ->
 # --repair -> --validate clean -> --update after a new file.
 #
-# Like its pds3 twin, pds4checksums reports failure in the log, not the exit code:
-# main() computes a failure flag and never passes it to sys.exit. The tests below
-# pin that as current behavior rather than assert the exit code the other tools use
-# (support.TOOLS_WITHOUT_EXIT_STATUS).
+# Like its pds3 twin, pds4checksums reports a logged fatal or error in its exit
+# status, the same way every other tool here does: main() exits with the status the
+# run computed, so a --validate that reports a mismatch exits 1.
 #
 # Every test rebuilds the tree first, so each one is independent and order-agnostic.
 ##########################################################################################
@@ -37,7 +36,7 @@ NEW_FILE = f'{BUNDLE_DIR}/data/rings/u0_kao_91cm_extra_added_by_tests.xml'
 NEW_FILE_BYTES = b'<added-by-an-update-test/>\n'
 NEW_FILE_MTIME = subsets.PDS4_MTIMES[ALPHA_LABEL] + 1000
 
-ERROR_EXIT = support.expected_error_exit_code('pds4checksums')
+ERROR_EXIT = support.ERROR_EXIT_CODE
 
 Corruption = namedtuple('Corruption', 'name description target damage expected')
 
