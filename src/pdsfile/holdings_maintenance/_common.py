@@ -65,6 +65,24 @@ BACKUP_FILENAME = re.compile(r'.*[-_](20\d\d-\d\d-\d\dT\d\d-\d\d-\d\d'
                              r'|backup|original)\.[\w.]+$')
 
 
+def is_backup_name(basename):
+    """Report whether a basename is a backup kept alongside an original.
+
+    Two shapes count: a timestamp, "backup" or "original" appended to the stem, and a
+    " copy" anywhere in the name. Both the archive writer and the directory inventory
+    ask this, so that what is written into an archive and what is listed for
+    comparison against it cannot disagree.
+
+    Parameters:
+        basename (str): The file's basename, without any directory part.
+
+    Returns:
+        bool: True if the name is a backup rather than content.
+    """
+
+    return bool(BACKUP_FILENAME.match(basename)) or ' copy' in basename
+
+
 ##########################################################################################
 # Tool specification
 ##########################################################################################

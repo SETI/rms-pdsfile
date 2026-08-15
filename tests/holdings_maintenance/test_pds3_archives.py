@@ -10,10 +10,15 @@
 # independent and order-agnostic.
 ##########################################################################################
 
+import tarfile
 from collections import namedtuple
 
+import pdslogger
 import pytest
 
+from pdsfile.holdings_maintenance import _archives_common
+from pdsfile.holdings_maintenance._common import is_backup_name
+from pdsfile.holdings_maintenance.pds3 import pdsarchives
 from tests.holdings_maintenance import subsets, support
 
 pytestmark = pytest.mark.full_holdings
@@ -171,3 +176,83 @@ def test_update_creates_a_missing_archive(fresh_tree, golden_update):
     support.check_golden('pds3_archives_members',
                          support.tar_member_text(fresh_tree.path(ARCHIVE)),
                          golden_update)
+
+
+##########################################################################################
+# What the archive holds and what the inventory lists have to agree, and validation has
+# to report every way they can disagree. Both were once true only for two of the three
+# fields, and only for three of the four kinds of skipped file.
+##########################################################################################
+
+class TestArchiveAndInventoryAgree:
+    """The writer's skip rule and the validator's comparison, pinned directly.
+
+    These call the shared archive code with tuples built here rather than driving a
+    tool: the defects they pin are in the comparison and in the filter rather than in
+    any one tool's plumbing, and both twins reach the same two functions. The verdict
+    is asserted rather than the log text, which is not frozen.
+    """
+
+    def test_an_interior_path_mismatch_fails_validation(self):
+        """A member stored under the wrong name inside the archive fails validation.
+
+        The size and the modification time match; only the interior path differs.
+        That case once passed silently: the mismatch branch fired, compared the other
+        two fields, logged nothing and dropped the entry, so an archive whose member
+        path was wrong reported as valid.
+        """
+
+        dir_tuples = [('/holdings/volumes/V/X/FILE.LBL', 'V/X/FILE.LBL', 100, 1000)]
+        tar_tuples = [('/holdings/volumes/V/X/FILE.LBL', 'V/WRONG/FILE.LBL', 100, 1000)]
+
+        assert _archives_common.validate_tuples(pdsarchives.SPEC, dir_tuples,
+                                                tar_tuples) is False
+
+    def test_agreeing_tuples_still_validate(self):
+        """The added comparison does not reject an archive that agrees."""
+
+        tuples = [('/holdings/volumes/V/X/FILE.LBL', 'V/X/FILE.LBL', 100, 1000)]
+
+        assert _archives_common.validate_tuples(pdsarchives.SPEC, tuples,
+                                                list(tuples)) is True
+
+    def test_the_other_two_fields_are_still_compared(self):
+        """Adding the interior-path check did not displace the size or the time."""
+
+        base = ('/holdings/volumes/V/X/FILE.LBL', 'V/X/FILE.LBL', 100, 1000)
+        wrong_size = [(base[0], base[1], 101, base[3])]
+        wrong_time = [(base[0], base[1], base[2], 1100)]
+
+        assert _archives_common.validate_tuples(pdsarchives.SPEC, [base],
+                                                wrong_size) is False
+        assert _archives_common.validate_tuples(pdsarchives.SPEC, [base],
+                                                wrong_time) is False
+
+    def test_one_predicate_decides_what_is_a_backup(self):
+        """Both shapes of backup name are recognized, and ordinary names are not."""
+
+        for name in ('FILE_2021-01-01T00-00-00.LBL', 'FILE_backup.LBL',
+                     'FILE_original.LBL', 'FILE copy.LBL'):
+            assert is_backup_name(name), name
+
+        assert not is_backup_name('FILE.LBL')
+        assert not is_backup_name('N4BI01L4Q.ASC')
+
+    def test_the_writer_skips_a_backup_file(self):
+        """The filter itself drops it, not merely the predicate it consults.
+
+        `load_directory_info()` has always treated a backup file as an error and left
+        it out of the inventory; the writer archived it anyway, so an archive held a
+        file its own listing omitted. Asserting the predicate alone would not have
+        caught that, because the predicate was never the broken half.
+        """
+
+        logger = pdslogger.PdsLogger.get_logger('test.archives.filter')
+        archive_filter = _archives_common.make_archive_filter(
+            pdsarchives.SPEC, logger, archive_invisibles=False)
+
+        backup = tarfile.TarInfo('V/X/FILE copy.LBL')
+        ordinary = tarfile.TarInfo('V/X/FILE.LBL')
+
+        assert archive_filter(backup) is None
+        assert archive_filter(ordinary) is ordinary

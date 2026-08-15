@@ -36,7 +36,7 @@ import sys
 
 import pdslogger
 
-from pdsfile.holdings_maintenance._common import BACKUP_FILENAME
+from pdsfile.holdings_maintenance._common import is_backup_name
 
 
 def reject_checksum_and_archive_paths(pdsf, path):
@@ -175,7 +175,7 @@ def load_directory_info(spec, pdsdir, *, logger=None, limits=None):
                     logger.dot_underscore('._* file skipped', abspath)
                     continue
 
-                if BACKUP_FILENAME.match(file) or ' copy' in file:
+                if is_backup_name(file):
                     logger.error('Backup file skipped', abspath)
                     continue
 
@@ -241,12 +241,13 @@ def make_archive_filter(spec, logger, archive_invisibles):
         who ran the tool. That happens even for a member this then rejects, which
         costs nothing because a rejected member is not written.
 
-        Three kinds of member are dropped: a ``.DS_Store``, recognized by basename; a
-        dot-underscore file, recognized by basename or by any path component; and,
-        when the enclosing call asked for it, an invisible file, which is one whose
-        basename or any path component begins with a dot. The dot-underscore test runs
-        first, so a ``._x`` is reported as a dot-underscore rather than as an
-        invisible.
+        Four kinds of member are dropped: a ``.DS_Store``, recognized by basename; a
+        dot-underscore file, recognized by basename or by any path component; a backup
+        file, by the same rule ``load_directory_info()`` applies, so that an archive
+        holds what the inventory it is compared against lists; and, when the enclosing
+        call asked for it, an invisible file, which is one whose basename or any path
+        component begins with a dot. The dot-underscore test runs first, so a ``._x``
+        is reported as a dot-underscore rather than as an invisible.
 
         Parameters:
             member (tarfile.TarInfo): The member ``tarfile`` is about to add. Its
@@ -270,6 +271,10 @@ def make_archive_filter(spec, logger, archive_invisibles):
             logger.dot_underscore('._* file skipped', member.name)
             return None
 
+        if is_backup_name(basename):
+            logger.error('Backup file skipped', member.name)
+            return None
+
         if basename.startswith('.') or '/.' in member.name:
             if archive_invisibles:
                 logger.invisible('Invisible file archived', member.name)
@@ -290,8 +295,8 @@ def validate_tuples(spec, dir_tuples, tar_tuples, *, logger=None, limits=None):
     The two lists are matched on absolute path. A path in the directory list and not in
     the archive is "Missing from tar file"; a path left over in the archive when every
     directory entry has been accounted for is "Missing from directory". Where both hold
-    the path, the byte count and the modification time are compared and each mismatch
-    is its own error line.
+    the path, the interior path, the byte count and the modification time are compared
+    and each mismatch is its own error line.
 
     **The modification times are allowed to differ by a full second.** The two operands
     are not comparable to better than that: one is a filesystem timestamp and the other
@@ -343,6 +348,16 @@ def validate_tuples(spec, dir_tuples, tar_tuples, *, logger=None, limits=None):
                 valid = False
 
             elif (dirpath, nbytes, modtime) != tardict[abspath]:
+
+                # Every field that can differ is reported. The interior path is the
+                # name the file is stored under inside the archive: a file present
+                # with the right size and time but the wrong interior path does not
+                # restore where it belongs, so it is a mismatch like the others.
+                if dirpath != tardict[abspath][0]:
+                    logger.error('Interior path mismatch: ' +
+                                 str(dirpath) + ' (filesystem) vs. ' +
+                                 str(tardict[abspath][0]) + ' (tarfile)', abspath)
+                    valid = False
 
                 if nbytes != tardict[abspath][1]:
                     logger.error('Byte count mismatch: ' +
