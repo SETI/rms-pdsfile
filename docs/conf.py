@@ -114,9 +114,10 @@ autodoc_mock_imports = ['tabulate']
 # symbol this package does not own; an unresolved reference to a symbol it DOES own is
 # a documentation defect and must be fixed rather than added here.
 #
-# All of these arrive the same way: autodoc renders a dataclass field annotation as a
-# cross-reference, and the dataclass fields are the one place ground rule 5 allows an
-# annotation.
+# They arrive three ways. The `py:class` entries are autodoc rendering a dataclass field
+# annotation as a cross-reference, the dataclass fields being the one place ground rule 5
+# allows an annotation. The `py:exc` entries come from `Raises:` sections naming a
+# standard-library exception. The one `py:mod` entry is a `:mod:` role in prose.
 nitpick_ignore = [
     ('py:class', 'argparse.ArgumentParser'),
     ('py:class', 'argparse.Namespace'),

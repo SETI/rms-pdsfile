@@ -40,6 +40,12 @@ _DIRECTIVES = frozenset([
 
 _ONE_COLON = re.compile(r'^\s*\.\.\s+([a-z][a-z0-9-]*):(?!:)')
 
+# Directives whose body is published verbatim. A `::` at the end of a line opens a
+# literal block, but these carry an argument after the colons -- `.. code-block:: text`
+# -- so the line does not end in `::` and the body would otherwise be scanned as prose.
+_LITERAL_DIRECTIVES = re.compile(
+    r'^(\s*)\.\.\s+(?:code-block|code|literalinclude|parsed-literal|math)::')
+
 # A strong span, by the reStructuredText inline-markup rules: the opening ** is not
 # followed by whitespace, the closing ** is not preceded by whitespace, and the span
 # holds no ** of its own. Nested markup is a backtick or a lone asterisk inside it.
@@ -50,8 +56,9 @@ _NESTED = re.compile(r'`|(?<![\w*])\*(?![\s*])')
 def _uncode(lines):
     """Blank out literal blocks, so their contents are not read as markup.
 
-    A literal block is the indented run that follows a line ending in `::`, and its
-    text is published verbatim -- asterisks and all -- so neither rule applies to it.
+    A literal block is the indented run that follows a line ending in `::` or a literal
+    directive such as `.. code-block:: text`, and its text is published verbatim --
+    asterisks and all -- so neither rule applies to it.
 
     Parameters:
         lines (list): the source lines.
@@ -62,8 +69,10 @@ def _uncode(lines):
     out = list(lines)
     k = 0
     while k < len(out):
-        if out[k].rstrip().endswith('::'):
-            indent = len(out[k]) - len(out[k].lstrip())
+        directive = _LITERAL_DIRECTIVES.match(out[k])
+        if directive or out[k].rstrip().endswith('::'):
+            indent = len(directive.group(1)) if directive else (
+                len(out[k]) - len(out[k].lstrip()))
             j = k + 1
             while j < len(out):
                 stripped = out[j].strip()
@@ -199,3 +208,14 @@ def test_the_check_reports_the_mistakes_it_exists_for():
         '   **a ``b`` c**\n',
         'x')
     assert not clean, clean
+
+    # A directive body is published verbatim too, and it does not end in `::`, so it
+    # needs its own exemption rather than the trailing-colon one.
+    in_a_code_block = check_text(
+        'Shown, not rendered:\n\n'
+        '.. code-block:: text\n\n'
+        '   **a ``b`` c**\n'
+        '   .. note:\n\n'
+        'Back to prose.\n',
+        'x')
+    assert not in_a_code_block, in_a_code_block
