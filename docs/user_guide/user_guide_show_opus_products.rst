@@ -204,18 +204,20 @@ element of the key tuple.
 Exit status
 -----------
 
-**0 for any run that reaches the end**, whatever it printed and whatever it found, and 2
-for a command line :mod:`argparse` cannot classify -- including one with no ``--paths``.
-The only other status comes from an unhandled exception.
+**0 when every path was answered, and 1 when any of them was not.** 2 for a command line
+:mod:`argparse` cannot classify -- including one with no ``--paths``. The only other
+status comes from an unhandled exception.
 
 A path that cannot be turned into a :class:`~pdsfile.pdsfile.PdsFile`, and one that
 resolves to a file that does not exist, are each reported as a ``WARNING:`` line and the
-run continues to the next path. Neither changes the status, so a run in which every path
-failed still exits 0. ``--debug`` is meant to add a traceback to the first of the two,
-and does not: it prints the line ``NoneType: None`` instead, because the traceback is
+run continues to the next path. Either one makes the run exit 1: the remaining paths are
+still printed, and the status is what reports that a path could not be answered.
+``--debug`` is meant to add a traceback to the first of the two, and does not: it prints the line ``NoneType: None`` instead, because the traceback is
 requested after the failure has already been handled. The ``WARNING:`` line still follows
 and the run still continues.
 
 An ``--opus-types`` value that is not among the types the file actually has is likewise a
-``WARNING:``, and a run in which none of the given types matched prints the valid values
+``WARNING:``. On its own it does not fail the run, because the file's remaining types are
+still printed; it fails the run only when it leaves the file with nothing to print, which
+is the case below. A run in which none of the given types matched prints the valid values
 and skips that file.

@@ -83,14 +83,16 @@ def main(argv=None):
     Each path is tried as a Pds3File first and as a Pds4File second, and each of those
     as an absolute path first and as a logical path second. A path that resolves under
     none of the four is reported and skipped, and so is one that resolves to a file that
-    does not exist; neither fails the run.
+    does not exist. Either one fails the run: the remaining paths are still printed, and
+    the exit status is 1 because the tool did not do what it was asked for one of them.
 
     Every path is resolved before any output is printed, so the warnings about paths
     come first and the per-file output follows in the order the paths were given.
 
     An OPUS type named with --opus-types that this file has none of is reported and
-    dropped. Where every named type is dropped, the file's output is skipped entirely
-    rather than printed unfiltered.
+    dropped; that alone does not fail the run, because the file's other types are still
+    printed. Where every named type is dropped the file's output is skipped entirely
+    rather than printed unfiltered, and that does fail the run.
 
     There are three output forms and the first true flag in the order table, pprint, raw
     picks among them; --narrow-table only changes the shape of the table form. Giving
@@ -112,7 +114,8 @@ def main(argv=None):
         argv (list): The full command line, defaulting to sys.argv.
 
     Returns:
-        int: 0 on every path that reaches the end.
+        int: 1 if any path could not be resolved, did not exist, or had all of its
+        named OPUS types dropped, and 0 otherwise.
 
     Raises:
         SystemExit: raised by ``parse_args()`` for a command line it cannot classify,
@@ -161,6 +164,7 @@ def main(argv=None):
     Pds4File.preload(pds4_holdings_dir)
 
     pdsf_inst_list = []
+    failures = 0
     for path in paths:
         pdsf_inst = None
         # Instantiate Pds3File first. If there is an exception, try to instantiate
@@ -180,10 +184,12 @@ def main(argv=None):
                 traceback.print_exc()
             print("WARNING: Can't instantiate a Pds3File or Pds4File instance with the " +
                   f'given path: {path}')
+            failures += 1
             continue
 
         if not pdsf_inst.exists:
             print(f"WARNING: The instantiated PdsFile doesn't exist! Path: {path}")
+            failures += 1
             continue
 
         pdsf_inst_list.append(pdsf_inst)
@@ -205,6 +211,7 @@ def main(argv=None):
         if given_opus_types and not valid_opus_types:
             print(f"None of the given opus types exist; valid values: {golden_opus_types}")
             print(f'WARNING: bypassing output for {pdsf_inst.logical_path}')
+            failures += 1
             continue
 
         for prod_category, prod_list in opus_prod.items():
@@ -258,7 +265,7 @@ def main(argv=None):
                 print('  ],')
             print('}')
 
-    return 0
+    return 1 if failures else 0
 
 
 if __name__ == '__main__':

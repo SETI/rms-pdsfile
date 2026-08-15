@@ -8,10 +8,9 @@
 # Every test rebuilds the tree first (the `fresh_tree` fixture), so each one is
 # independent and order-agnostic.
 #
-# pdschecksums reports failure in the log, not the exit code: main() computes a
-# failure flag and never passes it to sys.exit. The tests below pin that as current
-# behavior rather than assert the exit code the other tools use
-# (support.TOOLS_WITHOUT_EXIT_STATUS).
+# pdschecksums reports a logged fatal or error in its exit status, the same way every
+# other tool here does: main() exits with the status the run computed, so a --validate
+# that reports a mismatch exits 1.
 ##########################################################################################
 
 from collections import namedtuple
@@ -38,7 +37,7 @@ NEW_FILE = f'{VOLUME_DIR}/DATA/VISIT_01/N4BI01L4Q_EXTRA.TXT'
 NEW_FILE_BYTES = b'ADDED BY AN UPDATE TEST\r\n'
 NEW_FILE_MTIME = subsets.PDS3_MTIMES[LABEL] + 1000
 
-ERROR_EXIT = support.expected_error_exit_code('pdschecksums')
+ERROR_EXIT = support.ERROR_EXIT_CODE
 
 Corruption = namedtuple('Corruption', 'name description target damage expected')
 

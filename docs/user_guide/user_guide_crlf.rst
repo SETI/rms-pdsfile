@@ -135,11 +135,14 @@ repair; the invalid count can only be nonzero in a run without ``--repair``.
 Exit status
 -----------
 
-**0, whatever the files turn out to be.** Nothing a file can contain, including being
-binary or invalid, changes the status. 2 for a command line :mod:`argparse` cannot
-classify, and 0 for ``--help``.
+**For a run that reaches the end: 1 if any file was left INVALID, and 0 otherwise.** A
+repaired file is not a failure -- the repair is what was asked for and it happened, so a
+``--repair`` run that fixes every bad file exits 0 -- and a binary file is not a failure
+either, because ``BINARY`` is a verdict rather than a fault. 2 for a command line
+:mod:`argparse` cannot classify, and 0 for ``--help``.
 
-Two file conditions end the run in a traceback, and the interpreter's status is then 1:
+Two file conditions end the run before it reaches the end, in a traceback rather than
+through any of the statuses above, and the interpreter's status is then 1:
 
 * a **zero-byte** file raises :exc:`ZeroDivisionError`, because the binary fraction is
   computed over the file's length;

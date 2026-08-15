@@ -21,16 +21,15 @@ program: the digests come out of the bundle's checksum file, and a bundle with n
 checksum file gets ``Missing entry in checksum file`` for every file and then ends in
 :exc:`FileNotFoundError`.
 
-The convenience that exists on the PDS3 side does **not** exist here:
-``pds4checksums --infoshelf`` chains a second ``pds4checksums`` run rather than an info
-shelf run, as :doc:`user_guide_pds4checksums` describes. Run the two in sequence, and not
-joined by ``&&`` -- ``pds4checksums`` exits 0 whatever it found, so ``&&`` would guard
-nothing:
+``pds4checksums --infoshelf`` chains a run of this program over the same paths once the
+checksum run has succeeded, as :doc:`user_guide_pds4checksums` describes. Running the two
+yourself does the same thing, and ``&&`` behaves as it reads, because ``pds4checksums``
+exits 1 when a task logged an error:
 
 .. code-block:: bash
 
-   pds4checksums --initialize "$BUNDLE"
-   pds4infoshelf --initialize "$BUNDLE"
+   pds4checksums --initialize "$BUNDLE" && \
+      pds4infoshelf --initialize "$BUNDLE"
 
 What it writes
 --------------

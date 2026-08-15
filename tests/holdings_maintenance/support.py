@@ -61,28 +61,11 @@ HOLDINGS_DIRNAME = {'pds3': 'holdings', 'pds4': 'pds4-holdings'}
 # temporary-tree path back to the real one.
 HOLDINGS_FREE_TOOLS = frozenset({'crlf', 'shelf_consistency_check'})
 
-# Tools that exit 0 even after logging ERRORs, because main() never feeds its
-# failure flag to sys.exit -- a --validate that reports checksum mismatches still
-# exits 0. That is a defect; it is pinned as current behavior here rather than
-# fixed, so whichever change gives these two tools an exit status has to update
-# these expectations deliberately.
-TOOLS_WITHOUT_EXIT_STATUS = frozenset({'pdschecksums', 'pds4checksums'})
-
 TOOL_TIMEOUT = 600      # seconds; every subset here runs in well under a second
 
-
-def expected_error_exit_code(tool):
-    """Return the exit code a tool uses today to report logged errors.
-
-    Args:
-        tool: A key of TOOL_MODULES.
-
-    Returns:
-        int: 1 for the nine tools that end in sys.exit(status), 0 for the two that
-        do not.
-    """
-
-    return 0 if tool in TOOLS_WITHOUT_EXIT_STATUS else 1
+# Every tool reports a logged fatal or error the same way, so a test that wants "the
+# failure status" names it rather than repeating the number.
+ERROR_EXIT_CODE = 1
 
 
 def md5_of(path):

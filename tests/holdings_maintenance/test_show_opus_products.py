@@ -146,7 +146,7 @@ def test_an_unknown_opus_type_warns_and_bypasses(tree):
 
     run = support.run_tool(tree, 'show_opus_products', '--opus-types', 'not_a_type',
                            '--paths', tree.path(LABEL))
-    assert run.returncode == 0, run.describe()
+    assert run.returncode == 1, run.describe()
     assert 'WARNING: not_a_type is not valid' in run.output, run.describe()
     assert 'bypassing output' in run.output, run.describe()
     # The valid types are offered instead, and no product table is printed.
@@ -156,12 +156,16 @@ def test_an_unknown_opus_type_warns_and_bypasses(tree):
     assert 'N4BI01L4Q_RAW.TIF' not in run.output, run.describe()
 
 
-def test_a_nonexistent_path_warns_rather_than_failing(tree):
-    """A path that resolves but does not exist produces a warning, not an error."""
+def test_a_nonexistent_path_warns_and_fails_the_run(tree):
+    """A path that resolves but does not exist is warned about, and fails the run.
+
+    The warning names the path and the run carries on to the remaining paths; the
+    exit status is what reports that one of them could not be answered.
+    """
 
     missing = f'{VOLUME_DIR}/DATA/VISIT_01/N4BI01ZZZ.LBL'
     run = support.run_tool(tree, 'show_opus_products', '--paths', missing)
-    assert run.returncode == 0, run.describe()
+    assert run.returncode == 1, run.describe()
     assert "doesn't exist" in run.output, run.describe()
 
 

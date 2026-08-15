@@ -934,29 +934,34 @@ def main():
     paths a second time, with the flag that would chain again removed. The process then
     exits with that run's return code.
 
-    **The status the driver computed is not read here at all**, so a ``--validate`` that
-    reported every file as a mismatch exits 0 unless the chain ran, and the chain's own
-    status is a second checksum run's. What a run does exit nonzero for is everything
-    settled before a task starts: 1 for a command line naming no task, 2 for one the
-    parser cannot classify, and 1 for a path outside a holdings tree or naming checksum
-    files.
+    The exit status is the run's own: 0 when the run logged no fatal and no error, and
+    1 when it logged either, so a ``--validate`` that reported a mismatch exits 1. Where
+    the chain also ran, this run's status wins if it is nonzero and the chained run's is
+    used otherwise. Everything settled before a task starts keeps its own status: 1 for a
+    command line naming no task, 2 for one the parser cannot classify, and 1 for a path
+    outside a holdings tree or naming checksum files.
 
     Raises:
-        SystemExit: from ``sys.exit()`` with the subprocess's return code on the path that
-            chains; from ``setup_run()`` with 1 for a missing task, 0 for --help and 2 for
-            a command line the parser cannot classify; and from the two path helpers with
-            1 for a path they reject. Every other path returns, and the interpreter exits
-            0.
+        SystemExit: from ``sys.exit()`` on every path out of a run, with the run's own
+            status, or with the chained run's return code where this run's status is 0
+            and the chain ran; from ``setup_run()`` with 1 for a missing task, 0 for
+            --help and 2 for a command line the parser cannot classify; and from the two
+            path helpers with 1 for a path they reject.
     """
 
     result = _shelf_common.run_selection_main(SPEC, TASKS, sys.argv)
 
-    # If everything went well, execute pdsinfoshelf too
+    # If everything went well, execute pds4infoshelf too. Only argv[0] names the program, so
+    # only argv[0] is rewritten: substituting throughout would rewrite a --log directory
+    # or any holdings path that happens to carry this program's name.
     if result.proceed and result.args.infoshelf:
-        new_list = [a.replace('pdschecksums', 'pdsinfoshelf') for a in sys.argv]
-        new_list = [a for a in new_list if a not in ('--infoshelf', '-i')]
+        new_list = [a for a in sys.argv if a not in ('--infoshelf', '-i')]
+        new_list[0] = new_list[0].replace('pds4checksums', 'pds4infoshelf')
         completed = subprocess.run(new_list, check=False)
-        sys.exit(completed.returncode)
+        sys.exit(result.status or completed.returncode)
+
+    sys.exit(result.status)
+
 
 if __name__ == '__main__':
     main()

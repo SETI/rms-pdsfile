@@ -128,9 +128,9 @@ the timestamps are touched.
 Exit status
 -----------
 
-0 when the run logged no error, 1 when it did. Unlike :doc:`user_guide_pdschecksums`,
-which shares this program's driver, **this program does report the task's outcome in its
-exit status**: a failed validation exits 1.
+0 when the run logged no error, 1 when it did: a failed validation exits 1.
+:doc:`user_guide_pdschecksums`, which shares this program's driver, reports its outcome
+the same way.
 
 Superseded shelves are kept
 ---------------------------
