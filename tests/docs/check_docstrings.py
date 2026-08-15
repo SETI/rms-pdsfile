@@ -39,6 +39,10 @@ import sys
 
 MAX_DOC_COLUMNS = 90
 
+# The prefix and quote run a docstring opens with, whose width the parser strips from the
+# first line: an optional string prefix followed by triple or single quotes.
+OPENING_RUN = re.compile(r'[rRbBuUfF]*(\"\"\"|\'\'\'|\"|\')')
+
 SECTION_RE = re.compile(r'^(?P<indent>\s*)(?P<name>[A-Z][A-Za-z ]*):\s*$')
 PARAM_ENTRY_RE = re.compile(r'^(?P<indent>\s*)(?P<name>\*{0,2}[A-Za-z_]\w*)'
                             r'(?P<type>\s*\([^)]*\))?:')
@@ -479,8 +483,13 @@ def check_file(path, findings):
 
         # The first line of a docstring reaches the parser without the indentation and
         # the opening quotes that precede it in the file, so its width is restored from
-        # the column the string constant starts at.
-        opener = node.body[0].value.col_offset + 3
+        # the column the string constant starts at plus the width of the opening run.
+        # That run is read from the source rather than assumed to be three characters:
+        # a prefixed docstring (r""", f""") opens in four, and a single-quoted one in
+        # one, and assuming three would under-report those by the difference.
+        constant = node.body[0].value
+        opening = OPENING_RUN.match(lines[constant.lineno - 1][constant.col_offset:])
+        opener = constant.col_offset + (len(opening.group(0)) if opening else 3)
 
         for offset, line in enumerate(doc.split('\n')):
             column = len(line) if offset else len(line) + opener

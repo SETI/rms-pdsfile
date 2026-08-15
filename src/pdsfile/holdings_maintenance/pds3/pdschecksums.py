@@ -109,8 +109,8 @@ def generate_checksums(pdsdir, selection=None, oldpairs=[], *, regardless=True,
         pdsdir: The volume directory to walk. Its abspath is the root of the walk and its
             ``root_`` is what the logger reports paths relative to.
         selection (str): The basename of the one file to digest, or None for all of them.
-        oldpairs (list): (absolute path, digest) pairs already known. **A mutable default
-            of ``[]``, which nothing here writes to.**
+        oldpairs (list): (absolute path, digest) pairs already known.
+            **A mutable default** of ``[]``, **which nothing here writes to.**
         regardless (bool): True to digest a selection even where ``oldpairs`` already
             carries it.
         logger: The logger to report through. Defaults to the tool's own.

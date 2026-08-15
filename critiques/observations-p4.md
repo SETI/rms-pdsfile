@@ -416,6 +416,23 @@ has to exclude it too, and any later measurement of "the number of modules" has 
 say which of the two numbers it means. **Owner: whoever writes the next such
 checker.**
 
+### 6302. `scripts/read-docs.sh` is a reading tool, not a gate, and is not held to the gate's standard
+
+**`scripts/read-docs.sh` builds the documentation with `SPHINXOPTS="-W"` and no `-n`,
+which is less than `run-all-checks.sh` runs.** That is correct and settled, not a gap.
+The script exists so a person can build the documentation and open it; its header says
+so, and it ends by handing `docs/_build/html/index.html` to the platform's default
+handler. It was never meant for automation and was never designed to check anything.
+
+**Owner ruling (2026-08-15): the two are not meant to agree, and no change is wanted.**
+A reading tool that failed the way a gate fails would be worse at the job it has --
+someone reading new prose does not want the build refused over an unresolved
+cross-reference. `run-all-checks.sh` is what the repository's enabled gate set means,
+and it is the only thing that speaks for the documentation's correctness.
+
+Recorded here rather than dropped because a no-context reviewer comparing the two
+invocations will raise it again, and this is the answer.
+
 ## Documentation and records
 
 ### 6400. `_recache()` fills `_isdir_filled` as a side effect, so every "fills these slots" list in…
@@ -602,7 +619,7 @@ said what does not guard them, and listed only `ValueError` and `FileNotFoundErr
 under `Raises:`. Rounds 2 and 4 both raised the subscripts; neither asked for the
 section to be amended, and the executor read the prose as discharging the obligation.
 It does not: the generated API page renders `Raises:` as the contract.
-`critiques/pr-29/check_docstrings.py` cannot catch this, because E2 covers only
+`tests/docs/check_docstrings.py` cannot catch this, because E2 covers only
 classes raised by a `raise` statement in the body -- a subscript that can raise is
 invisible to it, which is exactly why PR-29 widened the *convention* to cover
 mechanisms E1 can verify. **The convention was the thing not applied.**

@@ -10,7 +10,7 @@ rows for a product observed in more than one way. Looking a product up in such a
 means reading the whole of it, so this tool records, once, which row numbers belong to
 which product, and PdsFile reads that shelf instead of the table.
 
-**Everything this tool does is in ``_indexshelf_common``**, which holds the five tasks and
+**Everything this tool does is in** ``_indexshelf_common``, which holds the five tasks and
 the driver, and this module and its PDS4 twin are the two shortest of the ten because
 nothing about shelving an index table differs between the two PDS versions: what a row is,
 how a key is made from one and how a shelf is compared against its table are all
@@ -18,15 +18,16 @@ properties of ``pdstable``. What is here is the specification that says which fl
 be, and a ``main()`` that hands it to the driver.
 
 Its target is a table rather than a volume, which is why ``unit`` is 'table': a
-command-line path names an index table or a metadata directory, and a directory expands to
-the tables inside it. That is also why it is one of the two tools on
+command-line path names an index table or a metadata directory, and a directory
+expands to the tables inside it. That is also why it is one of the two tools on
 ``_indexshelf_common.run_index_main()`` rather than on either driver the other eight use.
 
-**Five fields of this specification differ from ``pds4indexshelf``'s and only three of
-them reach anything.** ``pdsfile_cls`` is ``Pds3File``, so every path resolves through the
-PDS3 rules; ``index_ext`` is '.tab', which is the extension a metadata directory is
-globbed for and a command-line file is checked against; and ``handler_factories`` is the
-error handler alone, where the pds4 tool adds a warning handler as well, so a PDS3 run
+**Five fields of this specification differ from** ``pds4indexshelf``'s **and only
+three of them reach anything.** ``pdsfile_cls`` is ``Pds3File``, so every path
+resolves through the PDS3 rules; ``index_ext`` is '.tab', which is the extension a
+metadata directory is globbed for and a command-line file is checked against; and
+``handler_factories`` is the error handler alone, where the pds4 tool adds a warning
+handler as well, so a PDS3 run
 writes one fewer file per log directory. The other two, ``holdings_sentinel`` and
 ``file_log_level``, are read nowhere along this tool's path: no code that a run of this
 tool reaches ever looks at them.

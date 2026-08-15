@@ -117,29 +117,6 @@ that no `extensions` list names does nothing -- and the guides of the next two P
 will want it. It is left in place rather than removed and re-added.
 **Owner: PR-32 or PR-33, whichever draws the first diagram.**
 
-### 1101. Two markup mistakes delete published prose with no diagnostic
-
-**`.. note:` with one colon silently deletes its whole block from the page.** One
-missing colon turns the directive into an RST comment; the indented paragraph under
-it vanishes from the rendered documentation with no diagnostic from `-W`, from
-`-n`, or from `check_docstrings.py`. Demonstrated in `formatted_file_size`'s
-docstring, where the deleted text was the caveat a caller has to read before trusting
-the number. It is the easiest typo to make in this whole surface and nothing in the
-repository can see it. **Owner: nobody; recorded so a reviewer knows to look.**
-
-**reStructuredText does not nest inline markup inside `**strong**`, and Sphinx does
-not warn about it.** A span written `` **``--infoshelf`` does not chain** `` renders
-with the backticks visible *and* with the flag smart-quoted to `–infoshelf`, because
-`--` outside literal markup becomes an en dash. A reader copying that line gets a
-command argparse rejects. The `-W` and `-n -W` builds both pass with **0 problem
-lines** over a page full of them: the markup is well-formed, it just does not mean
-what it looks like.
-
-Measured on PR-32's first draft: **18 spans** across 20 pages, found by grepping the
-built HTML for `<strong>[^<]*``` and for en-dashed flags, not by any gate. The check
-that catches it is one line against `docs/_build`, and no gate runs it. **Owner:
-PR-33 and PR-34, which write more prose of the same kind.**
-
 ## PR-34 — README rewrite, and the PyMarkdown gate
 
 ### 1200. Where the README include marker sits decides what the documentation front page says, and…

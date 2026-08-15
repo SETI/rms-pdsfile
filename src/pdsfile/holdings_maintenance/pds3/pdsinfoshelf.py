@@ -114,8 +114,8 @@ def generate_infodict(pdsdir, selection, old_infodict={}, *, logger=None,
         selection (str): The basename of the one file to descend into, or None for the
             whole volume. It is joined to the volume directory, so it names a top-level
             file of the volume and not a file deeper inside it.
-        old_infodict (dict): What the shelf already holds, keyed by absolute path. **A
-            mutable default of ``{}``, which nothing here writes to.**
+        old_infodict (dict): What the shelf already holds, keyed by absolute path.
+            **A mutable default** of ``{}``, **which nothing here writes to.**
         logger: The logger to report through. Defaults to the tool's own.
         limits (dict): Message limits for this scope, merged over this module's defaults.
 

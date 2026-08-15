@@ -707,20 +707,6 @@ non-directory children — were in the same state and are now pinned by tests.
 
 ## Gates, tooling and CI
 
-### 3300. `critiques/pr-29/check_docstrings.py` is not wired into any gate
-
-**`critiques/pr-29/check_docstrings.py` is not wired into any gate.** `grep -rI
-check_docstrings` outside `critiques/` and `.git/` returns nothing: it is not in
-`scripts/run-all-checks.sh` and not in any workflow. It is the only thing in the
-repository that catches docstring-against-signature drift, and the Sphinx gate
-catches none of it: with the signature untouched, deleting a `Parameters:` entry,
-inventing one, renaming one, and inverting a stated default all pass the
-documentation gate with zero warnings, and the published page then shows the real
-signature directly above a parameter list that contradicts it. The checker catches
-four of those five shapes (P1, P2, R1) and not the wrong default. Wiring it in is a
-one-line change to the code checks and a decision about where a `critiques/` tool
-should live. **Owner: the owner.**
-
 ### 3301. `scripts/check_runtime_imports.py` covers seven core modules and the two rules packages; it…
 
 **`scripts/check_runtime_imports.py` covers seven core modules and the two
@@ -741,19 +727,6 @@ therefore legitimately turn CI red, which makes it its own measured change
 rather than a rider on this PR.
 **Owner: open.**
 
-### 3302. `scripts/read-docs.sh` builds the documentation with half the gate, and this PR is what makes…
-
-**`scripts/read-docs.sh` builds the documentation with half the gate, and this PR is
-what makes it live.** The script has been in the tree since before `docs/` existed
-and refuses to run without it, so it has never run. It runs
-`make -C docs html SPHINXOPTS="-W"`: no `-n`, so no cross-reference is checked, and
-no `make clean`, so a second run over an unchanged tree reports nothing at all
-(observation 3304 is the same mechanism, and observation 4309's fix covers only the coverage
-check). It is a preview tool rather than a gate -- it builds the HTML and opens it --
-and the gate in `run-all-checks.sh` is what the repository's enabled set means. It
-was left alone rather than quietly broadened. **Owner: the owner, if the two should
-agree.**
-
 ### 3303. A checker whose totals line is not the last line of its output will be read through `tail` and…
 
 **A checker whose totals line is not the last line of its output will be read
@@ -762,7 +735,7 @@ prints its findings, a blank, the totals, the per-code counts, a blank, and the
 `ALLOWED` list. Every re-run during PR-30's correction batches was read through
 `| tail -2`, which shows the last blank and `ALLOWED`, so a run reporting 24
 findings was recorded as reporting none, and stayed that way through a green CI run.
-`critiques/pr-29/check_docstrings.py` escapes this only because its totals line
+`tests/docs/check_docstrings.py` escapes this only because its totals line
 happens to fall within the last two.
 
 Two cheap fixes, either of which would have caught it: **print the totals last**, or
@@ -798,27 +771,6 @@ The gate gives the second build its own `BUILDDIR` for this reason and
 `docs/Makefile` records it. Anything that reuses one build directory for two flag
 settings -- a later gate, a CI cache, a developer running both by hand -- inherits
 the same trap.
-
-### 3305. The documentation gate depends on reaching `docs.python.org`, and an unreachable inventory is a…
-
-**The documentation gate depends on reaching `docs.python.org`, and an unreachable
-inventory is a build failure.** `intersphinx_mapping` is what makes the
-standard-library names in `Parameters:`, `Returns:` and `Raises:` entries resolve.
-Measured by pointing it at a host that does not resolve: `-W` alone exits **1** with
-one warning (`failed to reach any of the inventories`), and `-n -W` exits **1** with
-**37** -- that one plus the 36 references the inventory was resolving
-(`collections.abc.Callable` x11, `argparse.Namespace` x8,
-`argparse.ArgumentParser` x5, `re.Pattern` x4, `tarfile.ReadError` x2,
-`pickle.UnpicklingError` x2, and one each of `smtplib.SMTPException`,
-`pickle.PickleError`, `pathlib.Path`, `datetime.datetime`). It was 34 before the
-constructor docstrings were published; publishing them added two. So a transient outage at
-`docs.python.org` turns the hosted lint job red, and the message names the inventory
-rather than anything about this tree. `intersphinx_timeout = 30` bounds the case
-where the host accepts the connection and never answers, which would otherwise stall
-the build instead of failing it. The remedy if it ever flakes in practice is a second
-inventory location in the mapping tuple pointing at a copy of `objects.inv` committed
-here; that was not done, because it commits a binary that goes stale and the flake
-has not been observed. **Owner: whoever sees it flake.**
 
 ## Documentation and records
 

@@ -173,9 +173,9 @@ def write_archive(pdsdir, *, clobber=True, archive_invisibles=True,
     The parent directory is created if it is not there, so the first archive of a volume
     set does not need the archives tree to exist first.
 
-    **With ``clobber`` false and an archive already there, this logs an error and returns
-    without writing.** Its caller does not learn that: ``initialize()`` returns True
-    either way.
+    With ``clobber`` false and an archive already there, **this logs an error and
+    returns without writing.** Its caller does not learn that: ``initialize()``
+    returns True either way.
 
     The "Written" line is logged before the file is closed, so it records that the members
     were added rather than that the archive is complete on disk.
