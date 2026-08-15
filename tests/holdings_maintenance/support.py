@@ -811,3 +811,26 @@ def golden_lines(name):
     """
 
     return (GOLDEN_DIR / f'{name}.txt').read_text(encoding='utf-8').splitlines()
+
+
+def snapshot_tree(root):
+    """Return every path under a directory, as a set of absolute paths.
+
+    Used by the read-only guard in conftest.py to notice anything a test leaves
+    behind in a real holdings root.
+
+    Args:
+        root: The directory to walk.
+
+    Returns:
+        set: absolute paths of every directory and file beneath it.
+    """
+
+    found = set()
+    for dirpath, dirnames, filenames in os.walk(root):
+        for name in dirnames:
+            found.add(os.path.join(dirpath, name))
+        for name in filenames:
+            found.add(os.path.join(dirpath, name))
+
+    return found

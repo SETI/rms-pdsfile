@@ -86,3 +86,59 @@ def golden_update(request):
     """Return True when the session was started with --update to rewrite goldens."""
 
     return bool(request.config.getoption('--update'))
+
+
+@pytest.fixture(scope='session')
+def _holdings_baseline(request):
+    """Return the mutable record of what each real holdings root holds.
+
+    Snapshotting is the expensive half of the read-only guard, so the state left by
+    one test becomes the baseline for the next instead of being taken twice per test.
+    """
+
+    holdings = request.config._pdsfile_holdings
+    if not holdings.available:                                  # pragma: no cover
+        return None
+
+    roots = [str(r) for r in (holdings.pds3_root, holdings.pds4_root) if r]
+
+    return {root: support.snapshot_tree(root) for root in roots}
+
+
+@pytest.fixture(autouse=True)
+def _holdings_stay_read_only(request, _holdings_baseline):
+    """Fail any test that leaves a new file inside a real holdings root.
+
+    These tests drive tools that write -- archives, checksum files, shelves -- and
+    they are meant to write only into the temporary tree `tool_tree` builds. Nothing
+    enforced that. A test that resolves a path through `Pds3File` or `Pds4File` gets
+    whichever root the class was preloaded with, and a second `preload()` call does
+    not re-root an already-preloaded class, so a test that builds its own tree and
+    preloads it still resolves into the real holdings and writes there.
+
+    That is not hypothetical: it put an 80 MB archive into the shared PDS4 tree,
+    passed locally because that tree is writable, and failed four CI jobs with
+    PermissionError against the read-only one. The failure is the lucky case. On a
+    machine where the holdings are writable, the damage is silent.
+
+    Each root is walked once per test and the result carried forward as the next
+    test's baseline, so a violation is attributed to the test that caused it and the
+    baseline moves on rather than reporting the same paths for every test after it.
+    """
+
+    yield
+
+    if _holdings_baseline is None:                              # pragma: no cover
+        return
+
+    appeared = []
+    for root, before in _holdings_baseline.items():
+        after = support.snapshot_tree(root)
+        appeared += sorted(after - before)
+        _holdings_baseline[root] = after
+
+    assert not appeared, (
+        f'{request.node.nodeid} wrote into a real holdings root. Tools under test '
+        f'must write only into the temporary tree. New paths:\n  '
+        + '\n  '.join(appeared[:20])
+        + (f'\n  ... and {len(appeared) - 20} more' if len(appeared) > 20 else ''))
