@@ -11,8 +11,13 @@ if [[ $# -ne 2 ]]; then
     exit -1
 fi
 
-HOLDINGS="$(realpath $1)"
+HOLDINGS="$(realpath "$1")"
 VOLSET=$2
+
+if [[ ! "$VOLSET" =~ ^[A-Za-z0-9_]+$ ]]; then
+    echo "Not a volume set name: '$VOLSET'"
+    exit -1
+fi
 
 if [[ ! -d "$HOLDINGS" ]]; then
     echo "Directory does not exist: '$HOLDINGS'"
@@ -25,10 +30,10 @@ if [[ ! -d "$HOLDINGS/metadata/$VOLSET" ]]; then
 fi
 
 rm -rf "$HOLDINGS/archives-metadata/$VOLSET"
-rm -f "$HOLDINGS"/checksums-archives-metadata/${VOLSET}_*
+rm -f "$HOLDINGS/checksums-archives-metadata/${VOLSET}_metadata_md5.txt"
 rm -rf "$HOLDINGS/checksums-metadata/$VOLSET"
 rm -rf "$HOLDINGS/_indexshelf-metadata/$VOLSET"
-rm -f "$HOLDINGS"/_infoshelf-archives-metadata/${VOLSET}_info.*
+rm -f "$HOLDINGS/_infoshelf-archives-metadata/${VOLSET}_info".*
 rm -rf "$HOLDINGS/_infoshelf-metadata/$VOLSET"
 rm -rf "$HOLDINGS/_linkshelf-metadata/$VOLSET"
 

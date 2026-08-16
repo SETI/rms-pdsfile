@@ -21,7 +21,7 @@ it for this script: the defect is fixed, with a regression test, and the guide
 describes the fixed behavior. The six `pdsdata-sync-*` scripts and the four
 copy/setup scripts remain document-only.
 
-## The defect that was fixed
+## The defects that were fixed
 
 The script deleted seven products of one volume set's metadata and rebuilt six.
 `_infoshelf-archives-metadata/` was the seventh: its deletion targeted
@@ -34,3 +34,13 @@ rebuild, and reorders the commands into the topological order the user guide's
 dependency graph documents. `tests/holdings_maintenance/test_update_holdings_script.py`
 pins the delete/rebuild correspondence, the ordering, and the flat-category
 deletion shape.
+
+A second defect fell under the same ruling: the `checksums-archives-metadata/`
+deletion's `${VOLSET}_*` glob also matched versioned siblings —
+`<volset>_v1.0_metadata_md5.txt` and kin — that the rebuild, which reads only the
+unversioned `archives-metadata/<volset>`, never rewrites, so a rerun destroyed
+checksum files it could not restore. That deletion is narrowed to the one file
+the rebuild writes, `${VOLSET}_metadata_md5.txt`, the volume-set argument is
+validated as a single path component before anything is removed, and the test
+module pins the property directly: each flat-category deletion, expanded as a
+glob, must match exactly the files its rebuild writes.

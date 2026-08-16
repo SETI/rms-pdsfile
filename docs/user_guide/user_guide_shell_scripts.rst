@@ -108,7 +108,10 @@ products, in an order the dependency graph in :doc:`user_guide_concepts` permits
 ``pdschecksums`` and ``pdsinfoshelf`` over ``archives-metadata/``, then ``pdslinkshelf``
 and ``pdsindexshelf`` over ``metadata/``. It is the PDS3 command sequence that chapter
 shows, run for one volume set, with the old products deleted first because
-``--initialize`` refuses to replace a product that already exists. It ends with
+``--initialize`` refuses to replace a product that already exists. Only the
+unversioned volume set's products are deleted: a versioned sibling such as
+``<volset>_v1.0_metadata_md5.txt`` survives, because the rebuild reads only the
+unversioned trees and could not restore it. It ends with
 ``ALL COMPLETED WITH NO ERRORS``.
 
 .. note::
