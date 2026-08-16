@@ -144,23 +144,6 @@ record `shelf/dash-root`, where the base run walked the directory and reported
 on it.
 **Owner: open.**
 
-### 3008. Two defects in the checksum generate-and-validate path
-
-**`pdschecksums.generate_checksums()` returns an empty dict where its own contract is
-a list.** The two paths where a selection matched no file, or more than one, return
-`({}, latest_mtime)`; every other return is a list of pairs, and `pds4checksums`
-returns `([], latest_mtime)` on the same two paths. Every caller tests the value for
-truth alone, so nothing breaks today; a caller that iterated it would get keys rather
-than pairs.
-**Owner: a later maintenance-tool PR.**
-
-**`validate_pairs()` computes a merged limits dictionary and then passes the unmerged
-one**, in both flavors: `merged_limits` is built from `VALIDATE_PAIRS_LIMITS` and the
-argument, and `logger.open(…, limits=limits)` is what runs. `VALIDATE_PAIRS_LIMITS` is
-empty, so the two are equal today and the defect is latent: an entry added to that
-constant would have no effect.
-**Owner: a later maintenance-tool PR.**
-
 ### 3009. Pre-existing pds4 uranus s-mode blackbox failures (full-holdings golden area, owner-deferred)
 
 **Pre-existing pds4 uranus s-mode blackbox failures (full-holdings golden

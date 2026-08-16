@@ -503,9 +503,8 @@ def validate_pairs(pairs1, pairs2, selection=None, *, logger=None,
         pairs2 (list): The pairs the manifest holds.
         selection (str): The basename of the one file to check, or None for all of them.
         logger: The logger to report through. Defaults to the tool's own.
-        limits (dict): Message limits for this scope. This module's defaults for this
-            scope are empty and are merged into a value that is then not passed, so what
-            reaches the log level is this argument itself.
+        limits (dict): Message limits for this scope, merged over this module's
+            defaults, which are empty.
 
     Returns:
         bool: True if the two agree on every entry compared, False if any error was
@@ -520,7 +519,7 @@ def validate_pairs(pairs1, pairs2, selection=None, *, logger=None,
 
     merged_limits = VALIDATE_PAIRS_LIMITS.copy()
     merged_limits.update(limits)
-    logger.open('Validating checksums', limits=limits)
+    logger.open('Validating checksums', limits=merged_limits)
 
     success = True
     try:

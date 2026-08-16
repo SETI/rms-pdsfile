@@ -121,9 +121,8 @@ def generate_checksums(pdsdir, selection=None, oldpairs=[], *, regardless=True,
 
     Returns:
         tuple: the (absolute path, digest) pairs, and the newest modification time as a
-        timestamp. **A selection that matched no file, or more than one, gives an empty
-        dict rather than an empty list** for the first element, which every caller reads
-        only for truth and none for its type; the PDS4 tool returns a list there.
+        timestamp. A selection that matched no file, or more than one, gives an empty
+        list, as the PDS4 tool does.
 
     Raises:
         OSError: raised by ``getmtime()`` on a file the walk listed and that is gone by
@@ -196,12 +195,12 @@ def generate_checksums(pdsdir, selection=None, oldpairs=[], *, regardless=True,
         if selection:
             if len(newtuples) == 0:
                 logger.error('File selection not found', selection)
-                return ({}, latest_mtime)
+                return ([], latest_mtime)
 
             if len(newtuples) > 1:
                 logger.error('Multiple copies of file selection found',
                              selection)
-                return ({}, latest_mtime)
+                return ([], latest_mtime)
 
         # Add new values to dictionary
         for (abspath, md5, _) in newtuples:
@@ -508,9 +507,8 @@ def validate_pairs(pairs1, pairs2, selection=None, *, logger=None,
         pairs2 (list): The pairs the manifest holds.
         selection (str): The basename of the one file to check, or None for all of them.
         logger: The logger to report through. Defaults to the tool's own.
-        limits (dict): Message limits for this scope. This module's defaults for this
-            scope are empty and are merged into a value that is then not passed, so what
-            reaches the log level is this argument itself.
+        limits (dict): Message limits for this scope, merged over this module's
+            defaults, which are empty.
 
     Returns:
         bool: True if the two agree on every entry compared, False if any error was
@@ -525,7 +523,7 @@ def validate_pairs(pairs1, pairs2, selection=None, *, logger=None,
 
     merged_limits = VALIDATE_PAIRS_LIMITS.copy()
     merged_limits.update(limits)
-    logger.open('Validating checksums', limits=limits)
+    logger.open('Validating checksums', limits=merged_limits)
 
     success = True
     try:

@@ -485,9 +485,8 @@ def write_infodict(pdsdir, infodict, *, logger=None, limits=None):
         infodict (dict): The entries, keyed by absolute path, as generate_infodict() built
             them.
         logger: The logger to report through. Defaults to the tool's own.
-        limits (dict): Message limits for the first of the two scopes, merged over this
-            module's defaults. The sidecar's scope is opened with this argument as it
-            stands, so this module's defaults do not apply there.
+        limits (dict): Message limits for both of the two scopes, merged over this
+            module's defaults, which are empty.
 
     Raises:
         ValueError: raised by ``shelf_path_and_lskip()`` for a checksum path, for an
@@ -543,7 +542,7 @@ def write_infodict(pdsdir, infodict, *, logger=None, limits=None):
     finally:
         _ = logger.close()
 
-    logger.open('Writing Python dictionary', dirpath, limits=limits)
+    logger.open('Writing Python dictionary', dirpath, limits=merged_limits)
     try:
         # Determine the maximum length of the file path
         len_path = 0
