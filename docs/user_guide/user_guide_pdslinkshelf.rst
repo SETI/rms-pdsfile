@@ -71,7 +71,7 @@ Checking a shelf
 
 .. code-block:: console
 
-   $ pdslinkshelf --validate $PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001
+   $ pdslinkshelf --validate "$PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001"
    2026-08-09 01:43:24.000120 | pds.validation.links || HEADER | pdslinkshelf --validate $PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001
    2026-08-09 01:43:24.000653 | pds.validation.links |-| HEADER | Task validate for: $PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001
    2026-08-09 01:43:24.000719 | pds.validation.links |--| INFO | Log file: $PDS3_HOLDINGS_DIR/../logs/pdslinkshelf/volumes/COUVIS_0xxx/COUVIS_0001_links_2026-08-09T01-43-24_validate.log

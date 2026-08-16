@@ -71,7 +71,7 @@ Building a manifest
 
 .. code-block:: console
 
-   $ pds4checksums --initialize $PDS4_HOLDINGS_DIR/bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023
+   $ pds4checksums --initialize "$PDS4_HOLDINGS_DIR/bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023"
    2026-08-09 01:42:15.443120 | pds.validation.checksums || HEADER | pds4checksums --initialize $PDS4_HOLDINGS_DIR/bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023
    2026-08-09 01:42:15.443708 | pds.validation.checksums |-| HEADER | Task "initialize" for: $PDS4_HOLDINGS_DIR/bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023
    2026-08-09 01:42:15.443773 | pds.validation.checksums |--| INFO | Log file: $PDS4_HOLDINGS_DIR/../logs/pds4checksums/bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023_md5_2026-08-09T01-42-15_initialize.log
@@ -110,7 +110,7 @@ Checking a bundle against its manifest
 
 .. code-block:: console
 
-   $ pds4checksums --validate $PDS4_HOLDINGS_DIR/bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023
+   $ pds4checksums --validate "$PDS4_HOLDINGS_DIR/bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023"
    ...
    2026-08-09 01:43:25.421076 | pds.validation.checksums |--| HEADER | Reading MD5 checksums: checksums-bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023_md5.txt
    ...

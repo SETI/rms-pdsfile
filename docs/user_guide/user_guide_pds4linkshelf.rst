@@ -68,7 +68,7 @@ Checking a shelf
 
 .. code-block:: console
 
-   $ pds4linkshelf --validate $PDS4_HOLDINGS_DIR/bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023
+   $ pds4linkshelf --validate "$PDS4_HOLDINGS_DIR/bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023"
    ...
    2026-08-09 01:43:27.994288 | pds.validation.links |---| INFO | *** Get link info and review: bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023/data/collection_data.xml
    2026-08-09 01:43:27.994838 | pds.validation.links |---| INFO | Label identified (by name) for collection_data.csv: bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023/data/collection_data.xml

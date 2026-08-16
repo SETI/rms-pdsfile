@@ -4,7 +4,7 @@ Installation and Setup
 Supported Python versions
 -------------------------
 
-``rms-pdsfile`` requires **Python 3.10 or later**.
+``rms-pdsfile`` requires **Python 3.11 or later**.
 
 Installing
 ----------

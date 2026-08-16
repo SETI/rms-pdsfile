@@ -157,7 +157,7 @@ An interactive run
 
 .. code-block:: console
 
-   $ python -m pdsfile.holdings_maintenance.pds3.re_validate --log $PDS3_HOLDINGS_DIR/../logroot $PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001
+   $ python -m pdsfile.holdings_maintenance.pds3.re_validate --log "$PDS3_HOLDINGS_DIR/../logroot" "$PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001"
    2026-08-09 01:44:58.231134 | pds.validation || HEADER | <source root>/pdsfile/holdings_maintenance/pds3/re_validate.py --log $PDS3_HOLDINGS_DIR/../logroot $PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001
 
    2026-08-09 01:44:58.231652 | pds.validation |-| HEADER | Re-validate $PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001
@@ -192,7 +192,7 @@ Batch mode's schedule
 
 .. code-block:: console
 
-   $ python -m pdsfile.holdings_maintenance.pds3.re_validate --batch-status --log $PDS3_HOLDINGS_DIR/../logroot $PDS3_HOLDINGS_DIR
+   $ python -m pdsfile.holdings_maintenance.pds3.re_validate --batch-status --log "$PDS3_HOLDINGS_DIR/../logroot" "$PDS3_HOLDINGS_DIR"
       1         COUVIS_0xxx/COUVIS_0009  modified , not previously validated
       2         COUVIS_0xxx/COUVIS_0058  modified , not previously validated
       3          COUVIS_0xxx/COUVIS_0001  modified 2020-05-13, last validated 2026-08-09, duration 0:00:00, error logged

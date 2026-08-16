@@ -21,9 +21,11 @@ See [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
    ```bash
    python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   source venv/bin/activate
    pip install -e ".[dev]"
    ```
+
+   Linux and macOS are the supported platforms; Windows is not.
 
 ## Development Workflow
 
@@ -61,24 +63,27 @@ See [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
 We follow these standards for all code contributions:
 
-* **Python Style**: Follow PEP 8
-* **Type Hints**: Use type hints for all function parameters and return values
-* **Docstrings**: Document all classes and methods with docstrings following the Google style
+* **Python Style**: `ruff check` is the style gate, run by `scripts/run-all-checks.sh`
+  with the rule set configured in `pyproject.toml`; its per-file-ignores list may
+  shrink but never grow
+* **Type Hints**: This codebase does not use inline type annotations; do not add them
+* **Docstrings**: Document all modules, classes and functions with docstrings
+  following the Google style
 * **Testing**: Include unit tests for new functionality
 * **Compatibility**: Ensure compatibility with Python 3.11+
 
 Example of a well-formatted function:
 
 ```python
-def calculate_offset(image: NDArrayFloatType, model: NDArrayFloatType) -> tuple[float, float]:
+def calculate_offset(image, model):
     """Calculate the offset between an image and a model.
 
     Parameters:
-        image: The observed image as a NumPy array
-        model: The theoretical model as a NumPy array
+        image: The observed image as a NumPy array.
+        model: The theoretical model as a NumPy array.
 
     Returns:
-        A tuple containing the (u, v) offset in pixels
+        A tuple containing the (u, v) offset in pixels.
     """
     # Implementation here
     return u_offset, v_offset
@@ -88,7 +93,7 @@ def calculate_offset(image: NDArrayFloatType, model: NDArrayFloatType) -> tuple[
 
 1. Ensure all tests pass
 2. Update documentation if necessary
-3. Make sure your code is properly formatted and passes both ruff and mypy
+3. Make sure your code passes every check `scripts/run-all-checks.sh` runs
 4. Request a review from a maintainer
 5. Address any feedback from reviewers
 
@@ -96,23 +101,45 @@ The maintainers will merge your PR once it meets all requirements.
 
 ## Testing
 
-We use pytest for testing. To run the tests:
+We use pytest, and the suite is holdings-aware: nearly every test runs against a
+real PDS holdings tree, and on a machine without one the data-dependent tests are
+collected and skipped with a clear reason rather than failing. A bare `pytest`
+run with no holdings is therefore green but mostly skips; it proves imports and
+the holdings-free subset, nothing more.
+
+To run the suite against a holdings tree (complete, or a limited real copy),
+name its roots and select them first — the selector is what makes a bare
+`pytest` run use the roots at all:
 
 ```bash
-pytest
+export PDS3_HOLDINGS_DIR="/path/to/pdsdata/holdings"
+export PDS4_HOLDINGS_DIR="/path/to/pdsdata/pds4-holdings"
+export PDSFILE_TEST_HOLDINGS=full
+
+pytest tests --mode ns
 ```
 
-For more verbose output:
+The `--mode` option (default `ns`) selects how the classes answer file-system
+questions: `ns` reads the file system, `s` answers from the info shelf files
+alone. The whole tree passes under `ns`; a shelves-specific failure is visible
+only under `s`, so a change that touches data handling is checked with both:
 
 ```bash
-pytest -v
+pytest tests --mode ns
+pytest tests/pds3file tests/rules/pds3 --mode s
+pytest tests/pds4file tests/rules/pds4 --mode s
 ```
 
 To run a specific test file:
 
 ```bash
-pytest tests/test_specific_file.py
+pytest tests/pds3file/test_pds3file_blackbox.py --mode ns
 ```
+
+`scripts/run-all-checks.sh` wraps the `ns` pass together with every other check
+and fills in the holdings selection from the environment variables. The
+[test-suite chapter of the developer guide](docs/dev_guide/dev_guide_testing.rst)
+covers the selection machinery, the markers, and the golden-file mechanisms.
 
 ## Documentation
 

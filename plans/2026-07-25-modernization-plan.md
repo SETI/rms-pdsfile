@@ -199,11 +199,12 @@ for re-interpretation by the executor:
 | `ruff format --check` | **Never enabled** — the churn checkpoint ran on 2026-08-03 and the owner dropped the reformat entirely (`plans/2026-08-03-addendum-pr23-24-owner-decisions.md`) | — |
 | Hosted lint/no-holdings CI job | **Active** (PR-14) | ruff + pyroma + API-freeze + clean-install + the holdings-free test subset on stock GitHub runners (it runs `run-all-checks.sh`, so it is whatever that enables) |
 | sphinx `-W` and `-n -W` builds | **Active** (PR-31) | Two builds from `docs/conf.py`, each accepted only if it exits 0, writes its HTML, and prints the module-coverage line `conf.py` emits. `-n` alone reports every unresolved cross-reference and still exits 0, so it is never run without `-W` (deferred 326), and the second build needs its own `BUILDDIR` or it re-reads nothing and reports nothing (deferred 327) |
+| PyMarkdown scan | **Active** (PR-34) | Markdown lint over the files its selection actually reaches — `README.md` and `CONTRIBUTING.md`, because `pymarkdown scan` selects by `.md` and does not recurse into its `docs/` and `.cursor/` directory arguments (observation 4318 carries the measurement). The gate prints the file list before scanning and fails on an empty selection |
 | Adversarial pre-PR review loop | **Active** (every PR) | A fresh, no-context reviewer cannot prove the PR misses its stated goal — zero Major and no new un-rebutted Minor findings (§6.6) |
 
 `scripts/run-all-checks.sh` is the single source of truth for the enabled set
 (`ENABLE_*` flags; currently on: ruff-check, pytest, pyroma, api-freeze,
-clean-install, sphinx). Each PR that introduces a gate flips its flag and keeps CI in
+clean-install, sphinx, pymarkdown). Each PR that introduces a gate flips its flag and keeps CI in
 exact correspondence (`environment.mdc`). `ENABLE_MYPY`, `ENABLE_BANDIT`,
 `ENABLE_VULTURE` stay false permanently (ground rules / overrides).
 

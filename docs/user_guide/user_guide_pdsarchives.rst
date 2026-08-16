@@ -52,7 +52,7 @@ Writing an archive
 
 .. code-block:: console
 
-   $ pdsarchives --initialize $PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001
+   $ pdsarchives --initialize "$PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001"
    2026-08-09 01:40:05.267486 | pds.validation.archives || HEADER | pdsarchives --initialize $PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001
    2026-08-09 01:40:05.267999 | pds.validation.archives |-| HEADER | Task initialize for: $PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001
    2026-08-09 01:40:05.268051 | pds.validation.archives |--| INFO | Log file: $PDS3_HOLDINGS_DIR/../logs/pdsarchives/volumes/COUVIS_0xxx/COUVIS_0001_archives_2026-08-09T01-40-05_initialize.log
@@ -82,7 +82,7 @@ Checking an archive
 
 .. code-block:: console
 
-   $ pdsarchives --validate $PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001
+   $ pdsarchives --validate "$PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001"
    ...
    2026-08-09 01:43:22.799465 | pds.validation.archives |--| HEADER | Generating file info: volumes/COUVIS_0xxx/COUVIS_0001
    2026-08-09 01:43:22.799513 | pds.validation.archives |---| INFO | Directory info generated: volumes/COUVIS_0xxx/COUVIS_0001/DATA

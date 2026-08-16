@@ -49,7 +49,7 @@ anywhere among the roots.
 
    .. code-block:: console
 
-      $ python -m pdsfile.holdings_maintenance.pds3.shelf_consistency_check $PDS3_HOLDINGS_DIR
+      $ python -m pdsfile.holdings_maintenance.pds3.shelf_consistency_check "$PDS3_HOLDINGS_DIR"
       Tests performed: 0
       Errors found: 0
 
@@ -91,7 +91,7 @@ plus an unrelated ``holdings/`` directory:
 
 .. code-block:: console
 
-   $ python -m pdsfile.holdings_maintenance.pds3.shelf_consistency_check $PDS3_HOLDINGS_DIR/../shelves-demo
+   $ python -m pdsfile.holdings_maintenance.pds3.shelf_consistency_check "$PDS3_HOLDINGS_DIR/../shelves-demo"
    *** Not a valid shelves directory: $PDS3_HOLDINGS_DIR/../shelves-demo
    *** Extraneous shelf: $PDS3_HOLDINGS_DIR/../shelves-demo/shelves/info/COUVIS_0xxx/COUVIS_0001_info.pickle
    *** Not a valid shelves directory: $PDS3_HOLDINGS_DIR/../shelves-demo/holdings

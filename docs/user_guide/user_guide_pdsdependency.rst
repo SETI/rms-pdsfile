@@ -88,7 +88,7 @@ Running it
 
 .. code-block:: console
 
-   $ pdsdependency $PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001
+   $ pdsdependency "$PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001"
    2026-08-09 01:44:24.150392 | pds.validation.dependencies || HEADER | pdsdependency $PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001
    2026-08-09 01:44:24.150796 | pds.validation.dependencies |-| INFO | Log file: $PDS3_HOLDINGS_DIR/../logs/pdsdependency/volumes/COUVIS_0xxx/COUVIS_0001_dependency_2026-08-09T01-44-24.log
    2026-08-09 01:44:24.151032 | pds.validation.dependencies |-| HEADER | Dependency test suite "general": volumes/COUVIS_0xxx/COUVIS_0001

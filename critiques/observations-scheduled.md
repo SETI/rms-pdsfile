@@ -104,29 +104,6 @@ target, and observation 6403 records the 43 docstrings that are not published at
 roles nothing would check.
 **Owner: issue #149, which carries this measurement so it is not re-derived.**
 
-## PR-34 — README rewrite, and the PyMarkdown gate
-
-### 1200. Where the README include marker sits decides what the documentation front page says, and…
-
-**Where the README include marker sits decides what the documentation front page
-says, and neither position warns.** Moving `<!-- start-after-point -->` past
-`Supported versions: Python >= 3.10` removes the front page's only substantive line;
-`:start-after:` swallowing content is not a warning. Placing it before the
-`# rms-pdsfile` H1 instead renders the project title twice, `<h1>` then `<h2>`, also
-without a warning. It sits after the H1 for that reason. The cost of that choice is
-that the README's last line is a second H1 (`# PDS Ring-Moon Systems Node, SETI
-Institute`), so the rendered landing page ends with a heading and nothing under it.
-**Owner: PR-34, which rewrites the README and inherits the marker.**
-
-### 1201. `CONTRIBUTING.md` documents `pytest` without holdings or `--mode`
-
-**`CONTRIBUTING.md` documents `pytest` without holdings or `--mode`.** Its
-testing section shows bare `pytest` / `pytest tests/<file>` with no mention
-of `PDS3_HOLDINGS_DIR`/`PDS4_HOLDINGS_DIR`, `PDSFILE_TEST_HOLDINGS`, or
-`--mode`. Now that the pytest gate is enabled, a contributor following it
-gets an 800-skip run with no explanation of why. **Owner: Phase 7**
-(PR-33 ch. 5 "Test-suite guide", or PR-34 with the README rewrite).
-
 ## PR-35 — Public-API type stubs and `py.typed`
 
 ### 1300. `DictionaryCache.preload_eligible` has no reader

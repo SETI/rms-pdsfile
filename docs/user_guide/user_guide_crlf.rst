@@ -110,7 +110,7 @@ A binary file named alongside a text one is reported as such under ``--verbose``
 
 .. code-block:: console
 
-   $ python -m pdsfile.holdings_maintenance.pds3.crlf --verbose $PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.LBL $PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.DAT
+   $ python -m pdsfile.holdings_maintenance.pds3.crlf --verbose "$PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.LBL" "$PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.DAT"
    $PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.LBL OK
    $PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.DAT BINARY
    2 files tested

@@ -3194,6 +3194,26 @@ would report it. The fix is one word in the frozenset, plus whatever other
 extension directives the tree has gained by then. Found by PR-33's round-3
 reviewer. **Owner: whichever PR next edits the docs gates.**
 
+### 4318. The Markdown gate reads two files, and its directory arguments select nothing
+
+**The Markdown gate reads two files, and its directory arguments select nothing.**
+`pymarkdown scan` selects by the `.md` extension and does not recurse into a
+directory argument, so of the four scan paths `run-all-checks.sh` passes —
+`docs/`, `.cursor/`, `README.md`, `CONTRIBUTING.md` — the two directories
+contribute no file: `docs/` holds no `.md` at any depth, and `.cursor/`'s five
+Markdown files (four skills' `SKILL.md` plus one `reference.md`) sit two levels
+down. The gate prints the selection before scanning and fails on an empty one, so
+its true scope — `README.md` and `CONTRIBUTING.md` — is stated on every run
+rather than implied by the argument list. Measured with `-r` added: the five
+nested files carry **130** findings, of which 95 (`MD041`/`MD003`/`MD022`/`MD026`)
+are one artifact — PyMarkdown reads the skills' YAML front-matter block as a
+setext heading, which the `front-matter` extension in `[tool.pymarkdown]` would
+correct — and the residue is 17 `MD036` + 17 `MD032`, all in `reference.md`,
+plus one `MD040` in the run-all-checks skill's `SKILL.md`. Whether the skills
+are worth linting is a decision nobody has taken;
+`CODE_OF_CONDUCT.md` is likewise outside the selection.
+**Owner: a future decision, if the gate's scope is ever widened.**
+
 ## Documentation and records
 
 ### 4400. `_common.LOGDIRS`'s comment names a caller that does not exist
@@ -3299,3 +3319,16 @@ two `rules/__init__.py` `__all__` lines. Both are records of a decision already
 taken rather than live instructions, so neither is corrected here; observation 6106, which is a live record, is. **Owner: process -- a plan that cites a
 line number is a plan that will be wrong, and naming the symbol instead costs
 nothing.**
+
+### 4406. `tests/conftest.py`'s `--mode` comment says `s` covers pds3 only
+
+**`tests/conftest.py`'s `--mode` comment says `s` covers pds3 only.** The
+comment above `pytest_addoption` reads "'ns' is the default because it is the
+broader pass: every test directory runs under it, while 's' covers pds3 only."
+The second half is stale: the pds4 shelves-only pass runs and passes
+(`tests/pds4file tests/rules/pds4 --mode s` — 123 passed, 31 skipped at the
+current baseline), and the developer guide's test-suite chapter and
+`CONTRIBUTING.md` both document the three-invocation pattern with a pds4 `s`
+pass. The claim was true of the self-hosted CI driver, which runs a pds3-only
+`s` pass — a property of that driver, not of the option. Found by PR-34's
+round-1 reviewer. **Owner: whichever PR next edits `tests/conftest.py`.**

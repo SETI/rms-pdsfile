@@ -79,6 +79,15 @@ source_suffix = {
     '.md': 'markdown',
 }
 
+# The front page includes README.md from its marker comment onward, so the fragment's
+# section headings arrive as H2 under the page's own H1 title. myst reads a fragment
+# that does not open at H1 as a defect -- one warning per heading, which -W turns into
+# errors -- but here the include is working as designed: the H1 and the badge block
+# above the marker are the host-only part of the README and must not land in the
+# rendered page. README.md is the only Markdown source in this build, so the
+# suppression covers exactly that one include.
+suppress_warnings = ['myst.header']
+
 exclude_patterns = ['_build']
 
 # -- Extension configuration -------------------------------------------------------------

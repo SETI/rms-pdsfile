@@ -457,3 +457,18 @@ make a reasonable addition to `run-all-checks.sh` if the owner wants the rule
 enforced rather than observed. **Owner:** owner decision, then PR-24 (records
 and the archived plan) and PR-36 (the test module, via the critique pass).
 
+
+### 3402. `pdsfile_overrides.mdc` still gives the Python floor as 3.10
+
+**`pdsfile_overrides.mdc` still gives the Python floor as 3.10.** Deviation (10)
+reads "The Python floor is 3.10 (matching the template's `requires-python`)", and
+deviation (8) describes the self-hosted matrix as running Python 3.10–3.13 and the
+hosted lint job as 3.10 and 3.13. The floor moved when #146 merged `b9a0ff8`
+("build: drop Python 3.10 ..."), which updated `pyproject.toml`
+(`requires-python = ">=3.11"`), the classifiers, ruff's target version, both CI
+matrices (3.11–3.13 self-hosted; 3.11 and 3.13 hosted), `README.md` and
+`CONTRIBUTING.md` — but not the overrides file, so rule (10) now contradicts the
+tree it governs and misstates two matrices a reviewer is told to check. PR-34
+moved the user guide's supported-version sentence for the same reason; the
+overrides file records owner decisions, so it is left to the owner.
+**Owner: the owner, before `rewrite` merges to `main`.**
