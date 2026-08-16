@@ -56,6 +56,12 @@ Issues = "https://github.com/SETI/rms-pdsfile/issues"
 [project.optional-dependencies]
 dev = [
   "coverage>=7.0",
+  # mypy is here only for `mypy.stubtest`, which validates the hand-written
+  # public-API stubs (src/pdsfile/**/*.pyi) against the runtime surface — see
+  # the stubtest gate in scripts/run-all-checks.sh. It is NOT a type-checking
+  # gate: ground rule 5 of the modernization plan waives inline typing and
+  # ENABLE_MYPY stays false permanently.
+  "mypy>=1.14",
   "pymarkdownlnt>=0.9.35",
   "pyroma>=4.2",
   "pytest>=7.0",
@@ -129,9 +135,52 @@ exclude_lines = [
   "pragma: no cover",
 ]
 
+# Read only by `mypy.stubtest` (the stubtest gate in scripts/run-all-checks.sh
+# passes --mypy-config-file to it). Nothing type-checks the implementation:
+# ENABLE_MYPY is permanently false (modernization ground rule 5), and this
+# section exists so the stub build survives the unannotated modules that share
+# the package directory with the stubs.
+[tool.mypy]
+# Untyped dependencies (rms-pdslogger, rms-translator, rms-pdsparser,
+# rms-pdstable, tabulate, pylibmc) have no stubs to find.
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# The private mixin modules and the maintenance/tool subpackages are not
+# public API and ship no stubs by design; in an inline typed package their
+# unannotated .py sources join the stub build, and their diagnostics must not
+# fail it.
+module = [
+  "pdsfile._associations",
+  "pdsfile._derived_paths",
+  "pdsfile._index_rows",
+  "pdsfile._local_fs",
+  "pdsfile._opus",
+  "pdsfile._path_utils",
+  "pdsfile._preload",
+  "pdsfile._properties",
+  "pdsfile._shelves",
+  "pdsfile._sorting",
+  "pdsfile._version",
+  "pdsfile.holdings_maintenance",
+  "pdsfile.holdings_maintenance.*",
+  "pdsfile.tools",
+  "pdsfile.tools.*",
+]
+ignore_errors = true
+
 [tool.ruff]
 target-version = "py311"
 line-length = 100
+# The public-API stubs mirror the frozen runtime names, so linting them can
+# only re-report the naming codes the ratchet already records as permanent for
+# their .py counterparts (N801/N999/N802/N805/A002 — frozen class, module,
+# method and parameter names). The ratchet table may not grow and inline noqa
+# is prohibited, so the stubs are excluded here instead; stubtest is their
+# gate. Lint one deliberately with
+# `ruff check --isolated --select I src/pdsfile/**/*.pyi` (explicit paths
+# bypass this exclusion).
+extend-exclude = ["*.pyi"]
 
 [tool.ruff.format]
 # Configured but NOT enforced yet: `ruff format` is not run as a gate. When

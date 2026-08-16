@@ -1,0 +1,15 @@
+# Allowlist for the stubtest gate (scripts/run-all-checks.sh). Every entry is a
+# name stubtest cannot model, with the reason; keep this list minimal. Entries
+# are regular expressions matched against fully-qualified names.
+#
+# `_clean_glob` is a private helper wrapped in functools.lru_cache at import
+# time. It has no .pyi (private modules ship none by design), so its "stub" is
+# the .py source, where mypy models the lru_cache wrapper's generic signature
+# while runtime introspection reports the wrapped function's.
+pdsfile\._path_utils\._clean_glob
+# The optional memcached support: `import pylibmc` in the private module is
+# wrapped in try/except, so the name is bound only on hosts that have pylibmc
+# installed (deferred observation 58). On hosts without it, stubtest sees the
+# name in the source and not at runtime; on hosts with it, this entry goes
+# unused, which is why the gate passes --ignore-unused-allowlist.
+pdsfile\._preload\.pylibmc
