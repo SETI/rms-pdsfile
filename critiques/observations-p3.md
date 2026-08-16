@@ -2464,6 +2464,33 @@ ordinary lifetime by the time `_update_ranks_and_vols` sets the flag. The
 bookkeeping survives; the objects it points at do not. **Owner: a future pdsfile
 PR.**
 
+### 4127. `DictionaryCache.preload_eligible` has no reader
+
+**`DictionaryCache.preload_eligible` has no reader.** It is set True at
+`pdscache.py:190` and appears nowhere else in `src/` or `tests/`. `MemcachedCache`
+has no such attribute, so it is not part of the shared interface either. It is a
+public attribute name, so removing it is not free. Same shape as observation 4128.
+Scheduled entry 1300 offered PR-35 the alternative of deciding what the stubs
+declare; PR-35 decided the stubs declare the runtime surface as it is
+(`preload_eligible: bool` in `pdscache.pyi`), because removing the attribute is a
+behavior change no stub PR may make. **Owner: a future cleanup PR.**
+
+### 4128. Two exported names are read by nothing
+
+**Two exported names are read by nothing.** `_preload.DICTIONARY_CACHE_LIMIT`
+(`_preload.py:101`) is re-exported by `preload_and_cache` and by `pdsfile.pdsfile`,
+but every cache in the package is built with `cls.DICTIONARY_CACHE_LIMIT`, a class
+attribute defined separately and identically in `pdsfile.py:331`,
+`pds3file/__init__.py:169` and `pds4file/__init__.py:143`. Rebinding the module
+constant changes nothing. `pdscache.MEMCACHED_LOADED` (`pdscache.py:77`) is read
+nowhere; the flag the code actually consults is `_preload.HAS_PYLIBMC`, set by a
+second `try: import pylibmc` in a second module. Both names are in the frozen API,
+so neither can simply go. Scheduled entry 1301 offered PR-35 the alternative of
+deciding what the stubs declare; PR-35 decided the stubs declare both names as they
+are (`DICTIONARY_CACHE_LIMIT: int`, `MEMCACHED_LOADED: bool`), because dropping a
+frozen name is an API-manifest diff outside the two forgiveness categories.
+**Owner: a future cleanup PR.**
+
 ## Test coverage
 
 ### 4200. `show_opus_products --narrow-table` has no test at all
