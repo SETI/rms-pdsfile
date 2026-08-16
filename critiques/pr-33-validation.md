@@ -218,6 +218,7 @@ Every round a fresh no-context subagent; recorded in `critiques/pr-33/round-<k>.
 | 1 | full diff, deepest on the architecture and subsystem chapters | 5 Major, 6 Minor, 2 Deferred |
 | 2 | full diff, deepest on chapters 1, 4, 4b, 5, 6, 7 | 2 Major, 1 Minor, 0 Deferred |
 | 3 | the 26 correction passages, each named by hand | 1 Major, 2 Minor, 1 Deferred |
+| 4 | scoped: round-3 resolutions + new Majors only | 1 Major |
 
 Round 1's Major findings were all factual prose claims verified false against
 source — the pair-spec difference set, the cross-reference goal itself, the CI

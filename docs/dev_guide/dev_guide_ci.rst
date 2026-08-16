@@ -3,8 +3,9 @@ CI and Release Workflow
 
 One script is the source of truth for what "all checks" means, and every job in the
 test workflows either runs it directly or is a driver whose differences from it are
-stated below (the publish workflows build and upload; they run no gate of their
-own). When a gate is added,
+stated below (the publish workflows build and upload -- the PyPI one also validates
+the built distribution with ``twine check`` before publishing -- and run none of
+the script's gates). When a gate is added,
 enabled or retired, ``scripts/run-all-checks.sh`` is where that happens, and CI
 follows it by construction.
 
@@ -94,9 +95,10 @@ is therefore tagging:
 1. Feature branches (and integration branches such as ``rewrite``) merge to
    ``main`` through pull requests with CI green.
 2. A release is a git tag on ``main``; the tag is what fixes the version string.
-3. ``publish_to_pypi.yml`` builds and uploads the distribution when a GitHub
-   release is published from that tag; ``publish_to_test_pypi.yml`` does the same
-   to Test PyPI on manual dispatch. ReadTheDocs builds the documentation from
+3. ``publish_to_pypi.yml`` builds the distribution, validates it with
+   ``twine check``, and uploads it when a GitHub release is published from that
+   tag; ``publish_to_test_pypi.yml`` builds and uploads to Test PyPI on manual
+   dispatch. ReadTheDocs builds the documentation from
    ``docs/conf.py`` per ``.readthedocs.yaml``, installing the package with the
    ``docs`` extra.
 
