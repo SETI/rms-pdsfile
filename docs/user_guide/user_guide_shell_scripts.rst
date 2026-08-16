@@ -103,7 +103,7 @@ set's entries under seven directories -- ``archives-metadata/``,
 ``checksums-archives-metadata/``, ``checksums-metadata/``, ``_indexshelf-metadata/``,
 ``_infoshelf-archives-metadata/``, ``_infoshelf-metadata/`` and ``_linkshelf-metadata/``
 -- and then runs seven ``--initialize`` commands that rebuild exactly those seven
-products, in the order the dependency graph in :doc:`user_guide_concepts` requires:
+products, in an order the dependency graph in :doc:`user_guide_concepts` permits:
 ``pdschecksums``, ``pdsinfoshelf`` and ``pdsarchives`` over ``metadata/``, then
 ``pdschecksums`` and ``pdsinfoshelf`` over ``archives-metadata/``, then ``pdslinkshelf``
 and ``pdsindexshelf`` over ``metadata/``. It is the PDS3 command sequence that chapter

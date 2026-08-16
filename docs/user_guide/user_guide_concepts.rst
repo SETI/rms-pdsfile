@@ -238,8 +238,8 @@ archive itself, and its link shelves:
 For this bundle set the last command writes its shelf and then exits 1, reporting
 one label in the published ``document/`` tree that does not point to the file beside
 it -- the exit status carrying a fact about the published data, which
-:doc:`user_guide_pds4linkshelf` shows as that bundle's own recurring error. A PDS4 metadata tree's index shelves are
-``pds4indexshelf --initialize`` over
+:doc:`user_guide_pds4linkshelf` shows as that bundle's own recurring error. A PDS4
+metadata tree's index shelves are ``pds4indexshelf --initialize`` over
 ``$PDS4_HOLDINGS_DIR/metadata/<bundle set>/<bundle>``;
 :doc:`user_guide_pds4indexshelf` describes what today's two testable bundle sets do
 with that command.
