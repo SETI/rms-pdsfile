@@ -212,3 +212,16 @@ Every round a fresh no-context subagent; recorded in `critiques/pr-33a/round-<k>
 | 1 | full diff | 0 Major, 5 Minor, 2 Deferred — verdict goal met |
 | 2 | full diff | 0 Major, 2 Minor, 2 Deferred — verdict goal met; one Minor inside round 1's own fix |
 | 3 | scoped: the correction passages, clause by clause | 0 Major, 1 Minor — verdict goal met; the Minor inside round 2's own fix, in the record |
+| 4 | scoped: round-3 resolution + new Majors only | **0 findings — goal met, loop terminates** |
+
+The loop's totals: 0 Major, 8 Minor, 2 Deferred across four rounds, ending inside
+§6.6's four-round cap. No round found a Major: the script fix, the diagram and the
+examples were verified rather than faulted in every round, and every Minor after
+round 1 was inside the previous round's own correction — the measured Phase 7
+pattern (a correction pass introduces new defects at about half the rate of the
+pass it corrects) holding at wrap-and-record level here, never at claim level. One
+Minor was rebutted rather than fixed (round 1's m5: stating the versioned-sibling
+glob overreach in the user guide would document a defect the owner has not yet
+ruled on narrowing; observation 4063 is its record) and no later reviewer
+re-raised it. The two Deferred items were already observations 4062 and 4063 when
+the reviewers judged them, which is where they stay.
