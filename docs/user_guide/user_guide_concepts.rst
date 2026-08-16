@@ -155,7 +155,8 @@ against a tree it cannot stat at all, reading only the shelves.
 The order in which they must be built
 -------------------------------------
 
-The products are not independent, and one dependency is hard:
+The products are not independent, but what constrains a build is a set of pairwise
+dependencies -- a partial order -- rather than one required sequence:
 
 * An **info shelf reads the checksum file** rather than computing digests itself. A unit
   with no checksum file cannot be shelved; the run reports a missing checksum entry for
@@ -166,12 +167,77 @@ The products are not independent, and one dependency is hard:
   ``_infoshelf-archives-<category>/``. Those come after the archive is written.
 * Link shelves and index shelves depend on nothing but the published data.
 
-The order a full build takes is therefore: checksums, then info shelves, then archives,
-then the archives' own checksums and info shelves, then link shelves and index shelves.
-(``update_holdings_for_new_metadata.sh``, described in
-:doc:`user_guide_shell_scripts`, does not follow this order.)
-:doc:`user_guide_pdsdependency` checks that ordering after the fact and prints the exact
-commands that would repair it.
+Drawn as a graph, with an arrow from what a program reads to what it writes and the
+program on the arrow, the dependencies look like this for a metadata tree, which is
+the kind of tree that takes every product:
+
+.. mermaid::
+
+    flowchart LR
+        metadata["metadata/"]
+        ck["checksums-metadata/"]
+        info["_infoshelf-metadata/"]
+        arch["archives-metadata/"]
+        ckarch["checksums-archives-metadata/"]
+        infoarch["_infoshelf-archives-metadata/"]
+        link["_linkshelf-metadata/"]
+        index["_indexshelf-metadata/"]
+
+        metadata -->|pdschecksums| ck
+        ck -->|pdsinfoshelf| info
+        metadata -->|pdsarchives| arch
+        arch -->|pdschecksums| ckarch
+        ckarch -->|pdsinfoshelf| infoarch
+        metadata -->|pdslinkshelf| link
+        metadata -->|pdsindexshelf| index
+
+The same graph holds for every volume type, minus the products that type does not
+take: only ``metadata`` has index shelves, and link shelves belong to ``volumes``,
+``metadata`` and ``calibrated`` on the PDS3 side and to ``bundles`` on the PDS4 side. Any order that builds each product after everything
+on its incoming path is valid -- the checksum-and-shelf chain and the archive chain do
+not read each other's products, so they may run in either order or interleaved.
+``update_holdings_for_new_metadata.sh``, described in :doc:`user_guide_shell_scripts`,
+rebuilds one volume set's metadata products in one such order, and
+:doc:`user_guide_pdsdependency` checks the graph after the fact and prints the exact
+commands that would repair what is stale or missing.
+
+A full PDS3 build of one volume set's metadata tree, in the order that follows each
+chain of the graph in turn:
+
+.. code-block:: bash
+
+   pdschecksums  --initialize $PDS3_HOLDINGS_DIR/metadata/COUVIS_0xxx
+   pdsinfoshelf  --initialize $PDS3_HOLDINGS_DIR/metadata/COUVIS_0xxx
+   pdsarchives   --initialize $PDS3_HOLDINGS_DIR/metadata/COUVIS_0xxx
+   pdschecksums  --initialize $PDS3_HOLDINGS_DIR/archives-metadata/COUVIS_0xxx
+   pdsinfoshelf  --initialize $PDS3_HOLDINGS_DIR/archives-metadata/COUVIS_0xxx
+   pdslinkshelf  --initialize $PDS3_HOLDINGS_DIR/metadata/COUVIS_0xxx
+   pdsindexshelf --initialize $PDS3_HOLDINGS_DIR/metadata/COUVIS_0xxx
+
+The first five commands are the graph's two chains: the checksum file, the info shelf
+that reads it, then the archive, its checksum file, and the info shelf that reads
+that. The last two have no prerequisites beyond the metadata itself and could equally
+run first.
+
+The PDS4 build of a bundle set covers less of the graph, because the PDS4 half of the
+package is younger than the PDS3 half: :class:`~pdsfile.pds4file.Pds4File` does not
+yet give the archives' own checksum files and info shelves names, so
+``checksums-archives-bundles/`` and ``_infoshelf-archives-bundles/`` have no build
+commands, and there is no PDS4 counterpart of :doc:`user_guide_pdsdependency` to check
+the result. What a bundle set takes today is the whole checksum-and-shelf chain, the
+archive itself, and its link shelves:
+
+.. code-block:: bash
+
+   pds4checksums --initialize $PDS4_HOLDINGS_DIR/bundles/cassini_uvis_solarocc_beckerjarmak2023
+   pds4infoshelf --initialize $PDS4_HOLDINGS_DIR/bundles/cassini_uvis_solarocc_beckerjarmak2023
+   pds4archives  --initialize $PDS4_HOLDINGS_DIR/bundles/cassini_uvis_solarocc_beckerjarmak2023
+   pds4linkshelf --initialize $PDS4_HOLDINGS_DIR/bundles/cassini_uvis_solarocc_beckerjarmak2023
+
+A PDS4 metadata tree's index shelves are ``pds4indexshelf --initialize`` over
+``$PDS4_HOLDINGS_DIR/metadata/<bundle set>/<bundle>``;
+:doc:`user_guide_pds4indexshelf` describes what today's two testable bundle sets do
+with that command.
 
 Tasks
 -----

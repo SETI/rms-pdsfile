@@ -102,16 +102,14 @@ the directories stay empty.
 set's entries under seven directories -- ``archives-metadata/``,
 ``checksums-archives-metadata/``, ``checksums-metadata/``, ``_indexshelf-metadata/``,
 ``_infoshelf-archives-metadata/``, ``_infoshelf-metadata/`` and ``_linkshelf-metadata/``
--- and then runs six ``--initialize`` commands, in this order: ``pdsarchives`` over
-``metadata/``, ``pdschecksums`` over ``archives-metadata/``, ``pdschecksums`` over
-``metadata/``, ``pdsinfoshelf`` over ``metadata/``, ``pdsindexshelf`` over ``metadata/``
-and ``pdslinkshelf`` over ``metadata/``. It ends with ``ALL COMPLETED WITH NO ERRORS``.
-
-Two things follow from seven deletions and six rebuilds.
-``_infoshelf-archives-metadata/`` is deleted and never rebuilt, so the archive info
-shelf has to be restored by hand with ``pdsinfoshelf --initialize --archives``. And the
-order is not the one :doc:`user_guide_concepts` recommends: the archive is written before
-the checksums the info shelf will read.
+-- and then runs seven ``--initialize`` commands that rebuild exactly those seven
+products, in the order the dependency graph in :doc:`user_guide_concepts` requires:
+``pdschecksums``, ``pdsinfoshelf`` and ``pdsarchives`` over ``metadata/``, then
+``pdschecksums`` and ``pdsinfoshelf`` over ``archives-metadata/``, then ``pdslinkshelf``
+and ``pdsindexshelf`` over ``metadata/``. It is the PDS3 command sequence that chapter
+shows, run for one volume set, with the old products deleted first because
+``--initialize`` refuses to replace a product that already exists. It ends with
+``ALL COMPLETED WITH NO ERRORS``.
 
 .. note::
 
