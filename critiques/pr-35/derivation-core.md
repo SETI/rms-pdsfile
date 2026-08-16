@@ -74,13 +74,13 @@ bundle_abspath | (self, category: str | None = None) -> str | P:1134-1166 return
 bundle_pdsfile | (self, category=None, rank=None) -> PdsFile | None | P:975,981 return None; P:973 from_abspath result; P:979 `all_versions()[rank]` (dict of PdsFile, _properties.py:2618); result may be a different subclass than type(self) via child()/cache, so PdsFile not Self
 bundleset_abspath | (self, category: str | None = None) -> str | None | P:1188 `return None` when no bundleset; P:1210 str otherwise (asymmetric with bundle_abspath's '')
 bundleset_pdsfile | (self, category=None, rank=None) -> PdsFile | None | P:1011-1020 same shape as bundle_pdsfile
-child | (self, basename: str, fix_case=True, must_exist=False, caching='default', lifetime: int | None = None, allow_index_row=True) -> PdsFile | P:1444 child_of_index (_index_rows.py returns a PdsFile pseudo-child); P:1503+ `this._complete(...)`; _complete can return a cached object and new_pdsfile switches subclass via SUBCLASSES (P:583-587), so PdsFile not Self
+child | (self, basename: str, fix_case=True, must_exist=False, caching='default', lifetime: float | None = None, allow_index_row=True) -> PdsFile | P:1444 child_of_index (_index_rows.py returns a PdsFile pseudo-child); P:1503+ `this._complete(...)`; _complete can return a cached object and new_pdsfile switches subclass via SUBCLASSES (P:583-587), so PdsFile not Self
 copy | (self) -> Self | P:902-903 `cls = type(self); cls.__new__(cls)` -> provably Self
-from_abspath | classmethod (abspath: str, fix_case=False, must_exist=False, caching='default', lifetime: int | None = None) -> PdsFile | P:1819 cached object; P:1902 `this` built by child() chain; subclass switching + shared-cache contents make Self unprovable -> PdsFile
+from_abspath | classmethod (abspath: str, fix_case=False, must_exist=False, caching='default', lifetime: float | None = None) -> PdsFile | P:1819 cached object; P:1902 `this` built by child() chain; subclass switching + shared-cache contents make Self unprovable -> PdsFile
 from_lid | classmethod (lid_str: str) -> PdsFile | P:1678 from_path result; P:1684 returns it
-from_logical_path | classmethod (path: str, fix_case=False, must_exist=False, caching='default', lifetime: int | None = None) -> PdsFile | None | P:1724 `return None` on empty path (documented); P:1729 cached object; P:1759 child() chain; P:1767 from_abspath fallback
-from_path | classmethod (path: Any, must_exist=False, caching='default', lifetime: int | None = None) -> PdsFile | P:2065 `path = str(path)` so any object accepted -> Any; returns _complete/child results and CACHE values (P:2397,2401,2408) -> PdsFile
-from_relative_path | (self, path: str, fix_case=False, must_exist=False, caching='default', lifetime: int | None = None) -> PdsFile | P:1930 _complete; P:1939 child() chain -> PdsFile
+from_logical_path | classmethod (path: str, fix_case=False, must_exist=False, caching='default', lifetime: float | None = None) -> PdsFile | None | P:1724 `return None` on empty path (documented); P:1729 cached object; P:1759 child() chain; P:1767 from_abspath fallback
+from_path | classmethod (path: Any, must_exist=False, caching='default', lifetime: float | None = None) -> PdsFile | P:2065 `path = str(path)` so any object accepted -> Any; returns _complete/child results and CACHE values (P:2397,2401,2408) -> PdsFile
+from_relative_path | (self, path: str, fix_case=False, must_exist=False, caching='default', lifetime: float | None = None) -> PdsFile | P:1930 _complete; P:1939 child() chain -> PdsFile
 is_bundle | property -> bool | P:1059 bool(...)
 is_bundle_dir | property -> bool | P:1036 bool(...)
 is_bundle_file | property -> bool | P:1050 bool(...)
@@ -89,10 +89,10 @@ is_bundleset_dir | property -> bool | P:1073 bool(...)
 is_bundleset_file | property -> bool | P:1088 bool(...)
 is_category_dir | property -> bool | P:1110 `==` comparison
 is_logical_path | classmethod (path: str) -> bool | P:2454 `not in` test
-new_index_row_pdsfile | (self, filename_key: str, row_dicts: list[dict[str, Any]]) -> Self | P:830 `this = self.copy()` (copy is provably Self), returned P:889; row_dicts param per docstring P:821-823 "each a dictionary of column name to value"; actual caller values come from untyped pdstable dicts_by_row (_index_rows.py:343-352)
+new_index_row_pdsfile | (self, filename_key: str, row_dicts: list[dict[Any, Any]]) -> Self | P:830 `this = self.copy()` (copy is provably Self), returned P:889; row_dicts values come from untyped pdstable dicts_by_row (_index_rows.py:343-352), the same flow that made column_names list[Any]. CORRECTED after review round 2: the docstring's "column name to value" claimed dict[str, Any], which is not derivable from the untyped source
 new_merged_dir | classmethod (basename: str) -> Self | P:736 `this = cls()`, returned P:806 -> Self
 new_pdsfile | (self, key: str | None = None, copypath: bool = False) -> PdsFile | P:583-589 cls may be any entry of SUBCLASSES (a different subclass), so PdsFile not Self
-parent | (self, must_exist=False, caching='default', lifetime: int | None = None) -> PdsFile | None | P:1632 `return None` for merged dir (documented); P:1639,1643 from_logical_path/from_abspath results; from_logical_path's None branch unreachable here (split path nonempty check is on `path`, but declared return stays PdsFile | None from the merged branch alone)
+parent | (self, must_exist=False, caching='default', lifetime: float | None = None) -> PdsFile | None | P:1632 `return None` for merged dir (documented); P:1639,1643 from_logical_path/from_abspath results; from_logical_path's None branch unreachable here (split path nonempty check is on `path`, but declared return stays PdsFile | None from the merged branch alone)
 require_shelves | classmethod (status: bool = True) -> None | P:643-660 no return
 set_easylogger | classmethod () -> None | P:688-698 no return
 set_logger | classmethod (logger: _PdsLogger | None = None) -> None | P:664-684 falsy -> NullLogger; pdslogger untyped
@@ -124,7 +124,7 @@ bundlename_ | str | P:494 ''; P:758,1513,1520,1524,1528 str
 bundlename | str | P:495 ''; P:759,1521,2216,2248 str
 interior | str | P:497 ''; P:761,837,1502,1506,1514,1525,1529,1547 str
 is_index_row | bool | P:499 False; P:763,882 bool
-row_dicts | list[dict[str, Any]] | P:501 []; P:764,883 the new_index_row_pdsfile parameter (declared list[dict[str, Any]] per its docstring P:821-823; runtime values from untyped pdstable, _index_rows.py:343-352)
+row_dicts | list[dict[Any, Any]] | P:501 []; P:764,883 the new_index_row_pdsfile parameter; runtime values from untyped pdstable (_index_rows.py:343-352). CORRECTED after review round 2, same reasoning as the parameter row above
 column_names | list[Any] | P:503 []; P:765,884 copied; only non-empty fill is `[c.name for c in table.info.column_info_list]` (_index_rows.py:347-348) where pdstable is untyped -> element Any, though the docstring means str
 permanent | bool | P:506 False; P:767 True; P:1349 True; _preload.py:707 True
 is_merged | bool | P:508 False; P:768 True
@@ -139,7 +139,7 @@ HAS_PYLIBMC | bool | _preload.py:54-58 True/False from import try (re-exported P
 PATH_EXISTS_CACHE_SIZE | int | _local_fs.py:39 `200` (re-exported P:169)
 abspath_for_logical_path | (path: str, cls: type[PdsFile]) -> str | _path_utils.py:344-423; returns _clean_join str (410,421) or matches[0] str (417); raises otherwise
 cache_lifetime_for_class | (arg: Any, cls: type[PdsFile] | None = None) -> int | _preload.py:103-148; arg is anything about to be cached (str tested first); every return is one of the int constants
-construct_category_list | (voltypes: Iterable[str]) -> list[str] | _path_utils.py:71-110; builds list of str; NOTE docstring says a one-shot iterator fails (iterated four times), so Iterable is broader than what succeeds -- callers must pass a re-iterable containing 'documents'
+construct_category_list | (voltypes: Collection[str]) -> list[str] | _path_utils.py:71-110; builds list of str. CORRECTED after review round 2: the row originally declared Iterable[str] while noting that a one-shot iterator fails (the input is iterated four times), which is exactly the admitted-but-failing input; Collection[str] is the broadest contract whose every value succeeds at the iteration (the `documents` membership requirement stays a documented ValueError)
 formatted_file_size | (size: float) -> str | _path_utils.py:313-342; f-string return; int accepted via numeric tower (docstring: "an int and a float are both accepted")
 logical_path_from_abspath | (abspath: str, cls: type[PdsFile]) -> str | _path_utils.py:113-139; returns parts[2] str or raises ValueError
 pause_caching | (cls: type[PdsFile]) -> None | _preload.py:166-177; no return
@@ -165,7 +165,7 @@ DICTIONARY_CACHE_LIMIT | int | _preload.py:101 `200000` (distinct from the class
 - pdsfile.py:1184: bundleset_abspath returns None for "no bundleset" while bundle_abspath (P:1129-1131) returns '' for "no bundle" -- both documented, but the asymmetry is easy to misread; declared `str | None` vs `str` respectively.
 - pdsfile.py:963-966: bundle_pdsfile/bundleset_pdsfile docstrings say the return is the bundle-level object of this file, implying this class; the object comes from from_abspath/all_versions and can be another registered subclass -> declared PdsFile | None, not Self.
 - _preload.py:100: constant is spelled FOEVER_FILE_CACHE_LIFETIME (sic) in the source; the stub must use the same spelling.
-- child/parent/from_* `lifetime` parameters: declared `int | None`; every in-package call site passes an int or None (e.g. _preload.py:712 lifetime=0), and the docstrings say "in seconds"; a float would also pass through unharmed, so int | None is the narrowest defensible spelling -- flagged in case the assembler prefers `float | None`.
+- child/parent/from_* `lifetime` parameters: declared `int | None`; every in-package call site passes an int or None (e.g. _preload.py:712 lifetime=0), and the docstrings say "in seconds"; a float would also pass through unharmed, so int | None is the narrowest defensible spelling -- flagged in case the assembler prefers `float | None`. CORRECTED after review round 2: the assembled stubs now say float | None, because the value flows unmodified into CACHE.set, which this stub set itself types lifetime: float | None, and the docstrings say only "in seconds"
 - CACHE declared Any: the true type is `pdscache.DictionaryCache | pdscache.MemcachedCache` (P:334, _preload.py:573,583); use that union instead if the final stub imports pdsfile.pdscache.
 
 ## Imports needed
