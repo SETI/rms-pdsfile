@@ -508,8 +508,13 @@ def validate_pairs(pairs1, pairs2, selection=None, *, logger=None,
 
     Returns:
         bool: True if the two agree on every entry compared, False if any error was
-        logged. An exception raised part way through propagates instead, where the PDS3
-        tool returns the flag as it stood.
+        logged.
+
+    Raises:
+        KeyboardInterrupt: raised by an interrupt during the comparison. It is logged
+            through ``exception()`` and re-raised, as is anything else the comparison
+            raises, so a comparison that stopped part way through never comes back as a
+            flag at all.
     """
 
     if limits is None:
