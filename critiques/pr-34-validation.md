@@ -237,4 +237,30 @@ Windows venv hint (Windows is not a supported platform).
 Every round a fresh no-context subagent; recorded in
 `critiques/pr-34/round-<k>.md`.
 
-*(filled in as rounds complete)*
+| round | scope | findings |
+|---|---|---:|
+| 1 | full diff | 1 Major, 4 Minor, 3 Deferred |
+| 2 | full diff, fresh reviewer | 0 Major, 3 Minor, 0 Deferred |
+| 3 | scoped: round-2's corrections clause by clause, plus new Majors anywhere | **0 findings — goal met** |
+
+The one Major was the PR's own deliverable failing as written: the rewritten
+CONTRIBUTING testing block omitted `PDSFILE_TEST_HOLDINGS=full`, which the
+resolver requires before it reads the holdings roots at all, so the block
+produced exactly the mostly-skipped run entry 1201 complains about. The
+omission survived the author's testing because `run-all-checks.sh` fills the
+selector in automatically — the author never ran the block the way a
+contributor would. Round 1 proved it empirically and round 2 proved the fix
+the same way (284 passed with the block's environment, 284 skipped without
+the selector).
+
+The measured Phase 7 pattern — a correction pass carries new defects at about
+half the rate of the pass it corrects — held again, in miniature: round 2's
+three Minors included one introduced by round 1's own fix (the README length,
+corrected in the same commit whose other fix re-wrapped a line and moved the
+number). Round 3 therefore read the round-2 corrections clause by clause and
+returned nothing.
+
+Loop totals: 1 Major, 7 Minor, 3 Deferred across three rounds; every finding
+was resolved by a fix except round-2's plan-section question, resolved by a
+recorded rationale (round-2.md, Minor 2), and no rebutted finding was
+re-raised.
