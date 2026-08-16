@@ -102,8 +102,8 @@ holdings. Two environment variables conventionally name the tree roots, and
 the examples below use them:
 
 ```sh
-export PDS3_HOLDINGS_DIR=/path/to/pdsdata/holdings
-export PDS4_HOLDINGS_DIR=/path/to/pdsdata/pds4-holdings
+export PDS3_HOLDINGS_DIR="/path/to/pdsdata/holdings"
+export PDS4_HOLDINGS_DIR="/path/to/pdsdata/pds4-holdings"
 ```
 
 The directory basenames `holdings` and `pds4-holdings` are required — the
@@ -134,7 +134,7 @@ From the command line, validate one volume's cached file information against
 the volume itself:
 
 ```sh
-pdsinfoshelf --validate $PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001
+pdsinfoshelf --validate "$PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001"
 ```
 
 ## Documentation

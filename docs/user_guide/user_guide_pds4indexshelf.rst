@@ -60,7 +60,7 @@ separate suffix.
 
      .. code-block:: console
 
-        $ pds4indexshelf --initialize $PDS4_HOLDINGS_DIR/metadata/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023
+        $ pds4indexshelf --initialize "$PDS4_HOLDINGS_DIR/metadata/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023"
         ...
         2026-08-09 01:42:18.295265 | pds.validation.indexshelf |---| ERROR | row count mismatch in $PDS4_HOLDINGS_DIR/metadata/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023_index.xml: 42 rows in file; label says 41 rows
         ...

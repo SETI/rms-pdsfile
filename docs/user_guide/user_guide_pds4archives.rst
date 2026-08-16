@@ -39,7 +39,7 @@ cost what a real run costs and report nothing. Only ``--initialize`` and
 
 .. code-block:: console
 
-   $ pds4archives --initialize $PDS4_HOLDINGS_DIR/bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023
+   $ pds4archives --initialize "$PDS4_HOLDINGS_DIR/bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023"
    ...
    2026-08-09 01:42:16.282938 | pds.validation.archives |---| ERROR | No archive paths resolved for: bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023
    2026-08-09 01:42:16.283004 | pds.validation.archives |---| EXCEPTION | **** RuntimeError No active exception to reraise
@@ -52,7 +52,7 @@ this bundle set's rules describe:
 
 .. code-block:: console
 
-   $ pds4archives --initialize $PDS4_HOLDINGS_DIR/bundles/cassini_uvis_solarocc_beckerjarmak2023
+   $ pds4archives --initialize "$PDS4_HOLDINGS_DIR/bundles/cassini_uvis_solarocc_beckerjarmak2023"
    ...
    2026-08-09 01:42:52.282574 | pds.validation.archives |--| INFO | Log file: $PDS4_HOLDINGS_DIR/../logs/pds4archives/bundles/cassini_uvis_solarocc_beckerjarmak2023/_archives_2026-08-09T01-42-52_initialize.log
    2026-08-09 01:42:52.282678 | pds.validation.archives |--| HEADER | Writing .tar.gz file for: bundles/cassini_uvis_solarocc_beckerjarmak2023
@@ -99,7 +99,7 @@ one-second tolerance on the time, and no file's contents are ever read.
 
    .. code-block:: console
 
-      $ pds4archives --validate $PDS4_HOLDINGS_DIR/bundles/cassini_uvis_solarocc_beckerjarmak2023
+      $ pds4archives --validate "$PDS4_HOLDINGS_DIR/bundles/cassini_uvis_solarocc_beckerjarmak2023"
       ...
       2026-08-09 01:43:26.647554 | pds.validation.archives |---| ERROR | Missing from tar file: bundles/cassini_uvis_solarocc_beckerjarmak2023
       2026-08-09 01:43:26.647663 | pds.validation.archives |---| ERROR | Missing from tar file: bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023/readme.txt

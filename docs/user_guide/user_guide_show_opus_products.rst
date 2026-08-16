@@ -102,7 +102,7 @@ The default table
 
 .. code-block:: console
 
-   $ python -m pdsfile.tools.show_opus_products --paths $PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.DAT
+   $ python -m pdsfile.tools.show_opus_products --paths "$PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.DAT"
    ##########################################################################################
    Pdsfile: volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.DAT
    ##########################################################################################
@@ -147,7 +147,7 @@ where the two-column table does not:
 
 .. code-block:: console
 
-   $ python -m pdsfile.tools.show_opus_products --paths $PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.DAT --narrow-table --opus-types browse_full
+   $ python -m pdsfile.tools.show_opus_products --paths "$PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.DAT" --narrow-table --opus-types browse_full
    ##########################################################################################
    Pdsfile: volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.DAT
    ##########################################################################################
@@ -164,7 +164,7 @@ rather than the short names the table shows:
 
 .. code-block:: console
 
-   $ python -m pdsfile.tools.show_opus_products --paths $PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.DAT --pprint --opus-types browse_full
+   $ python -m pdsfile.tools.show_opus_products --paths "$PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.DAT" --pprint --opus-types browse_full
    ##########################################################################################
    Pdsfile: volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.DAT
    ##########################################################################################
@@ -174,7 +174,7 @@ rather than the short names the table shows:
 
 .. code-block:: console
 
-   $ python -m pdsfile.tools.show_opus_products --paths $PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.DAT --raw --opus-types browse_full
+   $ python -m pdsfile.tools.show_opus_products --paths "$PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.DAT" --raw --opus-types browse_full
    ##########################################################################################
    Pdsfile: volumes/COUVIS_0xxx/COUVIS_0001/DATA/D1999_007/FUV1999_007_16_57.DAT
    ##########################################################################################

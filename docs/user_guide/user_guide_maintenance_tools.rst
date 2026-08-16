@@ -85,7 +85,7 @@ message and status 1:
 
 .. code-block:: console
 
-   $ pdsarchives $PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001
+   $ pdsarchives "$PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001"
    pdsarchives error: Missing task
 
 **A command line naming more than one task is accepted, and the last one wins.** The five
@@ -94,7 +94,7 @@ below performed ``validate``, not ``repair``:
 
 .. code-block:: console
 
-   $ pdsarchives --repair --validate $PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001
+   $ pdsarchives --repair --validate "$PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001"
    ... | pds.validation.archives |-| HEADER | Task validate for: ...
 
 The unit argument
@@ -199,7 +199,7 @@ the terminal at all. The run below had no log root:
 
 .. code-block:: console
 
-   $ pdschecksums --validate --quiet $PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001
+   $ pdschecksums --validate --quiet "$PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001"
    2026-08-09 01:44:22.453034 | pds.validation.checksums || HEADER | pdschecksums --validate --quiet $PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001
    2026-08-09 01:44:22.455568 | pds.validation.checksums || SUMMARY | Completed: pdschecksums --validate --quiet $PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001
    2026-08-09 01:44:22.455577 | pds.validation.checksums || SUMMARY | Elapsed time = 0:00:00.002523
@@ -295,7 +295,7 @@ Exit statuses
 
 .. code-block:: console
 
-   $ pdsarchives --nosuchflag $PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001
+   $ pdsarchives --nosuchflag "$PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001"
    usage: pdsarchives [-h] [--initialize] [--reinitialize] [--validate]
                       [--repair] [--update] [--log LOG] [--quiet]
                       volume [volume ...]

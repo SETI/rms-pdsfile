@@ -26,7 +26,7 @@ log file:
 
 .. code-block:: console
 
-   $ pdsindexshelf --initialize $PDS3_HOLDINGS_DIR/metadata/COUVIS_0xxx/COUVIS_0001
+   $ pdsindexshelf --initialize "$PDS3_HOLDINGS_DIR/metadata/COUVIS_0xxx/COUVIS_0001"
    2026-08-09 01:41:18.077222 | pds.validation.indexshelf || HEADER | pdsindexshelf --initialize $PDS3_HOLDINGS_DIR/metadata/COUVIS_0xxx/COUVIS_0001
 
    2026-08-09 01:41:18.077749 | pds.validation.indexshelf |-| HEADER | Task "initialize" for: $PDS3_HOLDINGS_DIR/metadata/COUVIS_0xxx/COUVIS_0001/COUVIS_0001_supplemental_index.tab
@@ -109,7 +109,7 @@ the shelf holds:
 
 .. code-block:: console
 
-   $ pdsindexshelf --validate $PDS3_HOLDINGS_DIR/metadata/COUVIS_0xxx/COUVIS_0001
+   $ pdsindexshelf --validate "$PDS3_HOLDINGS_DIR/metadata/COUVIS_0xxx/COUVIS_0001"
    ...
    2026-08-09 01:43:24.604501 | pds.validation.indexshelf |--| HEADER | Tabulating index rows for: metadata/COUVIS_0xxx/COUVIS_0001/COUVIS_0001_supplemental_index.tab
    2026-08-09 01:43:24.748927 | pds.validation.indexshelf |---| INFO | Rows tabulated: 2930

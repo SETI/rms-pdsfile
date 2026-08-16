@@ -71,7 +71,7 @@ Building a shelf
 
 .. code-block:: console
 
-   $ pds4infoshelf --initialize $PDS4_HOLDINGS_DIR/bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023
+   $ pds4infoshelf --initialize "$PDS4_HOLDINGS_DIR/bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023"
    2026-08-09 01:42:16.838557 | pds.validation.fileinfo || HEADER | pds4infoshelf --initialize $PDS4_HOLDINGS_DIR/bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023
    2026-08-09 01:42:16.839112 | pds.validation.fileinfo |-| HEADER | Task "initialize" for: $PDS4_HOLDINGS_DIR/bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023
    2026-08-09 01:42:16.839167 | pds.validation.fileinfo |--| INFO | Log file: $PDS4_HOLDINGS_DIR/../logs/pds4infoshelf/bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023_info_2026-08-09T01-42-16_initialize.log

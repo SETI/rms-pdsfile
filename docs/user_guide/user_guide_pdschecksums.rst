@@ -73,7 +73,7 @@ own logger name:
 
 .. code-block:: console
 
-   $ pdschecksums --validate --infoshelf $PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001
+   $ pdschecksums --validate --infoshelf "$PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001"
    ...
    2026-08-09 01:44:56.051771 | pds.validation.fileinfo || HEADER | pdsinfoshelf --validate $PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001
    2026-08-09 01:44:56.052175 | pds.validation.fileinfo |-| HEADER | Task "validate" for: $PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001
@@ -85,7 +85,7 @@ Building a manifest
 
 .. code-block:: console
 
-   $ pdschecksums --initialize $PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001
+   $ pdschecksums --initialize "$PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001"
    2026-08-09 01:40:04.716654 | pds.validation.checksums || HEADER | pdschecksums --initialize $PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001
    2026-08-09 01:40:04.717147 | pds.validation.checksums |-| HEADER | Task "initialize" for: $PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001
    2026-08-09 01:40:04.717202 | pds.validation.checksums |--| INFO | Log file: $PDS3_HOLDINGS_DIR/../logs/pdschecksums/volumes/COUVIS_0xxx/COUVIS_0001_md5_2026-08-09T01-40-04_initialize.log
@@ -114,7 +114,7 @@ Checking a volume against its manifest
 
 .. code-block:: console
 
-   $ pdschecksums --validate $PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001
+   $ pdschecksums --validate "$PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001"
    ...
    2026-08-09 01:43:22.218196 | pds.validation.checksums |--| HEADER | Reading MD5 checksums: checksums-volumes/COUVIS_0xxx/COUVIS_0001_md5.txt
    2026-08-09 01:43:22.218226 | pds.validation.checksums |---| INFO | MD5 checksum file: checksums-volumes/COUVIS_0xxx/COUVIS_0001_md5.txt

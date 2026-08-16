@@ -79,7 +79,7 @@ Building a shelf
 
 .. code-block:: console
 
-   $ pdsinfoshelf --initialize $PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001
+   $ pdsinfoshelf --initialize "$PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001"
    2026-08-09 01:40:05.882962 | pds.validation.fileinfo || HEADER | pdsinfoshelf --initialize $PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001
    2026-08-09 01:40:05.883482 | pds.validation.fileinfo |-| HEADER | Task "initialize" for: $PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001
    2026-08-09 01:40:05.883535 | pds.validation.fileinfo |--| INFO | Log file: $PDS3_HOLDINGS_DIR/../logs/pdsinfoshelf/volumes/COUVIS_0xxx/COUVIS_0001_info_2026-08-09T01-40-05_initialize.log

@@ -112,8 +112,8 @@ name its roots and select them first — the selector is what makes a bare
 `pytest` run use the roots at all:
 
 ```bash
-export PDS3_HOLDINGS_DIR=/path/to/pdsdata/holdings
-export PDS4_HOLDINGS_DIR=/path/to/pdsdata/pds4-holdings
+export PDS3_HOLDINGS_DIR="/path/to/pdsdata/holdings"
+export PDS4_HOLDINGS_DIR="/path/to/pdsdata/pds4-holdings"
 export PDSFILE_TEST_HOLDINGS=full
 
 pytest tests --mode ns
