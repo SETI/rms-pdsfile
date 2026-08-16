@@ -59,11 +59,12 @@ The fields fall into three groups. The identity group (``progname``, ``logname``
 ``pdsfile_cls``, ``unit``) names the tool, its logger, its
 :class:`~pdsfile.pdsfile.PdsFile` class and what one command-line target is -- a
 volume, a bundle or a table. Comparing ``pds4archives``'s spec against the one above
-shows how much of a pair's difference is data: it differs in the identity group, the
-three flavor fields, the log-path method name, and its handler tuple, which adds a
-warning handler -- nine fields. The parser texts and the log suffix are shared from
-``_archives_common``, and the two archive callables are each module's own function
-of the same name. The flavor group (``holdings_sentinel``, ``index_ext``,
+shows how much of a pair's difference is data: it differs in eight fields --
+``progname``, ``pdsfile_cls`` and ``unit`` in the identity group, all three flavor
+fields, ``log_path_method``, and its handler tuple, which adds a warning handler.
+The logger name is the same on both halves (each pair shares its family's), the
+parser texts and the log suffix are shared from ``_archives_common``, and the two
+archive callables are each module's own function of the same name. The flavor group (``holdings_sentinel``, ``index_ext``,
 ``file_log_level``) is the same for all five specs of one flavor, and each field acts
 on some tools only -- the spec docstring names, for every field, exactly which shared
 functions read it, because "the spec carries it" and "this tool acts on it" are
@@ -150,5 +151,8 @@ Two behaviors of the scanner bound what a repair can do, and both are documented
 length in the module docstring of
 :mod:`pdsfile.holdings_maintenance.pds3.linkshelf_repairs`: only files whose
 upper-cased extension is ``.LBL``, ``.CAT``, ``.TXT``, ``.FMT`` or ``.SFD`` are read
-for links at all, and a link written with a directory prefix that resolves nowhere is
-cut back to its basename only for files that matched at least one ``REPAIRS`` entry.
+for links at all; and in a file that matched at least one ``REPAIRS`` entry, a link
+carrying a directory prefix that a matched repair does not answer as written is cut
+back to its basename **in place** -- whether or not its prefixed form would have
+resolved, and whether or not anything then answers the basename form -- while a file
+matching no entry keeps its links' prefixes.

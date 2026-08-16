@@ -41,7 +41,9 @@ the real one: the plan writes `_IndexRowMixin`, the class is `_IndexRowsMixin`
 
 Entry 1100 scheduled enabling `sphinxcontrib.mermaid` to whichever PR drew the first
 diagram; this PR draws five, enables the extension, and removes the entry
-(`critiques/observations.md` now counts 210 open, 19 closed). The owner decision of
+(`critiques/observations.md` now counts 211 open: 19 closed since the renumbering
+plus two later additions, one of them this PR's round-1 observation 4316). The owner
+decision of
 2026-08-09 stands as recorded in the plan and issue #136: **the CDN configuration** —
 no vendored `mermaid.esm.min.mjs`, no `mmdc` pre-rendering, no committed SVGs.
 
@@ -214,6 +216,7 @@ Every round a fresh no-context subagent; recorded in `critiques/pr-33/round-<k>.
 | round | scope | findings |
 |---|---|---:|
 | 1 | full diff, deepest on the architecture and subsystem chapters | 5 Major, 6 Minor, 2 Deferred |
+| 2 | full diff, deepest on chapters 1, 4, 4b, 5, 6, 7 | 2 Major, 1 Minor, 0 Deferred |
 
 Round 1's Major findings were all factual prose claims verified false against
 source — the pair-spec difference set, the cross-reference goal itself, the CI
@@ -221,5 +224,10 @@ driver's coverage, the mixin back-import rule stated without its sanctioned
 exception, and a miscounted import list — and zero of them were in the diagrams,
 which the reviewer verified edge-by-edge and reproduced with mmdc. All five were
 fixed, all six Minors fixed, one Deferred became observation 4316 and the other was
-already recorded as 4111. This section is completed by the round that ends the
-loop.
+already recorded as 4111.
+
+Round 2's two Majors both landed in the extending-tools chapter, and one of them
+was introduced by round 1's own correction — the measured Phase 7 pattern (a
+correction pass carries new defects at about half the rate of the pass it corrects)
+holding on this PR too, which is why round 3 reads only the correction passages,
+each named by hand. This section is completed by the round that ends the loop.
