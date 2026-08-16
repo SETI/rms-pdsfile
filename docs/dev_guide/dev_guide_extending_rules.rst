@@ -7,8 +7,10 @@ through one new module: a *rules file* under :mod:`pdsfile.pds3file.rules` or
 :class:`~pdsfile.pds3file.Pds3File` or :class:`~pdsfile.pds4file.Pds4File`, installs
 dataset-specific translator tables on it, and registers it so that every path inside
 the new set resolves to it (the machinery is drawn at the end of
-:doc:`dev_guide_architecture`). Nothing else in the package changes: no dispatch code,
-no registry file, no configuration.
+:doc:`dev_guide_architecture`). Registration is a side effect of importing the module,
+so beyond the module itself the package changes only where the wiring section below
+points -- the import list that triggers that side effect, the rules package's
+``__all__``, and the regenerated API manifest. No dispatch code changes anywhere.
 
 A rules file is mostly data. Its tables are ``translator`` objects -- ordered lists of
 ``(regular expression, flags, result)`` rows -- matched against logical paths, and the
@@ -110,11 +112,17 @@ Creating the file is not enough; the module must be imported for its registratio
 side effects to run. Two lists name it:
 
 1. The ``from .rules import (...)`` block at the tail of
-   ``src/pdsfile/pds3file/__init__.py`` -- this is the import that actually
-   registers the subclass, and it must stay after the class body, because the rule
-   module subclasses :class:`~pdsfile.pds3file.Pds3File`.
-2. ``__all__`` in ``src/pdsfile/pds3file/rules/__init__.py``, which is the
-   package's public-name list.
+   ``src/pdsfile/pds3file/__init__.py`` (``src/pdsfile/pds4file/__init__.py`` for a
+   PDS4 module) -- this is the import that actually registers the subclass, and it
+   must stay after the class body, because the rule module subclasses
+   :class:`~pdsfile.pds3file.Pds3File` (or :class:`~pdsfile.pds4file.Pds4File`).
+2. ``__all__`` in ``src/pdsfile/pds3file/rules/__init__.py`` (or
+   ``src/pdsfile/pds4file/rules/__init__.py``), the package's public-name list.
+   Only the import registers: in both generations the recorded ``__all__``
+   currently trails the import block (``JNOSRU_xxxx`` on the PDS3 side, two
+   modules on the PDS4 side), a gap each package's docstring measures as harmless
+   because nothing imports through ``__all__`` -- name a new module in both lists
+   anyway.
 
 Adding a rule module **extends the frozen public surface**: the new class and module
 are reachable via ``import pdsfile``, so ``tests/api/test_api_freeze.py`` will fail

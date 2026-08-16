@@ -69,15 +69,24 @@ How to regenerate and present the diff
     pytest tests/holdings_maintenance --update
 
     git diff tests/golden/
+    git status --short tests/golden/
 
 Then, in order:
 
 1. **Re-run, without the update flag,** and confirm the suite passes against the
-   files just written; the ``--update`` run itself asserted nothing.
+   files just written **with zero skipped tests in the modules you targeted**; the
+   ``--update`` run itself asserted nothing. Skips here do not announce themselves
+   as failures: ``PDSFILE_TEST_HOLDINGS=full`` makes a missing or invalid holdings
+   root fail the session loudly, but a tool-test module whose declared sources
+   disagree with the root -- the fingerprint check above -- skips, exits green,
+   and leaves its goldens exactly as they were.
 2. **Read the diff.** For every changed line, know which change of yours (or of the
    reference tree) produced it. ``git diff`` is readable here by design: the rule
    goldens are sorted logical-path text, and the tool goldens are normalized
-   sidecar and log text, so the diff is the behavior change.
+   sidecar and log text, so the diff is the behavior change. ``git diff`` shows
+   only files git already tracks: a golden created for the first time appears only
+   as a ``??`` line in the ``git status`` output, and for it the review is the
+   whole file, not a diff -- read every ``??`` path end to end.
 3. **Scope the commit.** Commit golden changes with the code change that caused
    them, never batched with unrelated regenerations, and never via a blanket
    ``git add`` over ``tests/golden/``.

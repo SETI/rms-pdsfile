@@ -137,9 +137,15 @@ scan reports every one of them unlocatable. The entry:
          ...
          'TAR.FMT'              : 'NAV_DATA/TAR.FMT'})),
 
-The outer pattern claims exactly the ``DATAINFO.TXT`` of the COCIRS_0xxx and
-COCIRS_1xxx volumes, not every COCIRS volume: the 5xxx and 6xxx series carry entries
-of their own in the same group, for different files with different corrections. The inner dictionary maps each bad link text to the corrected
+The outer pattern scopes by series, not by depth. ``[01]`` keeps the entry off the
+5xxx and 6xxx volumes, which carry entries of their own in the same group, for
+different files with different corrections; but the ``.*`` after it crosses
+directory separators, so the pattern claims a ``DATAINFO.TXT`` at any depth under a
+matching volume -- the entry leans on these volumes carrying that file only at the
+top level (other volume sets, VG_28xx for one, do repeat the name in
+subdirectories). A new entry should put the scope in the pattern instead:
+``[^/]*`` in place of ``.*`` holds the match to a single path
+segment. The inner dictionary maps each bad link text to the corrected
 one; every replacement carries a slash, so each is joined to the scanned file's
 directory and existence-checked the first time the entry fires, which is the check
 that catches a typo in the repair itself. After adding an entry, rerun

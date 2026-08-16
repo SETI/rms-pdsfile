@@ -76,8 +76,11 @@ shown in the diagram -- :meth:`~pdsfile.pdsfile.PdsFile.from_abspath`,
 :meth:`~pdsfile.pdsfile.PdsFile.from_path`, :meth:`~pdsfile.pdsfile.PdsFile.child` and
 :meth:`~pdsfile.pdsfile.PdsFile.parent` and their relatives -- each of which reads the
 class-level cache, directly or through the ``_complete`` step every construction ends
-with, so that one object per path survives and a cached object's filled-in values are
-not recomputed.
+with, so that -- for as long as a path's entry stays in the cache -- one object per
+path survives and its filled-in values are not recomputed. The guarantee is bounded
+by the entry's lifetime: the cache section below measures how entries expire and can
+be trimmed, after which the next lookup builds a fresh object whose lazy attributes
+fill again.
 
 The nine mixin bases hold methods and properties only: no mixin defines ``__init__``
 or any per-object state of its own (the one stateful thing a mixin body carries is
@@ -149,8 +152,9 @@ bookkeeping entries whose keys begin with ``$``.
         P -->|otherwise| D["DictionaryCache<br/>(one process, plain dict,<br/>trimmed to a size limit)"]
         M --> CACHE[("cls.CACHE")]
         D --> CACHE
-        CACHE --> PERM["permanent entries (lifetime 0)<br/>$RANKS-&lt;category&gt;/ : version ranks<br/>$VOLS-&lt;category&gt;/ : paths per version<br/>$VOLINFO-... : bundle descriptions<br/>$PRELOADED : holdings already walked<br/>merged category dirs, and everything<br/>stored during a preload walk"]
+        CACHE --> PERM["$-keyed bookkeeping (lifetime 0)<br/>$RANKS-&lt;category&gt;/ : version ranks<br/>$VOLS-&lt;category&gt;/ : paths per version<br/>$VOLINFO-... : bundle descriptions<br/>$PRELOADED : holdings already walked"]
         CACHE --> OBJ["PdsFile objects, keyed by<br/>lower-cased logical path"]
+        OBJ --> L0["merged category dirs, and everything<br/>stored during a preload walk:<br/>lifetime 0, never expire"]
         OBJ --> L7A["bundle sets and bundles:<br/>7 days"]
         OBJ --> L7B["directories named *data:<br/>7 days"]
         OBJ --> L2["other directories: 2 days"]

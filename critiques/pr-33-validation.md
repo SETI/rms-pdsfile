@@ -3,9 +3,10 @@
 Base: `96de70a`. Branch: `docs/dev-guide`. Base branch: `rewrite`. Closes issue #43.
 Sub-plan: `plans/2026-08-16-pr-33-subplan.md`.
 
-Every command below was run with the tree's interpreter,
+Python and Sphinx commands below were run with the tree's interpreter,
 `/seti/all_repos/rms-pdsfile/venv/bin/python` (3.12.3, Sphinx 9.1.0,
-sphinxcontrib-mermaid 2.1.0), from the tree being measured. Where holdings are needed
+sphinxcontrib-mermaid 2.1.0); `mmdc`, `grep`, `git` and the shell checks ran as
+plain CLI commands, all from the tree being measured. Where holdings are needed
 the environment carried `PDS3_HOLDINGS_DIR`, `PDS4_HOLDINGS_DIR` and
 `PDSFILE_TEST_HOLDINGS=full`.
 
