@@ -749,9 +749,12 @@ run_markdown_checks() {
     # README.md and CONTRIBUTING.md.
     print_info "Running PyMarkdown scan (docs/, .cursor/, root *.md)..."
     local file_list file_count
-    if ! file_list=$(python -m pymarkdown scan --list-files "${scan_paths[@]}"); then
-        print_error "PyMarkdown found no Markdown files on the scan paths"
-        [ -n "$status_file" ] && echo "Markdown - PyMarkdown found no files" >> "$status_file"
+    if ! file_list=$(python -m pymarkdown scan --list-files "${scan_paths[@]}" 2>&1); then
+        # Nonzero covers both an empty selection and a scan/config error; either
+        # way the gate has measured nothing, so print what pymarkdown said and fail.
+        print_error "PyMarkdown file listing failed (empty selection or scan error):"
+        printf '%s\n' "$file_list"
+        [ -n "$status_file" ] && echo "Markdown - PyMarkdown file listing" >> "$status_file"
         deactivate 2>/dev/null || true
         return 1
     fi

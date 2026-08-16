@@ -78,8 +78,8 @@ who maintains or mirrors a Ring-Moon Systems holdings tree.
   `pds4linkshelf` for PDS4. Four more programs run as modules with
   `python -m`: `crlf`, `re_validate`, `shelf_consistency_check` and
   `show_opus_products`. The
-  [user guide](https://rms-pdsfile.readthedocs.io/en/latest) has a chapter on
-  each.
+  [user guide](https://rms-pdsfile.readthedocs.io/en/latest/user_guide/user_guide.html)
+  has a chapter on each.
 
 ## Installation
 
@@ -108,8 +108,9 @@ export PDS4_HOLDINGS_DIR=/path/to/pdsdata/pds4-holdings
 
 The directory basenames `holdings` and `pds4-holdings` are required — the
 package splits every absolute path at that component. The
-[installation chapter](https://rms-pdsfile.readthedocs.io/en/latest) of the
-user guide covers the tree layout and which programs read which variable.
+[installation chapter](https://rms-pdsfile.readthedocs.io/en/latest/user_guide/user_guide_installation.html)
+of the user guide covers the tree layout and which programs read which
+variable.
 
 ## Quick Start
 

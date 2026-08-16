@@ -54,14 +54,14 @@ page, so exit statuses prove nothing here); then the §6.6 loop to convergence.
 
 | | |
 |---|---:|
-| `README.md` | rewritten, 129 lines against the old 31 |
+| `README.md` | rewritten, 153 lines against the old 30 |
 | `CONTRIBUTING.md` | testing section rewritten; three false claims corrected |
 | `docs/user_guide/user_guide_installation.rst` | 1 sentence (3.10 → 3.11) |
 | `docs/conf.py` | `suppress_warnings = ['myst.header']`, with its comment |
 | `scripts/run-all-checks.sh` | `ENABLE_PYMARKDOWN` true; the scan names its files |
 | files changed under `src/` | **0** |
 | scheduled observations discharged | 2 (entries 1200, 1201) |
-| observations added | 2 (3402, 4318) |
+| observations added | 3 (3402, 4318, 4406) |
 
 ## 2. The README, claim by claim
 
@@ -206,9 +206,10 @@ not a bare heading), and the verification it demanded — looking at the rendere
 page — is section 5. Entry **1201** is discharged by the CONTRIBUTING testing
 section. Both entries and their PR-34 heading leave
 `critiques/observations-scheduled.md`; the register arithmetic in
-`critiques/observations.md` moves two entries out of scheduled and adds the two
-found here (3402: the overrides file still gives the floor as 3.10; 4318: the
-Markdown gate's real scope), leaving 212 open.
+`critiques/observations.md` moves two entries out of scheduled and adds the
+three found here (3402: the overrides file still gives the floor as 3.10;
+4318: the Markdown gate's real scope; 4406: the `--mode` comment's stale
+pds3-only claim, from round 1), leaving 213 open.
 
 Also corrected while touching CONTRIBUTING, each a claim false against the
 tree: the "run mypy" PR-checklist item (no check here runs mypy), the

@@ -108,11 +108,13 @@ run with no holdings is therefore green but mostly skips; it proves imports and
 the holdings-free subset, nothing more.
 
 To run the suite against a holdings tree (complete, or a limited real copy),
-name its roots first:
+name its roots and select them first — the selector is what makes a bare
+`pytest` run use the roots at all:
 
 ```bash
 export PDS3_HOLDINGS_DIR=/path/to/pdsdata/holdings
 export PDS4_HOLDINGS_DIR=/path/to/pdsdata/pds4-holdings
+export PDSFILE_TEST_HOLDINGS=full
 
 pytest tests --mode ns
 ```
