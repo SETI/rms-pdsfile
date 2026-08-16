@@ -42,8 +42,10 @@ review rounds:
   `pdsfile/pds3file/tests/test_pds3file_blackbox.py` (line 659 and others). The
   layout the tool searched for did not exist in this repository on the day it
   was added.
-- `git log --all -S'shelves/info'` — four commits, all touching the tool's own
-  docstring, its user-guide chapter, or critique records. No other code ever
+- `git log --all -S'shelves/info'` — run at base `6f5c718`: four commits, all
+  touching the tool's own docstring, its user-guide chapter, or critique
+  records. (This branch's own commits add themselves to that list by deleting
+  and quoting those occurrences; they too touch no code.) No other code ever
   carried the string.
 - `git show a6f3949:validation/shelf-consistency-check.py` — the missing
   index-label branch read `error += 1` where every sibling branch read
@@ -125,9 +127,13 @@ exported), log read in full, at `f6b9759`:
 - s-mode, pds4: `pytest tests/pds4file/ tests/rules/pds4/ --mode s -q` —
   **`123 passed, 31 skipped`**, the baseline exactly.
 - pyroma: 10/10. API-freeze: 1 passed (the manifest is untouched).
-  Clean-install gate: passed. Stubtest: "Success: no issues found in 78 modules"
-  (stubtest counts stub files, which never included the tool; the source-tree
-  count is the Sphinx one below).
+  Clean-install gate: passed. Stubtest: "Success: no issues found in 78 modules",
+  down from 79 at base — the base branch's own gate runs record 79
+  (`critiques/pr-35-validation.md`, `critiques/pr-33a-validation.md`), and the
+  gate's exact invocation in a worktree at `6f5c718` reports "checked 79
+  modules" — so the removal moved stubtest's count by exactly one too. 78
+  differs from Sphinx's 77 because stubtest checks the generated
+  `pdsfile._version`, which `docs/conf.py` excludes via `_GENERATED_MODULES`.
 - Sphinx, both builds (`-W` and `-n -W`, separate build dirs): exit 0,
   0 problem lines each, and both report
   **`API reference: 77 of 77 modules under .../src documented`** — down from
@@ -153,4 +159,10 @@ are still used by the surviving modules).
   class as round 1's Major, one section over), 2 record-accuracy Minors, 1
   Deferred (the suite numbers traced to no recorded run — this record now
   carries them). All fixed or resolved.
-- **Round 3**: see `round-3.md` — the terminating round.
+- **Round 3** (`758a330`): 1 Major (this record's stubtest sentence invented a
+  mechanism instead of measuring one — the count was 79 at base and did include
+  the tool), 2 Minors (the pickaxe command's result was not dated to the commit
+  where it reproduces; this list pre-declared round 3 as terminating). All
+  fixed; the corrected sentences are the ones above.
+- **Round 4**: see `round-4.md`. Termination is that round's measured verdict,
+  not this record's claim.
