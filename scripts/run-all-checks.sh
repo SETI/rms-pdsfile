@@ -759,6 +759,16 @@ run_markdown_checks() {
         return 1
     fi
     file_count=$(printf '%s\n' "$file_list" | grep -c .)
+    # The empty selection is checked here as well, so the gate does not depend
+    # on pymarkdown's return-code scheme (the default scheme exits nonzero on
+    # "no files", but that is the tool's choice, and configurable): a selection
+    # of zero files means the gate would measure nothing, which is a failure.
+    if [ "$file_count" -eq 0 ]; then
+        print_error "PyMarkdown selected no files to scan"
+        [ -n "$status_file" ] && echo "Markdown - PyMarkdown empty selection" >> "$status_file"
+        deactivate 2>/dev/null || true
+        return 1
+    fi
     print_info "PyMarkdown will scan $file_count file(s):"
     printf '%s\n' "$file_list"
 

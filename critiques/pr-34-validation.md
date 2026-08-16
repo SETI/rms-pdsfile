@@ -4,8 +4,8 @@ Base: `62c8192` (`docs/dev-guide`, the PR-33 head — this PR stacks on #152 and
 retargets to `rewrite` after it merges). Branch: `docs/readme-rewrite`.
 
 Every command below was run with the tree's interpreter,
-`/seti/all_repos/rms-pdsfile/venv/bin/python` (3.12.3, Sphinx 9.1.0, PyMarkdown
-0.9.39), from the tree being measured. Where holdings are needed the environment
+`/seti/all_repos/rms-pdsfile/venv/bin/python` (3.12.3, Sphinx 9.1.0, myst-parser
+5.1.0, PyMarkdown 0.9.39), from the tree being measured. Where holdings are needed the environment
 carried `PDS3_HOLDINGS_DIR`, `PDS4_HOLDINGS_DIR` and `PDSFILE_TEST_HOLDINGS=full`.
 
 ## 0. Plan of record
