@@ -1812,6 +1812,51 @@ The other four pds4 rule modules do. Both bundle sets therefore use the empty
 archive tables from `pds4file/rules/__init__.py`, and the two tables are unreachable.
 **Owner: whoever next revises the pds4 rules.**
 
+### 4062. No PDS4 archive checksum or archive info shelf can be built: `Pds4File` cannot name the checksum file
+
+**`pds4checksums` and `pds4infoshelf` crash with a raw traceback on every
+archives-side target that resolves the checksum file's path —
+`archives-bundles/<set>` under either tool, and `pds4checksums --archives` over
+`bundles/<set>` — so `checksums-archives-bundles/` and
+`_infoshelf-archives-bundles/` cannot be built at all.** Every such route ends at
+the same wall: the checksum file's own path,
+`checksums-archives-bundles/<set>_md5.txt`, is rejected by `Pds4File.child`
+(`ValueError: Illegal bundle set directory`), because `BUNDLESET_PLUS_REGEX`
+(`pds4file/__init__.py:121-123`) admits only version suffixes after a bundle-set
+name — no `_md5.txt` or `.tar.gz` ending, where the PDS3 counterpart admits
+both. Measured against a scratch `pds4-holdings` tree holding the cassini
+solar-occultation bundle: `pds4checksums --initialize` over
+`archives-bundles/<set>` and `pds4checksums --initialize --archives` over
+`bundles/<set>` both die in `write_checksums` →
+`Pds4File.from_abspath(check_path)`; `pds4infoshelf` over `archives-bundles/<set>`
+dies identically resolving the checksum path it needs to read. (`--archives` on a
+single bundle fails earlier and cleanly: the archive resolves to one `.tar.gz`,
+which is a selection, and `--initialize` refuses selections.) The user guide's
+concepts chapter states the resulting scope honestly — the PDS4 build covers the
+first level of each dependency chain — and this entry is the record that the
+limit is a rules gap, not a design. Fixing it means widening
+`BUNDLESET_PLUS_REGEX` (and checking `checksum_path_and_lskip`'s PDS4 behavior
+end to end), which changes what `Pds4File` accepts and needs its own tests.
+**Owner: whoever next revises the pds4 rules.**
+
+### 4064. The document-only shell scripts exit `-1` on their usage errors, which bash reports as 255
+
+**Five of the document-only scripts in `src/pdsfile/holdings_maintenance/pds3/`
+stop an invalid invocation with `exit -1`, a status no process can return — bash
+reduces it to 255 (ShellCheck SC2242) — where the six `pdsdata-sync-*` scripts
+exit 1 and, since the second CodeRabbit round of the
+`update_holdings_for_new_metadata.sh` fix, so does that script.** The twelve
+sites: `setup_new_holdings.sh:11,18`, `copy_documents.sh:10,19,24`,
+`copy_shelves.sh:10,20,25`, `copy_all_except_metadata.sh:9`, and
+`create_fake_volumes_for_metadata.sh:11,19,24` — every one an argument-count or
+missing-directory guard, reachable only by an invalid invocation, so the
+2026-08-07 exit-code ruling (deferred observation 135) would permit the same
+one-word fix. It was not made because these scripts' document-only status was
+not lifted: the owner's 2026-08-16 instruction
+(`plans/2026-08-16-addendum-update-holdings-script-fix.md`) named
+`update_holdings_for_new_metadata.sh` alone. **Owner: the owner, if the
+document-only freeze is ever lifted for the copy/setup scripts.**
+
 ## Structure and duplication
 
 ### 4100. `_is_forgiven` has two gaps
