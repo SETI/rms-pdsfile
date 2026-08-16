@@ -45,8 +45,9 @@ review rounds:
 - `git log --all -S'shelves/info'` — run at base `6f5c718`: four commits, all
   touching the tool's own docstring, its user-guide chapter, or critique
   records. (This branch's own commits add themselves to that list by deleting
-  and quoting those occurrences; they too touch no code.) No other code ever
-  carried the string.
+  and quoting those occurrences; the occurrences they change likewise sit in
+  docstrings, the guide chapter and records.) The string never appeared in
+  executable code.
 - `git show a6f3949:validation/shelf-consistency-check.py` — the missing
   index-label branch read `error += 1` where every sibling branch read
   `errors += 1`: a `NameError` on the finding path. Fixed in `67f7b93`
@@ -164,5 +165,6 @@ are still used by the surviving modules).
   the tool), 2 Minors (the pickaxe command's result was not dated to the commit
   where it reproduces; this list pre-declared round 3 as terminating). All
   fixed; the corrected sentences are the ones above.
-- **Round 4**: see `round-4.md`. Termination is that round's measured verdict,
-  not this record's claim.
+- **Round 4** (`8b59edf`): 0 Major, 2 Minor (both wording overstatements in the
+  records, fixed), 1 Deferred (the `--all` pickaxe's ref-dependence, noted).
+  Zero Majors and no un-rebutted Minors: the loop terminated at this round.

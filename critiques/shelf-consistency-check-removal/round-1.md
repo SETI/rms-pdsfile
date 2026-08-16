@@ -49,7 +49,9 @@ note now records that the tool, its tests and the pinning test were removed
 `test_shelf_consistency_check.py` from a recorded pytest invocation without
 saying so, where this register marks re-derivations explicitly. A parenthetical
 now records the original command and why the reduced one carries the same claim
-(the removed tests were holdings-free and never touched `Pds4File`).
+(none of the removed tests touched `Pds4File` or its preload; round 4 tightened
+this wording — one of the 19 was `full_holdings`-marked, so "holdings-free" was
+an overstatement).
 
 ## Minor 5 — the addendum's "18 tests" is the function count, not the collected count — FIXED
 

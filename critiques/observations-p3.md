@@ -2548,8 +2548,9 @@ written. Deferred 139 records the flag's other quirk, that `--pprint` and
 `pytest tests/holdings_maintenance/test_crlf.py
 tests/holdings_maintenance/test_show_opus_products.py --mode ns` at its full
 pass count. (The measured command also named
-`test_shelf_consistency_check.py`, removed with its tool 2026-08-16; those
-tests were holdings-free, so the reduced command carries the same claim.) Every
+`test_shelf_consistency_check.py`, removed with its tool 2026-08-16; none of
+its tests touched `Pds4File` or its preload, so the reduced command carries the
+same claim.) Every
 path the module's tests pass is a PDS3 one, so the second half of the tool's
 two-flavor fallback — try `Pds3File`, then `Pds4File`, each by abspath then by
 logical path — is exercised only for its failure. The tool tests declare a PDS3
