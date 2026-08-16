@@ -55,7 +55,7 @@ not.
 The class here is a mixin of ``PdsFile``. It defines no state: every slot it writes is
 created by ``PdsFile.__init__()`` and ``_recache()`` is defined in ``PdsFile``, both of
 which stay in the core module. ``_PropertiesMixin``'s own docstring enumerates every
-attribute these bodies read or write, which is the contract that makes the split safe.
+attribute these bodies read or write, which is the contract that arrangement rests on.
 """
 
 import datetime

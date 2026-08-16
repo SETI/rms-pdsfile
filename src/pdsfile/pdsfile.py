@@ -62,9 +62,9 @@ What this module holds, and why:
     class, and every object a resolved holdings path produces is a rule subclass, so what
     a Viewmaster memcached entry names is ``pdsfile.pds3file.rules.<dataset>`` rather than
     this module. The exception is ``new_merged_dir()``, which builds ``cls()`` and so
-    records this module when it is called on ``PdsFile`` itself. The statement stays here
-    because the class attributes below it do, not because moving it would invalidate a
-    cache.
+    records this module when it is called on ``PdsFile`` itself. The statement belongs
+    with the class attributes below it, which are what a mixin reads as ``cls.X``; no
+    cache entry depends on where it is written.
   * Every class attribute: the configuration tables, the translator registries, the
     shared ``CACHE`` and ``LOGGER``, ``SHELF_CACHE`` and its companions, ``LOG_ROOT_``
     and ``LATEST_VERSION_RANKS``. A mixin carries behavior only, so the data a mixin
@@ -160,10 +160,10 @@ from ._sorting import _SortingMixin
 # Re-exported only; nothing below references these. FILE_BYTE_UNITS,
 # formatted_file_size, HAS_PYLIBMC, PATH_EXISTS_CACHE_SIZE, pause_caching,
 # pdsviewable, resume_caching and selected_path_from_path are public;
-# _GLOB_CACHE_SIZE, _clean_abspath, _clean_glob and _needs_glob are private. All
-# are carried so that no name reachable as pdsfile.pdsfile.<name> is lost. The
-# redundant `as` alias is the explicit re-export form, so they do not read as
-# unused imports.
+# _GLOB_CACHE_SIZE, _clean_abspath, _clean_glob and _needs_glob are private. Each
+# is bound here because a caller may reach it as pdsfile.pdsfile.<name>, so deleting
+# one removes that name. The redundant `as` alias is the explicit re-export form, so
+# they do not read as unused imports.
 from pdsfile import pdsviewable as pdsviewable
 
 from ._local_fs import PATH_EXISTS_CACHE_SIZE as PATH_EXISTS_CACHE_SIZE

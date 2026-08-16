@@ -20,7 +20,7 @@ The subpackage is laid out in three parts:
     and two of them hold the other two drivers.
   * ``pds3/`` also holds four tools that declare no specification and reach no driver,
     parsing their own command lines instead: ``crlf.py``, ``pdsdependency.py``,
-    ``re_validate.py`` and ``shelf_consistency_check.py``. Two of the four still build
+    ``re_validate.py`` and ``shelf_consistency_check.py``. Two of the four build
     their log paths through ``_common.py``, and the other two -- ``crlf.py`` and
     ``shelf_consistency_check.py`` -- take nothing from any shared module and read
     neither holdings root. ``pds3/`` holds one more Python file,
