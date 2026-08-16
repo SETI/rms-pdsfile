@@ -38,8 +38,9 @@ Which holdings root to use
 Goldens are regenerated **only against real holdings** -- the tree resolved from
 ``PDS3_HOLDINGS_DIR``/``PDS4_HOLDINGS_DIR`` with ``PDSFILE_TEST_HOLDINGS=full``,
 exactly as CI runs (:doc:`dev_guide_testing`). The committed goldens record the
-answers of one *reference* root: the limited real copy the routine runs use, whose
-content the complete set also carries. Regenerating against a different tree than
+answers of one *reference* root -- the real tree the routine runs use, which both the
+per-PR self-hosted runs and the nightly complete-set runs must agree with, since one
+set of goldens serves them all. Regenerating against a different tree than
 the one the goldens were made from produces diffs that are about the trees, not
 about the code -- the tool-test modules defend themselves against exactly that by
 fingerprinting their sources (size and md5) and skipping when the root disagrees,
