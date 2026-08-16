@@ -13,6 +13,7 @@
 # that reports a mismatch exits 1.
 ##########################################################################################
 
+import os
 from collections import namedtuple
 
 import pytest
@@ -355,3 +356,35 @@ def test_a_blank_record_in_the_manifest_is_reported_rather_than_fatal(fresh_tree
     # Every other record was still read, so nothing is reported as missing.
     assert not any('Missing checksum' in line for line in run.error_lines), \
         run.describe()
+
+
+@pytest.mark.skipif(os.geteuid() == 0,
+                    reason='root reads a directory whatever its mode')
+def test_update_keeps_the_entries_below_an_unreadable_directory(fresh_tree):
+    """A walk that could not read a directory judges nothing below it missing.
+
+    ``os.walk()`` passes over a directory it cannot open without raising, so the
+    files under it never reach the set the deletion sweep compares against. Their
+    entries have to survive: an unreadable subtree costs the run its digests there
+    and not the manifest's record of them.
+    """
+
+    support.initialize(fresh_tree, 'pdschecksums', fresh_tree.path(VOLUME_DIR))
+    before = support.md5_file_mapping(fresh_tree.path(CHECKSUM_FILE))
+
+    closed = fresh_tree.path(f'{VOLUME_DIR}/DATA/VISIT_01')
+    closed.chmod(0o000)
+    try:
+        run = support.run_tool(fresh_tree, 'pdschecksums', '--update',
+                               fresh_tree.path(VOLUME_DIR))
+    finally:
+        closed.chmod(0o755)
+
+    assert run.returncode == ERROR_EXIT, run.describe()
+    assert any('Directory could not be read' in line
+               for line in run.error_lines), run.describe()
+    assert not any('Removed entry for missing file' in line
+                   for line in run.output.splitlines()), run.describe()
+
+    after = support.md5_file_mapping(fresh_tree.path(CHECKSUM_FILE))
+    assert after == before, run.describe()

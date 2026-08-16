@@ -964,17 +964,17 @@ def update(pdsdir, selection=None, logger=None):
     measured. A file whose size or date has changed is therefore not noticed here; that is
     ``validate()``'s and ``repair()``'s work.
 
-    **A directory already shelved is not refreshed either.** The walk does recompute one
-    from the children it found, and the merge then writes a key only where the shelf lacks
-    it, so the recomputed value is discarded and every ancestor directory of a new file
-    keeps the child count, the byte total and the modification time it was shelved with.
-    ``validate()`` reports all three as mismatches, so the two tasks disagree about the
-    same shelf until a ``reinitialize`` or a ``repair``.
+    **A directory already shelved is refreshed.** Its entry is an aggregate of what lies
+    under it, so the walk's own recomputation is the current one and the shelved child
+    count, byte total and modification time are the stale ones; the merge therefore takes
+    the walk's value for a directory where it keeps the shelf's for a file. That is what
+    lets an added file reach the counts of every directory above it.
 
-    **A deletion is invisible.** The result starts from the whole of what the shelf held,
-    so an entry for a file that is no longer there survives; and because it survives, and
-    because a directory's entry is not refreshed either, the comparison this task makes
-    still holds and the run reports that the shelf is complete.
+    **A deletion is registered.** An entry for a path the walk did not visit is reported
+    and left out, so the shelf and the tree agree about what is there and a run no longer
+    reports a shelf complete while it names files that are gone. A run narrowed by a
+    selection judges nothing missing: the walk covered one file, so what it did not visit
+    is no evidence about anything else.
 
     Where the walk returns exactly what the shelf held, nothing is written or touched and
     that is reported at info level; the "out of date" re-dating ``repair()`` does has no
