@@ -219,6 +219,7 @@ Every round a fresh no-context subagent; recorded in `critiques/pr-33/round-<k>.
 | 2 | full diff, deepest on chapters 1, 4, 4b, 5, 6, 7 | 2 Major, 1 Minor, 0 Deferred |
 | 3 | the 26 correction passages, each named by hand | 1 Major, 2 Minor, 1 Deferred |
 | 4 | scoped: round-3 resolutions + new Majors only | 1 Major |
+| 5 | scoped: the round-4 correction, clause by clause | **0 findings — goal met** |
 
 Round 1's Major findings were all factual prose claims verified false against
 source — the pair-spec difference set, the cross-reference goal itself, the CI
@@ -236,5 +237,20 @@ each named by hand. Round 3 then found the pattern a third time, in the same
 sentence rounds 1 and 2 had each rewritten: a provenance claim ("shared from
 ``_archives_common``") that was true of the parser texts and false of the log
 suffix. One sentence, three rounds, three different defects is the starkest local
-measurement of the pattern this effort has produced. This section is completed by
-the round that ends the loop.
+measurement of the pattern this effort has produced.
+
+Round 4 then measured it a fourth time — its one Major was inside round 3's own
+fix — which put the loop at §6.6's hard cap with a finding still open. **The fifth
+round was taken anyway, deliberately and narrowly**, on the grounds PR-32's fifth
+was: the finding class was measured rather than mysterious, the plan's PR-32
+section directs this PR to budget for the second read of its own corrections, and
+opening on an unread correction would have shipped the exact defect the loop had
+just measured four times. Round 5 read the two rewritten passages clause by clause
+against the workflow files and returned zero findings, verdict **goal met**, which
+is the §6.6 termination condition. The cap excess is called out in the PR
+description for the owner rather than only here.
+
+The loop's totals: 9 Major, 9 Minor, 3 Deferred across five rounds; every Major
+was a factually false prose claim (none was ever in a diagram, a build, or a
+gate), and three of the nine were introduced by a correction pass — each round
+from 2 on found exactly one Major inside the previous round's fixes.
