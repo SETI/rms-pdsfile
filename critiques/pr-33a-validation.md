@@ -211,3 +211,4 @@ Every round a fresh no-context subagent; recorded in `critiques/pr-33a/round-<k>
 |---|---|---:|
 | 1 | full diff | 0 Major, 5 Minor, 2 Deferred — verdict goal met |
 | 2 | full diff | 0 Major, 2 Minor, 2 Deferred — verdict goal met; one Minor inside round 1's own fix |
+| 3 | scoped: the correction passages, clause by clause | 0 Major, 1 Minor — verdict goal met; the Minor inside round 2's own fix, in the record |

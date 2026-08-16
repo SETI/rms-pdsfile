@@ -3,7 +3,7 @@
 Reviewer: a fresh, no-context subagent, new for this round, given the owner's four
 instructions, the §2 ground rules, §6.1/§6.2, the §6.6 progressive-compliance
 schedule, the exact diff `git diff feat/api-stubs..fix/archive-infoshelf-rebuild`
-(11 files at `bdb227e`), and read access to the repository and the read-only
+(10 files at `bdb227e`), and read access to the repository and the read-only
 holdings roots. It made no edits and knew nothing of round 1's findings.
 
 The reviewer independently reproduced the full evidence chain: the scratch
