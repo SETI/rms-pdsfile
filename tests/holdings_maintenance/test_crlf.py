@@ -128,18 +128,19 @@ class TestArgumentValidation:
         with pytest.raises(ValueError, match='invalid threshold'):
             crlf.test_crlf(tmp_path / 'no_such_file.txt', threshold=threshold)
 
-    def test_an_empty_file_raises_zerodivisionerror(self, tmp_path):
-        """A zero-byte file divides by zero.
+    def test_an_empty_file_is_ok(self, tmp_path):
+        """A zero-byte file classifies as OK, in both tasks.
 
-        The non-ASCII fraction divides by the decoded length with no guard for an
-        empty file, so a run over a tree containing one dies instead of reporting
-        it. That is a defect, pinned here as current behaviour: a fix has to
-        decide what an empty file classifies as and invert this assertion.
+        It has no records to terminate, so there is nothing it could need repaired,
+        and no fraction to measure either: the non-ASCII count divides by the decoded
+        length, which used to raise ZeroDivisionError and end a run over any tree
+        holding one. "OK" rather than "BINARY" is the owner's ruling.
         """
 
         path = write(tmp_path, 'empty.txt', b'')
-        with pytest.raises(ZeroDivisionError, match='division by zero'):
-            crlf.test_crlf(path)
+        assert crlf.test_crlf(path) == 'OK'
+        assert crlf.test_crlf(path, task='repair') == 'OK'
+        assert path.read_bytes() == b''
 
 
 def test_non_asciis_translation_table():

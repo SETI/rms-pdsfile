@@ -2,7 +2,7 @@
 
 Open observations that a remaining PR of the modernization plan already owns. Each will be closed by the PR it is listed under; none needs a separate decision. Numbers are stable identifiers, grouped by owning PR with room left between groups.
 
-## PR-31a — Inline literals to Sphinx cross-reference roles
+## Docstring cross-references and wording — PR-31a is permanently deferred to issue #149
 
 ### 1000. `log_path_for_index`'s docstring first line describes a bundle
 
@@ -39,8 +39,8 @@ autodoc emits their fields from the annotations regardless -- which is what the
 duplicate was. `LinkInfo` is a plain class whose attributes are assigned in
 `__init__`, so Napoleon's rendering was their only target. Nothing references them
 today and the build is clean either way, but a later PR that writes `:attr:` roles
-for them will find they do not resolve. **Owner: PR-31a, which is the PR that will
-try to write those roles.**
+for them will find they do not resolve. **Owner: issue #149, which is where the sweep
+that would write those roles now lives.**
 
 ### 1002. `src/pdsfile/pds3file/__init__.py`'s alias comment now introduces one method instead of eight
 
@@ -102,7 +102,7 @@ through a two-reads review. Two of them are already known not to resolve: observ
 records the five `LinkInfo` attributes that `napoleon_use_ivar` leaves without a
 target, and observation 6403 records the 43 docstrings that are not published at all, whose
 roles nothing would check.
-**Owner: PR-31a, to be scoped from the tree PR-31 created.**
+**Owner: issue #149, which carries this measurement so it is not re-derived.**
 
 ## PR-33 — Developer guide, with architecture diagrams
 

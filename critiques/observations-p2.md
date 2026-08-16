@@ -59,38 +59,23 @@ would have put the interesting decision — what a modern-layout run should
 **Owner: open — the layout question needs a PR of its own, and no phase owns
 it.**
 
-### 3005. `show_opus_products` dies with an `IndexError` on real holdings paths
+### 3005. `opus_products()` returns a key that carries no OPUS type
 
-**`show_opus_products` dies with an `IndexError` on real holdings paths.**
-`golden_opus_types = [prod_category[2] for prod_category, _ in opus_prod.items()]`
-assumes every key of `opus_products()` is a five-element tuple; two more places
-assume the same. Four paths in `/seti/opus/pdsdata/holdings` return a dictionary
-keyed by the empty string, carrying the volume set's `documents/` products:
-`volumes/VG_20xx/VG_2001/JUPITER/CALIB/VG1PREJT.LBL` and three files under
-`volumes/VGIRIS_xxxx_peer_review/VGIRIS_0001/DATA/JUPITER_VG1/`. Found by round 2,
-which scanned 6,674 files across every volume of the test holdings to establish that
-it is four and not more, and reproduced here. The tool prints a traceback and
-returns nothing. **Two owners: the tool should not subscript an unchecked key, and
-separately `opus_products()` producing an empty-string key at all belongs to
-`_opus.py` and the `VG_20xx`/`VGIRIS_xxxx` rule modules.**
+**`opus_products()` returns a key that carries no OPUS type.** Its contract admits the
+empty string, which carries the volume set's `documents/` products, and four paths in
+the reference holdings return it: `volumes/VG_20xx/VG_2001/JUPITER/CALIB/VG1PREJT.LBL`
+and three files under `volumes/VGIRIS_xxxx_peer_review/VGIRIS_0001/DATA/JUPITER_VG1/`.
+Found by round 2, which scanned 6,674 files across every volume of the test holdings to
+establish that it is four and not more.
 
-### 3007. Three defects in `crlf`
+**The consumer half is fixed.** `show_opus_products` subscripted every key at index 2
+without checking, so those four paths ended the run in `IndexError` with nothing
+printed; it now asks each key for its type and reports the ones that have none. What
+remains is whether `opus_products()` should produce such a key at all, which belongs to
+`_opus.py` and the `VG_20xx`/`VGIRIS_xxxx` rule modules rather than to any consumer.
+**Owner: open — a rules-side decision, not a tool one.**
 
-**`crlf.test_crlf` raises `ZeroDivisionError` on a zero-byte file.** The
-non-ASCII fraction divides by the decoded length without guarding an empty
-file, so `crlf --repair` over a tree containing one dies instead of reporting
-it. Pinned by
-`test_crlf.TestArgumentValidation.test_an_empty_file_raises_zerodivisionerror`.
-This entry named **PR-28**, which gives `crlf` a `main()`, as where deciding
-what an empty file should classify as ('OK'? 'BINARY'?) belonged.
-
-**PR-28 preserved it.** The decision is a behaviour change on a frozen surface
-with no obviously right answer — 'OK' says an empty file has no bad
-terminators, 'BINARY' says it is not text, and a third reading is that the
-tool should report it and move on — and the Phase-6 rule lets output move only
-where keeping it would force duplication or a flag, which this does not. The
-pin is unchanged and inverting it is still what a fix has to do.
-**Owner: open — one of three answers, and no phase owns the choice.**
+### 3007. Two defects in `crlf`
 
 **`crlf` prints no summary at all when it repairs more than one file.** The
 summary block reads `if repairs: if repairs == 1: print(f'{repairs}/{nfiles}
@@ -143,19 +128,6 @@ them. `shelf_consistency_check` has the same property, pinned by
 record `shelf/dash-root`, where the base run walked the directory and reported
 on it.
 **Owner: open.**
-
-### 3009. Pre-existing pds4 uranus s-mode blackbox failures (full-holdings golden area, owner-deferred)
-
-**Pre-existing pds4 uranus s-mode blackbox failures (full-holdings golden
-area, owner-deferred).** A full `pytest tests --mode s` (i.e. including
-`tests/pds4file/`) shows 5 failures in
-`tests/pds4file/test_pds4file_blackbox.py` (uranus_occ, a
-`KeyError`→`UnboundLocalError` around `pdsfile.py:4254/4265`). Verified
-**identical on `origin/rewrite`** — pre-existing, not introduced by PR-08 —
-and **not** exercised by the CI s-mode invocation, which is pds3-only
-(`tests/pds3file tests/rules/pds3 --mode s`). Sits in the full-holdings
-golden/shelf-reproducibility area the owner split out of PR-08. Owner:
-the deferred additive-coverage / golden-reproducibility follow-up.
 
 ## Structure and duplication
 

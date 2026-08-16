@@ -181,9 +181,12 @@ class _LocalFsMixin:
                     shelf = cls._get_shelf(shelf_abspath,
                                                log_missing_file=False)
                     return (key in shelf)
-                # Every shelf file has an entry with an empty key, so
-                # this avoids an unnecessary open of the file.
-                return bool(cls.os_path_exists(shelf_abspath))
+                # Every shelf file has an entry with an empty key, so a shelf that is
+                # there answers without being opened. One that is not there is not an
+                # answer at all: fall through to the fallbacks below, and finally to
+                # the filesystem, rather than reporting the path as absent.
+                if cls.os_path_exists(shelf_abspath):
+                    return True
             except (ValueError, IndexError, OSError):
                 pass
 
@@ -257,9 +260,12 @@ class _LocalFsMixin:
                                                log_missing_file=False)
                     (_, _, _, checksum, _) = shelf[key]
                     return (checksum == '')
-                # Every shelf file has an entry with an empty key, so
-                # this avoids an unnecessary open of the file.
-                return bool(cls.os_path_exists(shelf_abspath))
+                # Every shelf file has an entry with an empty key, so a shelf that is
+                # there answers without being opened. One that is not there is not an
+                # answer at all: fall through to the fallbacks below, and finally to
+                # the filesystem, rather than reporting the path as a non-directory.
+                if cls.os_path_exists(shelf_abspath):
+                    return True
             except (ValueError, IndexError, OSError):
                 pass
 

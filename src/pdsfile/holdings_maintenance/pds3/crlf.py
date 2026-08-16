@@ -92,9 +92,6 @@ def test_crlf(filepath, task='test', threshold=0.01):
         ValueError: if ``task`` is neither "test" nor "repair", or if ``threshold`` is
             outside the closed interval from 0 to 1. Both are checked before the file is
             touched, so a bad argument costs no read.
-        ZeroDivisionError: for a zero-byte file, whose non-ASCII fraction divides by a
-            ``len()`` of zero. Nothing guards it, so an empty file ends the call rather
-            than being classified.
         OSError: from the ``open()`` of a file that does not exist or cannot be read,
             and from the ``open()`` for writing of one that cannot be rewritten.
     """
@@ -112,6 +109,11 @@ def test_crlf(filepath, task='test', threshold=0.01):
     # Count the non-ASCII characters
     content = content.decode('latin8')
     non_asciis = len(content.translate(NON_ASCIIS))
+
+    # An empty file has no records to terminate, so there is nothing it could need
+    # repaired and no fraction to measure (owner ruling, 2026-08-16).
+    if not content:
+        return 'OK'
 
     # If the non-ASCII fraction is above the threshold, it's a binary file
     if non_asciis/len(content) > threshold:
@@ -201,8 +203,6 @@ def main(argv=None):
         SystemExit: from ``parse_intermixed_args()``, with status 2 for a command line
             argparse cannot classify and status 0 for ``--help``. A command line it
             accepts returns rather than exiting.
-        ZeroDivisionError: from ``test_crlf()`` on the first zero-byte file named, which
-            ends the run with the remaining files unexamined and nothing summarized.
         OSError: from ``test_crlf()`` on the first file that cannot be read or, under
             ``--repair``, cannot be rewritten, likewise ending the run.
     """

@@ -34,6 +34,32 @@ import tabulate
 from pdsfile import Pds3File, Pds4File
 
 
+def opus_type_of(prod_category):
+    """Return the OPUS type a product-category key carries, or None if it carries none.
+
+    A key is normally the five-element tuple ``opus_products()`` documents, whose third
+    element is the short OPUS type. **Not every key is**: the contract admits the empty
+    string, which carries a unit set's ``documents/`` products, and four paths in the
+    reference holdings return it. Asking rather than subscripting is what keeps such a
+    key from ending the run in ``IndexError``.
+
+    The whole five-element shape is required, not just an element at index 2, because
+    the ``--raw`` form prints all five and a shorter key would reach that branch alone.
+
+    Parameters:
+        prod_category: One key of an ``opus_products()`` result.
+
+    Returns:
+        str: The OPUS type, or None for any key that is not the documented five-element
+        tuple.
+    """
+
+    if isinstance(prod_category, tuple) and len(prod_category) == 5:
+        return prod_category[2]
+
+    return None
+
+
 def build_arg_parser():
     """Return the argument parser for this tool.
 
@@ -123,14 +149,6 @@ def main(argv=None):
             can go wrong, before either holdings root is read.
         KeyError: from the item read ``__getitem__()`` on the environment, if either
             PDS3_HOLDINGS_DIR or PDS4_HOLDINGS_DIR is unset.
-        IndexError: from the item read ``__getitem__()`` on a product category. Every
-            key is subscripted at index 2 for its OPUS type, without being checked, and
-            the contract ``opus_products()`` states admits one key that is not a
-            five-element tuple: the empty string, which carries the volume set's
-            documents. A few real paths do return it, and ``''[2]`` raises, so the run
-            ends there and nothing is returned. The ``--raw`` form subscripts further,
-            at indices 3 and 4, so a key of three or four elements would reach only
-            that branch.
     """
 
     if argv is None:
@@ -198,7 +216,18 @@ def main(argv=None):
         opus_prod = pdsf_inst.opus_products()
         res = {}
 
-        golden_opus_types = [prod_category[2] for prod_category, _ in opus_prod.items()]
+        # A key that is not a five-element tuple carries no OPUS type. The contract
+        # opus_products() states admits one -- the empty string, for a unit set's
+        # documents -- and real paths do return it, so every key is asked rather than
+        # subscribed to.
+        unkeyed = [category for category in opus_prod if not opus_type_of(category)]
+        for category in unkeyed:
+            print(f'WARNING: {len(opus_prod[category])} product group(s) under a key '
+                  f'with no OPUS type ({category!r}) are not shown for '
+                  f'{pdsf_inst.logical_path}')
+
+        golden_opus_types = [opus_type_of(prod_category) for prod_category in opus_prod
+                             if opus_type_of(prod_category)]
         valid_opus_types = []
         for opus_type in given_opus_types:
             if opus_type not in golden_opus_types:
@@ -220,7 +249,10 @@ def main(argv=None):
                 for pdsf in pdsf_li:
                     pdsf_list.append(pdsf.logical_path)
 
-            opus_type = prod_category[2]
+            opus_type = opus_type_of(prod_category)
+            if not opus_type:
+                continue
+
             if valid_opus_types and opus_type not in valid_opus_types:
                 continue
 

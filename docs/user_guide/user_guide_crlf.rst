@@ -141,25 +141,20 @@ repaired file is not a failure -- the repair is what was asked for and it happen
 either, because ``BINARY`` is a verdict rather than a fault. 2 for a command line
 :mod:`argparse` cannot classify, and 0 for ``--help``.
 
-Two file conditions end the run before it reaches the end, in a traceback rather than
-through any of the statuses above, and the interpreter's status is then 1:
+One file condition ends the run before it reaches the end, in a traceback rather than
+through any of the statuses above, and the interpreter's status is then 1: a file that
+cannot be read, or under ``--repair`` cannot be rewritten, raises :exc:`OSError`. It
+leaves the files named after it unexamined and prints no summary.
 
-* a **zero-byte** file raises :exc:`ZeroDivisionError`, because the binary fraction is
-  computed over the file's length;
-* a file that cannot be read, or under ``--repair`` cannot be rewritten, raises
-  :exc:`OSError`.
-
-Either leaves the files named after it unexamined and prints no summary:
+**A zero-byte file is** ``OK``. It has no records to terminate, so there is nothing it
+could need repaired:
 
 .. code-block:: console
 
-   $ python -m pdsfile.holdings_maintenance.pds3.crlf EMPTY.LBL GOOD.LBL
-   Traceback (most recent call last):
-     ...
-     File ".../pdsfile/holdings_maintenance/pds3/crlf.py", line 117, in test_crlf
-       if non_asciis/len(content) > threshold:
-          ~~~~~~~~~~^~~~~~~~~~~~~
-   ZeroDivisionError: division by zero
+   $ python -m pdsfile.holdings_maintenance.pds3.crlf --verbose EMPTY.LBL GOOD.LBL
+   EMPTY.LBL OK
+   GOOD.LBL OK
+   2 files tested
 
 Rejected abbreviations
 ----------------------
