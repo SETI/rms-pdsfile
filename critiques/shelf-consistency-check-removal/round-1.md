@@ -1,7 +1,7 @@
 # shelf_consistency_check removal, round 1 — adversarial review
 
 Reviewed: `git diff fix/archive-infoshelf-rebuild..HEAD` at `f6b9759` (the whole
-removal in one commit: 3 files deleted, 25 edited). A fresh no-context reviewer
+removal in one commit: 28 files — 3 deleted, 24 edited, 1 added, the addendum). A fresh no-context reviewer
 was given the owner's instruction, plan §2/§6.1/§6.2/§6.6, the exact diff and
 repository read access, and told to prove a missed reference, a wrong count, or a
 false historical claim. No edits by the reviewer.

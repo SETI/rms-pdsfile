@@ -156,7 +156,12 @@ for re-interpretation by the executor:
    support (Viewmaster passes `port=` to `preload`). Nothing is deleted for
    being "probably dead." Latent *bugs* in existing code may be fixed (PR-15,
    plus the tool-bug fixes in PR-26/PR-28), each with a test, but no feature
-   removal.
+   removal. **One owner-directed exception (2026-08-16):**
+   `shelf_consistency_check` was removed outright by the owner's explicit
+   instruction — not under this rule's "probably dead" heuristic; the tool
+   demonstrably matched no layout this repository has ever used
+   (`plans/2026-08-16-shelf-consistency-check-removal-addendum.md`, issue
+   #156).
 10. **Record keeping:** `plans/` holds plans (this file); `critiques/` holds
     critique reports, validation records, and per-PR review rounds. Every
     phase leaves a record. Superseded plans move to `plans/archive/`.

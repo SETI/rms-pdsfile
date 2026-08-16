@@ -35,6 +35,12 @@ Deleted: the module, its 18 test functions (19 collected tests, one being
 parametrized over `--help`/`-h`), its user-guide chapter. Edited: the package and
 test docstrings that enumerated it, the API-reference page, the user- and
 developer-guide program counts (fifteen programs to fourteen; the API reference
-drops from 78 to 77 modules), `README.md`, the `.cursor` print-waiver example, and
-one `pyproject.toml` ratchet comment. The console-script set is untouched: the tool
-never had one.
+drops from 78 to 77 modules), `README.md`, the `.cursor` print-waiver example, one
+`pyproject.toml` ratchet comment, the register entries and closed-log entries whose
+current-state claims named the tool (`observations-p2/p3/p4.md`,
+`coderabbit-findings.md`, with the index arithmetic in `observations.md`), and this
+plan's ground rule 9, settled decision 4 and Phase 6 deferred table, each
+annotated in place. The console-script set is untouched: the tool never had one.
+The full file list is the PR's own diff; the validation record in
+`critiques/shelf-consistency-check-removal-validation.md` carries the measured
+gate numbers.
