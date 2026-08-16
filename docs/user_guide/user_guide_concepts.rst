@@ -193,9 +193,10 @@ the kind of tree that takes every product:
 
 The same graph holds for every volume type, minus the products that type does not
 take: only ``metadata`` has index shelves, and link shelves belong to ``volumes``,
-``metadata`` and ``calibrated`` on the PDS3 side and to ``bundles`` on the PDS4 side. Any order that builds each product after everything
-on its incoming path is valid -- the checksum-and-shelf chain and the archive chain do
-not read each other's products, so they may run in either order or interleaved.
+``metadata`` and ``calibrated`` on the PDS3 side and to ``bundles`` on the PDS4
+side. Any order that builds each product after everything on its incoming path is
+valid -- the checksum-and-shelf chain and the archive chain do not read each other's
+products, so they may run in either order or interleaved.
 ``update_holdings_for_new_metadata.sh``, described in :doc:`user_guide_shell_scripts`,
 rebuilds one volume set's metadata products in one such order, and
 :doc:`user_guide_pdsdependency` checks the graph after the fact and prints the exact
@@ -234,7 +235,11 @@ archive itself, and its link shelves:
    pds4archives  --initialize $PDS4_HOLDINGS_DIR/bundles/cassini_uvis_solarocc_beckerjarmak2023
    pds4linkshelf --initialize $PDS4_HOLDINGS_DIR/bundles/cassini_uvis_solarocc_beckerjarmak2023
 
-A PDS4 metadata tree's index shelves are ``pds4indexshelf --initialize`` over
+For this bundle set the last command writes its shelf and then exits 1, reporting
+one label in the published ``document/`` tree that does not point to the file beside
+it -- the exit status carrying a fact about the published data, which
+:doc:`user_guide_pds4linkshelf` shows as that bundle's own recurring error. A PDS4 metadata tree's index shelves are
+``pds4indexshelf --initialize`` over
 ``$PDS4_HOLDINGS_DIR/metadata/<bundle set>/<bundle>``;
 :doc:`user_guide_pds4indexshelf` describes what today's two testable bundle sets do
 with that command.

@@ -83,9 +83,11 @@ scratch tree does not have):
 ## 4. The regression test, and its negative control
 
 `test_update_holdings_script.py` parses the script's text (no holdings, marked
-`holdings_free`) and asserts three things: the deleted-product set equals the
-rebuilt-product set (equality in both directions, because `--initialize` aborts over
-a survivor); every command's inputs — the checksum file an info shelf reads, and any
+`holdings_free`) and asserts three things: the deleted-product set and the
+rebuilt-product set each equal the pinned seven-product list (equality in both
+directions because `--initialize` aborts over a survivor, and against the pinned
+list so that dropping a deletion and its rebuild together still fails); every
+command's inputs — the checksum file an info shelf reads, and any
 deleted category a command targets — are rebuilt before the command runs; and a
 deletion under a flat category names `${VOLSET}_`-prefixed files rather than a
 directory. The parser asserts on any `rm` or `python` line it cannot parse, so a
@@ -207,4 +209,4 @@ Every round a fresh no-context subagent; recorded in `critiques/pr-33a/round-<k>
 
 | round | scope | findings |
 |---|---|---:|
-| 1 | full diff | (recorded in `critiques/pr-33a/round-1.md`) |
+| 1 | full diff | 0 Major, 5 Minor, 2 Deferred — verdict goal met |

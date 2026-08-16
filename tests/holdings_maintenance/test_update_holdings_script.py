@@ -49,6 +49,19 @@ TOOL_PREFIXES = {
 # level rather than a directory per volume set.
 FLAT_PREFIXES = ('checksums-archives-', '_infoshelf-archives-')
 
+# Every derived product of a metadata tree, which is what the script exists to
+# rebuild. Dropping a deletion and its rebuild together would keep the sets equal,
+# so the tests also compare against this list.
+METADATA_PRODUCTS = {
+    'archives-metadata',
+    'checksums-archives-metadata',
+    'checksums-metadata',
+    '_indexshelf-metadata',
+    '_infoshelf-archives-metadata',
+    '_infoshelf-metadata',
+    '_linkshelf-metadata',
+}
+
 # rm -rf "$HOLDINGS/archives-metadata/$VOLSET" and
 # rm -f "$HOLDINGS"/checksums-archives-metadata/${VOLSET}_* both match: the quote
 # may close before or after the category, and the target may be the volume set's
@@ -93,18 +106,21 @@ def products_in_order(commands):
 
 
 def test_every_deleted_product_is_rebuilt_and_vice_versa():
-    """The deletion list and the rebuild list name the same categories.
+    """The deletion list and the rebuild list both name every metadata product.
 
     A product deleted and not rebuilt is the failure pdsdependency.py would later
     report as a missing file; a product rebuilt without being deleted is an
-    --initialize run that aborts over the survivor.
+    --initialize run that aborts over the survivor. Both sets are compared against
+    the full product list rather than against each other alone, so removing a
+    deletion and its rebuild together fails here too.
     """
 
     deletions, commands = parse_script()
 
     deleted = {category for (category, _) in deletions}
     rebuilt = set(products_in_order(commands))
-    assert deleted == rebuilt
+    assert deleted == METADATA_PRODUCTS
+    assert rebuilt == METADATA_PRODUCTS
 
 
 def test_rebuild_order_satisfies_the_dependency_rules():
