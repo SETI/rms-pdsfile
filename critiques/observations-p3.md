@@ -1839,6 +1839,24 @@ limit is a rules gap, not a design. Fixing it means widening
 end to end), which changes what `Pds4File` accepts and needs its own tests.
 **Owner: whoever next revises the pds4 rules.**
 
+### 4064. The document-only shell scripts exit `-1` on their usage errors, which bash reports as 255
+
+**Five of the document-only scripts in `src/pdsfile/holdings_maintenance/pds3/`
+stop an invalid invocation with `exit -1`, a status no process can return — bash
+reduces it to 255 (ShellCheck SC2242) — where the six `pdsdata-sync-*` scripts
+exit 1 and, since the second CodeRabbit round of the
+`update_holdings_for_new_metadata.sh` fix, so does that script.** The twelve
+sites: `setup_new_holdings.sh:11,18`, `copy_documents.sh:10,19,24`,
+`copy_shelves.sh:10,20,25`, `copy_all_except_metadata.sh:9`, and
+`create_fake_volumes_for_metadata.sh:11,19,24` — every one an argument-count or
+missing-directory guard, reachable only by an invalid invocation, so the
+2026-08-07 exit-code ruling (deferred observation 135) would permit the same
+one-word fix. It was not made because these scripts' document-only status was
+not lifted: the owner's 2026-08-16 instruction
+(`plans/2026-08-16-addendum-update-holdings-script-fix.md`) named
+`update_holdings_for_new_metadata.sh` alone. **Owner: the owner, if the
+document-only freeze is ever lifted for the copy/setup scripts.**
+
 ## Structure and duplication
 
 ### 4100. `_is_forgiven` has two gaps

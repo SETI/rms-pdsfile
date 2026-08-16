@@ -8,7 +8,7 @@ if [[ $# -ne 2 ]]; then
     echo "are deleted and the new versions are created from scratch."
     echo
     echo "Usage: update_holdings_for_new_metadata.sh <holdings_dir> <volset>"
-    exit -1
+    exit 1
 fi
 
 HOLDINGS="$(realpath "$1")"
@@ -16,17 +16,17 @@ VOLSET=$2
 
 if [[ ! "$VOLSET" =~ ^[A-Za-z0-9_]+$ ]]; then
     echo "Not a volume set name: '$VOLSET'"
-    exit -1
+    exit 1
 fi
 
 if [[ ! -d "$HOLDINGS" ]]; then
     echo "Directory does not exist: '$HOLDINGS'"
-    exit -1
+    exit 1
 fi
 
 if [[ ! -d "$HOLDINGS/metadata/$VOLSET" ]]; then
     echo "Directory does not exist: '$HOLDINGS/metadata/$VOLSET'"
-    exit -1
+    exit 1
 fi
 
 rm -rf "$HOLDINGS/archives-metadata/$VOLSET"

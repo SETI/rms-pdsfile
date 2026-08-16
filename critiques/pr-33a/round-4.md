@@ -19,10 +19,14 @@ its seven edges matched to a rule, both example blocks with the shell-scripts
 command list matching the fixed script line for line, the deleted
 defect-as-behavior prose, and the claim it distrusted most (`BUNDLESET_PLUS_REGEX`
 admitting no `_md5.txt`, observation 4062's measurements) — and reproduced the ns
-gate at head (1208 passed / 34 skipped). One line noted as non-blocking: the
-versioned-sibling checksum glob, then recorded as observation 4063 and standing
-by the scope constraint in force during the loop; the owner has since withdrawn
-that constraint and the glob is narrowed, with the observation discharged.
+gate at the head it reviewed, `0ba6647` (1208 passed / 34 skipped: the base
+suite's 1205/34 plus the 3 test ids the module held at that commit; the later
+CodeRabbit rounds added a fourth and a fifth test, so the validation record's
+gate table reports a larger count, measured at a later head). One line noted as
+non-blocking: the versioned-sibling checksum glob, then recorded as observation
+4063 and standing by the scope constraint in force during the loop; the owner
+has since withdrawn that constraint and the glob is narrowed, with the
+observation discharged.
 
 Verdict: **goal met** — zero Major, zero new Minor. §6.6's termination condition
 is met and the loop ends here, inside the four-round cap.

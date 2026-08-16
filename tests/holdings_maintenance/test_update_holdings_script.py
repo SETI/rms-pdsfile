@@ -4,8 +4,8 @@
 # The internal consistency of update_holdings_for_new_metadata.sh.
 #
 # The script deletes every derived product of one volume set's metadata and rebuilds
-# them all with --initialize runs. That design carries three obligations the shell
-# gives no help with, and each is a test here:
+# them all with --initialize runs. That design carries obligations the shell gives
+# no help with, and each is a test here:
 #
 #   * every product it deletes must be rebuilt by one of its commands, and every
 #     product it rebuilds must first have been deleted, because --initialize aborts
@@ -20,15 +20,21 @@
 #   * a flat-category deletion must remove exactly the files its rebuild writes,
 #     because the versioned siblings sharing the directory -- <volset>_v1.0_... --
 #     are derived from frozen versioned trees no command of the script rebuilds,
-#     so a glob that reaches them destroys files the run cannot restore.
+#     so a glob that reaches them destroys files the run cannot restore;
+#   * every guard -- the argument count, the volume-set shape, the two directory
+#     checks -- must stop an invalid invocation with status 1 before any rm runs,
+#     because the deletions are unrecoverable and `exit -1` is not a status a
+#     process can return (bash reduces it to 255).
 #
-# The tests parse the script's text and need no holdings tree. The parsing asserts
-# what it extracted, so a rewrite of the script's shell idioms fails loudly here
-# rather than letting vacuous set comparisons pass.
+# The parsing tests read the script's text and assert on what they extracted, so a
+# rewrite of the script's shell idioms fails loudly here rather than letting
+# vacuous set comparisons pass. The guard test runs the script against a scratch
+# tree. None of the tests needs a holdings tree.
 ##########################################################################################
 
 import fnmatch
 import re
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -233,3 +239,36 @@ def test_flat_category_deletions_spare_what_the_run_cannot_rebuild():
         assert matched == listing['rebuilt'], (
             f'{category} deletion {targets[category]} removes {sorted(matched)} '
             f'but the rebuild writes {sorted(listing["rebuilt"])}')
+
+
+def test_every_guard_exits_1_before_anything_is_deleted(tmp_path):
+    """Each invalid invocation stops the script with status 1, deleting nothing.
+
+    The four guards -- the argument count, the volume-set shape, and the two
+    directory checks -- all precede the first rm, so each is run for real against
+    a scratch tree and a planted file must survive every one of them. The status
+    is pinned at 1 because that is what the six pdsdata-sync-* siblings exit on a
+    usage error, and because ``exit -1`` is not a status a process can return:
+    bash reduces it to 255 (ShellCheck SC2242).
+    """
+
+    holdings = tmp_path / 'holdings'
+    survivor = holdings / 'checksums-metadata' / SAMPLE_VOLSET / 'metadata_md5.txt'
+    survivor.parent.mkdir(parents=True)
+    survivor.write_text('planted before the guard runs\n')
+
+    invocations = [
+        ([], 'Usage:'),
+        ([str(holdings), 'not-a/volset'], 'Not a volume set name'),
+        ([str(tmp_path / 'missing'), SAMPLE_VOLSET], 'Directory does not exist'),
+        ([str(holdings), SAMPLE_VOLSET], 'Directory does not exist'),
+    ]
+    for arguments, message in invocations:
+        run = subprocess.run(['bash', str(SCRIPT_PATH), *arguments],
+                             capture_output=True, text=True)
+        assert run.returncode == 1, (
+            f'{arguments} exited {run.returncode}, not 1\n'
+            f'stdout: {run.stdout}stderr: {run.stderr}')
+        assert message in run.stdout, f'{arguments} printed: {run.stdout}'
+
+    assert survivor.read_text() == 'planted before the guard runs\n'
