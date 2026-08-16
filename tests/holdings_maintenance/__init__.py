@@ -35,4 +35,7 @@
 #     socket. The message that one builds is covered through format_email().
 #   * holdings_maintenance/pds3/*.sh -- the sync/setup shell scripts are
 #     document-only; they are covered by prose in the user guide, not by tests.
+#     The exception is update_holdings_for_new_metadata.sh, whose delete-and-rebuild
+#     bookkeeping is pinned by test_update_holdings_script.py, which parses the
+#     script's text and runs nothing.
 ##########################################################################################

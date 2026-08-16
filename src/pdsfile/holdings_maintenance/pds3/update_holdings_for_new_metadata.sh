@@ -28,15 +28,16 @@ rm -rf "$HOLDINGS/archives-metadata/$VOLSET"
 rm -f "$HOLDINGS"/checksums-archives-metadata/${VOLSET}_*
 rm -rf "$HOLDINGS/checksums-metadata/$VOLSET"
 rm -rf "$HOLDINGS/_indexshelf-metadata/$VOLSET"
-rm -rf "$HOLDINGS/_infoshelf-archives-metadata/$VOLSET"
+rm -f "$HOLDINGS"/_infoshelf-archives-metadata/${VOLSET}_info.*
 rm -rf "$HOLDINGS/_infoshelf-metadata/$VOLSET"
 rm -rf "$HOLDINGS/_linkshelf-metadata/$VOLSET"
 
-python pdsarchives.py --initialize "$HOLDINGS/metadata/$VOLSET"
-python pdschecksums.py --initialize "$HOLDINGS/archives-metadata/$VOLSET"
 python pdschecksums.py --initialize "$HOLDINGS/metadata/$VOLSET"
 python pdsinfoshelf.py --initialize "$HOLDINGS/metadata/$VOLSET"
-python pdsindexshelf.py --initialize "$HOLDINGS/metadata/$VOLSET"
+python pdsarchives.py --initialize "$HOLDINGS/metadata/$VOLSET"
+python pdschecksums.py --initialize "$HOLDINGS/archives-metadata/$VOLSET"
+python pdsinfoshelf.py --initialize "$HOLDINGS/archives-metadata/$VOLSET"
 python pdslinkshelf.py --initialize "$HOLDINGS/metadata/$VOLSET"
+python pdsindexshelf.py --initialize "$HOLDINGS/metadata/$VOLSET"
 
 echo "ALL COMPLETED WITH NO ERRORS"
