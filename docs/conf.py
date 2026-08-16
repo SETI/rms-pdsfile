@@ -57,16 +57,21 @@ version = release
 
 # -- General configuration ---------------------------------------------------------------
 
-# A diagram extension belongs here once a page draws a diagram. None does, and adding one
-# before then has a cost: sphinxcontrib.mermaid with no diagram in the tree puts a script
-# tag pointing at a third-party CDN into 70 of the 77 built pages, because it skips only
-# the pages whose doctree it can see has no diagram in it, and every viewcode page and
-# every generated index falls outside that test.
+# sphinxcontrib.mermaid renders the developer guide's architecture diagrams in the
+# reader's browser, from a Mermaid runtime loaded off cdn.jsdelivr.net. That is the
+# owner-chosen configuration; issue #136 records the alternatives (a vendored bundle,
+# mmdc pre-rendering, committed SVGs) and what each was measured to cost, so the choice
+# can be revisited without re-deriving it. Two consequences of the CDN are accepted:
+# the script tag lands on every built page whose doctree the extension cannot inspect
+# -- every viewcode page and every generated index, not only the pages with diagrams --
+# and the published diagrams do not render where the CDN is unreachable, including any
+# offline copy of the documentation.
 extensions = [
     'sphinx.ext.autodoc',        # the API reference is generated from the docstrings
     'sphinx.ext.napoleon',       # the docstrings are Google style
     'sphinx.ext.viewcode',       # each documented object links to its highlighted source
     'myst_parser',               # Markdown, which is what README.md is
+    'sphinxcontrib.mermaid',     # the developer guide's architecture diagrams
 ]
 
 source_suffix = {
