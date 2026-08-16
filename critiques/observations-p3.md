@@ -34,9 +34,9 @@ PDS4 holdings on the machine where that tree is writable, and failed four CI job
 now refuses the write at the point of the call: `readonly_roots.install()` wraps `open`
 and the `os` mutators and rejects any target inside a real root, and a tool subprocess
 installs the same guard from a `sitecustomize.py` on its `PYTHONPATH`. It was a walk of
-both roots first, which cost 52 seconds per test and 4 per module and, worse, grows with
-the size of the holdings; the interception costs one string comparison per write and
-measured at no detectable difference. The guard is a backstop rather than a fix, because
+both roots first. Measured against a 154 s baseline with no guard at all: walking around
+every test cost 52 s, around every module 4 s, and the interception nothing detectable.
+Either walk also grows with the size of the holdings, which the interception does not. The guard is a backstop rather than a fix, because
 the class still resolves the wrong root.
 
 Consumers preload too. `rms-viewmaster` preloads with a memcache port, and anything that

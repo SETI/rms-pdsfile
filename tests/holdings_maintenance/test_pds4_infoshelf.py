@@ -105,7 +105,7 @@ def test_initialize_writes_the_expected_sidecar(tree, golden_update):
         assert str(size) in line, line
         assert md5 in line, line
         stamp = datetime.datetime.fromtimestamp(
-            SOURCE_MTIMES[relpath], tz=datetime.timezone.utc)
+            SOURCE_MTIMES[relpath], tz=datetime.UTC)
         assert f'"{stamp.strftime("%Y-%m-%d %H:%M:%S.%f")}"' in line, line
 
 

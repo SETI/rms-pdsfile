@@ -105,7 +105,7 @@ def test_initialize_writes_the_expected_sidecar(tree, golden_update):
         assert str(size) in line, line
         assert md5 in line, line
         stamp = datetime.datetime.fromtimestamp(
-            SOURCE_MTIMES[relpath], tz=datetime.timezone.utc)
+            SOURCE_MTIMES[relpath], tz=datetime.UTC)
         assert f'"{stamp.strftime("%Y-%m-%d %H:%M:%S.%f")}"' in line, line
 
 
@@ -178,7 +178,7 @@ def test_modification_time_mismatch_reports_both_times(shelved_tree):
     assert len(reported) == 1, run.describe()
 
     shelved = datetime.datetime.fromtimestamp(
-        SOURCE_MTIMES[LABEL], tz=datetime.timezone.utc)
+        SOURCE_MTIMES[LABEL], tz=datetime.UTC)
     on_disk = shelved + datetime.timedelta(seconds=100)
     fmt = '%Y-%m-%d %H:%M:%S'
     assert f'"{on_disk.strftime(fmt)}" "{shelved.strftime(fmt)}"' in reported[0], \

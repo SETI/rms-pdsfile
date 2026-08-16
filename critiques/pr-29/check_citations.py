@@ -27,7 +27,6 @@ import pathlib
 import re
 import subprocess
 import sys
-
 import tomllib
 
 SRC = pathlib.Path('src/pdsfile')

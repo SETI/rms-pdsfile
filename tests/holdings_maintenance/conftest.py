@@ -107,11 +107,11 @@ def _holdings_are_read_only():
     against the read-only one. The failure was the lucky case. Where the holdings are
     writable, the damage is silent.
 
-    **The check is an interception rather than a scan.** Walking both roots before and
-    after each test cost about 53 seconds across this suite, and per module about 3, for
-    the same detection -- but either way the cost grows with the size of the holdings,
-    and these trees are a limited copy of something much larger. Wrapping the write
-    entry points costs one string comparison per write and does not grow at all.
+    **The check is an interception rather than a scan.** Measured against a 154 s
+    baseline with no guard: walking both roots around every test cost 52 s, around every
+    module 4 s, and intercepting the write calls nothing detectable. Either walk also
+    grows with the size of the holdings, and these trees are a limited copy of something
+    much larger, so the interception is the only one that stays cheap as they grow.
 
     A tool subprocess installs the same guard from `_subprocess_guard/sitecustomize.py`,
     which Python imports at startup because `ToolTree.env` puts that directory on

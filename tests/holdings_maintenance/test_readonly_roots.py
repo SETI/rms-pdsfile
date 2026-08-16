@@ -69,12 +69,12 @@ def test_writes_outside_the_root_are_untouched(protected, tmp_path):
 def test_the_guard_does_not_bind_as_a_method(protected):
     """A replacement stored on a class must not become a method.
 
-    Python 3.10's pathlib holds `os.mkdir` on a class and calls
-    `self._accessor.mkdir(self, mode)`. A builtin does not bind, but a plain Python
-    function does, which inserts the instance as a first argument and changes the
-    arity. Replacing the builtin with a function therefore broke every subprocess that
-    reached `Path.mkdir` on that interpreter, and passed on 3.11 and later, where the
-    accessor no longer exists. This fails if the guard goes back to being a function.
+    A builtin held as a class attribute does not bind; a plain Python function does,
+    inserting the instance as a first argument and changing the arity of the call. The
+    standard library does hold these functions on classes -- `pathlib` did until 3.11
+    removed its `_accessor` -- and one such caller was enough to break every tool
+    subprocess while a local run on a newer interpreter stayed green. This fails if the
+    guard goes back to being a function.
     """
 
     class Accessor:
@@ -100,3 +100,69 @@ def test_a_subprocess_installs_the_same_guard(protected, tmp_path):
     assert proc.returncode != 0, proc.stdout
     assert b'ReadOnlyHoldingsError' in proc.stderr, proc.stderr
     assert not target.exists()
+
+
+def test_a_symlink_into_the_root_is_refused(protected, tmp_path):
+    """A path that reaches the root through a symlink elsewhere is still inside it.
+
+    `abspath()` keeps symlink components, so comparing with it let an aliased path
+    pass while the write landed in the protected tree. Both the roots and the targets
+    are resolved with `realpath()` now.
+    """
+
+    alias = tmp_path / 'alias'
+    alias.symlink_to(protected)
+
+    with pytest.raises(readonly_roots.ReadOnlyHoldingsError), \
+            open(alias / 'volumes' / 'through_a_link.txt', 'w'):
+        pass                                            # pragma: no cover
+    assert not (protected / 'volumes' / 'through_a_link.txt').exists()
+
+
+def test_os_open_is_refused(protected):
+    """`os.open()` is the floor every other write stands on, so it is guarded too."""
+
+    with pytest.raises(readonly_roots.ReadOnlyHoldingsError):
+        os.open(protected / 'volumes' / 'low_level.txt', os.O_CREAT | os.O_WRONLY)
+    assert not (protected / 'volumes' / 'low_level.txt').exists()
+
+
+def test_os_open_for_reading_still_works(protected):
+    """Guarding os.open must not stop the reads these tests depend on."""
+
+    fd = os.open(protected / 'volumes' / 'readable.txt', os.O_RDONLY)
+    try:
+        assert os.read(fd, 7) == b'content'
+    finally:
+        os.close(fd)
+
+
+def test_pathlib_write_text_is_refused(protected):
+    """`pathlib` writes through `io.open`, a separate reference to the same builtin.
+
+    Patching `builtins.open` alone left `Path.write_text()` unguarded.
+    """
+
+    with pytest.raises(readonly_roots.ReadOnlyHoldingsError):
+        (protected / 'volumes' / 'via_pathlib.txt').write_text('x', encoding='utf-8')
+    assert not (protected / 'volumes' / 'via_pathlib.txt').exists()
+
+
+def test_the_subprocess_hook_refuses_to_start_without_the_guard(tmp_path):
+    """A subprocess that cannot install the guard must die, not run unprotected.
+
+    Python prints whatever a sitecustomize hook raises and carries on starting up, so
+    a guard that failed to install would leave the tool running against the real
+    holdings while its test still passed.
+    """
+
+    env = dict(os.environ)
+    env['PYTHONPATH'] = str(support.SUBPROCESS_GUARD_DIR)   # the guard is NOT importable
+    env[readonly_roots.ENV_VAR] = str(tmp_path)
+
+    proc = subprocess.run([sys.executable, '-c', 'print("ran unprotected")'],
+                          env=env, capture_output=True, check=False)
+
+    assert proc.returncode != 0, proc.stdout
+    assert b'ran unprotected' not in proc.stdout, proc.stdout
+    assert b'refusing to start without' in proc.stderr, proc.stderr

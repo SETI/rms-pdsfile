@@ -20,6 +20,7 @@
 ##########################################################################################
 
 import builtins
+import io
 import os
 
 ENV_VAR = 'PDSFILE_READONLY_ROOTS'
@@ -41,7 +42,9 @@ def _roots():
 
     raw = os.environ.get(ENV_VAR, '')
 
-    return tuple(os.path.abspath(r) for r in raw.split(os.pathsep) if r)
+    # realpath, not abspath: abspath keeps symlink components, so a path that reaches
+    # a protected root through a symlink elsewhere would compare as being outside it.
+    return tuple(os.path.realpath(r) for r in raw.split(os.pathsep) if r)
 
 
 def _check(path, roots, what):
@@ -60,7 +63,7 @@ def _check(path, roots, what):
         return
 
     try:
-        target = os.path.abspath(os.fspath(path))
+        target = os.path.realpath(os.fspath(path))
     except TypeError:                       # a file descriptor, not a path
         return
 
@@ -79,13 +82,14 @@ class _Guarded:
 
     Deliberately a callable object rather than a function. A plain Python function
     implements the descriptor protocol, so storing one on a class turns it into a
-    method and inserts the instance as a first argument -- which is exactly what
-    `pathlib` does on Python 3.10, where `Path.mkdir` calls
-    `self._accessor.mkdir(self, mode)` and `_accessor.mkdir` is whatever `os.mkdir`
-    was when `pathlib` was imported. A builtin does not bind that way, so replacing
-    one with a function changed the call's arity and broke every subprocess that
-    reached `Path.mkdir`. Python 3.11 removed `_accessor`, which is why this only
-    showed up on the older interpreters in the matrix.
+    method and inserts the instance as a first argument; a builtin does not bind that
+    way. Replacing a builtin with a function therefore changes the arity of every call
+    that reaches it through a class attribute, and the standard library does hold these
+    functions on classes -- `pathlib` did exactly that until Python 3.11 removed its
+    `_accessor`, and one such caller was enough to break every tool subprocess. The
+    interpreters this package supports no longer include that one, so the property is
+    kept because the pattern is general rather than because a supported version needs
+    it.
     """
 
     def __init__(self, real, roots, what, args_to_check=(0,)):
@@ -110,6 +114,19 @@ class _GuardedOpen(_Guarded):
         return self._real(file, mode, *args, **kwargs)
 
 
+class _GuardedOsOpen(_Guarded):
+    """`os.open()`, checked on the flags rather than a mode string.
+
+    Nothing in the tools calls it directly, but it is the floor every other write
+    stands on: a guard that only wraps `open()` is bypassed by one `os.open()` call.
+    """
+
+    def __call__(self, path, flags, *args, **kwargs):
+        if flags & (os.O_WRONLY | os.O_RDWR | os.O_CREAT | os.O_APPEND | os.O_TRUNC):
+            _check(path, self._roots, self._what)
+        return self._real(path, flags, *args, **kwargs)
+
+
 def install():
     """Wrap the write entry points so a protected root cannot be written to.
 
@@ -129,6 +146,10 @@ def install():
         return
 
     builtins.open = _GuardedOpen(builtins.open, roots, 'open()')
+    # pathlib goes through io.open, which is a separate reference to the same builtin,
+    # so patching builtins.open alone leaves Path.write_text() unguarded.
+    io.open = _GuardedOpen(io.open, roots, 'io.open()')
+    os.open = _GuardedOsOpen(os.open, roots, 'os.open()')
     os.mkdir = _Guarded(os.mkdir, roots, 'mkdir()')
     os.makedirs = _Guarded(os.makedirs, roots, 'makedirs()')
     os.remove = _Guarded(os.remove, roots, 'remove()')
@@ -148,7 +169,21 @@ def uninstall():
     if isinstance(builtins.open, _Guarded):
         builtins.open = builtins.open._real
 
-    for name in ('mkdir', 'makedirs', 'remove', 'unlink', 'rmdir', 'rename', 'replace'):
+    if isinstance(io.open, _Guarded):
+        io.open = io.open._real
+
+    for name in ('open', 'mkdir', 'makedirs', 'remove', 'unlink', 'rmdir', 'rename',
+                 'replace'):
         current = getattr(os, name)
         if isinstance(current, _Guarded):
             setattr(os, name, current._real)
+
+
+def installed():
+    """Report whether the guard is currently in place.
+
+    Returns:
+        bool: True if the write entry points are wrapped.
+    """
+
+    return isinstance(builtins.open, _Guarded)
