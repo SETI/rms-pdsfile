@@ -68,7 +68,7 @@
 #     ENABLE_BANDIT       (default: false — never)
 #     ENABLE_VULTURE      (default: false — never)
 #     ENABLE_SPHINX       Sphinx documentation build (default: true)
-#     ENABLE_PYMARKDOWN   PyMarkdown scan (default: false — not enabled yet)
+#     ENABLE_PYMARKDOWN   PyMarkdown scan (default: true)
 #
 # Checks (each run separately; -d runs both Sphinx and Markdown):
 #   Code:     optional: ruff check, ruff format --check, mypy, pytest, pyroma,
@@ -117,9 +117,10 @@ SCOPE_SPECIFIED=false
 #
 # Gates are enabled as they become able to pass. Currently enabled: ruff-check
 # (which runs the configured rules and then a second, indentation-only pass over
-# the preview E1 rules), pytest, pyroma, api-freeze, the clean-install gate, and
-# the Sphinx build. Not enabled yet: ruff-format and pymarkdown. Never enabled:
-# mypy, bandit, vulture (ground rules / pdsfile_overrides.mdc).
+# the preview E1 rules), pytest, pyroma, api-freeze, the clean-install gate, the
+# Sphinx build, and pymarkdown. Not enabled: ruff-format (owner decision,
+# pdsfile_overrides.mdc (11)). Never enabled: mypy, bandit, vulture (ground
+# rules / pdsfile_overrides.mdc).
 : "${ENABLE_RUFF_CHECK:=true}"
 : "${ENABLE_RUFF_FORMAT:=false}"
 : "${ENABLE_MYPY:=false}"
@@ -130,7 +131,7 @@ SCOPE_SPECIFIED=false
 : "${ENABLE_BANDIT:=false}"
 : "${ENABLE_VULTURE:=false}"
 : "${ENABLE_SPHINX:=true}"
-: "${ENABLE_PYMARKDOWN:=false}"
+: "${ENABLE_PYMARKDOWN:=true}"
 
 # Get script directory and project root
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -733,19 +734,33 @@ run_markdown_checks() {
     # shellcheck source=/dev/null
     source "$VENV/bin/activate"
 
-    print_info "Running PyMarkdown scan (docs/, .cursor/, root *.md)..."
     local scan_paths=()
     [ -d "docs/" ] && scan_paths+=("docs/")
     [ -d ".cursor/" ] && scan_paths+=(".cursor/")
     [ -f "README.md" ] && scan_paths+=("README.md")
     [ -f "CONTRIBUTING.md" ] && scan_paths+=("CONTRIBUTING.md")
-    if [ ${#scan_paths[@]} -eq 0 ]; then
-        print_info "No Markdown files/directories found to scan"
+
+    # The scan is only as good as its file selection, so the selection is printed
+    # and an empty one fails rather than passing over nothing. Two properties of
+    # pymarkdown's selection decide what the list holds: it selects by the .md
+    # extension, so no .rst page under docs/ and no .mdc rule file is ever read;
+    # and a directory argument is NOT recursed into, so a nested Markdown file
+    # (such as the .cursor skills') is not read either. Today that leaves
+    # README.md and CONTRIBUTING.md.
+    print_info "Running PyMarkdown scan (docs/, .cursor/, root *.md)..."
+    local file_list file_count
+    if ! file_list=$(python -m pymarkdown scan --list-files "${scan_paths[@]}"); then
+        print_error "PyMarkdown found no Markdown files on the scan paths"
+        [ -n "$status_file" ] && echo "Markdown - PyMarkdown found no files" >> "$status_file"
         deactivate 2>/dev/null || true
-        return 0
+        return 1
     fi
+    file_count=$(printf '%s\n' "$file_list" | grep -c .)
+    print_info "PyMarkdown will scan $file_count file(s):"
+    printf '%s\n' "$file_list"
+
     if python -m pymarkdown scan "${scan_paths[@]}"; then
-        print_success "PyMarkdown scan passed"
+        print_success "PyMarkdown scan passed ($file_count file(s) scanned)"
         deactivate 2>/dev/null || true
         return 0
     else
