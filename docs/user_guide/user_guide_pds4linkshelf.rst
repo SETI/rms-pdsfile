@@ -93,7 +93,7 @@ The single error is the bundle's own, and it recurs on every run:
 Log file naming
 ---------------
 
-Under ``logs/pdslinkshelf/`` -- the PDS3 program's name, as for all five PDS4 programs --
+Under ``logs/pds4linkshelf/`` -- this program's own name, as for all five PDS4 programs --
 with ``_links`` as the suffix, and a ``WARNINGS.log`` beside the ``ERRORS.log`` that the
 PDS3 program writes alone.
 

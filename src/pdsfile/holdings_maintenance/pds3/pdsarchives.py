@@ -29,11 +29,8 @@ it**: the driver drops it, and ``re_validate``, the one caller that reaches into
 module as a library, calls ``validate()`` for its side effects and does not assign what
 comes back.
 
-**The specification's log suffix is '_links', not '_archives'.** A run writes
-``<volume>_links_<time tag>_<task>.log``, which is the suffix ``pdslinkshelf`` passes for
-the same volume and the same task names. The two do not collide, because the tool's
-``progname`` becomes a directory component of the log path and the two prognames differ.
-The PDS4 tool passes '_archives'.
+The specification's log suffix is '_archives', as the PDS4 tool's is, so a run writes
+``<volume>_archives_<time tag>_<task>.log``.
 
 Two fields of the specification are set here and read nowhere a run of this tool reaches:
 ``index_ext``, which only the index shelf tools' target expansion reads, and
@@ -489,7 +486,7 @@ SPEC = _common.ToolSpec(
     task_help=_archives_common.ARCHIVE_TASK_HELP,
     positional_help=_archives_common.ARCHIVE_POSITIONAL_HELP,
     log_path_method='log_path_for_volume',
-    log_suffix='_links',
+    log_suffix='_archives',
     expand_target=archive_targets,
     handler_factories=(pdslogger.error_handler,),
     lskip_for=archive_lskip)

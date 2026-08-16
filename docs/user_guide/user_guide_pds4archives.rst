@@ -54,7 +54,7 @@ this bundle set's rules describe:
 
    $ pds4archives --initialize $PDS4_HOLDINGS_DIR/bundles/cassini_uvis_solarocc_beckerjarmak2023
    ...
-   2026-08-09 01:42:52.282574 | pds.validation.archives |--| INFO | Log file: $PDS4_HOLDINGS_DIR/../logs/pdsarchives/bundles/cassini_uvis_solarocc_beckerjarmak2023/_archives_2026-08-09T01-42-52_initialize.log
+   2026-08-09 01:42:52.282574 | pds.validation.archives |--| INFO | Log file: $PDS4_HOLDINGS_DIR/../logs/pds4archives/bundles/cassini_uvis_solarocc_beckerjarmak2023/_archives_2026-08-09T01-42-52_initialize.log
    2026-08-09 01:42:52.282678 | pds.validation.archives |--| HEADER | Writing .tar.gz file for: bundles/cassini_uvis_solarocc_beckerjarmak2023
    2026-08-09 01:42:52.282759 | pds.validation.archives |---| NORMAL | Creating directory: archives-bundles/cassini_uvis_solarocc_beckerjarmak2023
    ...
@@ -129,10 +129,9 @@ Two differences from the PDS3 program that are visible in the output
 Where the logs go
 -----------------
 
-Under ``logs/pdsarchives/`` -- the PDS3 program's name, as for all five PDS4 programs --
-with ``_archives`` as the suffix in the file name. That is one of the few places where a
-PDS4 program's naming is the more predictable of the two: the PDS3 program writes
-``_links``.
+Under ``logs/pds4archives/`` -- this program's own name, as for all five PDS4 programs --
+with ``_archives`` as the suffix in the file name. The PDS3 program writes the same suffix
+under ``logs/pdsarchives/``.
 
 A target that is a bundle set produces a log file whose name begins with the suffix and
 nothing else, because the name is built from the target's own basename and the bundle
@@ -140,7 +139,7 @@ set's is already the directory above:
 
 .. code-block:: text
 
-   $PDS4_HOLDINGS_DIR/../logs/pdsarchives/bundles/cassini_uvis_solarocc_beckerjarmak2023/_archives_2026-08-09T01-42-52_initialize.log
+   $PDS4_HOLDINGS_DIR/../logs/pds4archives/bundles/cassini_uvis_solarocc_beckerjarmak2023/_archives_2026-08-09T01-42-52_initialize.log
 
 Exit status
 -----------

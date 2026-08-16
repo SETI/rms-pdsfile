@@ -74,7 +74,7 @@ Building a shelf
    $ pds4infoshelf --initialize $PDS4_HOLDINGS_DIR/bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023
    2026-08-09 01:42:16.838557 | pds.validation.fileinfo || HEADER | pds4infoshelf --initialize $PDS4_HOLDINGS_DIR/bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023
    2026-08-09 01:42:16.839112 | pds.validation.fileinfo |-| HEADER | Task "initialize" for: $PDS4_HOLDINGS_DIR/bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023
-   2026-08-09 01:42:16.839167 | pds.validation.fileinfo |--| INFO | Log file: $PDS4_HOLDINGS_DIR/../logs/pdsinfoshelf/bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023_info_2026-08-09T01-42-16_initialize.log
+   2026-08-09 01:42:16.839167 | pds.validation.fileinfo |--| INFO | Log file: $PDS4_HOLDINGS_DIR/../logs/pds4infoshelf/bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023_info_2026-08-09T01-42-16_initialize.log
    2026-08-09 01:42:16.839278 | pds.validation.fileinfo |--| HEADER | Generating file info: bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023
    2026-08-09 01:42:16.839311 | pds.validation.fileinfo |---| INFO | Loading checksums for: bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023
    2026-08-09 01:42:16.839568 | pds.validation.fileinfo |---| HEADER | Reading MD5 checksums: checksums-bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023_md5.txt
@@ -85,8 +85,9 @@ Building a shelf
    2026-08-09 01:42:16.863800 | pds.validation.fileinfo || SUMMARY | 8 INFO messages
    2026-08-09 01:42:16.863810 | pds.validation.fileinfo || SUMMARY | 0 DEBUG messages reported of 184 total
 
-Note the log directory: ``logs/pdsinfoshelf/``, not ``logs/pds4infoshelf/``, and the
-logger name ``pds.validation.fileinfo``, which both flavors share.
+Note the log directory: ``logs/pds4infoshelf/``, this program's own name, where the PDS3
+program writes into ``logs/pdsinfoshelf/``. The logger name ``pds.validation.fileinfo``
+is what the two flavors do share.
 
 Two differences from the PDS3 program that are visible in the output
 --------------------------------------------------------------------

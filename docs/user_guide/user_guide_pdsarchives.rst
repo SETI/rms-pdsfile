@@ -55,7 +55,7 @@ Writing an archive
    $ pdsarchives --initialize $PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001
    2026-08-09 01:40:05.267486 | pds.validation.archives || HEADER | pdsarchives --initialize $PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001
    2026-08-09 01:40:05.267999 | pds.validation.archives |-| HEADER | Task initialize for: $PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001
-   2026-08-09 01:40:05.268051 | pds.validation.archives |--| INFO | Log file: $PDS3_HOLDINGS_DIR/../logs/pdsarchives/volumes/COUVIS_0xxx/COUVIS_0001_links_2026-08-09T01-40-05_initialize.log
+   2026-08-09 01:40:05.268051 | pds.validation.archives |--| INFO | Log file: $PDS3_HOLDINGS_DIR/../logs/pdsarchives/volumes/COUVIS_0xxx/COUVIS_0001_archives_2026-08-09T01-40-05_initialize.log
    2026-08-09 01:40:05.268156 | pds.validation.archives |--| HEADER | Writing .tar.gz file for: volumes/COUVIS_0xxx/COUVIS_0001
    2026-08-09 01:40:05.268191 | pds.validation.archives |---| INFO | Creating directory: archives-volumes/COUVIS_0xxx
    2026-08-09 01:40:05.268432 | pds.validation.archives |---| INFO | File archived: COUVIS_0001
@@ -72,11 +72,10 @@ the volume's nine files.
 
 .. note::
 
-   The log file is named ``COUVIS_0001_links_...``, not ``..._archives_...``. This
-   program writes its logs with the same ``_links`` suffix that
-   :doc:`user_guide_pdslinkshelf` uses. The two do not overwrite each other, because the
-   program's own directory sits above them: ``logs/pdsarchives/`` here and
-   ``logs/pdslinkshelf/`` there. :doc:`user_guide_pds4archives` uses ``_archives``.
+   The log file is named ``COUVIS_0001_archives_...``, as
+   :doc:`user_guide_pds4archives`'s is. Older logs of this program carry ``_links``
+   instead, which is the suffix :doc:`user_guide_pdslinkshelf` uses; the two never
+   overwrote each other, because the program's own directory sits above them.
 
 Checking an archive
 -------------------

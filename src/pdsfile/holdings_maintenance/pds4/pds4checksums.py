@@ -23,8 +23,8 @@ is not safe by itself: ``reinitialize`` on a selection is run as ``update`` inst
 rebuilding a whole manifest from one named file would erase the rest of it.
 
 ``--archives`` redirects a command-line path to the archive files of the same target.
-``--infoshelf`` is declared here too, and **the chain it asks for does not happen**: what
-``main()`` does with it is described there.
+``--infoshelf`` chains a run of ``pds4infoshelf`` over the same command line after a
+successful one here, which ``main()`` does by rewriting ``argv[0]``.
 
 Beyond the driver and the path resolution, what this tool shares with the rest is small
 and specific: ``_shelf_common.hashfile()`` computes a digest, ``_shelf_common.move_old()``
@@ -54,11 +54,11 @@ third field this driver never consults, and it is not set here at all: it stays 
 empty default, because the driver picks between the bundle and the bundle set log path per
 target instead.
 
-``progname`` is 'pdschecksums', not this module's name, which is the convention all five
-PDS4 tools follow: it is what the ``--help`` description and the "Missing task" error call
-the tool, and it names the subdirectory of every log root, so both flavors write into one
-directory. Both also share the logger name 'pds.validation.checksums', which is what stops
-the two from being driven from a single process.
+``progname`` is this module's own name, as it is for all five PDS4 tools: it is what the
+``--help`` description and the "Missing task" error call the tool, and it names the
+subdirectory of every log root, so each flavor writes into a directory of its own. What
+they do share is the logger name 'pds.validation.checksums', which is what stops the two
+from being driven from a single process.
 """
 
 import datetime
@@ -893,7 +893,7 @@ def update(pdsdir, selection=None, logger=None):
 ################################################################################
 
 SPEC = _common.ToolSpec(
-    progname='pdschecksums',
+    progname='pds4checksums',
     logname=LOGNAME,
     pdsfile_cls=pdsfile.Pds4File,
     unit='bundle',
@@ -918,21 +918,18 @@ TASKS = {'initialize': initialize,
          'update': update}
 
 def main():
-    """Run the tool, and re-run this same tool where --infoshelf asks for another.
+    """Run the tool, and chain a pds4infoshelf run over the same command line if asked.
 
     This is the ``pds4checksums`` console script's entry point. The driver returns rather
     than exiting, so what happens next is decided here, and it is decided by two things
     together: the last task has to have returned something true, and ``--infoshelf`` has
     to have been given.
 
-    **What that chain then runs is this tool again, not the info shelf tool.** The command
-    line is rebuilt by replacing the string "pdschecksums" with "pdsinfoshelf" throughout
-    ``sys.argv`` and dropping the ``--infoshelf`` flag. No PDS4 command line carries
-    "pdschecksums": the console script is ``pds4checksums`` and the module path ends
-    ``pds4/pds4checksums.py``, and neither contains that text. So the substitution changes
-    nothing, and the subprocess is this same tool running the same task over the same
-    paths a second time, with the flag that would chain again removed. The process then
-    exits with that run's return code.
+    The chained command line is this one with ``argv[0]`` rewritten from "pds4checksums"
+    to "pds4infoshelf" and the ``--infoshelf`` flag dropped, run as a subprocess. Only
+    ``argv[0]`` is rewritten, so a --log directory or a holdings path carrying this
+    tool's name reaches the chained run unchanged. That resolves to the info shelf tool
+    only where ``argv[0]`` is the console script an install provides.
 
     The exit status is the run's own: 0 when the run logged no fatal and no error, and
     1 when it logged either, so a ``--validate`` that reported a mismatch exits 1. Where

@@ -13,8 +13,8 @@ each of those packages, and every task here loops over what those two answer. It
 tasks; the smaller ones are recorded on the functions that carry them. Ten fields of the
 two specifications differ, and the two module docstrings name between them the four whose
 effect is not obvious: ``index_ext`` and ``holdings_sentinel``, which reach nothing here,
-``file_log_level``, and ``handler_factories``. The log suffix differs too, and this
-tool's is the one that matches its own name.
+``file_log_level``, and ``handler_factories``. The log suffix is not among them: both
+tools pass '_archives'.
 
 A target that no rule matches resolves to no archive paths at all, and the five tasks do
 not agree about that. ``update()`` reports nothing and returns False. ``validate()`` and
@@ -51,10 +51,9 @@ limits do not reach this tool's per-file lines at all, where they cap the PDS3 t
 and comparison at 100. ``handler_factories`` adds a warning handler ahead of the error
 handler, so a run leaves a warning file in each log directory that a PDS3 run does not.
 
-``progname`` is 'pdsarchives', not this module's name, which is the convention all five
-PDS4 tools follow: it is what the ``--help`` description and the "Missing task" error call
-the tool, and it names the subdirectory of every log root, so both flavors write into one
-directory.
+``progname`` is this module's own name, as it is for all five PDS4 tools: it is what the
+``--help`` description and the "Missing task" error call the tool, and it names the
+subdirectory of every log root, so each flavor writes into a directory of its own.
 """
 
 import os
@@ -562,7 +561,7 @@ def archive_targets(pdsf, path):
     return [pdsf]
 
 SPEC = _common.ToolSpec(
-    progname='pdsarchives',
+    progname='pds4archives',
     logname=LOGNAME,
     pdsfile_cls=pdsfile.Pds4File,
     unit='bundle',

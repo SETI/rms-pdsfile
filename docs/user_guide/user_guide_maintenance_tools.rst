@@ -228,8 +228,8 @@ once. When both exist the program reports the log-root copy **first**:
 
 .. code-block:: text
 
-   ... | INFO | Log file: <log root>/pdsarchives/volumes/COUVIS_0xxx/COUVIS_0001_links_..._initialize.log
-   ... | INFO | Log file: $PDS3_HOLDINGS_DIR/../logs/pdsarchives/volumes/COUVIS_0xxx/COUVIS_0001_links_..._initialize.log
+   ... | INFO | Log file: <log root>/pdsarchives/volumes/COUVIS_0xxx/COUVIS_0001_archives_..._initialize.log
+   ... | INFO | Log file: $PDS3_HOLDINGS_DIR/../logs/pdsarchives/volumes/COUVIS_0xxx/COUVIS_0001_archives_..._initialize.log
 
 Eight of the ten programs also append to an ``ERRORS.log`` in each directory they write a
 log file in, and the PDS4 programs add a ``WARNINGS.log`` beside it that the PDS3
@@ -256,25 +256,26 @@ A ``pdschecksums --log`` run, showing both trees after one validation:
 The timestamp has one-second resolution and both copies of one run's log carry the same
 one, so the two trees can be compared file for file.
 
-Two things about the program directory are worth knowing before looking for a log.
+**Every program writes under its own name**, so ``pds4checksums`` logs into
+``logs/pds4checksums/`` and ``pdschecksums`` into ``logs/pdschecksums/``, and the two
+flavors of one program never share a directory. That name is also what each program's
+``--help`` description and "Missing task" error call it.
 
-**The five PDS4 programs write under their PDS3 counterpart's name.** ``pds4checksums``
-logs into ``logs/pdschecksums/``, ``pds4archives`` into ``logs/pdsarchives/``, and so on
-for all five. The two flavors' logs are therefore mixed in one directory tree, separated
-only by the category component below it: a PDS3 run lands under ``volumes/`` and a PDS4
-run under ``bundles/``. The same name appears in each PDS4 program's ``--help``
-description and in its "Missing task" error, so ``pds4archives --help`` describes itself
-as ``pdsarchives``.
+.. note::
 
-**The suffix in a log file's name is not always the program's own.** ``pdsarchives``
-writes ``<volume>_links_<timestamp>_<task>.log``, which is the same suffix
-``pdslinkshelf`` uses; the two do not collide because the program directory above them
-differs. ``pds4archives`` writes ``_archives``. The other suffixes are ``_md5`` for the
-checksum programs and ``_info`` for the info shelf programs. The two index shelf programs
-insert **no suffix at all**: their log path is built from the table's own path, so it
-carries one more directory level than the rest and the file is named for the table. A
-table named ``COUVIS_0001_versions.tab`` therefore produces a log with no ``_index``
-anywhere in it.
+   An existing log tree carries an older layout, and so does any script written against
+   it. The five PDS4 programs wrote under their PDS3 counterpart's name --
+   ``pds4archives`` into ``logs/pdsarchives/`` -- so the two flavors' logs were mixed in
+   one tree, separated only by the category component below. ``pdsarchives`` wrote its
+   suffix as ``_links`` rather than ``_archives``.
+
+**The suffix in a log file's name is the program's kind.** The archive programs write
+``<unit>_archives_<timestamp>_<task>.log``, and the link shelf programs ``_links``. The
+others are ``_md5`` for the checksum programs and ``_info`` for the info shelf programs.
+The two index shelf programs insert **no suffix at all**: their log path is built from the
+table's own path, so it carries one more directory level than the rest and the file is
+named for the table. A table named ``COUVIS_0001_versions.tab`` therefore produces a log
+with no ``_index`` anywhere in it.
 
 Exit statuses
 -------------

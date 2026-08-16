@@ -112,9 +112,9 @@ class ToolSpec:
 
     Attributes:
         progname: The tool's name, as it appears in the --help description, in the
-            "Missing task" error, and as the subdirectory of each log root. It is
-            what the tool calls itself, which for all five pds4 tools is the pds3
-            tool's name. Its five readers are _common.build_arg_parser(),
+            "Missing task" error, and as the subdirectory of each log root. Every
+            tool names itself, so the two flavors of one tool log into separate
+            directories. Its five readers are _common.build_arg_parser(),
             _common.setup_run(), _common.run_main(),
             _shelf_common.run_selection_main() and
             _indexshelf_common.run_index_main(); the last three pass it as the log path
