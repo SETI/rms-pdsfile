@@ -3181,6 +3181,19 @@ script's `pytest tests` cannot. Found by PR-33's round-1 reviewer while checking
 the developer guide's CI chapter, which now states the enumeration instead of
 calling the driver a superset. **Owner: whichever PR next edits the driver.**
 
+### 4317. The one-colon-directive check does not know `mermaid`, the one directive whose loss is a whole diagram
+
+**The one-colon-directive check does not know `mermaid`, the one directive whose
+loss is a whole diagram.** `tests/docs/test_markup.py`'s `_DIRECTIVES` frozenset
+enumerates the directive names whose one-colon misspelling (`.. note:` for
+`.. note::`) it reports, and `mermaid` is not among them — the list predates the
+developer guide, which introduced the repository's first `.. mermaid::` blocks. A
+future `.. mermaid:` typo would be parsed as an RST comment and silently delete the
+diagram from the built page, and neither Sphinx build, this gate, nor anything else
+would report it. The fix is one word in the frozenset, plus whatever other
+extension directives the tree has gained by then. Found by PR-33's round-3
+reviewer. **Owner: whichever PR next edits the docs gates.**
+
 ## Documentation and records
 
 ### 4400. `_common.LOGDIRS`'s comment names a caller that does not exist

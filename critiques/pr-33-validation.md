@@ -41,9 +41,9 @@ the real one: the plan writes `_IndexRowMixin`, the class is `_IndexRowsMixin`
 
 Entry 1100 scheduled enabling `sphinxcontrib.mermaid` to whichever PR drew the first
 diagram; this PR draws five, enables the extension, and removes the entry
-(`critiques/observations.md` now counts 211 open: 19 closed since the renumbering
-plus two later additions, one of them this PR's round-1 observation 4316). The owner
-decision of
+(`critiques/observations.md` now counts 212 open: 19 closed since the renumbering
+plus three later additions, two of them this PR's review observations 4316 and
+4317). The owner decision of
 2026-08-09 stands as recorded in the plan and issue #136: **the CDN configuration** —
 no vendored `mermaid.esm.min.mjs`, no `mmdc` pre-rendering, no committed SVGs.
 
@@ -217,6 +217,7 @@ Every round a fresh no-context subagent; recorded in `critiques/pr-33/round-<k>.
 |---|---|---:|
 | 1 | full diff, deepest on the architecture and subsystem chapters | 5 Major, 6 Minor, 2 Deferred |
 | 2 | full diff, deepest on chapters 1, 4, 4b, 5, 6, 7 | 2 Major, 1 Minor, 0 Deferred |
+| 3 | the 26 correction passages, each named by hand | 1 Major, 2 Minor, 1 Deferred |
 
 Round 1's Major findings were all factual prose claims verified false against
 source — the pair-spec difference set, the cross-reference goal itself, the CI
@@ -229,5 +230,10 @@ already recorded as 4111.
 Round 2's two Majors both landed in the extending-tools chapter, and one of them
 was introduced by round 1's own correction — the measured Phase 7 pattern (a
 correction pass carries new defects at about half the rate of the pass it corrects)
-holding on this PR too, which is why round 3 reads only the correction passages,
-each named by hand. This section is completed by the round that ends the loop.
+holding on this PR too, which is why round 3 read only the correction passages,
+each named by hand. Round 3 then found the pattern a third time, in the same
+sentence rounds 1 and 2 had each rewritten: a provenance claim ("shared from
+``_archives_common``") that was true of the parser texts and false of the log
+suffix. One sentence, three rounds, three different defects is the starkest local
+measurement of the pattern this effort has produced. This section is completed by
+the round that ends the loop.

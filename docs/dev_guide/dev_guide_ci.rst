@@ -1,9 +1,10 @@
 CI and Release Workflow
 =======================
 
-One script is the source of truth for what "all checks" means, and every automated
-job either runs it directly or is a driver whose differences from it are stated
-below. When a gate is added,
+One script is the source of truth for what "all checks" means, and every job in the
+test workflows either runs it directly or is a driver whose differences from it are
+stated below (the publish workflows build and upload; they run no gate of their
+own). When a gate is added,
 enabled or retired, ``scripts/run-all-checks.sh`` is where that happens, and CI
 follows it by construction.
 

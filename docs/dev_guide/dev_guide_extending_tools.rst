@@ -63,8 +63,9 @@ shows how much of a pair's difference is data: it differs in eight fields --
 ``progname``, ``pdsfile_cls`` and ``unit`` in the identity group, all three flavor
 fields, ``log_path_method``, and its handler tuple, which adds a warning handler.
 The logger name is the same on both halves (each pair shares its family's), the
-parser texts and the log suffix are shared from ``_archives_common``, and the two
-archive callables are each module's own function of the same name. The flavor group (``holdings_sentinel``, ``index_ext``,
+parser texts are shared from ``_archives_common``, the log suffix is the same
+literal written in each spec, and the two archive callables are each module's own
+function of the same name. The flavor group (``holdings_sentinel``, ``index_ext``,
 ``file_log_level``) is the same for all five specs of one flavor, and each field acts
 on some tools only -- the spec docstring names, for every field, exactly which shared
 functions read it, because "the spec carries it" and "this tool acts on it" are

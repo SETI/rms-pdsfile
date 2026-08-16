@@ -80,7 +80,9 @@ with, so that one object per path survives and a cached object's filled-in value
 not recomputed.
 
 The nine mixin bases hold methods and properties only: no mixin defines ``__init__``
-or any state of its own, every attribute a mixin method reads or writes is defined on
+or any per-object state of its own (the one stateful thing a mixin body carries is
+the memoizing decorator on the existence check, documented with its module in
+:doc:`dev_guide_subsystems`), every attribute a mixin method reads or writes is defined on
 :class:`~pdsfile.pdsfile.PdsFile` (or on a subclass) and reached through ``self`` or
 ``cls`` at run time, and each mixin's class docstring enumerates exactly which
 attributes those are. That contract is what lets the nine live in separate modules
