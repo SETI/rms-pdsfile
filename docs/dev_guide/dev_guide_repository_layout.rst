@@ -39,8 +39,8 @@ of the modernization effort that produced this layout.
     │   │   ├── _indexshelf_common.py
     │   │   ├── _linkshelf_common.py
     │   │   ├── pds3/                # the PDS3 tools, incl. crlf, re_validate,
-    │   │   │                        #   shelf_consistency_check, linkshelf_repairs,
-    │   │   │                        #   and the document-only sync shell scripts
+    │   │   │                        #   linkshelf_repairs, and the document-only
+    │   │   │                        #   sync shell scripts
     │   │   └── pds4/                # the PDS4 halves of the five tool pairs
     │   └── tools/                   # show_opus_products, a python -m diagnostic tool
     ├── tests/                       # the pytest tree (not shipped)
@@ -80,9 +80,9 @@ Four boundaries are worth knowing before editing anything:
 
 * **Shipped versus not.** Only ``src/pdsfile/`` is installed. The eleven maintenance
   programs are console scripts into ``holdings_maintenance``, so those modules are
-  runtime code with a frozen command-line surface; ``crlf``, ``re_validate``,
-  ``shelf_consistency_check`` and ``show_opus_products`` ship in the package too but
-  are run as ``python -m`` modules rather than installed as scripts.
+  runtime code with a frozen command-line surface; ``crlf``, ``re_validate`` and
+  ``show_opus_products`` ship in the package too but are run as ``python -m`` modules
+  rather than installed as scripts.
 * **Public versus private.** Modules whose names begin with an underscore are
   implementation: importable, documented in the :doc:`/api/index`, but not part of the
   frozen public surface. The freeze covers what ``tests/api/api_manifest.json``

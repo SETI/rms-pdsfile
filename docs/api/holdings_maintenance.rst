@@ -108,12 +108,6 @@ share.
    :show-inheritance:
    :special-members: __init__
 
-.. automodule:: pdsfile.holdings_maintenance.pds3.shelf_consistency_check
-   :members:
-   :undoc-members:
-   :show-inheritance:
-   :special-members: __init__
-
 .. automodule:: pdsfile.holdings_maintenance.pds4.pds4archives
    :members:
    :undoc-members:

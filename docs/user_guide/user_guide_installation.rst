@@ -29,9 +29,9 @@ Either way the eleven console scripts land on ``PATH``:
    pdsarchives    pdschecksums   pdsdependency  pdsindexshelf  pdsinfoshelf   pdslinkshelf
    pds4archives   pds4checksums  pds4indexshelf pds4infoshelf  pds4linkshelf
 
-Four further programs ship as modules rather than as console scripts and are run with
-``python -m``: ``crlf``, ``re_validate``, ``shelf_consistency_check`` and
-``show_opus_products``. Their chapters give the full module path each one needs.
+Three further programs ship as modules rather than as console scripts and are run with
+``python -m``: ``crlf``, ``re_validate`` and ``show_opus_products``. Their chapters
+give the full module path each one needs.
 
 One program needs the ``dev`` extra
 -----------------------------------
@@ -66,7 +66,7 @@ The basenames are a requirement of the *directory*, not of the variable, and the
 requirement rather than a habit. Every absolute path is turned into
 the *logical path* the package works in by splitting it at the first ``/holdings/`` or
 ``/pds4-holdings/`` component, so a root directory named anything else makes every path
-under it unusable. Thirteen of the fifteen programs resolve holdings paths, and each of
+under it unusable. Thirteen of the fourteen programs resolve holdings paths, and each of
 them notices, in one of three ways:
 
 * the four checksum and info shelf programs print ``Not a holdings subdirectory:`` and
@@ -77,20 +77,20 @@ them notices, in one of three ways:
 * :doc:`user_guide_show_opus_products` neither refuses nor crashes: it prints a
   ``WARNING:`` line for the path and carries on to the next one, and the run exits 1.
 
-:doc:`user_guide_crlf` and :doc:`user_guide_shelf_consistency_check` are the two that
-never resolve a holdings path at all, and a root's name is nothing to them.
+:doc:`user_guide_crlf` is the one that never resolves a holdings path at all, and a
+root's name is nothing to it.
 
-**Only one of the fifteen programs reads the two holdings variables directly:**
+**Only one of the fourteen programs reads the two holdings variables directly:**
 :doc:`user_guide_show_opus_products`, which reads both, whichever kind of path it is
 asked about, and fails with a :exc:`KeyError` if either is unset.
 
-The other fourteen take their paths on the command line, and the twelve of them that
+The other thirteen take their paths on the command line, and the twelve of them that
 work in a holdings tree find their way around it by splitting the path at its
 ``/holdings/`` or ``/pds4-holdings/`` component rather than by consulting a variable. A
 relative path is resolved against the working directory first, so it is the resolved path
 that has to sit under a root.
 (Twelve, not thirteen: the thirteen above counts ``show_opus_products``, which is not
-one of these fourteen.) Every run in this guide was made with both variables set, and the
+one of these thirteen.) Every run in this guide was made with both variables set, and the
 runs that resolve a path this way behave the same with them unset. Setting them is worth
 doing in any case -- it is what lets you write ``$PDS3_HOLDINGS_DIR/volumes/...`` rather
 than typing the root each time, which is how every example in this guide is written.
@@ -189,7 +189,7 @@ empty PDS3 directories in one command.
 The log tree
 ------------
 
-Twelve of the fifteen programs write log files: the ten of
+Twelve of the fourteen programs write log files: the ten of
 :doc:`user_guide_maintenance_tools`, plus :doc:`user_guide_pdsdependency` and
 :doc:`user_guide_re_validate`. Each writes one per target, in a directory that is **not**
 inside the holdings tree, and the default place is a ``logs`` directory beside the
@@ -203,9 +203,8 @@ Eight of the ten use exactly that shape. The two index shelf programs go one com
 deeper, because their target is a table inside a unit rather than the unit; and
 ``pdsdependency`` and ``re_validate`` go one shallower, dropping ``<category>`` so their
 logs sit directly under a directory named for the volume set. Each of those four chapters
-shows its own. :doc:`user_guide_crlf`, :doc:`user_guide_shelf_consistency_check` and
-:doc:`user_guide_show_opus_products` write no log files at all and report to the terminal
-only.
+shows its own. :doc:`user_guide_crlf` and :doc:`user_guide_show_opus_products` write no
+log files at all and report to the terminal only.
 
 A log root, from ``--log`` or ``PDS_LOG_ROOT``, adds a second copy of the same file
 under that root, in the same shape. :doc:`user_guide_maintenance_tools` gives the file

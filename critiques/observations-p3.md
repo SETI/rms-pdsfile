@@ -607,21 +607,6 @@ triple is: it is the text as written for most links and the basename for a link 
 carried a directory and reached the repair table. **Owner: PR-30b, which documents
 the two tools, or a later link shelf PR that may fix it.**
 
-### 4033. `shelf_consistency_check` maps a shelf whose path holds no underscore to the empty string and…
-
-**`shelf_consistency_check` maps a shelf whose path holds no underscore to the empty
-string and always reports it.** The counterpart is derived with
-`holdings_path.rpartition('_')[0]`, and `str.rpartition` on a string with no separator
-returns `('', '', s)`, so the result is `''`. `os.path.exists('')` is False, so such a
-shelf is reported extraneous however complete the holdings tree beside it is.
-Reproduced by round 4 on `<root>/shelves/info/abc.pickle` with `<root>/holdings/abc`
-present, under a scratch path containing no underscore: `*** Extraneous shelf`,
-`Errors found: 1`. It needs a path with no underscore *anywhere*, which no real
-holdings tree has, so this is latent rather than live -- and it is the same
-unguarded-`rpartition` shape as the extension strip two lines above it.
-**Owner: a later maintenance-tool PR; belongs with observation 3004, which holds the layout
-question this tool's whole search rests on.**
-
 ### 4034. `TranslatorByRegex.append()` discards the receiver when the argument is a null translator
 
 **`TranslatorByRegex.append()` discards the receiver when the argument is a null
@@ -2561,7 +2546,6 @@ written. Deferred 139 records the flag's other quirk, that `--pprint` and
 **`show_opus_products` never resolves a PDS4 path in any test.** Commenting out
 `Pds4File.preload(pds4_holdings_dir)` leaves
 `pytest tests/holdings_maintenance/test_crlf.py
-tests/holdings_maintenance/test_shelf_consistency_check.py
 tests/holdings_maintenance/test_show_opus_products.py --mode ns` at its full
 pass count. Every
 path the module's tests pass is a PDS3 one, so the second half of the tool's
@@ -2765,14 +2749,15 @@ same coupling if it changes how the suite is invoked. a since-resolved observati
 related question of what mode a `--mode`-less run selects at all.
 
 **Re-derived by PR-28, and the single pass still holds.** PR-28 converted
-`crlf` and `shelf_consistency_check`, not `show_opus_products` (see
-`plans/2026-08-07-pr-28-deviation-addendum.md`), so two tools now run inside
+`crlf` and the since-removed shelf consistency checker, not
+`show_opus_products` (see `plans/2026-08-07-pr-28-deviation-addendum.md`), so
+in-process tools now run inside
 the pytest process where the original justification assumed none did. The
-justification survives on its merits rather than by inheritance: neither
-migrated tool imports a PdsFile class at all — `crlf` imports `argparse` and
-`sys`, `shelf_consistency_check` adds `os` — so neither can read
-`use_shelves_only`, and `--mode` cannot change what either does. A second pass
-over them would execute byte-identical work, which is what the original
+justification survives on its merits rather than by inheritance: the one
+remaining migrated tool imports no PdsFile class at all — `crlf` imports
+`argparse` and `sys` — so it cannot read
+`use_shelves_only`, and `--mode` cannot change what it does. A second pass
+over it would execute byte-identical work, which is what the original
 argument claimed for the subprocess case. `support.HOLDINGS_FREE_TOOLS` is
 that property written down, and it is asserted by both in-process runners.
 The claim expires again if a tool that does read `use_shelves_only` is ever
@@ -2965,9 +2950,9 @@ lacks a declared source subset legitimately produces zero child data files) in
 `scripts/automated_tests/pdsfile_main_test.sh` — the data-gate driver.
 
 Two things make waiting cheap: coverage numbers stay informational until the
-targets are set, and PR-28 converts the `shelf_consistency_check` tests to
+targets are set, and PR-28 converted the `crlf` tests to
 in-process `main()` calls, which are measured with no subprocess machinery at
-all. (It leaves `show_opus_products` on subprocesses; that half of this
+all. (It left `show_opus_products` on subprocesses; that half of this
 sentence was a prediction, and
 `plans/2026-08-07-pr-28-deviation-addendum.md` says why it did not hold.)
 If it is taken up, `COVERAGE_CORE=sysmon`
@@ -3101,11 +3086,11 @@ in a fresh checkout, which is a trap for the next executor.
 one.** It is the set that decides which tools may be driven in-process, and
 both `run_tool_in_process()` and `run_tool_without_holdings()` assert against
 it — but the assertion only catches a caller naming the wrong tool. It cannot
-catch the other direction: if `crlf` or `shelf_consistency_check` ever grows an
+catch the other direction: if `crlf` ever grows an
 import of a PdsFile class, the set is silently wrong and the in-process tests
 start resolving temporary-tree paths against the session's preloaded real tree,
-which is observation 6607's failure mode with the subprocess boundary removed. Neither
-tool imports anything but `argparse`, `os` and `sys` today. A test that asserts
+which is observation 6607's failure mode with the subprocess boundary removed. The
+tool imports nothing but `argparse` and `sys` today. A test that asserts
 that — over the module's own import list, not over behaviour — would make the
 set self-checking, and is not written here.
 **Owner: open.**

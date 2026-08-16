@@ -252,8 +252,8 @@ extend-ignore = ["PT011", "SIM105", "SIM108"]
 #     pdsinfoshelf and PT014 -- each because the fix would change behavior or
 #     remove a test id. Deviation (4) names the later PR that owns each one. Two
 #     have since gone: the N806 on the three LOGDIRS locals, when the tools moved
-#     to one shared list of log directories, and the F821 on
-#     shelf_consistency_check.py, when the undefined name it marked was fixed.
+#     to one shared list of log directories, and the F821 on the shelf
+#     consistency checker, a tool since removed outright (issue #156).
 "scripts/dump_public_api.py" = ["RUF100"]
 # CORE (PR-23) -- the eight entries below plus pdscache.py, pdsfile.py and
 # pdsviewable.py further down, which sort after the rule modules. The fifteen

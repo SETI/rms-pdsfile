@@ -757,7 +757,7 @@ can settle from inside Phase 6:
 
 | entry | question |
 |---|---|
-| 6 | `shelf_consistency_check` finds nothing in a modern holdings layout — should the walk learn the current directory names, and what should such a run report? |
+| 6 | ~~`shelf_consistency_check` finds nothing in a modern holdings layout — should the walk learn the current directory names, and what should such a run report?~~ **Superseded 2026-08-16**: the owner removed the tool outright (`plans/2026-08-16-shelf-consistency-check-removal-addendum.md`); whether a shelf-orphan check should exist for the current layout is issue #156's question now |
 | 11 | `crlf` raises `ZeroDivisionError` on a zero-byte file; what an empty file classifies as is a three-way choice |
 | 14 | `pdsdependency`'s glob tables are unsorted |
 | 43, 46, 50, 51 | four questions about the tools' shared surface that the phase's PRs were expected to reach and did not |

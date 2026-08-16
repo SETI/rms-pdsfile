@@ -281,8 +281,8 @@ conflicts with a rule below, follow the rule below. See
    runner is therefore lint-and-holdings-free only; a data run needs a machine
    with holdings.
 9. **`logging.mdc`'s "never bare `print()`" is waived for
-   `holdings_maintenance/`.** The maintenance tools' console output (including the
-   `print()`-driven `shelf_consistency_check`) is frozen behavior.
+   `holdings_maintenance/`.** The maintenance tools' console output is frozen
+   behavior.
 10. **The Python floor is 3.10** (matching the template's `requires-python`),
     overriding `python.mdc`'s "minimum 3.11".
 11. **`ruff format` is not enforced anywhere in this repository** (owner

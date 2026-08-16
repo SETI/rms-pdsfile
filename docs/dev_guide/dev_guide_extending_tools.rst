@@ -16,7 +16,7 @@ piece a new dataset most often needs.
 How a tool is put together: filling a ``ToolSpec``
 --------------------------------------------------
 
-Ten of the fifteen maintenance programs -- the five PDS3/PDS4 pairs -- build no parser
+Ten of the fourteen maintenance programs -- the five PDS3/PDS4 pairs -- build no parser
 and no driver of their own. Each tool module defines its task functions, declares one
 :class:`~pdsfile.holdings_maintenance._common.ToolSpec`, and hands both to the shared
 driver. The spec is a dataclass carrying **data only**: everything that differs

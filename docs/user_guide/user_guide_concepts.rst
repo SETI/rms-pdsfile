@@ -247,7 +247,7 @@ with that command.
 Tasks
 -----
 
-Ten of the fifteen programs -- the five kinds of derived product, in their PDS3 and PDS4
+Ten of the fourteen programs -- the five kinds of derived product, in their PDS3 and PDS4
 flavors -- take the same five **tasks**, and a run does exactly one of them:
 
 .. list-table::
