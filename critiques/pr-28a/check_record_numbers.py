@@ -26,7 +26,6 @@ import pathlib
 import re
 import subprocess
 import sys
-
 import tomllib
 
 BASE = 'b8b9703'                # the commit this PR branched from

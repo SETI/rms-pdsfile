@@ -74,37 +74,54 @@ def test_initialize_on_the_bundleset_writes_the_expected_archive(fresh_tree,
                 f'{SOURCE_MTIMES[relpath]}\n') in text, member
 
 
-def test_validate_cannot_round_trip(archived_tree):
-    """--validate fails immediately after a successful --initialize.
+def test_validate_round_trips(archived_tree):
+    """--validate succeeds immediately after a successful --initialize.
 
-    Members are written relative to the bundle-set basename but read back with a
-    prefix that already ends at the bundle set, so every member is reported twice
-    over: once as missing from the tar (its real path) and once as missing from the
-    directory (a doubled path). That is a defect: the archive has never round-tripped,
-    in production either. Pinned here as current behaviour, so a fix has to invert
-    these assertions deliberately.
+    This assertion is the inverse of what it used to be, changed deliberately. Members
+    are written relative to the packaged directory's basename; the reader used to
+    rebuild them against a prefix that already ended at the bundle set, so every member
+    was reported twice over -- once as missing from the tar under its real path, once as
+    missing from the directory under a doubled one -- and the archive had never
+    round-tripped, in production either. The reader now takes its anchor from the same
+    archive_dirs table the writer used.
     """
 
     run = support.run_tool(archived_tree, 'pds4archives', '--validate',
                            archived_tree.path(BUNDLESET_DIR))
-    assert run.returncode == 1, run.describe()
+    assert run.returncode == 0, run.describe()
 
-    missing_from_tar = [line for line in run.error_lines
-                        if 'Missing from tar file' in line]
-    missing_from_dir = [line for line in run.error_lines
-                        if 'Missing from directory' in line]
-    assert missing_from_tar, run.describe()
-    assert missing_from_dir, run.describe()
+    for phrase in ('Missing from tar file', 'Missing from directory',
+                   'Interior path mismatch'):
+        assert not [line for line in run.error_lines if phrase in line], run.describe()
 
-    doubled = f'{subsets.PDS4_BUNDLESET}/{subsets.PDS4_BUNDLESET}'
-    assert all(doubled in line for line in missing_from_dir), run.describe()
-    assert not any(doubled in line for line in missing_from_tar), run.describe()
+    assert not run.error_lines, run.describe()
 
-    # Every declared source file is caught up in it, in both directions.
+    # Every declared source file was seen, so the run validated the tree rather than
+    # walking an empty one.
     for relpath, _, _ in SOURCE_FINGERPRINTS:
         name = relpath.rpartition('/')[2]
-        assert any(name in line for line in missing_from_tar), name
-        assert any(name in line for line in missing_from_dir), name
+        assert name in run.output, name
+
+
+def test_repair_cancels_when_the_archive_matches(archived_tree):
+    """--repair over an intact archive does nothing, and says so.
+
+    This is a stricter check than validation passing. repair() cancels only when the
+    sorted tuple lists are exactly equal, so while the reader and the writer disagreed
+    about where a member name is anchored, repair rewrote every archive on every run --
+    intact or not, and write_archive(clobber=True) overwrites in place with no versioned
+    copy kept. Validation could have been made to report cleanly while that was still
+    true, which is why this asserts the cancellation rather than the absence of errors.
+    """
+
+    before = archived_tree.path(ARCHIVE).read_bytes()
+
+    run = support.run_tool(archived_tree, 'pds4archives', '--repair',
+                           archived_tree.path(BUNDLESET_DIR))
+    assert run.returncode == 0, run.describe()
+    assert 'repair canceled' in run.output, run.describe()
+    assert 'writing new file' not in run.output, run.describe()
+    assert archived_tree.path(ARCHIVE).read_bytes() == before
 
 
 def test_initialize_refuses_to_clobber(archived_tree):

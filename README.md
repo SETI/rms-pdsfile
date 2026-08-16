@@ -25,6 +25,6 @@
 
 <!-- start-after-point -->
 
-Supported versions: Python >= 3.10
+Supported versions: Python >= 3.11
 
 # PDS Ring-Moon Systems Node, SETI Institute

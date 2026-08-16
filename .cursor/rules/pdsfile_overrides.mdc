@@ -65,22 +65,24 @@ conflicts with a rule below, follow the rule below. See
 
    The waiver list stays enumerated rather than described as a class, so that
    adding a file to it is a visible decision. Measured over every `.py` file under
-   `src/`, four are over a limit:
+   `src/`, four are over a limit, and **all four are waived** (owner, 2026-08-15).
+   Each carries a GitHub issue recording the split for later, so that a waiver is a
+   decision to defer the work rather than a decision to forget it:
 
-   | file | total | docstring | code | over |
-   |---|---:|---:|---:|---|
-   | `src/pdsfile/pdsfile.py` | 2,468 | 814 | 1,654 | both |
-   | `src/pdsfile/_properties.py` | 2,817 | 1,427 | 1,390 | both |
-   | `src/pdsfile/holdings_maintenance/pds3/pdsdependency.py` | 1,165 | 30 | 1,135 | code |
-   | `src/pdsfile/pds3file/rules/VG_28xx.py` | 1,117 | 97 | 1,020 | code |
+   | file | total | docstring | code | over | issue |
+   |---|---:|---:|---:|---|---|
+   | `src/pdsfile/pdsfile.py` | 2,469 | 815 | 1,654 | both | #141 |
+   | `src/pdsfile/_properties.py` | 2,817 | 1,427 | 1,390 | both | #142 |
+   | `src/pdsfile/holdings_maintenance/pds3/pdsdependency.py` | 1,520 | 385 | 1,135 | code | #143 |
+   | `src/pdsfile/pds3file/rules/VG_28xx.py` | 1,117 | 97 | 1,020 | code | #144 |
 
    - `src/pdsfile/pdsfile.py` — **waived on both limits, and the split is
      deferred** (owner, 2026-08-07). This is a code problem and not a
-     documentation one: the file is one class occupying 2,270 of its 2,468 lines,
+     documentation one: the file is one class occupying 2,270 of its 2,469 lines,
      37 methods holding 1,938 lines between them, against a module docstring of
      97. There is no prose to relocate, and trimming docstrings would not bring
      either number down far enough to matter. The available lever is a tenth
-     mixin; whether one exists is open. Deferred observation 199 holds it.
+     mixin; whether one exists is open. Issue #141 holds it.
    - `src/pdsfile/_properties.py` — **waived on both limits** (owner, 2026-08-08),
      and it is the first entry waived on total lines, which makes it the precedent
      `pdsfile.py`'s deferred split will be argued against. The whole lazy-property
@@ -92,21 +94,36 @@ conflicts with a rule below, follow the rule below. See
      ceiling of 2,000. Written out and reviewed, it landed at 2,817. Half the file is now
      docstring, and its code lines went **down** by two, so nothing about the
      complexity this limit exists to bound has changed.
-   - the per-dataset rule files, `src/pdsfile/pds{3,4}file/rules/*.py` — waived as
-     a class. `VG_28xx.py` is the only one that currently needs it.
+   - `src/pdsfile/holdings_maintenance/pds3/pdsdependency.py` — **waived on code
+     lines** (owner, 2026-08-15). It is the one over-limit file the Phase-6
+     consolidation was never going to reach: the other tools shrank by moving shared
+     pds3/pds4 logic into `_common.py` and its siblings, `pdslinkshelf.py` going from
+     1,730 lines to 471 that way, and this module has no PDS4 twin to be consolidated
+     against. The deferral that waited on Phase 6 therefore expired without the number
+     moving. Documenting it added 385 lines of docstring and left the code count at
+     exactly 1,135, which is the two limits behaving as intended. Issue #143 records
+     the split; the natural seam is the 67-line `TESTS` table against the driver.
+   - `src/pdsfile/pds3file/rules/VG_28xx.py` — **waived on code lines** (owner,
+     2026-08-15). It is 20 lines over, and what is over is data rather than logic: its
+     class body is 34 lines with no methods, and the file is 35 regular-expression
+     tables of which `opus_products` alone is 278 lines. Issue #144 records it, and
+     says that closing it as won't-fix is a legitimate outcome — a rule module is its
+     tables.
+
+     **The waiver is this file, not the class of rule modules.** An earlier draft
+     waived `src/pdsfile/pds{3,4}file/rules/*.py` as a class, which would have
+     exempted a future over-limit rule module without anyone deciding to. The
+     enumerated list is the point: a rule module that goes over gets its own row, its
+     own issue and its own decision.
 
    `src/pdsfile/pdscache.py` **is no longer waived.** At 1,914 total and 937 code
    it passes both limits, so its entry is retired; the list means less the longer
    it gets.
 
-   Modules not covered above are held to both limits. The maintenance tools under
-   `src/pdsfile/holdings_maintenance/` are **not** waived. The Phase 6
-   consolidation brought every pds3/pds4 tool pair under the limit; the one module
-   left over it is `src/pdsfile/holdings_maintenance/pds3/pdsdependency.py`, and
-   the two-limit measure sharpens rather than settles that: with 30 lines of
-   docstring against 1,135 of code, it is over on code alone, so it is a genuine
-   structural problem and not a documentation artifact. It still needs a decision
-   of its own — waiver or split. Deferred observation 66 holds it.
+   Modules not covered above are held to both limits. Apart from
+   `pdsdependency.py`, which is waived above, the maintenance tools under
+   `src/pdsfile/holdings_maintenance/` are **not** waived: the Phase 6
+   consolidation brought every pds3/pds4 tool pair under the limit.
 4. **Rule modules and specific files carry permanent `ruff check` exemptions.**
    Rule modules carry permanent per-file-ignores; core files and the subpackage
    `__init__`s carry a smaller frozen set. (`ruff format` does not run at all —

@@ -22,6 +22,8 @@ import sys
 import tarfile
 from pathlib import Path
 
+from tests.holdings_maintenance import readonly_roots
+
 # Repository root: tests/holdings_maintenance/support.py -> repo root.
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -60,6 +62,28 @@ HOLDINGS_DIRNAME = {'pds3': 'holdings', 'pds4': 'pds4-holdings'}
 # session preloads the real holdings tree, so an in-process call can resolve a
 # temporary-tree path back to the real one.
 HOLDINGS_FREE_TOOLS = frozenset({'crlf', 'shelf_consistency_check'})
+
+SUBPROCESS_GUARD_DIR = Path(__file__).resolve().parent / '_subprocess_guard'
+
+
+def readonly_holdings_roots():
+    """Return the real holdings roots, which nothing under test may write into.
+
+    Read from the environment rather than from the resolver, because a tool subprocess
+    installs the same guard and has only the environment to go on.
+
+    Returns:
+        list: absolute paths, empty if neither variable is set.
+    """
+
+    found = []
+    for name in ('PDS3_HOLDINGS_DIR', 'PDS4_HOLDINGS_DIR'):
+        value = os.environ.get(name)
+        if value:
+            found.append(os.path.abspath(value))
+
+    return found
+
 
 TOOL_TIMEOUT = 600      # seconds; every subset here runs in well under a second
 
@@ -229,7 +253,10 @@ class ToolTree:
         env['PDS3_HOLDINGS_DIR'] = str(self.disk / 'holdings')
         env['PDS4_HOLDINGS_DIR'] = str(self.disk / 'pds4-holdings')
         env['TZ'] = 'UTC'
-        env['PYTHONPATH'] = str(REPO_ROOT / 'src')
+        env['PYTHONPATH'] = os.pathsep.join([str(REPO_ROOT / 'src'),
+                                             str(SUBPROCESS_GUARD_DIR),
+                                             str(REPO_ROOT)])
+        env[readonly_roots.ENV_VAR] = os.pathsep.join(readonly_holdings_roots())
         for name in ('PDS_LOG_ROOT', 'PDSFILE_TEST_HOLDINGS', 'PDSFILE_TEST_DATA_DIR'):
             env.pop(name, None)
 

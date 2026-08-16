@@ -73,15 +73,60 @@ LOGNAME = 'pds.validation.archives'
 # General tarfile functions
 ################################################################################
 
+def _member_anchors(tarpath, prefix):
+    """Return the directory each member name is interpreted relative to.
+
+    ``write_archive()`` gives every member the basename of the directory it packaged
+    plus the path below it, and which directories an archive packages is a property of
+    the bundle set's ``archive_dirs`` rule table rather than of the archive's location.
+    So the only way to rebuild a member's absolute path is to ask that same table: a
+    member whose first component is a packaged directory's basename belongs under that
+    directory's parent.
+
+    Deriving the anchor from the archive's own path instead is what made this tool
+    unable to read what it writes. That derivation lands on the bundle set, which is
+    right only where the packaged directory is a bundle directly beneath it. A table
+    that packages the bundle set doubled the set's name, and one that packages
+    collections dropped the bundle's.
+
+    Parameters:
+        tarpath (str): The absolute path of the archive being read.
+        prefix (str): The bundle set directory, as ``dirpath_and_prefix_for_archive()``
+            reports it. Unused in the lookup and kept so that the caller's fallback and
+            this function name the same anchor.
+
+    Returns:
+        dict: Basename to parent directory, for every directory this archive packages.
+        Empty if the tables resolve nothing for this archive, in which case the caller
+        falls back to the prefix and behaves as it did before.
+    """
+
+    try:
+        pdstar = pdsfile.Pds4File.from_abspath(tarpath)
+    except ValueError:
+        return {}
+
+    # ARCHIVE_DIRS is the same table archive_dirs() consults, asked directly: it takes
+    # the absolute archive path and answers with logical paths. Going through
+    # archive_dirs() instead would answer only for a bundle set that is installed,
+    # because that method globs, and a tool has to be able to read an archive of a
+    # bundle set the running machine does not hold.
+    packaged = [os.path.join(pdstar.root_, d) for d in pdstar.ARCHIVE_DIRS.all(tarpath)]
+
+    return {os.path.basename(d): os.path.dirname(d) for d in packaged}
+
+
 def read_archive_info(tarpath, *, logger=None, limits=None):
     """Return what one archive file holds, as the tuples a directory tree is compared to.
 
     This is the other half of the pair ``_archives_common.validate_tuples()`` compares:
     that function's first argument comes from a walk of the filesystem and its second from
-    a call to this. The two are built to the same shape, so a member's absolute path is
-    reconstructed by joining the prefix the archive was written under to the member's own
-    interior name, and a directory member contributes a byte count and a modification time
-    of zero exactly as a directory on disk does.
+    a call to this. The two are built to the same shape. A member's absolute path is
+    rebuilt by joining its name to the parent of the directory that member was packaged
+    from, which ``_member_anchors()`` reads out of the same table the writer consulted,
+    and its interior path is then taken relative to the bundle set, which is where the
+    filesystem walk takes its own from. A directory member contributes a byte count and a
+    modification time of zero exactly as a directory on disk does.
 
     **Three kinds of member are logged and then inventoried anyway.** A ``.DS_Store`` and
     a dot-underscore file are each reported as an error, and an invisible file under a
@@ -128,13 +173,15 @@ def read_archive_info(tarpath, *, logger=None, limits=None):
 
     try:
         (_, prefix) = pdstar.dirpath_and_prefix_for_archive()
+        anchors = _member_anchors(tarpath, prefix)
 
         tuples = []
         with tarfile.open(tarpath, 'r:gz') as f:
 
             members = f.getmembers()
             for member in members:
-                abspath = os.path.join(prefix, member.name)
+                anchor = anchors.get(member.name.split('/')[0], prefix)
+                abspath = os.path.join(anchor, member.name)
 
                 if abspath.endswith('/.DS_Store'):  # skip .DS_Store files
                     logger.error('.DS_Store in tarfile', abspath)
@@ -145,10 +192,16 @@ def read_archive_info(tarpath, *, logger=None, limits=None):
                 if '/.' in abspath:                 # flag invisible files
                     logger.invisible('Invisible file found', abspath)
 
+                # The interior path is expressed relative to the bundle set, which
+                # is how load_directory_info() expresses it too. A member's own name
+                # is relative to whatever directory the archive packaged, so it is
+                # the wrong anchor for the field the two sides compare.
+                interior = abspath[len(prefix):]
+
                 if member.isdir():
-                    tuples.append((abspath, member.name, 0, 0))
+                    tuples.append((abspath, interior, 0, 0))
                 else:
-                    tuples.append((abspath, member.name, member.size,
+                    tuples.append((abspath, interior, member.size,
                                             member.mtime))
 
                 logger.normal('Info read', abspath)
@@ -458,18 +511,16 @@ def archive_lskip(pdsdir):
     name.
 
     **It is computed from the target's own path components rather than looked up**, which
-    is unlike everything else about this tool, and it is not the rule the archives are
-    written by: ``write_archive()`` gives each member the basename of its own packaged
-    directory and the path below it, while ``read_archive_info()`` rebuilds an absolute
-    path by putting the **bundle set's** prefix in front of that member name.
+    is unlike everything else about this tool. It agrees with what the archives are
+    written by because ``read_archive_info()`` anchors each member on the parent of the
+    directory it was packaged from, taken from the same ``archive_dirs`` table
+    ``write_archive()`` consulted, and then expresses the interior path relative to the
+    bundle set as this does.
 
-    **The two agree only where an archive packages a bundle directory sitting directly
-    under the bundle set, and the installed archive tables do not all do that.** Where a
-    table packages the bundle set itself, or a collection two levels down, the rebuilt
-    paths do not match the ones the walk found and this tool's own ``validate()`` reports
-    every file of a freshly written archive as missing from one side or the other. That
-    is a defect in the pair of rules rather than in this function, which computes what its
-    one reader asks of it.
+    The anchor used to be derived from the archive's own location instead, which lands on
+    the bundle set. That is right only where an archive packages a bundle directory
+    sitting directly under the set, and measured across every archive the six installed
+    tables define, 4 of 2,792 are that shape.
 
     Parameters:
         pdsdir: The target being archived.

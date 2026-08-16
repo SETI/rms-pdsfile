@@ -4,6 +4,49 @@ Open observations to file as issues and fix after the merge. Nearly all are pre-
 
 ## Correctness
 
+### 3999. `preload()` does not re-root an already-preloaded class, on either flavor
+
+**A second `preload()` call is ignored for the purpose of resolving paths, so a caller
+that points the class at a different holdings tree keeps resolving into the first one --
+including for paths that lie inside the second.** Measured on both classes, by preloading
+a real root, preloading a temporary copy, and then resolving a path that exists only in
+the copy:
+
+| | `root_` of a path inside the temporary tree | derived write path |
+|---|---|---|
+| `Pds4File` | the **real** root | `<real>/archives-bundles/<set>/<set>.tar.gz` |
+| `Pds3File` | the **real** root | `<real>/archives-volumes/COUVIS_0xxx/COUVIS_0001.tar.gz` |
+
+`from_abspath()` is given an absolute path under the temporary tree and returns an object
+whose `root_` is the real tree, and every derived path -- `archive_paths()`,
+`archive_path_and_lskip()`, the checksum and shelf builders -- follows `root_`. So a
+caller that believes it has isolated itself has not.
+
+The two flavors differ only in how loudly they fail when the second tree is incomplete.
+`Pds3File.preload()` reads `_volinfo` and raises `FileNotFoundError` if it is absent,
+which at least stops the caller; `Pds4File.preload()` has no such requirement and returns
+normally, so the misdirection is silent.
+
+**What it cost, so the risk is not theoretical.** A test that built a temporary holdings
+tree, preloaded it, and called `write_archive()` wrote an 80 MB archive into the shared
+PDS4 holdings on the machine where that tree is writable, and failed four CI jobs with
+`PermissionError` where it is not. The failure was the lucky outcome. `tests/holdings_maintenance/`
+now refuses the write at the point of the call: `readonly_roots.install()` wraps `open`
+and the `os` mutators and rejects any target inside a real root, and a tool subprocess
+installs the same guard from a `sitecustomize.py` on its `PYTHONPATH`. It was a walk of
+both roots first. Measured against a 154 s baseline with no guard at all: walking around
+every test cost 52 s, around every module 4 s, and the interception nothing detectable.
+Either walk also grows with the size of the holdings, which the interception does not. The guard is a backstop rather than a fix, because
+the class still resolves the wrong root.
+
+Consumers preload too. `rms-viewmaster` preloads with a memcache port, and anything that
+preloads twice in one process -- a long-running service pointed at a new tree, a script
+that switches roots -- inherits this.
+
+**Owner: a future preload PR. Whether the second call should re-root, raise, or be
+documented as ignored is a design decision, not an obvious bug fix: re-rooting would
+invalidate every cached object built against the first root.**
+
 ### 4000. 17 pre-existing bugs/quality issues in the holdings-maintenance tools
 
 **17 pre-existing bugs/quality issues in the holdings-maintenance tools** (1
@@ -2159,8 +2202,10 @@ to touch `pdscache.py`).**
 5.1.0, which the same extra pulls in and which `doc_python.mdc` section 3 requires,
 declares `sphinx>=8,<10`. The floor the extra can actually resolve is therefore 8.
 pip resolves it correctly today: the local tree builds on Sphinx 9.1.0, and the two
-hosted lint legs build on 9.1.0 (Python 3.13) and **8.1.3** (Python 3.10), both
-clean. The declared floor is looser than the real one, which matters only to someone
+hosted lint legs build on 9.1.0 and **8.1.3**, both clean. Those legs were Python
+3.13 and 3.10 when this was measured, and the floor is 3.11 now, so the older leg may
+resolve differently; the point is unchanged, which is that the declared floor is
+looser than the real one. The declared floor is looser than the real one, which matters only to someone
 who pins Sphinx and silently gets an older `myst-parser` than this tree was written
 against. `pyproject.toml` is otherwise untouched by this PR.
 **Owner: a later packaging PR.**
@@ -2177,7 +2222,7 @@ recursive import of `pdsfile` raises when a rule module is tested on its own. Ro
 no hits in any of the three, and built a minimal package of the same shape showing
 that `import pkg.sub as sub` during a circular import binds from `sys.modules`
 rather than raising -- the fallback added in Python 3.7. `pyproject.toml` requires
-3.10 or newer, so the mechanism the comment describes cannot occur.
+3.11 or newer, so the mechanism the comment describes cannot occur.
 
 Removing the handler is a code change and was out of PR-30a's scope; the two module
 docstrings now say the handler is there and that the mechanism does not occur,

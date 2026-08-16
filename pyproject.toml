@@ -7,7 +7,7 @@ name = "rms-pdsfile"
 dynamic = ["version"]
 description = "Locate, describe, and organize PDS3 and PDS4 data products in the RMS Node holdings: path parsing, metadata and shelf lookups, associated-file and OPUS product enumeration"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
   "numpy",
   "pillow",
@@ -39,7 +39,6 @@ classifiers = [
   "Topic :: Software Development :: Libraries :: Python Modules",
   "Topic :: Utilities",
   "License :: OSI Approved :: Apache Software License",
-  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
@@ -131,7 +130,7 @@ exclude_lines = [
 ]
 
 [tool.ruff]
-target-version = "py310"
+target-version = "py311"
 line-length = 100
 
 [tool.ruff.format]

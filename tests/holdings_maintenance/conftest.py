@@ -15,9 +15,11 @@
 # differs, then copies the subset into a temporary tree with the declared mtimes.
 ##########################################################################################
 
+import os
+
 import pytest
 
-from tests.holdings_maintenance import support
+from tests.holdings_maintenance import readonly_roots, support
 
 
 @pytest.fixture(scope='session')
@@ -86,3 +88,36 @@ def golden_update(request):
     """Return True when the session was started with --update to rewrite goldens."""
 
     return bool(request.config.getoption('--update'))
+
+
+@pytest.fixture(scope='session', autouse=True)
+def _holdings_are_read_only():
+    """Refuse any write into a real holdings root, in this process and in tool subprocesses.
+
+    These tests drive tools that write -- archives, checksum files, shelves, logs -- and
+    are meant to write only into the temporary tree the fixtures build. Nothing enforced
+    that. A test that resolves a path through `Pds3File` or `Pds4File` gets whichever
+    root the class was preloaded with, and a second `preload()` does not re-root an
+    already-preloaded class, so a test that builds its own tree and preloads it still
+    resolves into the real holdings and writes there. Observation 3999 has the
+    measurements.
+
+    That is not hypothetical: it put an 80 MB archive into the shared PDS4 tree, passed
+    locally because that tree is writable, and failed four CI jobs with PermissionError
+    against the read-only one. The failure was the lucky case. Where the holdings are
+    writable, the damage is silent.
+
+    **The check is an interception rather than a scan.** Measured against a 154 s
+    baseline with no guard: walking both roots around every test cost 52 s, around every
+    module 4 s, and intercepting the write calls nothing detectable. Either walk also
+    grows with the size of the holdings, and these trees are a limited copy of something
+    much larger, so the interception is the only one that stays cheap as they grow.
+
+    A tool subprocess installs the same guard from `_subprocess_guard/sitecustomize.py`,
+    which Python imports at startup because `ToolTree.env` puts that directory on
+    PYTHONPATH.
+    """
+
+    os.environ[readonly_roots.ENV_VAR] = os.pathsep.join(
+        support.readonly_holdings_roots())
+    readonly_roots.install()

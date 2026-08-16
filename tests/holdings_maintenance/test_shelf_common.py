@@ -30,7 +30,7 @@ def stamp(seconds):
     """Render a POSIX time the way the info shelf records it."""
 
     return datetime.datetime.fromtimestamp(seconds,
-                                           tz=datetime.timezone.utc).strftime(FORMAT)
+                                           tz=datetime.UTC).strftime(FORMAT)
 
 
 def test_the_recorded_format_parses():
