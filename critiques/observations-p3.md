@@ -3194,6 +3194,25 @@ would report it. The fix is one word in the frozenset, plus whatever other
 extension directives the tree has gained by then. Found by PR-33's round-3
 reviewer. **Owner: whichever PR next edits the docs gates.**
 
+### 4318. The Markdown gate reads two files, and its directory arguments select nothing
+
+**The Markdown gate reads two files, and its directory arguments select nothing.**
+`pymarkdown scan` selects by the `.md` extension and does not recurse into a
+directory argument, so of the four scan paths `run-all-checks.sh` passes —
+`docs/`, `.cursor/`, `README.md`, `CONTRIBUTING.md` — the two directories
+contribute no file: `docs/` holds no `.md` at any depth, and `.cursor/`'s five
+Markdown files (four skills' `SKILL.md` plus one `reference.md`) sit two levels
+down. The gate prints the selection before scanning and fails on an empty one, so
+its true scope — `README.md` and `CONTRIBUTING.md` — is stated on every run
+rather than implied by the argument list. Measured with `-r` added: the five
+nested files carry **130** findings, of which 95 (`MD041`/`MD003`/`MD022`/`MD026`)
+are one artifact — PyMarkdown reads the skills' YAML front-matter block as a
+setext heading, which the `front-matter` extension in `[tool.pymarkdown]` would
+correct — and the residue is 17 `MD036` + 17 `MD032` in `reference.md` and one
+`MD040`. Whether the skills are worth linting is a decision nobody has taken;
+`CODE_OF_CONDUCT.md` is likewise outside the selection.
+**Owner: a future decision, if the gate's scope is ever widened.**
+
 ## Documentation and records
 
 ### 4400. `_common.LOGDIRS`'s comment names a caller that does not exist

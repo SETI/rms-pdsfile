@@ -4,12 +4,12 @@ Open observations from the modernization review rounds, renumbered and split by 
 
 | File | Contents | Observations | Numbers |
 |---|---|---:|---|
-| [observations-scheduled.md](observations-scheduled.md) | Owned by a remaining PR | 14 | 1000–1503 |
+| [observations-scheduled.md](observations-scheduled.md) | Owned by a remaining PR | 12 | 1000–1503 |
 | [observations-p1.md](observations-p1.md) | Blocks the merge | 0 | — |
-| [observations-p2.md](observations-p2.md) | Before the merge | 16 | 3000–3401 |
-| [observations-p3.md](observations-p3.md) | After the merge | 130 | 3999–4405 |
+| [observations-p2.md](observations-p2.md) | Before the merge | 17 | 3000–3402 |
+| [observations-p3.md](observations-p3.md) | After the merge | 131 | 3999–4405 |
 | [observations-p4.md](observations-p4.md) | No action | 52 | 6000–6616 |
 
-**212 open observations.** The source record held 375: 364 numbered entries plus 11 unnumbered bullets. 28 were resolved or withdrawn and are not carried over; the remaining 347 were combined into 228 by 51 merge groups that gather duplicates and same-subject clusters, one `MemcachedCache` observation replacing sixteen and one `re_validate` observation replacing five; and 19 have since been closed by the work and the owner rulings that followed, entry 1100 by the developer guide enabling `sphinxcontrib.mermaid`. 375 - 28 resolved - 119 absorbed by merging - 19 since closed + 3 found during the later work (one while fixing entries, two by PR-33's reviews) = 212.
+**212 open observations.** The source record held 375: 364 numbered entries plus 11 unnumbered bullets. 28 were resolved or withdrawn and are not carried over; the remaining 347 were combined into 228 by 51 merge groups that gather duplicates and same-subject clusters, one `MemcachedCache` observation replacing sixteen and one `re_validate` observation replacing five; and 21 have since been closed by the work and the owner rulings that followed, entry 1100 by the developer guide enabling `sphinxcontrib.mermaid`, entries 1200 and 1201 by the README rewrite. 375 - 28 resolved - 119 absorbed by merging - 21 since closed + 5 found during the later work (one while fixing entries, two by PR-33's reviews, two by PR-34's measurements) = 212.
 
 Number blocks: 1000s scheduled work, grouped by owning PR; 2000s blocking; 3000s before the merge; 4000s after the merge; 6000s no action. Within each priority, observations are grouped by category on hundred boundaries, leaving room for later additions.
