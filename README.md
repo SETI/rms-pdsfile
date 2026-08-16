@@ -77,7 +77,7 @@ who maintains or mirrors a Ring-Moon Systems holdings tree.
   `pds4archives`, `pds4checksums`, `pds4indexshelf`, `pds4infoshelf` and
   `pds4linkshelf` for PDS4. Four more programs run as modules with
   `python -m`: `crlf`, `re_validate`, `shelf_consistency_check` and
-  `show_opus_products`. The
+  `show_opus_products` (the user guide gives each one's full module path). The
   [user guide](https://rms-pdsfile.readthedocs.io/en/latest/user_guide/user_guide.html)
   has a chapter on each.
 

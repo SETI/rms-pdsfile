@@ -54,7 +54,7 @@ page, so exit statuses prove nothing here); then the §6.6 loop to convergence.
 
 | | |
 |---|---:|
-| `README.md` | rewritten, 153 lines against the old 30 |
+| `README.md` | rewritten, 154 lines against the old 30 |
 | `CONTRIBUTING.md` | testing section rewritten; three false claims corrected |
 | `docs/user_guide/user_guide_installation.rst` | 1 sentence (3.10 → 3.11) |
 | `docs/conf.py` | `suppress_warnings = ['myst.header']`, with its comment |
