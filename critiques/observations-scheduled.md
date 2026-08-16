@@ -104,19 +104,6 @@ target, and observation 6403 records the 43 docstrings that are not published at
 roles nothing would check.
 **Owner: issue #149, which carries this measurement so it is not re-derived.**
 
-## PR-33 — Developer guide, with architecture diagrams
-
-### 1100. `sphinxcontrib-mermaid` is still in the `docs` extra, and no configuration enables it
-
-**`sphinxcontrib-mermaid` is still in the `docs` extra, and no configuration enables
-it.** `docs/conf.py` drops the extension because no page draws a diagram (the CDN
-measurement is in the comment there), but `pyproject.toml`'s `docs` extra still
-lists the package, so `.readthedocs.yaml`'s `pip install .[docs]` and CI's
-`pip install -e ".[dev]"` both install it. Nothing breaks -- an installed extension
-that no `extensions` list names does nothing -- and the guides of the next two PRs
-will want it. It is left in place rather than removed and re-added.
-**Owner: PR-32 or PR-33, whichever draws the first diagram.**
-
 ## PR-34 — README rewrite, and the PyMarkdown gate
 
 ### 1200. Where the README include marker sits decides what the documentation front page says, and…
