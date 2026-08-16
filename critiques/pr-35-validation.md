@@ -287,3 +287,21 @@ Packaging: `python -m build` produces a wheel and an sdist that each carry all
 config). The stubs change no runtime behavior — a `.pyi` is never executed and
 `py.typed` is an empty marker — so identical suite numbers are the expected
 result, and the pass/fail set diff is empty by construction.
+
+### The adversarial loop (§6.6)
+
+Four rounds, each a fresh no-context reviewer; records in
+`critiques/pr-35/round-<k>.md`. Round 1 (full diff): 2 Major — both wrong-narrow
+types, the defect class the typing rule names as the worst — and 4 Minor; all
+fixed, and writing the missing evidence rows surfaced one further instance of
+the Major-1 shape, fixed in the same pass. Round 2 (full diff, weighted to round
+1's blind spots; the reviewer also machine-checked all 153 concrete data
+annotations against live runtime values): 0 Major, 3 new Minor; all fixed.
+Round 3 (full diff, independent sampling): 0 Major, 2 new Minor — one of them
+the round-2 defect shape in its single remaining sibling; all fixed. Round 4
+(scoped per the cap rule): every resolution confirmed in the tree, gates re-run
+green, **zero Major — goal met, loop terminated**. No finding was rebutted;
+every one was fixed. Every fix round touched only `.pyi` and record files (and
+`pyproject.toml`'s ruff exclusion once), never a runtime `.py`, so the full-data
+record above carried forward per §6.6 step 5, and each round's reviewer verified
+that claim against the actual commit diffs.
