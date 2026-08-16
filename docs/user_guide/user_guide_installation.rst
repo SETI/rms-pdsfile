@@ -89,8 +89,10 @@ work in a holdings tree find their way around it by splitting the path at its
 ``/holdings/`` or ``/pds4-holdings/`` component rather than by consulting a variable. A
 relative path is resolved against the working directory first, so it is the resolved path
 that has to sit under a root.
-(Twelve, not thirteen: the thirteen above counts ``show_opus_products``, which is not
-one of these thirteen.) Every run in this guide was made with both variables set, and the
+(Twelve, not thirteen: the thirteen that resolve holdings paths include
+``show_opus_products``, which this paragraph's thirteen do not, and this paragraph's
+thirteen include ``crlf``, which resolves no holdings path -- either subtraction leaves
+twelve.) Every run in this guide was made with both variables set, and the
 runs that resolve a path this way behave the same with them unset. Setting them is worth
 doing in any case -- it is what lets you write ``$PDS3_HOLDINGS_DIR/volumes/...`` rather
 than typing the root each time, which is how every example in this guide is written.

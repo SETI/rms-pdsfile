@@ -21,7 +21,7 @@ that is, the validation task of :doc:`user_guide_pdschecksums`,
 are called as library functions rather than as subprocesses, so what each of them
 validates is whatever that program validates.
 
-**Five is not all of them.** Three checks in this package are never reached from here:
+**Five is not all of them.** Two checks in this package are never reached from here:
 
 * :doc:`user_guide_pdsindexshelf` offers a validation task under the same name as the
   four that are called, and this program neither imports nor runs it. **The index shelves

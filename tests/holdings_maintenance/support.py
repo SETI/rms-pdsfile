@@ -370,9 +370,10 @@ def run_tool_in_process(tool, *args):
     Third fidelity caveat, after the working directory and sys.argv: output is
     captured into io.StringIO, which has no encoding, where a real process writes
     through an encoded stream. A byte the subprocess's locale could not encode
-    would raise there and cannot here. The one tool driven this way cannot produce
-    one -- it prints paths the caller supplied and ASCII status words -- but a
-    tool that formatted arbitrary file content would need the subprocess.
+    would raise there and cannot here. The one tool driven this way prints the
+    paths the caller supplied and ASCII status words, so its output is encodable
+    whenever its arguments are ASCII; a test that passes a non-ASCII path, or a
+    tool that formatted arbitrary file content, needs the subprocess.
 
     Args:
         tool: A key of TOOL_MODULES that is also in HOLDINGS_FREE_TOOLS.
