@@ -18,6 +18,7 @@
 
 import subprocess
 import sys
+import types
 
 import pytest
 
@@ -261,3 +262,56 @@ def test_the_module_is_runnable_as_python_m(tmp_path):
     assert 'usage: show_opus_products.py' in stdout, stdout
     for flag in ('--paths', '--opus-types', '--narrow-table', '--debug'):
         assert flag in stdout, stdout
+
+
+##########################################################################################
+# A product-category key that carries no OPUS type
+#
+# opus_products()'s contract admits a key that is not the five-element tuple: the empty
+# string, which carries a unit set's documents. Four paths in the reference holdings
+# return one, and every key used to be subscripted at index 2 without being asked, so
+# `''[2]` ended the run in IndexError and nothing was printed. The declared subsets hold
+# no such path, so the dictionary is supplied here rather than found.
+##########################################################################################
+
+@pytest.mark.holdings_free
+def test_opus_type_of_answers_for_every_shape_of_key():
+    """The five-element tuple has a type; the documented empty-string key has none."""
+
+    assert show_opus_products.opus_type_of(
+        ('Cassini ISS', 10, 'coiss_raw', 'Raw Image', True)) == 'coiss_raw'
+    assert show_opus_products.opus_type_of('') is None
+    assert show_opus_products.opus_type_of(('short', 2, 'coiss_raw')) is None
+
+
+@pytest.mark.holdings_free
+def test_a_key_with_no_opus_type_is_reported_and_the_rest_is_printed(monkeypatch,
+                                                                    capsys):
+    """A run that meets such a key finishes, names it, and prints every other type."""
+
+    typed_key = ('Cassini ISS', 10, 'coiss_raw', 'Raw Image', True)
+    product = types.SimpleNamespace(logical_path='volumes/VG_20xx/VG_2001/DOC.LBL')
+    pdsf = types.SimpleNamespace(
+        exists=True,
+        logical_path='volumes/VG_20xx/VG_2001/JUPITER/CALIB/VG1PREJT.LBL',
+        opus_products=lambda: {typed_key: [[product]], '': [[product]]})
+
+    stub = types.SimpleNamespace(use_shelves_only=lambda _flag: None,
+                                 preload=lambda _root: None,
+                                 from_abspath=lambda _path: pdsf,
+                                 from_logical_path=lambda _path: pdsf)
+    monkeypatch.setattr(show_opus_products, 'Pds3File', stub)
+    monkeypatch.setattr(show_opus_products, 'Pds4File', stub)
+    monkeypatch.setenv('PDS3_HOLDINGS_DIR', '/nonexistent-holdings')
+    monkeypatch.setenv('PDS4_HOLDINGS_DIR', '/nonexistent-holdings')
+
+    status = show_opus_products.main(['show_opus_products.py', '--paths',
+                                      pdsf.logical_path])
+
+    out = capsys.readouterr().out
+    assert status == 0, out
+    assert 'WARNING' in out, out
+    assert "with no OPUS type ('')" in out, out
+    # The rest of the answer is still printed.
+    assert 'coiss_raw' in out, out
+    assert product.logical_path in out, out

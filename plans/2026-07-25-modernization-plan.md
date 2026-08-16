@@ -1152,8 +1152,8 @@ Three things that shaped the result and bind the PRs after it:
     roles cannot be used until the full API reference exists, so the inline
     literals these docstrings use instead have to be swept once it does. PR-31
     built the reference and measured that sweep at 3,651 literal occurrences, of
-    which 2,384 name something the package defines; entry 168 is re-owned to
-    PR-31a.
+    which 2,384 name something the package defines; entry 168 was re-owned to
+    PR-31a, which is permanently deferred to issue #149.
   * **Forty-five defects found by reading the code against its own prose** —
     sixteen by the executor (deferred entries 152–167) and twenty-nine by the four
     review rounds (170–198) — plus two notes for the documentation PRs that follow
@@ -1365,8 +1365,8 @@ claim came from and which modules could not be described beyond their tables.
 **PR-31 (M)** `docs: Sphinx scaffolding + API reference` -- **done and merged into
 `rewrite` as `532f65d` (PR #135)**, record `critiques/pr-31-validation.md`
 **This is where Phase 7 resumed: the docstring work on `src/` finished with PR-30c, and
-what is left of the phase is the guides of PR-32 onward, the README rewrite of PR-34, and
-the cross-reference sweep of PR-31a below.**
+what is left of the phase is the guides of PR-32 onward and the README rewrite of PR-34.
+The cross-reference sweep of PR-31a below is permanently deferred to issue #149.**
 `docs/` per template: `conf.py` (autodoc/napoleon/intersphinx/mermaid/myst),
 `index.rst` including the README past its `<!-- start-after-point -->` marker,
 `api/` autodoc pages per subpackage. **The current README has no such
@@ -1409,7 +1409,10 @@ rendering diagrams if the CDN is unreachable. Only `mermaid_use_local` avoids a 
 gate does **not** catch is `critiques/pr-31/round-3.md` and deferred 333-341; PR-32
 through PR-34 all lean on this gate and should read it.
 
-**PR-31a (M)** `docs: inline literals to cross-reference roles`
+**PR-31a (M)** `docs: inline literals to cross-reference roles` -- **permanently
+deferred (owner, 2026-08-16), recorded as issue #149.** The measurement below is what the
+issue carries, so nothing has to be re-derived if the sweep is ever picked up; the work is
+not part of this plan any more. Observations 1001 and 1003 are re-owned to the issue.
 Deferred **168**, re-owned from PR-31 with its scope measured rather than assumed. Every
 docstring in `src/` uses inline literals where `doc_python.mdc` section 5 wants a
 cross-reference role; the roles could not resolve until the full API reference existed,
