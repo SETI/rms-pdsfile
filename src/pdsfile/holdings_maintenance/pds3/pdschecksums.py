@@ -102,8 +102,11 @@ def generate_checksums(pdsdir, selection=None, oldpairs=[], *, regardless=True,
     reading: it answers "has anything under here changed", not "has anything checksummed
     here changed".
 
-    The order of the result is the order of ``oldpairs`` first, in full, and then the
-    files the walk found that were not already in it, in walk order.
+    The order of the result is the order of ``oldpairs`` first and then the files the walk
+    found that were not already in it, in walk order. **An already-known entry whose file
+    the walk did not see is reported and left out**, so a deletion reaches the manifest;
+    with a selection given the walk covered one file, so no entry is judged missing on
+    the strength of it.
 
     Parameters:
         pdsdir: The volume directory to walk. Its abspath is the root of the walk and its
@@ -151,9 +154,11 @@ def generate_checksums(pdsdir, selection=None, oldpairs=[], *, regardless=True,
             md5_dict[abspath] = old_md5
 
         newtuples = []
+        walked = set()
         for (path, _dirs, files) in os.walk(dirpath):
             for file in files:
                 abspath = os.path.join(path, file)
+                walked.add(abspath)
                 latest_mtime = max(latest_mtime, os.path.getmtime(abspath))
 
                 if selection and file != selection:
@@ -207,6 +212,14 @@ def generate_checksums(pdsdir, selection=None, oldpairs=[], *, regardless=True,
 
         newpairs = []
         for key in old_keys:
+            # An entry whose file the walk did not see is a deletion: report it and
+            # leave it out. With a selection the walk was narrowed, so nothing but
+            # the named file is judged.
+            if not selection and key not in walked:
+                logger.info('Removed entry for missing file', key, force=True)
+                del md5_dict[key]
+                continue
+
             newpairs.append((key, md5_dict[key]))
             del md5_dict[key]
 
@@ -235,11 +248,9 @@ def read_checksums(check_path, selection=None, *, logger=None, limits=None):
     **The manifest is parsed by fixed offsets, not by splitting.** A record's first 32
     characters are the digest and everything from the 35th to the end of the line,
     stripped of trailing whitespace, is the path; the two characters between are the
-    separator this module writes and are not examined. **A record too short to hold a
-    path, a blank line among them, ends the whole read**: the basename it yields is empty
-    and the test for an invisible file subscripts it. With a selection given, such a
-    record is dropped by the basename comparison above that test and the read completes,
-    so whether a manifest can be read at all depends on the task.
+    separator this module writes and are not examined. A record too short to hold a path,
+    a blank line among them, is reported as an error and left out, whether or not a
+    selection was given, so a malformed manifest is named rather than read past.
 
     Each path is made absolute by putting the manifest's own prefix in front of it, which
     is the counterpart of the trimming ``write_checksums()`` does.
@@ -259,8 +270,6 @@ def read_checksums(check_path, selection=None, *, logger=None, limits=None):
         an empty list for a missing manifest or an unmatched selection.
 
     Raises:
-        IndexError: from the ``__getitem__()`` that tests a basename's first character,
-            for a record with no path in it.
         ValueError: raised by ``from_abspath()``, before any log line is written, for a
             path outside every holdings tree.
         OSError: raised by ``open()`` for a manifest that exists and cannot be read. It is
@@ -301,6 +310,10 @@ def read_checksums(check_path, selection=None, *, logger=None, limits=None):
                 hexval = rec[:32]
                 filepath = rec[34:].rstrip()
 
+                if not filepath:
+                    logger.error('Blank record in checksum file', check_path)
+                    continue
+
                 if selection and os.path.basename(filepath) != selection:
                     continue
 
@@ -313,7 +326,7 @@ def read_checksums(check_path, selection=None, *, logger=None, limits=None):
                     logger.error('._* file found in checksum file', filepath)
                     continue
 
-                if basename[0] == '.':
+                if basename.startswith('.'):
                     logger.invisible('Checksum for invisible file', filepath)
 
                 abspairs.append((prefix_ + filepath, hexval))
@@ -486,11 +499,9 @@ def validate_pairs(pairs1, pairs2, selection=None, *, logger=None,
     makes a narrowed run safe: the manifest's other entries are not compared against a
     walk that was never asked about them, and so are not reported as extra.
 
-    **Nothing raised inside this escapes it.** The ``return`` sits in the ``finally``
-    clause, so the re-raise above it is discarded and the caller is given the flag as it
-    stood, which for a failure part way through a comparison is True unless a mismatch had
-    already been seen. A ``KeyboardInterrupt`` is swallowed the same way. It is the reason
-    ``B012`` is on this file's ruff ignore list.
+    **Anything raised inside this is logged and re-raised**, a ``KeyboardInterrupt``
+    among them: the ``finally`` closes the log level and the return sits after it, so a
+    comparison that failed part way through cannot come back as a flag the caller trusts.
 
     Parameters:
         pairs1 (list): The (absolute path, digest) pairs a fresh walk found.
@@ -552,7 +563,8 @@ def validate_pairs(pairs1, pairs2, selection=None, *, logger=None,
 
     finally:
         logger.close()
-        return success
+
+    return success
 
 ################################################################################
 # Simplified functions to perform tasks
@@ -564,10 +576,8 @@ def initialize(pdsdir, selection=None, *, logger=None, limits=None):
     A manifest already in place is an error and nothing is walked. **A selection is
     refused by raising rather than by logging**: there is no sense in creating a manifest
     that covers one named file, and the exception is what a run of this task on a
-    selection ends with. No other task here refuses a selection at all, and
-    ``pdsinfoshelf``'s ``initialize`` refuses one by calling ``error()`` on a logger the
-    driver never supplied, so it ends in ``AttributeError`` rather than in a report; only
-    the PDS4 info shelf tool logs and returns.
+    selection ends with. No other task here refuses a selection at all, and both info
+    shelf tools refuse one by logging and returning instead.
 
     The driver reaches this on a selection only for the ``initialize`` task itself, since
     it demotes ``reinitialize`` on a selection to ``update``.

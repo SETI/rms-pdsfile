@@ -25,39 +25,6 @@ is byte-identical through the move, its gate is the pass/fail set, and adding
 a test id is movement beyond the ten the a since-resolved observation check required.
 **Owner: unassigned (a future bug-fix PR, with a regression test).**
 
-### 3002. `pdsinfoshelf --initialize` crashes on a file selection instead of refusing
-
-**`pdsinfoshelf --initialize` on a file inside a volume ends in `AttributeError`.**
-`initialize()` resolves its logger only inside the branch that finds an existing
-shelf, so on the path that reaches the selection check the logger is still whatever
-the caller passed, and `_shelf_common.run_selection_main()` calls a task as
-`tasks[task](pdsdir, selection)` and passes none. The
-`logger.error('File selection is disallowed for task "initialize"', selection)` call
-is then made on None. Demonstrated against a stub: the pds3 tool raises
-`AttributeError: 'NoneType' object has no attribute 'error'` and `pds4infoshelf` logs
-the error and returns, because it resolves its logger before either test. The driver
-reaches this for the `initialize` task alone, since it demotes `reinitialize` on a
-selection to `update`. The fix is one line, hoisting the `logger = logger or …` above
-the first test as the pds4 half already does; it is a behavior change on a frozen
-surface and this PR documents it rather than making it.
-**Owner: a later maintenance-tool PR.**
-
-**`pdsinfoshelf --initialize` with a file selection crashes instead of refusing, and
-its PDS4 twin does not.** `initialize()` in `holdings_maintenance/pds3/pdsinfoshelf.py`
-binds its logger inside the `if os.path.exists(info_path)` branch, so a run that
-reaches the `if selection:` refusal below it with no existing shelf still has
-`logger` set to `None`. The driver calls the task functions without passing a
-logger, so that is the ordinary case. Measured in a sandbox, with the shelf removed
-and one top-level file named:
-`AttributeError: 'NoneType' object has no attribute 'error'`, raised at the
-`if selection:` refusal inside that module's `initialize()`, exit 1, with the
-intended message `File selection is disallowed for task "initialize"` never printed.
-`pds4infoshelf.py` binds the same logger unconditionally at the top of its own
-`initialize()` and logs the message properly, exiting 1; both checksum programs
-raise `ValueError` carrying the text. So one of the four is wrong and the fix is one
-line, moving the binding above the first check. The guide documents the crash.
-**Owner: whoever next touches `pdsinfoshelf`.**
-
 ### 3003. `prefix_mapping` is a `set`, so four derived structures are built in an order that depends on…
 
 **`prefix_mapping` is a `set`, so four derived structures are built in an order that
@@ -106,32 +73,6 @@ it is four and not more, and reproduced here. The tool prints a traceback and
 returns nothing. **Two owners: the tool should not subscript an unchecked key, and
 separately `opus_products()` producing an empty-string key at all belongs to
 `_opus.py` and the `VG_20xx`/`VGIRIS_xxxx` rule modules.**
-
-### 3006. `update` cannot see a deletion, and never refreshes a directory entry
-
-**`update` cannot see a deletion, in all four checksum and info shelf tools.**
-`generate_checksums()` rebuilds its result from `old_keys = [p[0] for p in oldpairs]`,
-all of them, and `generate_infodict()` starts from `old_infodict.copy()`, so an entry
-for a file that is no longer on disk survives every update. Because it survives, the
-comparison the task then makes still holds and the run reports "update canceled": a
-deletion is not merely un-removed, it is invisible. Measured in both pairs with an
-`oldpairs`/`old_infodict` naming a file that does not exist. Only `reinitialize` or
-`repair` clears it. The link shelf tools do drop such an entry, because
-`generate_links()` assembles its result from the paths the walk found; that asymmetry
-between the three families is what made this hard to see. Found by round 1.
-**Owner: a later maintenance-tool PR.**
-
-**The info shelf `update` never refreshes a directory entry.** `get_info()` recomputes
-a directory's byte count, child count and date from the children the walk found, and
-the merge that follows writes a key only `if key not in merged`, so a directory
-already in the shelf keeps the entry it was shelved with and the recomputation is
-discarded. Measured with a deliberately stale directory entry: the fresh walk computed
-one value and the returned dictionary carried the old one. A unit that has gained or
-lost a file therefore keeps a wrong child count and byte total for every ancestor
-directory until a `reinitialize` or a `repair`, and `validate` reports those as "Child
-count mismatch" and "File size mismatch", so the two tasks disagree about the same
-shelf. Found by round 1.
-**Owner: a later maintenance-tool PR.**
 
 ### 3007. Three defects in `crlf`
 
@@ -203,17 +144,7 @@ record `shelf/dash-root`, where the base run walked the directory and reported
 on it.
 **Owner: open.**
 
-### 3008. Four defects in the checksum generate-and-validate path
-
-**A blank line in a checksum manifest ends the read with `IndexError`.**
-`read_checksums()` parses by fixed offsets, so a short record yields an empty
-`filepath` and an empty `basename`, and `if basename[0] == '.':` then subscripts an
-empty string. Reproduced in both flavors with a manifest holding one blank line:
-`IndexError: string index out of range`, logged through `exception()` and re-raised.
-With a selection given the record is skipped by the basename test above it and the
-read completes, so the failure depends on the task. `basename.startswith('.')` is the
-one-character fix. Found by round 1.
-**Owner: a later maintenance-tool PR.**
+### 3008. Two defects in the checksum generate-and-validate path
 
 **`pdschecksums.generate_checksums()` returns an empty dict where its own contract is
 a list.** The two paths where a selection matched no file, or more than one, return
@@ -222,16 +153,6 @@ returns `([], latest_mtime)` on the same two paths. Every caller tests the value
 truth alone, so nothing breaks today; a caller that iterated it would get keys rather
 than pairs.
 **Owner: a later maintenance-tool PR.**
-
-**`pdschecksums.validate_pairs()` and `pdsinfoshelf.validate_infodict()` return from
-their `finally` clause, so nothing raised inside them escapes.** The `except` above
-each re-raises and the `return` in the `finally` discards it, including a
-`KeyboardInterrupt`. `validate_pairs` then reports the flag as it stood, which for a
-failure part way through a comparison that had so far agreed is True. Both are why
-`B012` is on `pdschecksums.py`'s and `pdsinfoshelf.py`'s ruff ignore lists, and both
-pds4 twins get it right -- `pds4checksums.validate_pairs` returns after the `try` and
-`pds4infoshelf.validate_infodict` assigns in the `finally` and returns after it.
-**Owner: a later maintenance-tool PR; the two ratchet codes retire with the fix.**
 
 **`validate_pairs()` computes a merged limits dictionary and then passes the unmerged
 one**, in both flavors: `merged_limits` is built from `VALIDATE_PAIRS_LIMITS` and the

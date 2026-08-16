@@ -218,7 +218,6 @@ conflicts with a rule below, follow the rule below. See
    | `RUF005` | 4 | `pdsinfoshelf.py`, `pds4infoshelf.py`, `re_validate.py` ×2 | style | the repo-wide owner-chosen exclusion above |
    | `I001` | 4 | `pds3file/__init__.py` ×2, `pds4file/__init__.py` ×2 | aligned | in the initializers, the rule-module import block is aligned under its opening parenthesis, and isort also reorders `from . import rules` against the other package imports in a module whose initialization order is load-bearing. `re_validate.py`'s went with PR-25a: its import order was checked and is not load-bearing |
    | `SIM115` | 2 | `pdsarchives.py`, `pdschecksums.py` | behavior | a `with` block changes *when* the file closes, which these tools order against later reads and `tarfile` finalization |
-   | `B012` | 3 | `pdschecksums.py`, `pdsinfoshelf.py`, `pdslinkshelf.py` | behavior | `return` inside `finally` swallows an in-flight exception; removing it changes the exit-code path |
    | `RUF015` | 2 | `pdsinfoshelf.py`, `pds4infoshelf.py` | behavior | `list(d)[0]` raises `IndexError` where `next(iter(d))` raises `StopIteration`, and the dict is not proven non-empty |
    | `A002` | 2 | `pds3file/__init__.py` | frozen | the frozen `dir=` parameter of `log_path_for_volset`/`log_path_for_volume` |
    | `RUF022` | 2 | `pds3file/rules/__init__.py`, `pds4file/rules/__init__.py` | aligned | `__all__` is hand-aligned with padding before the commas; the sort rewrites the block |

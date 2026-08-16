@@ -571,6 +571,23 @@ def add_file(tree, relpath, contents, mtime):
     return target
 
 
+def remove_file(tree, relpath):
+    """Delete one file from a temporary tree, as a data producer would.
+
+    Args:
+        tree: The ToolTree to delete from.
+        relpath: The holdings-relative path of the file to remove.
+
+    Returns:
+        pathlib.Path: The path that is now gone.
+    """
+
+    target = tree.path(relpath)
+    target.unlink()
+
+    return target
+
+
 ##########################################################################################
 # Corruption verbs
 #
