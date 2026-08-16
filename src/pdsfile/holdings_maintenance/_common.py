@@ -20,8 +20,8 @@ module. Each of the ten declares a module-level ``SPEC`` and a ``TASKS`` table a
 both to a driver from its own ``main()``.
 
 The four other tool modules under ``pds3/`` declare no specification and reach no driver,
-and they divide two and two. ``pdsdependency.py`` and ``re_validate.py`` still take parts
-of this module: both build their log paths with ``log_paths_for()``, and ``re_validate``
+and they divide two and two. ``pdsdependency.py`` and ``re_validate.py`` take parts of
+this module: both build their log paths with ``log_paths_for()``, and ``re_validate``
 also takes ``LOG_HELP``, ``QUIET_HELP``, ``LOGROOT_ENV`` and ``resolve_log_root()`` for a
 ``--log`` option that behaves like every other tool's. ``crlf.py`` and
 ``shelf_consistency_check.py`` take nothing from here at all; they read neither holdings
