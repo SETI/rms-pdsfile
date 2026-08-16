@@ -23,6 +23,7 @@
 #   --pyroma               Run pyroma only
 #   --api-freeze           Run the public-API freeze check only
 #   --clean-install        Run the clean-install (runtime-dep leak) gate only
+#   --stubtest             Run the public-API stub validation (stubtest) only
 #   --bandit               Run bandit only
 #   --vulture              Run vulture only
 #   --sphinx               Run Sphinx build only
@@ -52,7 +53,8 @@
 #
 #   RUN_* (set by this script from CLI or full-run defaults): RUN_RUFF_CHECK,
 #   RUN_RUFF_FORMAT, RUN_MYPY, RUN_PYTEST, RUN_PYROMA, RUN_API_FREEZE,
-#   RUN_CLEAN_INSTALL, RUN_BANDIT, RUN_VULTURE, RUN_SPHINX, RUN_PYMARKDOWN
+#   RUN_CLEAN_INSTALL, RUN_STUBTEST, RUN_BANDIT, RUN_VULTURE, RUN_SPHINX,
+#   RUN_PYMARKDOWN
 #
 #   Per-check toggles (true/false). Each check runs only if both RUN_* and
 #   ENABLE_* are true (RUN_* from CLI or defaults below; ENABLE_* from env; see
@@ -65,6 +67,10 @@
 #     ENABLE_PYROMA       (default: true)
 #     ENABLE_API_FREEZE   public-API freeze (default: true)
 #     ENABLE_CLEAN_INSTALL clean-install runtime-dep leak gate (default: true)
+#     ENABLE_STUBTEST     public-API stub validation via mypy.stubtest
+#                         (default: true). Distinct from ENABLE_MYPY: stubtest
+#                         checks the .pyi stubs against the runtime surface;
+#                         it never type-checks the implementation
 #     ENABLE_BANDIT       (default: false — never)
 #     ENABLE_VULTURE      (default: false — never)
 #     ENABLE_SPHINX       Sphinx documentation build (default: true)
@@ -72,7 +78,8 @@
 #
 # Checks (each run separately; -d runs both Sphinx and Markdown):
 #   Code:     optional: ruff check, ruff format --check, mypy, pytest, pyroma,
-#             api-freeze, clean-install, bandit, vulture (see ENABLE_* above)
+#             api-freeze, clean-install, stubtest, bandit, vulture (see
+#             ENABLE_* above)
 #   Sphinx:   make clean, then two builds whose statuses, output and HTML are all
 #             read: make html SPHINXOPTS="-W", then the same with SPHINXOPTS="-n -W"
 #             into its own BUILDDIR (all three run from docs/)
@@ -106,6 +113,7 @@ RUN_PYTEST=false
 RUN_PYROMA=false
 RUN_API_FREEZE=false
 RUN_CLEAN_INSTALL=false
+RUN_STUBTEST=false
 RUN_BANDIT=false
 RUN_VULTURE=false
 RUN_SPHINX=false
@@ -117,10 +125,10 @@ SCOPE_SPECIFIED=false
 #
 # Gates are enabled as they become able to pass. Currently enabled: ruff-check
 # (which runs the configured rules and then a second, indentation-only pass over
-# the preview E1 rules), pytest, pyroma, api-freeze, the clean-install gate, the
-# Sphinx build, and pymarkdown. Not enabled: ruff-format (owner decision,
-# pdsfile_overrides.mdc (11)). Never enabled: mypy, bandit, vulture (ground
-# rules / pdsfile_overrides.mdc).
+# the preview E1 rules), pytest, pyroma, api-freeze, the clean-install gate,
+# stubtest, the Sphinx build, and pymarkdown. Not enabled: ruff-format (owner
+# decision, pdsfile_overrides.mdc (11)). Never enabled: mypy, bandit, vulture
+# (ground rules / pdsfile_overrides.mdc).
 : "${ENABLE_RUFF_CHECK:=true}"
 : "${ENABLE_RUFF_FORMAT:=false}"
 : "${ENABLE_MYPY:=false}"
@@ -128,6 +136,7 @@ SCOPE_SPECIFIED=false
 : "${ENABLE_PYROMA:=true}"
 : "${ENABLE_API_FREEZE:=true}"
 : "${ENABLE_CLEAN_INSTALL:=true}"
+: "${ENABLE_STUBTEST:=true}"
 : "${ENABLE_BANDIT:=false}"
 : "${ENABLE_VULTURE:=false}"
 : "${ENABLE_SPHINX:=true}"
@@ -248,6 +257,7 @@ while [[ $# -gt 0 ]]; do
             RUN_PYROMA=true
             RUN_API_FREEZE=true
             RUN_CLEAN_INSTALL=true
+            RUN_STUBTEST=true
             RUN_BANDIT=true
             RUN_VULTURE=true
             SCOPE_SPECIFIED=true
@@ -299,6 +309,11 @@ while [[ $# -gt 0 ]]; do
             SCOPE_SPECIFIED=true
             shift
             ;;
+        --stubtest)
+            RUN_STUBTEST=true
+            SCOPE_SPECIFIED=true
+            shift
+            ;;
         --bandit)
             RUN_BANDIT=true
             SCOPE_SPECIFIED=true
@@ -340,6 +355,7 @@ if [ "$SCOPE_SPECIFIED" = false ]; then
     RUN_PYROMA=true
     RUN_API_FREEZE=true
     RUN_CLEAN_INSTALL=true
+    RUN_STUBTEST=true
     RUN_BANDIT=true
     RUN_VULTURE=true
     RUN_SPHINX=true
@@ -368,6 +384,7 @@ _code_checks_any_scheduled() {
     [ "$RUN_PYROMA" = true ] && [ "$ENABLE_PYROMA" = true ] && return 0
     [ "$RUN_API_FREEZE" = true ] && [ "$ENABLE_API_FREEZE" = true ] && return 0
     [ "$RUN_CLEAN_INSTALL" = true ] && [ "$ENABLE_CLEAN_INSTALL" = true ] && return 0
+    [ "$RUN_STUBTEST" = true ] && [ "$ENABLE_STUBTEST" = true ] && return 0
     [ "$RUN_BANDIT" = true ] && [ "$ENABLE_BANDIT" = true ] && return 0
     [ "$RUN_VULTURE" = true ] && [ "$ENABLE_VULTURE" = true ] && return 0
     return 1
@@ -551,6 +568,30 @@ print(resolve_holdings().flavor or "none")' 2>/dev/null || echo 'unresolved')
             print_error "Clean-install gate failed"
             failed=true
             failed_checks="${failed_checks}Code - Clean install"$'\n'
+        fi
+    fi
+
+    # Public-API stub validation. `mypy.stubtest` compares the .pyi stubs
+    # against the imported runtime package: names, kinds, signatures and
+    # defaults. It does NOT type-check the implementation (that is ENABLE_MYPY,
+    # permanently false under ground rule 5), and it cannot check that the
+    # annotated types are TRUE — the runtime carries no annotations to compare
+    # against. The mypy config section in pyproject.toml exists solely for this
+    # gate; the allowlist carries the unstubable private-module dynamics, and
+    # --ignore-unused-allowlist keeps its host-dependent pylibmc entry from
+    # failing on machines where pylibmc is installed.
+    if [ "$RUN_STUBTEST" = true ] && [ "$ENABLE_STUBTEST" = true ]; then
+        print_info "Running stubtest (public-API stub validation)..."
+        if MYPYPATH=src python -m mypy.stubtest \
+                --mypy-config-file pyproject.toml \
+                --allowlist scripts/stubtest_allowlist.txt \
+                --ignore-unused-allowlist \
+                pdsfile; then
+            print_success "Stubtest passed"
+        else
+            print_error "Stubtest failed"
+            failed=true
+            failed_checks="${failed_checks}Code - Stubtest"$'\n'
         fi
     fi
 
