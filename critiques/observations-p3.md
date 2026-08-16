@@ -1812,6 +1812,46 @@ The other four pds4 rule modules do. Both bundle sets therefore use the empty
 archive tables from `pds4file/rules/__init__.py`, and the two tables are unreachable.
 **Owner: whoever next revises the pds4 rules.**
 
+### 4062. No PDS4 archive checksum or archive info shelf can be built: `Pds4File` cannot name the checksum file
+
+**`pds4checksums` and `pds4infoshelf` crash with a raw traceback on any
+archives-side target, so `checksums-archives-bundles/` and
+`_infoshelf-archives-bundles/` cannot be built at all.** Every route ends at the
+same wall: the checksum file's own path,
+`checksums-archives-bundles/<set>_md5.txt`, is rejected by `Pds4File.child`
+(`ValueError: Illegal bundle set directory`), because `BUNDLESET_PLUS_REGEX`
+(`pds4file/__init__.py:121-123`) admits only version suffixes after a bundle-set
+name — no `_md5.txt` or `.tar.gz` ending, where the PDS3 counterpart admits
+both. Measured against a scratch `pds4-holdings` tree holding the cassini
+solar-occultation bundle: `pds4checksums --initialize` over
+`archives-bundles/<set>` and `pds4checksums --initialize --archives` over
+`bundles/<set>` both die in `write_checksums` →
+`Pds4File.from_abspath(check_path)`; `pds4infoshelf` over `archives-bundles/<set>`
+dies identically resolving the checksum path it needs to read. (`--archives` on a
+single bundle fails earlier and cleanly: the archive resolves to one `.tar.gz`,
+which is a selection, and `--initialize` refuses selections.) The user guide's
+concepts chapter states the resulting scope honestly — the PDS4 build covers the
+first level of each dependency chain — and this entry is the record that the
+limit is a rules gap, not a design. Fixing it means widening
+`BUNDLESET_PLUS_REGEX` (and checking `checksum_path_and_lskip`'s PDS4 behavior
+end to end), which changes what `Pds4File` accepts and needs its own tests.
+**Owner: whoever next revises the pds4 rules.**
+
+### 4063. `update_holdings_for_new_metadata.sh` deletes versioned archive checksum files it does not rebuild
+
+**The script's `rm -f "$HOLDINGS"/checksums-archives-metadata/${VOLSET}_*` glob
+also matches versioned siblings.** Run with `VOLSET=COISS_1xxx` it deletes
+`COISS_1xxx_v1.0_metadata_md5.txt` alongside `COISS_1xxx_metadata_md5.txt`, and
+the rebuild — `pdschecksums --initialize` over `archives-metadata/COISS_1xxx` —
+rewrites only the unversioned file, so every versioned volume set's archive
+checksum file is lost until someone reruns the script (or the tool) once per
+versioned name. The corrected `_infoshelf-archives-metadata` deletion does not
+share the overreach: its glob is `${VOLSET}_info.*`, which a versioned name's
+`_v1.0_info.*` does not match. Narrowing the checksum glob the same way changes
+what the script deletes, which the fix that added the archive info shelf rebuild
+was directed not to do, so the overreach stands and is recorded here. **Owner:
+the owner — one-line glob narrowing, but it changes existing deletion behavior.**
+
 ## Structure and duplication
 
 ### 4100. `_is_forgiven` has two gaps
