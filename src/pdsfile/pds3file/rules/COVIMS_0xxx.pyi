@@ -42,7 +42,7 @@ class COVIMS_0xxx(Pds3File):
     NEIGHBORS: _Translator
     OPUS_FORMAT: _Translator
     OPUS_ID: _Translator
-    def OPUS_ID_TO_PRIMARY_LOGICAL_PATH(opus_id: str) -> PdsFile: ...  # type: ignore[misc, override]
+    def OPUS_ID_TO_PRIMARY_LOGICAL_PATH(opus_id: str) -> PdsFile: ...  # type: ignore[misc]
     OPUS_PRODUCTS: _Translator
     OPUS_TYPE: _Translator
     VIEWABLES: dict[str, _Translator]

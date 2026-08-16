@@ -2467,7 +2467,9 @@ PR.**
 ### 4127. `DictionaryCache.preload_eligible` has no reader
 
 **`DictionaryCache.preload_eligible` has no reader.** It is set True at
-`pdscache.py:190` and appears nowhere else in `src/` or `tests/`. `MemcachedCache`
+`pdscache.py:190`, and no runtime code or test reads it; its only other
+appearances are the declaration in `pdscache.pyi` and the docstring that
+documents the gap. `MemcachedCache`
 has no such attribute, so it is not part of the shared interface either. It is a
 public attribute name, so removing it is not free. Same shape as observation 4128.
 Scheduled entry 1300 offered PR-35 the alternative of deciding what the stubs

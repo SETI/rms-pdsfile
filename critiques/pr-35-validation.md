@@ -178,12 +178,15 @@ Notable stub-shape decisions, each mirroring a runtime truth:
   export a name `rules` (a mypy `[no-redef]` build error) and at runtime the later
   import wins — the stub binds `rules` to the pds4file rules package explicitly and
   says why.
-* Five class members override an incompatibly-typed base member at runtime
+* Five class members override a differently-shaped base member at runtime
   (`FILENAME_KEYLEN` as a method in three classes over the base's `int`,
   `DATA_SET_ID` as a method in `COUVIS_0xxx` over the base's data attribute,
   `COVIMS_0xxx.OPUS_ID_TO_PRIMARY_LOGICAL_PATH` as a plain function in the class
-  body with no `self`). The stubs declare what the runtime does and carry per-line
-  `type: ignore[override]`/`[misc]` suppressions naming the pattern.
+  body with no `self`). The stubs declare what the runtime does; the three
+  `FILENAME_KEYLEN` methods carry `type: ignore[override]` (the base's `int` is
+  incompatible) and the no-`self` function carries `type: ignore[misc]`. The two
+  members whose base attribute is an `Any` alias (`_Translator`) need no
+  `[override]` suppression, because any override satisfies `Any`.
 * Untyped-dependency names are re-exported with `# type: ignore[import-untyped]`
   (the manifest freezes `pdslogger`, `translator`, `pdsparser`, `pdstable` and
   stdlib module names as public module attributes), and values typed by those

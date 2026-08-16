@@ -34,7 +34,9 @@ exist, and only the third needed per-member derivation:
   — content of an untyped pdstable row dictionary, the same flow that makes the
   base `data_set_id` property Any. Declared `Any` by rule 4. CORRECTED after
   review round 1: the generated stub said `str` (the docstring's claim), which is
-  not derivable. Overrides a base data attribute, hence `type: ignore[override]`.
+  not derivable. Overrides a base data attribute, but that attribute is declared
+  `_Translator | None` (`Any | None`), which any override satisfies, so no
+  `type: ignore[override]` is needed.
 - GO_0xxx.opus_prioritizer | (self, pdsfile_dict: dict[Any, Any]) -> dict[Any,
   Any] | GO_0xxx.py:819-901: mutates and returns the same dictionary; its keys
   are five-element tuples or `''` and its values lists of lists of PdsFile per the

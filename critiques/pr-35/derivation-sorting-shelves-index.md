@@ -12,7 +12,7 @@ cache, so "same class as self/cls" is not provable anywhere in these three files
 - child_of_index | `(self, selection: str, flag: str = '=') -> PdsFile` | _index_rows.py:272-362; returns `cls.CACHE[...]` (line 328, `pdscache.DictionaryCache`, untyped -> Any branch) or `self.new_index_row_pdsfile(...)` (lines 354, 359; pdsfile.py:808 builds a copy of self, docstring "Returns: PdsFile"). Not provably Self (cache value is whatever was stored), so `PdsFile`.
 - data_abspath_associated_with_index_row | `(self) -> str` | _index_rows.py:364-498; every return is `''` (463, 471, 498), `'/'.join(parts)` (480), or `abspath` built by str.replace (489-492). No None path.
 - data_pdsfile_for_index_row | `(self) -> PdsFile | None` | _index_rows.py:500-527; `return cls.from_abspath(abspath)` (525) or `return None` (527). `from_abspath` instantiates a looked-up subclass, so `PdsFile`, not `Self`.
-- find_selected_row_key | `(self, selection: str, flag: str = '=', exact_match: bool = False) -> str` | _index_rows.py:133-270; all returns are `selection` or elements of `self.childnames` (list of str basenames).
+- find_selected_row_key | `(self, selection: str, flag: str = '=', exact_match: bool = False) -> Any` | _index_rows.py:133-270; all returns are `selection` (str) or elements of `self.childnames`, whose element type is unprovable (`list[Any]`, index-shelf keys — derivation-properties.md), so `str | Any` collapses to `Any`.
 - get_indexshelf | `(self) -> dict[Any, Any]` | _index_rows.py:97-131; returns `cls._get_shelf(...)` (_shelves.py:279-372), a dict rebuilt from `pickle.load` (line 341, 350) -> both keys and values unprovable, hence `dict[Any, Any]` rather than the docstring's `dict` of row key -> row number(s).
 
 ### pdsfile._shelves
@@ -33,7 +33,7 @@ cache, so "same class as self/cls" is not provable anywhere in these three files
 - basenames_for_abspaths | `@classmethod (cls, abspaths: Iterable[str], must_exist: bool = False) -> list[str]` | _sorting.py:740-758; `os.path.basename` per element.
 - basenames_for_logicals | `@classmethod (cls, logical_paths: Iterable[str], must_exist: bool = False) -> list[str]` | _sorting.py:811-832; either `basenames_for_pdsfiles` (str basenames) or `os.path.basename`.
 - basenames_for_pdsfiles | `@staticmethod (pdsfiles: Iterable[PdsFile], must_exist: bool = False) -> list[str]` | _sorting.py:671-689; `p.basename` is the str basename attribute.
-- childnames_by_anchor | `(self, anchor: str) -> list[str]` | _sorting.py:586-606; appends elements of `self.childnames` (str basenames).
+- childnames_by_anchor | `(self, anchor: str) -> list[Any]` | _sorting.py:586-606; appends elements of `self.childnames`, whose element type is unprovable (`list[Any]`), so the elements stay `Any`.
 - logicals_for_abspaths | `@classmethod (cls, abspaths: Iterable[str], must_exist: bool = False) -> list[str]` | _sorting.py:714-738; `logical_path_from_abspath` (_path_utils.py:113) returns `parts[2]` of a str.partition -> str, or raises.
 - logicals_for_basenames | `(self, basenames: Iterable[str], must_exist: bool = False) -> list[str]` | _sorting.py:881-901; `_clean_join` of strs (898) or `pdsf.logical_path` (901), which is always a str (every object has one, docstring 655-656).
 - logicals_for_pdsfiles | `@staticmethod (pdsfiles: Iterable[PdsFile], must_exist: bool = False) -> list[str]` | _sorting.py:651-669; `p.logical_path` str.
@@ -41,13 +41,13 @@ cache, so "same class as self/cls" is not provable anywhere in these three files
 - pdsfiles_for_basenames | `(self, basenames: Iterable[str], must_exist: bool = False) -> list[PdsFile]` | _sorting.py:836-855; `self.child(b)` (850) returns child objects, class chosen by the child machinery -> `PdsFile`.
 - pdsfiles_for_logicals | `@classmethod (cls, logical_paths: Iterable[str], must_exist: bool = False) -> list[PdsFile]` | _sorting.py:762-782; `cls.from_logical_path(p)` -> `PdsFile`.
 - sort_basenames | `(self, basenames: Sequence[str], labels_after: bool | None = None, dirs_first: bool | None = None, dirs_last: bool | None = None, info_first: int | None = None) -> list[str]` | _sorting.py:225-348; param needs `len()` (344) and `list()` (346) -> Sequence, not just Iterable; returns the new sorted `list` (346-348). `info_first` is documented as bool-or-int threshold (255-257) and goes through `int(info_first)` (343) -> `int | None` (bool is an int subtype).
-- sort_childnames | `(self, labels_after: bool | None = None, dirs_first: bool | None = None) -> list[str]` | _sorting.py:553-569; delegates to sort_basenames over `self.childnames`.
+- sort_childnames | `(self, labels_after: bool | None = None, dirs_first: bool | None = None) -> list[Any]` | _sorting.py:553-569; delegates to sort_basenames over `self.childnames`, so the reordered elements keep childnames' unprovable element type (`Any`).
 - sort_logical_paths | `@classmethod (cls, logical_paths: Collection[str]) -> list[str]` | _sorting.py:443-551; returns the assembled `sorted_paths` list of str path joins. CORRECTED after review round 3: the row recorded that the parameter is iterated twice (485, then `set()` at 532) yet declared Iterable[str], the one spelling that admits a one-shot generator — whose second pass is empty, so the call silently returns [] — the same shape as round 2's construct_category_list fix; Collection[str] is the broadest contract whose every value survives both passes.
 - sort_siblings | `(self, siblings: Iterable[PdsFile], labels_after: bool | None = None, dirs_first: bool | None = None, dirs_last: bool | None = None, info_first: int | None = None) -> list[PdsFile]` | _sorting.py:406-441; dict comprehension over siblings once (432); returns the input objects plus self, reordered (441).
 - sort_sibnames | `(self, basenames: list[str], labels_after: bool | None = None, dirs_first: bool | None = None, dirs_last: bool | None = None, info_first: int | None = None) -> list[str]` | _sorting.py:350-404; param MUST be a real list: it is mutated via `.append` (386); returns a new list of str.
 - split_basename | `(self, basename: str = '') -> Any` | _sorting.py:101-170; returns the unchanged str basename when SPLIT_RULES is None (145), 3-tuples of regex groups (151, 153, 164, 166), or `self.SPLIT_RULES.first(basename)` (159/168, 170) -- SPLIT_RULES is an rms-translator table (untyped, no py.typed) so that branch is Any, and Any absorbs the union.
-- viewable_childnames | `(self) -> list[str]` | _sorting.py:571-584; filter of `self.childnames` str basenames.
-- viewable_childnames_by_anchor | `(self, anchor: str) -> list[str]` | _sorting.py:608-621; filter of childnames_by_anchor's list[str].
+- viewable_childnames | `(self) -> list[Any]` | _sorting.py:571-584; filter of `self.childnames`, elements `Any`.
+- viewable_childnames_by_anchor | `(self, anchor: str) -> list[Any]` | _sorting.py:608-621; filter of childnames_by_anchor's list[Any].
 
 ## Instance attributes
 
