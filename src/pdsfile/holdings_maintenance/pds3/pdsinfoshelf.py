@@ -95,12 +95,12 @@ def generate_infodict(pdsdir, selection, old_infodict={}, *, logger=None,
     missing checksum entry and shelved with an empty digest.
 
     ``old_infodict`` is what makes an update affordable: a **file** already keyed in it
-    keeps its entry and is not measured again. A directory is recomputed from the children
-    this walk found -- but only into the working dictionary. **The merge that follows adds
-    a key only where the old dictionary lacks it**, so a recomputed entry for a path the
-    old dictionary already carries, directory or file, is discarded, and the result is the
-    old dictionary plus what is new and nothing else. **On a selection the merge is
-    narrower still**: only the named file's own entry is written over the old dictionary.
+    keeps its entry and is not measured again. **A directory's entry always comes from
+    this walk**, because it is an aggregate of the children the walk found and the old
+    one is stale as soon as anything below it changes. **An entry for a path the walk did
+    not visit is reported and dropped**, so a file deleted from the tree leaves the shelf
+    too. **On a selection the merge is narrower**: only the named file's own entry is
+    written over the old dictionary, and nothing is dropped.
 
     The newest date is taken over the entries merged in, and then compared against the
     checksum file's own modification time, the later of the two winning. That is what lets
@@ -137,6 +137,10 @@ def generate_infodict(pdsdir, selection, old_infodict={}, *, logger=None,
         limits = {}
 
     ### Internal function
+
+    # The keys this walk computed as directories, which are the entries the merge
+    # below has to take from the walk rather than from the old dictionary.
+    dirkeys = set()
 
     def get_info_for_file(abspath):
         """Return the five-element entry for one file.
@@ -254,6 +258,7 @@ def generate_infodict(pdsdir, selection, old_infodict={}, *, logger=None,
                 modtime = max(modtime, info[2])
 
             info = (nbytes, children, modtime, '', (0,0))
+            dirkeys.add(abspath)
 
         elif abspath in old_infodict:
             info = old_infodict[abspath]
@@ -306,8 +311,17 @@ def generate_infodict(pdsdir, selection, old_infodict={}, *, logger=None,
             merged[root] = infodict[root]
 
         else:
+            # An entry for a path the walk did not visit is a deletion: report it and
+            # leave it out, so the shelf and the tree agree about what is there.
+            for key in set(merged) - set(infodict):
+                logger.info('Removed entry for missing file', key, force=True)
+                del merged[key]
+
             for (key, _value) in infodict.items():
-                if key not in merged:
+                # A file already shelved keeps its entry, which is what makes an
+                # update affordable. A directory's entry is an aggregate of what is
+                # under it, so this walk's is the current one and the old is stale.
+                if key not in merged or key in dirkeys:
                     info = infodict[key]
                     merged[key] = info
                     latest_modtime = max(latest_modtime, info[2])
@@ -471,9 +485,8 @@ def write_infodict(pdsdir, infodict, *, logger=None, limits=None):
         infodict (dict): The entries, keyed by absolute path, as generate_infodict() built
             them.
         logger: The logger to report through. Defaults to the tool's own.
-        limits (dict): Message limits for the first of the two scopes, merged over this
-            module's defaults. The sidecar's scope is opened with this argument as it
-            stands, so this module's defaults do not apply there.
+        limits (dict): Message limits for both of the two scopes, merged over this
+            module's defaults, which are empty.
 
     Raises:
         ValueError: raised by ``shelf_path_and_lskip()`` for a checksum path, for an
@@ -529,7 +542,7 @@ def write_infodict(pdsdir, infodict, *, logger=None, limits=None):
     finally:
         _ = logger.close()
 
-    logger.open('Writing Python dictionary', dirpath, limits=limits)
+    logger.open('Writing Python dictionary', dirpath, limits=merged_limits)
     try:
         # Determine the maximum length of the file path
         len_path = 0
@@ -600,11 +613,10 @@ def validate_infodict(pdsdir, dirdict, shelfdict, selection, *, logger=None,
             defaults do not apply here.
 
     Returns:
-        tuple: what closing this scope's log level reported. **Nothing raised inside this
-        escapes it**, because the return sits in the ``finally`` clause and discards the
-        re-raise above it, so a comparison that failed part way through is reported as
-        whatever the level had counted by then. It is the reason ``B012`` is on this
-        file's ruff ignore list.
+        tuple: what closing this scope's log level reported. Anything raised inside is
+        logged and re-raised: the level is closed in the ``finally`` and the return sits
+        after it, so a comparison that failed part way through does not come back as a
+        result.
     """
 
     if limits is None:
@@ -684,7 +696,9 @@ def validate_infodict(pdsdir, dirdict, shelfdict, selection, *, logger=None,
         raise
 
     finally:
-        return logger.close()
+        results = logger.close()
+
+    return results
 
 ################################################################################
 # Simplified functions to perform tasks
@@ -694,15 +708,9 @@ def initialize(pdsdir, selection=None, logger=None, limits=None):
     """Write one volume's info shelf, refusing to replace one already there.
 
     A shelf already in place is an error and nothing is walked. A selection is refused
-    too, since there is no sense in creating a shelf that covers one named file.
-
-    **The refusal of a selection raises rather than reporting, whenever there is no shelf
-    already.** The logger is resolved only inside the branch that finds an existing shelf,
-    so on the path that reaches the selection check it is still whatever the caller
-    passed, and the driver passes none: the ``error()`` call is made on None and the task
-    ends in ``AttributeError``. A command line naming a file inside a volume with
-    ``--initialize`` reaches exactly that. The PDS4 tool resolves its logger first and
-    reports.
+    too, since there is no sense in creating a shelf that covers one named file. Both
+    refusals are log lines: the logger is resolved before either test, so neither path
+    depends on the caller having supplied one, and the driver supplies none.
 
     Nothing is returned. The driver records the return value as the run's ``proceed``, and
     for all five of this tool's tasks that value is None.
@@ -710,23 +718,19 @@ def initialize(pdsdir, selection=None, logger=None, limits=None):
     Parameters:
         pdsdir: The volume directory to walk.
         selection (str): The basename of one file. Anything but None ends the task.
-        logger: The logger to report through. Defaults to the tool's own, but only on the
-            path that finds a shelf already there.
+        logger: The logger to report through. Defaults to the tool's own.
         limits (dict): Message limits, passed on to the walk and the write.
-
-    Raises:
-        AttributeError: from the ``error()`` attribute read, where a selection is given,
-            no shelf exists, and no logger was passed.
     """
 
     if limits is None:
         limits = {}
 
+    logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
+
     info_path = pdsdir.shelf_path_and_lskip('info')[0]
 
     # Make sure file does not exist
     if os.path.exists(info_path):
-        logger = logger or pdslogger.PdsLogger.get_logger(LOGNAME)
         logger.error('Info shelf file already exists', info_path)
         return
 
@@ -973,17 +977,17 @@ def update(pdsdir, selection=None, logger=None, limits=None):
     measured. A file whose size or date has changed is therefore not noticed here; that is
     ``validate()``'s and ``repair()``'s work.
 
-    **A directory already shelved is not refreshed either.** The walk does recompute one
-    from the children it found, and the merge then writes a key only where the shelf lacks
-    it, so the recomputed value is discarded and every ancestor directory of a new file
-    keeps the child count, the byte total and the modification time it was shelved with.
-    ``validate()`` reports all three as mismatches, so the two tasks disagree about the
-    same shelf until a ``reinitialize`` or a ``repair``.
+    **A directory already shelved is refreshed.** Its entry is an aggregate of what lies
+    under it, so the walk's own recomputation is the current one and the shelved child
+    count, byte total and modification time are the stale ones; the merge therefore takes
+    the walk's value for a directory where it keeps the shelf's for a file. That is what
+    lets an added file reach the counts of every directory above it.
 
-    **A deletion is invisible.** The result starts from the whole of what the shelf held,
-    so an entry for a file that is no longer there survives; and because it survives, and
-    because a directory's entry is not refreshed either, the comparison this task makes
-    still holds and the run reports that the shelf is complete.
+    **A deletion is registered.** An entry for a path the walk did not visit is reported
+    and left out, so the shelf and the tree agree about what is there and a run no longer
+    reports a shelf complete while it names files that are gone. A run narrowed by a
+    selection judges nothing missing: the walk covered one file, so what it did not visit
+    is no evidence about anything else.
 
     Where the walk returns exactly what the shelf held, nothing is written or touched and
     that is reported at info level; the "out of date" re-dating ``repair()`` does has no

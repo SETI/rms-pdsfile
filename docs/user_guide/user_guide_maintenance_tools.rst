@@ -125,11 +125,8 @@ What a path may name depends on the program, and the three groups differ:
   path resolution succeeds and the log files open before anything checks. If the product
   already exists the run stops on that instead, since ``--initialize`` refuses to replace
   one. Otherwise all four report ``File selection is disallowed for task "initialize"``,
-  and only three of them report it as intended: the two checksum programs raise
-  :exc:`ValueError` carrying that text, and ``pds4infoshelf`` logs it as an error and
-  exits 1. ``pdsinfoshelf`` means to log it too but reaches that line with no logger
-  open, so what an operator sees there is an :exc:`AttributeError` traceback -- an
-  unintended crash rather than a refusal.
+  in one of two ways: the two checksum programs raise :exc:`ValueError` carrying that
+  text, and the two info shelf programs log it as an error and exit 1.
 * ``pdsindexshelf`` and ``pds4indexshelf`` take an index table or a metadata directory,
   which is expanded into the tables inside it.
 

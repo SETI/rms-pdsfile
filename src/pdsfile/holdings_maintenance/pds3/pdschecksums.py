@@ -35,15 +35,15 @@ manifest format, the comparison -- is this module's, and is a near-copy of the P
 tool's. The differences between the two are worth knowing and none of them is a difference
 of purpose; they are recorded on the functions that carry them.
 
-**A run's exit status does not report what a task found.** The driver returns rather than
-exiting and ``main()`` never reads the status it computed, so a ``--validate`` that
-reported every file in a volume as a mismatch still exits 0. What a run does exit nonzero
-for is everything settled before a task starts -- a command line naming no task exits 1, a
-command line the parser cannot classify exits 2, and a path outside a holdings tree or
-naming checksum files exits 1 -- and a task that raises ends the process through the
-traceback. That is deliberate in the driver, which leaves the decision to the tool, and
-the silence about what a task found is a property of these two tools rather than of the
-other eight.
+**A run's exit status reports what a task found.** The driver returns rather than exiting,
+and ``main()`` exits with the status it computed: 0 where the run logged no fatal and no
+error, and 1 where it logged either, so a ``--validate`` that reported a mismatch exits 1.
+Everything settled before a task starts keeps its own status -- a command line naming no
+task exits 1, a command line the parser cannot classify exits 2, and a path outside a
+holdings tree or naming checksum files exits 1 -- and a task that raises ends the process
+through the traceback. Where ``--infoshelf`` chained a second run, this run's status wins
+if it is nonzero and the chained run's is used otherwise, so a failure in either half
+reaches the caller.
 
 Two fields of the specification are set here and read nowhere a run of this tool reaches.
 ``index_ext`` is read only by the index shelf tools' target expansion. And
@@ -102,8 +102,17 @@ def generate_checksums(pdsdir, selection=None, oldpairs=[], *, regardless=True,
     reading: it answers "has anything under here changed", not "has anything checksummed
     here changed".
 
-    The order of the result is the order of ``oldpairs`` first, in full, and then the
-    files the walk found that were not already in it, in walk order.
+    The order of the result is the order of ``oldpairs`` first and then the files the walk
+    found that were not already in it, in walk order. **An already-known entry whose file
+    the walk did not see is reported and left out**, so a deletion reaches the manifest;
+    with a selection given the walk covered one file, so no entry is judged missing on
+    the strength of it.
+
+    **A walk that could not read every directory judges nothing missing either.**
+    ``os.walk()`` passes over a directory it cannot open and says nothing, which would
+    leave the files below it looking deleted; the errors are collected instead, reported
+    one line each, and their presence stands the sweep down, so an unreadable subtree
+    costs the run its digests there and not the manifest entries for them.
 
     Parameters:
         pdsdir: The volume directory to walk. Its abspath is the root of the walk and its
@@ -118,9 +127,8 @@ def generate_checksums(pdsdir, selection=None, oldpairs=[], *, regardless=True,
 
     Returns:
         tuple: the (absolute path, digest) pairs, and the newest modification time as a
-        timestamp. **A selection that matched no file, or more than one, gives an empty
-        dict rather than an empty list** for the first element, which every caller reads
-        only for truth and none for its type; the PDS4 tool returns a list there.
+        timestamp. A selection that matched no file, or more than one, gives an empty
+        list, as the PDS4 tool does.
 
     Raises:
         OSError: raised by ``getmtime()`` on a file the walk listed and that is gone by
@@ -151,9 +159,12 @@ def generate_checksums(pdsdir, selection=None, oldpairs=[], *, regardless=True,
             md5_dict[abspath] = old_md5
 
         newtuples = []
-        for (path, _dirs, files) in os.walk(dirpath):
+        walked = set()
+        walk_errors = []
+        for (path, _dirs, files) in os.walk(dirpath, onerror=walk_errors.append):
             for file in files:
                 abspath = os.path.join(path, file)
+                walked.add(abspath)
                 latest_mtime = max(latest_mtime, os.path.getmtime(abspath))
 
                 if selection and file != selection:
@@ -188,15 +199,18 @@ def generate_checksums(pdsdir, selection=None, oldpairs=[], *, regardless=True,
                     newtuples.append((abspath, md5, file))
                     logger.info('MD5=%s' % md5, abspath)
 
+        for error in walk_errors:
+            logger.error('Directory could not be read', error.filename)
+
         if selection:
             if len(newtuples) == 0:
                 logger.error('File selection not found', selection)
-                return ({}, latest_mtime)
+                return ([], latest_mtime)
 
             if len(newtuples) > 1:
                 logger.error('Multiple copies of file selection found',
                              selection)
-                return ({}, latest_mtime)
+                return ([], latest_mtime)
 
         # Add new values to dictionary
         for (abspath, md5, _) in newtuples:
@@ -207,6 +221,15 @@ def generate_checksums(pdsdir, selection=None, oldpairs=[], *, regardless=True,
 
         newpairs = []
         for key in old_keys:
+            # An entry whose file the walk did not see is a deletion: report it and
+            # leave it out. With a selection the walk was narrowed, so nothing but
+            # the named file is judged, and a walk that could not read every
+            # directory is not evidence that anything is gone.
+            if not selection and not walk_errors and key not in walked:
+                logger.info('Removed entry for missing file', key, force=True)
+                del md5_dict[key]
+                continue
+
             newpairs.append((key, md5_dict[key]))
             del md5_dict[key]
 
@@ -235,11 +258,9 @@ def read_checksums(check_path, selection=None, *, logger=None, limits=None):
     **The manifest is parsed by fixed offsets, not by splitting.** A record's first 32
     characters are the digest and everything from the 35th to the end of the line,
     stripped of trailing whitespace, is the path; the two characters between are the
-    separator this module writes and are not examined. **A record too short to hold a
-    path, a blank line among them, ends the whole read**: the basename it yields is empty
-    and the test for an invisible file subscripts it. With a selection given, such a
-    record is dropped by the basename comparison above that test and the read completes,
-    so whether a manifest can be read at all depends on the task.
+    separator this module writes and are not examined. A record too short to hold a path,
+    a blank line among them, is reported as an error and left out, whether or not a
+    selection was given, so a malformed manifest is named rather than read past.
 
     Each path is made absolute by putting the manifest's own prefix in front of it, which
     is the counterpart of the trimming ``write_checksums()`` does.
@@ -259,8 +280,6 @@ def read_checksums(check_path, selection=None, *, logger=None, limits=None):
         an empty list for a missing manifest or an unmatched selection.
 
     Raises:
-        IndexError: from the ``__getitem__()`` that tests a basename's first character,
-            for a record with no path in it.
         ValueError: raised by ``from_abspath()``, before any log line is written, for a
             path outside every holdings tree.
         OSError: raised by ``open()`` for a manifest that exists and cannot be read. It is
@@ -301,6 +320,10 @@ def read_checksums(check_path, selection=None, *, logger=None, limits=None):
                 hexval = rec[:32]
                 filepath = rec[34:].rstrip()
 
+                if not filepath:
+                    logger.error('Blank record in checksum file', check_path)
+                    continue
+
                 if selection and os.path.basename(filepath) != selection:
                     continue
 
@@ -313,7 +336,7 @@ def read_checksums(check_path, selection=None, *, logger=None, limits=None):
                     logger.error('._* file found in checksum file', filepath)
                     continue
 
-                if basename[0] == '.':
+                if basename.startswith('.'):
                     logger.invisible('Checksum for invisible file', filepath)
 
                 abspairs.append((prefix_ + filepath, hexval))
@@ -486,25 +509,27 @@ def validate_pairs(pairs1, pairs2, selection=None, *, logger=None,
     makes a narrowed run safe: the manifest's other entries are not compared against a
     walk that was never asked about them, and so are not reported as extra.
 
-    **Nothing raised inside this escapes it.** The ``return`` sits in the ``finally``
-    clause, so the re-raise above it is discarded and the caller is given the flag as it
-    stood, which for a failure part way through a comparison is True unless a mismatch had
-    already been seen. A ``KeyboardInterrupt`` is swallowed the same way. It is the reason
-    ``B012`` is on this file's ruff ignore list.
+    **Anything raised inside this is logged and re-raised**, a ``KeyboardInterrupt``
+    among them: the ``finally`` closes the log level and the return sits after it, so a
+    comparison that failed part way through cannot come back as a flag the caller trusts.
 
     Parameters:
         pairs1 (list): The (absolute path, digest) pairs a fresh walk found.
         pairs2 (list): The pairs the manifest holds.
         selection (str): The basename of the one file to check, or None for all of them.
         logger: The logger to report through. Defaults to the tool's own.
-        limits (dict): Message limits for this scope. This module's defaults for this
-            scope are empty and are merged into a value that is then not passed, so what
-            reaches the log level is this argument itself.
+        limits (dict): Message limits for this scope, merged over this module's
+            defaults, which are empty.
 
     Returns:
         bool: True if the two agree on every entry compared, False if any error was
-        logged, and True for an exception raised part way through a comparison that had
-        so far agreed.
+        logged.
+
+    Raises:
+        KeyboardInterrupt: raised by an interrupt during the comparison. It is logged
+            through ``exception()`` and re-raised, as is anything else the comparison
+            raises, so a comparison that stopped part way through never comes back as a
+            flag at all.
     """
 
     if limits is None:
@@ -514,7 +539,7 @@ def validate_pairs(pairs1, pairs2, selection=None, *, logger=None,
 
     merged_limits = VALIDATE_PAIRS_LIMITS.copy()
     merged_limits.update(limits)
-    logger.open('Validating checksums', limits=limits)
+    logger.open('Validating checksums', limits=merged_limits)
 
     success = True
     try:
@@ -552,7 +577,8 @@ def validate_pairs(pairs1, pairs2, selection=None, *, logger=None,
 
     finally:
         logger.close()
-        return success
+
+    return success
 
 ################################################################################
 # Simplified functions to perform tasks
@@ -564,10 +590,8 @@ def initialize(pdsdir, selection=None, *, logger=None, limits=None):
     A manifest already in place is an error and nothing is walked. **A selection is
     refused by raising rather than by logging**: there is no sense in creating a manifest
     that covers one named file, and the exception is what a run of this task on a
-    selection ends with. No other task here refuses a selection at all, and
-    ``pdsinfoshelf``'s ``initialize`` refuses one by calling ``error()`` on a logger the
-    driver never supplied, so it ends in ``AttributeError`` rather than in a report; only
-    the PDS4 info shelf tool logs and returns.
+    selection ends with. No other task here refuses a selection at all, and both info
+    shelf tools refuse one by logging and returning instead.
 
     The driver reaches this on a selection only for the ``initialize`` task itself, since
     it demotes ``reinitialize`` on a selection to ``update``.
@@ -690,9 +714,11 @@ def validate(pdsdir, selection=None, *, logger=None, limits=None):
     than through the command line, both for a volume type and, with a selection, for one
     archive file of a volume set.
 
-    **A False here does not reach the exit status of a command-line run.** The driver
-    records it, ``main()`` uses it only to decide whether to chain a ``pdsinfoshelf`` run,
-    and a run that chains nothing exits 0.
+    **A False here is not itself the exit status of a command-line run.** The driver
+    records it and ``main()`` uses it only to decide whether to chain a ``pdsinfoshelf``
+    run. What sets the status is the log: every disagreement this reports goes through
+    ``error()``, so a run that returns False here exits 1 by way of what it logged rather
+    than by way of the flag.
 
     Parameters:
         pdsdir: The volume directory to check.
@@ -862,12 +888,12 @@ def update(pdsdir, selection=None, *, logger=None, limits=None):
     what the ``--help`` text means by saying checksums of pre-existing files are not
     checked.
 
-    **It does not notice a deletion either.** The walk rebuilds its result from the whole
-    of what it was handed, and only then appends what it found, so an entry for a file
-    that is no longer there survives; and because it survives, the comparison this task
-    makes still holds and the run reports that the manifest is complete. An update
-    therefore adds new files and does nothing else. Only ``reinitialize`` or ``repair``
-    clears a stale entry.
+    **A deletion it does notice.** The walk leaves out an entry whose file it did not
+    see, so the result no longer matches what the manifest held and this task rewrites
+    the manifest without it. An update therefore adds new files and clears entries for
+    gone ones, which is the one thing it does beyond adding. A run narrowed by a
+    selection judges nothing missing, and neither does one whose walk could not read
+    every directory.
 
     Where the walk returns exactly what the manifest held, nothing is written or touched
     and that is reported at info level; the "out of date" re-dating ``repair()`` does has
@@ -970,7 +996,8 @@ def main():
     This is the ``pdschecksums`` console script's entry point. The driver returns rather
     than exiting, so what happens next is decided here, and it is decided by two things
     together: the last task has to have returned something true, and ``--infoshelf`` has
-    to have been given. Either missing, and this returns and the process exits 0.
+    to have been given. Either missing, and no second run is started and the process exits
+    with this run's own status.
 
     The exit status is the run's own: 0 when the run logged no fatal and no error, and
     1 when it logged either, so a ``--validate`` that reported a mismatch exits 1. Where

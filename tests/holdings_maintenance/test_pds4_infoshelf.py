@@ -62,6 +62,12 @@ def sidecar_line(text, key):
                  if line.strip().startswith(f'"{key}"')), None)
 
 
+def child_count_of(line):
+    """Return the child count a sidecar line records, which is its second field."""
+
+    return int(line.partition('(')[2].split(',')[1])
+
+
 def refresh_checksums(tree):
     """Re-run pds4checksums --repair so the checksum file matches the tree."""
 
@@ -157,11 +163,12 @@ def test_corruption_is_detected_and_repaired(shelved_tree, corruption):
 
 
 def test_update_picks_up_a_new_file(shelved_tree):
-    """--update adds the new file's info to an existing shelf.
+    """--update adds the new file's info and re-dates the directories above it.
 
-    As in pds3, --update is additive and leaves the parent directories' aggregate
-    byte counts stale, so the following --validate reports them; --repair is what
-    rewrites the whole shelf.
+    As in pds3, a file already shelved keeps its entry, and a directory's entry comes
+    from the walk because it is an aggregate of what the walk found. It used to be
+    kept from the old shelf, leaving every ancestor's byte count, child count and
+    modification time stale until a --repair; the --validate below reported them.
     """
 
     support.add_file(shelved_tree, NEW_FILE, NEW_FILE_BYTES, NEW_FILE_MTIME)
@@ -172,30 +179,45 @@ def test_update_picks_up_a_new_file(shelved_tree):
     assert run.returncode == 0, run.describe()
 
     text = support.sidecar_text(shelved_tree.path(SIDECAR))
-    line = sidecar_line(text, NEW_FILE.partition(f'{subsets.PDS4_BUNDLE}/')[2])
+    key = NEW_FILE.partition(f'{subsets.PDS4_BUNDLE}/')[2]
+    line = sidecar_line(text, key)
     assert line is not None, text
     assert f'({len(NEW_FILE_BYTES):11d},' in line, line
     assert support.md5_of(shelved_tree.path(NEW_FILE)) in line, line
 
+    # The directory that gained it counts seven children, where the shelf was
+    # written with six.
+    dir_line = sidecar_line(text, key.rpartition('/')[0])
+    assert dir_line is not None, text
+    assert child_count_of(dir_line) == 7, dir_line
+
     run = support.run_tool(shelved_tree, 'pds4infoshelf', '--validate',
                            shelved_tree.path(BUNDLE_DIR))
-    assert run.returncode == 1, run.describe()
-    assert all(any(kind in line for kind in ('File size mismatch',
-                                             'Child count mismatch',
-                                             'Modification time mismatch'))
-               for line in run.error_lines), run.describe()
-    assert not any('extra_added_by_tests' in line for line in run.error_lines), \
-        run.describe()
-    # Unlike its pds3 twin, this tool reports the real shelved child count, and it
-    # notices the parent directory's modification time moving.
-    assert any('Child count mismatch 7 6' in line for line in run.error_lines), \
-        run.describe()
-    assert any('Modification time mismatch' in line for line in run.error_lines), \
-        run.describe()
+    assert run.returncode == 0, run.describe()
+    assert run.error_lines == [], run.describe()
 
-    run = support.run_tool(shelved_tree, 'pds4infoshelf', '--repair',
+
+def test_update_drops_the_entry_for_a_deleted_file(shelved_tree):
+    """--update reports a file that is gone and leaves it out of the shelf.
+
+    A deletion used to survive every update, because the merge began as a copy of the
+    old shelf and only added to it. The following --validate is what says the shelf
+    and the tree now agree; it used to report "Shelf info for missing file".
+    """
+
+    support.remove_file(shelved_tree, ALPHA_TABLE)
+    refresh_checksums(shelved_tree)
+
+    run = support.run_tool(shelved_tree, 'pds4infoshelf', '--update',
                            shelved_tree.path(BUNDLE_DIR))
     assert run.returncode == 0, run.describe()
+    assert any('Removed entry for missing file' in line
+               and 'radius_alpha_egress_1000m.tab' in line
+               for line in run.output.splitlines()), run.describe()
+
+    text = support.sidecar_text(shelved_tree.path(SIDECAR))
+    key = ALPHA_TABLE.partition(f'{subsets.PDS4_BUNDLE}/')[2]
+    assert sidecar_line(text, key) is None, text
 
     run = support.run_tool(shelved_tree, 'pds4infoshelf', '--validate',
                            shelved_tree.path(BUNDLE_DIR))

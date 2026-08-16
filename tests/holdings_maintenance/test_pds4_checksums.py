@@ -12,6 +12,7 @@
 # Every test rebuilds the tree first, so each one is independent and order-agnostic.
 ##########################################################################################
 
+import os
 from collections import namedtuple
 
 import pytest
@@ -269,3 +270,92 @@ def test_infoshelf_chain_runs_the_infoshelf_tool(fresh_tree, scripts):
     # Both tools logged, the second one under its own logger name.
     assert 'pds.validation.checksums' in run.output, run.describe()
     assert 'pds.validation.fileinfo' in run.output, run.describe()
+
+
+def test_update_drops_the_entry_for_a_deleted_file(fresh_tree):
+    """--update reports a file that is gone and leaves it out of the manifest.
+
+    A deletion used to be invisible rather than merely un-removed: the entry was
+    copied across from the old manifest whatever the walk found, so the comparison
+    that decides whether to rewrite still held and the run reported "update
+    canceled". The following --validate is what says the manifest and the tree
+    now agree.
+    """
+
+    support.initialize(fresh_tree, 'pds4checksums', fresh_tree.path(BUNDLE_DIR))
+    before = support.md5_file_mapping(fresh_tree.path(CHECKSUM_FILE))
+    key = ALPHA_TABLE.partition(f'{subsets.PDS4_BUNDLESET}/')[2]
+    assert key in before
+
+    support.remove_file(fresh_tree, ALPHA_TABLE)
+
+    run = support.run_tool(fresh_tree, 'pds4checksums', '--update',
+                           fresh_tree.path(BUNDLE_DIR))
+    assert run.returncode == 0, run.describe()
+    assert any('Removed entry for missing file' in line
+               and 'radius_alpha_egress_1000m.tab' in line
+               for line in run.output.splitlines()), run.describe()
+
+    after = support.md5_file_mapping(fresh_tree.path(CHECKSUM_FILE))
+    assert key not in after, run.describe()
+    assert set(after) == set(before) - {key}, run.describe()
+
+    run = support.run_tool(fresh_tree, 'pds4checksums', '--validate',
+                           fresh_tree.path(BUNDLE_DIR))
+    assert run.returncode == 0, run.describe()
+    assert run.error_lines == [], run.describe()
+
+
+def test_a_blank_record_in_the_manifest_is_reported_rather_than_fatal(fresh_tree):
+    """A manifest with a blank line is read to the end, and the line is an error.
+
+    The parse takes fixed offsets, so a short record yields an empty path; the
+    invisible-file test below it used to subscript that empty basename and end the
+    read in IndexError.
+    """
+
+    support.initialize(fresh_tree, 'pds4checksums', fresh_tree.path(BUNDLE_DIR))
+    check_path = fresh_tree.path(CHECKSUM_FILE)
+    check_path.write_bytes(check_path.read_bytes() + b'\n')
+
+    run = support.run_tool(fresh_tree, 'pds4checksums', '--validate',
+                           fresh_tree.path(BUNDLE_DIR))
+    assert 'IndexError' not in run.stderr, run.describe()
+    assert 'Traceback' not in run.stderr, run.describe()
+    assert any('Blank record in checksum file' in line
+               for line in run.error_lines), run.describe()
+    # Every other record was still read, so nothing is reported as missing.
+    assert not any('Missing checksum' in line for line in run.error_lines), \
+        run.describe()
+
+
+@pytest.mark.skipif(os.geteuid() == 0,
+                    reason='root reads a directory whatever its mode')
+def test_update_keeps_the_entries_below_an_unreadable_directory(fresh_tree):
+    """A walk that could not read a directory judges nothing below it missing.
+
+    ``os.walk()`` passes over a directory it cannot open without raising, so the
+    files under it never reach the set the deletion sweep compares against. Their
+    entries have to survive: an unreadable subtree costs the run its digests there
+    and not the manifest's record of them.
+    """
+
+    support.initialize(fresh_tree, 'pds4checksums', fresh_tree.path(BUNDLE_DIR))
+    before = support.md5_file_mapping(fresh_tree.path(CHECKSUM_FILE))
+
+    closed = fresh_tree.path(f'{BUNDLE_DIR}/data/rings')
+    closed.chmod(0o000)
+    try:
+        run = support.run_tool(fresh_tree, 'pds4checksums', '--update',
+                               fresh_tree.path(BUNDLE_DIR))
+    finally:
+        closed.chmod(0o755)
+
+    assert run.returncode == ERROR_EXIT, run.describe()
+    assert any('Directory could not be read' in line
+               for line in run.error_lines), run.describe()
+    assert not any('Removed entry for missing file' in line
+                   for line in run.output.splitlines()), run.describe()
+
+    after = support.md5_file_mapping(fresh_tree.path(CHECKSUM_FILE))
+    assert after == before, run.describe()

@@ -59,6 +59,12 @@ def sidecar_line(text, key):
                  if line.strip().startswith(f'"{key}"')), None)
 
 
+def child_count_of(line):
+    """Return the child count a sidecar line records, which is its second field."""
+
+    return int(line.partition('(')[2].split(',')[1])
+
+
 def refresh_checksums(tree):
     """Re-run pdschecksums --repair so the checksum file matches the tree."""
 
@@ -225,13 +231,14 @@ def test_extra_file_is_reported(shelved_tree):
 
 
 def test_update_picks_up_a_new_file(shelved_tree):
-    """--update adds the new file's info to an existing shelf.
+    """--update adds the new file's info and re-dates the directories above it.
 
-    --update is deliberately additive: it fills in only the keys the shelf lacks,
-    so the aggregates already recorded for the parent directories -- their byte
-    counts, their child counts and their modification times -- are left stale, and
-    the following --validate reports them. --repair is what rewrites the whole
-    shelf.
+    A file already shelved keeps its entry and is not measured again, which is what
+    makes an update of a large volume affordable. A directory's entry is different in
+    kind: it is an aggregate of the children the walk found, so it comes from the
+    walk. It used to be kept from the old shelf instead, which left every ancestor's
+    byte count, child count and modification time stale until a --repair -- and the
+    --validate below is what reported them.
     """
 
     support.add_file(shelved_tree, NEW_FILE, NEW_FILE_BYTES, NEW_FILE_MTIME)
@@ -248,22 +255,41 @@ def test_update_picks_up_a_new_file(shelved_tree):
     assert f'({len(NEW_FILE_BYTES):11d},' in line, line
     assert support.md5_of(shelved_tree.path(NEW_FILE)) in line, line
 
+    # The directory that gained it counts seven children, where the shelf was
+    # written with six.
+    dir_line = sidecar_line(text, key.rpartition('/')[0])
+    assert dir_line is not None, text
+    assert child_count_of(dir_line) == 7, dir_line
+
     run = support.run_tool(shelved_tree, 'pdsinfoshelf', '--validate',
                            shelved_tree.path(VOLUME_DIR))
-    assert run.returncode == 1, run.describe()
-    assert all('File size mismatch' in line or 'Child count mismatch' in line
-               or 'Modification time mismatch' in line
-               for line in run.error_lines), run.describe()
-    assert not any('N4BI01L4Q_EXTRA.TXT' in line for line in run.error_lines), \
-        run.describe()
-    # The message names the on-disk count and then the shelved one, which is what
-    # makes it worth logging: seven files on disk against the six the shelf knows.
-    assert any('Child count mismatch 7 6' in line for line in run.error_lines), \
-        run.describe()
+    assert run.returncode == 0, run.describe()
+    assert run.error_lines == [], run.describe()
 
-    run = support.run_tool(shelved_tree, 'pdsinfoshelf', '--repair',
+
+def test_update_drops_the_entry_for_a_deleted_file(shelved_tree):
+    """--update reports a file that is gone and leaves it out of the shelf.
+
+    A deletion used to survive every update, because the merge began as a copy of the
+    old shelf and only added to it. The following --validate is what says the shelf
+    and the tree now agree; it used to report "Shelf info for missing file".
+    """
+
+    support.remove_file(shelved_tree, ASCII_TABLE)
+    refresh_checksums(shelved_tree)
+
+    run = support.run_tool(shelved_tree, 'pdsinfoshelf', '--update',
                            shelved_tree.path(VOLUME_DIR))
     assert run.returncode == 0, run.describe()
+    assert any('Removed entry for missing file' in line and 'N4BI01L4Q.ASC' in line
+               for line in run.output.splitlines()), run.describe()
+
+    text = support.sidecar_text(shelved_tree.path(SIDECAR))
+    key = ASCII_TABLE.partition(f'{subsets.PDS3_VOLUME}/')[2]
+    assert sidecar_line(text, key) is None, text
+
+    dir_line = sidecar_line(text, key.rpartition('/')[0])
+    assert child_count_of(dir_line) == 5, dir_line
 
     run = support.run_tool(shelved_tree, 'pdsinfoshelf', '--validate',
                            shelved_tree.path(VOLUME_DIR))
@@ -300,3 +326,27 @@ def test_update_versions_the_shelf_file_it_replaces(shelved_tree):
     assert next(logs.rglob(versions[0])).read_bytes() == first_pickle
     assert next(logs.rglob(versions[1])).read_bytes() == first_sidecar
     assert shelved_tree.path(PICKLE).exists()
+
+
+def test_initialize_refuses_a_file_selection_instead_of_crashing(tree):
+    """--initialize naming one file inside the volume is refused, and says so.
+
+    The driver calls a task without a logger, and this one used to bind its own
+    only inside the branch that finds a shelf already there -- so the refusal
+    below, which is reached when there is none, called error() on None and ended
+    the run in AttributeError. Its pds4 twin binds first and reports; so does this
+    one now.
+    """
+
+    # A selection has to be a file directly inside the volume, which is what the
+    # driver resolves to (directory, basename); the declared subset has none.
+    top_level = f'{VOLUME_DIR}/AAREADME.TXT'
+    support.add_file(tree, top_level, b'ADDED BY A REFUSAL TEST\r\n', NEW_FILE_MTIME)
+
+    run = support.run_tool(tree, 'pdsinfoshelf', '--initialize', tree.path(top_level))
+    assert run.returncode == 1, run.describe()
+    assert 'AttributeError' not in run.stderr, run.describe()
+    assert 'Traceback' not in run.stderr, run.describe()
+    assert any('File selection is disallowed for task "initialize"' in line
+               for line in run.error_lines), run.describe()
+    assert not tree.path(PICKLE).exists(), run.describe()

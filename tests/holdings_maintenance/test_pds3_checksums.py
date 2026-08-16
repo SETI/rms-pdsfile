@@ -13,6 +13,7 @@
 # that reports a mismatch exits 1.
 ##########################################################################################
 
+import os
 from collections import namedtuple
 
 import pytest
@@ -299,3 +300,91 @@ def test_no_targets_leaves_no_unbound_state(fresh_tree, scripts):
     assert run.returncode == 0, run.describe()
     assert 'UnboundLocalError' not in run.stderr, run.describe()
     assert 'Traceback' not in run.stderr, run.describe()
+
+
+def test_update_drops_the_entry_for_a_deleted_file(fresh_tree):
+    """--update reports a file that is gone and leaves it out of the manifest.
+
+    A deletion used to be invisible rather than merely un-removed: the entry was
+    copied across from the old manifest whatever the walk found, so the comparison
+    that decides whether to rewrite still held and the run reported "update
+    canceled". The following --validate is what says the manifest and the tree
+    now agree.
+    """
+
+    support.initialize(fresh_tree, 'pdschecksums', fresh_tree.path(VOLUME_DIR))
+    before = support.md5_file_mapping(fresh_tree.path(CHECKSUM_FILE))
+    key = PREVIEW.partition(f'{subsets.PDS3_VOLSET}/')[2]
+    assert key in before
+
+    support.remove_file(fresh_tree, PREVIEW)
+
+    run = support.run_tool(fresh_tree, 'pdschecksums', '--update',
+                           fresh_tree.path(VOLUME_DIR))
+    assert run.returncode == 0, run.describe()
+    assert any('Removed entry for missing file' in line and 'N4BI01L4Q_CAL.JPG' in line
+               for line in run.output.splitlines()), run.describe()
+
+    after = support.md5_file_mapping(fresh_tree.path(CHECKSUM_FILE))
+    assert key not in after, run.describe()
+    assert set(after) == set(before) - {key}, run.describe()
+
+    run = support.run_tool(fresh_tree, 'pdschecksums', '--validate',
+                           fresh_tree.path(VOLUME_DIR))
+    assert run.returncode == 0, run.describe()
+    assert run.error_lines == [], run.describe()
+
+
+def test_a_blank_record_in_the_manifest_is_reported_rather_than_fatal(fresh_tree):
+    """A manifest with a blank line is read to the end, and the line is an error.
+
+    The parse takes fixed offsets, so a short record yields an empty path; the
+    invisible-file test below it used to subscript that empty basename and end the
+    read in IndexError.
+    """
+
+    support.initialize(fresh_tree, 'pdschecksums', fresh_tree.path(VOLUME_DIR))
+    check_path = fresh_tree.path(CHECKSUM_FILE)
+    check_path.write_bytes(check_path.read_bytes() + b'\n')
+
+    run = support.run_tool(fresh_tree, 'pdschecksums', '--validate',
+                           fresh_tree.path(VOLUME_DIR))
+    assert 'IndexError' not in run.stderr, run.describe()
+    assert 'Traceback' not in run.stderr, run.describe()
+    assert any('Blank record in checksum file' in line
+               for line in run.error_lines), run.describe()
+    # Every other record was still read, so nothing is reported as missing.
+    assert not any('Missing checksum' in line for line in run.error_lines), \
+        run.describe()
+
+
+@pytest.mark.skipif(os.geteuid() == 0,
+                    reason='root reads a directory whatever its mode')
+def test_update_keeps_the_entries_below_an_unreadable_directory(fresh_tree):
+    """A walk that could not read a directory judges nothing below it missing.
+
+    ``os.walk()`` passes over a directory it cannot open without raising, so the
+    files under it never reach the set the deletion sweep compares against. Their
+    entries have to survive: an unreadable subtree costs the run its digests there
+    and not the manifest's record of them.
+    """
+
+    support.initialize(fresh_tree, 'pdschecksums', fresh_tree.path(VOLUME_DIR))
+    before = support.md5_file_mapping(fresh_tree.path(CHECKSUM_FILE))
+
+    closed = fresh_tree.path(f'{VOLUME_DIR}/DATA/VISIT_01')
+    closed.chmod(0o000)
+    try:
+        run = support.run_tool(fresh_tree, 'pdschecksums', '--update',
+                               fresh_tree.path(VOLUME_DIR))
+    finally:
+        closed.chmod(0o755)
+
+    assert run.returncode == ERROR_EXIT, run.describe()
+    assert any('Directory could not be read' in line
+               for line in run.error_lines), run.describe()
+    assert not any('Removed entry for missing file' in line
+                   for line in run.output.splitlines()), run.describe()
+
+    after = support.md5_file_mapping(fresh_tree.path(CHECKSUM_FILE))
+    assert after == before, run.describe()
