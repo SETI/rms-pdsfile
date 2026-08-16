@@ -31,7 +31,8 @@ real tree walks everything, examines nothing, and reports `Tests performed: 0` /
 
 ## Scope of the removal
 
-Deleted: the module, its 18 tests, its user-guide chapter. Edited: the package and
+Deleted: the module, its 18 test functions (19 collected tests, one being
+parametrized over `--help`/`-h`), its user-guide chapter. Edited: the package and
 test docstrings that enumerated it, the API-reference page, the user- and
 developer-guide program counts (fifteen programs to fourteen; the API reference
 drops from 78 to 77 modules), `README.md`, the `.cursor` print-waiver example, and
