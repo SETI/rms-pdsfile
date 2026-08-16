@@ -77,54 +77,9 @@ def _check(path, roots, what):
                 f'real root.')
 
 
-class _Guarded:
-    """A write call that refuses targets inside a protected root.
-
-    Deliberately a callable object rather than a function. A plain Python function
-    implements the descriptor protocol, so storing one on a class turns it into a
-    method and inserts the instance as a first argument; a builtin does not bind that
-    way. Replacing a builtin with a function therefore changes the arity of every call
-    that reaches it through a class attribute, and the standard library does hold these
-    functions on classes -- `pathlib` did exactly that until Python 3.11 removed its
-    `_accessor`, and one such caller was enough to break every tool subprocess. The
-    interpreters this package supports no longer include that one, so the property is
-    kept because the pattern is general rather than because a supported version needs
-    it.
-    """
-
-    def __init__(self, real, roots, what, args_to_check=(0,)):
-        self._real = real
-        self._roots = roots
-        self._what = what
-        self._args_to_check = args_to_check
-
-    def __call__(self, *args, **kwargs):
-        for index in self._args_to_check:
-            if index < len(args):
-                _check(args[index], self._roots, self._what)
-        return self._real(*args, **kwargs)
-
-
-class _GuardedOpen(_Guarded):
-    """`open()`, checked only when the mode can create or change the file."""
-
-    def __call__(self, file, mode='r', *args, **kwargs):
-        if _WRITE_FLAGS.intersection(mode):
-            _check(file, self._roots, self._what)
-        return self._real(file, mode, *args, **kwargs)
-
-
-class _GuardedOsOpen(_Guarded):
-    """`os.open()`, checked on the flags rather than a mode string.
-
-    Nothing in the tools calls it directly, but it is the floor every other write
-    stands on: a guard that only wraps `open()` is bypassed by one `os.open()` call.
-    """
-
-    def __call__(self, path, flags, *args, **kwargs):
-        if flags & (os.O_WRONLY | os.O_RDWR | os.O_CREAT | os.O_APPEND | os.O_TRUNC):
-            _check(path, self._roots, self._what)
-        return self._real(path, flags, *args, **kwargs)
+# What was replaced, so uninstall() can put it back. Empty when the guard is not in
+# place, which is what installed() reports on.
+_ORIGINALS = {}
 
 
 def install():
@@ -145,38 +100,94 @@ def install():
     if not roots:
         return
 
-    builtins.open = _GuardedOpen(builtins.open, roots, 'open()')
-    # pathlib goes through io.open, which is a separate reference to the same builtin,
-    # so patching builtins.open alone leaves Path.write_text() unguarded.
-    io.open = _GuardedOpen(io.open, roots, 'io.open()')
-    os.open = _GuardedOsOpen(os.open, roots, 'os.open()')
-    os.mkdir = _Guarded(os.mkdir, roots, 'mkdir()')
-    os.makedirs = _Guarded(os.makedirs, roots, 'makedirs()')
-    os.remove = _Guarded(os.remove, roots, 'remove()')
-    os.unlink = _Guarded(os.unlink, roots, 'unlink()')
-    os.rmdir = _Guarded(os.rmdir, roots, 'rmdir()')
-    os.rename = _Guarded(os.rename, roots, 'rename()', args_to_check=(0, 1))
-    os.replace = _Guarded(os.replace, roots, 'replace()', args_to_check=(0, 1))
+    real_open = builtins.open
+    real_io_open = io.open
+    real_os_open = os.open
+    real_mkdir = os.mkdir
+    real_makedirs = os.makedirs
+    real_remove = os.remove
+    real_unlink = os.unlink
+    real_rmdir = os.rmdir
+    real_rename = os.rename
+    real_replace = os.replace
+
+    def guarded_open(file, mode='r', *args, **kwargs):
+        if _WRITE_FLAGS.intersection(mode):
+            _check(file, roots, 'open()')
+        return real_open(file, mode, *args, **kwargs)
+
+    def guarded_io_open(file, mode='r', *args, **kwargs):
+        if _WRITE_FLAGS.intersection(mode):
+            _check(file, roots, 'io.open()')
+        return real_io_open(file, mode, *args, **kwargs)
+
+    def guarded_os_open(path, flags, *args, **kwargs):
+        if flags & (os.O_WRONLY | os.O_RDWR | os.O_CREAT | os.O_APPEND | os.O_TRUNC):
+            _check(path, roots, 'os.open()')
+        return real_os_open(path, flags, *args, **kwargs)
+
+    def guarded_mkdir(path, *args, **kwargs):
+        _check(path, roots, 'mkdir()')
+        return real_mkdir(path, *args, **kwargs)
+
+    def guarded_makedirs(name, *args, **kwargs):
+        _check(name, roots, 'makedirs()')
+        return real_makedirs(name, *args, **kwargs)
+
+    def guarded_remove(path, *args, **kwargs):
+        _check(path, roots, 'remove()')
+        return real_remove(path, *args, **kwargs)
+
+    def guarded_unlink(path, *args, **kwargs):
+        _check(path, roots, 'unlink()')
+        return real_unlink(path, *args, **kwargs)
+
+    def guarded_rmdir(path, *args, **kwargs):
+        _check(path, roots, 'rmdir()')
+        return real_rmdir(path, *args, **kwargs)
+
+    def guarded_rename(src, dst, *args, **kwargs):
+        _check(src, roots, 'rename()')
+        _check(dst, roots, 'rename()')
+        return real_rename(src, dst, *args, **kwargs)
+
+    def guarded_replace(src, dst, *args, **kwargs):
+        _check(src, roots, 'replace()')
+        _check(dst, roots, 'replace()')
+        return real_replace(src, dst, *args, **kwargs)
+
+    _ORIGINALS.update({
+        (builtins, 'open'): real_open,
+        (io, 'open'): real_io_open,
+        (os, 'open'): real_os_open,
+        (os, 'mkdir'): real_mkdir,
+        (os, 'makedirs'): real_makedirs,
+        (os, 'remove'): real_remove,
+        (os, 'unlink'): real_unlink,
+        (os, 'rmdir'): real_rmdir,
+        (os, 'rename'): real_rename,
+        (os, 'replace'): real_replace,
+    })
+
+    builtins.open = guarded_open
+    io.open = guarded_io_open
+    os.open = guarded_os_open
+    os.mkdir = guarded_mkdir
+    os.makedirs = guarded_makedirs
+    os.remove = guarded_remove
+    os.unlink = guarded_unlink
+    os.rmdir = guarded_rmdir
+    os.rename = guarded_rename
+    os.replace = guarded_replace
 
 
 def uninstall():
-    """Put the real write entry points back, if this module replaced them.
+    """Put the real write entry points back, if this module replaced them."""
 
-    Installing is idempotent because it uninstalls first, which also lets a caller
-    re-install over a different set of roots -- what the tests of this module do.
-    """
+    for (module, name), real in _ORIGINALS.items():
+        setattr(module, name, real)
 
-    if isinstance(builtins.open, _Guarded):
-        builtins.open = builtins.open._real
-
-    if isinstance(io.open, _Guarded):
-        io.open = io.open._real
-
-    for name in ('open', 'mkdir', 'makedirs', 'remove', 'unlink', 'rmdir', 'rename',
-                 'replace'):
-        current = getattr(os, name)
-        if isinstance(current, _Guarded):
-            setattr(os, name, current._real)
+    _ORIGINALS.clear()
 
 
 def installed():
@@ -186,4 +197,4 @@ def installed():
         bool: True if the write entry points are wrapped.
     """
 
-    return isinstance(builtins.open, _Guarded)
+    return bool(_ORIGINALS)

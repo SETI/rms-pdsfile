@@ -2202,8 +2202,10 @@ to touch `pdscache.py`).**
 5.1.0, which the same extra pulls in and which `doc_python.mdc` section 3 requires,
 declares `sphinx>=8,<10`. The floor the extra can actually resolve is therefore 8.
 pip resolves it correctly today: the local tree builds on Sphinx 9.1.0, and the two
-hosted lint legs build on 9.1.0 (Python 3.13) and **8.1.3** (Python 3.10), both
-clean. The declared floor is looser than the real one, which matters only to someone
+hosted lint legs build on 9.1.0 and **8.1.3**, both clean. Those legs were Python
+3.13 and 3.10 when this was measured, and the floor is 3.11 now, so the older leg may
+resolve differently; the point is unchanged, which is that the declared floor is
+looser than the real one. The declared floor is looser than the real one, which matters only to someone
 who pins Sphinx and silently gets an older `myst-parser` than this tree was written
 against. `pyproject.toml` is otherwise untouched by this PR.
 **Owner: a later packaging PR.**
@@ -2220,7 +2222,7 @@ recursive import of `pdsfile` raises when a rule module is tested on its own. Ro
 no hits in any of the three, and built a minimal package of the same shape showing
 that `import pkg.sub as sub` during a circular import binds from `sys.modules`
 rather than raising -- the fallback added in Python 3.7. `pyproject.toml` requires
-3.10 or newer, so the mechanism the comment describes cannot occur.
+3.11 or newer, so the mechanism the comment describes cannot occur.
 
 Removing the handler is a code change and was out of PR-30a's scope; the two module
 docstrings now say the handler is there and that the mechanism does not occur,

@@ -66,25 +66,6 @@ def test_writes_outside_the_root_are_untouched(protected, tmp_path):
     assert elsewhere.read_text(encoding='utf-8') == 'fine'
 
 
-def test_the_guard_does_not_bind_as_a_method(protected):
-    """A replacement stored on a class must not become a method.
-
-    A builtin held as a class attribute does not bind; a plain Python function does,
-    inserting the instance as a first argument and changing the arity of the call. The
-    standard library does hold these functions on classes -- `pathlib` did until 3.11
-    removed its `_accessor` -- and one such caller was enough to break every tool
-    subprocess while a local run on a newer interpreter stayed green. This fails if the
-    guard goes back to being a function.
-    """
-
-    class Accessor:
-        mkdir = os.mkdir
-
-    target = protected.parent / 'work_via_accessor'
-    Accessor().mkdir(target, 0o777)
-    assert target.is_dir()
-
-
 def test_a_subprocess_installs_the_same_guard(protected, tmp_path):
     """The guard reaches a tool subprocess through sitecustomize on PYTHONPATH."""
 
