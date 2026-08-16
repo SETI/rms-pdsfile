@@ -19,7 +19,8 @@ one of them.
 says where the file sits on this machine; the *logical path* is what follows the
 holdings directory, starting at a category name such as ``volumes/``, and is identical
 on every machine hosting the same holdings. Cache keys are lower-cased logical paths;
-shelf keys are interior paths (the tail of the logical path below the bundle);
+info and link shelf keys are interior paths (the tail of the logical path below the
+bundle; index shelves are keyed by row selection instead);
 everything user-facing prefers logical paths. Converting logical to absolute is the
 hard direction, because a machine can host several holdings directories --
 :func:`~pdsfile._path_utils.abspath_for_logical_path` is the one place that search
@@ -29,7 +30,8 @@ lives.
 ``$RANKS-<category>/`` (lower-cased bundle set or bundle name, to the sorted list of
 integer version ranks) and ``$VOLS-<category>/`` (the same keys, to the directory path
 per rank). Everything that resolves a version -- a path with no version suffix, the
-``version_ranks`` properties, the OPUS constructors -- reads these tables, and
+:attr:`~pdsfile._properties._PropertiesMixin.version_ranks` property, the OPUS
+constructors -- reads these tables, and
 ``_update_ranks_and_vols`` in :mod:`pdsfile.pdsfile` maintains them as objects are
 built. Code that constructs objects by a route that skips the bookkeeping produces a
 tree in which the newest version is invisible.
@@ -41,7 +43,8 @@ category's children across every preloaded holdings directory, and it has no sin
 absolute path of its own. Everything below it is *physical* -- one file, one path.
 Code that treats a category-level object like a physical directory (asking for its
 shelf, its checksum, its absolute path) is wrong by construction, and the properties
-that would answer generally special-case ``is_category_dir``.
+that would answer generally special-case
+:attr:`~pdsfile.pdsfile.PdsFile.is_category_dir`.
 
 **The shelves-only switch is class-level global state.** ``SHELVES_ONLY`` is a class attribute,
 ``False`` by default, flipped by :meth:`~pdsfile.pdsfile.PdsFile.use_shelves_only`; it
@@ -71,7 +74,9 @@ constructors: :meth:`~pdsfile.pdsfile.PdsFile.child`,
 :meth:`~pdsfile.pdsfile.PdsFile.from_logical_path`,
 :meth:`~pdsfile.pdsfile.PdsFile.from_path`,
 :meth:`~pdsfile.pdsfile.PdsFile.from_lid` and their relatives, plus
-``new_pdsfile``, ``new_merged_dir`` and ``new_index_row_pdsfile``. The contract every
+:meth:`~pdsfile.pdsfile.PdsFile.new_pdsfile`,
+:meth:`~pdsfile.pdsfile.PdsFile.new_merged_dir` and
+:meth:`~pdsfile.pdsfile.PdsFile.new_index_row_pdsfile`. The contract every
 constructor honors: consult ``cls.CACHE`` first; select the rule subclass through
 ``SUBCLASSES``/``VOLSET_TRANSLATOR`` when crossing into a bundle set; call
 ``_complete`` so the finished object is cached and the ranks/vols tables are updated.
@@ -82,16 +87,19 @@ The nine mixins
 ---------------
 
 :mod:`pdsfile._associations` -- ``_AssociationsMixin``
-    Given one file, the files that go with it elsewhere in the tree: the
-    ``associated_abspaths``/``associated_logical_paths``/``associated_pdsfiles``
-    family, and ``associated_parallel`` for the single most similar file in one
+    Given one file, the files that go with it elsewhere in the tree: the family of
+    :meth:`~pdsfile._associations._AssociationsMixin.associated_abspaths`,
+    :meth:`~pdsfile._associations._AssociationsMixin.associated_logical_paths` and
+    :meth:`~pdsfile._associations._AssociationsMixin.associated_pdsfiles`,
+    and :meth:`~pdsfile._associations._AssociationsMixin.associated_parallel`
+    for the single most similar file in one
     parallel category, optionally at another version. Two mechanisms produce answers:
     the rule modules' ``ASSOCIATIONS`` tables map a logical path to wildcard patterns,
     and where no rule applies the same interior path is looked for in the parallel
     tree, falling back to the deepest part of it that exists. Contract: answers are
     lists (one data file can have many previews; one metadata table covers many data
-    files), and ``associated_parallel`` caches its answer on the object it resolved
-    the question against, which is not always the object it was asked about.
+    files), and the parallel lookup caches its answer on the object it resolved the
+    question against, which is not always the object it was asked about.
 
 :mod:`pdsfile._derived_paths` -- ``_DerivedPathsMixin``
     Pure path arithmetic from a file's own parts to the paths derived from it: the
@@ -105,15 +113,22 @@ The nine mixins
 
 :mod:`pdsfile._index_rows` -- ``_IndexRowsMixin``
     The pseudo-files that stand for one row of an index table, with paths of the form
-    ``.../table.tab/selection``. Opens index shelves (``get_indexshelf``), completes a
-    partial selection to an exact key (``find_selected_row_key``), builds the child
-    object for a row (``child_of_index``), and maps a row back to the data file it
+    ``.../table.tab/selection``. Opens index shelves
+    (:meth:`~pdsfile._index_rows._IndexRowsMixin.get_indexshelf`), completes a
+    partial selection to an exact key
+    (:meth:`~pdsfile._index_rows._IndexRowsMixin.find_selected_row_key`), builds the
+    child object for a row
+    (:meth:`~pdsfile._index_rows._IndexRowsMixin.child_of_index`), and maps a row
+    back to the data file it
     describes. Contract: a row object has no absolute path of its own -- it is
     addressable, cacheable and describable, but not a file on disk.
 
 :mod:`pdsfile._local_fs` -- ``_LocalFsMixin``
-    The four filesystem questions the package asks -- ``os_path_exists``,
-    ``os_path_isdir``, ``os_listdir``, ``glob_glob`` -- and the one mapping they need
+    The four filesystem questions the package asks --
+    :meth:`~pdsfile._local_fs._LocalFsMixin.os_path_exists`,
+    :meth:`~pdsfile._local_fs._LocalFsMixin.os_path_isdir`,
+    :meth:`~pdsfile._local_fs._LocalFsMixin.os_listdir`,
+    :meth:`~pdsfile._local_fs._LocalFsMixin.glob_glob` -- and the one mapping they need
     (``_non_checksum_abspath``, from a checksum file back to what it covers). Under
     ``SHELVES_ONLY`` the same four questions are answered from the info shelves, with
     the filesystem as fallback. Two caveats are the module's own: existence answers
@@ -162,9 +177,11 @@ The nine mixins
     tree itself.
 
 :mod:`pdsfile._sorting` -- ``_SortingMixin``
-    Order and bulk conversion. ``sort_basenames`` applies the rule modules' sort keys
-    (labels next to data, newest version first, AAREADME on top);
-    ``split_basename`` produces the parts those keys are built from; and the twelve
+    Order and bulk conversion.
+    :meth:`~pdsfile._sorting._SortingMixin.sort_basenames` applies the rule modules'
+    sort keys (labels next to data, newest version first, AAREADME on top);
+    :meth:`~pdsfile._sorting._SortingMixin.split_basename` produces the parts those
+    keys are built from; and the twelve
     ``<plural>_for_<plural>`` methods convert lists among the four namings of a file
     (object, absolute path, logical path, basename), each with the option to drop
     what does not exist. Contract: nothing here reads the filesystem except through
@@ -185,12 +202,14 @@ The plain modules
     :class:`~pdsfile.pdscache.DictionaryCache` and
     :class:`~pdsfile.pdscache.MemcachedCache` behind the do-nothing common base
     :class:`~pdsfile.pdscache.PdsCache`. The two are close but not substitutable --
-    ``delete_multi`` exists only on the dictionary flavor, ``set_multi`` differs in
-    signature and defaults, a lifetime of ``None`` means different things, and only
-    the memcached flavor accepts a bound method as a lifetime function -- and the
+    :meth:`~pdsfile.pdscache.DictionaryCache.delete_multi` works only on the
+    dictionary flavor (the memcached version raises ``AttributeError`` on every
+    call), :meth:`~pdsfile.pdscache.DictionaryCache.set_multi` differs in signature
+    and defaults, a lifetime of ``None`` means different things, and only the
+    memcached flavor accepts a bound method as a lifetime function -- and the
     module docstring is the catalogue of those differences. Contract for callers:
     treat entries as expiring unless stored with lifetime zero, and empty a
-    dictionary cache only with ``clear()``.
+    dictionary cache only with :meth:`~pdsfile.pdscache.DictionaryCache.clear`.
 
 :mod:`pdsfile.pdsviewable`
     :class:`~pdsfile.pdsviewable.PdsViewable` (one displayable image),
@@ -212,8 +231,9 @@ The plain modules
     Binds ``__version__``, :class:`~pdsfile.pdsfile.PdsFile`, and the public names of
     both subpackages -- including the side effect that matters: importing the package
     imports the rule modules, which is what populates the subclass registries. The
-    three star imports in it are load-bearing for the frozen public surface; do not
-    "clean them up".
+    two star imports in it, and the explicit aliased re-export of
+    :class:`~pdsfile.pdsfile.PdsFile` above them, are load-bearing for the frozen
+    public surface; do not "clean them up".
 
 The frozen surface
 ------------------
@@ -226,4 +246,6 @@ make a diff vanish. New internals are given underscore-prefixed names, which the
 freeze does not see. The companion tests in ``tests/api/`` pin the mixin mechanics
 this chapter relies on: no two mixins define the same name, the base order stays
 alphabetical, the class statement stays in :mod:`pdsfile.pdsfile`, and no mixin
-module imports it back.
+module imports it back at module level (a method that needs the class object uses a
+function-local import, which is the sanctioned pattern and the one
+:meth:`~pdsfile._opus._OpusMixin.opus_products` uses).

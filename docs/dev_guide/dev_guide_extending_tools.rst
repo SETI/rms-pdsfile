@@ -58,8 +58,12 @@ This is ``pdsarchives``'s spec, verbatim from
 The fields fall into three groups. The identity group (``progname``, ``logname``,
 ``pdsfile_cls``, ``unit``) names the tool, its logger, its
 :class:`~pdsfile.pdsfile.PdsFile` class and what one command-line target is -- a
-volume, a bundle or a table; ``pds4archives`` differs from the spec above in exactly
-those, plus the sentinel. The flavor group (``holdings_sentinel``, ``index_ext``,
+volume, a bundle or a table. Comparing ``pds4archives``'s spec against the one above
+shows how much of a pair's difference is data: it differs in the identity group, the
+three flavor fields, the log-path method name, and its handler tuple, which adds a
+warning handler -- nine fields. The parser texts and the log suffix are shared from
+``_archives_common``, and the two archive callables are each module's own function
+of the same name. The flavor group (``holdings_sentinel``, ``index_ext``,
 ``file_log_level``) is the same for all five specs of one flavor, and each field acts
 on some tools only -- the spec docstring names, for every field, exactly which shared
 functions read it, because "the spec carries it" and "this tool acts on it" are

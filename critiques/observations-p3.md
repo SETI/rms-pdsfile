@@ -3166,6 +3166,21 @@ split into a data-dependent and a path-only half in the first place. #92 is
 listed in §9 of the plan as future work outside this effort. **Owner: #92 /
 post-merge.**
 
+### 4316. The self-hosted data driver never runs `tests/docs/`, so the documentation gates ride on the hosted job alone
+
+**The self-hosted data driver never runs `tests/docs/`, so the documentation gates
+ride on the hosted job alone.** `scripts/automated_tests/pdsfile_main_test.sh`
+enumerates the directories of its `--mode ns` pass — `tests/api core
+holdings_maintenance pds3file rules/pds3 pds4file rules/pds4` — and `tests/docs/`
+is not among them, presumably because the list predates that directory. The
+docstring checker and the silent-markup check therefore run in CI only where the
+hosted lint job's `run-all-checks.sh` invocation collects the whole tree. Nothing
+is uncovered today — the lint job runs on every pull request — but the driver's
+enumeration silently excludes any future test directory too, where the gate
+script's `pytest tests` cannot. Found by PR-33's round-1 reviewer while checking
+the developer guide's CI chapter, which now states the enumeration instead of
+calling the driver a superset. **Owner: whichever PR next edits the driver.**
+
 ## Documentation and records
 
 ### 4400. `_common.LOGDIRS`'s comment names a caller that does not exist

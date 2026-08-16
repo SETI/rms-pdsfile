@@ -64,25 +64,30 @@ The base class and its mixins
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 :class:`~pdsfile.pdsfile.PdsFile` is abstract in practice, though not formally: it
-carries all of the shared behavior, but the configuration tables that make path parsing
-work are ``None`` on the base class and are filled in by the two subclasses, so real
+carries all of the shared behavior, but the configuration that makes path parsing work
+is missing or ``None`` on the base class -- the rule and translator tables are ``None``
+slots the subclasses fill, and the bundle-set name regular expressions exist only on
+the subclasses -- so real
 objects are always instances of :class:`~pdsfile.pds3file.Pds3File`,
 :class:`~pdsfile.pds4file.Pds4File` or one of their rule subclasses. Objects are never
 built by calling a class either; the constructors are the class and instance methods
 shown in the diagram -- :meth:`~pdsfile.pdsfile.PdsFile.from_abspath`,
 :meth:`~pdsfile.pdsfile.PdsFile.from_logical_path`,
 :meth:`~pdsfile.pdsfile.PdsFile.from_path`, :meth:`~pdsfile.pdsfile.PdsFile.child` and
-:meth:`~pdsfile.pdsfile.PdsFile.parent` and their relatives -- each of which consults
-the class-level cache before building anything.
+:meth:`~pdsfile.pdsfile.PdsFile.parent` and their relatives -- each of which reads the
+class-level cache, directly or through the ``_complete`` step every construction ends
+with, so that one object per path survives and a cached object's filled-in values are
+not recomputed.
 
 The nine mixin bases hold methods and properties only: no mixin defines ``__init__``
 or any state of its own, every attribute a mixin method reads or writes is defined on
 :class:`~pdsfile.pdsfile.PdsFile` (or on a subclass) and reached through ``self`` or
 ``cls`` at run time, and each mixin's class docstring enumerates exactly which
 attributes those are. That contract is what lets the nine live in separate modules
-without importing :mod:`pdsfile.pdsfile` back: :mod:`pdsfile._local_fs` can call into
-:mod:`pdsfile._shelves`, and :mod:`pdsfile._properties` into both, purely through
-attribute lookup on the object. The mixins are, in their base-class order (which is
+without a module-level import of :mod:`pdsfile.pdsfile` back (a method that needs the
+class object itself uses a function-local import instead): :mod:`pdsfile._local_fs`
+can call into :mod:`pdsfile._shelves`, and :mod:`pdsfile._properties` into both,
+through attribute lookup on the object. The mixins are, in their base-class order (which is
 alphabetical, and which ``tests/api/test_mixin_collisions.py`` pins along with the rule
 that no two mixins define the same name):
 :class:`~pdsfile._associations._AssociationsMixin`,
@@ -161,7 +166,8 @@ flushed in batches, a copy of every permanent entry is kept locally and restored
 the server if one goes missing, and the whole cache can be blocked for exclusive use
 during a preload. It is reached only when ``pylibmc`` is importable and a nonzero port
 is supplied (Viewmaster's deployment does; nothing in this repository's test
-environment does), so the dictionary flavor is the one every test here exercises.
+environment does), so no test here reaches a live memcached server -- the memcached
+coverage that exists runs against a stand-in client.
 
 The lifetimes in the diagram come from
 :func:`~pdsfile._preload.cache_lifetime_for_class` (re-exported as

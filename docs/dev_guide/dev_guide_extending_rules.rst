@@ -126,8 +126,8 @@ new dataset's names) for review in the same change. Never edit the manifest by h
 A description for the volume set also belongs in the holdings tree itself: the
 ``_volinfo/`` tables (see the file-format appendix of the user guide) are where
 :meth:`~pdsfile._preload._PreloadMixin.load_volume_info` reads the text that
-``description`` returns for the set and its volumes. That is a holdings-tree edit,
-not a repository edit.
+:attr:`~pdsfile._properties._PropertiesMixin.description` returns for the set and its
+volumes. That is a holdings-tree edit, not a repository edit.
 
 The standard test set
 ---------------------
@@ -183,8 +183,9 @@ representative data file against a committed golden copy under
 ``tests/golden/full/pds3/<NEWSET_xxxx>/``; a run with ``--update`` -- or a first run,
 since a missing golden is written rather than failed -- creates them against real
 holdings, and they are then reviewed and committed (:doc:`dev_guide_goldens`). Modules whose rules define OPUS identifiers add
-round-trip tests for ``opus_id`` and ``opus_id_to_primary_logical_path`` over a list
-of real paths, asserting that each path's OPUS ID leads back to the primary path;
+a round-trip test over a list of real paths, asserting that each path's
+:attr:`~pdsfile._properties._PropertiesMixin.opus_id` leads back to the same logical
+path through :meth:`~pdsfile._opus._OpusMixin.from_opus_id`;
 several also assert ``VERSIONS`` behavior or translator coverage directly. Pick from
 the existing test modules whichever assertions the new dataset's rules make
 meaningful, and run the suite as :doc:`dev_guide_testing` describes.

@@ -84,9 +84,10 @@ Session options and markers
 ``full_holdings`` marker
     The test is only meaningful against the complete real tree (total sizes, volume
     counts). Under the mini flavor these would be skipped; against a limited real
-    copy they simply fail or pass on their own terms, and the tool-test modules use
-    fingerprint verification (below) rather than this marker to guard against a copy
-    that lacks their sources.
+    copy they simply fail or pass on their own terms. The holdings-dependent
+    tool-test modules carry this marker *and* fingerprint verification (below) --
+    the marker guards the dormant mini flavor, the fingerprints guard a real copy
+    that lacks or diverges from their declared sources.
 
 ``holdings_free`` marker
     The test builds every input it needs and must run even with no holdings at all.

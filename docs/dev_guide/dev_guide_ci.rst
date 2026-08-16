@@ -2,7 +2,8 @@ CI and Release Workflow
 =======================
 
 One script is the source of truth for what "all checks" means, and every automated
-job is a wrapper around it or a documented superset of it. When a gate is added,
+job either runs it directly or is a driver whose differences from it are stated
+below. When a gate is added,
 enabled or retired, ``scripts/run-all-checks.sh`` is where that happens, and CI
 follows it by construction.
 
@@ -60,9 +61,11 @@ pushes to ``main``, nightly on a schedule, and on manual dispatch. Two jobs:
   gate set cannot drift from the local one.
 * **Test pdsfile** (self-hosted Linux, Python 3.11, 3.12 and 3.13): the full-data
   matrix, the only place the data suite can run in CI. It runs
-  ``scripts/automated_tests/pdsfile_main_test.sh``, which is a documented superset
-  of the script's pytest gate: the clean-install gate first, then the whole tree
-  under coverage with ``--mode ns``, then a second, PDS3-only pass
+  ``scripts/automated_tests/pdsfile_main_test.sh``, its own driver: the
+  clean-install gate first, then one ``--mode ns`` pass under coverage over
+  ``tests/api core holdings_maintenance pds3file rules/pds3 pds4file rules/pds4``
+  (every directory except ``tests/docs/``, whose gates run only in the lint job's
+  ``run-all-checks.sh`` pass), then a second, PDS3-only pass
   (``tests/pds3file tests/rules/pds3``) with ``--mode s``, then the coverage
   report, uploaded to codecov from the 3.13 runner. The holdings roots come from
   the runner's environment, not from the repository.

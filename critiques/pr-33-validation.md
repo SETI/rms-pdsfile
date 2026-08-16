@@ -166,12 +166,16 @@ reviewer saw the pages, each a claim that read plausibly and was false:
 ## 6. Cross-reference discipline
 
 Every API symbol named in the chapters' prose carries a Sphinx role, and the `-n -W`
-build is the checker that they all resolve; it caught two wrong targets during
-drafting (`preload` and `cache_lifetime_for_class` written against the class and the
+build is the checker that they all resolve. **This section's first version claimed
+that before it was true**: round 1 found about twenty published members written as
+bare inline literals and refuted the claim (`critiques/pr-33/round-1.md`, M2); all
+twenty now carry `:meth:`/`:attr:` roles and the nitpicky build over them exits 0
+with 0 problem lines. The build also caught two wrong targets during drafting
+(`preload` and `cache_lifetime_for_class` written against the class and the
 re-export module rather than against the mixin and `_preload`, where autodoc
-publishes them). Inline literals are used only for file paths, CLI tokens,
-environment variables, class attributes, and the private names the API reference
-does not publish (`_eval_null_key_record()`, `_update_ranks_and_vols`,
+publishes them). Inline literals remain for file paths, CLI tokens, environment
+variables, class attributes, and the private names the API reference does not
+publish (`_eval_null_key_record()`, `_update_ranks_and_vols`,
 `_pinned_log_timetag()`) — the two known non-resolver families of observations
 1001/6403 are not depended on. No cross-reference appears inside a diagram block,
 code block or literal block.
@@ -205,5 +209,17 @@ Base numbers were measured in a second worktree at `96de70a`, not recalled.
 
 ## 9. The reviews
 
-Recorded in `critiques/pr-33/round-<k>.md` as the rounds run; this section is
-completed by the round that ends the loop.
+Every round a fresh no-context subagent; recorded in `critiques/pr-33/round-<k>.md`.
+
+| round | scope | findings |
+|---|---|---:|
+| 1 | full diff, deepest on the architecture and subsystem chapters | 5 Major, 6 Minor, 2 Deferred |
+
+Round 1's Major findings were all factual prose claims verified false against
+source — the pair-spec difference set, the cross-reference goal itself, the CI
+driver's coverage, the mixin back-import rule stated without its sanctioned
+exception, and a miscounted import list — and zero of them were in the diagrams,
+which the reviewer verified edge-by-edge and reproduced with mmdc. All five were
+fixed, all six Minors fixed, one Deferred became observation 4316 and the other was
+already recorded as 4111. This section is completed by the round that ends the
+loop.
