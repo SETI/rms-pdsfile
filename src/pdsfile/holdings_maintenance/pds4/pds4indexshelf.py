@@ -22,8 +22,9 @@ command-line path names an index table or a metadata directory, and a directory 
 the tables inside it. That is also why it is one of the two tools on
 ``_indexshelf_common.run_index_main()`` rather than on either driver the other eight use.
 
-**Five fields of this specification differ from the PDS3 tool's and only three of them
-reach anything.** ``pdsfile_cls`` is ``Pds4File``, so every path resolves through the PDS4
+**Six fields of this specification differ from the PDS3 tool's and only four of them
+reach anything.** ``progname`` is 'pds4indexshelf', which the paragraph below covers;
+``pdsfile_cls`` is ``Pds4File``, so every path resolves through the PDS4
 rules; ``index_ext`` is '.csv', which is the extension a metadata directory is globbed for
 and a command-line file is checked against; and ``handler_factories`` adds a warning
 handler ahead of the error handler, so a run of this tool leaves a warning file in each of
@@ -38,12 +39,11 @@ same field, one stops an upward search at it, and the fourth does not read it ei
 ``log_suffix`` is how a specification says so, and its driver passes a suffix only when
 there is one.
 
-``progname`` **is 'pdsindexshelf', not this module's name.** That is the convention all
-five PDS4 tools follow, and it is not cosmetic: the name appears in the ``--help``
-description and in the "Missing task" error, and it names the subdirectory of every log
-root, so both flavors of this tool write into one directory. Both also share the logger
-name 'pds.validation.indexshelf', which is what stops the two from being driven from a
-single process.
+``progname`` is this module's own name, as it is for all five PDS4 tools: the name appears
+in the ``--help`` description and in the "Missing task" error, and it names the
+subdirectory of every log root, so the two flavors of this tool write into directories of
+their own. What they do share is the logger name 'pds.validation.indexshelf', which is
+what stops the two from being driven from a single process.
 
 Every remaining field of the specification is left at its default -- there is no
 ``expand_target``, no ``lskip_for``, no link machinery, no extra command-line argument and
@@ -66,14 +66,10 @@ LOGNAME = _indexshelf_common.INDEXSHELF_LOGNAME
 
 ################################################################################
 # Executable program
-#
-# progname is 'pdsindexshelf', not this module's name: the tool announces itself,
-# names its log directory and titles its --help output that way, and every one of
-# those is part of what a run looks like today.
 ################################################################################
 
 SPEC = _common.ToolSpec(
-    progname='pdsindexshelf',
+    progname='pds4indexshelf',
     logname=LOGNAME,
     pdsfile_cls=pdsfile.Pds4File,
     unit='table',

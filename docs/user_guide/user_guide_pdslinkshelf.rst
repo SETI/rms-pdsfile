@@ -117,9 +117,9 @@ looked like a filename and was not one.
 Log file naming
 ---------------
 
-Under ``logs/pdslinkshelf/``, with ``_links`` as the suffix. :doc:`user_guide_pdsarchives`
-uses the same suffix under its own directory, so a search for ``*_links_*.log`` finds
-both programs' logs.
+Under ``logs/pdslinkshelf/``, with ``_links`` as the suffix. ``pds4linkshelf`` uses the
+same suffix under ``logs/pds4linkshelf/``, so a search for ``*_links_*.log`` finds both
+flavors' logs.
 
 Exit status
 -----------

@@ -74,7 +74,7 @@ Building a manifest
    $ pds4checksums --initialize $PDS4_HOLDINGS_DIR/bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023
    2026-08-09 01:42:15.443120 | pds.validation.checksums || HEADER | pds4checksums --initialize $PDS4_HOLDINGS_DIR/bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023
    2026-08-09 01:42:15.443708 | pds.validation.checksums |-| HEADER | Task "initialize" for: $PDS4_HOLDINGS_DIR/bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023
-   2026-08-09 01:42:15.443773 | pds.validation.checksums |--| INFO | Log file: $PDS4_HOLDINGS_DIR/../logs/pdschecksums/bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023_md5_2026-08-09T01-42-15_initialize.log
+   2026-08-09 01:42:15.443773 | pds.validation.checksums |--| INFO | Log file: $PDS4_HOLDINGS_DIR/../logs/pds4checksums/bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023_md5_2026-08-09T01-42-15_initialize.log
    2026-08-09 01:42:15.443891 | pds.validation.checksums |--| HEADER | Generating MD5 checksums: bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023
    2026-08-09 01:42:15.443987 | pds.validation.checksums |---| NORMAL | MD5=f04bc73d543335c215c5fd0e30c2bee7: bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023/readme.txt
    2026-08-09 01:42:15.444063 | pds.validation.checksums |---| NORMAL | MD5=2fbd8665748a35efba4c97bad64dceab: bundles/cassini_uvis_solarocc_beckerjarmak2023/cassini_uvis_solarocc_beckerjarmak2023/bundle.xml
@@ -90,10 +90,9 @@ it and at ``DEBUG`` while writing its line, which with the one ``NORMAL`` line f
 directory it created is where the closing counts of 185 and 184 come from. All but two of
 those lines are elided above.
 
-Note the log directory: ``logs/pdschecksums/``, not ``logs/pds4checksums/``. Every
-PDS4 program in this guide writes under its PDS3 counterpart's name, so the two flavors
-share one log tree and are told apart by the category component beneath it --
-``bundles/`` here, ``volumes/`` for the PDS3 program.
+Note the log directory: ``logs/pds4checksums/``, this program's own name, where the PDS3
+program writes into ``logs/pdschecksums/``. Every program in this guide writes under its
+own name, and older log trees are the exception:
 :doc:`user_guide_maintenance_tools` covers that in full.
 
 Two differences from the PDS3 program that are visible in the output

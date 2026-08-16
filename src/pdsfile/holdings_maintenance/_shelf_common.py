@@ -283,7 +283,7 @@ ARCHIVES_ARGUMENT = (('--archives', '-a'),
 INFOSHELF_ARGUMENT = (('--infoshelf', '-i'),
                       {'dest': 'infoshelf', 'default': False, 'action': 'store_true',
                        'help': 'After a successful run, also execute the equivalent '
-                               'pdsinfoshelf command.'})
+                               'info shelf command.'})
 
 CHECKSUMS_DESCRIPTION = ('{progname}: Create, maintain and validate MD5 checksum files '
                          'for PDS {units} and {unit} sets.')

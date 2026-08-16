@@ -45,11 +45,11 @@ archive and link shelf machinery, and the per-file lines below name their level 
 all: it stays at its empty default, because the driver picks between the bundle and the
 bundle set log path per target instead.
 
-``progname`` is 'pdsinfoshelf', not this module's name, which is the convention all five
-PDS4 tools follow: it is what the ``--help`` description and the "Missing task" error call
-the tool, and it names the subdirectory of every log root, so both flavors write into one
-directory. Both also share the logger name 'pds.validation.fileinfo', which is what stops
-the two from being driven from a single process.
+``progname`` is this module's own name, as it is for all five PDS4 tools: it is what the
+``--help`` description and the "Missing task" error call the tool, and it names the
+subdirectory of every log root, so each flavor writes into a directory of its own. What
+they do share is the logger name 'pds.validation.fileinfo', which is what stops the two
+from being driven from a single process.
 """
 
 import datetime
@@ -1016,7 +1016,7 @@ def update(pdsdir, selection=None, logger=None):
 ################################################################################
 
 SPEC = _common.ToolSpec(
-    progname='pdsinfoshelf',
+    progname='pds4infoshelf',
     logname=LOGNAME,
     pdsfile_cls=pdsfile.Pds4File,
     unit='bundle',

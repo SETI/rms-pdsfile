@@ -236,3 +236,36 @@ def test_no_targets_leaves_no_unbound_state(fresh_tree):
     assert run.returncode == 0, run.describe()
     assert 'UnboundLocalError' not in run.stderr, run.describe()
     assert 'Traceback' not in run.stderr, run.describe()
+
+
+##########################################################################################
+# The --infoshelf chain
+#
+# pds4checksums --infoshelf re-runs its own command line as a pds4infoshelf command,
+# which it builds by rewriting argv[0]. That only resolves to the other tool when
+# argv[0] is a console script, so this test invokes it as an install would.
+##########################################################################################
+
+@pytest.fixture
+def scripts(tmp_path):
+    """Console scripts for the two tools the chain involves."""
+
+    return support.console_scripts(tmp_path / 'bin', 'pds4checksums', 'pds4infoshelf')
+
+
+def test_infoshelf_chain_runs_the_infoshelf_tool(fresh_tree, scripts):
+    """--initialize --infoshelf writes the checksum file and then the info shelf."""
+
+    run = support.run_console_script(fresh_tree, scripts / 'pds4checksums',
+                                     '--initialize', '--infoshelf',
+                                     fresh_tree.path(BUNDLE_DIR))
+    assert run.returncode == 0, run.describe()
+    assert fresh_tree.path(CHECKSUM_FILE).exists(), run.describe()
+
+    shelf = fresh_tree.path(f'_infoshelf-bundles/{subsets.PDS4_BUNDLESET}/'
+                            f'{subsets.PDS4_BUNDLE}_info.pickle')
+    assert shelf.exists(), run.describe()
+
+    # Both tools logged, the second one under its own logger name.
+    assert 'pds.validation.checksums' in run.output, run.describe()
+    assert 'pds.validation.fileinfo' in run.output, run.describe()

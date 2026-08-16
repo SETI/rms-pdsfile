@@ -49,22 +49,23 @@ calls it a file_name tag: the comparison runs over every link the label yielded,
 the general pattern's matches are among them.
 
 The specification names ``_shelf_common.UNIT_LOG_PATH_METHOD`` as its log path method and
-'_links' as its log suffix. Nine fields of this specification differ from the PDS3 tool's,
-and one of the nine is read nowhere a run of this tool reaches: ``index_ext``, which only
-the index shelf tools' target expansion reads. Three of the other eight are worth naming
+'_links' as its log suffix. Ten fields of this specification differ from the PDS3 tool's,
+and one of the ten is read nowhere a run of this tool reaches: ``index_ext``, which only
+the index shelf tools' target expansion reads. Three of the other nine are worth naming
 because what they reach is not obvious from the name. ``holdings_sentinel`` is where the
 upward search for a non-local link stops. ``file_log_level`` is the method a created
 directory is reported through when a shelf is written. And ``handler_factories`` adds a
 warning handler ahead of the error handler, so a run leaves a warning file in each of its
-log directories that a PDS3 run does not. The remaining five -- ``pdsfile_cls``, ``unit``,
-``expand_target``, ``generate_links`` and ``link_target_regex`` -- are what makes this the
-PDS4 tool at all.
+log directories that a PDS3 run does not. The remaining six are ``progname``, which the
+paragraph below covers, and ``pdsfile_cls``, ``unit``, ``expand_target``,
+``generate_links`` and ``link_target_regex``, which are what makes this the PDS4 tool at
+all.
 
-``progname`` is 'pdslinkshelf', not this module's name, which is the convention all five
-PDS4 tools follow: it is what the ``--help`` description and the "Missing task" error call
-the tool, and it names the subdirectory of every log root, so both flavors write into one
-directory. Both also share the logger name 'pds.validation.links', which is what stops the
-two from being driven from a single process.
+``progname`` is this module's own name, as it is for all five PDS4 tools: it is what the
+``--help`` description and the "Missing task" error call the tool, and it names the
+subdirectory of every log root, so each flavor writes into a directory of its own. What
+they do share is the logger name 'pds.validation.links', which is what stops the two from
+being driven from a single process.
 
 The five shared tasks are bound to this module's own names with this specification
 supplied. Nothing in this package calls them that way.
@@ -602,10 +603,6 @@ def generate_links(dirpath, old_links=None, *, logger=None, limits=None):
 
 ################################################################################
 # Executable program
-#
-# progname is 'pdslinkshelf', not this module's name: the tool announces itself,
-# names its log directory and titles its --help output that way, and every one of
-# those is part of what a run looks like today.
 ################################################################################
 
 def link_targets(pdsf, path):
@@ -633,7 +630,7 @@ def link_targets(pdsf, path):
     return _linkshelf_common.link_targets(SPEC, pdsf, path)
 
 SPEC = _common.ToolSpec(
-    progname='pdslinkshelf',
+    progname='pds4linkshelf',
     logname=LOGNAME,
     pdsfile_cls=pdsfile.Pds4File,
     unit='bundle',

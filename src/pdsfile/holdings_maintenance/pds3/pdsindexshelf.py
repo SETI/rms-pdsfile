@@ -22,8 +22,9 @@ command-line path names an index table or a metadata directory, and a directory
 expands to the tables inside it. That is also why it is one of the two tools on
 ``_indexshelf_common.run_index_main()`` rather than on either driver the other eight use.
 
-**Five fields of this specification differ from** ``pds4indexshelf``'s **and only
-three of them reach anything.** ``pdsfile_cls`` is ``Pds3File``, so every path
+**Six fields of this specification differ from** ``pds4indexshelf``'s **and only
+four of them reach anything.** ``progname`` is this module's own name, where the
+PDS4 tool carries its own; ``pdsfile_cls`` is ``Pds3File``, so every path
 resolves through the PDS3 rules; ``index_ext`` is '.tab', which is the extension a
 metadata directory is globbed for and a command-line file is checked against; and
 ``handler_factories`` is the error handler alone, where the pds4 tool adds a warning
@@ -35,8 +36,8 @@ tool reaches ever looks at them.
 ``log_path_for_index`` builds the log path, from the table's own logical path, and
 ``log_suffix`` is empty because that method takes no suffix argument; an empty
 ``log_suffix`` is how a specification says so, and its driver passes a suffix only when
-there is one. ``progname`` is 'pdsindexshelf', which is what the tool calls itself in its
-``--help`` text and what names its subdirectory under each log root.
+there is one. ``progname`` is what the tool calls itself in its ``--help`` text and what
+names its subdirectory under each log root.
 
 Every remaining field of the specification is left at its default -- there is no
 ``expand_target``, no ``lskip_for``, no link machinery, no extra command-line argument and

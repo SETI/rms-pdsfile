@@ -10,8 +10,8 @@
 # handler that is created and never attached leaves the same file behind.
 #
 # pds4checksums declares two factories, a warning handler and an error handler, so
-# a preamble that attached only the first fails this. It also carries the pds3
-# tool's progname, which is the subdirectory the handlers are created in.
+# a preamble that attached only the first fails this. Its progname is the
+# subdirectory the handlers are created in.
 ##########################################################################################
 
 import pytest
@@ -26,7 +26,7 @@ SOURCE_PATHS = subsets.paths_of(subsets.PDS4_BUNDLE_SOURCES)
 SOURCE_MTIMES = subsets.PDS4_BUNDLE_MTIMES
 
 BUNDLE_DIR = f'bundles/{subsets.PDS4_BUNDLESET}/{subsets.PDS4_BUNDLE}'
-PROGNAME = 'pdschecksums'
+PROGNAME = 'pds4checksums'
 
 
 def test_a_log_root_gets_every_handler_the_spec_declares(fresh_tree, tmp_path):

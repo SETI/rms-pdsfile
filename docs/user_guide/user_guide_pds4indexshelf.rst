@@ -41,7 +41,7 @@ Two files per table, in ``_indexshelf-metadata/``, in a directory named for the 
 Where the logs go
 -----------------
 
-Under ``logs/pdsindexshelf/`` -- the PDS3 program's name, as for all five PDS4 programs.
+Under ``logs/pds4indexshelf/`` -- this program's own name, as for all five PDS4 programs.
 As in the PDS3 program, the path is built from the table's own path, so it carries the
 bundle as a directory component and the table's basename as the file name, with no
 separate suffix.

@@ -980,11 +980,11 @@ def main():
     task, 2 for one the parser cannot classify, and 1 for a path outside a holdings tree
     or naming checksum files.
 
-    The chained command line is this one with every occurrence of the string
-    "pdschecksums" replaced by "pdsinfoshelf" and the ``--infoshelf`` flag dropped, run as
-    a subprocess. It is a text substitution over the whole of ``sys.argv``, so it rewrites
-    the program name and would rewrite any argument carrying that text; every path under a
-    holdings tree that carries it would be rewritten too.
+    The chained command line is this one with ``argv[0]`` rewritten from "pdschecksums"
+    to "pdsinfoshelf" and the ``--infoshelf`` flag dropped, run as a subprocess. Only
+    ``argv[0]`` is rewritten, so a --log directory or a holdings path carrying this
+    program's name reaches the chained run unchanged. That resolves to the other program
+    only where ``argv[0]`` is the console script an install provides.
 
     Raises:
         SystemExit: from ``sys.exit()`` on every path out of a run, with the run's own

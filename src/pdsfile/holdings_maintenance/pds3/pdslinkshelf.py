@@ -33,19 +33,19 @@ The specification names ``_shelf_common.UNIT_LOG_PATH_METHOD`` as its log path m
 which is the string ``'log_path_for_bundle'``. ``Pds3File`` carries a
 ``log_path_for_volume`` of its own, which is a separate method forwarding to that one, and
 which the archive tool names instead; the path built is the same either way. This tool's
-log suffix is '_links', which ``pdsarchives`` also passes, and the two do not collide
-because each tool's ``progname`` becomes a directory component of the log path.
+log suffix is '_links'.
 
-Nine fields of this specification differ from the PDS4 tool's, and one of the nine is read
+Ten fields of this specification differ from the PDS4 tool's, and one of the ten is read
 nowhere a run of this tool reaches: ``index_ext``, which only the index shelf tools'
-target expansion reads. Three of the other eight are worth naming because what they reach
+target expansion reads. Three of the other nine are worth naming because what they reach
 is not obvious from the name. ``holdings_sentinel`` is where the upward search for a
 non-local link stops. ``file_log_level`` is the method a created directory is reported
 through when a shelf is written. And ``handler_factories`` is the error handler alone,
 where the PDS4 tool adds a warning handler ahead of it, so a PDS3 run leaves one fewer
-file in each of its log directories. The remaining five -- ``pdsfile_cls``, ``unit``,
-``expand_target``, ``generate_links`` and ``link_target_regex`` -- are what makes this the
-PDS3 tool at all.
+file in each of its log directories. Of the remaining six, ``progname`` is this tool's own
+name, which is what its ``--help`` text calls it and what names its subdirectory under
+each log root; the five others -- ``pdsfile_cls``, ``unit``, ``expand_target``,
+``generate_links`` and ``link_target_regex`` -- are what makes this the PDS3 tool at all.
 
 The five shared tasks are bound to this module's own names with this specification
 supplied. ``re_validate`` reaches ``validate`` that way, as a library function rather than
