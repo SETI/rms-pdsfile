@@ -31,7 +31,7 @@ behavior — a `.pyi` file is never executed.
 6. `src/pdsfile/preload_and_cache.pyi` — the nine re-exported preload names, typed at
    their `_preload` definitions.
 7. `src/pdsfile/pds3file/rules/__init__.pyi`, `src/pdsfile/pds4file/rules/__init__.pyi`,
-   and one `.pyi` per rule module (27 pds3 + 9 pds4). Each rule class subclasses
+   and one `.pyi` per rule module (25 pds3 + 9 pds4). Each rule class subclasses
    `Pds3File`/`Pds4File` and declares only its own-body members — stubtest resolves
    inherited names through the stub's MRO, which is what makes the manifest's 8,645
    class entries reduce to the measured own-body surface (537 public own-body members
@@ -82,7 +82,7 @@ no `typing.List`.
 
 **Stubtest invocation and allowlist policy.** The gate runs, from the venv:
 
-    MYPYPATH=src python -m mypy.stubtest <the 44 stubbed modules>
+    MYPYPATH=src python -m mypy.stubtest <the 43 stubbed modules>
 
 and its full output is read and recorded — never tailed. A pass proves the stubs' names,
 kinds and signatures match the runtime; it does **not** prove the annotated types are

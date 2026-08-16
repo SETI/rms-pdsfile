@@ -179,8 +179,9 @@ line-length = 100
 # is prohibited, so the stubs are excluded here instead; stubtest is their
 # gate. Lint one deliberately with
 # `ruff check --isolated --select I src/pdsfile/**/*.pyi` (explicit paths
-# bypass this exclusion).
-extend-exclude = ["*.pyi"]
+# bypass this exclusion). Scoped to the package so a .pyi anywhere else would
+# still be linted.
+extend-exclude = ["src/pdsfile/**/*.pyi"]
 
 [tool.ruff.format]
 # Configured but NOT enforced yet: `ruff format` is not run as a gate. When

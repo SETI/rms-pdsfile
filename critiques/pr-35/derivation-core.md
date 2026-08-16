@@ -21,7 +21,7 @@ DEFAULT_HIGH_LEVEL_ICONS | dict[tuple[str, bool], str] | P:280-305 literal, keys
 DESCRIPTION_AND_ICON | _Translator | None | P:357 None; R3:136/R4:138 TranslatorByRegex; rules add translators (COISS_xxxx.py:799)
 DICTIONARY_CACHE_LIMIT | int | P:331 `200000`
 EXTRA_README_BASENAMES | tuple[str, ...] | P:348 tuple of str literals
-FILENAME_KEYLEN | int | P:382 `0`; rule classes override with ints
+FILENAME_KEYLEN | int | P:382 `0`; five rule classes override with ints, and three (COISS_xxxx, RPX_xxxx, COVIMS_0xxx) override with a method — the method overrides are stubbed as such in the rule stubs with type: ignore[override]
 FILESPEC_TO_BUNDLESET | _Translator | None | P:380 None; R3:704/R4:700 TranslatorByRegex
 FS_IS_CASE_INSENSITIVE | bool | P:321 True; _preload.py:796-800 rebinds bool
 INFO_FILE_BASENAMES | _Translator | None | P:360 None; R3:510/R4:508 TranslatorByRegex

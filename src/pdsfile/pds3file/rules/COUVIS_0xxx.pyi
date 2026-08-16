@@ -34,7 +34,7 @@ view_options: _Translator
 
 class COUVIS_0xxx(Pds3File):
     ASSOCIATIONS: dict[str, _Translator]
-    def DATA_SET_ID(self) -> str: ...  # type: ignore[override]
+    def DATA_SET_ID(self) -> Any: ...  # type: ignore[override]
     DESCRIPTION_AND_ICON: _Translator
     NEIGHBORS: _Translator
     OPUS_FORMAT: _Translator

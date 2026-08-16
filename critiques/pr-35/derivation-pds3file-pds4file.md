@@ -75,8 +75,8 @@ volset_pdsfile | (self, category: str | None = None, rank: int | None = None) ->
 voltype_ | str | pds3file/__init__.py:512 returns bundletype_ (pdsfile.py:485, 749, 1586)
 volume_abspath | (self, category: str | None = None) -> str | pds3file/__init__.py:474 forwards to bundle_abspath; pdsfile.py:1135/:1144 return '', :1165 returns str
 volume_pdsfile | (self, category: str | None = None, rank: int | None = None) -> PdsFile | None | pds3file/__init__.py:493 forwards to bundle_pdsfile; pdsfile.py:975/:981 return None, :973 from_abspath, :979 all_versions()[rank]
-volume_publication_date | str | pds3file/__init__.py:525 returns bundle_publication_date; /seti/all_repos/rms-pdsfile/src/pdsfile/_properties.py:2168-2196 every path returns a str ('' or a date sliced to 10 chars)
-volume_version_id | str | pds3file/__init__.py:537 returns bundle_version_id; _properties.py:2216-2224 slot filled with '' or the table's str field
+volume_publication_date | Any | pds3file/__init__.py:525 returns bundle_publication_date verbatim, which _properties.py:2171-2193 returns as the raw CACHE-derived `_volume_info[3]` whenever that field is truthy (only the three fallbacks slice `[:10]`), so the type is the base property's Any. CORRECTED after review round 1: this row originally claimed every path returns a str, which is false against the code, and the stub said `str` on an alias whose base says Any
+volume_version_id | Any | pds3file/__init__.py:537 returns bundle_version_id verbatim; _properties.py:2216-2220 fills the slot with '' or the raw CACHE-derived `_volume_info[2]`, which is not provably str. CORRECTED after review round 1, same defect as the row above
 
 ## Pds4File (47 members)
 

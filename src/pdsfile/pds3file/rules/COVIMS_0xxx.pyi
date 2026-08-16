@@ -13,6 +13,7 @@ import translator as translator  # type: ignore[import-untyped]
 
 from pdsfile import pds3file as pds3file
 from pdsfile.pds3file import Pds3File
+from pdsfile.pdsfile import PdsFile
 from pdsfile.pdsfile import abspath_for_logical_path as abspath_for_logical_path
 
 # rms-translator ships no py.typed marker, so a Translator cannot be named here.
@@ -41,7 +42,7 @@ class COVIMS_0xxx(Pds3File):
     NEIGHBORS: _Translator
     OPUS_FORMAT: _Translator
     OPUS_ID: _Translator
-    def OPUS_ID_TO_PRIMARY_LOGICAL_PATH(opus_id: str) -> Pds3File: ...  # type: ignore[misc, override]
+    def OPUS_ID_TO_PRIMARY_LOGICAL_PATH(opus_id: str) -> PdsFile: ...  # type: ignore[misc, override]
     OPUS_PRODUCTS: _Translator
     OPUS_TYPE: _Translator
     VIEWABLES: dict[str, _Translator]
