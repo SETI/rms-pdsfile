@@ -171,6 +171,6 @@ DICTIONARY_CACHE_LIMIT | int | _preload.py:101 `200000` (distinct from the class
 ## Imports needed
 
 - `from typing import Any, Self` (assumed present)
-- `from collections.abc import Iterable` (construct_category_list)
+- `from collections.abc import Collection, Iterable` (Collection for construct_category_list since the round-2 correction, Iterable for the bulk converters)
 - `import re` (re.Pattern for CATEGORY_REGEX, CATEGORY_REGEX_I, VIEWABLE_ANCHOR_REGEX)
 - aliases `_Translator`, `_PdsLogger` (assumed present); `_PdsTable` not needed by this fragment
