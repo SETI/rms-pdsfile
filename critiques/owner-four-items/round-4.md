@@ -36,7 +36,7 @@ shipped classes use the five-group spelling and a two-group one would be a
 subclass's own. Because the fix touches `src/pdsfile/`, the full-data
 evidence was regenerated afterwards: ns 1227 passed / 34 skipped, s pds3
 555/3, s pds4 150/31, every other gate green — the same numbers the
-validation record §5 carries. (The regeneration itself caught two em-dashes
+validation record §5 records for the tree committed as `92bc27e`. (The regeneration itself caught two em-dashes
 in the first version of the reclause, U1 findings the docstring gate
 reported and the second run confirmed gone.)
 

@@ -137,9 +137,11 @@ scripts chapter says only that the scripts "print their usage and exit"
 anywhere in `docs/`. No test asserted 255: the only 255 mentions under
 `tests/` are `test_update_holdings_script.py`'s comments explaining why that
 script's guards are pinned at 1. The new
-`tests/holdings_maintenance/test_copy_setup_scripts.py` runs each script's
-argument-count guard for real (status 1, usage printed) and pins the absence
-of `exit -1` across all five texts.
+`tests/holdings_maintenance/test_copy_setup_scripts.py` drives all twelve
+guards for real — each argument-count guard by an empty command line, each
+directory guard by a scratch tree missing exactly the directory it checks —
+asserting status 1 for every one, and pins the per-script `exit 1` site
+counts and the absence of `exit -1` across all five texts.
 
 **Out of scope, deliberately.** `scripts/automated_tests/pdsfile_main_test.sh`
 carries eight `exit -1` sites of its own, but they are failure paths of valid
@@ -240,14 +242,18 @@ archive-side shelves.
 ## 5. Gates
 
 `./scripts/run-all-checks.sh -w auto` with full holdings, run to green and
-the whole log read (456 lines, no gate's output truncated):
+the whole log read (456 lines, no gate's output truncated). Measured
+2026-08-16 at head `aeb1c79`, the commit that drives all twelve converted
+guards in `test_copy_setup_scripts.py`; the run for the tree committed as
+`92bc27e` (same date) differed only in the ns total — 1227 passed, before
+the seven directory-guard ids:
 
 - ruff check and ruff indentation: passed. (The first run failed on the PR's
   own new code — 4 em-dashes in the pds4file docstring against the U1
   docstring rule, PT006 and PT018 in the new test module — all fixed; no
   ratchet entry touched.)
-- pytest `--mode ns`: **1227 passed, 34 skipped** = baseline 1191 + exactly
-  the 36 new ids (6 in `test_copy_setup_scripts.py`, 3 in
+- pytest `--mode ns`: **1234 passed, 34 skipped** = baseline 1191 + exactly
+  the 43 new ids (13 in `test_copy_setup_scripts.py`, 3 in
   `test_pds4_archive_products.py`, 27 in
   `test_pds4file_bundleset_plus.py`); skips unchanged. The only warnings are
   `julian`'s pyparsing deprecations, present at base.
