@@ -4,27 +4,6 @@ Open observations that a remaining PR of the modernization plan already owns. Ea
 
 ## Docstring cross-references and wording — PR-31a is permanently deferred to issue #149
 
-### 1000. `log_path_for_index`'s docstring first line describes a bundle
-
-**`log_path_for_index`'s docstring first line describes a bundle.**
-`src/pdsfile/_derived_paths.py` opens it with "Return a complete log file path
-for this bundle."; it returns an *index* log path, as its own second line and
-its `is_index` guard both say. The sibling `log_path_for_bundleset` says
-"for this bundle set", so the line is a copy that was never updated. PR-18
-moved the definition byte-for-byte and deliberately did not touch it: a commit
-that edited the text would break the byte-for-byte claim that makes the move
-checkable, and the wording is not a behavior. **Owner: Phase 7** (PR-29–PR-34),
-where `doc_python.mdc` comes into force and the docstrings are revised anyway.
-
-The PR-18 round-4 review found a second docstring in the same module with the
-same defect, and it belongs to this entry rather than to a new one:
-`dirpath_and_prefix_for_archive` says "Return the absolute path to the
-directory associated with this archive path." and returns the 2-tuple
-`(dirpath, parent)`. Its sibling `dirpath_and_prefix_for_checksum` gets this
-right — "Return tuple (…)". Also moved verbatim, also correctly untouched
-here. The Phase-7 docstring pass should treat `_derived_paths.py` as a file
-with more than one of these, not as a single fix.
-
 ### 1001. `napoleon_use_ivar = True` costs five cross-reference targets, all of them `LinkInfo`'s
 
 **`napoleon_use_ivar = True` costs five cross-reference targets, all of them
@@ -41,37 +20,6 @@ duplicate was. `LinkInfo` is a plain class whose attributes are assigned in
 today and the build is clean either way, but a later PR that writes `:attr:` roles
 for them will find they do not resolve. **Owner: issue #149, which is where the sweep
 that would write those roles now lives.**
-
-### 1002. `src/pdsfile/pds3file/__init__.py`'s alias comment now introduces one method instead of eight
-
-**`src/pdsfile/pds3file/__init__.py`'s alias comment now introduces one
-method instead of eight.** After the `F811` de-duplication removed the seven
-shadowed definitions, `# Alias, compatible with old function/property names`
-at `:123` sits above `log_path_for_volset` alone, while its twin
-`log_path_for_volume` and the six alias properties live about fifty lines
-below under `# Override functions`. Nothing is wrong — the comment is still
-true of the method it introduces — but the two alias groups would read better
-merged under one heading. Moving code is not a `ruff check` fix, so it
-correctly stayed out of PR-24.
-**Owner: Phase 7 (PR-29–PR-34), which owns docstrings and module structure.**
-
-**AMENDED by PR-30a (2026-08-08). The merge is still open and the split is now
-navigable without it.** PR-30a documented both groups where they stand rather
-than moving anything, since it changes no executable statement. Every one of the
-nineteen aliases — thirteen properties and six methods, not the "seven shadowed
-definitions plus one" this entry's framing implies — now opens with the same
-sentence shape, "The PDS3 name for `bundle...`, whose value it returns", so the
-group a member belongs to is legible from the member rather than from the comment
-above it, and the class docstring counts them in one place. The `Raises:` and
-`Returns:` of each also record where its base member's answer differs from what
-the name suggests, which is the thing a merge would not have supplied.
-
-The line numbers have moved: `# Alias, compatible with old function/property
-names` is at `:243` above `log_path_for_volset`, `# Override functions` at `:268`,
-and the second group now runs from `:268` to `:524` rather than fifty lines. The
-two are further apart than when this entry was written, which is an argument for
-the merge rather than against it. **Owner: unchanged — a later PR that may move
-code.**
 
 ### 1003. Docstrings written here use inline literals for API symbols, not Sphinx cross-reference roles…
 
@@ -104,7 +52,14 @@ target, and observation 6403 records the 43 docstrings that are not published at
 roles nothing would check.
 **Owner: issue #149, which carries this measurement so it is not re-derived.**
 
-## PR-36 — Run the template critique skills and address the findings
+## PR-36 — the skills have run; the fixes half owns these
+
+PR-36's reporting half merged as #160: the three template critique skills ran, and
+their reports and triage are in `critiques/2026-08-16-*.md`. Neither entry below
+was closed by it, and neither was re-found by any skill — 1401 was not re-found at
+all, and 1400 was re-found as finding TS-05, which adds two blackbox sites to the
+five recorded here. Both are the fixes half's to take from the register rather than
+from the reports.
 
 ### 1400. Five exception tests pass vacuously when the call under test returns normally
 
@@ -277,3 +232,20 @@ PR-24 and PR-29 wrote is not a docstring PR's work and a half-renumbered table i
 worse than a consistently historical one. **Owner: whichever PR next revises
 deviation (4)** — either re-derive every row, or say in the caption that the
 numbers are the sites as of the PR that derived each row and will drift.
+
+**The `pdscache.py` row's coverage clause is imprecise, and it is the same
+re-derivation's work.** The row ends "Both sit inside `MemcachedCache`, which
+ground rule 9 protects and no test here exercises". The relative clause attaches
+to the class, and of the class it is false: `tests/core/test_pdscache_set_multi.py`
+builds an instance with `__new__` and a stub client and exercises `set_multi`,
+which is exactly what observation 4207 records. It is true of the two *sites* —
+re-measured at head with the project configuration (ruff 0.15.22), `UP031` is
+`pdscache.py:775`, inside `MemcachedCache.__init__`'s `pylibmc.Client` call, and
+`RUF015` is `pdscache.py:1201`, inside `flush`'s debug message; no test reaches
+either. Saying so of the sites rather than of the class costs one clause and stops
+the row from reading as a claim that the class has no gate at all. Raised by
+PR-36's review rounds and left for the owner there, because the overrides file
+records owner decisions; it is recorded here so the next revision of deviation (4)
+picks it up with the rest. The same re-measurement confirms the first paragraph
+still holds at head: `src/pdsfile/__init__.py` reports `F403` twice, at `:38` and
+`:39`, against the table's three sites at `:10,:12,:13`.
