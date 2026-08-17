@@ -456,9 +456,10 @@ PyparsingDeprecationWarnings print in every run (pytest-ns.txt:86-107;
 identical in both s passes). `python_testing.mdc` §4 requires
 `filterwarnings = ["error", ...]` with narrowly-scoped ignores for third-party
 warnings you cannot fix. Adding `"error"` plus one documented
-`ignore::...PyparsingDeprecationWarning` entry would make the next new warning
-a failure instead of noise. This is a config-strictness item, not one of the
-hermetic aspects plan §6.6 defers, so it is actionable.
+`ignore::pyparsing.warnings.PyparsingDeprecationWarning:julian.*` entry (the
+qualified category is verified in fix-prompt step 4) would make the next new
+warning a failure instead of noise. This is a config-strictness item, not one
+of the hermetic aspects plan §6.6 defers, so it is actionable.
 
 ## 17. Other good practices
 
@@ -660,10 +661,19 @@ Apply, in priority order:
    falsy-sentinel protocol (`return 0` / `if not expected_data: return`) with
    an explicit `None` sentinel so an empty golden still compares.
 4. **filterwarnings** — add to `[tool.pytest.ini_options]`:
-   `filterwarnings = ["error", "ignore::DeprecationWarning:julian.*"]` (match
-   the actual PyparsingDeprecationWarning category emitted by
-   julian/time_pyparser; keep the ignore as narrow as possible and comment
-   why). Fix or narrowly-ignore anything new that "error" surfaces.
+   `filterwarnings = ["error", "ignore::pyparsing.warnings.PyparsingDeprecationWarning:julian.*"]`.
+   The fully qualified category is verified against this venv (pyparsing
+   3.3.2, where the class is defined in `pyparsing/warnings.py` and
+   subclasses `DeprecationWarning`): a pytest run with exactly this pair
+   passes an `import julian.time_pyparser` test that bare `"error"` fails.
+   Two facts to re-check when applying: pyparsing is unpinned and the class
+   exists only since pyparsing 3.3.0 — on an older resolution pytest rejects
+   the filter loudly at startup rather than silently widening it — and the
+   qualified form works only in pytest `filterwarnings`, not as a `python
+   -W` option (`-W` is parsed before site-packages is importable, so use the
+   plain `ignore::DeprecationWarning:julian.*` there if ever needed). Keep
+   the ignore commented with why it exists. Fix or narrowly-ignore anything
+   new that `"error"` surfaces.
 5. **Subprocess coverage** — register entry 4214 owns this: it measured the
    `COVERAGE_PROCESS_START` instrumentation at an 8.6x slowdown on the data
    gate and deferred the decision to PR-37, naming `COVERAGE_CORE=sysmon`
@@ -751,8 +761,9 @@ read and reproduced below in essentials):
   coverage-summary.txt / coverage-term-missing.txt — TOTAL 9715 stmts, 3704
   miss, 3542 branch, 329 partial, 58%, plus every per-module figure and
   missing-line range quoted in sections 4 and 18.
-- `python - <<'EOF' ...ast walk...` — 627 test functions, 308 without
-  docstrings, per-file tail (96 blackbox, 52 whitebox, 23 test_crlf, ...).
+- `python3 -c "import ast,pathlib,collections;f=[(p.name,n) for p in sorted(pathlib.Path('tests').rglob('test_*.py')) for n in ast.walk(ast.parse(p.read_text(encoding='utf-8'))) if isinstance(n,ast.FunctionDef) and n.name.startswith('test_')];nd=[name for name,n in f if ast.get_docstring(n) is None];print(len(f),len(nd),collections.Counter(nd).most_common(3))"`
+  — 627 test functions, 308 without docstrings, per-file tail (96 blackbox,
+  52 whitebox, 23 test_crlf).
 - `grep -n 'res.sort() == expected.sort()' tests/pds3file/test_pds3file_blackbox.py`
   — line 110.
 - `grep -n 'assert False\|except \|raises\|xfail\|skip\|def test_\|class Test'

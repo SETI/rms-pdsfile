@@ -20,8 +20,10 @@ rows, the negative searches behind the "new" claims, and both previously
 deferred staleness items (1000, 6404); and the presence of all nine
 previously recorded fixes. The triage arithmetic recomputed by hand.
 
-Verdict: **goal met** — zero Major, five Minor, two Deferred. All five Minors
-were fixed; per §6.6 the fourth round is the scoped confirmation.
+Verdict: **goal met** — zero Major, five Minor, two Deferred (the reviewer's
+counts; of the two deferred items below, the second was then folded into
+TS-11's fix within the round, so one remains deferred). All five Minors were
+fixed; per §6.6 the fourth round is the scoped confirmation.
 
 ## Minor findings, and their resolutions
 

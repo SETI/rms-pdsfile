@@ -120,8 +120,8 @@ no minimum version and no automated vulnerability scanning exists (CA-24, CA-21)
 - **CA-08** — **Finding**: `re_validate.py` hard-codes its mail relay and sender
   (`SERVER = 'list.seti.org'`, `FROM_ADDR = "PDS Administrator
   <pds-admin@seti.org>"`). These are module-level constants, so `python.mdc`'s
-  magic-constant rule is met structurally, but a Node deployment on a different
-  relay must edit source. **Evidence**:
+  magic-constant rule is met structurally, but a deployment at another PDS
+  node, or any site whose mail relay differs, must edit source. **Evidence**:
   `src/pdsfile/holdings_maintenance/pds3/re_validate.py:105-106`. **Suggestion**:
   consider environment-variable overrides with these values as defaults; the
   module's freeze was lifted (deviation (6), 2026-08-05), so this is legal to
@@ -282,8 +282,12 @@ and configuration only here.
   from the holdings tree: `_read_info_shelf_line()` evaluates a sidecar line with
   `eval()` (`_shelves.py:97`), and five sites `pickle.load()` shelf files
   (`_shelves.py:341`, `_indexshelf_common.py:299`, `_linkshelf_common.py:477`,
-  `pdsinfoshelf.py:423`, `pds4infoshelf.py:432`). A hostile or corrupted holdings
-  tree therefore implies arbitrary code execution in any process that reads it.
+  `pdsinfoshelf.py:423`, `pds4infoshelf.py:432`). An attacker who can write the
+  holdings tree — its sidecars or shelf files — can therefore run arbitrary code
+  in any process that reads it; accidental corruption is a different outcome, a
+  read failure rather than execution (`eval()` of a damaged line raises
+  `SyntaxError` or `NameError` per the documented `Raises:` contract, and a
+  damaged pickle raises `UnpicklingError` or kin).
   The trust boundary is documented exactly there: "the sidecar is executable
   input, and the trust boundary is the holdings tree, whose sidecars are written
   by this package's own maintenance tools" (`_shelves.py:63-76`). **Evidence**:
@@ -476,17 +480,24 @@ All commands from `/seti/all_repos/rms-pdsfile` with `source venv/bin/activate`.
   maintenance+tools 69); `grep -rn -E 'except *:'` (0); `grep -rn 'except
   Exception'` (9 sites, listed); `grep -rn 'shell=True'` (0); `grep -rn -E
   '\beval\(|\bexec\('` (one code site, `_shelves.py:97`); `grep -rln 'import
-  subprocess'` (12 files, tests/scripts/checksum tools); pickle sweep (5
-  `pickle.load` sites).
-- Encoding: AST walk over `src/**/*.py` counting text-mode `open()` calls
-  without `encoding=` (8 sites, listed in CA-04).
-- Module-level mutable state: `grep -rn -E '^[A-Za-z_]\w* *= *(\{\}|\[\]|...)'`
-  over `src/pdsfile` (22 sites: tool LIMITS dicts, `LOGDIRS`,
-  `ICON_SET_BY_TYPE`, rule-module tables).
+  subprocess'` (12 files, tests/scripts/checksum tools);
+  `grep -rn 'pickle\.load' src --include='*.py'` (5 sites, listed in CA-20).
+- Encoding: an AST walk over `src/**/*.py` listing text-mode `open()` calls
+  without `encoding=`, which prints exactly the 8 sites listed in CA-04:
+  `python3 -c "import ast,pathlib;[print(f'{p}:{n.lineno}') for p in sorted(pathlib.Path('src').rglob('*.py')) for n in ast.walk(ast.parse(p.read_text(encoding='utf-8'))) if isinstance(n,ast.Call) and isinstance(n.func,ast.Name) and n.func.id=='open' and 'encoding' not in {k.arg for k in n.keywords} and 'b' not in str(([k.value.value for k in n.keywords if k.arg=='mode' and isinstance(k.value,ast.Constant)]+[a.value for a in n.args[1:2] if isinstance(a,ast.Constant)]+[''])[0])]"`
+- Module-level mutable state: `grep -rn -E '^[A-Za-z_][A-Za-z0-9_]* *= *(\{\}|\[\]|dict\(|list\(|set\(|collections)' src/pdsfile --include='*.py'`
+  (22 sites: tool LIMITS dicts, `LOGDIRS`, `ICON_SET_BY_TYPE`, rule-module
+  tables).
 - TODO/FIXME: `grep -rn -E '#.*\b(TODO|FIXME)\b' src/pdsfile tests scripts`
   (13); XXX inspection filtered for the `RPX/xxxx` false positives.
-- Duplication: `diff <(sed 's/pds4/pds3/g;s/bundle/volume/g' pds4/<tool>.py)
-  pds3/<tool>.py | grep -c '^[<>]'` for the four pairs (numbers in CA-02).
+- Duplication: from `src/pdsfile/holdings_maintenance`,
+  `diff <(sed 's/pds4/pds3/g;s/bundle/volume/g' pds4/pds4checksums.py) pds3/pdschecksums.py | grep -c '^[<>]'`
+  (242), and the same command over the other three pairs:
+  `pds4/pds4infoshelf.py`/`pds3/pdsinfoshelf.py` (209),
+  `pds4/pds4linkshelf.py`/`pds3/pdslinkshelf.py` (368),
+  `pds4/pds4archives.py`/`pds3/pdsarchives.py` (558). Each pair's "total" in
+  CA-02 is the summed `wc -l` of its two files (2,032 / 2,171 / 1,278 /
+  1,118).
 - Tests: `grep -c 'def test_'` summed over `find tests -name 'test_*.py'` (627
   functions, 60 files); `find tests -name conftest.py` (5).
 - Coverage: coordinator-run summary at the session scratchpad

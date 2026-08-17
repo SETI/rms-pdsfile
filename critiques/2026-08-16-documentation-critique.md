@@ -529,8 +529,10 @@ Inventory and tree state:
 
 Docstring measurements (AST walks over src/, excluding _version.py):
 
-    python3 <AST walk counting missing docstrings>      # 0 missing
-    python3 <AST walk measuring docstring line widths>  # 0 lines > 90
+    python3 -c "import ast,pathlib;ns=(ast.Module,ast.ClassDef,ast.FunctionDef,ast.AsyncFunctionDef);print(sum(1 for p in pathlib.Path('src').rglob('*.py') if p.name!='_version.py' for n in ast.walk(ast.parse(p.read_text(encoding='utf-8'))) if isinstance(n,ns) and ast.get_docstring(n) is None))"
+        # 0 missing (over the 77 modules)
+    python3 -c "import ast,pathlib;ns=(ast.Module,ast.ClassDef,ast.FunctionDef,ast.AsyncFunctionDef);print(sum(1 for p in pathlib.Path('src').rglob('*.py') if p.name!='_version.py' for n in ast.walk(ast.parse(p.read_text(encoding='utf-8'))) if isinstance(n,ns) for l in (ast.get_docstring(n,clean=False) or '').splitlines() if len(l)>90))"
+        # 0 docstring lines over 90 columns
     grep -rn '^\s*Args:$' src --include='*.py'          # no matches
     grep -c '@property\|@functools.cached_property' src/pdsfile/_properties.py
                                                         # 64
@@ -539,15 +541,20 @@ Prose-convention greps:
 
     grep -rPln '[\x{2013}\x{2014}\x{2018}\x{2019}\x{201C}\x{201D}\x{2192}\x{2190}]' \
         src --include='*.py'                            # no matches
-    grep -rPln '...same class...' scripts tests --include='*.py'
+    grep -rPln '[\x{2013}\x{2014}\x{2018}\x{2019}\x{201C}\x{201D}\x{2192}\x{2190}]' \
+        scripts tests --include='*.py'
         # scripts/check_runtime_imports.py, tests/holdings_maintenance/test_shelf_common.py
-    grep -rniE '\b(currently|today|legacy|recently|backwards.compatible|...)\b' \
-        docs --include='*.rst'                          # DOC-04/DOC-05 sites
+    grep -rniE '\b(now|today|currently|legacy|recently|older|backwards?[- ]compatible|no longer)\b' \
+        docs --include='*.rst'
+        # 19 hits: the seven DOC-04 sites, the three DOC-05 notes, and nine
+        # semantic uses of "older"/"no longer" dismissed in DOC-04
     grep -rniE '\b(behaviour|colour|initialise|organised|catalogue[sd]?|whilst|analyse)\b' \
         docs src --include='*.rst' --include='*.py' --include='*.md'
         # 2 hits: catalogued / catalogue
     grep -rnE '[a-z]\.  [A-Z]' docs --include='*.rst' | wc -l      # 0
-    grep -rn '``PdsFile``|``Pds3File``|...' docs --include='*.rst' # 0 in prose
+    grep -rnE '``(PdsFile|Pds3File|Pds4File)``' docs --include='*.rst'
+        # no matches: 0 bare inline-literal class spellings anywhere in docs/,
+        # so 0 in prose in particular
 
 Parser cross-checks (option-table drift):
 

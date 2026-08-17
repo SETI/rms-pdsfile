@@ -31,8 +31,9 @@ totaling **58%** (9,715 statements, 3,704 missed).
 
 | Verdict | Count | Findings |
 |---|---:|---|
-| Verified, new, actionable | 31 | TS-01..04, TS-06, TS-08, TS-09, TS-14, TS-15, TS-17, TS-18, DOC-01, DOC-03..06, DOC-09, DOC-12..17, CA-04*, CA-08, CA-11, CA-14, CA-20, CA-21, CA-24, CA-26 |
+| Verified, new, actionable | 30 | TS-01..04, TS-06, TS-08, TS-09, TS-14, TS-15, TS-17, TS-18, DOC-01, DOC-03..06, DOC-09, DOC-12..17, CA-04*, CA-08, CA-11, CA-20, CA-21, CA-24, CA-26 |
 | Verified, restates an open register entry | 10 | TS-05*, TS-10*, TS-11*, TS-20, TS-21, DOC-07, CA-02*, CA-03, CA-17, CA-31 |
+| Verified, duplicate of another report's finding | 1 | CA-14 (= TS-17, which carries the actionable row; the reconciled weight is in TS-17's entry) |
 | Verified, umbrella over recorded entries | 2 | TS-19, CA-13 |
 | Waived by a recorded decision (correctly marked by the reports) | 10 | DOC-02, DOC-08, DOC-10, DOC-18, CA-01, CA-05, CA-06, CA-09, CA-27, CA-32 (the test report additionally carries section-level waiver notes against deviations 1/4/7 and ground rule 3; those are correctly cited, with one exception review round 1 caught and the reports now correct — the MemcachedCache test gap is register 4207, an open deferral, not a waiver) |
 | Positive/no-action observations (state of health, nothing to do) | 15 | TS-12, TS-13, TS-16, CA-07, CA-10, CA-12, CA-15, CA-16, CA-18, CA-19, CA-22, CA-23, CA-25, CA-28, CA-29 |
@@ -352,10 +353,11 @@ disposition.
   (dead paths, `exit -1`). Low. **Restates register 4304** (and deferred 16;
   the dev guide already annotates it "do not use"). **Fix later** — deletion
   plus the dev-guide line, in the fixes half or PR-37's sweep.
-- **CA-04 — eight text-mode `open()` calls without `encoding=`.** Spot-
-  verified (`_shelves.py:475` confirmed; site list from the report's AST
-  sweep). Medium. **Partial overlap**: the `re_validate.py` reader is
-  inside register 4042 (its `UnicodeDecodeError` death is recorded there);
+- **CA-04 — eight text-mode `open()` calls without `encoding=`.** Verified
+  in full: an independent run of the AST sweep (the exact command is in the
+  codebase report's appendix) prints exactly the eight sites the report
+  lists, and `_shelves.py:475` was also read directly. Medium. **Partial
+  overlap**: the `re_validate.py` reader is inside register 4042 (its `UnicodeDecodeError` death is recorded there);
   the other sites are new. **Fix later** — a small sweep, but it touches
   frozen-format writers, so per-site care and a regression test where
   behavior could shift.
@@ -364,7 +366,9 @@ disposition.
 - **CA-06 — `os.path` throughout.** **Waived** (deviation (5)) — correctly
   marked.
 - **CA-07 — library hygiene clean (no print/sys.exit/bare except in core).**
-  Positive; spot-checked. **No action.**
+  Positive; every tally reproduced by re-run grep (print 0/0/39/19 across
+  core/subpackages/maintenance/tools, `sys.exit` 0 core and 69
+  maintenance+tools, bare `except:` 0, `except Exception` 9). **No action.**
 - **CA-08 — `re_validate` hard-codes mail relay and sender.** Verified
   (`re_validate.py:105-106`). Low. New. **Owner decision** — env-var
   override is legal now that the file is unfrozen; fold into the next
