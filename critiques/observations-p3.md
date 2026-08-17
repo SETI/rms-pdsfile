@@ -1797,6 +1797,19 @@ The other four pds4 rule modules do. Both bundle sets therefore use the empty
 archive tables from `pds4file/rules/__init__.py`, and the two tables are unreachable.
 **Owner: whoever next revises the pds4 rules.**
 
+### 4065. Two cosmetic defects in the copy scripts' guard messages
+
+**`copy_shelves.sh` reports the wrong path and `copy_documents.sh` names the
+wrong script.** The destination-directory guard (`copy_shelves.sh:20-22`) tests
+`"$DEST_HOLDINGS/$TYPE"` but prints `Directory does not exist:
+'$DEST_HOLDINGS/$TYPE/$VOLSET'`, naming a deeper path than the one that failed
+the test; and `copy_documents.sh:9`'s usage line reads `Usage:
+copy_documentation.sh ...`, a filename that does not exist. Both predate the
+2026-08-16 exit-status change and are visible only on an invalid invocation.
+The document-only freeze was lifted for the exit statuses alone, so these are
+recorded rather than fixed. **Owner: the owner, if the freeze is lifted
+again.**
+
 ## Structure and duplication
 
 ### 4100. `_is_forgiven` has two gaps
@@ -2477,6 +2490,21 @@ deciding what the stubs declare; PR-35 decided the stubs declare both names as t
 are (`DICTIONARY_CACHE_LIMIT: int`, `MEMCACHED_LOADED: bool`), because dropping a
 frozen name is an API-manifest diff outside the two forgiveness categories.
 **Owner: a future cleanup PR.**
+
+### 4129. The two-group `BUNDLESET_PLUS_REGEX` arms and a `None` guard no longer have a caller
+
+**Since `Pds4File.BUNDLESET_PLUS_REGEX` gained the PDS3-shaped tail, both
+shipped classes' patterns yield five groups, and three defensive paths are
+dead.** `_sorting.py`'s `split_basename()` and `sort_keys()` each branch on
+`len(matchobj.groups()) == 2` for a pattern capturing only bundle set +
+version; no class defines such a pattern any longer, so the two-group arms are
+reachable only from a hypothetical subclass. Likewise the guard
+`'' if matchobj.group(2) is None else matchobj.group(2)` in `PdsFile.child()`:
+both classes' version groups now capture `''` when empty (PDS3's by an empty
+alternative, PDS4's by capturing the whole starred repetition), so the `None`
+arm cannot fire. Removing the three is a small cleanup of shared consumer
+code; the comments beside the two-group arms already state their status.
+**Owner: whoever next touches `_sorting.py` or `child()`.**
 
 ## Test coverage
 

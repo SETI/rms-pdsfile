@@ -184,9 +184,10 @@ line-length = 100
 # one E501 each in three pds4 rule stubs — so linting the stubs would need
 # new ratchet entries, and the ratchet may only shrink. The stubs stay
 # excluded; stubtest (scripts/run-all-checks.sh) is their gate. Re-measure
-# with `ruff check src/pdsfile/**/*.pyi` (explicit paths bypass this
-# exclusion). Scoped to the package so a .pyi anywhere else would still be
-# linted.
+# with `ruff check $(git ls-files 'src/pdsfile/**/*.pyi')` — explicit paths
+# bypass this exclusion, and git's glob reaches all 43 stubs where a shell
+# without globstar would expand `**` to one level and lint only two of them.
+# Scoped to the package so a .pyi anywhere else would still be linted.
 extend-exclude = ["src/pdsfile/**/*.pyi"]
 
 [tool.ruff.format]

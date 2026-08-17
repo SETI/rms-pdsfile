@@ -18,10 +18,9 @@ scratch copy.
 
 ## 1. Observation 3402 — the Python floor
 
-**The sweep, recounted rather than assumed.** `grep -rn "3\.10"` over every
-tracked `*.md`, `*.mdc`, `*.rst`, `*.toml`, `*.yml`, `*.cfg`, `*.py`, `*.txt`
-and `*.sh` (excluding `.git`, `venv`, `__pycache__` and the git-ignored
-`docs/_build/`) returned matches in 29 files. They classify as:
+**The sweep, recounted rather than assumed.** `git grep -l "3\.10"` at the
+base over every tracked `*.md`, `*.mdc`, `*.rst`, `*.toml`, `*.yml`, `*.cfg`,
+`*.py`, `*.txt` and `*.sh` returned 28 files. They classify as:
 
 - **Claims about this tree's floor or matrices — fixed, 4 files.**
   - `.cursor/rules/pdsfile_overrides.mdc` — deviation (8) said the self-hosted
@@ -31,9 +30,11 @@ and `*.sh` (excluding `.git`, `venv`, `__pycache__` and the git-ignored
     matrices and the 3.11 floor with `pyproject.toml`
     (`requires-python = ">=3.11"`, line 10) as the authority. Deviation (10)
     no longer overrides `python.mdc`; the entry says so and why it stays.
-  - `plans/2026-07-25-modernization-plan.md:243,442` — the CI-state line and
-    PR-14's matrix line, both written when the floor was 3.10, now carry the
-    3.11 values with a parenthetical naming #146 as when the floor moved.
+  - `plans/2026-07-25-modernization-plan.md:243,442,453` — the CI-state line,
+    PR-14's matrix line and PR-14's "record the actual matrix" parenthetical,
+    all written when the floor was 3.10, now carry the 3.11 values with a
+    note naming #146 as when the floor moved. The third of these was found by
+    review round 1 after the first sweep's classification pass missed it.
   - `.cursor/rules/environment.mdc:54` — the `requires-python` example read
     `>=3.10`; in this repository's rules an example that contradicts the tree
     reads as a claim, so it now reads `>=3.11`.
@@ -46,18 +47,26 @@ and `*.sh` (excluding `.git`, `venv`, `__pycache__` and the git-ignored
   `.cursor/skills/python-codebase-analysis/reference.md:53` (a worked example
   whose fictional CI matrix is "3.12 only", which this repository's never was)
   are self-contained teaching examples; neither states this tree's floor.
-- **Historical records — left, 23 files.** `critiques/` round and validation
-  records, `critiques/deferred-observations.md`, and the archived v1 plan
-  measure what was true when they were written (several literally record runs
-  on CPython 3.10); rewriting a measurement is falsifying it.
+- **Historical records — left, 22 files.** 21 `critiques/` round, validation
+  and register files, and the archived v1 plan, all of which measure what was
+  true when they were written (several literally record runs on CPython
+  3.10); rewriting a measurement is falsifying it. Two of the register's
+  matches were the 3402 entry itself, which leaves with the discharge.
 
-After the fix, `grep -rn "3\.10"` over the same set returns matches only in
-the two skills files and the 23 historical records.
+After the fix, `git grep -l "3\.10"` over the same set returns 27 files: the
+22 historical records, the two skills files, the active plan (whose two
+remaining mentions are the self-describing "3.10 until the floor moved with
+#146" parentheticals this fix added at lines 243 and 443), and this fix's own
+addendum and validation record, which name 3.10 referentially.
 
 ## 2. The ruff `.pyi` exclusion
 
-**The measurement.** `ruff check src/pdsfile/**/*.pyi` (explicit paths bypass
-`extend-exclude`; project configuration otherwise) over all 43 stubs:
+**The measurement.** `ruff check $(git ls-files 'src/pdsfile/**/*.pyi')`
+(explicit paths bypass `extend-exclude`; project configuration otherwise —
+and the `git ls-files` form matters, because a shell without `globstar`
+expands a bare `**` to one level and lints only two stubs) over all 43 stubs,
+taken with ruff 0.15.7 and reproduced by review round 1 under the venv's
+0.15.22 with the identical distribution:
 
 ```
 31 N801   29 E501   25 N999   5 N802   5 A002   2 RUF022   1 N805
@@ -226,8 +235,12 @@ the whole log read (456 lines, no gate's output truncated):
 
 ## 6. The register
 
-Entries 3402 (p2), 4062 and 4064 (p3) are discharged. Counts verified by
-`grep -c "^### "`: scheduled 10, p1 0, p2 15, p3 133, p4 52 — **210 open**,
-and the index's closure arithmetic moves 24 → 27 since closed with the three
-entries named against the addendum. The p2 range tightens to 3000–3401
-(3402 was its last entry).
+Entries 3402 (p2), 4062 and 4064 (p3) are discharged, and the review rounds
+added two: 4065 (two cosmetic defects in the copy scripts' guard messages,
+out of the lifted freeze's scope) and 4129 (the two-group regex arms and the
+`None` guard in the shared consumers no longer have a caller). Counts
+verified by `grep -c "^### "`: scheduled 10, p1 0, p2 15, p3 135, p4 52 —
+**212 open**, and the index's closure arithmetic moves 24 → 27 since closed
+with the three entries named against the addendum and 9 → 11 found during
+the later work. The p2 range tightens to 3000–3401 (3402 was its last
+entry).

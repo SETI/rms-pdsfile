@@ -450,8 +450,9 @@ The self-hosted full-data workflow is already the PR gate and nightly run
   subset. CI and the script stay in exact correspondence (`environment.mdc`).
 - Update `.cursor/rules/pdsfile_overrides.mdc` deviation (8): the v1 "3-OS
   hosted matrix" aim is withdrawn — record the actual matrix (self-hosted
-  Linux 3.10–3.13 full-data + hosted ubuntu lint/no-holdings job; Windows
-  dropped in PR-08, macOS commented out for possible re-enablement).
+  Linux full-data over the supported versions, 3.11–3.13 since #146, + hosted
+  ubuntu lint/no-holdings job; Windows dropped in PR-08, macOS commented out
+  for possible re-enablement).
 - **Surface issue #102 to the owner** (drop or keep the Windows trove
   classifier) — an owner decision; implement whichever is decided, or leave
   the issue open if no decision, noting it in the PR.

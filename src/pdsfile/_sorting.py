@@ -146,7 +146,9 @@ class _SortingMixin:
         # Special case: bundleset[_...], bundleset[_...]_md5.txt, bundleset[_...].tar.gz
         matchobj = cls.BUNDLESET_PLUS_REGEX.match(basename)
         if matchobj is not None:
-            # For PDS4, we capture bundle set + version, so two groups
+            # A two-group pattern captures only bundle set + version. Both
+            # shipped classes' patterns yield the five PDS3-shaped groups, so
+            # this arm serves only a subclass defining its own two-group form.
             if len(matchobj.groups()) == 2:
                 return (matchobj.group(1), matchobj.group(2), '')
             else:
@@ -282,7 +284,9 @@ class _SortingMixin:
             matchobj = cls.BUNDLESET_PLUS_REGEX_I.match(basename)
             if matchobj is not None:
                 splits = matchobj.groups()
-                # For PDS4, we capture bundle set + version, so two groups
+                # A two-group pattern captures only bundle set + version. Both
+                # shipped classes' patterns yield the five PDS3-shaped groups,
+                # so this arm serves only a subclass with a two-group form.
                 if len(splits) == 2:
                     parts = [splits[0], -cls.version_info(splits[1])[0], '', '']
                 else:
