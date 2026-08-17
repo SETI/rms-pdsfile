@@ -174,8 +174,10 @@ disposition.
 - **TS-02 — subset-only assertions in cached `test_childnames` (and whitebox
   `test_viewset_lookup`).** Verified at
   `test_pds3file_blackbox_cached.py:123-131`: `expected ⊆ res1` and
-  `res1 ⊆ res2`, no equality or length. Medium. New sites; same weakness
-  family as entry 3202 (different tests). **Fix now** with TS-01.
+  `res1 ⊆ res2`, no equality or length. Medium. Split overlap: the
+  `test_viewset_lookup` half restates recorded content of entry 3202
+  ("`viewset_lookup` ... never checks a length"); the cached
+  `test_childnames` half is new. **Fix now** with TS-01.
 - **TS-03 — `test__info` asserts only `res1 == res2`.** Verified at
   `:142-147`; no expected value at all. Medium. New. **Fix now.**
 - **TS-04 — pragma-excluded branches that would test the code against
@@ -373,7 +375,11 @@ disposition.
   **Already owned (PR-37) + fix later (TS-10).**
 - **CA-14 — no `filterwarnings`.** Duplicate of TS-17. **Owner decision →
   fix** (ranked item 6).
-- **CA-15 — caching design coherent and bounded.** Positive. **No action.**
+- **CA-15 — caching design coherent and bounded.** Positive as to the
+  bounds; round 2 caught that its original "LRU-bounded" phrasing was
+  contradicted by open register entry 4056 (the shelf-cache access counter
+  rebinds per subclass, so the eviction order is not actually LRU) — the
+  report now says so and cites 4056. **No action beyond 4056's own entry.**
 - **CA-16 — class-level mutable state, single-thread posture documented.**
   Positive (the docs state the contract; ground rule 2 forbids the
   alternative). **No action.**
@@ -434,9 +440,10 @@ PR; this table is the input to that later decision):
 | 1400 (five vacuous exception tests) | TS-05 | TS-05 adds two blackbox sites |
 | 1401 (unused `expected` params) | — | **not re-found by any skill**; fixes half takes it from the register |
 | 3100/3101 (`tabulate` dev-only import) | CA-31 | still an open decision |
-| 3202 (subset-only transformation asserts) | TS-02 family | different sites |
+| 3202 (subset-only transformation asserts) | TS-02 | the `viewset_lookup` half restates 3202's recorded content; the cached `test_childnames` half is new |
 | 3401 (holdings fragments in tracked files) | — | **not re-found**; whitebox:393 verified still present; PR-36 fixes half owns the test module |
 | 4042 (re_validate defects incl. encoding) | CA-04 (one site), CA-08 (family) | |
+| 4056 (shelf-cache trim is not LRU; per-subclass counter) | CA-15 (contradicted its original "LRU-bounded" phrasing; caught by round 2) | |
 | 4051 (MemcachedCache defects) | CA-17 | |
 | 4103/4110 (helper.py issues) | TS-08 (related) | different defects, same files |
 | 4203 / deferred 84 (PT014 duplicate row) | TS-11 | |
@@ -452,11 +459,14 @@ Entries 3200/3201 (zero-coverage public methods rms-viewmaster calls) were not
 individually restated but sit inside the TS-19/CA-13 umbrella; they remain the
 register's own.
 
-The review rounds surfaced three candidate register-grooming items, recorded
+The review rounds surfaced four candidate register-grooming items, recorded
 in `critiques/pr-36/` per §6.6 and left for the owner (no register edits in
 this PR): entry 6404 appears stale (the maintenance tools' docstrings now
-carry 0 `Args:` sections, matching the doc report's measurement); deviation
-(4)'s pdscache-row phrasing ("no test here exercises") is imprecise given the
-stub-tested method and belongs with entry 1503's deviation-drift family; and
-the plan's §6.6 compliance-schedule row for module lengths still names the
+carry 0 `Args:` sections, matching the doc report's measurement); entry 1000
+appears stale (both `_derived_paths.py` docstring defects it records are
+fixed in the tree — "Return the log file path for this index file." and the
+returns-a-tuple wording); deviation (4)'s pdscache-row phrasing ("no test
+here exercises") is imprecise given the stub-tested method and belongs with
+entry 1503's deviation-drift family; and the plan's §6.6
+compliance-schedule row for module lengths still names the
 pre-deviation-(3) waiver list.

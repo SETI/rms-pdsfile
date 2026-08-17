@@ -658,11 +658,14 @@ Apply, in priority order:
    the actual PyparsingDeprecationWarning category emitted by
    julian/time_pyparser; keep the ignore as narrow as possible and comment
    why). Fix or narrowly-ignore anything new that "error" surfaces.
-5. **Subprocess coverage** — in tests/holdings_maintenance/support.py, set
-   `COVERAGE_PROCESS_START` in `ToolTree.env` (and no_holdings_env) when
-   coverage is active, and add `import coverage; coverage.process_startup()`
-   guarded by that env var to _subprocess_guard/sitecustomize.py, so tool
-   subprocesses are measured. Re-measure; report the new total.
+5. **Subprocess coverage** — register entry 4214 owns this: it measured the
+   `COVERAGE_PROCESS_START` instrumentation at an 8.6x slowdown on the data
+   gate and deferred the decision to PR-37, naming `COVERAGE_CORE=sysmon`
+   (Python 3.12+) as the lever to measure first. Do NOT wire it up in this
+   fix pass; if PR-37 accepts it, the shape is `COVERAGE_PROCESS_START` in
+   `ToolTree.env` (and no_holdings_env) plus a guarded
+   `coverage.process_startup()` in _subprocess_guard/sitecustomize.py, with
+   parallel data files and a guarded `coverage combine`.
 6. **Skip hygiene** — convert the unconditional skip in
    tests/rules/pds4/test_cassini_iss_fring_mosaics_rsfrench2025.py:15 and the
    substring-keyed skips in tests/pds4file/test_pds4file_blackbox.py:732-735,
@@ -751,14 +754,16 @@ read and reproduced below in essentials):
   test_child), confirming the configured gate's ignores; context via
   `sed -n '895,927p' tests/pds3file/test_pds3file_whitebox.py` (CACHE deletion
   at :920-922).
-- `grep -rn 'import.*\b_[a-z]' tests --include='*.py' | grep pdsfile` — the 7
-  private-module import statements in 6 files (section 20).
+- `grep -rn 'import.*\b_[a-z]' tests --include='*.py' | grep pdsfile` — 7
+  matches in 6 files; the pattern cannot see the `from ..._common import`
+  form at tests/holdings_maintenance/test_pds3_archives.py:20, so section
+  20's corrected count is 8 statements across the same 6 files.
 - `find tests/golden -type f | wc -l` and `git ls-files tests/golden | wc -l`
   — 75 and 75.
 - `grep -n 'print(' tests/pds3file/*.py tests/pds4file/*.py
   tests/rules/pds3/*.py | wc -l` — 13.
 - `grep -n 'SORT_ORDER' src/pdsfile/pdsfile.py src/pdsfile/_sorting.py` and
-  `grep -n 'def sort_labels_after' -A 6 src/pdsfile/_sorting.py` — the
+  `grep -n 'def sort_labels_after' -A 6 src/pdsfile/pdsfile.py` — the
   copy-then-mutate behavior behind TS-12's cached-object note.
 - `sed -n '1,80p' tests/rules/pds3/test_coiss_xxxx.py`,
   `grep -n 'def test_duplicated_products' -A 20 tests/rules/pds3/test_go_0xxx.py`

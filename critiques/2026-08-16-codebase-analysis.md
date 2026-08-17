@@ -213,8 +213,11 @@ and configuration only here.
 ## 5. Performance and resource use
 
 - **CA-15** — **Finding**: The caching design is coherent and bounded. The shelf
-  cache is LRU-bounded (`SHELF_CACHE_SIZE = 120`, `SHELF_CACHE_SLOP = 20`,
-  `pdsfile.py:2416-2417`) with explicit eviction (`_shelves.py:363-369`);
+  cache is size-bounded (`SHELF_CACHE_SIZE = 120`, `SHELF_CACHE_SLOP = 20`,
+  `pdsfile.py:2416-2417`) with explicit eviction (`_shelves.py:363-369`) —
+  intended as least-recent-use, though register entry 4056 records an open
+  eviction-order defect (the access counter is rebound per subclass, so the
+  trim order is not actually LRU across rule subclasses);
   filesystem existence and glob answers are memoized with
   `functools.lru_cache` (`_local_fs.py:112`, `_path_utils.py:177`); the preload
   walks the stable top of the tree once and stops at the bundle
