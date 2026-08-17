@@ -93,16 +93,16 @@ class Pds4File(PdsFile):
       * Five regular expressions naming a bundle set and a bundle, with a
         case-insensitive twin of three of them. ``BUNDLESET_REGEX`` enumerates the six
         bundle sets by name rather than matching a shape. Its "plus" form appends the
-        same three groups the PDS3 side's does — a version group, a category suffix
+        same three groups the PDS3 side's does -- a version group, a category suffix
         and an archive or checksum ending, so ``uranus_occs_earthbased_md5.txt`` and
         ``cassini_vims.tar.gz`` match and the archive-side products those endings name
-        can be resolved — with two differences: the version group admits the two PDS4
+        can be resolved -- with two differences: the version group admits the two PDS4
         suffix forms rather than PDS3's seven, quantified with a star so that repeats
         match (``cassini_iss_v1.0_v2.0``, whose group is then the whole
         ``_v1.0_v2.0``), and the category alternatives are the three category
         directories a pds4-holdings tree has beside ``bundles/``, without PDS3's
-        ``_calibrated``. The group structure is PDS3's exactly — name, version,
-        combined tail, category, ending — which is what the shared consumers in
+        ``_calibrated``. The group structure is PDS3's exactly -- name, version,
+        combined tail, category, ending -- which is what the shared consumers in
         ``pdsfile.py`` and ``_sorting.py`` index into.
         ``BUNDLENAME_PLUS_REGEX`` is built exactly as the PDS3 one is: it appends an
         optional lower-case word and then an optional ``.tar.gz`` or ``_md5.txt``, so

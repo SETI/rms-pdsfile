@@ -79,7 +79,7 @@ REJECTED = [
 ]
 
 
-@pytest.mark.parametrize('basename,groups', ACCEPTED,
+@pytest.mark.parametrize(('basename', 'groups'), ACCEPTED,
                          ids=[basename for basename, _ in ACCEPTED])
 def test_accepted_with_the_expected_groups(basename, groups):
     match = Pds4File.BUNDLESET_PLUS_REGEX.match(basename)
@@ -110,7 +110,8 @@ def test_group_structure_matches_pds3():
     pds3 = Pds3File.BUNDLESET_PLUS_REGEX.match('COISS_1xxx_previews_md5.txt')
     pds4 = Pds4File.BUNDLESET_PLUS_REGEX.match(
         'uranus_occs_earthbased_previews_md5.txt')
-    assert pds3 is not None and pds4 is not None
+    assert pds3 is not None
+    assert pds4 is not None
     assert len(pds3.groups()) == len(pds4.groups()) == 5
     assert pds3.groups()[1:] == pds4.groups()[1:] == \
         ('', '_previews_md5.txt', '_previews', '_md5.txt')
