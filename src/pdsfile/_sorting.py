@@ -115,12 +115,13 @@ class _SortingMixin:
         that comparison is never true and the branch never runs.
 
         **For a bundle set name that carries a volume type, the three parts do not
-        rejoin into the name.** The regular expression that has five groups, which is the
-        PDS3 spelling, is read as the first group, the second and third joined, and the
+        rejoin into the name.** The five-group spelling, which both shipped classes'
+        patterns use, is read as the first group, the second and third joined, and the
         fourth, so ``COISS_2xxx_previews.tar.gz`` splits into ``COISS_2xxx``,
         ``_previews.tar.gz`` and ``_previews``: the volume type appears twice and the
-        archive ending appears only inside the suffix. The two-group spelling, which is
-        the PDS4 one, gives the stem, the version suffix and an empty string.
+        archive ending appears only inside the suffix. A two-group spelling -- a
+        subclass's own, since no shipped class defines one -- would give the stem, the
+        version suffix and an empty string.
 
         **The result is not always a tuple.** A class with no split rules at all, which
         is a bare PdsFile, returns the basename it was given, unchanged. Every other
