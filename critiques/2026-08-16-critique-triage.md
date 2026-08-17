@@ -46,12 +46,15 @@ per-finding rows below are authoritative.
 
 Report defects found by verification (all small, none invalidating):
 
-- **TS-18** says "13 bare `print()` calls"; the grep count is 13 but one hit
+- **TS-18** said "13 bare `print()` calls"; the grep count is 13 but one hit
   (`tests/pds3file/test_pdsviewable_blackbox.py:27`) is a commented-out line.
-  The live count is **12**.
-- **TS-11** says the COISS duplicate logical path appears "twice at :80-81";
+  The live count is **12**; the report and its fix prompt now say so.
+- **TS-11** said the COISS duplicate logical path appears "twice at :80-81";
   `test_coiss_xxxx.py:79-81` carries the same `W1294561143_1.IMG` row **three**
-  times. The defect stands, slightly understated.
+  times, and round 3's full duplicate sweep found a second pair the report had
+  missed entirely (`N1454725799_1.IMG` at :106-107) plus a dead function-local
+  import at :77. The report, its fix prompt and this triage now carry the
+  complete census.
 - **TS-20** proposes subprocess coverage "without changing a single test" —
   correct about the tests, but register entry **4214** already measured the
   cost of exactly that instrumentation at **8.6x** on the per-PR data gate and
@@ -220,8 +223,11 @@ disposition.
   is new. **Fix later** (a test PR; see ranked item 3).
 - **TS-11 — duplicate case rows.** Verified: `test_pds4file_blackbox.py:138`
   (= **register 4203** / deferred 84 / the PT014 ratchet row);
-  `test_coiss_xxxx.py:79-81` (three identical rows, report said two);
-  `test_go_0xxx.py:329-332` (two duplicate pairs). Low. **Fix later** with
+  `test_coiss_xxxx.py:79-81` (three identical rows) and `:106-107` (a second
+  pair, found by round 3's full sweep) plus that function's dead
+  `import pdsfile.pds4file` at `:77`;
+  `test_go_0xxx.py:329-332` (two duplicate pairs; round 3 swept the whole
+  table and found no more). Low. **Fix later** with
   the test PR that owns 4203's sanctioned id removal.
 - **TS-12 — facts that make `pytest -n auto` unsafe.** Verified (session
   cache mutation, whitebox CACHE deletion at `:920-922`). Informational; the
@@ -244,7 +250,11 @@ disposition.
 - **TS-17 — no `filterwarnings`; 5 third-party warnings every run.**
   Verified (`grep -c filterwarnings pyproject.toml` = 0; "5 warnings" on all
   three suite summary lines). Medium. New. **Owner decision → fix**
-  (ranked item 6). Same finding as CA-14.
+  (ranked item 6). Same finding as CA-14 — the two reports weight it
+  differently (the test report's summary lists it high-priority, CA-14 says
+  low); this triage's Medium is the reconciled weight: a one-line config
+  change, but the only mechanism that will ever surface a new dependency
+  warning.
 - **TS-18 — debug leftovers and dead case blocks.** Verified with one
   correction: **12 live** `print()` calls, not 13 (one hit is a comment);
   commented-out case blocks confirmed. Low. New. **Fix later** (with TS-09's
@@ -446,6 +456,8 @@ PR; this table is the input to that later decision):
 | 4056 (shelf-cache trim is not LRU; per-subclass counter) | CA-15 (contradicted its original "LRU-bounded" phrasing; caught by round 2) | |
 | 4051 (MemcachedCache defects) | CA-17 | |
 | 4103/4110 (helper.py issues) | TS-08 (related) | different defects, same files |
+| 4108, 4122-4125, 6107, 6114 (residual tool-pair duplication family) | CA-02 | CA-02's pair-diff measurements are new evidence for the recorded family |
+| 1503 (deviation-(4) table drift family) | CA-11 (related) | the verified-ruff-version note is the same drift class |
 | 4203 / deferred 84 (PT014 duplicate row) | TS-11 | |
 | 4205 (preload coverage gaps) | TS-10 (part) | |
 | 4207 (MemcachedCache has one stub-tested method, no gate) | TS-10, TS-19/CA-13 (pdscache share) | open deferral, phase b of #77 — not a waiver |
@@ -459,7 +471,7 @@ Entries 3200/3201 (zero-coverage public methods rms-viewmaster calls) were not
 individually restated but sit inside the TS-19/CA-13 umbrella; they remain the
 register's own.
 
-The review rounds surfaced four candidate register-grooming items, recorded
+The review rounds surfaced five candidate register-grooming items, recorded
 in `critiques/pr-36/` per §6.6 and left for the owner (no register edits in
 this PR): entry 6404 appears stale (the maintenance tools' docstrings now
 carry 0 `Args:` sections, matching the doc report's measurement); entry 1000
@@ -467,6 +479,8 @@ appears stale (both `_derived_paths.py` docstring defects it records are
 fixed in the tree — "Return the log file path for this index file." and the
 returns-a-tuple wording); deviation (4)'s pdscache-row phrasing ("no test
 here exercises") is imprecise given the stub-tested method and belongs with
-entry 1503's deviation-drift family; and the plan's §6.6
+entry 1503's deviation-drift family; the plan's §6.6
 compliance-schedule row for module lengths still names the
-pre-deviation-(3) waiver list.
+pre-deviation-(3) waiver list; and the plan's §2 enabled-gate list omits the
+stubtest gate that PR #154 turned on (the same drift class as DOC-12, in a
+file none of the three skills' scopes covers).

@@ -242,10 +242,10 @@ the docs-build extra (or state that `dev` includes it).
 ## 5. User guide
 
 Layout follows `doc_user_guide.mdc` section 1: a dedicated `docs/user_guide/`
-directory, a landing page with a `toctree` of 18 chapters, one chapter per
-program (all fourteen), a shared-command-line chapter, a concepts chapter, a
-shell-scripts chapter, and a clearly named appendix
-(`user_guide_appendix_file_formats.rst`). Absolute `:doc:` targets are used for
+directory, a landing page with a `toctree` of 19 chapters, one chapter per
+program (all fourteen), an installation chapter, a shared-command-line
+chapter, a concepts chapter, a shell-scripts chapter, and a clearly named
+appendix (`user_guide_appendix_file_formats.rst`). Absolute `:doc:` targets are used for
 cross-directory links (`/api/index`, `/user_guide/user_guide` from the dev guide)
 and relative ones within the guide.
 

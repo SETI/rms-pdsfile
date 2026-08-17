@@ -219,10 +219,12 @@ tests/rules/pds4/test_uranus_occs_earthbased.py:41-62,77-111 carry large
 commented-out case blocks (see TS-18).
 
 **TS-10** — Untested non-exception code in core modules. From the term-missing
-report: `pdsviewable.py` 64% (PdsViewable/PdsViewSet methods at 551-610,
-633-641, 845-933 largely dark; only iconset_for and the four viewset-size
+report: `pdsviewable.py` 64% (PdsViewable/PdsViewSet methods: missing ranges
+551-568, 593-610, 633-641, plus scattered lines through 845-933 — 856, 864,
+869, 873, 880-883, 916-918; only iconset_for and the four viewset-size
 properties have dedicated tests), `_index_rows.py` 76% (120-131, 228-233,
-521-527), `_associations.py` 77%, `_preload.py` 79% (579-604, 623-653: the
+521-527), `_associations.py` 77%, `_preload.py` 79% (579-604, 623-627,
+630-632, 642, 647-653: the
 category-walk branches), `_opus.py` 81%. These are the highest-value targets
 for new in-process tests. `pdscache.py` 27% is dominated by `MemcachedCache`
 (770-1914). That gap is an **open deferral, not a waiver**: register entry
@@ -246,9 +248,12 @@ agreement for src/, which is the reverse direction most suites never check.
   pdsfile_overrides.mdc deviation (4) marks "a test-content PR owns it"
   (deferred observation 84) — report it here as that PR's work item, not as a
   ruff cleanup.
-- tests/rules/pds3/test_coiss_xxxx.py:80-81: the same
-  `W1294561143_1.IMG` logical path appears twice in
-  `test_opus_id_to_primary_logical_path`'s case list.
+- tests/rules/pds3/test_coiss_xxxx.py carries two duplicate groups in
+  `test_opus_id_to_primary_logical_path`'s case list: the same
+  `W1294561143_1.IMG` logical path appears three times at :79-81, and the
+  `N1454725799_1.IMG` path twice at :106-107. The same function also opens
+  with a dead function-local `import pdsfile.pds4file` at :77 that nothing
+  in it references.
 - tests/rules/pds3/test_go_0xxx.py:329-332: two pairs in
   `test_duplicated_products`' table are exact duplicates of the row above them.
 - tests/pds3file/test_pds3file_blackbox.py:115-169: the four `test_sort_*`
@@ -469,7 +474,8 @@ forbidden — **waived by pdsfile_overrides.mdc deviation (1)**; 0 annotated
 test functions is correct here).
 
 **TS-18** — Debug leftovers and dead case blocks.
-13 bare `print(...)` calls remain in test bodies (e.g.
+12 live `print(...)` calls remain in test bodies — a 13th grep hit,
+test_pdsviewable_blackbox.py:27, is already commented out — (e.g.
 tests/pds3file/test_pds3file_blackbox.py:55, test_pds3file_whitebox.py:384,
 :443); pytest captures them, but they are noise on failure and
 `python.mdc` §2 bans stray diagnostics. Large commented-out parametrize/case
@@ -673,14 +679,17 @@ Apply, in priority order:
    self-lift. Delete the duplicate parametrize rows:
    test_pds4file_blackbox.py:138 (coordinate with deferred observation 84 —
    this is the sanctioned test-content change that removes the PT014 ratchet
-   row), test_coiss_xxxx.py:80-81, test_go_0xxx.py:329-332.
+   row), test_coiss_xxxx.py:80-81 and :107 (one row of each duplicate group
+   stays; also drop that function's dead `import pdsfile.pds4file` at :77),
+   test_go_0xxx.py:329-332.
 7. **Parametrize conversions** — convert the case-list loops in
    tests/rules/pds3/test_corss_8xxx.py (both tests), test_go_0xxx.py
    ::test_duplicated_products, and each rule module's
    test_opus_id_to_primary_logical_path into `@pytest.mark.parametrize` with
    path-based ids.
 8. **Config** — add `testpaths = ["tests"]`.
-9. **Cleanups** — remove the 13 bare `print()` calls from test bodies; delete
+9. **Cleanups** — remove the 12 live `print()` calls from test bodies (a
+   13th grep hit is already a comment); delete
    or convert to skipped cases the commented-out blocks at
    test_pds4file_blackbox.py:31-60 and test_uranus_occs_earthbased.py:41-62,
    :77-111; deduplicate the three instantiate_target_pdsfile helpers behind
@@ -688,8 +697,10 @@ Apply, in priority order:
    touch them (do not mass-edit files you are not otherwise changing).
 10. **Coverage target** — after step 5's re-measurement, add in-process tests
     for the genuine gaps: pdsviewable.py (PdsViewable/PdsViewSet methods,
-    lines 551-610, 633-641, 845-933), _index_rows.py (120-131, 228-233,
-    521-527), _associations.py, _preload.py (579-604, 623-653), _opus.py.
+    missing ranges 551-568, 593-610, 633-641 and the scattered lines 856,
+    864, 869, 873, 880-883, 916-918), _index_rows.py (120-131, 228-233,
+    521-527), _associations.py, _preload.py (579-604, 623-627, 630-632,
+    642, 647-653), _opus.py.
     Coverage must be checked over the **entire suite** (all three passes,
     combined data file); target at least 90% with almost all non-exception
     lines covered. MemcachedCache (pdscache.py) is out of this fix pass's
