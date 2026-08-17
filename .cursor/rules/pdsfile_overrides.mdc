@@ -243,6 +243,13 @@ conflicts with a rule below, follow the rule below. See
 6. **The sync shell scripts are frozen** (document-only): do not refactor them,
    only mechanical renames/moves with their package.
 
+   **The copy/setup scripts' usage guards exit 1 — owner, 2026-08-16**
+   (`plans/2026-08-16-addendum-owner-four-items.md`). The freeze was lifted for
+   exactly that change: the five copy/setup scripts' `exit -1` sites, every one
+   reachable only by an invalid invocation, became `exit 1` under the same
+   exit-code ruling that fixed `update_holdings_for_new_metadata.sh`. The
+   scripts otherwise remain document-only.
+
    **`re_validate.py` is no longer frozen — owner, 2026-08-05.** It was frozen
    here through PR-06 to PR-24 (document-only, then re-indented onto the 4-space
    grid on 2026-08-04 so the indentation gate in (12) had no exemption). The
@@ -258,11 +265,11 @@ conflicts with a rule below, follow the rule below. See
    `--update` runs and full-data runs must be serial.
 8. **The CI test matrix is split by what the runner has, not by OS.**
    `.github/workflows/run-tests.yml` runs two jobs:
-   - a **self-hosted Linux** full-data matrix over Python 3.10, 3.11, 3.12 and
-     3.13, which is the only place the data-dependent suite can run (it needs the
+   - a **self-hosted Linux** full-data matrix over Python 3.11, 3.12 and 3.13,
+     which is the only place the data-dependent suite can run (it needs the
      real holdings tree, resolved from `PDS3_HOLDINGS_DIR`/`PDS4_HOLDINGS_DIR`);
-   - a **hosted `ubuntu-latest`** lint / no-holdings job over Python 3.10 and 3.13
-     (floor and ceiling only — the self-hosted matrix already covers all four
+   - a **hosted `ubuntu-latest`** lint / no-holdings job over Python 3.11 and 3.13
+     (floor and ceiling only — the self-hosted matrix already covers all three
      versions with data), which runs `scripts/run-all-checks.sh` with no
      holdings env vars set. It runs whatever gates that script enables — the
      script is the single source of truth (`environment.mdc`) — and its pytest
@@ -283,8 +290,11 @@ conflicts with a rule below, follow the rule below. See
 9. **`logging.mdc`'s "never bare `print()`" is waived for
    `holdings_maintenance/`.** The maintenance tools' console output is frozen
    behavior.
-10. **The Python floor is 3.10** (matching the template's `requires-python`),
-    overriding `python.mdc`'s "minimum 3.11".
+10. **The Python floor is 3.11**, and `pyproject.toml`'s
+    `requires-python = ">=3.11"` is the authority. This now agrees with
+    `python.mdc`'s "minimum 3.11", so nothing is overridden; the entry stays
+    because the floor follows `pyproject.toml`, not the template, and a future
+    move changes here what it changes there.
 11. **`ruff format` is not enforced anywhere in this repository** (owner
     decision, 2026-08-03;
     `plans/2026-08-03-addendum-pr23-24-owner-decisions.md`). The one-time

@@ -8,7 +8,7 @@ if [[ $# -ne 2 ]]; then
     echo "existence."
     echo
     echo "Usage: create_fake_volumes_for_metadata.sh <holdings_dir> <volset>"
-    exit -1
+    exit 1
 fi
 
 HOLDINGS="$(realpath $1)"
@@ -16,12 +16,12 @@ VOLSET=$2
 
 if [[ ! -d "$HOLDINGS" ]]; then
     echo "Directory does not exist: '$HOLDINGS'"
-    exit -1
+    exit 1
 fi
 
 if [[ ! -d "$HOLDINGS/metadata/$VOLSET" ]]; then
     echo "Directory does not exist: '$HOLDINGS/metadata/$VOLSET'"
-    exit -1
+    exit 1
 fi
 
 for VOLPATH in $(ls "$HOLDINGS/metadata/$VOLSET"); do

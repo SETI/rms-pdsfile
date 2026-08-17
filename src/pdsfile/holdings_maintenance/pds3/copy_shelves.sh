@@ -7,7 +7,7 @@ if [[ $# -ne 4 ]]; then
     echo "directory to another."
     echo
     echo "Usage: copy_shelves.sh <src_holdings_dir> <dest_holdings_dir> <volset> <shelf_type>"
-    exit -1
+    exit 1
 fi
 
 SRC_HOLDINGS="$(realpath $1)"
@@ -17,12 +17,12 @@ TYPE=$4
 
 if [[ ! -d "$SRC_HOLDINGS/$TYPE/$VOLSET" ]]; then
     echo "Directory does not exist: '$SRC_HOLDINGS/$TYPE/$VOLSET'"
-    exit -1
+    exit 1
 fi
 
 if [[ ! -d "$DEST_HOLDINGS/$TYPE" ]]; then
     echo "Directory does not exist: '$DEST_HOLDINGS/$TYPE/$VOLSET'"
-    exit -1
+    exit 1
 fi
 
 if [[ -d "$SRC_HOLDINGS/_infoshelf-$TYPE/$VOLSET" ]]; then

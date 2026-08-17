@@ -172,15 +172,25 @@ ignore_errors = true
 [tool.ruff]
 target-version = "py311"
 line-length = 100
-# The public-API stubs mirror the frozen runtime names, so linting them can
-# only re-report the naming codes the ratchet already records as permanent for
-# their .py counterparts (N801/N999/N802/N805/A002 — frozen class, module,
-# method and parameter names). The ratchet table may not grow and inline noqa
-# is prohibited, so the stubs are excluded here instead; stubtest is their
-# gate. Lint one deliberately with
-# `ruff check --isolated --select I src/pdsfile/**/*.pyi` (explicit paths
-# bypass this exclusion). Scoped to the package so a .pyi anywhere else would
-# still be linted.
+# The public-API stubs mirror the frozen runtime surface, and linting them
+# with this configuration was measured (ruff 0.15.7, 2026-08-16): 98 findings
+# in 7 codes — N801 x31, E501 x29, N999 x25, N802 x5, A002 x5, RUF022 x2,
+# N805 x1 — every one a code the ratchet below already records as permanent
+# somewhere in the runtime tree (frozen class, module, method and parameter
+# names; hand-aligned overlength lines; frozen __all__ order). But 26 of the
+# 98 fall in stubs whose own .py counterpart's ratchet entry does not carry
+# the code — pdsfile.pyi's E501 x20 and A002 x3 (the class surface aggregates
+# mixin modules whose entries hold those codes under the mixins' paths), and
+# one E501 each in three pds4 rule stubs — so linting the stubs would need
+# new ratchet entries, and the ratchet may only shrink. The stubs stay
+# excluded; stubtest (scripts/run-all-checks.sh) is their gate. Re-measure
+# with `ruff check $(git ls-files ':(glob)src/pdsfile/**/*.pyi')` — explicit
+# paths bypass this exclusion, and the `:(glob)` magic is what reaches all 43
+# stubs: a shell without globstar expands a bare `**` to one level, and
+# git's default pathspec makes `**/` match only names with a real slash,
+# dropping the five top-level stubs (pdsfile.pyi among them, which holds 23
+# of the 26 uncovered findings). Scoped to the package so a .pyi anywhere
+# else would still be linted.
 extend-exclude = ["src/pdsfile/**/*.pyi"]
 
 [tool.ruff.format]

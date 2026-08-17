@@ -240,7 +240,8 @@ exact correspondence (`environment.mdc`). `ENABLE_MYPY`, `ENABLE_BANDIT`,
 - `src/pdsfile/pdsfile.py` is still the 6,304-line single-class module; the
   Phase 5 seams and line windows in §5 were verified 2026-07-17 (locate by
   symbol, not line).
-- CI (`run-tests.yml`): self-hosted Linux matrix, Python 3.10–3.13, triggers
+- CI (`run-tests.yml`): self-hosted Linux matrix, Python 3.11–3.13 (3.10 until
+  the floor moved with #146), triggers
   on PRs to `rewrite`, push to `main`, nightly cron, dispatch/call. Windows
   was removed from the matrix in PR-08 (issue #102 tracks the pyproject
   classifier decision); macOS entries are commented out.
@@ -439,8 +440,8 @@ The self-hosted full-data workflow is already the PR gate and nightly run
   which must collect everything, run the holdings-free tests (api freeze,
   crlf units, any other no-data tests), and skip the rest cleanly (this is
   itself the regression test for PR-09's graceful skip). Matrix
-  `python 3.10` and `3.13` (floor + ceiling; the self-hosted matrix already
-  covers all four versions with data).
+  `python 3.11` and `3.13` (floor + ceiling — 3.10 was the floor until #146;
+  the self-hosted matrix already covers all supported versions with data).
 - Keep the self-hosted full-data matrix exactly as it is (PR gate on
   `rewrite`, nightly cron, dispatch). `run-tests-and-opus.yml` continues to
   call `run-tests.yml` unchanged — its pdsfile leg remains a full-data run.
@@ -449,8 +450,9 @@ The self-hosted full-data workflow is already the PR gate and nightly run
   subset. CI and the script stay in exact correspondence (`environment.mdc`).
 - Update `.cursor/rules/pdsfile_overrides.mdc` deviation (8): the v1 "3-OS
   hosted matrix" aim is withdrawn — record the actual matrix (self-hosted
-  Linux 3.10–3.13 full-data + hosted ubuntu lint/no-holdings job; Windows
-  dropped in PR-08, macOS commented out for possible re-enablement).
+  Linux full-data over the supported versions, 3.11–3.13 since #146, + hosted
+  ubuntu lint/no-holdings job; Windows dropped in PR-08, macOS commented out
+  for possible re-enablement).
 - **Surface issue #102 to the owner** (drop or keep the Windows trove
   classifier) — an owner decision; implement whichever is decided, or leave
   the issue open if no decision, noting it in the PR.

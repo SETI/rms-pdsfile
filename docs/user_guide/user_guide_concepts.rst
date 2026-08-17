@@ -220,19 +220,22 @@ that reads it, then the archive, its checksum file, and the info shelf that read
 that. The last two have no prerequisites beyond the metadata itself and could equally
 run first.
 
-The PDS4 build of a bundle set covers less of the graph, because the PDS4 half of the
-package is younger than the PDS3 half: :class:`~pdsfile.pds4file.Pds4File` does not
-yet give the archives' own checksum files and info shelves names, so
-``checksums-archives-bundles/`` and ``_infoshelf-archives-bundles/`` have no build
-commands, and there is no PDS4 counterpart of :doc:`user_guide_pdsdependency` to check
-the result. What a bundle set takes today is the whole checksum-and-shelf chain, the
-archive itself, and its link shelves:
+The PDS4 build of a bundle set covers both chains of the graph, the same shape the
+PDS3 commands above take: the checksum-and-shelf chain over the bundles, then the
+archive, its own checksum file and its own info shelf -- the archive-side pair
+resolving through ``checksums-archives-bundles/<set>_md5.txt``, a name
+:class:`~pdsfile.pds4file.Pds4File` gives through the same ``BUNDLESET_PLUS_REGEX``
+endings the PDS3 class has always had -- and the link shelves. What has no PDS4
+counterpart is :doc:`user_guide_pdsdependency`, so nothing checks the finished set
+against the dependency rules:
 
 .. code-block:: bash
 
    pds4checksums --initialize $PDS4_HOLDINGS_DIR/bundles/cassini_uvis_solarocc_beckerjarmak2023
    pds4infoshelf --initialize $PDS4_HOLDINGS_DIR/bundles/cassini_uvis_solarocc_beckerjarmak2023
    pds4archives  --initialize $PDS4_HOLDINGS_DIR/bundles/cassini_uvis_solarocc_beckerjarmak2023
+   pds4checksums --initialize $PDS4_HOLDINGS_DIR/archives-bundles/cassini_uvis_solarocc_beckerjarmak2023
+   pds4infoshelf --initialize $PDS4_HOLDINGS_DIR/archives-bundles/cassini_uvis_solarocc_beckerjarmak2023
    pds4linkshelf --initialize $PDS4_HOLDINGS_DIR/bundles/cassini_uvis_solarocc_beckerjarmak2023
 
 For this bundle set the last command writes its shelf and then exits 1, reporting

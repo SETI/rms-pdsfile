@@ -1797,50 +1797,33 @@ The other four pds4 rule modules do. Both bundle sets therefore use the empty
 archive tables from `pds4file/rules/__init__.py`, and the two tables are unreachable.
 **Owner: whoever next revises the pds4 rules.**
 
-### 4062. No PDS4 archive checksum or archive info shelf can be built: `Pds4File` cannot name the checksum file
+### 4065. Two cosmetic defects in the copy scripts' guard messages
 
-**`pds4checksums` and `pds4infoshelf` crash with a raw traceback on every
-archives-side target that resolves the checksum file's path —
-`archives-bundles/<set>` under either tool, and `pds4checksums --archives` over
-`bundles/<set>` — so `checksums-archives-bundles/` and
-`_infoshelf-archives-bundles/` cannot be built at all.** Every such route ends at
-the same wall: the checksum file's own path,
-`checksums-archives-bundles/<set>_md5.txt`, is rejected by `Pds4File.child`
-(`ValueError: Illegal bundle set directory`), because `BUNDLESET_PLUS_REGEX`
-(`pds4file/__init__.py:121-123`) admits only version suffixes after a bundle-set
-name — no `_md5.txt` or `.tar.gz` ending, where the PDS3 counterpart admits
-both. Measured against a scratch `pds4-holdings` tree holding the cassini
-solar-occultation bundle: `pds4checksums --initialize` over
-`archives-bundles/<set>` and `pds4checksums --initialize --archives` over
-`bundles/<set>` both die in `write_checksums` →
-`Pds4File.from_abspath(check_path)`; `pds4infoshelf` over `archives-bundles/<set>`
-dies identically resolving the checksum path it needs to read. (`--archives` on a
-single bundle fails earlier and cleanly: the archive resolves to one `.tar.gz`,
-which is a selection, and `--initialize` refuses selections.) The user guide's
-concepts chapter states the resulting scope honestly — the PDS4 build covers the
-first level of each dependency chain — and this entry is the record that the
-limit is a rules gap, not a design. Fixing it means widening
-`BUNDLESET_PLUS_REGEX` (and checking `checksum_path_and_lskip`'s PDS4 behavior
-end to end), which changes what `Pds4File` accepts and needs its own tests.
-**Owner: whoever next revises the pds4 rules.**
+**`copy_shelves.sh` reports the wrong path and `copy_documents.sh` names the
+wrong script.** The destination-directory guard (`copy_shelves.sh:23-25`) tests
+`"$DEST_HOLDINGS/$TYPE"` but prints `Directory does not exist:
+'$DEST_HOLDINGS/$TYPE/$VOLSET'`, naming a deeper path than the one that failed
+the test; and `copy_documents.sh:9`'s usage line reads `Usage:
+copy_documentation.sh ...`, a filename that does not exist. Both predate the
+2026-08-16 exit-status change and are visible only on an invalid invocation.
+The document-only freeze was lifted for the exit statuses alone, so these are
+recorded rather than fixed. **Owner: the owner, if the freeze is lifted
+again.**
 
-### 4064. The document-only shell scripts exit `-1` on their usage errors, which bash reports as 255
+### 4066. `from_path`'s extension assembly misreads category-suffixed checksum basenames
 
-**Five of the document-only scripts in `src/pdsfile/holdings_maintenance/pds3/`
-stop an invalid invocation with `exit -1`, a status no process can return — bash
-reduces it to 255 (ShellCheck SC2242) — where the six `pdsdata-sync-*` scripts
-exit 1 and, since the second CodeRabbit round of the
-`update_holdings_for_new_metadata.sh` fix, so does that script.** The twelve
-sites: `setup_new_holdings.sh:11,18`, `copy_documents.sh:10,19,24`,
-`copy_shelves.sh:10,20,25`, `copy_all_except_metadata.sh:9`, and
-`create_fake_volumes_for_metadata.sh:11,19,24` — every one an argument-count or
-missing-directory guard, reachable only by an invalid invocation, so the
-2026-08-07 exit-code ruling (deferred observation 135) would permit the same
-one-word fix. It was not made because these scripts' document-only status was
-not lifted: the owner's 2026-08-16 instruction
-(`plans/2026-08-16-addendum-update-holdings-script-fix.md`) named
-`update_holdings_for_new_metadata.sh` alone. **Owner: the owner, if the
-document-only freeze is ever lifted for the copy/setup scripts.**
+**`from_path` never recognizes `<unit set>_<type>_md5.txt` as a checksum
+file.** `pdsfile.py`'s bundle-set parse builds
+`extension = matchobj.group(3) + matchobj.group(4)` -- the combined tail plus
+the category group -- so `COISS_0xxx_previews_md5.txt` yields
+`_previews_md5.txt_previews`, `endswith('_md5.txt')` fails, and `checksums_`
+is never set; the `VOLTYPES` scan then still sets the bundle type, so the
+result is a half-classified object. The suffix-free forms
+(`<set>_md5.txt`, `<set>.tar.gz`) assemble correctly, which is why the defect
+is invisible on the common paths. Identical for PDS3 and, since the
+`BUNDLESET_PLUS_REGEX` tail arrived, for PDS4 -- exact parity, which is what
+the 2026-08-16 ruling asked of that change. **Owner: whoever next hardens
+`from_path`.**
 
 ## Structure and duplication
 
@@ -2522,6 +2505,21 @@ deciding what the stubs declare; PR-35 decided the stubs declare both names as t
 are (`DICTIONARY_CACHE_LIMIT: int`, `MEMCACHED_LOADED: bool`), because dropping a
 frozen name is an API-manifest diff outside the two forgiveness categories.
 **Owner: a future cleanup PR.**
+
+### 4129. The two-group `BUNDLESET_PLUS_REGEX` arms and a `None` guard no longer have a caller
+
+**Since `Pds4File.BUNDLESET_PLUS_REGEX` gained the PDS3-shaped tail, both
+shipped classes' patterns yield five groups, and three defensive paths are
+dead.** `_sorting.py`'s `split_basename()` and `sort_keys()` each branch on
+`len(matchobj.groups()) == 2` for a pattern capturing only bundle set +
+version; no class defines such a pattern any longer, so the two-group arms are
+reachable only from a hypothetical subclass. Likewise the guard
+`'' if matchobj.group(2) is None else matchobj.group(2)` in `PdsFile.child()`:
+both classes' version groups now capture `''` when empty (PDS3's by an empty
+alternative, PDS4's by capturing the whole starred repetition), so the `None`
+arm cannot fire. Removing the three is a small cleanup of shared consumer
+code; the comments beside the two-group arms already state their status.
+**Owner: whoever next touches `_sorting.py` or `child()`.**
 
 ## Test coverage
 
