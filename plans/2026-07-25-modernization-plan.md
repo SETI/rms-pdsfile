@@ -156,7 +156,12 @@ for re-interpretation by the executor:
    support (Viewmaster passes `port=` to `preload`). Nothing is deleted for
    being "probably dead." Latent *bugs* in existing code may be fixed (PR-15,
    plus the tool-bug fixes in PR-26/PR-28), each with a test, but no feature
-   removal.
+   removal. **One owner-directed exception (2026-08-16):**
+   `shelf_consistency_check` was removed outright by the owner's explicit
+   instruction — not under this rule's "probably dead" heuristic; the tool
+   demonstrably matched no layout this repository has ever used
+   (`plans/2026-08-16-shelf-consistency-check-removal-addendum.md`, issue
+   #156).
 10. **Record keeping:** `plans/` holds plans (this file); `critiques/` holds
     critique reports, validation records, and per-PR review rounds. Every
     phase leaves a record. Superseded plans move to `plans/archive/`.
@@ -757,14 +762,16 @@ can settle from inside Phase 6:
 
 | entry | question |
 |---|---|
-| 6 | `shelf_consistency_check` finds nothing in a modern holdings layout — should the walk learn the current directory names, and what should such a run report? |
+| 6 | ~~`shelf_consistency_check` finds nothing in a modern holdings layout — should the walk learn the current directory names, and what should such a run report?~~ **Superseded 2026-08-16**: the owner removed the tool outright (`plans/2026-08-16-shelf-consistency-check-removal-addendum.md`); whether a shelf-orphan check should exist for the current layout is issue #156's question now |
 | 11 | `crlf` raises `ZeroDivisionError` on a zero-byte file; what an empty file classifies as is a three-way choice |
 | 14 | `pdsdependency`'s glob tables are unsorted |
 | 43, 46, 50, 51 | four questions about the tools' shared surface that the phase's PRs were expected to reach and did not |
 | 66 | `pdsdependency.py`, **1,165** lines, is the one module in `holdings_maintenance/` still over the limit and not waived. It has no twin to consolidate with, so the consolidation never reaches it and the deferral has expired rather than been discharged: waiver or split, and no phase owns it |
 | 72 | a `return` inside `finally` in `MemcachedCache`, which named PR-28 as the nearest PR licensed to change behavior. PR-28's licence covered one identifier in one maintenance tool; the entry is re-owned as unowned |
 
-Entries 6, 11, 66 and 72 carry that disposition in their own text.
+Entries 11, 66 and 72 carry that disposition in their own text; entry 6's
+supersession is recorded in its table row above and in
+`plans/2026-08-16-shelf-consistency-check-removal-addendum.md`.
 `pdsfile_overrides.mdc` deviation (3) names `pdsdependency.py` and its size rather
 than pointing at a phase that has ended.
 
@@ -1874,9 +1881,11 @@ executed inline):
 3. **`PdsFile` split depth:** PR-22 moves the ~1,550-line lazy-property block
    into `_properties.py` (`_PropertiesMixin`, manifest-neutral), landing core
    at **~1,750 lines**.
-4. **No new console scripts** for `crlf`/`shelf_consistency_check`/
-   `show_opus_products` — `python -m` invocation only (done, PR-28;
-   `[project.scripts]` still has its eleven entries).
+4. **No new console scripts** for `crlf`/`show_opus_products` — `python -m`
+   invocation only (done, PR-28; `[project.scripts]` still has its eleven
+   entries). The decision originally covered `shelf_consistency_check` too;
+   the owner removed that tool outright on 2026-08-16
+   (`plans/2026-08-16-shelf-consistency-check-removal-addendum.md`, issue #156).
 5. **`tabulate`** ships in the **`dev` extra** (done, PR-03).
 6. **Human-review cadence:** full human review on every refactor/test/docs PR
    (the Phase-2 lighter-touch allowance is history — Phase 2 is merged).

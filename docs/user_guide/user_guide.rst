@@ -26,7 +26,6 @@ the install, the expected directory layout and the environment.
    user_guide_pdsdependency
    user_guide_re_validate
    user_guide_crlf
-   user_guide_shelf_consistency_check
    user_guide_show_opus_products
    user_guide_shell_scripts
    user_guide_appendix_file_formats

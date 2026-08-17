@@ -1,7 +1,7 @@
 The Maintenance Tools: the Command Line They Share
 ==================================================
 
-Ten of the fifteen programs in this guide take **the same command line**. They are the
+Ten of the fourteen programs in this guide take **the same command line**. They are the
 five kinds of derived product described in :doc:`user_guide_concepts`, each in a PDS3 and
 a PDS4 flavor:
 
@@ -37,9 +37,9 @@ a PDS4 flavor:
 This chapter is the reference for everything they share. Each program's own chapter
 covers only what it builds, where it puts it, and the options in the last column.
 
-The five remaining programs -- :doc:`user_guide_pdsdependency`,
-:doc:`user_guide_re_validate`, :doc:`user_guide_crlf`,
-:doc:`user_guide_shelf_consistency_check` and :doc:`user_guide_show_opus_products` --
+The four remaining programs -- :doc:`user_guide_pdsdependency`,
+:doc:`user_guide_re_validate`, :doc:`user_guide_crlf` and
+:doc:`user_guide_show_opus_products` --
 have command lines of their own and none of what follows applies to them, except that
 ``pdsdependency`` and ``re_validate`` take ``--log`` and ``--quiet`` with the meanings
 given below.

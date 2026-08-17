@@ -21,14 +21,12 @@ that is, the validation task of :doc:`user_guide_pdschecksums`,
 are called as library functions rather than as subprocesses, so what each of them
 validates is whatever that program validates.
 
-**Five is not all of them.** Three checks in this package are never reached from here:
+**Five is not all of them.** Two checks in this package are never reached from here:
 
 * :doc:`user_guide_pdsindexshelf` offers a validation task under the same name as the
   four that are called, and this program neither imports nor runs it. **The index shelves
   of a volume's metadata tables are not re-validated here.**
-* :doc:`user_guide_shelf_consistency_check`, which looks for shelves with nothing left to
-  describe, has no task to call.
-* :doc:`user_guide_crlf`, which checks line terminators, has none either.
+* :doc:`user_guide_crlf`, which checks line terminators, has no task to call.
 
 There is no PDS4 counterpart to this program.
 
@@ -150,7 +148,7 @@ Mail is sent through a fixed relay host on port 25, unauthenticated, from a fixe
 address. There is no option for either.
 
 Option names may be abbreviated to any unambiguous prefix, which is not true of
-:doc:`user_guide_crlf` or :doc:`user_guide_shelf_consistency_check`.
+:doc:`user_guide_crlf`.
 
 An interactive run
 ------------------

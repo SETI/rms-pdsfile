@@ -33,7 +33,7 @@ GOLDEN_DIR = REPO_ROOT / 'tests' / 'golden' / 'full' / 'holdings_maintenance'
 
 # The tools, addressed as importable modules. Subprocesses run
 # `python -m <module>`, which enters each tool through exactly the main() its
-# console script calls, and which is also the invocation settled on for the three
+# console script calls, and which is also the invocation settled on for the two
 # tools that will never get a console script.
 TOOL_MODULES = {
     'crlf':           'pdsfile.holdings_maintenance.pds3.crlf',
@@ -48,8 +48,6 @@ TOOL_MODULES = {
     'pds4indexshelf': 'pdsfile.holdings_maintenance.pds4.pds4indexshelf',
     'pds4infoshelf':  'pdsfile.holdings_maintenance.pds4.pds4infoshelf',
     'pds4linkshelf':  'pdsfile.holdings_maintenance.pds4.pds4linkshelf',
-    'shelf_consistency_check':
-        'pdsfile.holdings_maintenance.pds3.shelf_consistency_check',
     'show_opus_products': 'pdsfile.tools.show_opus_products',
 }
 
@@ -61,7 +59,7 @@ HOLDINGS_DIRNAME = {'pds3': 'holdings', 'pds4': 'pds4-holdings'}
 # PdsFile objects against a class-level cache keyed by logical path, and the test
 # session preloads the real holdings tree, so an in-process call can resolve a
 # temporary-tree path back to the real one.
-HOLDINGS_FREE_TOOLS = frozenset({'crlf', 'shelf_consistency_check'})
+HOLDINGS_FREE_TOOLS = frozenset({'crlf'})
 
 SUBPROCESS_GUARD_DIR = Path(__file__).resolve().parent / '_subprocess_guard'
 
@@ -372,9 +370,10 @@ def run_tool_in_process(tool, *args):
     Third fidelity caveat, after the working directory and sys.argv: output is
     captured into io.StringIO, which has no encoding, where a real process writes
     through an encoded stream. A byte the subprocess's locale could not encode
-    would raise there and cannot here. Neither tool driven this way can produce
-    one -- they print paths the caller supplied and ASCII status words -- but a
-    tool that formatted arbitrary file content would need the subprocess.
+    would raise there and cannot here. The one tool driven this way prints the
+    paths the caller supplied and ASCII status words, so its output is encodable
+    whenever its arguments are ASCII; a test that passes a non-ASCII path, or a
+    tool that formatted arbitrary file content, needs the subprocess.
 
     Args:
         tool: A key of TOOL_MODULES that is also in HOLDINGS_FREE_TOOLS.

@@ -13,10 +13,9 @@ is a validation, and a failure is logged rather than repaired.
 
 **Five is not all of them.** ``pdsindexshelf`` offers a validate task under the same name
 as the four it does call, and this tool neither imports nor runs it, so the index shelves
-of a volume's metadata tables are never re-validated here. Two more checks in this
-package go unrun for a different reason, having no task to call:
-``shelf_consistency_check``, which looks for shelves with nothing left to describe, and
-``crlf``, which checks the line terminators of text files.
+of a volume's metadata tables are never re-validated here. One more check in this
+package goes unrun for a different reason, having no task to call: ``crlf``, which
+checks the line terminators of text files.
 
 Run it as::
 
@@ -788,15 +787,15 @@ def build_parser():
     this tool does is a validation, and what a command line selects is which validations
     over which directory trees. What it does share is the text of ``--log`` and
     ``--quiet``, taken from the same two constants the shared parser uses. That covers
-    eleven of the fourteen tool modules in this subpackage -- the ten specification driven
-    ones and this. Of the other three, ``pdsdependency`` carries its own copy of both
-    texts, byte-identical today and tied to nothing, and ``crlf`` and
-    ``shelf_consistency_check`` have neither option.
+    eleven of the thirteen tool modules in this subpackage -- the ten specification
+    driven ones and this. Of the other two, ``pdsdependency`` carries its own copy of
+    both texts, byte-identical today and tied to nothing, and ``crlf`` has neither
+    option.
 
     Every selection flag stores true and defaults to false, so "none given" and "not
     wanted" are one state at this point; ``derive_options()`` is what turns it into a
-    selection. Abbreviations are left enabled, unlike the two tools here that switch
-    them off, so a prefix of an option name is accepted where it is unambiguous.
+    selection. Abbreviations are left enabled, unlike ``crlf``, the one tool here that
+    switches them off, so a prefix of an option name is accepted where it is unambiguous.
 
     Returns:
         argparse.ArgumentParser: The parser, holding 21 arguments: the positional paths,

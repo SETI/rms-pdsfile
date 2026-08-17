@@ -27,7 +27,9 @@ failed to post on GitHub; captured here from the two review-summary bodies.)
    the branch reads `errors`, and
    `test_shelf_consistency_check.test_an_extraneous_index_shelf_is_counted_like_any_other`
    fails both if the error is not counted and if an exception truncates the walk.
-   The file's `F821` ratchet entry retired with it.
+   The file's `F821` ratchet entry retired with it. (The tool, its tests and that
+   pinning test were later removed outright — owner decision 2026-08-16, issue
+   #156 — so this entry is moot as well as fixed.)
 
 ### 🟠 Major
 

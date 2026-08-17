@@ -29,7 +29,7 @@ Both holdings roots are required
 ``PDS3_HOLDINGS_DIR`` **and** ``PDS4_HOLDINGS_DIR`` are read straight from the
 environment, and both are needed whichever kind of path is asked about. **This is the
 only program in the guide that reads either variable**, and it fails immediately with a
-:exc:`KeyError` if one is unset; the other fourteen work from the absolute paths on their
+:exc:`KeyError` if one is unset; the other thirteen work from the paths on their
 command lines rather than from the environment.
 
 Options

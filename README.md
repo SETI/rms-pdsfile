@@ -75,8 +75,8 @@ who maintains or mirrors a Ring-Moon Systems holdings tree.
   derived parts of a tree: `pdsarchives`, `pdschecksums`, `pdsdependency`,
   `pdsindexshelf`, `pdsinfoshelf` and `pdslinkshelf` for PDS3, and
   `pds4archives`, `pds4checksums`, `pds4indexshelf`, `pds4infoshelf` and
-  `pds4linkshelf` for PDS4. Four more programs run as modules with
-  `python -m`: `crlf`, `re_validate`, `shelf_consistency_check` and
+  `pds4linkshelf` for PDS4. Three more programs run as modules with
+  `python -m`: `crlf`, `re_validate` and
   `show_opus_products` (the user guide gives each one's full module path). The
   [user guide](https://rms-pdsfile.readthedocs.io/en/latest/user_guide/user_guide.html)
   has a chapter on each.
@@ -139,7 +139,7 @@ pdsinfoshelf --validate "$PDS3_HOLDINGS_DIR/volumes/COUVIS_0xxx/COUVIS_0001"
 
 ## Documentation
 
-The user guide (the fifteen command-line programs), the developer guide and
+The user guide (the fourteen command-line programs), the developer guide and
 the API reference are at
 [rms-pdsfile.readthedocs.io](https://rms-pdsfile.readthedocs.io/en/latest).
 To build them locally, install the `dev` extra and run `make html` in `docs/`.

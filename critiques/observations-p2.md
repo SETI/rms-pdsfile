@@ -37,28 +37,6 @@ hazard rather than a defect. A `TranslatorByRegex` returns its first match, so a
 that varies is an order that could one day matter. Owner: whoever next touches
 `uranus_occs_earthbased.py`.
 
-### 3004. `shelf_consistency_check` targets a legacy holdings layout
-
-**`shelf_consistency_check` targets a legacy holdings layout.** It walks for
-`shelves/<info|links|index>/…`, but current holdings keep shelves in
-`_infoshelf-volumes/`, `_linkshelf-volumes/` and `_indexshelf-metadata/`, none
-of which contain the substring `shelves`. Run against a modern tree with real,
-valid shelves it reports "Tests performed: 0, Errors found: 0". Its
-`error += 1` / `errors` typo (already on PR-15's list, fixed in PR-28) is only
-reachable through the legacy layout. Both are pinned in
-`test_shelf_consistency_check.py`. This entry named **PR-28**, which gives this
-tool a `main()`, as where the layout question had to be answered.
-
-**PR-28 fixed the typo and left the layout question open.** The two are not the
-same size: the typo is one identifier with a regression test, and teaching the
-walk about `_infoshelf-volumes/` and its siblings is a rewrite of what the tool
-looks for, on a tool nothing in this repository or in the sync scripts currently
-runs. Making that change inside a PR whose subject is three `main()` functions
-would have put the interesting decision — what a modern-layout run should
-*report* — under a heading nobody would look for it under.
-**Owner: open — the layout question needs a PR of its own, and no phase owns
-it.**
-
 ### 3005. `opus_products()` returns a key that carries no OPUS type
 
 **`opus_products()` returns a key that carries no OPUS type.** Its contract admits the
@@ -123,10 +101,7 @@ command line and a file named `-something` is not — `find` over both holdings
 roots for `-*` returns nothing. Pinned by
 `test_a_path_beginning_with_a_dash_needs_a_path_and_a_separator_before_it`,
 which asserts both so a later switch to `parse_args` has to invert
-them. `shelf_consistency_check` has the same property, pinned by
-`test_a_shelf_root_beginning_with_a_dash_is_a_usage_error` and by transcript
-record `shelf/dash-root`, where the base run walked the directory and reported
-on it.
+them.
 **Owner: open.**
 
 ## Structure and duplication

@@ -19,13 +19,12 @@ shelves, index shelves and link shelves, each with a ``pds3`` module and a ``pds
 module. Each of the ten declares a module-level ``SPEC`` and a ``TASKS`` table and hands
 both to a driver from its own ``main()``.
 
-The four other tool modules under ``pds3/`` declare no specification and reach no driver,
-and they divide two and two. ``pdsdependency.py`` and ``re_validate.py`` take parts of
-this module: both build their log paths with ``log_paths_for()``, and ``re_validate``
-also takes ``LOG_HELP``, ``QUIET_HELP``, ``LOGROOT_ENV`` and ``resolve_log_root()`` for a
-``--log`` option that behaves like every other tool's. ``crlf.py`` and
-``shelf_consistency_check.py`` take nothing from here at all; they read neither holdings
-root and write no log tree.
+The three other tool modules under ``pds3/`` declare no specification and reach no
+driver. ``pdsdependency.py`` and ``re_validate.py`` take parts of this module: both
+build their log paths with ``log_paths_for()``, and ``re_validate`` also takes
+``LOG_HELP``, ``QUIET_HELP``, ``LOGROOT_ENV`` and ``resolve_log_root()`` for a ``--log``
+option that behaves like every other tool's. ``crlf.py`` takes nothing from here at
+all; it reads neither holdings root and writes no log tree.
 
 **Three drivers serve the ten**, and which one a tool reaches is a property of what its
 command line names rather than a choice:

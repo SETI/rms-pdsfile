@@ -136,10 +136,10 @@ because md5-file ordering and tar member order are not portable.
 
 Two guards keep the sandbox honest: the real holdings roots are installed as
 read-only paths in both the test process and every tool subprocess, so a tool that
-escapes its temporary tree fails loudly; and only the two tools that read no
-holdings root at all (``crlf``, ``shelf_consistency_check``) may be driven
-in-process, since every other tool resolves paths against a class-level cache the
-session has preloaded with the *real* tree.
+escapes its temporary tree fails loudly; and only the one tool that reads no
+holdings root at all (``crlf``) may be driven in-process, since every other tool
+resolves paths against a class-level cache the session has preloaded with the
+*real* tree.
 
 Where the suites run
 --------------------

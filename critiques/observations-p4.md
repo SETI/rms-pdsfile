@@ -308,9 +308,9 @@ variant remains, inside variation point 7.)
 real `python -m` run writes through an encoded stream, so a byte the
 subprocess's locale cannot encode raises `UnicodeEncodeError` there and cannot
 here — an in-process test would pass where the tool it stands for would die.
-Neither migrated tool can reach that state in this repository's tests: `crlf`
-prints only paths the test itself created and four ASCII status words, and
-`shelf_consistency_check` prints only paths. It is written down because the
+The one migrated tool cannot reach that state in this repository's tests: `crlf`
+prints only paths the test itself created and four ASCII status words. It is
+written down because the
 runner's docstring lists its other fidelity caveats — the working directory,
 and that `sys.argv` is rebound for the call — and this is the third.
 **Owner: open.**
