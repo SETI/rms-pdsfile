@@ -56,9 +56,8 @@ roles nothing would check.
 
 PR-36's reporting half merged as #160: the three template critique skills ran, and
 their reports and triage are in `critiques/2026-08-16-*.md`. Neither entry below
-was closed by it, and neither was re-found by any skill — 1401 was not re-found at
-all, and 1400 was re-found as finding TS-05, which adds two blackbox sites to the
-five recorded here. Both are the fixes half's to take from the register rather than
+was closed by it. Observation 1401 was not re-found by any skill; 1400 was re-found
+as finding TS-05, which adds two blackbox sites to the five recorded here. Both are the fixes half's to take from the register rather than
 from the reports.
 
 ### 1400. Five exception tests pass vacuously when the call under test returns normally
