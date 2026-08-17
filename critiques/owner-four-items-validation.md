@@ -53,20 +53,28 @@ base over every tracked `*.md`, `*.mdc`, `*.rst`, `*.toml`, `*.yml`, `*.cfg`,
   3.10); rewriting a measurement is falsifying it. Two of the register's
   matches were the 3402 entry itself, which leaves with the discharge.
 
-After the fix, `git grep -l "3\.10"` over the same set returns 27 files: the
-22 historical records, the two skills files, the active plan (whose two
+After the fix, `git grep -l "3\.10"` over the same set returns the 22
+historical records, the two skills files, the active plan (whose two
 remaining mentions are the self-describing "3.10 until the floor moved with
-#146" parentheticals this fix added at lines 243 and 443), and this fix's own
-addendum and validation record, which name 3.10 referentially.
+#146" parentheticals this fix added at lines 243 and 443), and this fix's
+own records — the addendum, this file, and the review-round records under
+`critiques/owner-four-items/` — which name 3.10 referentially. No claim
+survives; the count grows by one with each review round that quotes the
+number, which is why this sentence names the sets rather than a total.
 
 ## 2. The ruff `.pyi` exclusion
 
-**The measurement.** `ruff check $(git ls-files 'src/pdsfile/**/*.pyi')`
-(explicit paths bypass `extend-exclude`; project configuration otherwise —
-and the `git ls-files` form matters, because a shell without `globstar`
-expands a bare `**` to one level and lints only two stubs) over all 43 stubs,
-taken with ruff 0.15.7 and reproduced by review round 1 under the venv's
-0.15.22 with the identical distribution:
+**The measurement.**
+`ruff check $(git ls-files ':(glob)src/pdsfile/**/*.pyi')` (explicit paths
+bypass `extend-exclude`; project configuration otherwise) over all 43 stubs,
+taken with ruff 0.15.7 and re-taken under the venv's 0.15.22 with the
+identical distribution. The command's shape is load-bearing twice over, and
+both traps were caught by a review round measuring rather than reading: a
+shell without `globstar` expands a bare `**` to one level (2 findings over 2
+stubs), and git's default pathspec makes `**/` match only names containing a
+real slash, dropping the five top-level stubs (75 findings over 38 — without
+`pdsfile.pyi`, which holds 23 of the 26 uncovered findings below). The
+`:(glob)` form returns 43 files, verified by count:
 
 ```
 31 N801   29 E501   25 N999   5 N802   5 A002   2 RUF022   1 N805
@@ -155,8 +163,9 @@ star-quantified) and the category alternatives a `pds4-holdings` tree has
 beside `bundles/` (`_diagrams`, `_metadata`, `_previews` — the tree has no
 `calibrated/`), giving the identical five-group structure. That structure
 matters because the consumers index by position through shared code:
-`pdsfile.py:1484,1536,2177` and `_sorting.py:147,282` all take the PDS3 arm
-when `len(groups) > 2`.
+`child()` (twice) and `from_path()` in `pdsfile.py`, and `split_basename()`
+and `sort_keys()` in `_sorting.py`, all take the PDS3 arm when
+`len(groups) > 2`.
 
 **Observable deltas beyond the intended one, measured.**
 
@@ -236,11 +245,13 @@ the whole log read (456 lines, no gate's output truncated):
 ## 6. The register
 
 Entries 3402 (p2), 4062 and 4064 (p3) are discharged, and the review rounds
-added two: 4065 (two cosmetic defects in the copy scripts' guard messages,
-out of the lifted freeze's scope) and 4129 (the two-group regex arms and the
+added three: 4065 (two cosmetic defects in the copy scripts' guard messages,
+out of the lifted freeze's scope), 4066 (`from_path`'s extension assembly
+misreads category-suffixed checksum basenames — pre-existing, and exact
+PDS3/PDS4 parity after this fix) and 4129 (the two-group regex arms and the
 `None` guard in the shared consumers no longer have a caller). Counts
-verified by `grep -c "^### "`: scheduled 10, p1 0, p2 15, p3 135, p4 52 —
-**212 open**, and the index's closure arithmetic moves 24 → 27 since closed
-with the three entries named against the addendum and 9 → 11 found during
+verified by `grep -c "^### "`: scheduled 10, p1 0, p2 15, p3 136, p4 52 —
+**213 open**, and the index's closure arithmetic moves 24 → 27 since closed
+with the three entries named against the addendum and 9 → 12 found during
 the later work. The p2 range tightens to 3000–3401 (3402 was its last
 entry).

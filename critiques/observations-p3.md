@@ -1810,6 +1810,21 @@ The document-only freeze was lifted for the exit statuses alone, so these are
 recorded rather than fixed. **Owner: the owner, if the freeze is lifted
 again.**
 
+### 4066. `from_path`'s extension assembly misreads category-suffixed checksum basenames
+
+**`from_path` never recognizes `<unit set>_<type>_md5.txt` as a checksum
+file.** `pdsfile.py`'s bundle-set parse builds
+`extension = matchobj.group(3) + matchobj.group(4)` -- the combined tail plus
+the category group -- so `COISS_0xxx_previews_md5.txt` yields
+`_previews_md5.txt_previews`, `endswith('_md5.txt')` fails, and `checksums_`
+is never set; the `VOLTYPES` scan then still sets the bundle type, so the
+result is a half-classified object. The suffix-free forms
+(`<set>_md5.txt`, `<set>.tar.gz`) assemble correctly, which is why the defect
+is invisible on the common paths. Identical for PDS3 and, since the
+`BUNDLESET_PLUS_REGEX` tail arrived, for PDS4 -- exact parity, which is what
+the 2026-08-16 ruling asked of that change. **Owner: whoever next hardens
+`from_path`.**
+
 ## Structure and duplication
 
 ### 4100. `_is_forgiven` has two gaps
