@@ -57,10 +57,23 @@ After the fix, `git grep -l "3\.10"` over the same set returns the 22
 historical records, the two skills files, the active plan (whose two
 remaining mentions are the self-describing "3.10 until the floor moved with
 #146" parentheticals this fix added at lines 243 and 443), and this fix's
-own records — the addendum, this file, and the review-round records under
-`critiques/owner-four-items/` — which name 3.10 referentially. No claim
-survives; the count grows by one with each review round that quotes the
-number, which is why this sentence names the sets rather than a total.
+own records — the addendum, this file, and whichever round records under
+`critiques/owner-four-items/` quote the literal digits (round 1's does) —
+all naming 3.10 referentially. No claim survives; the matching set grows
+with rounds that quote the digits, which is why this sentence names the
+sets rather than a total.
+
+The digits are not the only spelling. A second sweep for ruff's form,
+`git grep -ln "py310"` under `plans/`, returns nine completed-PR subplans —
+the seven `2026-07-27-pr-16` through `-22` files, `2026-08-03-pr-23` and
+`2026-08-04-pr-24` — each recording the `--target-version py310`
+configuration their ratchet re-derivations actually ran under, which was
+`pyproject.toml`'s value at the time (plus the archived v1 plan and its
+archived subplan, and three `critiques/` round records). They are records of
+completed work (historical, like the archived v1 plan, though they live in
+`plans/`); pr-23's "i.e. `pyproject.toml`'s" clause is the one reading
+closest to a present-tense claim, and whether it warrants an annotation is
+left to the owner with this note.
 
 ## 2. The ruff `.pyi` exclusion
 
@@ -206,12 +219,16 @@ is the tar's md5, recomputed independently by the test; `--initialize
 `pds4infoshelf --initialize` over `archives-bundles/<set>` writes
 `_infoshelf-archives-bundles/uranus_occs_earthbased_info.pickle` and its
 sidecar, whose line for the tar records the tar's on-disk size. Separately,
-the user guide's full six-command chain for
-`cassini_uvis_solarocc_beckerjarmak2023` (the concepts chapter's example) was
-run against a scratch copy of that bundle set: all commands exit 0 and both
-archive-side products exist. The chapter's build-order section previously
-documented the archive-side gap as a fact of the tree and now shows the full
-chain.
+the user guide's build chain for `cassini_uvis_solarocc_beckerjarmak2023`
+(the concepts chapter's example) was run against a scratch copy of that
+bundle set: the five build commands — both checksum-and-shelf pairs and the
+archive between them — exit 0 and both archive-side products exist. The
+sixth command, `pds4linkshelf`, writes its shelf and exits 1 carrying the
+bundle's documented recurring link error, exactly as the chapter's own text
+below the code block states (round 3 measured it; the first version of this
+sentence claimed exit 0 for all six, having run only the five). The
+chapter's build-order section previously documented the archive-side gap as
+a fact of the tree and now shows the full chain.
 
 **The s-mode skips, checked as directed.** `pytest tests/pds4file/
 tests/rules/pds4/ --mode s -rs`: 31 skips before the change, 31 after, and

@@ -1800,7 +1800,7 @@ archive tables from `pds4file/rules/__init__.py`, and the two tables are unreach
 ### 4065. Two cosmetic defects in the copy scripts' guard messages
 
 **`copy_shelves.sh` reports the wrong path and `copy_documents.sh` names the
-wrong script.** The destination-directory guard (`copy_shelves.sh:20-22`) tests
+wrong script.** The destination-directory guard (`copy_shelves.sh:23-25`) tests
 `"$DEST_HOLDINGS/$TYPE"` but prints `Directory does not exist:
 '$DEST_HOLDINGS/$TYPE/$VOLSET'`, naming a deeper path than the one that failed
 the test; and `copy_documents.sh:9`'s usage line reads `Usage:
