@@ -85,8 +85,6 @@ jobs:
         # Self-hosted Linux runs the full multi-Python-version test. Windows is
         # no longer supported and has been removed from the matrix. macOS entries
         # are kept commented for possible future re-enablement.
-        #
-        # MacOS: Python 3.8-3.10 does not currently work on MacOS.
         include:
           - os: self-hosted-linux
             python-version: "3.11"

@@ -51,7 +51,7 @@ enabled in the script does not need to be run anywhere else.
 
 - ALWAYS use `python -m venv` (or `virtualenv`) to create an isolated virtual environment. Activate it before any `pip install`.
 - NEVER install project dependencies into the system Python.
-- Record the supported Python version range in `pyproject.toml` via `requires-python` (e.g., `>=3.10`).
+- Record the supported Python version range in `pyproject.toml` via `requires-python` (e.g., `>=3.11`).
 - Test across all supported Python versions in CI using a matrix strategy.
 
 ## 5. Editor Settings (VSCode / Cursor)

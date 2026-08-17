@@ -6,7 +6,7 @@ if [[ $# -ne 3 ]]; then
     echo "directory to another."
     echo
     echo "Usage: copy_all_except_metadata.sh <src_holdings_dir> <dest_holdings_dir> <volset>"
-    exit -1
+    exit 1
 fi
 
 ./copy_documents.sh "$1" "$2" "$3"

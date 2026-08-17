@@ -8,14 +8,14 @@ if [[ $# -ne 1 ]]; then
     echo "holdings directory from scratch."
     echo
     echo "Usage: setup_new_holdings.sh <holdings_dir>"
-    exit -1
+    exit 1
 fi
 
 HOLDINGS="$(realpath $1)"
 
 if [[ ! -d "$HOLDINGS" ]]; then
     echo "Directory does not exist: '$HOLDINGS'"
-    exit -1
+    exit 1
 fi
 
 echo "Setting up holdings directory: $HOLDINGS"
