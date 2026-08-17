@@ -494,49 +494,6 @@ price of not publishing private members, and it is worth knowing before a later 
 promotes one of those objects to the public surface. **Owner: nobody yet; it is a
 standing limit of the gate.**
 
-### 6404. The maintenance tools' docstrings say `Args:` where the rules say `Parameters:`
-
-**The maintenance tools' docstrings say `Args:` where the rules say
-`Parameters:`.** `python.mdc` and `doc_python.mdc` both call for
-`Parameters:`; every module under `holdings_maintenance/` uses `Args:`, and the
-three `main()`s and `build_arg_parser()`s PR-28 wrote follow their neighbours
-rather than the rule. `crlf.py` now carries both styles in one file, because
-`test_crlf`'s own docstring predates the convention and uses `Parameters:`.
-Sweeping the subsystem is Phase 7's job — it owns docstrings — and doing it
-piecemeal would leave the tree in three states rather than two.
-**Owner: recorded, not open — Phase 7.**
-
-### 6405. The plan's Phase-5 preamble illustrates a base order that the mixin convention PR-17…
-
-**The plan's Phase-5 preamble illustrates a base order that the mixin
-convention PR-17 established now rejects.** The preamble writes the technique
-as `class PdsFile(_ShelfMixin, _OpusMixin, …)`. PR-17 fixed the ordering rule
-as **alphabetical by mixin class name, with `object` last** — recorded in
-`plans/2026-07-27-pr-17-subplan.md` §4 and `critiques/phase5-validation.md`'s
-PR-17 §6, and asserted by
-`tests/api/test_mixin_collisions.py::test_the_mixin_bases_are_listed_alphabetically`.
-`_OpusMixin` sorts before `_ShelfMixin`, so the preamble's illustration is in
-the opposite order, and an executor of PR-18–PR-22 who reads only the plan
-will write a class statement the test rejects. The illustration is plainly
-illustrative — it lists two mixins that never arrive in the same PR and ends
-in an ellipsis — so nothing is wrong today; the risk is a wasted round later.
-
-**This is an owner decision, and it has exactly two one-line forms.** Either
-(a) the alphabetical rule stands: reorder the preamble's illustration and add
-"listed alphabetically" to it, and the test stays as it is; or (b) the rule is
-not wanted: delete
-`test_the_mixin_bases_are_listed_alphabetically` from
-`tests/api/test_mixin_collisions.py` and the class statement keeps whatever
-order each PR appends. PR-17 chose (a) because a class statement cannot be
-written without *some* order, the plan settles none, and an unenforced
-convention is what produces the wasted round; the choice is behaviorally inert
-either way — the mixins are disjoint and no name is shadowed, both asserted by
-the same test file. The decision, with both forms spelled out, is written up
-as a §6.4 addendum:
-`plans/2026-07-27-addendum-phase5-mixin-base-order.md`, which PR-17 cannot
-merge without. **Owner:** owner, before PR-17 merges and PR-18 appends the
-next mixin.
-
 ## Accepted or frozen
 
 ### 6500. `uranus_occs_earthbased.py`'s module-level loop leaves its control variables bound as public…

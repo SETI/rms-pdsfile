@@ -71,12 +71,25 @@ both behaviors. **Owner: whoever next touches the driver's handler setup.**
 ### 4002. `_get_shelf` discards the exception it is reporting
 
 **`_get_shelf` discards the exception it is reporting.** `_shelves.py`'s
-`_get_shelf` binds `except Exception as e` and raises
-`IOError('Unable to open pickle file: %s' % shelf_path)` without `from e`, so
-the underlying `UnpicklingError`/`EOFError` is lost and `e` is unused. This
-is the F841 and one of the B904s that `_shelves.py`'s ratchet entry now
-carries, inherited from `pdsfile.py`'s. **Owner:** PR-23, which owns the core
-modules' ruff cleanup.
+`_get_shelf` raises `OSError(f'Unable to open pickle file: {shelf_path}')`
+inside its handler without `from`, so the underlying `UnpicklingError`/`EOFError`
+is the new exception's `__context__` rather than its cause.
+
+**Half of this is closed.** The entry was written against
+`except Exception as e`, and named two findings: the unused `e` (`F841`) and the
+missing `from` (`B904`). PR-23 dropped the binding — the handler now reads a bare
+`except Exception:` — so the `F841` is gone and `_shelves.py`'s `per-file-ignores`
+entry carries `B904` alone (`pyproject.toml:287`, "x1"). Re-measured at head with
+the project configuration and `lint.per-file-ignores = {}`, `--select F841,B904`
+over the module reports one finding, the `B904` at `_shelves.py:343` — identical
+under the `PATH` ruff 0.15.7 that `pyproject.toml:176` names and under the venv's
+0.15.22. The class also moved from `IOError` to `OSError`, which is the
+same class under its Python 3 name. The method's own `Raises:` section
+(`_shelves.py:317-323`) now describes the residual state exactly, so what is left
+is a deliberate, documented gap rather than an oversight.
+**Owner: whoever decides between `from err` and `from None` here** — the ratchet
+comment records that both change the traceback, which is why PR-23 stopped at the
+binding.
 
 ### 4003. `_indexshelf_common.load_indexdict()` lets an `EOFError` escape unlogged
 
@@ -490,24 +503,6 @@ is `!!! Info shelf file content is up to date` and the fourth is
 same run, and only the second is about the dates the branch was entered for.
 Identical in `pds4infoshelf`. Found by round 3.
 **Owner: a later maintenance-tool PR; changing either line moves log output.**
-
-### 4029. `pdsinfoshelf`'s validate comparison is defective in three ways
-
-**`pdsinfoshelf`'s validate comparison is defective in three ways** (pds3
-only; `pds4infoshelf` gets all three right, which is why the two test modules
-expect opposite outcomes):
-- `checksum1 != checksum1` compares a value to itself, so a content change is
-  never reported. Pinned by
-  `test_pds3_infoshelf.test_known_undetected_corruption[label_byte0_same_size]`.
-- `abs(modtime1 != modtime2) > 1` takes `abs()` of a bool, which is 0 or 1 and
-  never `> 1`, so modification-time drift is never reported. Pinned by
-  `test_pds3_infoshelf.test_known_undetected_corruption[label_mtime_plus_100]`.
-- The child-count message formats `(count1, count1)`, so it prints the
-  on-disk count twice instead of on-disk versus shelved. Pinned by
-  `test_pds3_infoshelf.test_update_picks_up_a_new_file`.
-**Owner: PR-26.** The parent plan's PR-26 list already names the first two;
-the message defect is not on it and should be folded in when the pair moves
-onto the shared core. All three pins must be inverted at that point.
 
 ### 4030. `preload()` warns "Not a directory, ignored" and does not ignore it
 
@@ -1873,24 +1868,6 @@ fail it on a missing `filepath` fixture — which a rename would delete outright
 Renaming would take the ratchet to 65 entries / 179 slots.
 **Owner: open.**
 
-### 4103. `helper.py` is imported under two module names
-
-**`helper.py` double-import (benign, resolved in PR-08).** After the tests
-move to the top-level `tests/` tree, `helper.py` loads under two module names:
-`pds{3,4}file.helper` (test modules' relative `from .helper`, since `tests/`
-has no `__init__.py` so pytest prepend-mode names the package `pds{3,4}file`)
-and `tests.pds{3,4}file.helper` (root conftest). Harmless — read-only env-var
-constants + stateless functions, no name collision with `pdsfile.pds{3,4}file`.
-PR-08 (conftest moves, tests restructured, `testpaths` added) removes the
-divergence; no action needed before then.
-
-**PR-07's `helper.py` double-import is NOT resolved by PR-08.** The owner's
-split narrowed PR-08 to rule-test extraction only — it did not add
-`testpaths` or restructure `tests/pds{3,4}file/`, which still use `from
-.helper import …`. Re-deferred to whichever PR adds `testpaths` / the
-pds{3,4}file test restructure (the PR-07 note that attributed this to PR-08
-predates the split).
-
 ### 4104. `holdings_sentinel` hard-codes the *name* of the holdings directory
 
 **`holdings_sentinel` hard-codes the *name* of the holdings directory.** The
@@ -2242,35 +2219,6 @@ docstrings now say the handler is there and that the mechanism does not occur,
 rather than repeating the comment. **Owner: a later cleanup PR, which should decide
 whether the tests that import a rule module on its own still need any handler.**
 
-### 4120. The maintenance tools now spell the same `logger.close()` unpacking three ways
-
-**The maintenance tools now spell the same `logger.close()` unpacking three
-ways.** After PR-24's `RUF059` work, nine sites read
-`(fatal, errors, _warnings, _tests) = logger.close()`
-(`pdsarchives.py:558`, `pdschecksums.py:911`, `pdsdependency.py:1155`,
-`pdsindexshelf`'s `main()`, `pdsinfoshelf.py:935`, `pdslinkshelf.py:1776`,
-`pds4checksums.py:885`, `pds4indexshelf`'s `main()`, `pds4infoshelf.py:918`, all
-cited at `ab1fa3b`); two read `(fatal, errors, _, _)` (`pds4archives.py:583`,
-`pds4linkshelf`'s `main()`); and `pdsdependency.py:322,347` still read
-`(fatal, errors, warnings, tests)` because those two sites do use the values.
-
-The two bare-`_` sites already used that spelling at `8cab66a` and carried no
-`RUF059`, so PR-24 had no ruff trigger to touch them and correctly did not.
-The divergence is worth recording because the PR that consolidates this
-`finally` block into `_common.py` has to choose one spelling — the same
-situation observation 4121 records for the `B006` defaults.
-
-**Decided for the archives pair by PR-25:** `_common.run_main` writes
-`(fatal, errors, _warnings, _tests) = logger.close()`, the spelling nine of
-the eleven sites already used. The two archives sites are gone with the
-`main()` bodies that held them, so the count is now eight named-underscore
-sites and one bare-`_` site. Re-cited at PR-25's head, since the six-module
-move renumbered most of them: `pdschecksums`'s `main()`, `pdsdependency.py:1155`,
-`pdsindexshelf`'s `main()`, `pdsinfoshelf`'s `main()`, `pdslinkshelf`'s `main()`,
-`pds4checksums`'s `main()`, `pds4indexshelf`'s `main()`, `pds4infoshelf`'s `main()`, and
-the bare `_` at `pds4linkshelf`'s `main()`.
-**Owner: PR-26/PR-27 for the remaining tools.**
-
 ### 4121. The pds3 and pds4 tool twins have already diverged on their mutable defaults, so two of the…
 
 **The pds3 and pds4 tool twins have already diverged on their mutable
@@ -2521,6 +2469,39 @@ arm cannot fire. Removing the three is a small cleanup of shared consumer
 code; the comments beside the two-group arms already state their status.
 **Owner: whoever next touches `_sorting.py` or `child()`.**
 
+### 4130. `src/pdsfile/pds3file/__init__.py`'s alias comment introduces one method instead of eight
+
+**`src/pdsfile/pds3file/__init__.py`'s alias comment introduces one method
+instead of eight.** After the `F811` de-duplication removed the seven shadowed
+definitions, `# Alias, compatible with old function/property names` sits above
+`log_path_for_volset` alone, while its twin `log_path_for_volume` and the alias
+properties live below under `# Override functions`. Nothing is wrong — the
+comment is still true of the method it introduces — but the two alias groups
+would read better merged under one heading. Moving code is not a `ruff check`
+fix, so it correctly stayed out of PR-24.
+
+**PR-30a documented both groups where they stand rather than moving anything**
+(2026-08-08), since that changes no executable statement. Every one of the
+nineteen aliases — thirteen properties and six methods, not the "seven shadowed
+definitions plus one" this entry's original framing implies — opens with the
+same sentence shape, "The PDS3 name for `bundle...`, whose value it returns", so
+the group a member belongs to is legible from the member rather than from the
+comment above it, and the class docstring counts them in one place. The
+`Raises:` and `Returns:` of each also record where its base member's answer
+differs from what the name suggests, which is the thing a merge would not have
+supplied. The merge itself is still open, and the two groups are further apart
+than when this entry was written, which is an argument for it rather than
+against it.
+
+This was scheduled entry 1002, owned by Phase 7 as the phase that owns
+docstrings and module structure. Phase 7 documented the aliases and left the
+code where it was, correctly: it changed no executable statement anywhere. What
+remains is a code move, which no remaining PR of the plan owns, so the entry
+belongs after the merge rather than on a schedule. Its line numbers are not
+restated here — observation 4405 is the record of what citing them costs, and
+the two comments are greppable by their text.
+**Owner: a later PR that may move code.**
+
 ## Test coverage
 
 ### 4200. `show_opus_products --narrow-table` has no test at all
@@ -2557,17 +2538,6 @@ missing piece is a fixture that stages both under one tree, not new source
 data. Same class as observation 4200: a PR-13 coverage gap in a tool PR-28
 restructured but did not otherwise change.
 **Owner: open.**
-
-### 4202. `test_no_mixin_module_imports_pdsfile_at_module_level` reads literal import statements only
-
-**`test_no_mixin_module_imports_pdsfile_at_module_level` reads literal import
-statements only.** It parses `ast.Import` / `ast.ImportFrom`, so all six
-spellings of a module-level back-import are covered (two of which raise on
-their own anyway), but a dynamic
-`importlib.import_module('pdsfile.pdsfile')` at module level would pass. No
-mixin module has a dynamic import today and none is expected to; tightening
-the check is worth doing only if one grows one. **Owner:** whichever Phase-5
-PR first adds a dynamic import to a mixin module, if any does.
 
 ### 4203. `test_pds4file_blackbox.py:138` is a duplicate `parametrize` case
 
@@ -2772,35 +2742,14 @@ a third invocation, `scripts/run-all-checks.sh`, which runs the whole
 `--mode ns`. That is the same mode the tool tests already ran in, so the
 coupling recorded here is unchanged and PR-28 still owns re-deriving it.
 
-### 4210. The mixin shadowing check looks at `PdsFile` only, not at `Pds3File` / `Pds4File`
-
-**The mixin shadowing check looks at `PdsFile` only, not at `Pds3File` /
-`Pds4File`.** `tests/api/test_mixin_collisions.py:89`
-(`test_no_mixin_is_shadowed_by_pdsfile_itself`) intersects each mixin's names
-with `_defined_names(PdsFile)` and stops there. But the subclasses are exactly
-where `PdsFile`'s method surface is extended — `src/pdsfile/pds3file/__init__.py`
-defines `log_path_for_volume` and `log_path_for_volset` as aliases — and they
-are what the maintenance tools instantiate. A name added to a subclass that a
-mixin also defines would silently make the mixin's copy unreachable on the
-class callers actually use: the failure the test exists to catch, one level
-down, where the test cannot see it.
-
-Measured at PR-18's head: the intersection is **empty** for both subclasses
-against all three mixins, so nothing is broken today and no PR is blocked. The
-test file is PR-17's and is outside PR-18's diff, and PR-18's gate is an
-identical pass/fail set, so strengthening the check would be a new assertion
-in a test PR-18 does not otherwise touch. **Owner: PR-19**, or whichever
-Phase-5 PR next edits the mixin harness — the extension is one more
-intersection per subclass in the same test.
-
 ### 4211. The new subclass shadowing check names its subjects instead of discovering them
 
 **The new subclass shadowing check names its subjects instead of discovering
 them.** `tests/api/test_mixin_collisions.py`'s
 `test_no_mixin_is_shadowed_by_a_pdsfile_subclass` is parametrized over the
 literal list `[Pds3File, Pds4File]`, so a *third* direct subclass of
-`PdsFile` would silently go unchecked — the same narrowness observation 4210
-described, one step out. Everything else in that module discovers its
+`PdsFile` would silently go unchecked — the same narrowness a since-resolved
+observation described, one step out. Everything else in that module discovers its
 subjects from `PdsFile.__bases__`, which is why every extraction PR inherits
 the checks for free.
 
@@ -2814,7 +2763,8 @@ parametrize over `PdsFile.__subclasses__()`, and keep a separate assertion
 that the discovered set is non-empty and contains both. That is a strictly
 better test and it is a change to a test file, not to `src/`, so it costs
 nothing behaviorally — but it would add or rename ids, and PR-19's gate is an
-identical pass/fail set apart from the two ids observation 4210 required.
+identical pass/fail set apart from the two ids a since-resolved observation
+required.
 
 Round 3 of the PR-19 review added a second half to this entry. The check is
 **strict**: it forbids any name a mixin and a subclass both define, and a
@@ -3297,23 +3247,6 @@ with a `PermissionError` on both the wildcard and the no-wildcard path.
 and now states the wider one; the two source docstrings are out of scope here.
 **Owner: a later PR that revisits `_local_fs.py`.**
 
-### 4402. `_properties.py`'s `opus_type` docstring gives the wrong tuple shape
-
-**`_properties.py`'s `opus_type` docstring gives the wrong tuple shape.** It describes
-a four-element tuple, "(dataset name, priority, type ID, description)", and gives two
-four-element examples. Measured, the value is a **five**-element tuple, the fifth
-being the default-checked flag, which `_opus.py`'s own key documentation names
-correctly. `_properties.py` is not documented here, so this is not fixed.
-**Owner: the PR that documents `_properties.py`.**
-
-### 4403. `cache_lifetime_for_class`'s docstring gives the wrong default for `cls`
-
-**`cache_lifetime_for_class`'s docstring gives the wrong default for `cls`.**
-`_preload.py:103` is `def cache_lifetime_for_class(arg, cls=None)` and the docstring
-two lines below says "cls -- the class calling the method (default True)". The
-function is public, re-exported by `preload_and_cache` and by `pdsfile.pdsfile`.
-`_preload.py` is PR-29a's file, so the correction belongs there. **Owner: PR-29a.**
-
 ### 4404. The mixins' "state contract" docstrings are hand-written, drift, and are mechanically derivable
 
 **The mixins' "state contract" docstrings are hand-written, drift, and are
@@ -3336,8 +3269,8 @@ attributes stay on `PdsFile`" rule exists to prevent and which nothing
 currently verifies.
 
 PR-19 did not build it: the mixin harness is a test file it touches only for
-observation 4210, and a new check is a new test id, which its gate forbids beyond the
-two observation 4210 required. Building a check the plan did not ask for is also the
+a since-resolved observation, and a new check is a new test id, which its gate
+forbids beyond the two that observation required. Building a check the plan did not ask for is also the
 failure mode PR-17 paid two rounds for. **Owner: PR-22**, which adds the last
 and largest mixin (`_PropertiesMixin`) and is where a stranded attribute is
 most likely.
@@ -3392,3 +3325,43 @@ current baseline), and the developer guide's test-suite chapter and
 pass. The claim was true of the self-hosted CI driver, which runs a pds3-only
 `s` pass — a property of that driver, not of the option. Found by PR-34's
 round-1 reviewer. **Owner: whichever PR next edits `tests/conftest.py`.**
+
+### 4407. The plan's gate list and compliance schedule have drifted from the tree they govern
+
+**Two rows of `plans/2026-07-25-modernization-plan.md` describe a tree that has
+moved on.** §2's validation-gate table has no `stubtest` row, and the sentence
+below it gives the enabled set as "ruff-check, pytest, pyroma, api-freeze,
+clean-install, sphinx, pymarkdown" — seven flags, where
+`scripts/run-all-checks.sh:139` defaults `ENABLE_STUBTEST` to `true` and runs
+`python -m mypy.stubtest` at `:585`. The gate arrived with the public-API stubs
+and is the thing that checks them, so the omission drops a gate rather than
+mislabelling one; and the same sentence names `run-all-checks.sh` as "the single
+source of truth for the enabled set", which makes the plan contradict the
+authority it cites.
+
+§6.6's progressive-compliance schedule still carries the pre-deviation-(3)
+waiver list: its row reads `python.mdc` "modules < 1000 lines" waived for
+"`pdsfile.py`, `_properties.py`, `pdscache.py`, and the rule modules". Module
+length has been two limits since the owner's 2026-08-07 decision — 1,000 code
+lines and 2,000 total — and `pdsfile_overrides.mdc` (3) now enumerates exactly
+four waived files: `pdsfile.py`, `_properties.py`,
+`holdings_maintenance/pds3/pdsdependency.py` and `pds3file/rules/VG_28xx.py`,
+each with its own issue (#141–#144). The row is wrong in both directions: it
+still waives `pdscache.py`, which deviation (3) retires by name ("is no longer
+waived", at 1,914 total and 937 code); it waives "the rule modules" as a class,
+where deviation (3) keeps the list enumerated precisely so that no rule module is
+exempted without a decision and only `VG_28xx.py` is on it; and it omits
+`pdsdependency.py` entirely.
+
+Neither row is load-bearing on behaviour — the enforced copies are
+`run-all-checks.sh` and the overrides file, and both are right — but the §6.6 row
+sits directly under the sentence naming the authorities on "what is in force
+when", one of which is `pdsfile_overrides.mdc` itself, so a reviewer who reads the
+schedule instead of the file it summarises gets the pre-2026-08-07 rule. That is
+the one place a stale waiver list can change a verdict. Same class
+as observation 4405, and the same cause: a record that describes the tree rather
+than instructing it, left behind because nothing re-reads it. Raised by PR-36's
+review rounds and left for the owner there, since the plan is a governing
+document; recorded here so it is not re-derived.
+**Owner: whichever PR next edits the plan — PR-37's finalization sweep is the
+natural one.**

@@ -260,8 +260,13 @@ lines over `data_abspath_associated_with_index_row` (which *is* covered) plus
 `from_abspath`, so a test costs almost nothing.
 
 PR-19 may not add it: its gate is an identical pass/fail set apart from the
-two ids observation 4210 required, and a further new test id is movement.
-**Owner: Phase 6**, alongside observations 4214 and 4214, which are the same shape.
+two ids a since-resolved observation required, and a further new test id is
+movement.
+**Owner: Phase 6**, alongside observation 4214, which is the same shape. Phase 6
+has since ended without adding the test, so the owner is stale; naming its
+successor is a decision rather than a measurement and is left open. (The second
+number this line used to carry was a duplicate of the first, introduced by the
+renumbering; the entry it meant cannot be recovered from the record.)
 
 ### 3201. Four methods PR-20 moved have zero in-process test coverage, and rms-viewmaster calls two of…
 
