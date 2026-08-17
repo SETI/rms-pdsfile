@@ -178,7 +178,8 @@ and configuration only here.
   **Suggestion**: none at this level; see the dedicated test-suite critique for
   depth. **Severity**: low.
 
-- **CA-13** — **Finding**: Line-plus-branch coverage over the full-data `ns` run
+- **CA-13** — **Finding**: Line-plus-branch coverage over the full suite (the
+  `ns` pass plus both `--mode s` passes, one combined data file)
   is 58% (9,715 statements, 3,704 missed), against `python_testing.mdc`'s 90%
   target, and nothing enforces any floor: `[tool.coverage.report]` has no
   `fail_under` (the header comment in `run-all-checks.sh:51-52` explicitly points
@@ -189,8 +190,9 @@ and configuration only here.
   (`pds4linkshelf.py` 6%, `_indexshelf_common.py` 8%, `pdslinkshelf.py` 8%,
   `pdsarchives.py` 13%, `_linkshelf_common.py` 14%) with `re_validate.py` (88%)
   and `crlf.py` (98%) the exceptions, and `pdscache.py` measures 27% — much of
-  that is `MemcachedCache`, which plan ground rule 9 protects and which deviation
-  (4) records as exercised by no test here. **Evidence**: coordinator-run coverage
+  that is `MemcachedCache`, which plan ground rule 9 protects from removal and
+  whose test gap register entry 4207 holds open (one stub-tested method; owner
+  phase b of issue #77). **Evidence**: coordinator-run coverage
   summary (appendix); `pyproject.toml:133-136`; `codecov.yml`. **Suggestion**:
   the highest-leverage testing investment is the maintenance-tool task functions
   and the `_linkshelf_common`/`_indexshelf_common` drivers, which mutate holdings

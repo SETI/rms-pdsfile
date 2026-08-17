@@ -68,9 +68,12 @@ golden instead of failing (TS-15).
   (TS-18 context).
 - **Waived items** are marked inline: real-holdings dependence (locked owner
   decision, modernization plan §2 ground rule 3 and §6.6), no `-n`/`--cov` in
-  addopts (pdsfile_overrides.mdc deviation 7), the PT017/PT015/B011/PT012/PT014
-  ruff-locked test shapes (deviation 4), and MemcachedCache's untested body
-  (deviation 4's pdscache row, ground rule 9).
+  addopts (pdsfile_overrides.mdc deviation 7), and the
+  PT017/PT015/B011/PT012/PT014 ruff-locked test shapes (deviation 4).
+  MemcachedCache's largely untested body is an **open deferral, not a waiver**:
+  register entry 4207 holds the gap (owner: phase b of issue #77), one method
+  is already stub-tested, and no recorded decision exempts the class from
+  tests — see section 4.
 
 ## 1. Return values and assertions
 
@@ -222,10 +225,14 @@ properties have dedicated tests), `_index_rows.py` 76% (120-131, 228-233,
 521-527), `_associations.py` 77%, `_preload.py` 79% (579-604, 623-653: the
 category-walk branches), `_opus.py` 81%. These are the highest-value targets
 for new in-process tests. `pdscache.py` 27% is dominated by `MemcachedCache`
-(770-1914), which no test environment can exercise — waived by
-pdsfile_overrides.mdc deviation (4) (pdscache row: "ground rule 9 protects
-MemcachedCache and no test here exercises it"); the DictionaryCache half is
-covered.
+(770-1914). That gap is an **open deferral, not a waiver**: register entry
+4207 records it — one method, `set_multi`, is already tested via the
+`__new__`-plus-stub-client technique in
+`tests/core/test_pdscache_set_multi.py`, the entry says that technique
+generalizes, and its owner is phase b of issue #77. Deviation (4)'s pdscache
+row waives two *lint* findings inside the class, not its test coverage, and
+plan §2 ground rule 9 protects the class from removal, not from testing. The
+DictionaryCache half is covered.
 
 Documentation alignment: tests/docs/ actively enforces docstring-to-code
 agreement for src/, which is the reverse direction most suites never check.
@@ -497,16 +504,19 @@ with comprehensive task-cycle suites report near-zero: pds4linkshelf.py 6%,
 pdslinkshelf.py 8%, _indexshelf_common.py 8%, pds4archives.py 12%,
 pdsarchives.py 13%, _linkshelf_common.py 14%, pds4infoshelf.py 17%,
 pdsinfoshelf.py 21%, pdschecksums.py 23%, pds4checksums.py 24%,
-show_opus_products.py 62%. The contrast proves the point: re_validate.py, the
-one tool tested in-process, measures 88%. Enabling subprocess coverage
+show_opus_products.py 62% — and their shared internals sit in the same
+shadow: pdsdependency.py 30%, _shelf_common.py 39%, _archives_common.py 45%,
+_common.py 50%. The contrast proves the point: re_validate.py and crlf.py,
+the two tools tested in-process, measure 88% and 98%. Enabling subprocess coverage
 (`COVERAGE_PROCESS_START` in `ToolTree.env` plus a `coverage.process_startup()`
 hook — the existing `_subprocess_guard/sitecustomize.py` is already on every
 tool subprocess's PYTHONPATH and is the natural place) would make the number
 honest without changing a single test.
 
 Modules below 90% (full list from coverage-summary.txt, excluding the
-subprocess-shadowed tools above): `pdscache.py` 27% (MemcachedCache — waived,
-deviation (4) pdscache row / ground rule 9; DictionaryCache is covered),
+subprocess-shadowed modules listed in TS-20): `pdscache.py` 27%
+(MemcachedCache — an open deferral, register 4207, owner phase b of issue
+#77; DictionaryCache and one stub-tested MemcachedCache method are covered),
 `pdsviewable.py` 64%, `__init__.py` 71%, `_index_rows.py` 76%,
 `_associations.py` 77%, `_preload.py` 79%, `_opus.py` 81%, `_path_utils.py`
 83%, `pdsindexshelf.py`/`pds4indexshelf.py` 83%, `_derived_paths.py` 84%,
@@ -533,9 +543,9 @@ separate `slow` marker is not needed.
 
 ## 20. Test boundary (public API vs internals)
 
-Seven import statements across six test modules import `_`-prefixed modules
+Eight import statements across six test modules import `_`-prefixed modules
 (test_log_path_timetag.py:24-25, test_shelf_sidecar_record.py:21,
-test_common_versioning.py:24, test_pds3_archives.py:19,
+test_common_versioning.py:24, test_pds3_archives.py:19-20,
 test_shelf_common.py:19, test_tool_naming.py:22). Each is a deliberate
 whitebox test of shared internals that no public surface reaches (the sidecar
 parser, the shelf-versioning core, the archive filter), each documents why,
@@ -679,8 +689,9 @@ Apply, in priority order:
     521-527), _associations.py, _preload.py (579-604, 623-653), _opus.py.
     Coverage must be checked over the **entire suite** (all three passes,
     combined data file); target at least 90% with almost all non-exception
-    lines covered. MemcachedCache (pdscache.py) is exempt by owner decision;
-    do not try to test it.
+    lines covered. MemcachedCache (pdscache.py) is out of this fix pass's
+    scope: register entry 4207 defers its gate to phase b of issue #77 —
+    leave it to that work rather than taking it here.
 11. **Exception messages** — wherever you touch an exception test, assert on
     the message content (`pytest.raises(...)` with `match=` or on
     `str(exc_info.value)`), never on the type alone.

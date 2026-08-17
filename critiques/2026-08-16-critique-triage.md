@@ -34,7 +34,7 @@ totaling **58%** (9,715 statements, 3,704 missed).
 | Verified, new, actionable | 31 | TS-01..04, TS-06, TS-08, TS-09, TS-14, TS-15, TS-17, TS-18, DOC-01, DOC-03..06, DOC-09, DOC-12..17, CA-04*, CA-08, CA-11, CA-14, CA-20, CA-21, CA-24, CA-26 |
 | Verified, restates an open register entry | 10 | TS-05*, TS-10*, TS-11*, TS-20, TS-21, DOC-07, CA-02*, CA-03, CA-17, CA-31 |
 | Verified, umbrella over recorded entries | 2 | TS-19, CA-13 |
-| Waived by a recorded decision (correctly marked by the reports) | 10 | DOC-02, DOC-08, DOC-10, DOC-18, CA-01, CA-05, CA-06, CA-09, CA-27, CA-32 (the test report additionally carries section-level waiver notes against deviations 1/4/7 and ground rule 3, correctly cited) |
+| Waived by a recorded decision (correctly marked by the reports) | 10 | DOC-02, DOC-08, DOC-10, DOC-18, CA-01, CA-05, CA-06, CA-09, CA-27, CA-32 (the test report additionally carries section-level waiver notes against deviations 1/4/7 and ground rule 3; those are correctly cited, with one exception review round 1 caught and the reports now correct — the MemcachedCache test gap is register 4207, an open deferral, not a waiver) |
 | Positive/no-action observations (state of health, nothing to do) | 15 | TS-12, TS-13, TS-16, CA-07, CA-10, CA-12, CA-15, CA-16, CA-18, CA-19, CA-22, CA-23, CA-25, CA-28, CA-29 |
 | Recommend decline | 3 | TS-07, DOC-11, CA-30 (defer) |
 | Outright wrong | 0 | — |
@@ -63,6 +63,19 @@ Report defects found by verification (all small, none invalidating):
   the user guide, but register entries **3100/3101** hold it as an *open*
   owner decision (runtime dependency vs guarded import); the finding
   understates that the question is still open.
+- **Review round 1** caught a fifth, larger defect the triage's own
+  verification had repeated rather than caught: the test report presented
+  the `MemcachedCache` coverage gap as "waived by deviation (4) / ground
+  rule 9" and its fix prompt as "exempt by owner decision — do not try to
+  test it". No such decision exists: deviation (4)'s pdscache row waives two
+  lint findings, ground rule 9 forbids removal (not testing), one method is
+  already stub-tested (`tests/core/test_pdscache_set_multi.py`), and
+  register entry **4207** holds the gap open with phase b of issue #77 as
+  owner. Both reports and this triage were corrected in the round-1 fix
+  pass; round 1 also corrected four smaller report inaccuracies (the §18
+  below-90% list omitted four subprocess-shadowed shared modules; `crlf` is
+  a second in-process-tested tool at 98%; CA-13 misdescribed its measurement
+  basis as ns-only; the §20 private-import count is eight, not seven).
 
 ## What needs the owner's decision, ranked
 
@@ -89,11 +102,15 @@ Report defects found by verification (all small, none invalidating):
 3. **Coverage posture (TS-19/CA-13 umbrella; TS-20 = 4214).** The 58% total
    against the 90% target decomposes into: the subprocess blind spot (tool
    suites uninstrumented — entry 4214, cost measured, owner PR-37), the
-   waived `MemcachedCache` body (deviation 4, ground rule 9), and genuine
-   in-process gaps (TS-10: `pdsviewable.py` 64% is the largest; parts overlap
-   entries 4205/3200/3201). Recommended: no new decision here — PR-37 already
+   `MemcachedCache` body (an **open deferral, register 4207** — one method is
+   stub-tested and the entry's owner is phase b of issue #77; deviation (4)'s
+   pdscache row waives two lint findings only, and ground rule 9 protects the
+   class from removal, not from testing), and genuine in-process gaps
+   (TS-10: `pdsviewable.py` 64% is the largest; parts overlap entries
+   4205/3200/3201). Recommended: no new decision here — PR-37 already
    owns codecov targets and the `fail_under` question; add the TS-10 targets
-   to the fixes-half backlog or a test PR after the merge.
+   to the fixes-half backlog or a test PR after the merge; the MemcachedCache
+   gate stays with 4207's owner.
 4. **Dependency floors and audit tooling (CA-24, CA-21).** Verified: seven of
    eight runtime dependencies unbounded; no Dependabot config and no
    `pip-audit` anywhere, both required by `dependency_management.mdc` §3/§5
@@ -196,7 +213,8 @@ disposition.
   session's `coverage report -m`: `pdsviewable.py` 64%, `_index_rows.py` 76%,
   `_associations.py` 77%, `_preload.py` 79%, `_opus.py` 81%. Medium.
   **Partial overlap**: `_preload` gaps are register 4205; entries 3200/3201
-  hold the zero-coverage public methods. `pdsviewable` as the largest target
+  hold the zero-coverage public methods; the `pdscache` share is register
+  4207 (open, phase b of #77). `pdsviewable` as the largest target
   is new. **Fix later** (a test PR; see ranked item 3).
 - **TS-11 — duplicate case rows.** Verified: `test_pds4file_blackbox.py:138`
   (= **register 4203** / deferred 84 / the PT014 ratchet row);
@@ -423,6 +441,7 @@ PR; this table is the input to that later decision):
 | 4103/4110 (helper.py issues) | TS-08 (related) | different defects, same files |
 | 4203 / deferred 84 (PT014 duplicate row) | TS-11 | |
 | 4205 (preload coverage gaps) | TS-10 (part) | |
+| 4207 (MemcachedCache has one stub-tested method, no gate) | TS-10, TS-19/CA-13 (pdscache share) | open deferral, phase b of #77 — not a waiver |
 | 4214 (tool tests contribute no measured coverage; 8.6x cost) | TS-20, CA-13 (part) | PR-37 owns |
 | 4300 (no `testpaths`) | TS-21 | |
 | 4304 / deferred 16 (`run_tests_coverage.sh` dead) | CA-03 | |
@@ -432,3 +451,12 @@ PR; this table is the input to that later decision):
 Entries 3200/3201 (zero-coverage public methods rms-viewmaster calls) were not
 individually restated but sit inside the TS-19/CA-13 umbrella; they remain the
 register's own.
+
+The review rounds surfaced three candidate register-grooming items, recorded
+in `critiques/pr-36/` per §6.6 and left for the owner (no register edits in
+this PR): entry 6404 appears stale (the maintenance tools' docstrings now
+carry 0 `Args:` sections, matching the doc report's measurement); deviation
+(4)'s pdscache-row phrasing ("no test here exercises") is imprecise given the
+stub-tested method and belongs with entry 1503's deviation-drift family; and
+the plan's §6.6 compliance-schedule row for module lengths still names the
+pre-deviation-(3) waiver list.
