@@ -239,7 +239,8 @@ ground rule 9 protects and no test here exercises". The relative clause attaches
 to the class, and of the class it is false: `tests/core/test_pdscache_set_multi.py`
 builds an instance with `__new__` and a stub client and exercises `set_multi`,
 which is exactly what observation 4207 records. It is true of the two *sites* —
-re-measured at head with the project configuration (ruff 0.15.22), `UP031` is
+re-measured at head with the project configuration under both the `PATH` ruff
+0.15.7 that `pyproject.toml:176` names and the venv's 0.15.22, `UP031` is
 `pdscache.py:775`, inside `MemcachedCache.__init__`'s `pylibmc.Client` call, and
 `RUF015` is `pdscache.py:1201`, inside `flush`'s debug message; no test reaches
 either. Saying so of the sites rather than of the class costs one clause and stops

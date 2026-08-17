@@ -80,9 +80,10 @@ is the new exception's `__context__` rather than its cause.
 missing `from` (`B904`). PR-23 dropped the binding — the handler now reads a bare
 `except Exception:` — so the `F841` is gone and `_shelves.py`'s `per-file-ignores`
 entry carries `B904` alone (`pyproject.toml:287`, "x1"). Re-measured at head with
-the project configuration and `lint.per-file-ignores = {}` (ruff 0.15.22),
-`--select F841,B904` over the module reports one finding, the `B904` at
-`_shelves.py:343`. The class also moved from `IOError` to `OSError`, which is the
+the project configuration and `lint.per-file-ignores = {}`, `--select F841,B904`
+over the module reports one finding, the `B904` at `_shelves.py:343` — identical
+under the `PATH` ruff 0.15.7 that `pyproject.toml:176` names and under the venv's
+0.15.22. The class also moved from `IOError` to `OSError`, which is the
 same class under its Python 3 name. The method's own `Raises:` section
 (`_shelves.py:317-323`) now describes the residual state exactly, so what is left
 is a deliberate, documented gap rather than an oversight.
