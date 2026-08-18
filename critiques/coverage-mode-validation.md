@@ -118,12 +118,15 @@ process + 319 measured children)** — children, not tool runs, because
 `COVERAGE_PROCESS_START` reaches every subprocess the suite starts, and the whole-suite
 320 against `tests/holdings_maintenance`'s own 308 puts twelve of them elsewhere.
 
-One blind spot, small and deliberate. `ToolTree.env` is not this tree's only environment
-builder, and it is the only one that puts `SUBPROCESS_GUARD_DIR` on `PYTHONPATH`. Children
-built by either of the other two get no `sitecustomize`, so they are measured only by
-coverage's own `.pth` -- which means no measurement at all on coverage 7.0-7.9, the
-declared floor, and no fail-closed guarantee on any version. Both builders, and all nine
-children:
+One blind spot, small and deliberate. `ToolTree.env` is not this tree's only builder of a
+subprocess environment, and it is the only one that puts `SUBPROCESS_GUARD_DIR` on the
+path of a **tool** child. (Two test modules put it on the path of their own probe
+children, deliberately and with the guard as the thing under test:
+`test_readonly_roots.py:73` and `:141`, and this PR's `test_subprocess_coverage.py:62`.
+Those are inside the guarantee, not outside it.) The tool children of the two builders
+below get no `sitecustomize`, so they are measured only by coverage's own `.pth` -- which
+means no measurement at all on coverage 7.0-7.9, the declared floor, and no fail-closed
+guarantee on any version. Both builders, and all nine tool children:
 
 | builder | call sites | children |
 |---|---|---|
@@ -280,8 +283,11 @@ by the `--coverage` run above reporting branch columns.
 `--coverage-subprocess` counts the data files before combining and prints the count. Zero
 subprocesses is legitimate — the tool tests skip when the holdings root lacks the source
 subset they declare, and a skipped test starts no subprocess — so that case prints
-`Coverage: no subprocess ran, so this total is the same one --coverage produces` and
-carries on. Zero data files *at all* fails: the pytest process itself must have been
+`Coverage: no child was measured, so this total covers the pytest process alone` followed
+by `Coverage: it is still line-only, so it is not comparable with --coverage's branch
+total`, and carries on. It says that rather than "the same total `--coverage` produces",
+which would be wrong for the reason the section above gives: with no children this run is
+still line-only, and `--coverage` is still branch. Zero data files *at all* fails: the pytest process itself must have been
 measured.
 
 ## Reconciliation with `scripts/automated_tests/pdsfile_main_test.sh`
@@ -300,7 +306,8 @@ The two do not disagree, and this PR does not make them:
   file, which is what its `coverage run -a` append and its combine-free `coverage report`
   require. Its numbers are unchanged by this PR.
 * **Subprocess measurement is off there, and stays off.** The hook keys on
-  `COVERAGE_PROCESS_START`; nothing in CI sets it. The data gate pays none of the cost.
+  `COVERAGE_PROCESS_START` or `COVERAGE_PROCESS_CONFIG`, the two variables coverage
+  itself starts on; nothing in CI sets either. The data gate pays none of the cost.
 * **Two real differences, now written down.** Both are in the comment added to the
   data gate itself, above its `coverage report`: its total covers two passes (ns + s)
   where `--coverage`'s covers one, and it measures the pytest process only.
@@ -361,8 +368,9 @@ hook firing on the path a real tool subprocess takes, the hook failing closed tw
 coverage, and no per-process data files), and the two configured postures. No pre-existing id
 changed outcome; the skip count is unmoved at 34, and both `--mode s` suites are
 identical to baseline. Nothing under `src/pdsfile/` was touched by this PR at all —
-`git diff --stat` names `pyproject.toml`, two scripts, three files under
-`tests/holdings_maintenance/`, one new test module and one register file — so the
+`git diff --stat` names no file under `src/` at all: `pyproject.toml`, two scripts, one
+cursor-rules file, two documentation pages, four files under `tests/holdings_maintenance/`
+(one of them new), and the register and review records under `critiques/` — so the
 §6.2 behavior-preservation evidence is the unchanged suite outcome above.
 
 ## Coverage-mode outputs, for the record
@@ -492,4 +500,24 @@ being measured, leaving an uncombined data file behind every run), one closed
 claimed a zero-child total equals `--coverage`'s, which it does not, because this mode is
 line-only.
 
-**Round 4** (`git diff 02dd774..ROUND4_HEAD`): ROUND4_RESULT
+**Round 4** (`git diff 02dd774..75ee804`), scoped per §6.6 to confirming the prior rounds'
+findings and raising only new Major: **goal not met**, two new Major, nine Deferred. It
+confirmed every round-2 and round-3 finding resolved in substance, and reproduced the
+round-3 leak fix by measurement (no stray data file after a report). Both of its Major are
+in this document. One is round 2's M4 in kind — round 3's correction to the zero-child line
+went into the script and not into the quotation of it here, so this file both quoted a
+string the program cannot emit and re-asserted the falsehood the fix removed. The other is
+round 3's M1(b) in kind: the paragraph rewritten to fix M1(b) opened with a new false
+universal, that `ToolTree.env` is the only builder putting `SUBPROCESS_GUARD_DIR` on a
+path — three probe-child sites do too, deliberately. Both fixed, along with two Deferred
+items of the same species.
+
+**The loop hit its cap here.** §6.6 allows four rounds and says a fourth that still finds
+something is a mis-scope signal to bring to the owner rather than answer with a fifth
+round, so no fifth round was run and this record is part of what goes to the owner.
+`critiques/coverage-mode/round-4.md` sets out what to weigh: both findings are in this
+document and neither touches the mechanism, which round 4 independently reproduced as
+sound — but they are the fourth appearance of one defect class, a true claim supported by a
+reason that is not the real one, and three of the four rounds found it in a paragraph a
+previous round had just rewritten. The mechanism converged after round 2; this document's
+prose did not converge as fast.

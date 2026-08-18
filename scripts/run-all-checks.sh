@@ -589,7 +589,8 @@ _coverage_report() {
             # tool tests skip when the holdings root lacks the source subset they
             # declare, and a skipped test starts no subprocess. The total is still
             # not --coverage's, because this run is line-only and that one is not.
-            print_info "Coverage: no child was measured, so this total covers the pytest process alone -- still line-only, so not comparable with --coverage's branch total"
+            print_info "Coverage: no child was measured, so this total covers the pytest process alone"
+            print_info "Coverage: it is still line-only, so it is not comparable with --coverage's branch total"
         fi
         subprocess_note=", ${tool_files} measured children"
         # -q because combine names every file it merges, and three hundred of
