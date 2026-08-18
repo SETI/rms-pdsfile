@@ -20,12 +20,22 @@ measurement setting from `[tool.coverage.*]` — the script names no source, omi
 exclude — so it produces the branch coverage the repository has always configured and
 the data gate has always produced.
 
-**`--coverage-subprocess`** adds the tool subprocesses, through `COVERAGE_PROCESS_START`
-in `ToolTree.env`, acted on by a `coverage.process_startup()` hook in the tool
-subprocesses' existing `sitecustomize.py` — and, on coverage 7.10 and later, by
-coverage's own `a1_coverage.pth` first (finding 3 below). It is internally consistent and says so in its own output:
-the whole run is line-only under `COVERAGE_CORE=sysmon`, and the data files are
-per-process and combined afterwards.
+**`--coverage-subprocess`** adds the tool subprocesses, through `COVERAGE_PROCESS_START`,
+acted on in each child by a `coverage.process_startup()` hook in the tool subprocesses'
+existing `sitecustomize.py` -- and, on coverage 7.10 and later, by coverage's own
+`a1_coverage.pth` first (finding 3 below).
+
+The script sets that variable on the pytest process and a child inherits it, because
+`ToolTree.env` starts from a copy of `os.environ`. What `subprocess_coverage_env()` adds
+there is not the variable but its absolute form, which matters only for a variable someone
+set by hand: a child runs inside the disposable tree, where a relative config path names
+nothing and a relative data path is deleted with the tree. Measured -- stubbing the helper
+out changes nothing about a run under this mode, 20 data files either way -- which is why
+the test that pins it sets both variables relative and asserts them absolute.
+
+The mode is internally consistent and says so in its own output: the whole run is
+line-only under `COVERAGE_CORE=sysmon`, and the data files are per-process and combined
+afterwards.
 
 Neither flag sets `SCOPE_SPECIFIED`. Coverage is a **mode of the pytest gate, not a check
 of its own**, and it deliberately carries no `RUN_*`/`ENABLE_*` pair: a no-scope run sets
@@ -108,20 +118,23 @@ process + 319 measured children)** — children, not tool runs, because
 `COVERAGE_PROCESS_START` reaches every subprocess the suite starts, and the whole-suite
 320 against `tests/holdings_maintenance`'s own 308 puts twelve of them elsewhere.
 
-One blind spot, small and deliberate. `support.no_holdings_env()` puts only `src/` on
-`PYTHONPATH`, so its children get no `sitecustomize` and are measured only by coverage's
-own `.pth` — meaning that on coverage 7.0–7.9 they would not be measured at all, and the
-fail-closed guarantee does not reach them. It has **three** call sites, not one:
-`support.run_tool_without_holdings()` (`support.py:475`), reached by
-`test_crlf.py::test_the_module_is_runnable_as_python_m` and
-`::test_an_unreadable_file_ends_the_process_with_a_traceback`, and
-`test_show_opus_products.py:58`, reached by
-`::test_the_module_imports_with_neither_holdings_root_set` and
-`::test_the_module_is_runnable_as_python_m`. The second pair matters more, because
-`show_opus_products` is one of the twelve subprocess-driven programs this mode exists to
-measure. Extending the path would also install the read-only guard in those children,
-changing what those tests do, which is not this PR's to change; both modules are measured
-through their other tests (`crlf.py` 100%, `show_opus_products.py` 81%).
+One blind spot, small and deliberate. `ToolTree.env` is not this tree's only environment
+builder, and it is the only one that puts `SUBPROCESS_GUARD_DIR` on `PYTHONPATH`. Children
+built by either of the other two get no `sitecustomize`, so they are measured only by
+coverage's own `.pth` -- which means no measurement at all on coverage 7.0-7.9, the
+declared floor, and no fail-closed guarantee on any version. Both builders, and all nine
+children:
+
+| builder | call sites | children |
+|---|---|---|
+| `support.no_holdings_env()` | `support.run_tool_without_holdings()` (`support.py:475`); `test_show_opus_products.py:58` | `test_crlf.py` x2, `test_show_opus_products.py` x2 |
+| `test_re_validate.py:64 subprocess_env()` | `run_module()` (`:74`) at `:1394`, `:1403`, `:1412`; `:150` and `:172` directly | `test_re_validate.py` x5 |
+
+The `show_opus_products` pair matters most, because that program is one of the twelve this
+mode exists to measure. Extending either builder's path would also install the read-only
+guard in those children, changing what those tests do, which is not this PR's to change;
+all three modules are measured through their other tests (`crlf.py` 100%,
+`show_opus_products.py` 81%, `re_validate.py` 90%).
 
 ## What the subprocess mode measures, before and after
 
@@ -162,9 +175,14 @@ Per module, line-only both times:
 | `tools/show_opus_products.py` | 66% | 81% |
 | `pds3/crlf.py` | 99% | 100% |
 
-`crlf.py` and `re_validate.py` barely move, which is the expected result and a useful
-negative control: PR-28 converted the `crlf` tests to in-process `main()` calls and
-`test_re_validate.py` never ran a subprocess, so neither had anything to gain.
+`crlf.py` and `re_validate.py` barely move, and the reason is that their tests already
+reach them in this process, not that they start no children -- both do. `test_crlf.py`
+drives two subprocesses and `test_re_validate.py` five. Measured on its own under this
+mode, `test_re_validate.py`'s three `run_module()` ids write four data files and put
+`re_validate.py` at 27%; against the 86 ids that already drive it in process to 90%, that
+adds nothing visible. Which is the point: the mode pays off where a subprocess is the only
+way in, and PR-28's conversion of the `crlf` tests is what took one program out of that
+category.
 
 ## The cost of each mode
 
@@ -178,7 +196,8 @@ pytest's own summary line inside it:
 | `--coverage-subprocess` | 3m 50s | 224.76s |
 
 Re-run at the final commit and at 1245 ids, these reproduce: 205.68s, 230.02s and
-224.60s, with the two totals (56% and 81%) identical to the digit. Over the whole suite the two modes cost the
+224.60s, with the two totals (56% and 81%) identical to the digit. Over the whole suite
+the two modes cost the
 same 1.13x, because the suite is dominated by tests that are not tool subprocesses. The
 difference between them shows on the arm that is:
 `tests/holdings_maintenance/test_pds3_archives.py`, 13 ids, varying only how the children
@@ -199,8 +218,9 @@ falls back to the C tracer, and in a captured-stderr subprocess that warning rea
 nobody. That is why `_coverage_kind()` checks `sys.monitoring` directly and prints
 `core sysmon UNAVAILABLE on this Python` when the request cannot be met.
 
-The whole maintenance-tool arm, `tests/holdings_maintenance` (435 ids), in the mode this
-PR delivers:
+The whole maintenance-tool arm, `tests/holdings_maintenance` (435 ids at the time, 437
+after round 2 added two, neither of which starts a child in the project root), in the mode
+this PR delivers:
 
 | run | pytest summary | data files |
 |---|---|---|
@@ -456,4 +476,20 @@ the program cannot produce. All nineteen findings fixed, including a hook that n
 to run without per-process data files and a test for the branch every real tool subprocess
 takes.
 
-**Round 3** (`git diff 02dd774..ROUND3_HEAD`): ROUND3_RESULT
+**Round 3** (`git diff 02dd774..a17a6f6`): **goal not met**, one Major in two parts, eight
+Minor, five Deferred — and both parts of the Major in this document rather than in the
+mechanism. The reviewer found that the paragraph explaining why `crlf.py` and
+`re_validate.py` barely move gave a false reason for a true observation
+(`test_re_validate.py` runs five subprocesses; it was said to run none), and that the
+blind-spot paragraph named one environment builder of two, missing
+`test_re_validate.py:64 subprocess_env()` and its five children. Round 1 had already
+expanded that same list once, and round 2 had escalated exactly this shape — right
+conclusion, false reasoning — so it is the defect this PR has been most prone to. Both
+fixed with measurements; the blind spot is now a table of both builders and all nine
+children. Of the eight Minor, one was a real leak (the `has_arcs()` read-back was itself
+being measured, leaving an uncombined data file behind every run), one closed
+`COVERAGE_PROCESS_CONFIG` as a second way into the hook, and one corrected a line that
+claimed a zero-child total equals `--coverage`'s, which it does not, because this mode is
+line-only.
+
+**Round 4** (`git diff 02dd774..ROUND4_HEAD`): ROUND4_RESULT

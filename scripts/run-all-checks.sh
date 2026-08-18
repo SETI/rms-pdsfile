@@ -587,8 +587,9 @@ _coverage_report() {
         if [ "$tool_files" -eq 0 ]; then
             # Legitimate, and the reason this is reported rather than failed: the
             # tool tests skip when the holdings root lacks the source subset they
-            # declare, and a skipped test starts no subprocess.
-            print_info "Coverage: no subprocess ran, so this total is the same one --coverage produces"
+            # declare, and a skipped test starts no subprocess. The total is still
+            # not --coverage's, because this run is line-only and that one is not.
+            print_info "Coverage: no child was measured, so this total covers the pytest process alone -- still line-only, so not comparable with --coverage's branch total"
         fi
         subprocess_note=", ${tool_files} measured children"
         # -q because combine names every file it merges, and three hundred of
@@ -618,8 +619,12 @@ _coverage_report() {
     fi
 
     # Whether these numbers are branch or line-only is read out of the data file
-    # that produced them, not out of the flags that were meant to.
-    arcs=$(env "${COVERAGE_ENV[@]}" python -c 'import os
+    # that produced them, not out of the flags that were meant to. This one is not
+    # given COVERAGE_ENV: it needs only the data file, and a plain `python -c`
+    # carrying COVERAGE_PROCESS_START would start measuring itself and leave an
+    # uncombined data file behind. (`python -m coverage <verb>` does not, which is
+    # why the other three commands here can take the whole environment.)
+    arcs=$(env "COVERAGE_FILE=$COVERAGE_DATA_FILE" python -c 'import os
 import coverage
 data = coverage.CoverageData(os.environ["COVERAGE_FILE"])
 data.read()

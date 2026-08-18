@@ -2841,7 +2841,10 @@ a liveness net. **(b)** More generally, **any future claim of the form "the
 tool tests cover X" cannot be checked with in-process coverage**; it needs
 either `COVERAGE_PROCESS_START` plumbed into `ToolTree.env` or an assertion on
 an artifact. PR-18 chose the artifact, once; a standing answer belongs with the
-tests. **Owner: Phase 6**, which is where those tool files are being edited.
+tests. ~~**Owner: Phase 6**, which is where those tool files are being edited.~~
+**The plumbing half of that is now built** — see the CORRECTED section below;
+what the log-path paragraphs above still ask for is an assertion on a log
+filename, which no test makes.
 
 **The one piece of code PR-18 changes has no holdings-free coverage at all.**
 The hosted lint/no-holdings job runs 80 of the 880 ids and none of them
@@ -2898,7 +2901,8 @@ analysis buys nothing on its own (79.94s), and `COVERAGE_CORE=sysmon` buys
 nothing on its own either (79.26s) — because coverage cannot measure branches
 with `sys.monitoring` below Python 3.14 (`coverage/env.py`:
 `branch_right_left = pep669 and PYVERSION > (3, 14, 0, 'alpha', 5, 0)`), so it
-warns `Can't use core=sysmon` and falls back, and in a captured-stderr subprocess nobody sees the warning. Only the
+warns `Can't use core=sysmon` and falls back, and in a captured-stderr
+subprocess nobody sees the warning. Only the
 pair is cheap: **1.2x**. And the cost is the tracer, not the subprocesses:
 every row runs the same nineteen children — the measured rows each write 20
 data files, one per child plus the parent's, and the uninstrumented row runs

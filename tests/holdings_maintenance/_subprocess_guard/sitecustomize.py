@@ -28,7 +28,11 @@ import os
 import sys
 
 _GUARD_WANTED = bool(os.environ.get('PDSFILE_READONLY_ROOTS', ''))
-_COVERAGE_WANTED = bool(os.environ.get('COVERAGE_PROCESS_START', ''))
+
+# Both of the variables coverage itself starts on, so that a run driven by either one
+# gets the fail-closed behavior rather than only the one this repository's script sets.
+_COVERAGE_WANTED = bool(os.environ.get('COVERAGE_PROCESS_START', '')
+                        or os.environ.get('COVERAGE_PROCESS_CONFIG', ''))
 
 
 def _die(hook, reason):
