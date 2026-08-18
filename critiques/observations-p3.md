@@ -2865,52 +2865,87 @@ the other direction — the tool tests run this code but assert nothing about
 its output. A single holdings-free test module for the log-path builders would
 close both.
 
-**The tool tests contribute no measured coverage.** The suite driver runs
-`python -m coverage run -m pytest`, but every maintenance tool runs in a child
-process with no `COVERAGE_PROCESS_START`, so `coverage report` sees nothing
-from the 100+ new tests. Subprocess invocation is load-bearing and cannot be
-given up (see §2.2 of `plans/2026-07-25-pr-13-subplan.md`), so the fix is a
+**The tool tests contribute no measured coverage unless the run asks for
+it.** The suite driver runs `python -m coverage run -m pytest`, and every
+maintenance tool runs in a child process, which `coverage run` does not
+follow — so what `coverage report` sees of the twelve subprocess-driven tools
+is what their imports reach, from 100+ tests that drive far more than that.
+Subprocess invocation is load-bearing and cannot be given up (see §2.2 of
+`plans/2026-07-25-pr-13-subplan.md`), so the fix is a
 `COVERAGE_PROCESS_START` / `sitecustomize` hook in the tests' subprocess
 environment. ~~**Owner: PR-14**, which owns CI/coverage correspondence.~~
 
-**STILL DEFERRED — re-assigned by PR-14 (2026-07-26), with measurements.** The
-fix works, and its cost is prohibitive on the gate that would pay it. Measured
-on the limited holdings copy with
+**CORRECTED 2026-08-17: the fix is built, and the "prohibitive" verdict it
+was deferred on measured one configuration and generalized to all of them.**
+PR-14's 2026-07-26 deferral recorded an 8.6x slowdown (`8 passed ... in
+16.06s` against `138.84s`) and concluded that "the cost is the line tracer
+running inside each tool", which is right, and that the cost is therefore
+unavoidable, which is not: it is the cost of *that* tracer. Re-measured on
+`tests/holdings_maintenance/test_pds3_archives.py` (13 ids), Python 3.12.3,
+coverage 7.13.3, against `/seti/opus/pdsdata`, varying only how the children
+are measured — pytest's own summary time:
 
-```sh
-PDSFILE_TEST_HOLDINGS=full python -m coverage run -m pytest \
-    tests/holdings_maintenance/test_pds3_archives.py --mode ns -q -p no:cacheprovider
-```
+| tool subprocesses | core | branch | pytest summary |
+|---|---|---|---|
+| uninstrumented | — | — | 10.60s |
+| measured | C tracer | yes | 79.68s |
+| measured | C tracer | no | 79.94s |
+| measured | `sysmon` | yes | 79.26s |
+| measured | `sysmon` | no | **12.49s** |
 
-the only variable being whether
-`tests/holdings_maintenance/support.py::run_tool` prefixes each tool
-subprocess with `-m coverage run --parallel-mode --rcfile <repo>/pyproject.toml`
-and sets an absolute `COVERAGE_FILE` in the subprocess environment:
+So the 8.6x is real for the C tracer and is **7.5x** here, dropping branch
+analysis buys nothing on its own (79.94s), and `COVERAGE_CORE=sysmon` buys
+nothing on its own either (79.26s) — because `sys.monitoring` cannot measure
+branches on this Python, so coverage warns `Can't use core=sysmon` and falls
+back, and in a captured-stderr subprocess nobody sees the warning. Only the
+pair is cheap: **1.2x**. And the cost is the tracer, not the subprocesses:
+the uninstrumented row already starts all nineteen of them (the run writes 20
+data files, one per child plus the parent's), so measuring those same nineteen
+adds 1.89s with `sysmon` and 69.08s with the C tracer.
 
-| tool subprocesses | pytest summary line |
-|---|---|
-| uninstrumented (today) | `8 passed, 5 warnings in 16.06s` |
-| instrumented | `8 passed, 5 warnings in 138.84s` |
+The trade is therefore not cost against nothing. It is **line-only coverage
+at 1.2x against branch coverage plus a permanent blind spot**, and it is
+whole-run: `coverage combine` refuses to mix branch data with statement data
+(`Can't combine statement coverage data with branch data`), so a run cannot
+measure the parent with branches and the children without.
 
-An **8.6x** slowdown, on the arm of the self-hosted suite that runs on every PR
-and nightly across four Python versions. The cost is the line tracer running
-inside each tool, so the `sitecustomize` / `COVERAGE_PROCESS_START` route named
-above measures the same and costs the same. It also requires parallel data
-files plus a `coverage combine` step (guarded, because a holdings root that
-lacks a declared source subset legitimately produces zero child data files) in
-`scripts/automated_tests/pdsfile_main_test.sh` — the data-gate driver.
+Built by the coverage-mode PR as `scripts/run-all-checks.sh
+--coverage-subprocess`: `COVERAGE_PROCESS_START` in `ToolTree.env`, a
+`coverage.process_startup()` hook in
+`tests/holdings_maintenance/_subprocess_guard/sitecustomize.py` that fails
+closed, `parallel` data files and a `coverage combine` step (guarded, because
+a holdings root that lacks a declared source subset legitimately produces
+zero child data files), and `branch`/`parallel` read from environment
+variables substituted into `[tool.coverage.run]` so one config serves both
+postures. Measured over the whole suite (1243 ids), like compared with like:
 
-Two things make waiting cheap: coverage numbers stay informational until the
-targets are set, and PR-28 converted the `crlf` tests to
-in-process `main()` calls, which are measured with no subprocess machinery at
-all. (It left `show_opus_products` on subprocesses; that half of this
-sentence was a prediction, and
-`plans/2026-08-07-pr-28-deviation-addendum.md` says why it did not hold.)
-If it is taken up, `COVERAGE_CORE=sysmon`
-(Python 3.12+) is the lever worth measuring first — and note the coverage
-artifact is uploaded from the 3.13 leg only, so the instrumentation need not be
-paid on every leg. **Owner: PR-37** (Phase 8, "set codecov targets"), which is
-where the number first has to mean something.
+| run | pytest summary | package | tool tree |
+|---|---|---|---|
+| uninstrumented | 199.02s | — | — |
+| `--coverage` (branch, parent only) | 224.34s | 56% | — |
+| line-only, parent only (control) | 193.53s | 60% | 34% |
+| `--coverage-subprocess` (line-only, 319 children) | 224.76s | **81%** | **78%** |
+
+The 56% → 81% jump is two effects, and the control separates them: 4 points
+are the branch denominator leaving, and **21 points are the subprocesses
+arriving**. Per module, `pdsarchives.py` goes 16% → 90% and
+`_indexshelf_common.py` 11% → 78%.
+
+What is left open is the posture, not the mechanism. The mode is opt-in and
+local; the data gate
+(`scripts/automated_tests/pdsfile_main_test.sh`) still measures the pytest
+process only, and nothing in CI sets `COVERAGE_PROCESS_START`. Whether the
+uploaded number should be the line-only one that includes the tools, and what
+target it should be held to, is the decision **Owner: PR-37** (Phase 8, "set
+codecov targets") still has to make — with the note that the coverage
+artifact is uploaded from the 3.13 leg only, so any instrumentation need not
+be paid on every leg, and that on a Python without `sys.monitoring` (3.11)
+the sysmon request falls back and the mode costs the 7.5x again. PR-28's
+conversion of the `crlf` tests to in-process `main()` calls still stands and
+is still measured with no subprocess machinery at all. (It left
+`show_opus_products` on subprocesses; that half of the original sentence was
+a prediction, and `plans/2026-08-07-pr-28-deviation-addendum.md` says why it
+did not hold.)
 
 ### 4215. Two lines of the preamble are pinned by no test at all
 

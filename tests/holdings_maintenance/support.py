@@ -83,6 +83,39 @@ def readonly_holdings_roots():
     return found
 
 
+def subprocess_coverage_env():
+    """Return the coverage variables a tool subprocess needs, or an empty dict.
+
+    Coverage of a tool is opt-in and off by default: it exists only when the process
+    running the tests was itself started with COVERAGE_PROCESS_START set
+    (`scripts/run-all-checks.sh --coverage-subprocess`), and the tools' own tests
+    neither require it nor behave differently under it.
+
+    Both variables are made absolute. A tool subprocess runs with its working
+    directory inside the disposable tree, so a relative COVERAGE_PROCESS_START would
+    name a config file that is not there and a relative COVERAGE_FILE would write the
+    child's measurements into a directory the fixture then deletes -- and coverage
+    reports what it has, so either mistake would subtract from the total silently.
+    `.coverage` is coverage's own default data file name, spelled here because that
+    default is resolved against the child's working directory rather than this one.
+
+    The subprocess reads these through
+    `_subprocess_guard/sitecustomize.py`, which Python imports at startup.
+
+    Returns:
+        dict[str, str]: COVERAGE_PROCESS_START and COVERAGE_FILE, both absolute, or
+        an empty dict when this process is not measuring subprocesses.
+    """
+
+    config = os.environ.get('COVERAGE_PROCESS_START')
+    if not config:
+        return {}
+
+    return {'COVERAGE_PROCESS_START': os.path.abspath(config),
+            'COVERAGE_FILE': os.path.abspath(os.environ.get('COVERAGE_FILE')
+                                             or '.coverage')}
+
+
 TOOL_TIMEOUT = 600      # seconds; every subset here runs in well under a second
 
 # Every tool reports a logged fatal or error the same way, so a test that wants "the
@@ -245,6 +278,10 @@ class ToolTree:
         was installed -- so a green run would say nothing about the tree it was
         started in, and a red one could be reporting a different tree's defects.
         To exercise another tree deliberately, run pytest from that tree.
+
+        The coverage variables are added only when this process is measuring
+        subprocesses (see subprocess_coverage_env), and nothing else here depends on
+        them: a tool runs the same way measured or not.
         """
 
         env = dict(os.environ)
@@ -257,6 +294,7 @@ class ToolTree:
         env[readonly_roots.ENV_VAR] = os.pathsep.join(readonly_holdings_roots())
         for name in ('PDS_LOG_ROOT', 'PDSFILE_TEST_HOLDINGS', 'PDSFILE_TEST_DATA_DIR'):
             env.pop(name, None)
+        env.update(subprocess_coverage_env())
 
         return env
 

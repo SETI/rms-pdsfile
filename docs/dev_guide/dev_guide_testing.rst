@@ -26,7 +26,9 @@ parallelizes with ``pytest-xdist``) together with every other gate the repositor
 runs -- see :doc:`dev_guide_ci`. It also fills in the selector for you: with either
 holdings variable exported and ``PDSFILE_TEST_HOLDINGS`` unset, it selects ``full``
 rather than silently running the holdings-free subset, and with only one of the two
-roots exported the session fails naming the missing variable.
+roots exported the session fails naming the missing variable. Coverage is not part
+of that invocation: it is off unless ``--coverage`` or ``--coverage-subprocess``
+asks for it (see :doc:`dev_guide_ci`).
 
 Holdings resolution: full, mini, or skip
 ----------------------------------------

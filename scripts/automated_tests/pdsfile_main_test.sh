@@ -85,6 +85,15 @@ echo
 echo "Test end:" `date`
 echo
 
+# Both passes above measured the pytest process only, which is what
+# [tool.coverage.run] in pyproject.toml configures with neither
+# PDSFILE_COVERAGE_BRANCH nor PDSFILE_COVERAGE_PARALLEL set: branch coverage into
+# one unsuffixed data file, so `coverage run -a` appends and no combine step is
+# needed. The maintenance tools run as subprocesses and are therefore reported at
+# what their imports reach; measuring them is opt-in and local
+# (scripts/run-all-checks.sh --coverage-subprocess), because it costs line-only
+# coverage for the whole run. This gate's total also covers two passes where that
+# one covers the ns pass alone.
 python -m coverage report
 if [ $? -ne 0 ]; then exit -1; fi
 python -m coverage xml

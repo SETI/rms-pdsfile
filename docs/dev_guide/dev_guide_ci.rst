@@ -14,7 +14,8 @@ follows it by construction.
 
 ``scripts/run-all-checks.sh`` runs every enabled check, in parallel by default
 (``-s`` for sequential, ``-w N`` for pytest workers, individual ``--<check>`` flags
-to scope a run). Each check runs only if selected *and* enabled; the ``ENABLE_*``
+to scope a run, ``--coverage`` and ``--coverage-subprocess`` to measure coverage).
+Each check runs only if selected *and* enabled; the ``ENABLE_*``
 defaults in the script are the canonical record of which gates this repository runs:
 
 =====================  ========  ==========================================================
@@ -36,7 +37,7 @@ clean install          yes       a no-extras install into a throwaway venv, then
                                  catches a runtime dependency leak
 bandit, vulture        never     permanently off, by decision
 Sphinx                 yes       two documentation builds, read rather than tailed (below)
-PyMarkdown             not yet   Markdown lint; off until the README complies
+PyMarkdown             yes       Markdown lint over the files its selection reaches
 =====================  ========  ==========================================================
 
 The Sphinx gate is two builds from one ``docs/conf.py``: ``make html`` with ``-W``
@@ -48,6 +49,41 @@ share its doctree cache, so the second re-reads nothing and re-reports nothing. 
 build is accepted only if it exits 0, writes its HTML, and prints the module-coverage
 line ``conf.py`` emits -- exit status alone would accept a build that resolved to
 nothing.
+
+Coverage
+--------
+
+Coverage is off for a day-to-day run and on when asked for. ``--coverage`` runs the
+pytest gate under ``coverage run`` and prints a report; every measurement setting
+comes from ``[tool.coverage.*]`` in ``pyproject.toml``, so it produces the branch
+coverage the data gate produces. Neither flag is a check, so neither has an
+``ENABLE_*`` entry above: they change how the pytest gate runs, the way ``-p``,
+``-s`` and ``-w`` do, and asking for coverage in a run that does not schedule that
+gate exits 1 rather than reporting 0%.
+
+The eleven console-script tools and ``show_opus_products`` are driven as
+subprocesses by their tests, and ``coverage run`` does not follow a child, so
+``--coverage`` reports them at whatever their imports reach.
+``--coverage-subprocess`` measures them too, by setting ``COVERAGE_PROCESS_START``
+in the tool subprocess environment for the ``coverage.process_startup()`` hook in
+``tests/holdings_maintenance/_subprocess_guard/sitecustomize.py`` to act on, writing
+one data file per process and combining them afterwards. Over the whole suite that
+takes the maintenance-tool tree from 34% to 78% and the package from 60% to 81%
+(line-only both times).
+
+It is opt-in because it constrains the whole run. The cost of measuring a child is
+the tracer running inside it -- 10.60s of tool tests become 79.68s under the C
+tracer -- and the way out is ``COVERAGE_CORE=sysmon``, which cannot measure branches
+on Python 3.12 and silently falls back if asked to. So the mode turns branch
+analysis off for the whole run, which brings the same tests to 12.49s, and
+``coverage combine`` refuses to mix branch data with statement data, so this is a
+whole-run choice rather than a per-process one. The run prints which kind of
+coverage it produced, read back out of the data file rather than out of the flags
+that were meant to produce it.
+
+Nothing in CI sets ``COVERAGE_PROCESS_START``: the data gate below still measures
+the pytest process only, in branch mode, and its numbers are the ones uploaded to
+codecov.
 
 The self-hosted data jobs
 -------------------------

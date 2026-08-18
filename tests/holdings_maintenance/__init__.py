@@ -27,6 +27,20 @@
 #     replaces the class with a stub first. Its own header names those five
 #     functions and says what forgetting the stub would cost.
 #
+# What the subprocesses cost, and how to get it back:
+#
+#   `coverage run` does not follow a child, so an ordinary coverage run reports the
+#   twelve subprocess-driven tools at what their imports reach and nothing more. Over
+#   the whole suite, and comparing like with like (line-only both times), this tree
+#   measures 34% that way and 78% when the children are measured; pdsarchives.py
+#   measures 16% and 90%.
+#
+#   `scripts/run-all-checks.sh --coverage-subprocess` measures them, by setting
+#   COVERAGE_PROCESS_START in the subprocess environment (support.ToolTree.env) for the
+#   coverage hook in _subprocess_guard/sitecustomize.py to act on. It is opt-in because
+#   it constrains the whole run to line-only coverage, and nothing here behaves
+#   differently under it. test_subprocess_coverage.py is that path's own test.
+#
 # Deliberately NOT covered here:
 #
 #   * the five sibling tools re_validate.validate_one_volume() calls against a real

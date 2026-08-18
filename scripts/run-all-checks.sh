@@ -28,6 +28,8 @@
 #   --vulture              Run vulture only
 #   --sphinx               Run Sphinx build only
 #   --pymarkdown           Run PyMarkdown scan only
+#   --coverage             Run the pytest gate under coverage and report on it
+#   --coverage-subprocess  As --coverage, and measure the maintenance tools too
 #   -h, --help             Show this help message
 #
 # Environment:
@@ -46,7 +48,43 @@
 #   The pytest gate here is ONE --mode ns pass over tests/. The self-hosted data
 #   gate (scripts/automated_tests/pdsfile_main_test.sh) runs that pass under
 #   coverage plus a second, pds3-only --mode s pass, so it is the authority on
-#   shelves-only behavior.
+#   shelves-only behavior, and its coverage total is over both passes where the
+#   --coverage total below is over one.
+#
+#   Coverage (--coverage, --coverage-subprocess) is OFF unless asked for: it is a
+#   mode of the pytest gate, not a check of its own, so it has no RUN_*/ENABLE_*
+#   pair -- a no-scope run turns every RUN_* on, and that is the day-to-day run
+#   coverage must stay out of. Both modes use `coverage run`, as the data gate
+#   does, and take every measurement setting from [tool.coverage.*] in
+#   pyproject.toml; the script sets no source, omit or exclude of its own.
+#
+#     --coverage             Branch coverage of the pytest process, which is what
+#                            pyproject.toml configures and what the data gate
+#                            produces. The eleven console-script tools and
+#                            show_opus_products run as subprocesses, so this
+#                            measures their test files' imports, not the tools.
+#     --coverage-subprocess  Adds the tool subprocesses, through
+#                            COVERAGE_PROCESS_START and the coverage hook in
+#                            tests/holdings_maintenance/_subprocess_guard/
+#                            sitecustomize.py. That costs two settings for the
+#                            whole run, because a run cannot be half of each:
+#                            data files are per-process (combined afterwards),
+#                            and coverage is LINE-ONLY under COVERAGE_CORE=sysmon
+#                            -- sys.monitoring cannot measure branches on Python
+#                            3.12, and `coverage combine` refuses to mix branch
+#                            data with statement data. The run says so in its own
+#                            output. Measured on
+#                            tests/holdings_maintenance/test_pds3_archives.py
+#                            (13 ids, Python 3.12.3, coverage 7.13.3): 10.60s
+#                            uninstrumented, 12.49s this mode, 79.68s with branch
+#                            coverage and the C tracer -- 1.2x against 7.5x. On a
+#                            Python without sys.monitoring the sysmon request
+#                            falls back to the C tracer and this mode costs the
+#                            7.5x; the run prints that too.
+#
+#   Either mode runs pytest with -n 0 (in this process) whatever -w asked for:
+#   xdist workers are subprocesses `coverage run` does not follow, measured on
+#   tests/core (73 ids) as 15% under -n 1 against 24% under -n 0.
 #
 #   Pytest coverage minimum: configure fail_under in coverage config (e.g.
 #   pyproject.toml [tool.coverage.report] or .coveragerc [report]).
@@ -119,6 +157,10 @@ RUN_VULTURE=false
 RUN_SPHINX=false
 RUN_PYMARKDOWN=false
 SCOPE_SPECIFIED=false
+# Coverage is a mode of the pytest gate rather than a check of its own; see the
+# Environment section above for why it carries no RUN_*/ENABLE_* pair.
+COVERAGE=false
+COVERAGE_SUBPROCESS=false
 
 # Per-check defaults (override by exporting before invoking this script, or
 # permanently change here).
@@ -334,6 +376,17 @@ while [[ $# -gt 0 ]]; do
             SCOPE_SPECIFIED=true
             shift
             ;;
+        # Neither coverage flag sets SCOPE_SPECIFIED: they select nothing, they
+        # change how the pytest gate runs, the way -p/-s/-w do.
+        --coverage)
+            COVERAGE=true
+            shift
+            ;;
+        --coverage-subprocess)
+            COVERAGE=true
+            COVERAGE_SUBPROCESS=true
+            shift
+            ;;
         -h|--help)
             show_usage
             exit 0
@@ -362,6 +415,51 @@ if [ "$SCOPE_SPECIFIED" = false ]; then
     RUN_PYMARKDOWN=true
 fi
 
+# Coverage rides on the pytest gate's own two flags, so asking for it with that
+# gate unselected or disabled is a request to measure nothing. That fails here
+# rather than printing a 0% report, for the same reason the PyMarkdown gate fails
+# on an empty file selection.
+if [ "$COVERAGE" = true ] \
+        && { [ "$RUN_PYTEST" != true ] || [ "$ENABLE_PYTEST" != true ]; }; then
+    echo -e "${RED}Error: --coverage measures the pytest gate, which this run does not"\
+            "schedule (RUN_PYTEST=$RUN_PYTEST, ENABLE_PYTEST=$ENABLE_PYTEST)${RESET}" >&2
+    exit 1
+fi
+
+# Where the data lands: coverage's own default name in the project root, which is
+# what `coverage report` and the data gate both expect, and which .gitignore
+# already covers. Where the HTML lands is coverage's choice, not this script's.
+COVERAGE_DATA_FILE="$PROJECT_ROOT/.coverage"
+
+# The environment every coverage command in this run is prefixed with. It is
+# passed per command rather than exported, because in sequential mode the code
+# checks, the Sphinx build and the Markdown scan share one shell: an exported
+# COVERAGE_PROCESS_START would reach Sphinx, whose autodoc imports pdsfile, and
+# fold that import into the total -- and it would do so only in sequential mode,
+# where the parallel branch runs each check in its own subshell. Coverage numbers
+# that depend on -p versus -s are worse than no coverage numbers.
+COVERAGE_ENV=()
+if [ "$COVERAGE" = true ]; then
+    COVERAGE_ENV=("COVERAGE_FILE=$COVERAGE_DATA_FILE")
+fi
+if [ "$COVERAGE_SUBPROCESS" = true ]; then
+    # COVERAGE_PROCESS_START is read by two things in a tool subprocess: the
+    # coverage hook in the tests' sitecustomize, and (on a coverage new enough to
+    # ship it) coverage's own a1_coverage.pth. Both call the same
+    # coverage.process_startup(); the hook is what makes the measurement fail
+    # closed and what works on a coverage that ships no .pth.
+    #
+    # PDSFILE_COVERAGE_PARALLEL and PDSFILE_COVERAGE_BRANCH are read by
+    # pyproject.toml itself (coverage substitutes environment variables into
+    # config values), which is how a setting reaches a child that has no command
+    # line. Unset, they leave the repository default: branch coverage, one data
+    # file.
+    COVERAGE_ENV+=("COVERAGE_PROCESS_START=$PROJECT_ROOT/pyproject.toml"
+                   "PDSFILE_COVERAGE_PARALLEL=true"
+                   "PDSFILE_COVERAGE_BRANCH=false"
+                   "COVERAGE_CORE=sysmon")
+fi
+
 START_TIME=$(date +%s)
 
 print_header "rms-pdsfile - Running All Checks"
@@ -372,7 +470,20 @@ else
     print_info "Running checks in SEQUENTIAL mode"
 fi
 if [ "$RUN_PYTEST" = true ] && [ "$ENABLE_PYTEST" = true ]; then
-    print_info "Pytest workers: $PYTEST_WORKERS"
+    if [ "$COVERAGE" = true ]; then
+        # Said here as well as at the invocation, so that -w and what runs cannot
+        # appear to disagree: coverage mode overrides the worker count outright.
+        print_info "Pytest workers: 0 (coverage mode; -w ${PYTEST_WORKERS} is overridden)"
+    else
+        print_info "Pytest workers: $PYTEST_WORKERS"
+    fi
+fi
+if [ "$COVERAGE" = true ]; then
+    if [ "$COVERAGE_SUBPROCESS" = true ]; then
+        print_info "Coverage: pytest process and the maintenance-tool subprocesses"
+    else
+        print_info "Coverage: pytest process only (--coverage-subprocess adds the tools)"
+    fi
 fi
 
 # True if at least one code check is both selected (RUN_*) and enabled (ENABLE_*).
@@ -388,6 +499,122 @@ _code_checks_any_scheduled() {
     [ "$RUN_BANDIT" = true ] && [ "$ENABLE_BANDIT" = true ] && return 0
     [ "$RUN_VULTURE" = true ] && [ "$ENABLE_VULTURE" = true ] && return 0
     return 1
+}
+
+# ---- Coverage, as a mode of the pytest gate ----
+#
+# Every one of these runs `python -m coverage` with COVERAGE_ENV in front, and
+# nothing here names a source, an omit or an exclude: what is measured is
+# [tool.coverage.*] in pyproject.toml, and these functions only choose when.
+# They are called from run_code_checks, so the venv is already active.
+
+# What kind of coverage this run will produce. Asked of coverage rather than
+# stated, so the line cannot outlive a change to the configuration it describes.
+_coverage_kind() {
+    local branch
+    branch=$(env "${COVERAGE_ENV[@]}" python -m coverage debug config 2>/dev/null \
+        | sed -n 's/^ *branch: *//p' || true)
+    case "$branch" in
+        True)  printf 'branch coverage' ;;
+        False) printf 'line-only coverage' ;;
+        *)     printf "coverage of an unreadable kind (branch: '%s')" "$branch" ;;
+    esac
+    if [ "$COVERAGE_SUBPROCESS" = true ]; then
+        # COVERAGE_CORE=sysmon is a request, and coverage answers it with a warning
+        # to stderr if it cannot be met -- which is the whole cost of this mode, so
+        # it is checked here rather than left to a reader of the log.
+        if python -c 'import sys; raise SystemExit(0 if hasattr(sys, "monitoring") else 1)'
+        then
+            printf ', core sysmon, subprocesses measured'
+        else
+            printf ', core sysmon UNAVAILABLE on this Python so the C tracer runs'
+            printf ' (~7.5x, not ~1.2x), subprocesses measured'
+        fi
+    fi
+}
+
+# Discard the previous run's data. A report that silently included a run from an
+# hour ago would be worse than no report, and with per-process data files the
+# suffixed ones accumulate rather than overwrite, so this is also what keeps the
+# count below honest.
+_coverage_erase() {
+    env "${COVERAGE_ENV[@]}" python -m coverage erase
+}
+
+# Combine, report, and say what the numbers are made of. Returns non-zero if
+# coverage produced no data or could not report: a coverage mode that measured
+# nothing has failed, exactly as an empty PyMarkdown selection has.
+_coverage_report() {
+    local report_log="$TEMP_DIR/coverage-report.log"
+    local data_files=0 tool_files=0 subprocess_note='' total_line=''
+    local statements percent arcs kind
+
+    if [ "$COVERAGE_SUBPROCESS" = true ]; then
+        # Every measured process writes its own suffixed data file, so counting
+        # them is what turns "the tools were measured" from a claim into a number:
+        # one file is the pytest process and the rest are the children it started,
+        # which for this suite are overwhelmingly tool runs.
+        data_files=$(find "$PROJECT_ROOT" -maxdepth 1 -type f \
+                          -name "$(basename "$COVERAGE_DATA_FILE").*" | wc -l)
+        if [ "$data_files" -eq 0 ]; then
+            print_error "Coverage: no data file at all; not even the pytest process was measured"
+            return 1
+        fi
+        tool_files=$((data_files - 1))
+        print_info "Coverage data files: ${data_files} (1 pytest process + ${tool_files} subprocesses)"
+        if [ "$tool_files" -eq 0 ]; then
+            # Legitimate, and the reason this is reported rather than failed: the
+            # tool tests skip when the holdings root lacks the source subset they
+            # declare, and a skipped test starts no subprocess.
+            print_info "Coverage: no subprocess ran, so this total is the same one --coverage produces"
+        fi
+        subprocess_note=", ${tool_files} subprocesses"
+        # -q because combine names every file it merges, and three hundred of
+        # those would bury the verdicts in a log this project's rule is to read
+        # rather than tail. The count above is the number that carries the
+        # information those lines would.
+        if ! env "${COVERAGE_ENV[@]}" python -m coverage combine -q; then
+            print_error "Coverage: combining the ${data_files} data files failed"
+            return 1
+        fi
+    fi
+
+    if ! env "${COVERAGE_ENV[@]}" python -m coverage report 2>&1 | tee "$report_log"; then
+        print_error "Coverage: report failed"
+        return 1
+    fi
+
+    # coverage prints where it wrote the HTML; that line is printed rather than a
+    # path this script derived, because the directory is coverage's to choose.
+    if ! env "${COVERAGE_ENV[@]}" python -m coverage html; then
+        print_error "Coverage: HTML report failed"
+        return 1
+    fi
+
+    total_line=$(grep -E '^TOTAL ' "$report_log" | tail -1 || true)
+    if [ -z "$total_line" ]; then
+        print_error "Coverage: the report carried no TOTAL line, so it measured nothing"
+        return 1
+    fi
+    statements=$(printf '%s\n' "$total_line" | awk '{print $2}')
+    percent=$(printf '%s\n' "$total_line" | awk '{print $NF}')
+
+    # Whether these numbers are branch or line-only is read out of the data file
+    # that produced them, not out of the flags that were meant to.
+    arcs=$(env "${COVERAGE_ENV[@]}" python -c 'import os
+import coverage
+data = coverage.CoverageData(os.environ["COVERAGE_FILE"])
+data.read()
+print(data.has_arcs())' || true)
+    case "$arcs" in
+        True)  kind='branch coverage' ;;
+        False) kind='line-only coverage' ;;
+        *)     print_error "Coverage: could not read back the data file to say which kind it holds"
+               return 1 ;;
+    esac
+
+    print_success "Coverage report passed: ${percent} of ${statements} statements, ${kind}${subprocess_note}"
+    return 0
 }
 
 # ---- Code checks (ruff, mypy, pytest, pyroma, bandit, vulture) ----
@@ -509,23 +736,57 @@ run_code_checks() {
         holdings_flavor=$(python -c 'import sys; sys.path.insert(0, ".")
 from tests.support.holdings import resolve_holdings
 print(resolve_holdings().flavor or "none")' 2>/dev/null || echo 'unresolved')
+
+        # One command line, built here, so that what runs and what is printed
+        # cannot disagree. Under coverage the workers drop to 0 -- pytest runs the
+        # tests in this process, where `coverage run` can see them -- which also
+        # makes --dist meaningless, so it goes.
+        local pytest_argv=(python -m pytest -q -n "$PYTEST_WORKERS"
+                           --dist loadscope tests --mode ns)
+        local pytest_note="-n ${PYTEST_WORKERS}"
+        local coverage_ok=true
+        if [ "$COVERAGE" = true ]; then
+            pytest_argv=(env "${COVERAGE_ENV[@]}"
+                         python -m coverage run -m pytest -q -n 0 tests --mode ns)
+            pytest_note="-n 0 under coverage, $(_coverage_kind)"
+            # An unerased data file would leave the report describing this run and
+            # an older one at once, which no reader could unpick, so the report is
+            # not attempted at all if the erase failed.
+            if ! _coverage_erase; then
+                print_error "Coverage: could not erase the previous run's data"
+                coverage_ok=false
+                failed=true
+                failed_checks="${failed_checks}Code - Coverage report"$'\n'
+            fi
+        fi
+
         case "$holdings_flavor" in
             none)
-                print_info "Running pytest (-n ${PYTEST_WORKERS}; no holdings: holdings-free subset only)..."
+                print_info "Running pytest (${pytest_note}; no holdings: holdings-free subset only)..."
                 ;;
             unresolved)
-                print_info "Running pytest (-n ${PYTEST_WORKERS}; holdings selection is invalid, pytest will report it)..."
+                print_info "Running pytest (${pytest_note}; holdings selection is invalid, pytest will report it)..."
                 ;;
             *)
-                print_info "Running pytest (-n ${PYTEST_WORKERS}; holdings: ${holdings_flavor})..."
+                print_info "Running pytest (${pytest_note}; holdings: ${holdings_flavor})..."
                 ;;
         esac
-        if python -m pytest -q -n "$PYTEST_WORKERS" --dist loadscope tests --mode ns; then
+        if "${pytest_argv[@]}"; then
             print_success "Pytest passed"
         else
             print_error "Pytest failed"
             failed=true
             failed_checks="${failed_checks}Code - Pytest"$'\n'
+        fi
+
+        # The report runs whether or not the suite passed: a failing suite still
+        # measured something, and the numbers are why the run was asked for.
+        if [ "$COVERAGE" = true ] && [ "$coverage_ok" = true ]; then
+            if ! _coverage_report; then
+                print_error "Coverage report failed"
+                failed=true
+                failed_checks="${failed_checks}Code - Coverage report"$'\n'
+            fi
         fi
     fi
 

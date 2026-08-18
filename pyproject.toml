@@ -123,7 +123,20 @@ markers = [
 # Tool configuration
 
 [tool.coverage.run]
-branch = true
+# One config, read by every process that measures: the `coverage run` that wraps
+# pytest, and each maintenance-tool subprocess, which reaches it through
+# COVERAGE_PROCESS_START (a child started by coverage.process_startup() has no
+# command line, so a CLI flag cannot reach it). `branch` and `parallel` are the
+# two settings such a run has to be able to flip, so each reads an environment
+# variable whose fallback is this repository's default: with neither variable
+# set, `coverage run` measures branches into one unsuffixed data file, exactly as
+# before. scripts/run-all-checks.sh --coverage-subprocess sets both, because
+# measuring the tool subprocesses needs suffixed data files (otherwise every
+# child overwrites the same .coverage) and line-only data (COVERAGE_CORE=sysmon
+# cannot measure branches on Python 3.12, and `coverage combine` refuses to mix
+# branch data with statement data).
+branch = "${PDSFILE_COVERAGE_BRANCH-true}"
+parallel = "${PDSFILE_COVERAGE_PARALLEL-false}"
 source = ["pdsfile"]
 omit = ["tests/*", "**/_version.py"]
 
