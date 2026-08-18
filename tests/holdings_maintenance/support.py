@@ -99,8 +99,10 @@ def subprocess_coverage_env():
     `.coverage` is coverage's own default data file name, spelled here because that
     default is resolved against the child's working directory rather than this one.
 
-    The subprocess reads these through
-    `_subprocess_guard/sitecustomize.py`, which Python imports at startup.
+    Two things in the subprocess read them, both at interpreter startup: coverage's
+    own `a1_coverage.pth`, which site processing runs first on coverage 7.10 and
+    later, and the hook in `_subprocess_guard/sitecustomize.py`, which is what works
+    below that version and what stops a child that cannot measure.
 
     Returns:
         dict[str, str]: COVERAGE_PROCESS_START and COVERAGE_FILE, both absolute, or

@@ -267,17 +267,18 @@ conflicts with a rule below, follow the rule below. See
    **Coverage is produced with `coverage run`, not `pytest-cov`**, which
    `python_testing.mdc` section 2 asks for. Both drivers that measure it —
    `scripts/automated_tests/pdsfile_main_test.sh` and `scripts/run-all-checks.sh
-   --coverage` — wrap pytest in `coverage run`, which is what lets a
-   maintenance-tool subprocess be measured through `COVERAGE_PROCESS_START` and
-   combined with the parent's data. `pytest-cov` stays in the dev extra;
-   nothing invokes it.
+   --coverage` — wrap pytest in `coverage run`, because the data gate has always
+   done so and because `-a`, `combine` and `erase` are verbs of that CLI. (The
+   subprocess measurement is independent of this choice: `COVERAGE_PROCESS_START`
+   is read by coverage itself, whatever started the parent.) `pytest-cov` stays
+   in the dev extra; nothing invokes it.
 
    **`scripts/run-all-checks.sh --coverage-subprocess` measures line coverage
    only**, where `python_testing.mdc` section 9 asks for branch coverage. Inside
    a tool subprocess the C tracer costs 7.5x the uninstrumented time against
-   1.2x for `COVERAGE_CORE=sysmon`, `sys.monitoring` cannot measure branches on
-   Python 3.12, and `coverage combine` refuses to mix branch data with statement
-   data — so it is a whole-run choice, and it is the price of seeing the tools
+   1.2x for `COVERAGE_CORE=sysmon`, coverage cannot measure branches with
+   `sys.monitoring` below Python 3.14, and `coverage combine` refuses to mix
+   branch data with statement data — so it is a whole-run choice, and it is the price of seeing the tools
    at all. The configured default is unchanged and still branch coverage; the
    measurements are in observation 4214.
 8. **The CI test matrix is split by what the runner has, not by OS.**

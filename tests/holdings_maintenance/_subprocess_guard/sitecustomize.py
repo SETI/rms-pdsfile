@@ -44,8 +44,6 @@ def _die(hook, reason):
     os._exit(70)                    # EX_SOFTWARE; _exit so nothing can catch it
 
 
-# Coverage first: it must be running before anything else this file imports, so that
-# a module imported by a later hook is measured rather than recorded as never executed.
 if _COVERAGE_WANTED:
     try:
         import coverage
@@ -53,16 +51,31 @@ if _COVERAGE_WANTED:
         _die('coverage measurement', f'coverage could not be imported ({error!r})')
 
     try:
-        # Reads COVERAGE_PROCESS_START as its config file; `parallel` there is what
-        # gives this process its own data file instead of overwriting the parent's.
+        # Reads COVERAGE_PROCESS_START as its config file. From coverage 7.10 the
+        # package ships an `a1_coverage.pth` that has already made this same call by
+        # the time sitecustomize is imported -- site processing runs .pth files
+        # first -- and it then returns None. That .pth swallows every exception, so
+        # this call is what turns a failure to measure into a stopped interpreter,
+        # and it is the whole mechanism on a coverage older than 7.10.
         _started = coverage.process_startup()
     except Exception as error:
         _die('coverage measurement', f'coverage.process_startup() raised ({error!r})')
 
-    # process_startup() returns None both when it starts nothing and when this process
-    # had already started coverage, so the live Coverage object is what settles it.
-    if _started is None and coverage.Coverage.current() is None:
+    # None means either "started nothing" or "something had already started it", so
+    # the live Coverage object is what settles which.
+    _cov = _started or coverage.Coverage.current()
+    if _cov is None:
         _die('coverage measurement', 'coverage.process_startup() started no measurement')
+
+    # Every measured process shares one data file name, so without a suffix this
+    # process would overwrite the parent's data and every sibling's, and the run
+    # would report a fraction of what it measured with nothing to show for it.
+    # `parallel` is the config setting that supplies the suffix, and it reaches here
+    # only through the config file named above.
+    if not _cov.config.parallel:
+        _die('coverage measurement',
+             'the coverage config has parallel=false, so this process would '
+             'overwrite the data file every other measured process shares')
 
 if _GUARD_WANTED:
     try:

@@ -174,6 +174,33 @@ def test_the_hook_starts_coverage_in_a_child(tmp_path):
     assert data.lines(measured[0]), 'the module was named but no line was recorded'
 
 
+def test_the_hook_measures_a_child_that_processes_site(tmp_path):
+    """The path every real tool subprocess takes: site processed, sitecustomize automatic.
+
+    The `-S` tests above isolate the hook, at the cost of never reaching the branch that
+    runs when something else started coverage first -- which, from coverage 7.10, is what
+    happens in every real run, because `a1_coverage.pth` gets there first and
+    `process_startup()` then returns None. Without this id, tightening that branch to
+    reject None outright would kill every tool subprocess and leave all the other tests
+    green.
+    """
+
+    env = _child_env(tmp_path, pythonpath=[str(support.SUBPROCESS_GUARD_DIR),
+                                           str(support.REPO_ROOT / 'src')])
+    proc = subprocess.run([sys.executable, '-c', 'import pdsfile.pdscache'],
+                          env=env, capture_output=True, check=False,
+                          timeout=support.TOOL_TIMEOUT)
+
+    assert proc.returncode == 0, proc.stderr.decode('utf-8', errors='replace')
+
+    written = glob.glob(str(tmp_path / '.coverage.*'))
+    assert len(written) == 1, written
+    data = coverage.CoverageData(written[0])
+    data.read()
+    assert [name for name in data.measured_files() if name.endswith('pdscache.py')], \
+        sorted(data.measured_files())
+
+
 def test_the_hook_refuses_to_start_when_coverage_is_missing(tmp_path):
     """A child that cannot measure must die rather than run unmeasured.
 
@@ -193,6 +220,29 @@ def test_the_hook_refuses_to_start_when_coverage_is_missing(tmp_path):
     assert proc.returncode == 70, proc.stdout
     assert b'ran unmeasured' not in proc.stdout, proc.stdout
     assert b'refusing to start without coverage measurement' in proc.stderr, proc.stderr
+
+
+def test_the_hook_refuses_to_start_without_per_process_data_files(tmp_path):
+    """Measuring into a shared data file is worse than not measuring.
+
+    Every measured process writes the name `COVERAGE_FILE` gives, so without the suffix
+    `parallel` supplies, each child overwrites the parent's data and every sibling's --
+    and the run reports a fraction of what it measured, with nothing to say so. A
+    developer who exports COVERAGE_PROCESS_START by hand and not
+    PDSFILE_COVERAGE_PARALLEL lands exactly there.
+    """
+
+    env = _child_env(tmp_path, pythonpath=[str(support.SUBPROCESS_GUARD_DIR),
+                                           str(support.REPO_ROOT / 'src')])
+    env.pop('PDSFILE_COVERAGE_PARALLEL')
+    proc = subprocess.run([sys.executable, '-c', 'print("ran into a shared data file")'],
+                          env=env, capture_output=True, check=False,
+                          timeout=support.TOOL_TIMEOUT)
+
+    assert proc.returncode == 70, proc.stdout
+    assert b'ran into a shared data file' not in proc.stdout, proc.stdout
+    assert b'parallel=false' in proc.stderr, proc.stderr
+    assert not glob.glob(str(tmp_path / '.coverage*')), 'it wrote data anyway'
 
 
 def test_the_configured_default_is_still_branch_coverage_in_one_data_file(unmeasured):

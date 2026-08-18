@@ -2895,9 +2895,10 @@ are measured — pytest's own summary time:
 
 So the 8.6x is real for the C tracer and is **7.5x** here, dropping branch
 analysis buys nothing on its own (79.94s), and `COVERAGE_CORE=sysmon` buys
-nothing on its own either (79.26s) — because `sys.monitoring` cannot measure
-branches on this Python, so coverage warns `Can't use core=sysmon` and falls
-back, and in a captured-stderr subprocess nobody sees the warning. Only the
+nothing on its own either (79.26s) — because coverage cannot measure branches
+with `sys.monitoring` below Python 3.14 (`coverage/env.py`:
+`branch_right_left = pep669 and PYVERSION > (3, 14, 0, 'alpha', 5, 0)`), so it
+warns `Can't use core=sysmon` and falls back, and in a captured-stderr subprocess nobody sees the warning. Only the
 pair is cheap: **1.2x**. And the cost is the tracer, not the subprocesses:
 every row runs the same nineteen children — the measured rows each write 20
 data files, one per child plus the parent's, and the uninstrumented row runs
@@ -2911,10 +2912,14 @@ whole-run: `coverage combine` refuses to mix branch data with statement data
 measure the parent with branches and the children without.
 
 Built by the coverage-mode PR as `scripts/run-all-checks.sh
---coverage-subprocess`: `COVERAGE_PROCESS_START` in `ToolTree.env`, a
-`coverage.process_startup()` hook in
+--coverage-subprocess`: `COVERAGE_PROCESS_START` in `ToolTree.env`, acted on by
+a `coverage.process_startup()` hook in
 `tests/holdings_maintenance/_subprocess_guard/sitecustomize.py` that fails
-closed, `parallel` data files and a `coverage combine` step (guarded, because
+closed — and, from coverage 7.10, by coverage's own `a1_coverage.pth` first,
+which makes the same call from site processing and swallows every exception, so
+on a modern coverage the hook's contribution is the failing-closed and the
+support for anything older — `parallel` data files and a `coverage combine`
+step (guarded, because
 a holdings root that lacks a declared source subset legitimately produces
 zero child data files), and `branch`/`parallel` read from environment
 variables substituted into `[tool.coverage.run]` so one config serves both

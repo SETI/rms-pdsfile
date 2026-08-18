@@ -28,7 +28,8 @@
 #   --vulture              Run vulture only
 #   --sphinx               Run Sphinx build only
 #   --pymarkdown           Run PyMarkdown scan only
-#   --coverage             Run the pytest gate under coverage and report on it
+#   --coverage             Run the pytest gate under coverage; report and write
+#                            htmlcov/
 #   --coverage-subprocess  As --coverage, and measure the maintenance tools too
 #   -h, --help             Show this help message
 #
@@ -57,9 +58,11 @@
 #   coverage must stay out of. Both modes use `coverage run`, as the data gate
 #   does, and take what is measured from [tool.coverage.*] in pyproject.toml: the
 #   script names no source, omit or exclude, and reaches `branch` and `parallel`
-#   through the environment variables that section substitutes. The one setting it
-#   names outright is COVERAGE_CORE, which selects the tracer rather than the
-#   measurement, and which coverage documents as an environment variable.
+#   through the environment variables that section substitutes. Two settings it
+#   does name outright, both of them coverage's own environment variables and
+#   neither of them about what is measured: COVERAGE_CORE, which selects the
+#   tracer, and COVERAGE_FILE, which puts the data in the project root whatever
+#   directory a measured child happens to run in.
 #
 #     --coverage             Branch coverage of the pytest process, which is what
 #                            pyproject.toml configures and what the data gate
@@ -72,14 +75,14 @@
 #                            tests/holdings_maintenance/_subprocess_guard/
 #                            sitecustomize.py acts on at any version (and fails
 #                            closed, which the .pth does not). That costs two
-#                            settings for the
-#                            whole run, because a run cannot be half of each:
+#                            settings for the whole run, because a run cannot be
+#                            half of each:
 #                            data files are per-process (combined afterwards),
 #                            and coverage is LINE-ONLY under COVERAGE_CORE=sysmon
-#                            -- sys.monitoring cannot measure branches on Python
-#                            3.12, and `coverage combine` refuses to mix branch
-#                            data with statement data. The run says so in its own
-#                            output. Measured on
+#                            -- coverage cannot measure branches with sys.monitoring
+#                            below Python 3.14, and `coverage combine` refuses to
+#                            mix branch data with statement data. The run says so in
+#                            its own output, and writes htmlcov/ as well. Measured on
 #                            tests/holdings_maintenance/test_pds3_archives.py
 #                            (13 ids, Python 3.12.3, coverage 7.13.3): 10.60s
 #                            uninstrumented, 12.49s this mode, 79.68s with branch
@@ -438,12 +441,13 @@ fi
 COVERAGE_DATA_FILE="$PROJECT_ROOT/.coverage"
 
 # The environment every coverage command in this run is prefixed with. It is
-# passed per command rather than exported, because in sequential mode the code
-# checks, the Sphinx build and the Markdown scan share one shell: an exported
-# COVERAGE_PROCESS_START would reach Sphinx, whose autodoc imports pdsfile, and
-# fold that import into the total -- and it would do so only in sequential mode,
-# where the parallel branch runs each check in its own subshell. Coverage numbers
-# that depend on -p versus -s are worse than no coverage numbers.
+# passed per command rather than exported, so that the total describes the pytest
+# gate and nothing else. An exported COVERAGE_PROCESS_START would reach every
+# other check too -- in either mode, since a backgrounded subshell inherits the
+# exported environment exactly as a sequential one does -- and the Sphinx build is
+# the one that matters: its autodoc imports the package. Measured by running the
+# docs gate alone with these variables in its environment: three data files, 77
+# pdsfile modules, 6,851 lines recorded, none of it executed by a test.
 COVERAGE_ENV=()
 if [ "$COVERAGE" = true ]; then
     COVERAGE_ENV=("COVERAGE_FILE=$COVERAGE_DATA_FILE")
@@ -562,9 +566,8 @@ _coverage_erase() {
 # coverage produced no data or could not report: a coverage mode that measured
 # nothing has failed, exactly as an empty PyMarkdown selection has.
 _coverage_report() {
-    local report_log="$TEMP_DIR/coverage-report.log"
-    local data_files=0 tool_files=0 subprocess_note='' total_line=''
-    local statements percent arcs kind
+    local report_text='' data_files=0 tool_files=0 subprocess_note='' total_line=''
+    local statements branches percent arcs kind measured
 
     if [ "$COVERAGE_SUBPROCESS" = true ]; then
         # Every measured process writes its own suffixed data file, so counting
@@ -598,25 +601,21 @@ _coverage_report() {
         fi
     fi
 
-    if ! env "${COVERAGE_ENV[@]}" python -m coverage report 2>&1 | tee "$report_log"; then
+    # Captured rather than piped through tee: with `set -o pipefail` a tee that
+    # could not write its file would make a successful report look like a failed
+    # one, and this function's whole job is to not misreport.
+    if ! report_text=$(env "${COVERAGE_ENV[@]}" python -m coverage report 2>&1); then
+        printf '%s\n' "$report_text"
         print_error "Coverage: report failed"
         return 1
     fi
+    printf '%s\n' "$report_text"
 
-    # coverage prints where it wrote the HTML; that line is printed rather than a
-    # path this script derived, because the directory is coverage's to choose.
-    if ! env "${COVERAGE_ENV[@]}" python -m coverage html; then
-        print_error "Coverage: HTML report failed"
-        return 1
-    fi
-
-    total_line=$(grep -E '^TOTAL ' "$report_log" | tail -1 || true)
+    total_line=$(printf '%s\n' "$report_text" | grep -E '^TOTAL ' | tail -1 || true)
     if [ -z "$total_line" ]; then
         print_error "Coverage: the report carried no TOTAL line, so it measured nothing"
         return 1
     fi
-    statements=$(printf '%s\n' "$total_line" | awk '{print $2}')
-    percent=$(printf '%s\n' "$total_line" | awk '{print $NF}')
 
     # Whether these numbers are branch or line-only is read out of the data file
     # that produced them, not out of the flags that were meant to.
@@ -625,16 +624,38 @@ import coverage
 data = coverage.CoverageData(os.environ["COVERAGE_FILE"])
 data.read()
 print(data.has_arcs())' || true)
+
+    # The two report shapes carry different columns, and the percentage means a
+    # different thing in each: line-only is `Stmts Miss Cover`, where Cover is a
+    # fraction of statements, while branch is `Stmts Miss Branch BrPart Cover`,
+    # where Cover counts executed statements AND taken branches over statements
+    # plus branches. Calling the branch figure a percentage of statements would
+    # misstate it by several points -- the same execution measured both ways here
+    # reports 56% branch and 60% line-only -- so each shape is named for what it is.
+    statements=$(printf '%s\n' "$total_line" | awk '{print $2}')
+    percent=$(printf '%s\n' "$total_line" | awk '{print $NF}')
     case "$arcs" in
-        True)  kind='branch coverage' ;;
-        False) kind='line-only coverage' ;;
+        True)  kind='branch coverage'
+               branches=$(printf '%s\n' "$total_line" | awk '{print $4}')
+               measured="${percent} of ${statements} statements and ${branches} branches together" ;;
+        False) kind='line-only coverage'
+               measured="${percent} of ${statements} statements" ;;
         *)     print_error "Coverage: could not read back the data file to say which kind it holds"
                return 1 ;;
     esac
 
     # "measured", not "passed": no fail_under is configured, so this number
-    # cleared no bar and a summary line saying it had would be a lie.
-    print_success "Coverage measured: ${percent} of ${statements} statements, ${kind}${subprocess_note}"
+    # cleared no bar and a summary line saying it had would be a lie. Printed
+    # before the HTML is written, so that an unwritable htmlcov/ costs the run its
+    # HTML and not its number.
+    print_success "Coverage measured: ${measured}, ${kind}${subprocess_note}"
+
+    # coverage prints where it wrote the HTML; that line is printed rather than a
+    # path this script derived, because the directory is coverage's to choose.
+    if ! env "${COVERAGE_ENV[@]}" python -m coverage html; then
+        print_error "Coverage: HTML report failed"
+        return 1
+    fi
     return 0
 }
 

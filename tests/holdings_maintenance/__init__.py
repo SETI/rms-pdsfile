@@ -30,10 +30,10 @@
 # What the subprocesses cost, and how to get it back:
 #
 #   `coverage run` does not follow a child, so an ordinary coverage run reports the
-#   twelve subprocess-driven tools at what their imports reach and nothing more. Over
-#   the whole suite, and comparing like with like (line-only both times), this tree
-#   measures 34% that way and 78% when the children are measured; pdsarchives.py
-#   measures 16% and 90%.
+#   twelve subprocess-driven programs at what their imports reach and nothing more.
+#   Over the whole suite, and comparing like with like (line-only both times),
+#   src/pdsfile/holdings_maintenance and src/pdsfile/tools together measure 34% that
+#   way and 78% when the children are measured; pdsarchives.py measures 16% and 90%.
 #
 #   `scripts/run-all-checks.sh --coverage-subprocess` measures them, by setting
 #   COVERAGE_PROCESS_START in the subprocess environment (support.ToolTree.env), which

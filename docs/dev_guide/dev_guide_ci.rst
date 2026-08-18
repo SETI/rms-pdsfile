@@ -54,9 +54,9 @@ Coverage
 --------
 
 Coverage is off for a day-to-day run and on when asked for. ``--coverage`` runs the
-pytest gate under ``coverage run`` and prints a report; every measurement setting
-comes from ``[tool.coverage.*]`` in ``pyproject.toml``, so it produces the branch
-coverage the data gate produces. Neither flag is a check, so neither has an
+pytest gate under ``coverage run``, prints a report and writes ``htmlcov/``; what is
+measured comes from ``[tool.coverage.*]`` in ``pyproject.toml``, so it produces the
+branch coverage the data gate produces. Neither flag is a check, so neither has an
 ``ENABLE_*`` entry above: they change how the pytest gate runs, the way ``-p``,
 ``-s`` and ``-w`` do, and asking for coverage in a run that does not schedule that
 gate exits 1 rather than reporting 0%.
@@ -79,7 +79,7 @@ arriving, separated by measuring a line-only parent-only control at 60%.
 It is opt-in because it constrains the whole run. The cost of measuring a child is
 the tracer running inside it -- 10.60s of tool tests become 79.68s under the C
 tracer -- and the way out is ``COVERAGE_CORE=sysmon``, which cannot measure branches
-on Python 3.12 and silently falls back if asked to. So the mode turns branch
+below Python 3.14 and silently falls back if asked to. So the mode turns branch
 analysis off for the whole run, which brings the same tests to 12.49s, and
 ``coverage combine`` refuses to mix branch data with statement data, so this is a
 whole-run choice rather than a per-process one. The run prints which kind of

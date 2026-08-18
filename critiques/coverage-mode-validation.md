@@ -50,12 +50,20 @@ pytest with `-n 0` whatever `-w` asked for, and both the header line and the inv
 line say so. (The data gate is unaffected: `pdsfile_main_test.sh` passes no `-n` at all,
 so xdist is not active there.)
 
-**2. Exporting the coverage variables would have made the numbers depend on `-p` versus
-`-s`.** In sequential mode the code checks, the Sphinx build and the Markdown scan share
-one shell, so an exported `COVERAGE_PROCESS_START` would reach Sphinx — whose autodoc
-imports `pdsfile` — and fold that import into the total, while the parallel branch, which
-runs each check in its own subshell, would not. The variables are passed per command
-(`env "${COVERAGE_ENV[@]}" python -m coverage …`), never exported.
+**2. Exporting the coverage variables would have folded the Sphinx build into the
+total.** `docs/conf.py`'s autodoc imports the package, so a `COVERAGE_PROCESS_START` in
+the environment reaches it. Measured directly, by running the docs gate *alone* with the
+subprocess-mode variables in its environment: **three data files, 77 pdsfile modules,
+6,851 lines recorded**, none of it executed by a test. The variables are therefore passed
+per command (`env "${COVERAGE_ENV[@]}" python -m coverage …`) and never exported, so the
+total describes the pytest gate and nothing else.
+
+This is *not* a sequential-versus-parallel difference, and an earlier draft of both the
+comment and this record said it was. A backgrounded subshell inherits the parent's
+exported environment exactly as a sequential one does, so an export would have reached
+Sphinx in both modes — which also means the two modes agreeing about the total, recorded
+below, is no evidence either way. The 6,851 lines above are the evidence, and they are
+what a wrong decision here would have cost.
 
 **3. Coverage 7.10+ ships its own `a1_coverage.pth`**, which calls the same
 `coverage.process_startup()` from site processing whenever `COVERAGE_PROCESS_START` is
@@ -72,18 +80,28 @@ know which mechanism they are seeing.
 
 ## Does the hook fire?
 
-Two of the new tests answer this, and they pass `-S` so that the answer is attributable:
-`-S` skips site processing, so coverage's own `.pth` never runs and anything observed can
-only have come from the repository's hook.
+Four of the eleven new tests answer this, and two of them pass `-S` so that the answer is
+attributable: `-S` skips site processing, so coverage's own `.pth` never runs and anything
+observed can only have come from the repository's hook.
 
 * `test_the_hook_starts_coverage_in_a_child` runs `python -S -c 'import sitecustomize;
   import pdsfile.pdscache'` with `COVERAGE_PROCESS_START` set, and asserts exactly one
   suffixed data file, `pdscache.py` among its measured files, and recorded lines in it.
   Reproduced by hand before the test was written: `measured:
   ['/seti/all_repos/rms-pdsfile/src/pdsfile/pdscache.py']`.
+* `test_the_hook_measures_a_child_that_processes_site` runs a child **without** `-S` --
+  the path every real tool subprocess takes, where the `.pth` has already started coverage
+  and `process_startup()` returns None -- and asserts exit 0 and a data file. Round 2 asked
+  for this one: without it, tightening the hook's None branch would have killed every
+  tool subprocess with all the other tests still green.
 * `test_the_hook_refuses_to_start_when_coverage_is_missing` runs the same child with only
   the guard directory on `PYTHONPATH`, and asserts exit **70** with `refusing to start
   without coverage measurement` on stderr. Reproduced by hand: both.
+* `test_the_hook_refuses_to_start_without_per_process_data_files` removes
+  `PDSFILE_COVERAGE_PARALLEL` and asserts exit 70 and no data file written. Without per-process
+  data files every child overwrites the one the parent and its siblings share, and the
+  run reports a fraction of what it measured with nothing to say so -- which is where a
+  developer who exports `COVERAGE_PROCESS_START` by hand would land.
 
 And in the whole-suite run the script counted the data files itself: **320 (1 pytest
 process + 319 measured children)** — children, not tool runs, because
@@ -110,7 +128,8 @@ through their other tests (`crlf.py` 100%, `show_opus_products.py` 81%).
 The naive comparison — `--coverage` 56% against `--coverage-subprocess` 81% — mixes two
 effects, because the subprocess mode is also line-only and a branch denominator is
 larger. A third run isolates them: line-only, parent only, no subprocesses. All three are
-the same 1243 ids over the same tree.
+the same tree and the same ids (1243 at the time; round 2 added two more, and the two
+totals below are identical at 1245 — 9,715 statements, 3,843 and 1,841 missed).
 
 | run | pytest summary | package TOTAL | tool tree |
 |---|---|---|---|
@@ -118,6 +137,11 @@ the same 1243 ids over the same tree.
 | `--coverage` (branch, parent only) | 224.34s | 56% of 9,715 | — |
 | control (line-only, parent only) | 193.53s | 60% | 34% of 4,310 |
 | `--coverage-subprocess` (line-only, 319 children) | 224.76s | **81%** | **78%** |
+
+Each timing is one run and moves by a couple of seconds between runs — the control's
+193.53s is *below* the uninstrumented 199.02s, which is the noise floor showing itself,
+not `sysmon` making the suite faster. Differences under about 5s in this table mean
+nothing; the percentages are exact and reproduced to the digit.
 
 So of the 25 points between 56% and 81%, **4 are the branch denominator leaving and 21
 are the subprocesses arriving**. In statements: the control never attributes 3,843 of
@@ -153,8 +177,8 @@ pytest's own summary line inside it:
 | `--coverage` | 3m 53s | 224.34s |
 | `--coverage-subprocess` | 3m 50s | 224.76s |
 
-Re-run at the final commit, these reproduce: 201.25s, 225.56s and 224.49s, with the two
-totals (56% and 81%) identical to the digit. Over the whole suite the two modes cost the
+Re-run at the final commit and at 1245 ids, these reproduce: 205.68s, 230.02s and
+224.60s, with the two totals (56% and 81%) identical to the digit. Over the whole suite the two modes cost the
 same 1.13x, because the suite is dominated by tests that are not tool subprocesses. The
 difference between them shows on the arm that is:
 `tests/holdings_maintenance/test_pds3_archives.py`, 13 ids, varying only how the children
@@ -202,9 +226,15 @@ so a run cannot measure the parent with branches and the children without. That 
 line-only a property of `--coverage-subprocess` as a whole rather than of its children,
 and it is why the mode announces itself: `Running pytest (-n 0 under coverage, line-only
 coverage, core sysmon, subprocesses measured; holdings: full)`, and
-`Coverage report passed: 81% of 9715 statements, line-only, 319 subprocesses`. The
-`line-only` in that verdict is read back out of the combined data file
-(`CoverageData.has_arcs()`), not out of the flags that were meant to produce it.
+`Coverage measured: 81% of 9715 statements, line-only coverage, 319 measured
+children`. The `line-only` in that verdict is read back out of the combined data file
+(`CoverageData.has_arcs()`), not out of the flags that were meant to produce it — and
+the same read-back decides how the percentage is worded, because the two report shapes
+do not mean the same thing by it: line-only `Cover` is a fraction of statements, while
+branch `Cover` counts executed statements and taken branches over statements plus
+branches. `--coverage` therefore says `56% of 9715 statements and 3542 branches
+together`; calling that 56% of the statements would understate the statement figure by
+four points, since the same execution measures 60% line-only.
 
 ## How the two settings reach a child that has no command line
 
@@ -251,9 +281,10 @@ The two do not disagree, and this PR does not make them:
   require. Its numbers are unchanged by this PR.
 * **Subprocess measurement is off there, and stays off.** The hook keys on
   `COVERAGE_PROCESS_START`; nothing in CI sets it. The data gate pays none of the cost.
-* **Two real differences, now written down** in a comment in that script and in
-  `run-all-checks.sh`'s header: the data gate's total covers two passes (ns + s) where
-  `--coverage`'s covers one, and the data gate measures the pytest process only.
+* **Two real differences, now written down.** Both are in the comment added to the
+  data gate itself, above its `coverage report`: its total covers two passes (ns + s)
+  where `--coverage`'s covers one, and it measures the pytest process only.
+  `run-all-checks.sh`'s header carries the first of the two from the other side.
 * **`-n`**: the data gate passes none, so xdist is not active and finding 1 does not
   apply to it. This was checked rather than assumed.
 * One thing it does *not* do, and this PR does not change it: it never runs
@@ -286,7 +317,7 @@ Register counts are unchanged: no entry was added or removed, and
 |---|---|
 | ruff check | passed, ratchet untouched (no entry added, widened or renamed) |
 | ruff check (indentation, `--preview --select E111,E112,E113`) | passed |
-| pytest `--mode ns` (holdings: full) | **1243 passed, 34 skipped** in 201.25s |
+| pytest `--mode ns` (holdings: full) | **1245 passed, 34 skipped** in 205.68s |
 | pyroma | 10/10 |
 | API-freeze | 1 passed |
 | clean-install | passed (throwaway venv, runtime deps only, full module surface imports) |
@@ -302,10 +333,12 @@ Shelves-only, run separately:
 | `tests/pds3file tests/rules/pds3 --mode s` | **555 passed, 3 skipped** — baseline |
 | `tests/pds4file tests/rules/pds4 --mode s` | **150 passed, 31 skipped** — baseline |
 
-**Baseline movement, and why.** ns goes 1234 → **1243**: nine new ids, all in
+**Baseline movement, and why.** ns goes 1234 → **1245**: eleven new ids, all in
 `tests/holdings_maintenance/test_subprocess_coverage.py`, all `holdings_free`, and each
-one a test of this PR's own plumbing (the environment builder, `ToolTree.env`, the hook
-firing, the hook failing closed, and the two configured postures). No pre-existing id
+one a test of this PR's own plumbing — the environment builder, `ToolTree.env`
+absolutizing what it is given, the hook firing in isolation from coverage's `.pth`, the
+hook firing on the path a real tool subprocess takes, the hook failing closed twice (no
+coverage, and no per-process data files), and the two configured postures. No pre-existing id
 changed outcome; the skip count is unmoved at 34, and both `--mode s` suites are
 identical to baseline. Nothing under `src/pdsfile/` was touched by this PR at all —
 `git diff --stat` names `pyproject.toml`, two scripts, three files under
@@ -320,11 +353,11 @@ identical to baseline. Nothing under `src/pdsfile/` was touched by this PR at al
 ℹ Pytest workers: 0 (coverage mode; -w 1 is overridden)
 ℹ Coverage: pytest process only (--coverage-subprocess adds the tools)
 ℹ Running pytest (-n 0 under coverage, branch coverage; holdings: full)...
-1243 passed, 34 skipped, 5 warnings in 225.56s (0:03:45)
+1245 passed, 34 skipped, 5 warnings in 230.02s (0:03:50)
 ✓ Pytest passed
 TOTAL   9715  3843  3542  337  56%
 Wrote HTML report to htmlcov/index.html
-✓ Coverage measured: 56% of 9715 statements, branch coverage
+✓ Coverage measured: 56% of 9715 statements and 3542 branches together, branch coverage
 ```
 
 `./scripts/run-all-checks.sh --sequential --pytest --coverage-subprocess`, exit 0:
@@ -334,7 +367,7 @@ Wrote HTML report to htmlcov/index.html
 ℹ Coverage: pytest process and the maintenance-tool subprocesses
 ℹ Running pytest (-n 0 under coverage, line-only coverage, core sysmon,
   subprocesses measured; holdings: full)...
-1243 passed, 34 skipped, 5 warnings in 224.49s (0:03:44)
+1245 passed, 34 skipped, 5 warnings in 224.60s (0:03:44)
 ✓ Pytest passed
 ℹ Coverage data files: 320 (1 pytest process + 319 measured children)
 TOTAL   9715  1841  81%
@@ -345,10 +378,11 @@ Wrote HTML report to htmlcov/index.html
 **Parallel mode, which is the default, was run too** — `./scripts/run-all-checks.sh
 --coverage-subprocess` with no scope, so the Sphinx build and the Markdown scan ran
 concurrently with the measured pytest gate. Exit 0, all nine verdicts green, and the
-coverage total was **81% of 9715, 319 measured children — identical to the sequential run**.
-That is the check on finding 2: had the coverage variables been exported, Sphinx's
-autodoc import of `pdsfile` would have landed in one of these two totals and not the
-other.
+coverage total was **81% of 9715, 319 measured children — identical to the sequential
+run**. What that shows is that the mode works in the default mode as well as the one it
+was developed in; it is deliberately *not* offered as the check on finding 2, because it
+cannot fail that check either way (see finding 2 for why, and for the measurement that
+can).
 
 `coverage combine` names every file it merges, which was 320 lines between the verdicts
 in the first parallel run; it is now called with `-q`, and the data-file count carries
@@ -394,4 +428,32 @@ path.
 
 ## The adversarial loop (§6.6)
 
-ROUNDS_SUMMARY
+Each round a fresh no-context reviewer, given the PR's goal and deliverables, plan §2 /
+§6.1 / §6.2 / §6.6 with the progressive-compliance schedule, the `.cursor/rules` files,
+the exact diff, read access to the repository and the holdings, and this record to treat
+as a claim rather than a source. Records in `critiques/coverage-mode/round-<k>.md`.
+
+**Round 1** (`git diff 02dd774..8d66ec3`): **goal met**, zero Major, twelve Minor, five
+Deferred. The reviewer combined the child data files itself and confirmed the mechanism
+end to end. Its two sharpest findings were both places where a committed sentence claimed
+more than the code delivered: two permanent documents credited the measurement solely to
+this repository's hook when coverage's own `.pth` wins the race, and
+`env.update(subprocess_coverage_env())` was a no-op under both of its tests, because
+`ToolTree.env` copies `os.environ` and the tests only read back what they had put there.
+All twelve fixed; the second is now a relative-in, absolute-out test that fails when the
+production line is deleted (verified: `1 failed, 8 passed`).
+
+**Round 2** (`git diff 02dd774..3c4bb61`): **goal not met**, four Major, fifteen Minor,
+five Deferred. Two of the Major were real defects in what a reader is told: the verdict
+line called a branch percentage a fraction of statements, understating the statement
+figure by four points, and the reason given for not exporting the coverage variables was
+false — a backgrounded subshell inherits an exported environment, so the sequential/
+parallel distinction the comment rested on does not exist, which also made the record's
+"check" on it unable to fail. The decision was right; the reasoning and the evidence were
+not, and finding 2 above now carries a measurement that could have refuted it. The other
+two were record hygiene: an unfilled placeholder in this section, and a quoted output line
+the program cannot produce. All nineteen findings fixed, including a hook that now refuses
+to run without per-process data files and a test for the branch every real tool subprocess
+takes.
+
+**Round 3** (`git diff 02dd774..ROUND3_HEAD`): ROUND3_RESULT
