@@ -3,8 +3,8 @@
 #
 # The opt-in path that lets coverage see the maintenance tools. The tools run as
 # subprocesses (see this package's __init__ for why that is not negotiable), and
-# `coverage run` does not follow a child, so without this path twelve of the thirteen
-# tools are reported at a fraction of what the tests actually drive.
+# `coverage run` does not follow a child, so without this path twelve of the fourteen
+# programs are reported at a fraction of what the tests actually drive.
 #
 # Two things have to hold, and each is checked here rather than assumed:
 #
@@ -108,23 +108,36 @@ def test_the_data_file_defaults_to_coverages_own_name(unmeasured, monkeypatch, t
     assert support.subprocess_coverage_env()['COVERAGE_FILE'] == str(tmp_path / '.coverage')
 
 
-def test_a_tool_tree_environment_carries_them(unmeasured, monkeypatch, tmp_path):
-    """The variables have to arrive through ToolTree.env, which is what runs a tool."""
+def test_a_tool_tree_environment_absolutizes_them(unmeasured, monkeypatch, tmp_path):
+    """The variables have to arrive through ToolTree.env, which is what runs a tool.
 
-    monkeypatch.setenv('COVERAGE_PROCESS_START', str(PYPROJECT))
-    monkeypatch.setenv('COVERAGE_FILE', str(tmp_path / '.coverage'))
+    Asserting the values back would prove nothing -- `ToolTree.env` starts from a copy
+    of `os.environ`, so anything already set there arrives whether or not this code
+    runs. What only this code supplies is the absolute form, so that is what is
+    asserted: relative in, absolute out.
+    """
 
-    env = support.ToolTree(tmp_path, 'pds3').env
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv('COVERAGE_PROCESS_START', 'pyproject.toml')
+    monkeypatch.setenv('COVERAGE_FILE', 'build/.coverage')
 
-    assert env['COVERAGE_PROCESS_START'] == str(PYPROJECT)
-    assert env['COVERAGE_FILE'] == str(tmp_path / '.coverage')
+    env = support.ToolTree(tmp_path / 'tree', 'pds3').env
+
+    assert env['COVERAGE_PROCESS_START'] == str(tmp_path / 'pyproject.toml')
+    assert env['COVERAGE_FILE'] == str(tmp_path / 'build' / '.coverage')
     # The rest of the environment is unchanged by the coverage variables.
-    assert env['PDS3_HOLDINGS_DIR'] == str(tmp_path / 'holdings')
+    assert env['PDS3_HOLDINGS_DIR'] == str(tmp_path / 'tree' / 'holdings')
     assert str(support.SUBPROCESS_GUARD_DIR) in env['PYTHONPATH']
 
 
-def test_a_tool_tree_environment_omits_them_when_not_measuring(unmeasured, tmp_path):
-    """A tool runs the same way measured or not, so an unmeasured run adds nothing."""
+def test_a_tool_tree_environment_invents_nothing_when_not_measuring(unmeasured, tmp_path):
+    """An unmeasured run must not conjure a data file out of coverage's default name.
+
+    `subprocess_coverage_env` spells `.coverage` itself, so the failure this guards
+    against is that spelling escaping into a run nobody asked to measure -- which
+    would leave stray data files, and would leave `COVERAGE_FILE` set for anything
+    else the tool starts.
+    """
 
     env = support.ToolTree(tmp_path, 'pds3').env
 

@@ -36,8 +36,10 @@
 #   measures 16% and 90%.
 #
 #   `scripts/run-all-checks.sh --coverage-subprocess` measures them, by setting
-#   COVERAGE_PROCESS_START in the subprocess environment (support.ToolTree.env) for the
-#   coverage hook in _subprocess_guard/sitecustomize.py to act on. It is opt-in because
+#   COVERAGE_PROCESS_START in the subprocess environment (support.ToolTree.env), which
+#   two things act on: coverage's own a1_coverage.pth, which site processing runs first
+#   on coverage 7.10 and later, and the hook in _subprocess_guard/sitecustomize.py,
+#   which is what fails closed and what works below that version. It is opt-in because
 #   it constrains the whole run to line-only coverage, and nothing here behaves
 #   differently under it. test_subprocess_coverage.py is that path's own test.
 #

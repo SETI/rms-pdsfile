@@ -129,8 +129,10 @@ markers = [
 # command line, so a CLI flag cannot reach it). `branch` and `parallel` are the
 # two settings such a run has to be able to flip, so each reads an environment
 # variable whose fallback is this repository's default: with neither variable
-# set, `coverage run` measures branches into one unsuffixed data file, exactly as
-# before. scripts/run-all-checks.sh --coverage-subprocess sets both, because
+# set, `coverage run` measures branches into one unsuffixed data file, which is
+# what the data gate (scripts/automated_tests/pdsfile_main_test.sh) requires --
+# it appends a second pass with `coverage run -a` and reports without combining.
+# scripts/run-all-checks.sh --coverage-subprocess sets both, because
 # measuring the tool subprocesses needs suffixed data files (otherwise every
 # child overwrites the same .coverage) and line-only data (COVERAGE_CORE=sysmon
 # cannot measure branches on Python 3.12, and `coverage combine` refuses to mix

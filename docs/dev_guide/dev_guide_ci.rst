@@ -65,11 +65,16 @@ The eleven console-script tools and ``show_opus_products`` are driven as
 subprocesses by their tests, and ``coverage run`` does not follow a child, so
 ``--coverage`` reports them at whatever their imports reach.
 ``--coverage-subprocess`` measures them too, by setting ``COVERAGE_PROCESS_START``
-in the tool subprocess environment for the ``coverage.process_startup()`` hook in
-``tests/holdings_maintenance/_subprocess_guard/sitecustomize.py`` to act on, writing
-one data file per process and combining them afterwards. Over the whole suite that
-takes the maintenance-tool tree from 34% to 78% and the package from 60% to 81%
-(line-only both times).
+in the tool subprocess environment, writing one data file per process and combining
+them afterwards. Two things act on that variable: coverage's own
+``a1_coverage.pth``, which site processing runs first on coverage 7.10 and later,
+and the ``coverage.process_startup()`` hook in
+``tests/holdings_maintenance/_subprocess_guard/sitecustomize.py``, which is what
+works below that version and what kills a child that cannot measure instead of
+leaving the report quietly short. Over the whole suite the mode takes the
+maintenance-tool tree from 34% to 78% and the package from 56% to 81% -- of which
+4 points are branch analysis leaving the denominator and 21 are the subprocesses
+arriving, separated by measuring a line-only parent-only control at 60%.
 
 It is opt-in because it constrains the whole run. The cost of measuring a child is
 the tracer running inside it -- 10.60s of tool tests become 79.68s under the C

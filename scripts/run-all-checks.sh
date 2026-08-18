@@ -55,8 +55,11 @@
 #   mode of the pytest gate, not a check of its own, so it has no RUN_*/ENABLE_*
 #   pair -- a no-scope run turns every RUN_* on, and that is the day-to-day run
 #   coverage must stay out of. Both modes use `coverage run`, as the data gate
-#   does, and take every measurement setting from [tool.coverage.*] in
-#   pyproject.toml; the script sets no source, omit or exclude of its own.
+#   does, and take what is measured from [tool.coverage.*] in pyproject.toml: the
+#   script names no source, omit or exclude, and reaches `branch` and `parallel`
+#   through the environment variables that section substitutes. The one setting it
+#   names outright is COVERAGE_CORE, which selects the tracer rather than the
+#   measurement, and which coverage documents as an environment variable.
 #
 #     --coverage             Branch coverage of the pytest process, which is what
 #                            pyproject.toml configures and what the data gate
@@ -64,9 +67,12 @@
 #                            show_opus_products run as subprocesses, so this
 #                            measures their test files' imports, not the tools.
 #     --coverage-subprocess  Adds the tool subprocesses, through
-#                            COVERAGE_PROCESS_START and the coverage hook in
+#                            COVERAGE_PROCESS_START, which coverage's own
+#                            a1_coverage.pth acts on from 7.10 and the hook in
 #                            tests/holdings_maintenance/_subprocess_guard/
-#                            sitecustomize.py. That costs two settings for the
+#                            sitecustomize.py acts on at any version (and fails
+#                            closed, which the .pth does not). That costs two
+#                            settings for the
 #                            whole run, because a run cannot be half of each:
 #                            data files are per-process (combined afterwards),
 #                            and coverage is LINE-ONLY under COVERAGE_CORE=sysmon
@@ -511,7 +517,7 @@ _code_checks_any_scheduled() {
 # What kind of coverage this run will produce. Asked of coverage rather than
 # stated, so the line cannot outlive a change to the configuration it describes.
 _coverage_kind() {
-    local branch
+    local branch monitoring=false
     branch=$(env "${COVERAGE_ENV[@]}" python -m coverage debug config 2>/dev/null \
         | sed -n 's/^ *branch: *//p' || true)
     case "$branch" in
@@ -519,17 +525,28 @@ _coverage_kind() {
         False) printf 'line-only coverage' ;;
         *)     printf "coverage of an unreadable kind (branch: '%s')" "$branch" ;;
     esac
-    if [ "$COVERAGE_SUBPROCESS" = true ]; then
-        # COVERAGE_CORE=sysmon is a request, and coverage answers it with a warning
-        # to stderr if it cannot be met -- which is the whole cost of this mode, so
-        # it is checked here rather than left to a reader of the log.
-        if python -c 'import sys; raise SystemExit(0 if hasattr(sys, "monitoring") else 1)'
-        then
-            printf ', core sysmon, subprocesses measured'
-        else
-            printf ', core sysmon UNAVAILABLE on this Python so the C tracer runs'
-            printf ' (~7.5x, not ~1.2x), subprocesses measured'
-        fi
+    [ "$COVERAGE_SUBPROCESS" = false ] && return 0
+
+    # COVERAGE_CORE=sysmon is a request, and coverage answers a request it cannot
+    # meet with a warning to stderr and a silent fall back to the C tracer -- which
+    # is the whole cost of this mode, so the two conditions it needs are checked
+    # here rather than left to a reader of a log. They are BOTH needed, and the
+    # branch value read above is one of them: sys.monitoring cannot measure
+    # branches on Python 3.12, so `branch coverage, core sysmon` is a combination
+    # that cannot exist, and printing it would be the exact misreport this line is
+    # for.
+    if python -c 'import sys; raise SystemExit(0 if hasattr(sys, "monitoring") else 1)'
+    then
+        monitoring=true
+    fi
+    if [ "$monitoring" = true ] && [ "$branch" = False ]; then
+        printf ', core sysmon, subprocesses measured'
+    elif [ "$monitoring" = true ]; then
+        printf ', so coverage CANNOT use core sysmon and the C tracer runs'
+        printf ' (~7.5x, not ~1.2x), subprocesses measured'
+    else
+        printf ', core sysmon UNAVAILABLE on this Python so the C tracer runs'
+        printf ' (~7.5x, not ~1.2x), subprocesses measured'
     fi
 }
 
@@ -552,8 +569,10 @@ _coverage_report() {
     if [ "$COVERAGE_SUBPROCESS" = true ]; then
         # Every measured process writes its own suffixed data file, so counting
         # them is what turns "the tools were measured" from a claim into a number:
-        # one file is the pytest process and the rest are the children it started,
-        # which for this suite are overwhelmingly tool runs.
+        # one file is the pytest process and the rest are children it started.
+        # Most are tool runs, but not all -- COVERAGE_PROCESS_START reaches every
+        # child, including the freeze, mixin-isolation and docstring checks'
+        # subprocesses -- so the count is of measured children, not of tool runs.
         data_files=$(find "$PROJECT_ROOT" -maxdepth 1 -type f \
                           -name "$(basename "$COVERAGE_DATA_FILE").*" | wc -l)
         if [ "$data_files" -eq 0 ]; then
@@ -561,14 +580,14 @@ _coverage_report() {
             return 1
         fi
         tool_files=$((data_files - 1))
-        print_info "Coverage data files: ${data_files} (1 pytest process + ${tool_files} subprocesses)"
+        print_info "Coverage data files: ${data_files} (1 pytest process + ${tool_files} measured children)"
         if [ "$tool_files" -eq 0 ]; then
             # Legitimate, and the reason this is reported rather than failed: the
             # tool tests skip when the holdings root lacks the source subset they
             # declare, and a skipped test starts no subprocess.
             print_info "Coverage: no subprocess ran, so this total is the same one --coverage produces"
         fi
-        subprocess_note=", ${tool_files} subprocesses"
+        subprocess_note=", ${tool_files} measured children"
         # -q because combine names every file it merges, and three hundred of
         # those would bury the verdicts in a log this project's rule is to read
         # rather than tail. The count above is the number that carries the
@@ -613,7 +632,9 @@ print(data.has_arcs())' || true)
                return 1 ;;
     esac
 
-    print_success "Coverage report passed: ${percent} of ${statements} statements, ${kind}${subprocess_note}"
+    # "measured", not "passed": no fail_under is configured, so this number
+    # cleared no bar and a summary line saying it had would be a lie.
+    print_success "Coverage measured: ${percent} of ${statements} statements, ${kind}${subprocess_note}"
     return 0
 }
 

@@ -21,8 +21,9 @@ exclude — so it produces the branch coverage the repository has always configu
 the data gate has always produced.
 
 **`--coverage-subprocess`** adds the tool subprocesses, through `COVERAGE_PROCESS_START`
-in `ToolTree.env` and a `coverage.process_startup()` hook in the tool subprocesses'
-existing `sitecustomize.py`. It is internally consistent and says so in its own output:
+in `ToolTree.env`, acted on by a `coverage.process_startup()` hook in the tool
+subprocesses' existing `sitecustomize.py` — and, on coverage 7.10 and later, by
+coverage's own `a1_coverage.pth` first (finding 3 below). It is internally consistent and says so in its own output:
 the whole run is line-only under `COVERAGE_CORE=sysmon`, and the data files are
 per-process and combined afterwards.
 
@@ -85,13 +86,24 @@ only have come from the repository's hook.
   without coverage measurement` on stderr. Reproduced by hand: both.
 
 And in the whole-suite run the script counted the data files itself: **320 (1 pytest
-process + 319 subprocesses)**.
+process + 319 measured children)** — children, not tool runs, because
+`COVERAGE_PROCESS_START` reaches every subprocess the suite starts, and the whole-suite
+320 against `tests/holdings_maintenance`'s own 308 puts twelve of them elsewhere.
 
-One blind spot, small and deliberate: `support.no_holdings_env()` puts only `src/` on
-`PYTHONPATH`, so the two `crlf` subprocess tests that use it get no `sitecustomize` and
-are measured only by coverage's own `.pth`. Adding the guard directory to their path
-would also install the read-only guard, changing what those tests do, which is not this
-PR's to change. `crlf.py` reaches 100% anyway, through the in-process tests PR-28 wrote.
+One blind spot, small and deliberate. `support.no_holdings_env()` puts only `src/` on
+`PYTHONPATH`, so its children get no `sitecustomize` and are measured only by coverage's
+own `.pth` — meaning that on coverage 7.0–7.9 they would not be measured at all, and the
+fail-closed guarantee does not reach them. It has **three** call sites, not one:
+`support.run_tool_without_holdings()` (`support.py:475`), reached by
+`test_crlf.py::test_the_module_is_runnable_as_python_m` and
+`::test_an_unreadable_file_ends_the_process_with_a_traceback`, and
+`test_show_opus_products.py:58`, reached by
+`::test_the_module_imports_with_neither_holdings_root_set` and
+`::test_the_module_is_runnable_as_python_m`. The second pair matters more, because
+`show_opus_products` is one of the twelve subprocess-driven programs this mode exists to
+measure. Extending the path would also install the read-only guard in those children,
+changing what those tests do, which is not this PR's to change; both modules are measured
+through their other tests (`crlf.py` 100%, `show_opus_products.py` 81%).
 
 ## What the subprocess mode measures, before and after
 
@@ -312,7 +324,7 @@ identical to baseline. Nothing under `src/pdsfile/` was touched by this PR at al
 ✓ Pytest passed
 TOTAL   9715  3843  3542  337  56%
 Wrote HTML report to htmlcov/index.html
-✓ Coverage report passed: 56% of 9715 statements, branch coverage
+✓ Coverage measured: 56% of 9715 statements, branch coverage
 ```
 
 `./scripts/run-all-checks.sh --sequential --pytest --coverage-subprocess`, exit 0:
@@ -324,16 +336,16 @@ Wrote HTML report to htmlcov/index.html
   subprocesses measured; holdings: full)...
 1243 passed, 34 skipped, 5 warnings in 224.49s (0:03:44)
 ✓ Pytest passed
-ℹ Coverage data files: 320 (1 pytest process + 319 subprocesses)
+ℹ Coverage data files: 320 (1 pytest process + 319 measured children)
 TOTAL   9715  1841  81%
 Wrote HTML report to htmlcov/index.html
-✓ Coverage report passed: 81% of 9715 statements, line-only coverage, 319 subprocesses
+✓ Coverage measured: 81% of 9715 statements, line-only coverage, 319 measured children
 ```
 
 **Parallel mode, which is the default, was run too** — `./scripts/run-all-checks.sh
 --coverage-subprocess` with no scope, so the Sphinx build and the Markdown scan ran
 concurrently with the measured pytest gate. Exit 0, all nine verdicts green, and the
-coverage total was **81% of 9715, 319 subprocesses — identical to the sequential run**.
+coverage total was **81% of 9715, 319 measured children — identical to the sequential run**.
 That is the check on finding 2: had the coverage variables been exported, Sphinx's
 autodoc import of `pdsfile` would have landed in one of these two totals and not the
 other.
@@ -382,4 +394,4 @@ path.
 
 ## The adversarial loop (§6.6)
 
-ADVERSARIAL_LOOP
+ROUNDS_SUMMARY

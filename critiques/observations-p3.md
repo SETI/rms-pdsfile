@@ -2899,9 +2899,10 @@ nothing on its own either (79.26s) — because `sys.monitoring` cannot measure
 branches on this Python, so coverage warns `Can't use core=sysmon` and falls
 back, and in a captured-stderr subprocess nobody sees the warning. Only the
 pair is cheap: **1.2x**. And the cost is the tracer, not the subprocesses:
-the uninstrumented row already starts all nineteen of them (the run writes 20
-data files, one per child plus the parent's), so measuring those same nineteen
-adds 1.89s with `sysmon` and 69.08s with the C tracer.
+every row runs the same nineteen children — the measured rows each write 20
+data files, one per child plus the parent's, and the uninstrumented row runs
+the same ids and writes none — so measuring those nineteen adds 1.89s with
+`sysmon` and 69.08s with the C tracer.
 
 The trade is therefore not cost against nothing. It is **line-only coverage
 at 1.2x against branch coverage plus a permanent blind spot**, and it is
