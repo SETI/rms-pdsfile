@@ -1528,11 +1528,36 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
                     this.interior = basename
                     return this._complete(must_exist, caching, lifetime)
 
-                # Handle bundle name
+                # Handle bundle name, with or without a version suffix.
+                # BUNDLENAME_PLUS_REGEX takes no version suffix, so a superseded
+                # version of a bundle, sitting beside the current one, is matched by
+                # BUNDLENAME_VERSION instead.
                 matchobj = cls.BUNDLENAME_PLUS_REGEX_I.match(basename)
+                version = ''
+                if matchobj is None:
+                    matchobj = cls.BUNDLENAME_VERSION_I.match(basename)
+                    if matchobj:
+                        # The version is the pattern's last group, because
+                        # BUNDLENAME_VERSION appends it to BUNDLENAME_REGEX, whose own
+                        # group count differs between the flavors. A name can also
+                        # match with no version, which is not a bundle here.
+                        version = matchobj.groups()[-1] or ''
+                        if not version:
+                            matchobj = None
+
                 if matchobj:
                     this.bundlename_ = basename + '/'
                     this.bundlename  = matchobj.group(1)
+
+                    if version:
+                        # The version rank is what orders this bundle against the
+                        # other versions of itself, which is how _update_ranks_and_vols
+                        # files them under one bundle name.
+                        this.suffix = version
+                        (this.version_rank,
+                         this.version_message,
+                         this.version_id) = self.version_info(version)
+
                 else:
                     # A name that is not a bundle name is interior to the bundle set:
                     # a bundle set's AAREADME, or a directory that holds something
@@ -2237,10 +2262,16 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
             if matchobj:
                 this.bundlename = matchobj.group(1).upper()
 
+                # The optional word and the archive or checksum ending are the
+                # pattern's last two groups, because BUNDLENAME_PLUS_REGEX appends them
+                # to BUNDLENAME_REGEX, whose own group count differs between the
+                # flavors.
+                (word, ending) = matchobj.groups()[-2:]
+
                 # If there is a matched extension
-                if len(matchobj.groups()) > 2 and matchobj.group(3):
+                if ending:
                     this.basename = matchobj.group(0).replace('.targz', '.tar.gz')
-                    extension = (matchobj.group(2) + matchobj.group(3)).lower()
+                    extension = (word + ending).lower()
 
                     # <bundlename>...tar.gz must be an archive file
                     if extension.endswith('.tar.gz'):
@@ -2266,9 +2297,15 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
             # Parts are (bundlename, version)
             # Example: "VGISS_5101_peer_review" -> (VGISS_5101, _peer_review)
             matchobj = cls.BUNDLENAME_VERSION_I.match(parts[0])
-            if matchobj:
+
+            # The version is the pattern's last group, because BUNDLENAME_VERSION
+            # appends it to BUNDLENAME_REGEX, whose own group count differs between the
+            # flavors. A name can also match with no version, which is not a version
+            # here and leaves the part for a later reader.
+            version = (matchobj.groups()[-1] or '') if matchobj else ''
+            if version:
                 this.bundlename = matchobj.group(1).upper()
-                this.suffix = matchobj.group(2).lower()
+                this.suffix = version.lower()
 
                 # Pop the first entry from the pseudo-path and try again
                 parts = parts[1:]
