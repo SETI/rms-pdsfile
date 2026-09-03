@@ -708,7 +708,10 @@ class TestPds3FileBlackBox:
             ('checksums-volumes/COCIRS_0xxx', True),
             ('archives-volumes/COCIRS_0xxx', True),
             ('volumes/HSTNx_xxxx', True),
-            ('volumes/HSTNx_xxxx/HSTN0_7176', False)
+            ('volumes/HSTNx_xxxx/HSTN0_7176', False),
+            # A directory below a volume set that names no volume is not thereby a
+            # volume set.
+            ('documents/VGISS_5xxx/Calibration-Docs', False),
         ]
     )
     def test_is_volset_dir(self, input_path, expected):
@@ -724,6 +727,9 @@ class TestPds3FileBlackBox:
             ('volumes/HSTNx_xxxx', False),
             ('volumes/HSTNx_xxxx/HSTN0_7176', False),
             ('volumes/COISS_1xxx/AAREADME.txt', True),
+            # A file one level further down is inside what the volume set holds, not
+            # beside it, so it is not a volume-set file.
+            ('documents/VGISS_5xxx/Calibration-Docs/AAREADME.txt', False),
         ]
     )
     def test_is_volset_file(self, input_path, expected):
@@ -740,6 +746,8 @@ class TestPds3FileBlackBox:
             ('volumes/HSTNx_xxxx/HSTN0_7176', False),
             ('archives-volumes/COCIRS_0xxx/COCIRS_0010.tar.gz', False),
             ('volumes/COISS_1xxx/AAREADME.txt', True),
+            ('documents/VGISS_5xxx/Calibration-Docs', False),
+            ('documents/VGISS_5xxx/Calibration-Docs/AAREADME.txt', False),
         ]
     )
     def test_is_volset(self, input_path, expected):
