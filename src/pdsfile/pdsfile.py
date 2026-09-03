@@ -1062,41 +1062,55 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
     def is_bundleset_dir(self):
         """Whether this is a bundleset's own top-level directory.
 
+        The bundleset directory is the one with nothing below it: an interior path means
+        the object sits inside the bundleset, whether or not the name it sits under was
+        recognized as a bundle.
+
         Reading it can consult the filesystem or the shelves, because it may have to know
         whether the path is a directory. That test is last and the conjunction
-        short-circuits, so an object that names no bundleset, or that names a bundle,
-        answers without asking.
+        short-circuits, so an object that names no bundleset, that names a bundle, or
+        that has an interior path answers without asking.
 
         Returns:
             bool: True if this is a bundleset directory.
         """
-        return bool(self.bundleset and not self.bundlename and self.isdir)
+        return bool(self.bundleset and not self.bundlename and not self.interior
+                    and self.isdir)
 
     @property
     def is_bundleset_file(self):
         """Whether this is a file that sits at bundleset level rather than in a bundle.
 
         That is a bundleset's checksum file, or a description file such as an AAREADME.
+        Either sits directly in the bundleset, so the interior path names one component
+        at most; a deeper interior means the file is inside something the bundleset
+        holds, not beside it.
+
         Reading it can consult the filesystem or the shelves, because it may have to know
-        whether the path is a directory. That test is last and the conjunction
+        whether the path is a directory. That test is last but one and the conjunction
         short-circuits, so an object that names no bundleset, or that names a bundle,
         answers without asking.
 
         Returns:
             bool: True if this is a bundleset-level file.
         """
-        return bool(self.bundleset and not self.bundlename and not self.isdir)
+        return bool(self.bundleset and not self.bundlename and not self.isdir
+                    and '/' not in self.interior)
 
     @property
     def is_bundleset(self):
         """Whether this sits at bundleset level, as a directory or as a file.
 
-        Unlike the two properties it summarizes, this asks nothing of the filesystem.
+        This is exactly the disjunction of the two properties it summarizes, so it can
+        consult the filesystem the same way they do. It cannot avoid that: a name below a
+        bundleset that is not a bundle is a bundleset-level file when it is a file, and
+        something the bundleset holds when it is a directory, and only the filesystem
+        separates the two.
 
         Returns:
             bool: True if this names a bundleset and nothing below it.
         """
-        return bool(self.bundleset and not self.bundlename)
+        return bool(self.is_bundleset_dir or self.is_bundleset_file)
 
     @property
     def is_category_dir(self):
@@ -1519,11 +1533,19 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
                 if matchobj:
                     this.bundlename_ = basename + '/'
                     this.bundlename  = matchobj.group(1)
+                else:
+                    # A name that is not a bundle name is interior to the bundle set:
+                    # a bundle set's AAREADME, or a directory that holds something
+                    # other than a bundle. Without this it would keep the parent's
+                    # empty bundle name and empty interior, and so would be
+                    # indistinguishable from the bundle set itself -- and so would
+                    # everything below it, all the way to the leaves.
+                    this.interior = basename
 
-                    if self.checksums_ or self.archives_:
-                        this.bundlename_ = ''
-                        this.interior = basename
-
+                # In the archive and checksum trees a bundle is one file, so the name
+                # is interior to the bundle set whether or not it named a bundle. The
+                # bundle name itself is left in place; it is what makes such a path a
+                # bundle-level file.
                 if self.checksums_ or self.archives_:
                     this.bundlename_ = ''
                     this.interior = basename

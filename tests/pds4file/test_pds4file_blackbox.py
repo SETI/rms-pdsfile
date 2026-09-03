@@ -323,6 +323,12 @@ class TestPds4FileBlackBox:
              True),
             ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/bundle.xml',
              False),
+            # A directory below a bundle set that BUNDLENAME_REGEX does not match is
+            # not thereby a bundle set, and neither is anything below it.
+            ('uranus_occs_earthbased/uranus_occ_support',
+             False),
+            ('uranus_occs_earthbased/uranus_occ_support/document/user_guide',
+             False),
             # ('cassini_iss',
             #  True),
             # ('cassini_vims/',
@@ -348,6 +354,10 @@ class TestPds4FileBlackBox:
             ('uranus_occs_earthbased/',
              True),
             ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/bundle.xml',
+             False),
+            ('uranus_occs_earthbased/uranus_occ_support',
+             False),
+            ('uranus_occs_earthbased/uranus_occ_support/document/user_guide',
              False),
             # ('cassini_vims',
             #  True),
