@@ -58,7 +58,9 @@ for logical_path in sys.argv[2:]:
     version[logical_path] = {'bundlename': pdsf.bundlename,
                              'suffix': pdsf.suffix,
                              'version_rank': pdsf.version_rank,
-                             'version_id': pdsf.version_id}
+                             'version_id': pdsf.version_id,
+                             'bundle_abspath':
+                                 pdsf.bundle_abspath()[len(root):].strip('/')}
 
 # Every version of one bundle is filed under the one bundle name, which is what lets a
 # caller reach an older version from the current one.
@@ -218,22 +220,28 @@ class TestBundleVersion:
         [
             ('bundles/cassini_iss',
              {'bundlename': '', 'suffix': '', 'version_rank': 999999,
-              'version_id': ''}),
+              'version_id': '', 'bundle_abspath': ''}),
             ('bundles/cassini_iss/cassini_iss_saturn',
              {'bundlename': 'cassini_iss_saturn', 'suffix': '',
-              'version_rank': 999999, 'version_id': ''}),
+              'version_rank': 999999, 'version_id': '',
+              'bundle_abspath': 'bundles/cassini_iss/cassini_iss_saturn'}),
+            # bundle_abspath builds the version back onto the bundle name, which is
+            # where it came from. Building it onto the bundle set, as a PDS3 version
+            # would be, names a bundle set that does not exist.
             ('bundles/cassini_iss/cassini_iss_saturn_v1.0',
              {'bundlename': 'cassini_iss_saturn', 'suffix': '_v1.0',
-              'version_rank': 10000, 'version_id': '1.0'}),
+              'version_rank': 10000, 'version_id': '1.0',
+              'bundle_abspath': 'bundles/cassini_iss/cassini_iss_saturn_v1.0'}),
             # The version reaches everything inside that bundle, as a bundle set's
             # version reaches everything inside it.
             ('bundles/cassini_iss/cassini_iss_saturn_v1.0/data_raw',
              {'bundlename': 'cassini_iss_saturn', 'suffix': '_v1.0',
-              'version_rank': 10000, 'version_id': '1.0'}),
+              'version_rank': 10000, 'version_id': '1.0',
+              'bundle_abspath': 'bundles/cassini_iss/cassini_iss_saturn_v1.0'}),
             # Not a version of anything: its parent is not the bundle set.
             ('bundles/cassini_iss/superseded/cassini_iss_cruise_v1.0',
              {'bundlename': '', 'suffix': '', 'version_rank': 999999,
-              'version_id': ''}),
+              'version_id': '', 'bundle_abspath': ''}),
         ]
     )
     def test_version_fields(self, probe, logical_path, expected):

@@ -1176,8 +1176,17 @@ class PdsFile(_AssociationsMixin, _DerivedPathsMixin, _IndexRowsMixin, _LocalFsM
             insert = ''
             ext = ''
 
-        return (self.root_ + category_ + self.bundleset + suffix + '/' +
-                self.bundlename + insert + ext)
+        # A version can sit on the bundle set or on the bundle, and the suffix has to
+        # be built back onto whichever it came from. bundleset_ is the bundle set's own
+        # directory name, so it already carries the suffix in the first case and does
+        # not in the second, which is the one where the bundle name carries it.
+        if suffix and self.bundleset_ == self.bundleset + '/':
+            (bundleset_suffix, bundlename_suffix) = ('', suffix)
+        else:
+            (bundleset_suffix, bundlename_suffix) = (suffix, '')
+
+        return (self.root_ + category_ + self.bundleset + bundleset_suffix + '/' +
+                self.bundlename + bundlename_suffix + insert + ext)
 
     def bundleset_abspath(self, category=None):
         """Build the absolute path of the bundleset-level counterpart in a given category.
