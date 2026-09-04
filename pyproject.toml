@@ -5,25 +5,32 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "rms-pdsfile"
 dynamic = ["version"]
-description = "pdsfile"
+description = "Locate, describe, and organize PDS3 and PDS4 data products in the RMS Node holdings: path parsing, metadata and shelf lookups, associated-file and OPUS product enumeration"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
-    "numpy",
-    "pillow",
-    "pyparsing",
-    "pytest",
-    "range_ex",
-    "rms-pdslogger>=3.1.1",
-    "rms-pdstable",
-    "rms-translator",
-    "rms-textkernel"
+  "numpy",
+  "pillow",
+  "pyparsing",
+  # pytest is a dev-only dependency, not a runtime one: the per-dataset rule
+  # modules' tests live under tests/rules/ (not inline in the modules), so
+  # importing pdsfile does not need pytest. It lives in the dev extra, and the
+  # clean-install gate (scripts/clean_install_check.sh) enforces that no runtime
+  # module imports it.
+  "range_ex",
+  "rms-pdslogger>=3.1.1",
+  "rms-pdstable",
+  "rms-translator",
+  "rms-textkernel"
 ]
 license = {text = "Apache-2.0"}
+authors = [
+  {name = "Robert S. French", email = "rfrench@seti.org"}
+]
 maintainers = [
   {name = "Robert S. French", email = "rfrench@seti.org"}
 ]
-keywords = ["pdsfile"]
+keywords = ["pds", "pds3", "pds4", "planetary data system", "nasa", "rms node", "pdsfile", "holdings", "opus"]
 classifiers = [
   "Development Status :: 5 - Production/Stable",
   "Natural Language :: English",
@@ -32,37 +39,315 @@ classifiers = [
   "Topic :: Software Development :: Libraries :: Python Modules",
   "Topic :: Utilities",
   "License :: OSI Approved :: Apache Software License",
-  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
   "Operating System :: MacOS :: MacOS X",
-  "Operating System :: POSIX :: Linux",
-  "Operating System :: Microsoft :: Windows"
+  "Operating System :: POSIX :: Linux"
 ]
 
 [project.urls]
 Homepage = "https://github.com/SETI/rms-pdsfile"
+Documentation = "https://rms-pdsfile.readthedocs.io/en/latest"
 Repository = "https://github.com/SETI/rms-pdsfile"
 Source = "https://github.com/SETI/rms-pdsfile"
 Issues = "https://github.com/SETI/rms-pdsfile/issues"
 
-[project.scripts]
-pdsarchives = "holdings_maintenance.pds3.pdsarchives:main"
-pdschecksums = "holdings_maintenance.pds3.pdschecksums:main"
-pdsdependency = "holdings_maintenance.pds3.pdsdependency:main"
-pdsindexshelf = "holdings_maintenance.pds3.pdsindexshelf:main"
-pdsinfoshelf = "holdings_maintenance.pds3.pdsinfoshelf:main"
-pdslinkshelf = "holdings_maintenance.pds3.pdslinkshelf:main"
-pds4archives = "holdings_maintenance.pds4.pds4archives:main"
-pds4checksums = "holdings_maintenance.pds4.pds4checksums:main"
-pds4indexshelf = "holdings_maintenance.pds4.pds4indexshelf:main"
-pds4infoshelf = "holdings_maintenance.pds4.pds4infoshelf:main"
-pds4linkshelf = "holdings_maintenance.pds4.pds4linkshelf:main"
+[project.optional-dependencies]
+dev = [
+  "coverage>=7.0",
+  # mypy is here only for `mypy.stubtest`, which validates the hand-written
+  # public-API stubs (src/pdsfile/**/*.pyi) against the runtime surface — see
+  # the stubtest gate in scripts/run-all-checks.sh. It is NOT a type-checking
+  # gate: ground rule 5 of the modernization plan waives inline typing and
+  # ENABLE_MYPY stays false permanently.
+  "mypy>=1.14",
+  "pymarkdownlnt>=0.9.35",
+  "pyroma>=4.2",
+  "pytest>=7.0",
+  "pytest-cov>=4.0",
+  "pytest-xdist>=3.8.0",
+  "ruff>=0.8",
+  # Only src/pdsfile/tools/show_opus_products.py uses tabulate, and it stays a
+  # `python -m` tool (not a shipped console script), so tabulate is dev-only.
+  "tabulate",
+  # Self-referential extra: the distribution is rms-pdsfile (the import module
+  # is pdsfile), so this must be the distribution name, not "pdsfile".
+  "rms-pdsfile[docs]",
+]
+docs = [
+  "myst-parser",
+  "sphinx>=7",
+  "sphinxcontrib-mermaid",
+  "sphinx-rtd-theme",
+]
 
-[tool.setuptools]
-packages = ["pdsfile", "holdings_maintenance"]
+[project.scripts]
+pdsarchives = "pdsfile.holdings_maintenance.pds3.pdsarchives:main"
+pdschecksums = "pdsfile.holdings_maintenance.pds3.pdschecksums:main"
+pdsdependency = "pdsfile.holdings_maintenance.pds3.pdsdependency:main"
+pdsindexshelf = "pdsfile.holdings_maintenance.pds3.pdsindexshelf:main"
+pdsinfoshelf = "pdsfile.holdings_maintenance.pds3.pdsinfoshelf:main"
+pdslinkshelf = "pdsfile.holdings_maintenance.pds3.pdslinkshelf:main"
+pds4archives = "pdsfile.holdings_maintenance.pds4.pds4archives:main"
+pds4checksums = "pdsfile.holdings_maintenance.pds4.pds4checksums:main"
+pds4indexshelf = "pdsfile.holdings_maintenance.pds4.pds4indexshelf:main"
+pds4infoshelf = "pdsfile.holdings_maintenance.pds4.pds4infoshelf:main"
+pds4linkshelf = "pdsfile.holdings_maintenance.pds4.pds4linkshelf:main"
+
+# src-only discovery: the maintenance tools (holdings_maintenance) and
+# show_opus_products live under src/pdsfile/, so everything ships as subpackages
+# of pdsfile.
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["pdsfile*"]
 
 [tool.setuptools_scm]
 local_scheme = "no-local-version"
-write_to = "pdsfile/_version.py"
+write_to = "src/pdsfile/_version.py"
+
+[tool.pytest.ini_options]
+# No -n/xdist or --cov in addopts: worker count and coverage are chosen per
+# invocation (--update runs and full-data runs must be serial). pythonpath adds
+# both the repo root (so the `tests.*` absolute imports — tests.rules.support,
+# tests.support.pdsfile_test_helper, tests.pds{3,4}file.helper — resolve now
+# that conftest.py has moved into tests/) and src (so `pdsfile` is importable
+# during collection). The rule-module tests now live in tests/rules/pds{3,4}/.
+pythonpath = [".", "src"]
+addopts = ["--strict-markers", "--strict-config"]
+markers = [
+  "full_holdings: test is only meaningful against the complete real holdings tree (sizes, volume counts); auto-skipped under the mini fixtures",
+  "holdings_free: test builds its own inputs and needs no holdings tree; runs even when no holdings are available",
+]
+
+# Tool configuration
+
+[tool.coverage.run]
+branch = true
+source = ["pdsfile"]
+omit = ["tests/*", "**/_version.py"]
+
+[tool.coverage.html]
+title = "Coverage Report for PdsFile"
+
+[tool.coverage.report]
+exclude_lines = [
+  "pragma: no cover",
+]
+
+# Read only by `mypy.stubtest` (the stubtest gate in scripts/run-all-checks.sh
+# passes --mypy-config-file to it). Nothing type-checks the implementation:
+# ENABLE_MYPY is permanently false (modernization ground rule 5), and this
+# section exists so the stub build survives the unannotated modules that share
+# the package directory with the stubs.
+[tool.mypy]
+# Untyped dependencies (rms-pdslogger, rms-translator, rms-pdsparser,
+# rms-pdstable, tabulate, pylibmc) have no stubs to find.
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# The private mixin modules and the maintenance/tool subpackages are not
+# public API and ship no stubs by design; in an inline typed package their
+# unannotated .py sources join the stub build, and their diagnostics must not
+# fail it.
+module = [
+  "pdsfile._associations",
+  "pdsfile._derived_paths",
+  "pdsfile._index_rows",
+  "pdsfile._local_fs",
+  "pdsfile._opus",
+  "pdsfile._path_utils",
+  "pdsfile._preload",
+  "pdsfile._properties",
+  "pdsfile._shelves",
+  "pdsfile._sorting",
+  "pdsfile._version",
+  "pdsfile.holdings_maintenance",
+  "pdsfile.holdings_maintenance.*",
+  "pdsfile.tools",
+  "pdsfile.tools.*",
+]
+ignore_errors = true
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+# The public-API stubs mirror the frozen runtime surface, and linting them
+# with this configuration was measured (ruff 0.15.7, 2026-08-16): 98 findings
+# in 7 codes — N801 x31, E501 x29, N999 x25, N802 x5, A002 x5, RUF022 x2,
+# N805 x1 — every one a code the ratchet below already records as permanent
+# somewhere in the runtime tree (frozen class, module, method and parameter
+# names; hand-aligned overlength lines; frozen __all__ order). But 26 of the
+# 98 fall in stubs whose own .py counterpart's ratchet entry does not carry
+# the code — pdsfile.pyi's E501 x20 and A002 x3 (the class surface aggregates
+# mixin modules whose entries hold those codes under the mixins' paths), and
+# one E501 each in three pds4 rule stubs — so linting the stubs would need
+# new ratchet entries, and the ratchet may only shrink. The stubs stay
+# excluded; stubtest (scripts/run-all-checks.sh) is their gate. Re-measure
+# with `ruff check $(git ls-files ':(glob)src/pdsfile/**/*.pyi')` — explicit
+# paths bypass this exclusion, and the `:(glob)` magic is what reaches all 43
+# stubs: a shell without globstar expands a bare `**` to one level, and
+# git's default pathspec makes `**/` match only names with a real slash,
+# dropping the five top-level stubs (pdsfile.pyi among them, which holds 23
+# of the 26 uncovered findings). Scoped to the package so a .pyi anywhere
+# else would still be linted.
+extend-exclude = ["src/pdsfile/**/*.pyi"]
+
+[tool.ruff.format]
+# Configured but NOT enforced yet: `ruff format` is not run as a gate. When
+# formatting is enforced, aligned rule tables are excluded from it.
+quote-style = "single"
+
+[tool.ruff.lint]
+# Explicit rule set (recommended for library projects). Categories:
+# E, W = pycodestyle errors/warnings; F = Pyflakes; I = isort; UP = pyupgrade;
+# B = bugbear; SIM = simplify; C4 = comprehensions; A = builtins (no shadowing);
+# N = pep8-naming; PT = pytest-style; RUF = Ruff-specific (e.g. unused noqa).
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "C4", "A", "N", "PT", "RUF"]
+# PT011 - pytest.raises is too broad.
+# SIM105 - Use contextlib.suppress for suppressions.
+# SIM108 - Use ternary operator for simple if/else.
+extend-ignore = ["PT011", "SIM105", "SIM108"]
+
+[tool.ruff.lint.per-file-ignores]
+# RATCHET. Seeded by scripts/gen_ruff_ratchet.py (PR-03) from the tree as it then
+# stood; entries are hand-derived when a PR shrinks them, because the script runs
+# ruff with this config and so emits an empty block against a tree these ignores
+# already suppress (deferred observation 33). Each entry lists a file's remaining
+# violation codes so `ruff check` passes now. This ratchet may only SHRINK in
+# later PRs (never grow, never gain inline noqa). Entries are alphabetical by path.
+#
+# REST (PR-24) -- the rule modules, the pds3file/pds4file initializers, the
+# holdings-maintenance tools, the tools/scripts entry points and the test tree were
+# re-derived with the template select set and no per-file-ignores at all (2,760
+# violations) and every one classified fixable or excluded; 483 were fixed. The
+# 2,277 that remained were permanent then; PR-25 removed nineteen more and PR-25a
+# seventeen more, so the group now measures 2,241 over 58 entries (171 code slots).
+# Each is enumerated with its sites and its reason in
+# plans/2026-08-04-pr-24-subplan.md sections 4 and 5 and in
+# .cursor/rules/pdsfile_overrides.mdc deviation (4). In outline:
+#   E501/W191/RUF022 -- hand-aligned translator, parametrize and __all__ tables;
+#     rewrapping or retabbing them is the layout change the owner dropped.
+#   RUF012 -- mutable class-attribute defaults; ClassVar is forbidden by ground
+#     rule 5.
+#   N801/N999/N802/N805/A002/F401 -- frozen public class, module, method and
+#     parameter names, and the rule-module names the package re-exports.
+#   UP031 -- 40 logging calls (a lazy rewrite needs filepath= and is not a style
+#     PR's to make), 24 sidecar-writing format strings, 49 in hand-aligned
+#     blocks, 6 plain % expressions the conversion rule does not reach, and 5
+#     more in re_validate.py. That file holds six UP031 sites in all: one of the
+#     40 logging calls, one hand-aligned column block, and four plain %
+#     expressions -- two building an emailed report, two building the same text a
+#     print() emits. It held a seventh until its hand-copied --log help text was
+#     replaced by the _common constant it duplicated. Fourteen more sites are
+#     gone: the archives pair's eight, and the version-number format string each
+#     of the six checksum and shelf tools held a copy of. That code now lives one
+#     copy in holdings_maintenance/_common.py, written with concatenation or an
+#     f-string, which ruff does not flag.
+#   B006/SIM115/RUF015/PT028 -- tool signatures and control flow whose
+#     rewrite changes what propagates, when a file closes, or which exception is
+#     raised.
+#   PT017/PT015/PT012/PT014/B011 -- rewriting these changes what a test asserts,
+#     and PT014's duplicate case cannot be dropped without removing a test id.
+#   RUF005 -- `x + [y]` is the spelling this project uses (owner, 2026-08-03).
+#   RUF100 in scripts/dump_public_api.py -- that file may not be edited at all,
+#     so this entry is permanent by prohibition rather than by freeze.
+#   re_validate.py is down from ten codes to two. Eight went when the module
+#     gained a main(): C405 had no site left, and B007, E701, E721, I001, RUF051,
+#     RUF059 and UP034 were fixed outright. The two that remain are the two that
+#     are permanent everywhere else in this file -- RUF005 by owner choice, and
+#     UP031 on a logging call, a hand-aligned column block and four plain %
+#     expressions.
+#   A few entries are locked for now rather than for ever -- RUF059 on
+#     pdsinfoshelf and PT014 -- each because the fix would change behavior or
+#     remove a test id. Deviation (4) names the later PR that owns each one. Two
+#     have since gone: the N806 on the three LOGDIRS locals, when the tools moved
+#     to one shared list of log directories, and the F821 on the shelf
+#     consistency checker, a tool since removed outright (issue #156).
+"scripts/dump_public_api.py" = ["RUF100"]
+# CORE (PR-23) -- the eight entries below plus pdscache.py, pdsfile.py and
+# pdsviewable.py further down, which sort after the rule modules. The fifteen
+# modules directly under src/pdsfile/ were re-derived with the template select set
+# and no per-file-ignores at all (154 violations) and every one classified fixable
+# or excluded; 114 were fixed. The 40 that remain are permanent, and each is
+# enumerated with its sites and its reason in plans/2026-08-03-pr-23-subplan.md
+# section 5 and in .cursor/rules/pdsfile_overrides.mdc deviation (4).
+# RUF005 is an owner-chosen style exclusion: `x + [y]` is the spelling this
+# project uses, and the `[*x, y]` rewrite is not wanted anywhere. It is permanent,
+# not a residue awaiting cleanup, and it is the reason five of the entries below
+# exist at all.
+# _associations.py, _local_fs.py, _path_utils.py and preload_and_cache.py need no
+# entry at all.
+"src/pdsfile/__init__.py" = ["F403"]           # x2: the star imports bind the frozen surface
+"src/pdsfile/_derived_paths.py" = ["A002"]     # x3: the frozen dir= parameter the tools pass by keyword
+"src/pdsfile/_index_rows.py" = ["RUF005"]      # x1: owner-chosen style exclusion
+"src/pdsfile/_opus.py" = ["RUF005"]            # x1: owner-chosen style exclusion
+"src/pdsfile/_preload.py" = ["RUF005"]         # x1: owner-chosen style exclusion
+"src/pdsfile/_properties.py" = ["RUF005"]      # x1: style, and _info_filled is a list on two construction paths
+"src/pdsfile/_shelves.py" = ["B904"]           # x1: from err / from None both change the traceback
+"src/pdsfile/_sorting.py" = ["RUF005"]         # x4: owner-chosen style exclusion
+"src/pdsfile/holdings_maintenance/pds3/crlf.py" = ["PT028"]  # x2: test_crlf is a tool function, not a pytest test
+"src/pdsfile/holdings_maintenance/pds3/pdsarchives.py" = ["SIM115"]
+"src/pdsfile/holdings_maintenance/pds3/pdschecksums.py" = ["B006", "SIM115", "UP031"]
+"src/pdsfile/holdings_maintenance/pds3/pdsdependency.py" = ["B006", "PT028", "RUF012", "UP031"]
+"src/pdsfile/holdings_maintenance/pds3/pdsinfoshelf.py" = ["B006", "RUF005", "RUF015", "UP031"]
+"src/pdsfile/holdings_maintenance/pds3/pdslinkshelf.py" = ["UP031"]
+"src/pdsfile/holdings_maintenance/pds3/re_validate.py" = ["RUF005", "UP031"]  # RUF005 x2, UP031 x6
+"src/pdsfile/holdings_maintenance/pds4/pds4checksums.py" = ["UP031"]
+"src/pdsfile/holdings_maintenance/pds4/pds4infoshelf.py" = ["RUF005", "RUF015", "UP031"]
+"src/pdsfile/holdings_maintenance/pds4/pds4linkshelf.py" = ["UP031"]
+"src/pdsfile/pds3file/__init__.py" = ["A002", "F401", "I001", "RUF012"]
+"src/pdsfile/pds3file/rules/ASTROM_xxxx.py" = ["E501", "N801", "N999"]
+"src/pdsfile/pds3file/rules/COCIRS_xxxx.py" = ["E501", "N801", "N999", "RUF012", "UP031"]
+"src/pdsfile/pds3file/rules/COISS_xxxx.py" = ["E501", "N801", "N802", "N999", "RUF012"]
+"src/pdsfile/pds3file/rules/CORSS_8xxx.py" = ["E501", "N801", "N999", "RUF012"]
+"src/pdsfile/pds3file/rules/COSP_xxxx.py" = ["E501", "N801", "N999"]
+"src/pdsfile/pds3file/rules/COUVIS_0xxx.py" = ["E501", "N801", "N802", "N999", "RUF012"]
+"src/pdsfile/pds3file/rules/COUVIS_8xxx.py" = ["E501", "N801", "N999", "RUF012"]
+"src/pdsfile/pds3file/rules/COVIMS_0xxx.py" = ["E501", "N801", "N802", "N805", "N999", "RUF012"]
+"src/pdsfile/pds3file/rules/COVIMS_8xxx.py" = ["E501", "N801", "N999", "RUF012"]
+"src/pdsfile/pds3file/rules/EBROCC_xxxx.py" = ["E501", "N801", "N999", "RUF012"]
+"src/pdsfile/pds3file/rules/GO_0xxx.py" = ["E501", "N801", "N999", "RUF012"]
+"src/pdsfile/pds3file/rules/HSTxx_xxxx.py" = ["E501", "N801", "N999", "RUF012"]
+"src/pdsfile/pds3file/rules/JNOJIR_xxxx.py" = ["E501", "N801", "N999"]
+"src/pdsfile/pds3file/rules/JNOJNC_xxxx.py" = ["E501", "N801", "N999", "RUF012"]
+"src/pdsfile/pds3file/rules/JNOSP_xxxx.py" = ["E501", "N801", "N999"]
+"src/pdsfile/pds3file/rules/JNOSRU_xxxx.py" = ["E501", "N801", "N999", "RUF012"]
+"src/pdsfile/pds3file/rules/NHSP_xxxx.py" = ["E501", "N801", "N999"]
+"src/pdsfile/pds3file/rules/NHxxxx_xxxx.py" = ["E501", "N801", "N999", "RUF012"]
+"src/pdsfile/pds3file/rules/RES_xxxx.py" = ["E501", "N801", "N999"]
+"src/pdsfile/pds3file/rules/RPX_xxxx.py" = ["E501", "N801", "N802", "N999", "RUF012"]
+"src/pdsfile/pds3file/rules/VGIRIS_xxxx.py" = ["E501", "N801", "N999"]
+"src/pdsfile/pds3file/rules/VGISS_xxxx.py" = ["E501", "N801", "N999", "RUF012"]
+"src/pdsfile/pds3file/rules/VG_0xxx.py" = ["E501", "N801", "N999", "RUF012"]
+"src/pdsfile/pds3file/rules/VG_20xx.py" = ["E501", "N801", "N999"]
+"src/pdsfile/pds3file/rules/VG_28xx.py" = ["E501", "N801", "N999", "RUF012"]
+"src/pdsfile/pds3file/rules/__init__.py" = ["E501", "RUF022"]
+"src/pdsfile/pds4file/__init__.py" = ["F401", "I001", "RUF012"]
+"src/pdsfile/pds4file/rules/__init__.py" = ["E501", "RUF022"]
+"src/pdsfile/pds4file/rules/cassini_iss.py" = ["E501", "N801", "RUF012"]
+"src/pdsfile/pds4file/rules/cassini_iss_fring_mosaics_rsfrench2025.py" = ["E501", "N801", "RUF012"]
+"src/pdsfile/pds4file/rules/cassini_iss_fring_mosaics_rsfrench2025_primary_filespec.py" = ["W191"]
+"src/pdsfile/pds4file/rules/cassini_iss_spokes_hedman_hamilton_2024.py" = ["E501", "N801"]
+"src/pdsfile/pds4file/rules/cassini_uvis_solarocc_beckerjarmak2023.py" = ["E501", "N801", "RUF012"]
+"src/pdsfile/pds4file/rules/cassini_vims.py" = ["E501", "N801", "RUF012"]
+"src/pdsfile/pds4file/rules/uranus_occs_earthbased.py" = ["B007", "E501", "N801", "RUF012"]
+"src/pdsfile/pdscache.py" = ["RUF015", "UP031"]  # x1 each, both inside MemcachedCache
+"src/pdsfile/pdsfile.py" = ["B904", "I001", "RUF012"]  # x3, x1, x16
+"src/pdsfile/pdsviewable.py" = ["B006"]         # x3: frozen public signatures
+"tests/pds3file/test_pds3file_blackbox.py" = ["B011", "E501", "PT015", "PT017"]
+"tests/pds3file/test_pds3file_blackbox_cached.py" = ["E501"]
+"tests/pds3file/test_pds3file_whitebox.py" = ["E501", "PT012", "PT017"]
+"tests/pds4file/test_pds4file_blackbox.py" = ["E501", "PT014"]
+"tests/rules/pds3/test_corss_8xxx.py" = ["E501"]
+"tests/rules/pds3/test_couvis_8xxx.py" = ["E501"]
+"tests/rules/pds3/test_nhxxxx_xxxx.py" = ["E501"]
+"tests/rules/pds4/test_uranus_occs_earthbased.py" = ["E501"]
+
+[tool.pymarkdown.plugins.md013]
+# Line length (disable so README/CONTRIBUTING can use longer lines).
+enabled = false
+
+[tool.pymarkdown.plugins.md033]
+# Inline HTML (e.g. <br>) allowed in Markdown.
+enabled = false

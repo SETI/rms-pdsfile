@@ -1,0 +1,918 @@
+##########################################################################################
+# pds3file/rules/GO_0xxx.py
+##########################################################################################
+
+"""Rules for the GO_0xxx volume set: Galileo images.
+
+GO_0xxx is described in the holdings as the Galileo image collection, PDS3
+compliant, with modernized file names; the earlier GO_0xxx_v1 is the original
+release under the PDS2 standard (``_volinfo/GO_0xxx.txt``). A data file is a raw
+VICAR image, and products are filed under the "Galileo SSI" OPUS category. Volumes
+group images by orbit and by target, with separate directories for calibration
+images, for the Earth-Moon conjunction and for the Galileo Optical Experiment.
+
+Some images were processed more than once, and the reprocessed copies live in
+``REDO/``, ``REPAIRED/`` and ``TIRETRACK/`` directories that supersede an image
+elsewhere in the volume set. The module header lists every such image with the image
+it supersedes, and two of them have no counterpart.
+
+The rule tables:
+
+* ``description_and_icon_by_regex`` -- names the raw, repaired and SL9-overlay
+  images, the spacecraft-clock directories that hold them, the nested orbit and
+  target directories, and two index entries in the metadata tree. It carries entries
+  for the calibration, Earth-Moon, optical-experiment, top-level target and
+  reprocessed-image directories too, and none of those six fires: four are a path
+  component short of a real logical path, one demands an extra character after the
+  volume ID and one looks for a directory named "GO_0018REDO" with no separator. All
+  six of those directories fall through to the generic "Directory".
+* ``default_viewables`` -- points an image at its preview images.
+* ``associations_to_volumes``, ``associations_to_previews``,
+  ``associations_to_metadata`` and ``associations_to_documents`` -- cross the
+  volumes, previews, metadata and documents trees for one image.
+* ``versions`` -- the paths of the same image in the other version of this volume
+  set, whose file names differ: the earlier version splits an image name after its
+  first seven characters and makes those a directory, so ``C0003061100R.IMG`` there
+  is ``C000306/1100R.IMG``.
+* ``view_options``, ``neighbors``, ``sort_key`` and ``split_rules`` -- the view
+  flags, the corresponding directories in sibling volumes, the basename sort order
+  and the basename grouping.
+* ``opus_type``, ``opus_format`` and ``opus_products`` -- file products under the
+  "Galileo SSI" OPUS category as "Raw Image" and "Image with SL9 graphics overlay",
+  and list what OPUS offers with each.
+* ``opus_id`` and ``opus_id_to_primary_logical_path`` -- the OPUS ID and its
+  inverse.
+
+The class body carries ``GO_0xxx.METADATA_PATH_TRANSLATOR``, which replaces the
+volume IDs in a metadata path with a dollar sign, and defines
+``GO_0xxx.opus_prioritizer``, which is what the reprocessed copies require: when an
+OPUS product group holds more than one copy of a data product, it keeps the
+reprocessed copy under the original heading and moves the copies it supersedes to a
+"(Superseded Processing)" heading. `NHxxxx_xxxx.py` is the only other rule module
+that defines a prioritizer.
+"""
+
+import re
+
+import translator
+
+import pdsfile.pds3file as pds3file
+
+# This is a complete list of all images that appear under REDO/REPAIRED/TIRETRACK, along with the images they supersede:
+# GO_0006/REDO/C0018062639R.IMG             GO_0002/VENUS/C0018062639R.IMG
+# GO_0006/REDO/C0018241745R.IMG             GO_0002/VENUS/C0018241745R.IMG
+# GO_0006/REDO/C0018353518R.IMG             GO_0002/VENUS/C0018353518R.IMG
+# GO_0006/REDO/C0018518445R.IMG             GO_0002/VENUS/C0018518445R.IMG
+# GO_0006/REDO/C0059469700R.IMG             GO_0002/RAW_CAL/C0059469700R.IMG
+# GO_0006/REDO/C0059471700R.IMG             GO_0002/RAW_CAL/C0059471700R.IMG
+# GO_0006/REDO/C0060964000R.IMG             GO_0003/MOON/C0060964000R.IMG
+# GO_0006/REDO/C0061078900R.IMG             GO_0004/EARTH/C0061078900R.IMG
+# GO_0006/REDO/C0061116300R.IMG             GO_0004/MOON/C0061116300R.IMG
+# GO_0006/REDO/C0061116600R.IMG             GO_0004/MOON/C0061116600R.IMG
+# GO_0006/REDO/C0061424500R.IMG             GO_0004/EARTH/C0061424500R.IMG
+# GO_0006/REDO/C0061441500R.IMG             GO_0004/EARTH/C0061441500R.IMG
+# GO_0006/REDO/C0061469100R.IMG             GO_0005/EARTH/C0061469100R.IMG
+# GO_0006/REDO/C0061508200R.IMG             GO_0005/EARTH/C0061508200R.IMG
+# GO_0006/REDO/C0061509700R.IMG             GO_0005/EARTH/C0061509700R.IMG
+# GO_0006/REDO/C0061510400R.IMG             GO_0005/EARTH/C0061510400R.IMG
+# GO_0006/REDO/C0061510800R.IMG             GO_0005/EARTH/C0061510800R.IMG
+# GO_0006/REDO/C0061512600R.IMG             GO_0005/EARTH/C0061512600R.IMG
+# GO_0006/REDO/C0061516300R.IMG             GO_0005/EARTH/C0061516300R.IMG
+# GO_0006/REDO/C0061516400R.IMG             GO_0005/EARTH/C0061516400R.IMG
+# GO_0006/REDO/C0061516700R.IMG             GO_0005/EARTH/C0061516700R.IMG
+# GO_0006/REDO/C0061522100R.IMG             GO_0005/EARTH/C0061522100R.IMG
+# GO_0006/REDO/C0061525200R.IMG             GO_0005/EARTH/C0061525200R.IMG
+# GO_0006/REDO/C0061526200R.IMG             GO_0005/EARTH/C0061526200R.IMG
+# GO_0006/REDO/C0061530600R.IMG             GO_0005/EARTH/C0061530600R.IMG
+# GO_0006/REDO/C0061531400R.IMG             GO_0005/EARTH/C0061531400R.IMG
+# GO_0006/REDO/C0061531700R.IMG             GO_0005/EARTH/C0061531700R.IMG
+# GO_0006/REDO/C0061533800R.IMG             GO_0005/EARTH/C0061533800R.IMG
+# GO_0006/REDO/C0061535500R.IMG             GO_0005/EARTH/C0061535500R.IMG
+# GO_0006/REDO/C0061539600R.IMG             GO_0006/EARTH/C0061539600R.IMG
+# GO_0006/REDO/C0061542500R.IMG             GO_0006/EARTH/C0061542500R.IMG
+# GO_0007/REDO/C0059466445R.IMG             (no counterpart)
+# GO_0015/REDO/C0165242700R.IMG             GO_0012/EARTH/C0165242700R.IMG
+# GO_0018/REDO/C3/JUPITER/C0368976900R.IMG  GO_0017/C3/JUPITER/C0368976900R.IMG
+# GO_0018/REDO/C3/JUPITER/C0368977500R.IMG  GO_0017/C3/JUPITER/C0368977500R.IMG
+# GO_0018/REDO/C3/JUPITER/C0368977800R.IMG  GO_0017/C3/JUPITER/C0368977800R.IMG
+# GO_0018/REDO/C3/JUPITER/C0368978100R.IMG  GO_0017/C3/JUPITER/C0368978100R.IMG
+# GO_0018/REDO/C3/JUPITER/C0368978700R.IMG  GO_0017/C3/JUPITER/C0368978700R.IMG
+# GO_0018/REDO/C3/JUPITER/C0368979000R.IMG  GO_0017/C3/JUPITER/C0368979000R.IMG
+# GO_0018/REDO/C3/JUPITER/C0368979400R.IMG  GO_0017/C3/JUPITER/C0368979400R.IMG
+# GO_0018/REDO/C3/JUPITER/C0368979900R.IMG  GO_0017/C3/JUPITER/C0368979900R.IMG
+# GO_0018/REDO/C3/JUPITER/C0368980400R.IMG  GO_0017/C3/JUPITER/C0368980400R.IMG
+# GO_0018/REDO/C3/JUPITER/C0368980900R.IMG  GO_0017/C3/JUPITER/C0368980900R.IMG
+# GO_0018/REDO/C3/JUPITER/C0368990100R.IMG  GO_0017/C3/JUPITER/C0368990100R.IMG
+# GO_0018/REDO/C3/JUPITER/C0368990300R.IMG  GO_0017/C3/JUPITER/C0368990300R.IMG
+# GO_0019/REDO/C3/EUROPA/C0368976678R.IMG   GO_0017/C3/EUROPA/C0368976678R.IMG
+# GO_0019/REDO/C3/EUROPA/C0368976713R.IMG   GO_0017/C3/EUROPA/C0368976713R.IMG
+# GO_0019/REDO/C3/EUROPA/C0368976739R.IMG   GO_0017/C3/EUROPA/C0368976739R.IMG
+# GO_0019/REDO/C3/EUROPA/C0368976765R.IMG   GO_0017/C3/EUROPA/C0368976765R.IMG
+# GO_0019/REDO/C3/EUROPA/C0368976800R.IMG   GO_0017/C3/EUROPA/C0368976800R.IMG
+# GO_0019/REDO/C3/EUROPA/C0368976826R.IMG   GO_0017/C3/EUROPA/C0368976826R.IMG
+# GO_0019/REDO/C3/JUPITER/C0368369268R.IMG  GO_0017/C3/JUPITER/C0368369268R.IMG
+# GO_0019/REDO/C3/JUPITER/C0368441600R.IMG  GO_0017/C3/JUPITER/C0368441600R.IMG
+# GO_0019/REDO/E4/EUROPA/C0374667300R.IMG   GO_0018/E4/EUROPA/C0374667300R.IMG
+# GO_0019/REDO/E6/IO/C0383655111R.IMG       GO_0018/E6/IO/C0383655111R.IMG
+# GO_0020/E12/TIRETRACK/C0426272849S.IMG    GO_0020/E12/EUROPA/C0426272849R.IMG
+# GO_0020/E12/TIRETRACK/C0426272853S.IMG    GO_0020/E12/EUROPA/C0426272853R.IMG
+# GO_0020/E12/TIRETRACK/C0426272856S.IMG    GO_0020/E12/EUROPA/C0426272856R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520792767S.IMG  GO_0022/I24/IO/GARBLED/C0520792767R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520792770S.IMG  GO_0022/I24/IO/GARBLED/C0520792770R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520792771S.IMG  GO_0022/I24/IO/GARBLED/C0520792771R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520792774S.IMG  GO_0022/I24/IO/GARBLED/C0520792774R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520792778S.IMG  GO_0022/I24/IO/GARBLED/C0520792778R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520792782S.IMG  GO_0022/I24/IO/GARBLED/C0520792782R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520792784S.IMG  GO_0022/I24/IO/GARBLED/C0520792784R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520792788S.IMG  GO_0022/I24/IO/GARBLED/C0520792788R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520792949S.IMG  GO_0022/I24/IO/GARBLED/C0520792949R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520792953S.IMG  GO_0022/I24/IO/GARBLED/C0520792953R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520792956S.IMG  GO_0022/I24/IO/GARBLED/C0520792956R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520792960S.IMG  GO_0022/I24/IO/GARBLED/C0520792960R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520792963S.IMG  GO_0022/I24/IO/GARBLED/C0520792963R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520792967S.IMG  GO_0022/I24/IO/GARBLED/C0520792967R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520792970S.IMG  GO_0022/I24/IO/GARBLED/C0520792970R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520792974S.IMG  GO_0022/I24/IO/GARBLED/C0520792974R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520792977S.IMG  GO_0022/I24/IO/GARBLED/C0520792977R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520792981S.IMG  GO_0022/I24/IO/GARBLED/C0520792981R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520792984S.IMG  GO_0022/I24/IO/GARBLED/C0520792984R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520792988S.IMG  GO_0022/I24/IO/GARBLED/C0520792988R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520793256S.IMG  GO_0022/I24/IO/GARBLED/C0520793256R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520793260S.IMG  GO_0022/I24/IO/GARBLED/C0520793260R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520793267S.IMG  GO_0022/I24/IO/GARBLED/C0520793267R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520793270S.IMG  GO_0022/I24/IO/GARBLED/C0520793270R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520793274S.IMG  GO_0022/I24/IO/GARBLED/C0520793274R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520793277S.IMG  GO_0022/I24/IO/GARBLED/C0520793277R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520793281S.IMG  GO_0022/I24/IO/GARBLED/C0520793281R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520793284S.IMG  GO_0022/I24/IO/GARBLED/C0520793284R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520793288S.IMG  GO_0022/I24/IO/GARBLED/C0520793288R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520793649S.IMG  GO_0022/I24/IO/GARBLED/C0520793649R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520793653S.IMG  GO_0022/I24/IO/GARBLED/C0520793653R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520793656S.IMG  GO_0022/I24/IO/GARBLED/C0520793656R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520793660S.IMG  GO_0022/I24/IO/GARBLED/C0520793660R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520793663S.IMG  GO_0022/I24/IO/GARBLED/C0520793663R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520793667S.IMG  GO_0022/I24/IO/GARBLED/C0520793667R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520793670S.IMG  GO_0022/I24/IO/GARBLED/C0520793670R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520793674S.IMG  GO_0022/I24/IO/GARBLED/C0520793674R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520793677S.IMG  GO_0022/I24/IO/GARBLED/C0520793677R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520793681S.IMG  GO_0022/I24/IO/GARBLED/C0520793681R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520793684S.IMG  GO_0022/I24/IO/GARBLED/C0520793684R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520793688S.IMG  GO_0022/I24/IO/GARBLED/C0520793688R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520794063S.IMG  GO_0022/I24/IO/GARBLED/C0520794063R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520794067S.IMG  GO_0022/I24/IO/GARBLED/C0520794067R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520794070S.IMG  GO_0022/I24/IO/GARBLED/C0520794070R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520794074S.IMG  GO_0022/I24/IO/GARBLED/C0520794074R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520794077S.IMG  GO_0022/I24/IO/GARBLED/C0520794077R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520794081S.IMG  GO_0022/I24/IO/GARBLED/C0520794081R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520794084S.IMG  GO_0022/I24/IO/GARBLED/C0520794084R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520794088S.IMG  GO_0022/I24/IO/GARBLED/C0520794088R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520794470S.IMG  GO_0022/I24/IO/GARBLED/C0520794470R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520794474S.IMG  GO_0022/I24/IO/GARBLED/C0520794474R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520794477S.IMG  GO_0022/I24/IO/GARBLED/C0520794477R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520794481S.IMG  GO_0022/I24/IO/GARBLED/C0520794481R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520794484S.IMG  GO_0022/I24/IO/GARBLED/C0520794484R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520794488S.IMG  GO_0022/I24/IO/GARBLED/C0520794488R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520794911S.IMG  GO_0022/I24/IO/GARBLED/C0520794911R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520795249S.IMG  GO_0022/I24/IO/GARBLED/C0520795249R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520795253S.IMG  GO_0022/I24/IO/GARBLED/C0520795253R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520795256S.IMG  GO_0022/I24/IO/GARBLED/C0520795256R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520795384S.IMG  GO_0022/I24/IO/GARBLED/C0520795384R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520795388S.IMG  GO_0022/I24/IO/GARBLED/C0520795388R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520795400S.IMG  GO_0022/I24/IO/GARBLED/C0520795400R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520795742S.IMG  GO_0022/I24/IO/GARBLED/C0520795742R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520795746S.IMG  GO_0022/I24/IO/GARBLED/C0520795746R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520795881S.IMG  GO_0022/I24/IO/GARBLED/C0520795881R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520795884S.IMG  GO_0022/I24/IO/GARBLED/C0520795884R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520795888S.IMG  GO_0022/I24/IO/GARBLED/C0520795888R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520797284S.IMG  GO_0022/I24/IO/GARBLED/C0520797284R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520797288S.IMG  GO_0022/I24/IO/GARBLED/C0520797288R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520797300S.IMG  GO_0022/I24/IO/GARBLED/C0520797300R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520797304S.IMG  GO_0022/I24/IO/GARBLED/C0520797304R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520797307S.IMG  GO_0022/I24/IO/GARBLED/C0520797307R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520797311S.IMG  GO_0022/I24/IO/GARBLED/C0520797311R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520797442S.IMG  GO_0022/I24/IO/GARBLED/C0520797442R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520797446S.IMG  GO_0022/I24/IO/GARBLED/C0520797446R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520797449S.IMG  GO_0022/I24/IO/GARBLED/C0520797449R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520797453S.IMG  GO_0022/I24/IO/GARBLED/C0520797453R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520797970S.IMG  GO_0022/I24/IO/GARBLED/C0520797970R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520797974S.IMG  GO_0022/I24/IO/GARBLED/C0520797974R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520797977S.IMG  GO_0022/I24/IO/GARBLED/C0520797977R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520797981S.IMG  GO_0022/I24/IO/GARBLED/C0520797981R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520798328S.IMG  GO_0022/I24/IO/GARBLED/C0520798328R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520798332S.IMG  GO_0022/I24/IO/GARBLED/C0520798332R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520798335S.IMG  GO_0022/I24/IO/GARBLED/C0520798335R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520798339S.IMG  GO_0022/I24/IO/GARBLED/C0520798339R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520798342S.IMG  GO_0022/I24/IO/GARBLED/C0520798342R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520798346S.IMG  GO_0022/I24/IO/GARBLED/C0520798346R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520798477S.IMG  GO_0022/I24/IO/GARBLED/C0520798477R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520798481S.IMG  GO_0022/I24/IO/GARBLED/C0520798481R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520798484S.IMG  GO_0022/I24/IO/GARBLED/C0520798484R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520798488S.IMG  GO_0022/I24/IO/GARBLED/C0520798488R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520798500S.IMG  GO_0022/I24/IO/GARBLED/C0520798500R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520798504S.IMG  GO_0022/I24/IO/GARBLED/C0520798504R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520798635S.IMG  GO_0022/I24/IO/GARBLED/C0520798635R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520798639S.IMG  GO_0022/I24/IO/GARBLED/C0520798639R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520798642S.IMG  GO_0022/I24/IO/GARBLED/C0520798642R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520798646S.IMG  GO_0022/I24/IO/GARBLED/C0520798646R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520798649S.IMG  GO_0022/I24/IO/GARBLED/C0520798649R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520798653S.IMG  GO_0022/I24/IO/GARBLED/C0520798653R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520799170S.IMG  GO_0022/I24/IO/GARBLED/C0520799170R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520799174S.IMG  GO_0022/I24/IO/GARBLED/C0520799174R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520799177S.IMG  GO_0022/I24/IO/GARBLED/C0520799177R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520799181S.IMG  GO_0022/I24/IO/GARBLED/C0520799181R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520799184S.IMG  GO_0022/I24/IO/GARBLED/C0520799184R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520799188S.IMG  GO_0022/I24/IO/GARBLED/C0520799188R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520806300S.IMG  GO_0022/I24/IO/GARBLED/C0520806300R.IMG
+# GO_0022/I24/IO/REPAIRED/C0520806304S.IMG  GO_0022/I24/IO/GARBLED/C0520806304R.IMG
+# GO_0023/G28/REPAIRED/C0552447569S.IMG     GO_0023/G28/GARBLED/C0552447569R.IMG
+# GO_0023/G29/REPAIRED/C0600491113S.IMG     GO_0023/G29/GARBLED/C0600491113R.IMG
+# GO_0023/G29/REPAIRED/C0600491185S.IMG     GO_0023/G29/GARBLED/C0600491185R.IMG
+# GO_0023/G29/REPAIRED/C0600492445S.IMG     GO_0023/G29/GARBLED/C0600492445R.IMG
+# GO_0023/G29/REPAIRED/C0600492468S.IMG     GO_0023/G29/GARBLED/C0600492468R.IMG
+# GO_0023/G29/REPAIRED/C0600492500S.IMG     GO_0023/G29/GARBLED/C0600492500R.IMG
+# GO_0023/G29/REPAIRED/C0600492522S.IMG     GO_0023/G29/GARBLED/C0600492522R.IMG
+# GO_0023/G29/REPAIRED/C0600492523S.IMG     GO_0023/G29/GARBLED/C0600492523R.IMG
+# GO_0023/G29/REPAIRED/C0600492545S.IMG     GO_0023/G29/GARBLED/C0600492545R.IMG
+# GO_0023/G29/REPAIRED/C0600660200S.IMG     GO_0023/G29/GARBLED/C0600660200R.IMG
+# GO_0023/G29/REPAIRED/C0600660201S.IMG     GO_0023/G29/GARBLED/C0600660201R.IMG
+# GO_0023/G29/REPAIRED/C0600660222S.IMG     GO_0023/G29/GARBLED/C0600660222R.IMG
+# GO_0023/G29/REPAIRED/C0600660223S.IMG     GO_0023/G29/GARBLED/C0600660223R.IMG
+# GO_0023/G29/REPAIRED/C0600660245S.IMG     GO_0023/G29/GARBLED/C0600660245R.IMG
+# GO_0023/G29/REPAIRED/C0600660246S.IMG     GO_0023/G29/GARBLED/C0600660246R.IMG
+# GO_0023/G29/REPAIRED/C0600660368S.IMG     GO_0023/G29/GARBLED/C0600660368R.IMG
+# GO_0023/G29/REPAIRED/C0600660369S.IMG     GO_0023/G29/GARBLED/C0600660369R.IMG
+# GO_0023/G29/REPAIRED/C0600660522S.IMG     GO_0023/G29/GARBLED/C0600660522R.IMG
+# GO_0023/G29/REPAIRED/C0600660523S.IMG     GO_0023/G29/GARBLED/C0600660523R.IMG
+# GO_0023/G29/REPAIRED/C0600660668S.IMG     GO_0023/G29/GARBLED/C0600660668R.IMG
+# GO_0023/G29/REPAIRED/C0600660669S.IMG     GO_0023/G29/GARBLED/C0600660669R.IMG
+# GO_0023/G29/REPAIRED/C0600660822S.IMG     GO_0023/G29/GARBLED/C0600660822R.IMG
+# GO_0023/G29/REPAIRED/C0600660823S.IMG     GO_0023/G29/GARBLED/C0600660823R.IMG
+# GO_0023/G29/REPAIRED/C0600660968S.IMG     GO_0023/G29/GARBLED/C0600660968R.IMG
+# GO_0023/G29/REPAIRED/C0600660969S.IMG     GO_0023/G29/GARBLED/C0600660969R.IMG
+# GO_0023/REDO/E11/IO/C0420361500R.IMG      (no counterpart)
+
+##########################################################################################
+# DESCRIPTION_AND_ICON
+##########################################################################################
+
+description_and_icon_by_regex = translator.TranslatorByRegex([
+    (r'volumes/\w+/\w+(|/REDO)/[CEGIJ]\d\d?',            0, ('Images grouped by orbit',  'IMAGEDIR')),
+    (r'volumes/\w+/\w+(|/REDO)/[CEGIJ]\d\d?/\w+',        0, ('Images grouped by target', 'IMAGEDIR')),
+    (r'volumes/\w+/(MOON|EARTH|VENUS|IDA|GASPRA|SL9)',   0, ('Images grouped by target', 'IMAGEDIR')),
+    (r'volumes/\w+/RAW_CAL',                             0, ('Calibration images',       'IMAGEDIR')),
+    (r'volumes/\w+/EMCONJ',                              0, ('Images targeted at the Earth-Moon conjunction', 'IMAGEDIR')),
+    (r'volumes/\w+/GOPEX',                               0, ('Images for the Galileo Optical Experiment',     'IMAGEDIR')),
+    (r'volumes/\w+/\w+(|/REDO)/[CEGIJ]\d\d?/\w+/C\d{6}', 0, ('Images grouped by SC clock',           'IMAGEDIR')),
+    (r'volumes/\w+/GO_00(0\d|1[0-6])\w+/REDO',           0, ('Re-processed images',                  'IMAGEDIR')),
+    (r'volumes/\w+/GO_00(1[789]|2\d)REDO',               0, ('Re-processed images grouped by orbit', 'IMAGEDIR')),
+
+    (r'volumes/.*/REDO/.*R\.IMG', 0, ('Repaired raw image, VICAR'             , 'IMAGE')),
+    (r'volumes/.*S\.IMG',         0, ('Repaired raw image, VICAR'             , 'IMAGE')),
+    (r'volumes/.*R\.IMG',         0, ('Raw image, VICAR'                      , 'IMAGE')),
+    (r'volumes/.*G\.IMG',         0, ('Image with SL9 graphics overlay, VICAR', 'IMAGE')),
+
+    # Old metadata versions
+    (r'metadata/GO_0xxx/GO_0016/GO_0016_sl9_index.tab', 0, ('Index for SL9 multiple exposures', 'INDEX')),
+
+    (r'metadata/GO_0xxx/GO_0016/GO_0016_sl9_mosaic_index.tab', 0, ('Index for SL9 multiple exposures', 'INDEX')),
+])
+
+##########################################################################################
+# VIEWABLES
+##########################################################################################
+
+default_viewables = translator.TranslatorByRegex([
+    (r'volumes/(.*/C\d{10}[A-Z])\.(IMG|LBL)', 0,
+            [r'previews/\1_full.jpg',
+             r'previews/\1_med.jpg',
+             r'previews/\1_small.jpg',
+             r'previews/\1_thumb.jpg',
+            ]),
+    (r'volumes/(GO_0xxx_v1/.*/C\d{6}/.*)\.(IMG|LBL)', 0,
+            [r'previews/\1_full.jpg',
+             r'previews/\1_med.jpg',
+             r'previews/\1_small.jpg',
+             r'previews/\1_thumb.jpg',
+            ]),
+])
+
+##########################################################################################
+# ASSOCIATIONS
+##########################################################################################
+
+associations_to_volumes = translator.TranslatorByRegex([
+    (r'.*/(GO_0xxx/GO_..../.*/C\d{10}[A-Z]).*', 0,
+            [r'volumes/\1.IMG',
+             r'volumes/\1.LBL',
+            ]),
+    (r'.*/GO_0xxx_v1/(GO_..../.*/C\d{6})/(\d{4}[A-Z]).*', 0,
+            [r'volumes/GO_0xxx_v1/\1/\2.IMG',
+             r'volumes/GO_0xxx_v1/\1/\2.LBL',
+             r'volumes/GO_0xxx/\1\2.IMG',
+             r'volumes/GO_0xxx/\1\2.LBL'
+            ]),
+    (r'previews/(GO_0..._v1/.*)_[a-z]+\.jpg', 0,
+            [r'volumes/\1.IMG',
+             r'volumes/\1.LBL',
+            ]),
+    (r'metadata/GO_0xxx/GO_0999.*', 0,
+            r'volumes/GO_0xxx'),
+    (r'metadata/GO_0xxx_v1/GO_0999.*', 0,
+            r'volumes/GO_0xxx_v1'),
+
+    # SL9 "graphics" file associations
+    (r'volumes/GO_0xxx/GO_0016/SL9/(C\d{10})R\.(IMG|LBL)', 0,
+            [r'volumes/GO_0xxx/GO_0016/SL9/\1G.IMG',
+             r'volumes/GO_0xxx/GO_0016/SL9/\1G.LBL',
+            ]),
+
+    (r'volumes/GO_0xxx/GO_0016/SL9/(C\d{10})G\.(IMG|LBL)', 0,
+            [r'volumes/GO_0xxx/GO_0016/SL9/\1R.IMG',
+             r'volumes/GO_0xxx/GO_0016/SL9/\1R.LBL',
+            ]),
+
+    # Known duplicates...
+    (r'volumes/GO_0xxx/GO_0006/REDO/(C0018062639R).*'   , 0, r'volumes/GO_0xxx/GO_0002/VENUS/\1.*'),
+    (r'volumes/GO_0xxx/GO_0006/REDO/(C0018241745R).*'   , 0, r'volumes/GO_0xxx/GO_0002/VENUS/\1.*'),
+    (r'volumes/GO_0xxx/GO_0006/REDO/(C0018353518R).*'   , 0, r'volumes/GO_0xxx/GO_0002/VENUS/\1.*'),
+    (r'volumes/GO_0xxx/GO_0006/REDO/(C0018518445R).*'   , 0, r'volumes/GO_0xxx/GO_0002/VENUS/\1.*'),
+    (r'volumes/GO_0xxx/GO_0006/REDO/(C0059469700R).*'   , 0, r'volumes/GO_0xxx/GO_0002/RAW_CAL/\1.*'),
+    (r'volumes/GO_0xxx/GO_0006/REDO/(C0059471700R).*'   , 0, r'volumes/GO_0xxx/GO_0002/RAW_CAL/\1.*'),
+    (r'volumes/GO_0xxx/GO_0006/REDO/(C0060964000R).*'   , 0, r'volumes/GO_0xxx/GO_0003/MOON/\1.*'),
+    (r'volumes/GO_0xxx/GO_0006/REDO/(C0061078900R).*'   , 0, r'volumes/GO_0xxx/GO_0004/EARTH/\1.*'),
+    (r'volumes/GO_0xxx/GO_0006/REDO/(C0061116.00R).*'   , 0, r'volumes/GO_0xxx/GO_0004/MOON/\1.*'),
+    (r'volumes/GO_0xxx/GO_0006/REDO/(C0061424500R).*'   , 0, r'volumes/GO_0xxx/GO_0004/EARTH/\1.*'),
+    (r'volumes/GO_0xxx/GO_0006/REDO/(C0061441500R).*'   , 0, r'volumes/GO_0xxx/GO_0004/EARTH/\1.*'),
+    (r'volumes/GO_0xxx/GO_0006/REDO/(C0061469100R).*'   , 0, r'volumes/GO_0xxx/GO_0005/EARTH/\1.*'),
+    (r'volumes/GO_0xxx/GO_0006/REDO/(C006150..00R).*'   , 0, r'volumes/GO_0xxx/GO_0005/EARTH/\1.*'),
+    (r'volumes/GO_0xxx/GO_0006/REDO/(C006151..00R).*'   , 0, r'volumes/GO_0xxx/GO_0005/EARTH/\1.*'),
+    (r'volumes/GO_0xxx/GO_0006/REDO/(C006152..00R).*'   , 0, r'volumes/GO_0xxx/GO_0005/EARTH/\1.*'),
+    (r'volumes/GO_0xxx/GO_0006/REDO/(C006153..00R).*'   , 0, r'volumes/GO_0xxx/GO_0006/EARTH/\1.*'),
+    (r'volumes/GO_0xxx/GO_0006/REDO/(C0061542500R).*'   , 0, r'volumes/GO_0xxx/GO_0006/EARTH/\1.*'),
+    (r'volumes/GO_0xxx/GO_0015/REDO/(C0165242700R).*'   , 0, r'volumes/GO_0xxx/GO_0012/EARTH/\1.*'),
+
+    (r'volumes/GO_0xxx/GO_0002/VENUS/(C0018062639R).*'  , 0, r'volumes/GO_0xxx/GO_0006/REDO/\1.*'),
+    (r'volumes/GO_0xxx/GO_0002/VENUS/(C0018241745R).*'  , 0, r'volumes/GO_0xxx/GO_0006/REDO/\1.*'),
+    (r'volumes/GO_0xxx/GO_0002/VENUS/(C0018353518R).*'  , 0, r'volumes/GO_0xxx/GO_0006/REDO/\1.*'),
+    (r'volumes/GO_0xxx/GO_0002/VENUS/(C0018518445R).*'  , 0, r'volumes/GO_0xxx/GO_0006/REDO/\1.*'),
+    (r'volumes/GO_0xxx/GO_0002/RAW_CAL/(C0059469700R).*', 0, r'volumes/GO_0xxx/GO_0006/REDO/\1.*'),
+    (r'volumes/GO_0xxx/GO_0002/RAW_CAL/(C0059471700R).*', 0, r'volumes/GO_0xxx/GO_0006/REDO/\1.*'),
+    (r'volumes/GO_0xxx/GO_0003/MOON/(C0060964000R).*'   , 0, r'volumes/GO_0xxx/GO_0006/REDO/\1.*'),
+    (r'volumes/GO_0xxx/GO_0004/EARTH/(C0061078900R).*'  , 0, r'volumes/GO_0xxx/GO_0006/REDO/\1.*'),
+    (r'volumes/GO_0xxx/GO_0004/MOON/(C0061116.00R).*'   , 0, r'volumes/GO_0xxx/GO_0006/REDO/\1.*'),
+    (r'volumes/GO_0xxx/GO_0004/EARTH/(C0061424500R).*'  , 0, r'volumes/GO_0xxx/GO_0006/REDO/\1.*'),
+    (r'volumes/GO_0xxx/GO_0004/EARTH/(C0061441500R).*'  , 0, r'volumes/GO_0xxx/GO_0006/REDO/\1.*'),
+    (r'volumes/GO_0xxx/GO_0005/EARTH/(C0061469100R).*'  , 0, r'volumes/GO_0xxx/GO_0006/REDO/\1.*'),
+    (r'volumes/GO_0xxx/GO_0005/EARTH/(C006150..00R).*'  , 0, r'volumes/GO_0xxx/GO_0006/REDO/\1.*'),
+    (r'volumes/GO_0xxx/GO_0005/EARTH/(C006151..00R).*'  , 0, r'volumes/GO_0xxx/GO_0006/REDO/\1.*'),
+    (r'volumes/GO_0xxx/GO_0005/EARTH/(C006152..00R).*'  , 0, r'volumes/GO_0xxx/GO_0006/REDO/\1.*'),
+    (r'volumes/GO_0xxx/GO_0005/EARTH/(C006153..00R).*'  , 0, r'volumes/GO_0xxx/GO_0006/REDO/\1.*'),
+    (r'volumes/GO_0xxx/GO_0006/EARTH/(C0061542500R).*'  , 0, r'volumes/GO_0xxx/GO_0006/REDO/\1.*'),
+    (r'volumes/GO_0xxx/GO_0012/EARTH/(C0165242700R).*'  , 0, r'volumes/GO_0xxx/GO_0015/REDO/\1.*'),
+
+    (r'volumes/GO_0xxx/GO_0018/REDO/(C3/JUPITER/C036897..00R).*', 0, r'volumes/GO_0xxx/GO_0017/\1.*'),
+    (r'volumes/GO_0xxx/GO_0018/REDO/(C3/JUPITER/C036898..00R).*', 0, r'volumes/GO_0xxx/GO_0017/\1.*'),
+    (r'volumes/GO_0xxx/GO_0018/REDO/(C3/JUPITER/C036899..00R).*', 0, r'volumes/GO_0xxx/GO_0017/\1.*'),
+    (r'volumes/GO_0xxx/GO_0019/REDO/(C3/EUROPA/C0368976...R).*' , 0, r'volumes/GO_0xxx/GO_0017/\1.*'),
+    (r'volumes/GO_0xxx/GO_0019/REDO/(C3/JUPITER/C0368369268R).*', 0, r'volumes/GO_0xxx/GO_0017/\1.*'),
+    (r'volumes/GO_0xxx/GO_0019/REDO/(C3/JUPITER/C0368441600R).*', 0, r'volumes/GO_0xxx/GO_0017/\1.*'),
+    (r'volumes/GO_0xxx/GO_0019/REDO/(E4/EUROPA/C0374667300R).*' , 0, r'volumes/GO_0xxx/GO_0018/\1.*'),
+    (r'volumes/GO_0xxx/GO_0019/REDO/(E6/IO/C0383655111R).*'     , 0, r'volumes/GO_0xxx/GO_0018/\1.*'),
+
+    (r'volumes/GO_0xxx/GO_0017/(C3/JUPITER/C036897..00R).*'     , 0, r'volumes/GO_0xxx/GO_0018/REDO/\1.*'),
+    (r'volumes/GO_0xxx/GO_0017/(C3/JUPITER/C036898..00R).*'     , 0, r'volumes/GO_0xxx/GO_0018/REDO/\1.*'),
+    (r'volumes/GO_0xxx/GO_0017/(C3/JUPITER/C036899..00R).*'     , 0, r'volumes/GO_0xxx/GO_0018/REDO/\1.*'),
+    (r'volumes/GO_0xxx/GO_0017/(C3/EUROPA/C0368976...R).*'      , 0, r'volumes/GO_0xxx/GO_0019/REDO/\1.*'),
+    (r'volumes/GO_0xxx/GO_0017/(C3/JUPITER/C0368369268R).*'     , 0, r'volumes/GO_0xxx/GO_0019/REDO/\1.*'),
+    (r'volumes/GO_0xxx/GO_0017/(C3/JUPITER/C0368441600R).*'     , 0, r'volumes/GO_0xxx/GO_0019/REDO/\1.*'),
+    (r'volumes/GO_0xxx/GO_0018/(E4/EUROPA/C0374667300R).*'      , 0, r'volumes/GO_0xxx/GO_0019/REDO/\1.*'),
+    (r'volumes/GO_0xxx/GO_0018/(E6/IO/C0383655111R).*'          , 0, r'volumes/GO_0xxx/GO_0019/REDO/\1.*'),
+
+    (r'volumes/GO_0xxx/GO_0020/E12/TIRETRACK/(C04262728..)S.*'  , 0, r'volumes/GO_0xxx/GO_0020/E12/EUROPA/\1R.*'),
+    (r'volumes/GO_0xxx/GO_0022/I24/IO/REPAIRED/(C052079....)S.*', 0, r'volumes/GO_0xxx/GO_0022/I24/IO/GARBLED/\1R.*'),
+    (r'volumes/GO_0xxx/GO_0022/I24/IO/REPAIRED/(C052080630.)S.*', 0, r'volumes/GO_0xxx/GO_0022/I24/IO/GARBLED/\1R.*'),
+    (r'volumes/GO_0xxx/GO_0023/G28/REPAIRED/(C0552447569)S.*'   , 0, r'volumes/GO_0xxx/GO_0023/G28/GARBLED/\1R.*'),
+    (r'volumes/GO_0xxx/GO_0023/G29/REPAIRED/(C060049.*)S.*'     , 0, r'volumes/GO_0xxx/GO_0023/G29/GARBLED/\1R.*'),
+    (r'volumes/GO_0xxx/GO_0023/G29/REPAIRED/(C060066.*)S.*'     , 0, r'volumes/GO_0xxx/GO_0023/G29/GARBLED/\1R.*'),
+
+    (r'volumes/GO_0xxx/GO_0020/E12/EUROPA/(C04262728..)R.*'     , 0, r'volumes/GO_0xxx/GO_0020/E12/TIRETRACK/\1S.*'),
+    (r'volumes/GO_0xxx/GO_0022/I24/IO/GARBLED/(C052079....)R.*' , 0, r'volumes/GO_0xxx/GO_0022/I24/IO/REPAIRED/\1S.*'),
+    (r'volumes/GO_0xxx/GO_0022/I24/IO/GARBLED/(C052080630.)R.*' , 0, r'volumes/GO_0xxx/GO_0022/I24/IO/REPAIRED/\1S.*'),
+    (r'volumes/GO_0xxx/GO_0023/G28/GARBLED/(C0552447569)R.*'    , 0, r'volumes/GO_0xxx/GO_0023/G28/REPAIRED/\1S.*'),
+    (r'volumes/GO_0xxx/GO_0023/G29/GARBLED/(C060049.*)R.*'      , 0, r'volumes/GO_0xxx/GO_0023/G29/REPAIRED/\1S.*'),
+    (r'volumes/GO_0xxx/GO_0023/G29/GARBLED/(C060066.*)R.*'      , 0, r'volumes/GO_0xxx/GO_0023/G29/REPAIRED/\1S.*'),
+
+    (r'documents/GO_0xxx.*'                                     , 0, r'volumes/GO_0xxx'),
+])
+
+associations_to_previews = translator.TranslatorByRegex([
+    (r'.*/(GO_0xxx/GO_..../.*/C\d{10}[A-Z]).*', 0,
+            [r'previews/\1_full.jpg',
+             r'previews/\1_med.jpg',
+             r'previews/\1_small.jpg',
+             r'previews/\1_thumb.jpg',
+            ]),
+    (r'.*/GO_0xxx_v1/(GO_..../.*/C\d{6})/(\d{4}[A-Z]).*', 0,
+            [r'previews/GO_0xxx_v1/\1/\2_full.jpg',
+             r'previews/GO_0xxx_v1/\1/\2_med.jpg',
+             r'previews/GO_0xxx_v1/\1/\2_small.jpg',
+             r'previews/GO_0xxx_v1/\1/\2_thumb.jpg',
+             r'previews/GO_0xxx/\1\2_full.jpg',
+             r'previews/GO_0xxx/\1\2_med.jpg',
+             r'previews/GO_0xxx/\1\2_small.jpg',
+             r'previews/GO_0xxx/\1\2_thumb.jpg',
+            ]),
+    (r'.*/metadata/GO_0xxx/GO_0999.*', 0,
+            r'previews/GO_0xxx'),
+    (r'.*/metadata/GO_0xxx_v1/GO_0999.*', 0,
+            r'previews/GO_0xxx_v1'),
+])
+
+associations_to_metadata = translator.TranslatorByRegex([
+    (r'volumes/(GO_0xxx)/(GO_....)/.*/(C\d{10})[RS].*', 0,
+            [r'metadata/\1/\2/\2_index.tab/\3',
+             r'metadata/\1/\2/\2_supplemental_index.tab/\3',
+             r'metadata/\1/\2/\2_ring_summary.tab/\3',
+             r'metadata/\1/\2/\2_moon_summary.tab/\3',
+             r'metadata/\1/\2/\2_jupiter_summary.tab/\3',
+             r'metadata/\1/\2/\2_body_summary.tab/\3',
+             r'metadata/\1/\2/\2_sky_summary.tab/\3',
+            ]),
+    (r'volumes/(GO_0xxx_v1)/(GO_....).*', 0,
+            r'metadata/\1/\2'),
+    (r'metadata/GO_0xxx(|_v[\d\.]+)/GO_00..', 0,
+            r'metadata/GO_0xxx/GO_0999'),
+    (r'metadata/GO_0xxx(|_v[\d\.]+)/GO_00../GO_00.._(.*)\..*', 0,
+            [r'metadata/GO_0xxx/GO_0999/GO_0999_\2.tab',
+             r'metadata/GO_0xxx/GO_0999/GO_0999_\2.lbl',
+            ]),
+    (r'volumes/GO_0xxx/GO_0016/SL9/(C\d{10})[RG].*', 0,
+            r'metadata/GO_0xxx/GO_0016/GO_0016_sl9_moasic_index.tab/\1'),
+])
+
+associations_to_documents = translator.TranslatorByRegex([
+    (r'volumes/GO_0xxx(|_[^/]+)/GO_0\d\d\d',    0, r'documents/GO_0xxx/*'),
+    (r'volumes/GO_0xxx(|_[^/]+)/GO_0\d\d\d/.+', 0, r'documents/GO_0xxx'),
+])
+
+##########################################################################################
+# VERSIONS
+##########################################################################################
+
+# File names are split in _v1, merged afterward
+versions = translator.TranslatorByRegex([
+    (r'volumes/GO_0xxx.*/(GO_0.../.*/C\d{6})/?(\d{4}[A-Z]\..*)', 0,
+            [r'volumes/GO_0xxx/\1\2',
+             r'volumes/GO_0xxx_v1/\1/\2',
+            ]),
+])
+
+##########################################################################################
+# VIEW_OPTIONS (grid_view_allowed, multipage_view_allowed, continuous_view_allowed)
+##########################################################################################
+
+view_options = translator.TranslatorByRegex([
+    (r'(volumes|previews)/GO_0xxx/GO_....(|/BROWSE)/([CEGIJ]\d\d?|REDO)/.*',            0, (True, True, True)),
+    (r'(volumes|previews)/GO_0xxx_v1/GO_....(|/BROWSE)/([CEGIJ]\d\d?|REDO)/.*/C\d{6}',  0, (True, True, False)),
+    (r'(volumes|previews)/GO_0xxx_v1/GO_....(|/BROWSE)/([CEGIJ]\d\d?|REDO)/.*',         0, (True, True, True)),
+])
+
+##########################################################################################
+# NEIGHBORS
+##########################################################################################
+
+neighbors = translator.TranslatorByRegex([
+    (r'(volumes|previews)/GO_0xxx(|_v[\d\.]+)/GO_00../(MOON|EARTH|VENUS|IDA|GASPRA|SL9|GOPEX|EMCONJ|RAW_CAL)', 0, r'\1/GO_0xxx\2/GO_00??/\3'),
+    (r'(volumes|previews)/GO_0xxx/GO_0016/SL9/(C\d{10})([RG])(.*)', 0, r'\1/GO_0xxx/GO_0016/SL9/C*\3\4'),
+    (r'(volumes|previews)/GO_0xxx(_v[\d\.]+)/GO_0016/SL9/(C\d{6})/(\d{4})([RG])(.*)', 0, r'\1/GO_0xxx\2/GO_0016/SL9/C*/*\5\6'),
+
+    (r'(volumes|previews)/GO_0xxx(|_v[\d\.]+)/\w+(|/REDO)/([CEGIJ]\d\d?)', 0,
+            [r'\1/GO_0xxx\2/*/\4',
+             r'\1/GO_0xxx\2/*/REDO/\4'
+            ]),
+    (r'(volumes|previews)/GO_0xxx(|_v[\d\.]+)/\w+(|/REDO)/[CEGIJ]\d\d?/(\w+)', 0,
+            [r'\1/GO_0xxx\2/*/*/\4',
+             r'\1/GO_0xxx\2/*/REDO/*/\4',
+            ]),
+    (r'(volumes|previews)/GO_0xxx(|_v[\d\.]+)/\w+(|/REDO)/[CEGIJ]\d\d?/(\w+)/C\d{6}', 0,
+            [r'\1/GO_0xxx\2/*/*/\4/*',
+             r'\1/GO_0xxx\2/*/REDO/*/\4/*',
+            ]),
+])
+
+##########################################################################################
+# SORT_KEY
+##########################################################################################
+
+sort_key = translator.TranslatorByRegex([
+
+    # Puts encounters in chronological order, after AAREADME, in root directory
+    (r'([CEGIJ])(\d)',   0, r'AAZ0\2\1'),
+    (r'([CEGIJ])(\d\d)', 0, r'AAZ\2\1'),
+    (r'(AAREADME.TXT)',  0, r'\1'),
+    (r'(CATALOG)',       0, r'\1'),
+    (r'(DOCUMENT)',      0, r'\1'),
+    (r'(ERRATA.TXT)',    0, r'\1'),
+    (r'(INDEX)',         0, r'\1'),
+    (r'(LABEL)',         0, r'\1'),
+    (r'(REDO)',          0, r'\1'),
+    (r'(VOLDESC.CAT)',   0, r'\1'),
+])
+
+##########################################################################################
+# SPLIT_RULES
+##########################################################################################
+
+split_rules = translator.TranslatorByRegex([
+    (r'(C\d{10})([A-Z])\.(.*)', 0, (r'\1', r'\2', r'.\3')),
+])
+
+##########################################################################################
+# OPUS_TYPE
+##########################################################################################
+
+opus_type = translator.TranslatorByRegex([
+    (r'volumes/GO_0xxx/GO_0.../(?!CATALOG|DOCUMENT|INDEX|LABEL).*[^G]\.(IMG|LBL)', 0, ('Galileo SSI', 10, 'gossi_raw', 'Raw Image', True)),
+    (r'volumes/GO_0xxx/GO_0016/SL9/.*G.(IMG|LBL)',                                 0, ('Galileo SSI', 12, 'gossi_sl9', 'Image with SL9 graphics overlay', True)),
+    # Documentation
+    (r'documents/GO_0xxx/.*',                                                      0, ('Galileo SSI', 20, 'gossi_documentation', 'Documentation', False)),
+])
+
+##########################################################################################
+# OPUS_FORMAT
+##########################################################################################
+
+opus_format = translator.TranslatorByRegex([
+    (r'.*\.IMG', 0, ('Binary', 'VICAR')),
+])
+
+##########################################################################################
+# OPUS_PRODUCTS
+##########################################################################################
+
+# NOTE: _v1 files have been intentionally removed
+opus_products = translator.TranslatorByRegex([
+
+    # Default handling of all product file paths
+    (r'volumes/GO_0xxx/(GO_0...)/(.*/C\d{10}[RSG])\.(IMG|LBL)', 0,
+            [r'volumes/GO_0xxx/\1/\2.IMG',
+             r'volumes/GO_0xxx/\1/\2.LBL',
+             r'previews/GO_0xxx/\1/\2_full.jpg',
+             r'previews/GO_0xxx/\1/\2_med.jpg',
+             r'previews/GO_0xxx/\1/\2_small.jpg',
+             r'previews/GO_0xxx/\1/\2_thumb.jpg',
+             r'metadata/GO_0xxx/\1/\1_moon_summary.tab',
+             r'metadata/GO_0xxx/\1/\1_moon_summary.lbl',
+             r'metadata/GO_0xxx/\1/\1_ring_summary.tab',
+             r'metadata/GO_0xxx/\1/\1_ring_summary.lbl',
+             r'metadata/GO_0xxx/\1/\1_jupiter_summary.tab',
+             r'metadata/GO_0xxx/\1/\1_jupiter_summary.lbl',
+             r'metadata/GO_0xxx/\1/\1_body_summary.tab',
+             r'metadata/GO_0xxx/\1/\1_body_summary.lbl',
+             r'metadata/GO_0xxx/\1/\1_sky_summary.tab',
+             r'metadata/GO_0xxx/\1/\1_sky_summary.lbl',
+             r'metadata/GO_0xxx/\1/\1_inventory.csv',
+             r'metadata/GO_0xxx/\1/\1_inventory.lbl',
+             r'metadata/GO_0xxx/\1/\1_index.tab',
+             r'metadata/GO_0xxx/\1/\1_index.lbl',
+             r'metadata/GO_0xxx/\1/\1_supplemental_index.tab',
+             r'metadata/GO_0xxx/\1/\1_supplemental_index.lbl',
+             r'documents/GO_0xxx/*.[!lz]*'
+            ]),
+
+    # SL9 "graphics" file associations
+    (r'.*volumes/GO_0xxx/GO_0016/SL9/(C\d{10})R\.(IMG|LBL)', 0,
+            [r'volumes/GO_0xxx/GO_0016/SL9/\1G.IMG',
+             r'volumes/GO_0xxx/GO_0016/SL9/\1G.LBL',
+             r'previews/GO_0xxx/GO_0016/SL9/\1G_full.jpg',
+             r'previews/GO_0xxx/GO_0016/SL9/\1G_med.jpg',
+             r'previews/GO_0xxx/GO_0016/SL9/\1G_small.jpg',
+             r'previews/GO_0xxx/GO_0016/SL9/\1G_thumb.jpg',
+             r'documents/GO_0xxx/*.[!lz]*'
+            ]),
+
+    (r'.*volumes/GO_0xxx/GO_0016/SL9/(C\d{10})G\.(IMG|LBL)', 0,
+            [r'volumes/GO_0xxx/GO_0016/SL9/\1R.IMG',
+             r'volumes/GO_0xxx/GO_0016/SL9/\1R.LBL',
+             r'previews/GO_0xxx/GO_0016/SL9/\1R_full.jpg',
+             r'previews/GO_0xxx/GO_0016/SL9/\1R_med.jpg',
+             r'previews/GO_0xxx/GO_0016/SL9/\1R_small.jpg',
+             r'previews/GO_0xxx/GO_0016/SL9/\1R_thumb.jpg',
+            ]),
+
+    # Known duplicates...
+    (r'.*/GO_0006/REDO/(C0018062639R).*'   , 0, [r'volumes/GO_0xxx/GO_0002/VENUS/\1.*'  , r'previews/GO_0xxx/GO_0002/VENUS/\1*.jpg'  , r'metadata/GO_0xxx/GO_0002/GO_0???_*.*']),
+    (r'.*/GO_0006/REDO/(C0018241745R).*'   , 0, [r'volumes/GO_0xxx/GO_0002/VENUS/\1.*'  , r'previews/GO_0xxx/GO_0002/VENUS/\1*.jpg'  , r'metadata/GO_0xxx/GO_0002/GO_0???_*.*']),
+    (r'.*/GO_0006/REDO/(C0018353518R).*'   , 0, [r'volumes/GO_0xxx/GO_0002/VENUS/\1.*'  , r'previews/GO_0xxx/GO_0002/VENUS/\1*.jpg'  , r'metadata/GO_0xxx/GO_0002/GO_0???_*.*']),
+    (r'.*/GO_0006/REDO/(C0018518445R).*'   , 0, [r'volumes/GO_0xxx/GO_0002/VENUS/\1.*'  , r'previews/GO_0xxx/GO_0002/VENUS/\1*.jpg'  , r'metadata/GO_0xxx/GO_0002/GO_0???_*.*']),
+    (r'.*/GO_0006/REDO/(C0059469700R).*'   , 0, [r'volumes/GO_0xxx/GO_0002/RAW_CAL/\1.*', r'previews/GO_0xxx/GO_0002/RAW_CAL/\1*.jpg', r'metadata/GO_0xxx/GO_0002/GO_0???_*.*']),
+    (r'.*/GO_0006/REDO/(C0059471700R).*'   , 0, [r'volumes/GO_0xxx/GO_0002/RAW_CAL/\1.*', r'previews/GO_0xxx/GO_0002/RAW_CAL/\1*.jpg', r'metadata/GO_0xxx/GO_0002/GO_0???_*.*']),
+    (r'.*/GO_0006/REDO/(C0060964000R).*'   , 0, [r'volumes/GO_0xxx/GO_0003/MOON/\1.*'   , r'previews/GO_0xxx/GO_0003/MOON/\1*.jpg'   , r'metadata/GO_0xxx/GO_0003/GO_0???_*.*']),
+    (r'.*/GO_0006/REDO/(C0061078900R).*'   , 0, [r'volumes/GO_0xxx/GO_0004/EARTH/\1.*'  , r'previews/GO_0xxx/GO_0004/EARTH/\1*.jpg'  , r'metadata/GO_0xxx/GO_0004/GO_0???_*.*']),
+    (r'.*/GO_0006/REDO/(C0061116.00R).*'   , 0, [r'volumes/GO_0xxx/GO_0004/MOON/\1.*'   , r'previews/GO_0xxx/GO_0004/MOON/\1*.jpg'   , r'metadata/GO_0xxx/GO_0004/GO_0???_*.*']),
+    (r'.*/GO_0006/REDO/(C0061424500R).*'   , 0, [r'volumes/GO_0xxx/GO_0004/EARTH/\1.*'  , r'previews/GO_0xxx/GO_0004/EARTH/\1*.jpg'  , r'metadata/GO_0xxx/GO_0004/GO_0???_*.*']),
+    (r'.*/GO_0006/REDO/(C0061441500R).*'   , 0, [r'volumes/GO_0xxx/GO_0004/EARTH/\1.*'  , r'previews/GO_0xxx/GO_0004/EARTH/\1*.jpg'  , r'metadata/GO_0xxx/GO_0004/GO_0???_*.*']),
+    (r'.*/GO_0006/REDO/(C0061469100R).*'   , 0, [r'volumes/GO_0xxx/GO_0005/EARTH/\1.*'  , r'previews/GO_0xxx/GO_0005/EARTH/\1*.jpg'  , r'metadata/GO_0xxx/GO_0005/GO_0???_*.*']),
+    (r'.*/GO_0006/REDO/(C006150..00R).*'   , 0, [r'volumes/GO_0xxx/GO_0005/EARTH/\1.*'  , r'previews/GO_0xxx/GO_0005/EARTH/\1*.jpg'  , r'metadata/GO_0xxx/GO_0005/GO_0???_*.*']),
+    (r'.*/GO_0006/REDO/(C006151..00R).*'   , 0, [r'volumes/GO_0xxx/GO_0005/EARTH/\1.*'  , r'previews/GO_0xxx/GO_0005/EARTH/\1*.jpg'  , r'metadata/GO_0xxx/GO_0005/GO_0???_*.*']),
+    (r'.*/GO_0006/REDO/(C006152..00R).*'   , 0, [r'volumes/GO_0xxx/GO_0005/EARTH/\1.*'  , r'previews/GO_0xxx/GO_0005/EARTH/\1*.jpg'  , r'metadata/GO_0xxx/GO_0005/GO_0???_*.*']),
+    (r'.*/GO_0006/REDO/(C006153..00R).*'   , 0, [r'volumes/GO_0xxx/GO_0005/EARTH/\1.*'  , r'previews/GO_0xxx/GO_0005/EARTH/\1*.jpg'  , r'metadata/GO_0xxx/GO_0005/GO_0???_*.*']),
+    (r'.*/GO_0006/REDO/(C0061542500R).*'   , 0, [r'volumes/GO_0xxx/GO_0006/EARTH/\1.*'  , r'previews/GO_0xxx/GO_0006/EARTH/\1*.jpg'  , r'metadata/GO_0xxx/GO_0006/GO_0???_*.*']),
+    (r'.*/GO_0015/REDO/(C0165242700R).*'   , 0, [r'volumes/GO_0xxx/GO_0012/EARTH/\1.*'  , r'previews/GO_0xxx/GO_0012/EARTH/\1*.jpg'  , r'metadata/GO_0xxx/GO_0012/GO_0???_*.*']),
+
+    (r'.*/GO_0002/VENUS/(C0018062639R).*'  , 0, [r'volumes/GO_0xxx/GO_0006/REDO/\1.*', r'previews/GO_0xxx/GO_0006/REDO/\1*.jpg', r'metadata/GO_0xxx/GO_0006/GO_0???_*.*']),
+    (r'.*/GO_0002/VENUS/(C0018241745R).*'  , 0, [r'volumes/GO_0xxx/GO_0006/REDO/\1.*', r'previews/GO_0xxx/GO_0006/REDO/\1*.jpg', r'metadata/GO_0xxx/GO_0006/GO_0???_*.*']),
+    (r'.*/GO_0002/VENUS/(C0018353518R).*'  , 0, [r'volumes/GO_0xxx/GO_0006/REDO/\1.*', r'previews/GO_0xxx/GO_0006/REDO/\1*.jpg', r'metadata/GO_0xxx/GO_0006/GO_0???_*.*']),
+    (r'.*/GO_0002/VENUS/(C0018518445R).*'  , 0, [r'volumes/GO_0xxx/GO_0006/REDO/\1.*', r'previews/GO_0xxx/GO_0006/REDO/\1*.jpg', r'metadata/GO_0xxx/GO_0006/GO_0???_*.*']),
+    (r'.*/GO_0002/RAW_CAL/(C0059469700R).*', 0, [r'volumes/GO_0xxx/GO_0006/REDO/\1.*', r'previews/GO_0xxx/GO_0006/REDO/\1*.jpg', r'metadata/GO_0xxx/GO_0006/GO_0???_*.*']),
+    (r'.*/GO_0002/RAW_CAL/(C0059471700R).*', 0, [r'volumes/GO_0xxx/GO_0006/REDO/\1.*', r'previews/GO_0xxx/GO_0006/REDO/\1*.jpg', r'metadata/GO_0xxx/GO_0006/GO_0???_*.*']),
+    (r'.*/GO_0003/MOON/(C0060964000R).*'   , 0, [r'volumes/GO_0xxx/GO_0006/REDO/\1.*', r'previews/GO_0xxx/GO_0006/REDO/\1*.jpg', r'metadata/GO_0xxx/GO_0006/GO_0???_*.*']),
+    (r'.*/GO_0004/EARTH/(C0061078900R).*'  , 0, [r'volumes/GO_0xxx/GO_0006/REDO/\1.*', r'previews/GO_0xxx/GO_0006/REDO/\1*.jpg', r'metadata/GO_0xxx/GO_0006/GO_0???_*.*']),
+    (r'.*/GO_0004/MOON/(C0061116.00R).*'   , 0, [r'volumes/GO_0xxx/GO_0006/REDO/\1.*', r'previews/GO_0xxx/GO_0006/REDO/\1*.jpg', r'metadata/GO_0xxx/GO_0006/GO_0???_*.*']),
+    (r'.*/GO_0004/EARTH/(C0061424500R).*'  , 0, [r'volumes/GO_0xxx/GO_0006/REDO/\1.*', r'previews/GO_0xxx/GO_0006/REDO/\1*.jpg', r'metadata/GO_0xxx/GO_0006/GO_0???_*.*']),
+    (r'.*/GO_0004/EARTH/(C0061441500R).*'  , 0, [r'volumes/GO_0xxx/GO_0006/REDO/\1.*', r'previews/GO_0xxx/GO_0006/REDO/\1*.jpg', r'metadata/GO_0xxx/GO_0006/GO_0???_*.*']),
+    (r'.*/GO_0005/EARTH/(C0061469100R).*'  , 0, [r'volumes/GO_0xxx/GO_0006/REDO/\1.*', r'previews/GO_0xxx/GO_0006/REDO/\1*.jpg', r'metadata/GO_0xxx/GO_0006/GO_0???_*.*']),
+    (r'.*/GO_0005/EARTH/(C006150..00R).*'  , 0, [r'volumes/GO_0xxx/GO_0006/REDO/\1.*', r'previews/GO_0xxx/GO_0006/REDO/\1*.jpg', r'metadata/GO_0xxx/GO_0006/GO_0???_*.*']),
+    (r'.*/GO_0005/EARTH/(C006151..00R).*'  , 0, [r'volumes/GO_0xxx/GO_0006/REDO/\1.*', r'previews/GO_0xxx/GO_0006/REDO/\1*.jpg', r'metadata/GO_0xxx/GO_0006/GO_0???_*.*']),
+    (r'.*/GO_0005/EARTH/(C006152..00R).*'  , 0, [r'volumes/GO_0xxx/GO_0006/REDO/\1.*', r'previews/GO_0xxx/GO_0006/REDO/\1*.jpg', r'metadata/GO_0xxx/GO_0006/GO_0???_*.*']),
+    (r'.*/GO_0005/EARTH/(C006153..00R).*'  , 0, [r'volumes/GO_0xxx/GO_0006/REDO/\1.*', r'previews/GO_0xxx/GO_0006/REDO/\1*.jpg', r'metadata/GO_0xxx/GO_0006/GO_0???_*.*']),
+    (r'.*/GO_0006/EARTH/(C0061542500R).*'  , 0, [r'volumes/GO_0xxx/GO_0006/REDO/\1.*', r'previews/GO_0xxx/GO_0006/REDO/\1*.jpg', r'metadata/GO_0xxx/GO_0006/GO_0???_*.*']),
+    (r'.*/GO_0012/EARTH/(C0165242700R).*'  , 0, [r'volumes/GO_0xxx/GO_0015/REDO/\1.*', r'previews/GO_0xxx/GO_0015/REDO/\1*.jpg', r'metadata/GO_0xxx/GO_0015/GO_0???_*.*']),
+
+    (r'.*/GO_0018/REDO/(C3/JUPITER/C036897..00R).*', 0, [r'volumes/GO_0xxx/GO_0017/\1.*', r'previews/GO_0xxx/GO_0017/\1*.jpg', r'metadata/GO_0xxx/GO_0017/GO_0???_*.*']),
+    (r'.*/GO_0018/REDO/(C3/JUPITER/C036898..00R).*', 0, [r'volumes/GO_0xxx/GO_0017/\1.*', r'previews/GO_0xxx/GO_0017/\1*.jpg', r'metadata/GO_0xxx/GO_0017/GO_0???_*.*']),
+    (r'.*/GO_0018/REDO/(C3/JUPITER/C036899..00R).*', 0, [r'volumes/GO_0xxx/GO_0017/\1.*', r'previews/GO_0xxx/GO_0017/\1*.jpg', r'metadata/GO_0xxx/GO_0017/GO_0???_*.*']),
+    (r'.*/GO_0019/REDO/(C3/EUROPA/C0368976...R).*' , 0, [r'volumes/GO_0xxx/GO_0017/\1.*', r'previews/GO_0xxx/GO_0017/\1*.jpg', r'metadata/GO_0xxx/GO_0017/GO_0???_*.*']),
+    (r'.*/GO_0019/REDO/(C3/JUPITER/C0368369268R).*', 0, [r'volumes/GO_0xxx/GO_0017/\1.*', r'previews/GO_0xxx/GO_0017/\1*.jpg', r'metadata/GO_0xxx/GO_0017/GO_0???_*.*']),
+    (r'.*/GO_0019/REDO/(C3/JUPITER/C0368441600R).*', 0, [r'volumes/GO_0xxx/GO_0017/\1.*', r'previews/GO_0xxx/GO_0017/\1*.jpg', r'metadata/GO_0xxx/GO_0017/GO_0???_*.*']),
+    (r'.*/GO_0019/REDO/(E4/EUROPA/C0374667300R).*' , 0, [r'volumes/GO_0xxx/GO_0018/\1.*', r'previews/GO_0xxx/GO_0018/\1*.jpg', r'metadata/GO_0xxx/GO_0018/GO_0???_*.*']),
+    (r'.*/GO_0019/REDO/(E6/IO/C0383655111R).*'     , 0, [r'volumes/GO_0xxx/GO_0018/\1.*', r'previews/GO_0xxx/GO_0018/\1*.jpg', r'metadata/GO_0xxx/GO_0018/GO_0???_*.*']),
+
+    (r'.*/GO_0017/(C3/JUPITER/C036897..00R).*'     , 0, [r'volumes/GO_0xxx/GO_0018/REDO/\1.*', r'previews/GO_0xxx/GO_0018/REDO/\1*.jpg', r'metadata/GO_0xxx/GO_0018/GO_0???_*.*']),
+    (r'.*/GO_0017/(C3/JUPITER/C036898..00R).*'     , 0, [r'volumes/GO_0xxx/GO_0018/REDO/\1.*', r'previews/GO_0xxx/GO_0018/REDO/\1*.jpg', r'metadata/GO_0xxx/GO_0018/GO_0???_*.*']),
+    (r'.*/GO_0017/(C3/JUPITER/C036899..00R).*'     , 0, [r'volumes/GO_0xxx/GO_0018/REDO/\1.*', r'previews/GO_0xxx/GO_0018/REDO/\1*.jpg', r'metadata/GO_0xxx/GO_0018/GO_0???_*.*']),
+    (r'.*/GO_0017/(C3/EUROPA/C0368976...R).*'      , 0, [r'volumes/GO_0xxx/GO_0019/REDO/\1.*', r'previews/GO_0xxx/GO_0019/REDO/\1*.jpg', r'metadata/GO_0xxx/GO_0019/GO_0???_*.*']),
+    (r'.*/GO_0017/(C3/JUPITER/C0368369268R).*'     , 0, [r'volumes/GO_0xxx/GO_0019/REDO/\1.*', r'previews/GO_0xxx/GO_0019/REDO/\1*.jpg', r'metadata/GO_0xxx/GO_0019/GO_0???_*.*']),
+    (r'.*/GO_0017/(C3/JUPITER/C0368441600R).*'     , 0, [r'volumes/GO_0xxx/GO_0019/REDO/\1.*', r'previews/GO_0xxx/GO_0019/REDO/\1*.jpg', r'metadata/GO_0xxx/GO_0019/GO_0???_*.*']),
+    (r'.*/GO_0018/(E4/EUROPA/C0374667300R).*'      , 0, [r'volumes/GO_0xxx/GO_0019/REDO/\1.*', r'previews/GO_0xxx/GO_0019/REDO/\1*.jpg', r'metadata/GO_0xxx/GO_0019/GO_0???_*.*']),
+    (r'.*/GO_0018/(E6/IO/C0383655111R).*'          , 0, [r'volumes/GO_0xxx/GO_0019/REDO/\1.*', r'previews/GO_0xxx/GO_0019/REDO/\1*.jpg', r'metadata/GO_0xxx/GO_0019/GO_0???_*.*']),
+
+    (r'.*/GO_0020/E12/TIRETRACK/(C04262728..)S.*'  , 0, [r'volumes/GO_0xxx/GO_0020/E12/EUROPA/\1R.*'    , r'previews/GO_0xxx/GO_0020/E12/EUROPA/\1*.jpg'    , r'metadata/GO_0xxx/GO_0020/GO_0???_*.*']),
+    (r'.*/GO_0022/I24/IO/REPAIRED/(C052079....)S.*', 0, [r'volumes/GO_0xxx/GO_0022/I24/IO/GARBLED/\1R.*', r'previews/GO_0xxx/GO_0022/I24/IO/GARBLED/\1*.jpg', r'metadata/GO_0xxx/GO_0022/GO_0???_*.*']),
+    (r'.*/GO_0022/I24/IO/REPAIRED/(C052080630.)S.*', 0, [r'volumes/GO_0xxx/GO_0022/I24/IO/GARBLED/\1R.*', r'previews/GO_0xxx/GO_0022/I24/IO/GARBLED/\1*.jpg', r'metadata/GO_0xxx/GO_0022/GO_0???_*.*']),
+    (r'.*/GO_0023/G28/REPAIRED/(C0552447569)S.*'   , 0, [r'volumes/GO_0xxx/GO_0023/G28/GARBLED/\1R.*'   , r'previews/GO_0xxx/GO_0023/G28/GARBLED/\1*.jpg'   , r'metadata/GO_0xxx/GO_0023/GO_0???_*.*']),
+    (r'.*/GO_0023/G29/REPAIRED/(C060049....)S.*'   , 0, [r'volumes/GO_0xxx/GO_0023/G29/GARBLED/\1R.*'   , r'previews/GO_0xxx/GO_0023/G29/GARBLED/\1*.jpg'   , r'metadata/GO_0xxx/GO_0023/GO_0???_*.*']),
+    (r'.*/GO_0023/G29/REPAIRED/(C060066....)S.*'   , 0, [r'volumes/GO_0xxx/GO_0023/G29/GARBLED/\1R.*'   , r'previews/GO_0xxx/GO_0023/G29/GARBLED/\1*.jpg'   , r'metadata/GO_0xxx/GO_0023/GO_0???_*.*']),
+
+    (r'.*/GO_0020/E12/EUROPA/(C04262728..)R.*'     , 0, [r'volumes/GO_0xxx/GO_0020/E12/TIRETRACK/\1S.*'  , r'previews/GO_0xxx/GO_0020/E12/TIRETRACK/\1*.jpg'  , r'metadata/GO_0xxx/GO_0020/GO_0???_*.*']),
+    (r'.*/GO_0022/I24/IO/GARBLED/(C052079....)R.*' , 0, [r'volumes/GO_0xxx/GO_0022/I24/IO/REPAIRED/\1S.*', r'previews/GO_0xxx/GO_0022/I24/IO/REPAIRED/\1*.jpg', r'metadata/GO_0xxx/GO_0022/GO_0???_*.*']),
+    (r'.*/GO_0022/I24/IO/GARBLED/(C052080630.)R.*' , 0, [r'volumes/GO_0xxx/GO_0022/I24/IO/REPAIRED/\1S.*', r'previews/GO_0xxx/GO_0022/I24/IO/REPAIRED/\1*.jpg', r'metadata/GO_0xxx/GO_0022/GO_0???_*.*']),
+    (r'.*/GO_0023/G28/GARBLED/(C0552447569)R.*'    , 0, [r'volumes/GO_0xxx/GO_0023/G28/REPAIRED/\1S.*'   , r'previews/GO_0xxx/GO_0023/G28/REPAIRED/\1*.jpg'   , r'metadata/GO_0xxx/GO_0023/GO_0???_*.*']),
+    (r'.*/GO_0023/G29/GARBLED/(C060049....)R.*'    , 0, [r'volumes/GO_0xxx/GO_0023/G29/REPAIRED/\1S.*'   , r'previews/GO_0xxx/GO_0023/G29/REPAIRED/\1*.jpg'   , r'metadata/GO_0xxx/GO_0023/GO_0???_*.*']),
+    (r'.*/GO_0023/G29/GARBLED/(C060066....)R.*'    , 0, [r'volumes/GO_0xxx/GO_0023/G29/REPAIRED/\1S.*'   , r'previews/GO_0xxx/GO_0023/G29/REPAIRED/\1*.jpg'   , r'metadata/GO_0xxx/GO_0023/GO_0???_*.*']),
+])
+
+##########################################################################################
+# OPUS_ID
+##########################################################################################
+
+opus_id = translator.TranslatorByRegex([
+    (r'.*/GO_0xxx/GO_00../.*/C(\d{10})[A-Z]\.(IMG|LBL)', 0, r'go-ssi-c\1'),
+])
+
+##########################################################################################
+# OPUS_ID_TO_PRIMARY_LOGICAL_PATH
+##########################################################################################
+
+# Note: Lists are sorted to make sure that the preferred REDO/REPAIRED/TIRETRACK match comes first
+opus_id_to_primary_logical_path = translator.TranslatorByRegex([
+    (r'go-ssi-c(000.*)'       , 0,  r'volumes/GO_0xxx/GO_0002/*/C\1R.LBL'),
+    (r'go-ssi-c(001.*)'       , 0, [r'volumes/GO_0xxx/GO_0006/REDO/C\1R.LBL',
+                                    r'volumes/GO_0xxx/GO_0002/*/C\1R.LBL']),
+    (r'go-ssi-c(005.*)'       , 0, [r'volumes/GO_0xxx/GO_000[67]/REDO/C\1R.LBL',
+                                    r'volumes/GO_0xxx/GO_000[23]/*/C\1R.LBL']),
+    (r'go-ssi-c(0060.*)'      , 0, [r'volumes/GO_0xxx/GO_0006/REDO/C\1R.LBL',
+                                    r'volumes/GO_0xxx/GO_0003/*/C\1R.LBL']),
+    (r'go-ssi-c(0061[0-3].*)' , 0, [r'volumes/GO_0xxx/GO_0006/REDO/C\1R.LBL',
+                                    r'volumes/GO_0xxx/GO_000[34]/*/C\1R.LBL']),
+    (r'go-ssi-c(00614.*)'     , 0, [r'volumes/GO_0xxx/GO_0006/REDO/C\1R.LBL',
+                                    r'volumes/GO_0xxx/GO_000[45]/*/C\1R.LBL']),
+    (r'go-ssi-c(00615[0-2].*)', 0, [r'volumes/GO_0xxx/GO_0006/REDO/C\1R.LBL',
+                                    r'volumes/GO_0xxx/GO_0005/*/C\1R.LBL']),
+    (r'go-ssi-c(006153.*)'    , 0, [r'volumes/GO_0xxx/GO_0006/REDO/C\1R.LBL',
+                                    r'volumes/GO_0xxx/GO_0005/*/C\1R.LBL',
+                                    r'volumes/GO_0xxx/GO_0006/EARTH/C\1R.LBL']),
+    (r'go-ssi-c(006154.*)'    , 0, [r'volumes/GO_0xxx/GO_0006/REDO/C\1R.LBL',
+                                    r'volumes/GO_0xxx/GO_0006/EARTH/C\1R.LBL']),
+
+    (r'go-ssi-c(00615[5-9].*)', 0,  r'volumes/GO_0xxx/GO_0006/*/C\1R.LBL'),
+    (r'go-ssi-c(0061[6-9].*)' , 0,  r'volumes/GO_0xxx/GO_0006/*/C\1R.LBL'),
+    (r'go-ssi-c(006[2-9].*)'  , 0,  r'volumes/GO_0xxx/GO_0006/*/C\1R.LBL'),
+    (r'go-ssi-c(00[7-9].*)'   , 0,  r'volumes/GO_0xxx/GO_0007/*/C\1R.LBL'),
+    (r'go-ssi-c(01[0-5].*)'   , 0,  r'volumes/GO_0xxx/GO_0007/*/C\1R.LBL'),
+    (r'go-ssi-c(0163.*)'      , 0,  r'volumes/GO_0xxx/GO_0007/*/C\1R.LBL'),
+    (r'go-ssi-c(0164.*)'      , 0,  r'volumes/GO_0xxx/GO_000[789]/*/C\1R.LBL'),
+    (r'go-ssi-c(01650.*)'     , 0, [r'volumes/GO_0xxx/GO_0009/*/C\1R.LBL',
+                                    r'volumes/GO_0xxx/GO_0010/*/C\1R.LBL']),
+    (r'go-ssi-c(01651.*)'     , 0,  r'volumes/GO_0xxx/GO_001[01]/*/C\1R.LBL'),
+    (r'go-ssi-c(016520.*)'    , 0,  r'volumes/GO_0xxx/GO_001[12]/*/C\1R.LBL'),
+    (r'go-ssi-c(01652[1-3].*)', 0,  r'volumes/GO_0xxx/GO_0012/*/C\1R.LBL'),
+    (r'go-ssi-c(016524.*)'    , 0, [r'volumes/GO_0xxx/GO_0015/REDO/C\1R.LBL',
+                                    r'volumes/GO_0xxx/GO_001[23]/*/C\1R.LBL']),
+    (r'go-ssi-c(01652[5-9].*)', 0,  r'volumes/GO_0xxx/GO_0013/*/C\1R.LBL'),
+    (r'go-ssi-c(01653[01].*)' , 0,  r'volumes/GO_0xxx/GO_0013/*/C\1R.LBL'),
+    (r'go-ssi-c(016532.*)'    , 0,  r'volumes/GO_0xxx/GO_001[34]/*/C\1R.LBL'),
+    (r'go-ssi-c(01653[3-9].*)', 0,  r'volumes/GO_0xxx/GO_0014/*/C\1R.LBL'),
+    (r'go-ssi-c(016540.*)'    , 0,  r'volumes/GO_0xxx/GO_0014/*/C\1R.LBL'),
+    (r'go-ssi-c(016541.*)'    , 0,  r'volumes/GO_0xxx/GO_001[45]/*/C\1R.LBL'),
+    (r'go-ssi-c(01654[2-9].*)', 0,  r'volumes/GO_0xxx/GO_0015/*/C\1R.LBL'),
+    (r'go-ssi-c(0165[5-9].*)' , 0,  r'volumes/GO_0xxx/GO_0015/*/C\1R.LBL'),
+    (r'go-ssi-c(016[6-9].*)'  , 0,  r'volumes/GO_0xxx/GO_0015/*/C\1R.LBL'),
+    (r'go-ssi-c(01[7-9].*)'   , 0,  r'volumes/GO_0xxx/GO_0016/*/C\1R.LBL'),
+    (r'go-ssi-c(02.*)'        , 0,  r'volumes/GO_0xxx/GO_0016/*/C\1R.LBL'),
+
+    (r'go-ssi-c(03[0-5].*)'   , 0, [r'volumes/GO_0xxx/GO_0017/??/*/C\1R.LBL']),
+    (r'go-ssi-c(036.*)'       , 0, [r'volumes/GO_0xxx/GO_0019/REDO/??/*/C\1R.LBL',
+                                    r'volumes/GO_0xxx/GO_0018/REDO/??/*/C\1R.LBL',
+                                    r'volumes/GO_0xxx/GO_0017/??/*/C\1R.LBL',
+                                    r'volumes/GO_0xxx/GO_0018/??/*/C\1R.LBL']),
+    (r'go-ssi-c(037.*)'       , 0, [r'volumes/GO_0xxx/GO_0019/REDO/??/*/C\1R.LBL',
+                                    r'volumes/GO_0xxx/GO_0018/REDO/??/*/C\1R.LBL',
+                                    r'volumes/GO_0xxx/GO_0017/??/*/C\1R.LBL',
+                                    r'volumes/GO_0xxx/GO_0018/??/*/C\1R.LBL']),
+    (r'go-ssi-c(038.*)'       , 0, [r'volumes/GO_0xxx/GO_0019/REDO/??/*/C\1R.LBL',
+                                    r'volumes/GO_0xxx/GO_0018/REDO/??/*/C\1R.LBL',
+                                    r'volumes/GO_0xxx/GO_0018/??/*/C\1R.LBL']),
+    (r'go-ssi-c(039.*)'       , 0, [r'volumes/GO_0xxx/GO_0019/??/*/C\1R.LBL']),
+    (r'go-ssi-c(040.*)'       , 0, [r'volumes/GO_0xxx/GO_0019/??/*/C\1R.LBL',
+                                    r'volumes/GO_0xxx/GO_0019/???/*/C\1R.LBL']),
+    (r'go-ssi-c(041.*)'       , 0, [r'volumes/GO_0xxx/GO_0019/???/*/C\1R.LBL']),
+    (r'go-ssi-c(04[2-6].*)'   , 0, [r'volumes/GO_0xxx/GO_0023/REDO/E11/*/C\1R.LBL',
+                                    r'volumes/GO_0xxx/GO_0020/???/TIRETRACK/C\1S.LBL',
+                                    r'volumes/GO_0xxx/GO_0020/???/[A-SU-Z]*/C\1R.LBL']),
+    (r'go-ssi-c(04[7-9].*)'   , 0, [r'volumes/GO_0xxx/GO_0021/???/*/C\1R.LBL']),
+    (r'go-ssi-c(05[0-1].*)'   , 0, [r'volumes/GO_0xxx/GO_0021/???/*/C\1R.LBL']),
+    (r'go-ssi-c(052.*)'       , 0, [r'volumes/GO_0xxx/GO_0022/???/*/REPAIRED/C\1S.LBL',
+                                    r'volumes/GO_0xxx/GO_0022/???/*/C\1R.LBL',
+                                    r'volumes/GO_0xxx/GO_0022/???/*/GARBLED/C\1R.LBL']),
+    (r'go-ssi-c(05[3-9].*)'   , 0, [r'volumes/GO_0xxx/GO_0023/G28/REPAIRED/C\1S.LBL',
+                                    r'volumes/GO_0xxx/GO_0023/???/*/C\1R.LBL']),
+    (r'go-ssi-c(06.*)'        , 0, [r'volumes/GO_0xxx/GO_0023/???/REPAIRED/C\1S.LBL',
+                                    r'volumes/GO_0xxx/GO_0023/???/[A-FH-QS-Z]*/C\1R.LBL',
+                                    r'volumes/GO_0xxx/GO_0023/???/R[AIOU]*/C\1R.LBL',
+                                    r'volumes/GO_0xxx/GO_0023/???/GANYMEDE/C\1R.LBL',
+                                    r'volumes/GO_0xxx/GO_0023/???/GARBLED/C\1R.LBL']),
+])
+
+##########################################################################################
+# Subclass definition
+##########################################################################################
+
+class GO_0xxx(pds3file.Pds3File):
+    """The ``Pds3File`` subclass for GO_0xxx.
+
+    The class body and the module tail install this module's rule tables on the class
+    attributes ``Pds3File`` reads. `pds3file/rules/__init__.py` sets out the routes a
+    table takes and which of them leaves the inherited rules in front. The class
+    is registered in ``Pds3File.SUBCLASSES`` under the key
+    "GO_0xxx".
+    The module docstring describes the volume set and every table.
+
+    It also sets ``FILENAME_KEYLEN`` to 11, carries
+    ``METADATA_PATH_TRANSLATOR``, and defines ``opus_prioritizer``.
+    """
+
+    pds3file.Pds3File.VOLSET_TRANSLATOR = translator.TranslatorByRegex([('GO_0xxx', re.I, 'GO_0xxx')]) + \
+                                          pds3file.Pds3File.VOLSET_TRANSLATOR
+
+    DESCRIPTION_AND_ICON = description_and_icon_by_regex + pds3file.Pds3File.DESCRIPTION_AND_ICON
+    VIEW_OPTIONS = view_options + pds3file.Pds3File.VIEW_OPTIONS
+    NEIGHBORS = neighbors + pds3file.Pds3File.NEIGHBORS
+    SORT_KEY = sort_key + pds3file.Pds3File.SORT_KEY
+    SPLIT_RULES = split_rules + pds3file.Pds3File.SPLIT_RULES
+
+    OPUS_TYPE = opus_type + pds3file.Pds3File.OPUS_TYPE
+    OPUS_FORMAT = opus_format + pds3file.Pds3File.OPUS_FORMAT
+    OPUS_PRODUCTS = opus_products + pds3file.Pds3File.OPUS_PRODUCTS
+    OPUS_ID = opus_id
+    OPUS_ID_TO_PRIMARY_LOGICAL_PATH = opus_id_to_primary_logical_path
+
+    VIEWABLES = {'default': default_viewables}
+
+    ASSOCIATIONS = pds3file.Pds3File.ASSOCIATIONS.copy()
+    ASSOCIATIONS['volumes']  += associations_to_volumes
+    ASSOCIATIONS['previews'] += associations_to_previews
+    ASSOCIATIONS['metadata'] += associations_to_metadata
+    ASSOCIATIONS['documents'] += associations_to_documents
+
+    VERSIONS = versions + pds3file.Pds3File.VERSIONS
+
+    FILENAME_KEYLEN = 11    # trim off suffixes
+
+    # Given a metadata path, this returns the same path but with "$" replacing
+    # the volume IDs. Used by opus_prioritizer.
+    METADATA_PATH_TRANSLATOR = translator.TranslatorByRegex([
+        (r'(.*metadata/GO_0xxx)(|_v[0-9\.]+)/(GO_00..)/\3_(.*)', 0, r'\1\2/$/$_\4')
+    ])
+
+    def opus_prioritizer(self, pdsfile_dict):
+        """Split reprocessed Galileo products from the copies they supersede.
+
+        Some images were processed more than once, and the reprocessed copy lives
+        under ``REDO/``, ``REPAIRED/`` or ``TIRETRACK/``. Where an OPUS heading holds
+        more than one copy of a data product, this keeps the reprocessed copy under
+        that heading and moves the rest to a heading in the same category whose rank
+        is 10 higher, whose slug gains "_alternate", whose title gains
+        " (Superseded Processing)" and whose default-selected flag is True whatever
+        the original heading carried. The copies are grouped by version rank first,
+        so one copy per rank survives under the original heading.
+
+        A heading holding a single copy is left alone, and so is one whose copies are
+        not in the volumes tree.
+
+        The dictionary is modified in place as well as returned: the two headings it
+        touches are rewritten and the alternative heading is added.
+
+        Parameters:
+            pdsfile_dict (dict): the OPUS product dictionary. A key is a
+                (category, rank, slug, title, selected) tuple, or the empty string
+                for a product whose type no rule matched; a value is a list of lists
+                of PdsFile objects.
+
+        Returns:
+            dict: the same dictionary.
+
+        Raises:
+            IndexError: raised by the item read ``__getitem__()`` on the heading,
+                where the heading is the empty-string key and it holds more than one
+                copy of a product in the volumes tree.
+            TypeError: raised by ``sort()`` wherever two copies at one version rank
+                are given the same priority -- which is any two that are both
+                reprocessed, or both not. The comparison then falls through to the
+                lists of PdsFile objects, which have no ordering.
+        """
+
+        headers = list(pdsfile_dict.keys())     # Save keys so we can alter dict
+        for header in headers:
+            sublists = pdsfile_dict[header]
+            if len(sublists) == 1:
+                continue
+
+            # Only prioritize data products
+            if sublists[0][0].voltype_ != 'volumes/':
+                continue
+
+            # Split up the sublists by version rank (not currently needed)
+            rank_dict = {}
+            for sublist in sublists:
+                rank = sublist[0].version_rank
+                if rank not in rank_dict:
+                    rank_dict[rank] = []
+                rank_dict[rank].append(sublist)
+
+            # Sort the version ranks
+            ranks = list(rank_dict.keys())
+            ranks.sort()
+            ranks.reverse()
+
+            # Define the alternative header
+            alt_header = (header[0], header[1] + 10,
+                                     header[2] + '_alternate',
+                                     header[3] + ' (Superseded Processing)',
+                                     True)
+            pdsfile_dict[alt_header] = []
+            pdsfile_dict[header] = []
+
+            # Sort items by priority among each available version
+            for rank in ranks:
+                prioritizer = []    # (priority from path, sublist)
+
+                for sublist in rank_dict[rank]:
+                    abspath = sublist[0].abspath
+                    prio = 1
+                    if 'TIRETRACK' in abspath:
+                        prio = 0
+                    if 'REPAIRED' in abspath:
+                        prio = 0
+                    if 'REDO' in abspath:
+                        prio = 0
+
+                    prioritizer.append((prio, sublist))
+
+                prioritizer.sort()
+
+                # Update the dictionary for each rank
+                pdsfile_dict[header].append(prioritizer[0][-1])
+                pdsfile_dict[alt_header] += [p[-1] for p in prioritizer[1:]]
+
+        return pdsfile_dict
+
+# Global attribute shared by all subclasses
+pds3file.Pds3File.OPUS_ID_TO_SUBCLASS = translator.TranslatorByRegex([(r'go-ssi-.*', 0, GO_0xxx)]) + \
+                                        pds3file.Pds3File.OPUS_ID_TO_SUBCLASS
+
+##########################################################################################
+# Update the global dictionary of subclasses
+##########################################################################################
+
+pds3file.Pds3File.SUBCLASSES['GO_0xxx'] = GO_0xxx

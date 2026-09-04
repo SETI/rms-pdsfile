@@ -1,0 +1,18 @@
+pdschecksums --initialize $DISK/holdings/volumes/HSTNx_xxxx/HSTN0_7176
+pdsinfoshelf --initialize $DISK/holdings/volumes/HSTNx_xxxx/HSTN0_7176
+pdsarchives --initialize $DISK/holdings/volumes/HSTNx_xxxx/HSTN0_7176
+pdschecksums --initialize $DISK/holdings/archives-volumes/HSTNx_xxxx
+pdsinfoshelf --initialize $DISK/holdings/archives-volumes/HSTNx_xxxx
+pdschecksums --initialize $DISK/holdings/metadata/HSTNx_xxxx/HSTN0_7176
+pdsinfoshelf --initialize $DISK/holdings/metadata/HSTNx_xxxx/HSTN0_7176
+pdsarchives --initialize $DISK/holdings/metadata/HSTNx_xxxx/HSTN0_7176
+pdschecksums --initialize $DISK/holdings/archives-metadata/HSTNx_xxxx
+pdsinfoshelf --initialize $DISK/holdings/archives-metadata/HSTNx_xxxx
+pdslinkshelf --initialize $DISK/holdings/volumes/HSTNx_xxxx/HSTN0_7176
+pdslinkshelf --initialize $DISK/holdings/metadata/HSTNx_xxxx/HSTN0_7176
+pdsindexshelf --initialize $DISK/holdings/metadata/HSTNx_xxxx/HSTN0_7176/HSTN0_7176_hstfiles.tab
+pdsindexshelf --initialize $DISK/holdings/metadata/HSTNx_xxxx/HSTN0_7176/HSTN0_7176_index.tab
+cat $DISK/holdings/metadata/HSTNx_xxxx/HSTN[01]_????/HSTN[01]_????_hstfiles.tab > $DISK/holdings/metadata/HSTNx_xxxx/HSTN9_9999/HSTN9_9999_hstfiles.tab
+<LABEL> $DISK/holdings/metadata/HSTNx_xxxx/HSTN9_9999/HSTN9_9999_hstfiles.tab
+cat $DISK/holdings/metadata/HSTNx_xxxx/HSTN[01]_????/HSTN[01]_????_index.tab > $DISK/holdings/metadata/HSTNx_xxxx/HSTN9_9999/HSTN9_9999_index.tab
+<LABEL> $DISK/holdings/metadata/HSTNx_xxxx/HSTN9_9999/HSTN9_9999_index.tab
