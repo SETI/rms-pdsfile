@@ -209,6 +209,10 @@ class TestPds4FileBlackBox:
              False),
             ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress.xml',
              False),
+            ('uranus_occs_earthbased/uranus_occ_support',
+             True),
+            ('uranus_occs_earthbased/uranus_occ_support/data',
+             False),
             # ('cassini_iss',
             #  ''), # bundlesets currently have empty string instead of False
             # ('cassini_iss/cassini_iss_cruise',
@@ -250,6 +254,12 @@ class TestPds4FileBlackBox:
             ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress.xml',
              False),
             ('uranus_occs_earthbased/',
+             False),
+            # The one bundle of this bundle set that is not an observation, and so
+            # the one BUNDLENAME_REGEX has to name outright.
+            ('uranus_occs_earthbased/uranus_occ_support',
+             True),
+            ('uranus_occs_earthbased/uranus_occ_support/data',
              False),
             # ('cassini_iss',
             #  ''), # bundlesets currently have empty string instead of False
@@ -589,6 +599,12 @@ class TestPds4FileBlackBox:
              f'{PDS4_BUNDLES_DIR}/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress.xml'),
             ('uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress.xml',
              f'{PDS4_BUNDLES_DIR}/uranus_occs_earthbased/uranus_occ_u0_kao_91cm/data/atmosphere/u0_kao_91cm_734nm_counts-v-time_atmos_egress.xml'),
+            # A bundle name resolves without its bundle set only if the name is one
+            # BUNDLENAME_REGEX takes; otherwise it is read as a bundle set instead.
+            ('uranus_occ_support',
+             f'{PDS4_BUNDLES_DIR}/uranus_occs_earthbased/uranus_occ_support'),
+            ('uranus_occ_support/document/user_guide',
+             f'{PDS4_BUNDLES_DIR}/uranus_occs_earthbased/uranus_occ_support/document/user_guide'),
         ]
     )
     def test_from_path(self, input_path, expected):

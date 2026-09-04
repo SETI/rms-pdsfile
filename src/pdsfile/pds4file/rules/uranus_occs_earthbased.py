@@ -532,10 +532,13 @@ opus_id_to_primary_logical_path = translator.TranslatorByRegex(opus_id_to_primar
 #   - 'data/global/': ring-plane occultation profiles
 #   - 'data/ring_models/': ring model files (SQW models, fitted/predicted data)
 #   - 'browse/': browse products (images, PDFs, XML)
-# - Additionally, there are non-bundle collections at the bundle-set level:
-#   - 'uranus_occ_support/': supporting data (ring fits, SPICE kernels, documentation)
+# - 'uranus_occ_support/' is a bundle too, and carries a bundle.xml like any other,
+#   but it holds supporting data (ring fits, SPICE kernels, documentation) rather
+#   than an observation, so it fits none of the naming shapes above and
+#   'Pds4File.BUNDLENAME_REGEX' names it outright.
+# - Two directories at the bundle-set level are not bundles at all:
 #   - 'checksums_uranus_occs_earthbased/': checksum files
-#   - 'superseded/': superseded data files.
+#   - 'superseded/': superseded copies of whole bundles, one directory per version.
 #
 # How archives are split:
 # - Rather than creating one archive per individual bundle, we now archive at the

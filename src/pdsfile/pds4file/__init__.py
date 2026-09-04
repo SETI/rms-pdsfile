@@ -104,9 +104,20 @@ class Pds4File(PdsFile):
         ``_calibrated``. The group structure is PDS3's exactly -- name, version,
         combined tail, category, ending -- which is what the shared consumers in
         ``pdsfile.py`` and ``_sorting.py`` index into.
+        ``BUNDLENAME_REGEX`` describes each bundle set's bundles by shape where they
+        have one, and ``uranus_occ_support`` is named outright, because it is the one
+        bundle of uranus_occs_earthbased that holds no observation and so shares no
+        shape with the observation bundles beside it. Naming it costs no capture
+        group, which is what keeps the group structure above true.
         ``BUNDLENAME_PLUS_REGEX`` is built exactly as the PDS3 one is: it appends an
         optional lower-case word and then an optional ``.tar.gz`` or ``_md5.txt``, so
         it takes the names sitting beside a bundle and no version suffix at all.
+        ``BUNDLENAME_VERSION`` is the one that takes a version suffix, and it appends
+        its group to ``BUNDLENAME_REGEX``, so the version is the pattern's **last**
+        group -- the seventh here and the second on the PDS3 side, whose bundle-name
+        pattern has one group where this has six. Its callers read the last group for
+        that reason. The star quantifier also lets it match with no version at all,
+        which the PDS3 one cannot, so the group can come back None.
       * ``LOGGER`` and ``CACHE``, the second built with the shared cache-lifetime rule
         and holding a direct reference to the logger, which is why replacing ``LOGGER``
         later does not change where the cache logs.
@@ -133,6 +144,7 @@ class Pds4File(PdsFile):
     BUNDLESET_PLUS_REGEX_I = re.compile(BUNDLESET_PLUS_REGEX.pattern, re.I)
 
     BUNDLENAME_REGEX = re.compile(r'^(uranus_occ_u\d{0,4}._[a-z]*_(fos|\d{2,3}cm)|' +
+                                  r'uranus_occ_support|' +
                                   r'cassini_[a-z]{3,4}_(cruise|saturn)|' +
                                   r'cassini_iss_fring_mosaics_rsfrench2025(|_.*)|'
                                   r'cassini_iss_spokes_hedman-hamilton-2024(|_.*)|'
