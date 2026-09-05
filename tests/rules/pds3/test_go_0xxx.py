@@ -35,6 +35,23 @@ def test_associated_abspaths(request, input_path, category, expected):
     associated_abspaths_test(pds3file.Pds3File, input_path, category,
                              TEST_RESULTS_DIR+expected, update)
 
+@pytest.mark.parametrize(
+    ('input_path', 'expected_row'),
+    [
+        ('volumes/GO_0xxx/GO_0016/SL9/C0248806645R.IMG',
+         'metadata/GO_0xxx/GO_0016/GO_0016_sl9_mosaic_index.tab/C0248806645'),
+        ('volumes/GO_0xxx/GO_0016/SL9/C0248950600R.IMG',
+         'metadata/GO_0xxx/GO_0016/GO_0016_sl9_mosaic_index.tab/C0248950600'),
+    ]
+)
+def test_sl9_image_associates_with_the_mosaic_index(input_path, expected_row):
+    # The rule names the index file, and a name that matches no file yields no row
+    # and no error, so the association just goes quiet. Assert the row rather than
+    # the count, which would pass on any five of the six.
+    pdsf = pds3file.Pds3File.from_logical_path(input_path)
+    assert expected_row in pdsf.associated_logical_paths('metadata')
+
+
 def test_opus_id_to_primary_logical_path():
     test_cases = [
         'volumes/GO_0xxx/GO_0002/RAW_CAL/C0003061100R.LBL',
