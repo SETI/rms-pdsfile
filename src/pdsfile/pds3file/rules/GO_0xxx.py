@@ -447,7 +447,7 @@ associations_to_metadata = translator.TranslatorByRegex([
              r'metadata/GO_0xxx/GO_0999/GO_0999_\2.lbl',
             ]),
     (r'volumes/GO_0xxx/GO_0016/SL9/(C\d{10})[RG].*', 0,
-            r'metadata/GO_0xxx/GO_0016/GO_0016_sl9_moasic_index.tab/\1'),
+            r'metadata/GO_0xxx/GO_0016/GO_0016_sl9_mosaic_index.tab/\1'),
 ])
 
 associations_to_documents = translator.TranslatorByRegex([
