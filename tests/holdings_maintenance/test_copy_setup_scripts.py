@@ -58,10 +58,18 @@ def _run(script, args):
                           capture_output=True, text=True)
 
 
+def _not_a_directory(tmp_path):
+    # A path `realpath` can resolve that still fails `[[ ! -d ]]`. BSD realpath
+    # (macOS) errors on a missing path and `set -e` exits before the guard;
+    # GNU realpath does not. A regular file is portable.
+    path = tmp_path / 'not-a-directory'
+    path.write_text('')
+    return path
+
+
 def _setup_holdings_missing(tmp_path):
-    # setup_new_holdings.sh guard 2: <holdings_dir> does not exist. The parent
-    # exists so `realpath` resolves and the guard itself is what fires.
-    return [str(tmp_path / 'missing')]
+    # setup_new_holdings.sh guard 2: <holdings_dir> is not a directory.
+    return [str(_not_a_directory(tmp_path))]
 
 
 def _documents_src_volset_missing(tmp_path):
@@ -93,9 +101,9 @@ def _shelves_dest_type_missing(tmp_path):
 
 
 def _fake_volumes_holdings_missing(tmp_path):
-    # create_fake_volumes_for_metadata.sh guard 2: <holdings_dir> does not
-    # exist (parent present, as above).
-    return [str(tmp_path / 'missing'), VOLSET]
+    # create_fake_volumes_for_metadata.sh guard 2: <holdings_dir> is not a
+    # directory (see `_not_a_directory`).
+    return [str(_not_a_directory(tmp_path)), VOLSET]
 
 
 def _fake_volumes_metadata_volset_missing(tmp_path):
