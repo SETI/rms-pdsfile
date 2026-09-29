@@ -1,0 +1,12 @@
+uranus_occ_u0_kao_91cm_info = {
+    ""                                                          : (     341854,   1, "2020-09-13 12:29:20.000000", ""                                , (   0,   0)),
+    "data"                                                      : (     341854,   1, "2020-09-13 12:29:20.000000", ""                                , (   0,   0)),
+    "data/rings"                                                : (     341854,   6, "2020-09-13 12:29:20.000000", ""                                , (   0,   0)),
+    "data/rings/u0_kao_91cm_734nm_radius_alpha_egress_1000m.tab": (      82467,   0, "2020-09-13 12:28:40.000000", "497f1c868ec720671fd4bfc5f194827b", (   0,   0)),
+    "data/rings/u0_kao_91cm_734nm_radius_alpha_egress_1000m.xml": (      31489,   0, "2020-09-13 12:28:30.000000", "369fafe6d3ec1d472cbfea562caf8673", (   0,   0)),
+    "data/rings/u0_kao_91cm_734nm_radius_beta_egress_1000m.tab" : (      82467,   0, "2020-09-13 12:29:00.000000", "d8a87288fca409cf5f7e233e7bac7400", (   0,   0)),
+    "data/rings/u0_kao_91cm_734nm_radius_beta_egress_1000m.xml" : (      31475,   0, "2020-09-13 12:28:50.000000", "bb063a2925a9a8d4227eec44a5f20aee", (   0,   0)),
+    "data/rings/u0_kao_91cm_734nm_radius_gamma_egress_1000m.tab": (      82467,   0, "2020-09-13 12:29:20.000000", "e13092a1fb7fcafda5347a6bc418687f", (   0,   0)),
+    "data/rings/u0_kao_91cm_734nm_radius_gamma_egress_1000m.xml": (      31489,   0, "2020-09-13 12:29:10.000000", "d3870a120302e2bd783fecb132749c15", (   0,   0)),
+}
+

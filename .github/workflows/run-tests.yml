@@ -4,30 +4,88 @@ run-name: "Run Tests: ${{ github.ref_type }} ${{ github.ref_name }} by ${{ githu
 on:
   workflow_dispatch:
   workflow_call:
+  pull_request:
+    branches: [ rewrite ]
   push:
     branches: [ main ]
   schedule:
     - cron: "00 08 * * *"   # 12am PST, 1am PDT
+
+# One run per pull request at a time: a new push cancels the run still going for
+# the previous commit. The data jobs need four of the five self-hosted runners at
+# once, so two live runs on one PR queue behind each other and only the newer one
+# is worth waiting for.
+#
+# Cancelling is limited to pull_request. The nightly schedule, pushes to main and
+# manual dispatches share the same runners but supersede nothing, so they group by
+# ref and are left to finish. The pull_request group keys on the PR number rather
+# than the ref so that it is stable if the branch is renamed.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 defaults:
   run:
     shell: bash
 
 jobs:
+  lint:
+    # Stock GitHub-hosted runners have no holdings tree, so this job is the
+    # everywhere-runnable half of the suite. It runs scripts/run-all-checks.sh
+    # rather than naming individual gates: that script is the single source of
+    # truth for which gates the repository runs (see environment.mdc), so the two
+    # cannot drift. With no holdings env vars set, its pytest gate collects the
+    # whole tree, runs the holdings-free tests and skips the rest. Python floor
+    # and ceiling only; the self-hosted matrix below covers every version with
+    # data.
+    name: Lint and holdings-free tests
+    runs-on: ubuntu-latest
+    # This job runs code from the pull-request head on a hosted runner, so it
+    # gets no more than it needs to read the tree.
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.13"]
+      fail-fast: true
+    steps:
+      - name: Checkout rms-pdsfile
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          # Nothing here pushes; leaving the token in .git/config would only
+          # expose it to the PR-authored code this job runs.
+          persist-credentials: false
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Run all checks
+        # run-all-checks.sh looks for the venv at ./venv and activates it itself.
+        # Sequential mode streams each gate's output straight to the job log.
+        run: |
+          rm -rf venv
+          python -m venv venv
+          source venv/bin/activate
+          python -m pip install --upgrade pip
+          python -m pip install wheel
+          python -m pip install -e ".[dev]"
+          echo
+          python -m pip freeze
+          echo
+          scripts/run-all-checks.sh --sequential
+
   test:
     name: Test pdsfile
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        # Because we can run multiple tests at the same time
-        # under Linux, we can do our multi-Python-version test
-        # there, and then just run a single version under
-        # Windows to make sure the code still works there.
-        #
-        # MacOS: Python 3.8-3.10 does not currently work on MacOS.
+        # Self-hosted Linux runs the full multi-Python-version test. Windows is
+        # no longer supported and has been removed from the matrix. macOS entries
+        # are kept commented for possible future re-enablement.
         include:
-          - os: self-hosted-linux
-            python-version: "3.10"
           - os: self-hosted-linux
             python-version: "3.11"
           - os: self-hosted-linux
@@ -40,10 +98,6 @@ jobs:
           #  python-version: "3.12"
           #- os: self-hosted-macos
           #  python-version: "3.13"
-          - os: self-hosted-windows
-            python-version: "3.12"
-          - os: self-hosted-windows
-            python-version: "3.13"
       fail-fast: true
     steps:
       - name: Checkout rms-pdsfile
@@ -67,14 +121,10 @@ jobs:
           echo
           rm -rf venv
           python -m venv venv
-          if [[ ${{ matrix.os }} == self-hosted-windows ]]; then
-            source venv/Scripts/activate
-          else
-            source venv/bin/activate
-          fi
+          source venv/bin/activate
           python -m pip install --upgrade pip
           python -m pip install wheel
-          python -m pip install -r requirements.txt
+          python -m pip install -e ".[dev]"
           echo
           python -m pip freeze
           echo

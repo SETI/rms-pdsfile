@@ -1,0 +1,18 @@
+{
+  "_comment": "Forgiveness rules for the public-API freeze (PR-02). See plan section 6.1. 'exact' entries are {module, name, reason, pr} and forgive one specific attribute diff; here 'module' holds the diff LOCATION -- the module name for a module-level attribute, or the class key (e.g. 'pdsfile.pds3file.Pds3File') for a class-member diff -- and 'name' is the attribute/member. 'categories' entries are {pattern, kind, reason, pr} regex predicates matched against '<location>::<name>' (kind optional / '*' = any) that forgive a whole class of expected diffs. The two pre-approved forgiveness categories are added in PR-07 (tests subpackages leave the package) and PR-08 (rule modules lose their test-only names). The PR-08 category is section 6.1's rule #2, encoded as its two sub-clauses (a) and (b) exactly as enumerated there. Never edit the manifest or dumper to hide a diff; add an entry here only under a pre-approved category or with new owner approval.",
+  "exact": [],
+  "categories": [
+    {
+      "pattern": "^pdsfile\\.pds[34]file\\.rules\\.[^:]+::test_[A-Za-z0-9_]+$",
+      "kind": "function",
+      "reason": "PR-08 category #2(a): rule modules matching pdsfile.pds{3,4}file.rules.* lose their inline `test_*` functions (extracted to tests/rules/). Restricted to kind=function per plan section 6.1.",
+      "pr": "PR-08"
+    },
+    {
+      "pattern": "^pdsfile\\.pds[34]file\\.rules\\.[^:]+::(pytest|pytestmark|os|TEST_RESULTS_DIR|translate_all|unmatched_patterns|opus_products_test|associated_abspaths_test|versions_test|instantiate_target_pdsfile)$",
+      "kind": "*",
+      "reason": "PR-08 category #2(b): rule modules lose the test-only names section 6.1 enumerates -- the module's own top-level `import pytest`, and the star-supplied `os` (only where it was test-only; COVIMS_0xxx re-imports it for production), TEST_RESULTS_DIR, translate_all, unmatched_patterns, opus_products_test, associated_abspaths_test, versions_test, instantiate_target_pdsfile. `pytestmark` (the cassini_iss_fring_mosaics_rsfrench2025 module's pytest.mark.skip marker, moved to tests/rules/pds4/ with its tests) is a test-only name the section 6.1 enumeration omitted; the owner approved extending category #2(b) to include it (2026-07-25). Production names (translator tables, re/translator/pds3file/pds4file, the rule subclass) are NOT in this list, so their removal is not forgiven.",
+      "pr": "PR-08"
+    }
+  ]
+}

@@ -1,9 +1,0 @@
-[run]
-branch = True
-
-[html]
-Title = Coverage Report for PdsFile
-
-[report]
-exclude_lines =
-  pragma: no cover

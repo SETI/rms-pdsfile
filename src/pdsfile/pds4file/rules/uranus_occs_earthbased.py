@@ -1,0 +1,660 @@
+##########################################################################################
+# pds4file/rules/uranus_occs_earthbased.py
+##########################################################################################
+
+"""Rules for the uranus_occs_earthbased bundle set: Earth-based Uranus occultations.
+
+Each bundle in this bundle set holds the data from a single occultation observation
+of the Uranian system, and a support bundle holds the documentation and the Uranian
+ring models behind them (bundle ``readme.txt`` under
+``$PDS4_HOLDINGS_DIR/bundles/uranus_occs_earthbased``). A bundle is named
+uranus_occ_<event>_<observatory>_<aperture>, as in uranus_occ_u0_kao_91cm and
+uranus_occ_u14_ctio_400cm; two of the 52 end in an instrument instead of an
+aperture, uranus_occ_u137_hst_fos and uranus_occ_u138_hst_fos, which is why
+``Pds4File.BUNDLENAME_REGEX`` carries an alternation for "fos". The bundle set spans
+observations from 1977 to 2002 at sixteen observatories, and despite the bundle
+set's name two of those observations are from HST rather than the ground.
+
+A bundle holds ``data/rings/`` for the per-ring radial profiles at 100 m, 500 m and
+1 km sampling, ``data/global/`` for the ring-plane profiles at the same three
+samplings, ``data/atmosphere/`` for the counts-against-time series,
+``data/ring_models/`` for the square-well models and the fitted and predicted ring
+event times, and ``browse/`` for the browse products. The support bundle holds the
+global ring orbital fit, the original index,
+the quality ratings, the ring dictionary definitions, the user guide and its
+plotting software, and SPICE frame and trajectory kernels.
+
+The rule tables written against PDS4 ``bundles/uranus_occs_earthbased`` paths:
+
+* ``default_viewables`` -- points an atmosphere time series or a ring or global
+  profile at its diagrams.
+* ``associations_to_bundles``, ``associations_to_previews``,
+  ``associations_to_diagrams``, ``associations_to_metadata`` and
+  ``associations_to_documents`` -- cross the five trees for one observation.
+* ``opus_type`` -- files products under the "Uranus Earth-based Occultations" OPUS
+  category, with a type for each sampling of the ring and ring-plane profiles, for
+  the ring and ring-plane time series, for the atmosphere time series, for the ring
+  models, and for each kind of support product. Its last rule is the exception: it
+  files the metadata index under the generic "metadata" category.
+* ``opus_products`` -- what OPUS offers with one product, in nine entries under six
+  headings: the ring-specific products, the atmosphere-specific products, the global
+  products, the support-bundle products available only with a ring or global
+  product, the support-bundle products available with everything, and four entries
+  for the previews and diagrams.
+* ``prefix_mapping`` -- the set that drives the OPUS ID tables. Each entry pairs a
+  bundle prefix with up to three OPUS ID prefixes: one for egress, one for ingress
+  where the ingress falls on a different day, and one for the atmosphere series. An
+  OPUS ID prefix encodes the telescope, the detector, the date and the event, as in
+  ctio4m0-insb-occ-1980-229-u12. The comment above the mapping lists five detector
+  codes; the mapping uses seven, adding "fos" for the two HST bundles and "nicmos"
+  for one at Calar Alto.
+* ``opus_id_list`` and ``opus_id`` -- the list is built by looping over
+  ``prefix_mapping``. Where a bundle's ingress and egress share a prefix, which is 47
+  of the 52, it emits one pattern each for ``data/atmosphere/``, ``data/global/`` and
+  ``data/rings/``. Where they do not, it emits separate ingress and egress patterns
+  for the last two, and an atmosphere pattern only if the bundle has an atmosphere
+  prefix: two of the five do, and the other three get none at all. Nothing is emitted
+  for ``data/ring_models/``. ``opus_id`` is the translator built from the resulting
+  163 entries.
+* ``opus_id_to_primary_filespec_list`` and ``opus_id_to_primary_logical_path`` --
+  the same loop run the other way, resolving an OPUS ID to the label of the primary
+  product: the 100 m sampling for a ring or ring-plane profile, and the time series
+  itself for an atmosphere observation.
+* ``opus_id_to_subclass_set`` -- the set of OPUS ID prefixes that route to this
+  subclass, added to ``Pds4File.OPUS_ID_TO_SUBCLASS``. It is a set rather than a
+  list because a bundle's three prefixes are not always distinct: for
+  uranus_occ_u12_ctio_400cm the ingress and atmosphere prefixes are the same string,
+  and for uranus_occ_u12_eso_360cm the egress and atmosphere prefixes are. No prefix
+  is shared between two bundles, so 59 prefixes give 57 set entries.
+* ``filespec_to_bundleset`` -- maps a file specification whose first component is
+  "uranus_occ" followed by an underscore to the bundle set name
+  uranus_occs_earthbased.
+* ``archive_paths`` and ``archive_dirs`` -- the whole bundle set tree is packaged as
+  one archive named after itself, so both tables have a single entry. The header
+  comment records why: any new observation bundle added under the tree is then
+  included without a new archive rule.
+
+Five tables here are byte-identical to the tables of the same name in
+`pds3file/rules/COISS_xxxx.py`, which serves Cassini ISS:
+``description_and_icon_by_regex``, ``view_options``, ``neighbors``, ``sort_key`` and
+``opus_format``. Three of the five key on PDS3 paths, mostly ``volumes/`` and some
+``calibrated/``; ``sort_key`` keys on basenames and ``opus_format`` on file
+extensions, so those two are not PDS3-specific. ``description_and_icon_by_regex`` is
+not wholly inert here either: four of its rules carry no PDS3 anchor and fire for a
+bundle's ``browse/`` collection, which every bundle has.
+
+The class body builds its volume set translator entries by looping over
+``prefix_mapping``. Those entries map a bundle name to the bundle set name, which
+path resolution never needs: the bundle set name is already a
+``Pds4File.SUBCLASSES`` key, so uranus_occ_support, which is absent from the
+mapping, resolves to this subclass all the same.
+`uranus_occs_earthbased_primary_filespec.py` holds the list of primary labels this
+bundle set offers, which this module re-exports.
+"""
+
+import re
+
+import translator
+
+import pdsfile.pds4file as pds4file
+
+from .uranus_occs_earthbased_primary_filespec import PRIMARY_FILESPEC_LIST as PRIMARY_FILESPEC_LIST
+
+##########################################################################################
+# DESCRIPTION_AND_ICON
+##########################################################################################
+
+description_and_icon_by_regex = translator.TranslatorByRegex([
+    (r'volumes/.*/data/.*/N[0-9_]+\.IMG',                        0, ('Narrow-angle image, VICAR',      'IMAGE'   )),
+    (r'volumes/.*/data/.*/W[0-9_]+\.IMG',                        0, ('Wide-angle image, VICAR',        'IMAGE'   )),
+    (r'volumes/.*/data/.*/extras(/\w+)*(|/)',                    0, ('Preview image collection',       'BROWDIR' )),
+    (r'volumes/.*/data/.*/extras/.*\.(jpeg|jpeg_small|tiff)',    0, ('Preview image',                  'BROWSE'  )),
+    (r'volumes/.*/COISS_0011/document/.*/[0-9]+\.[0-9]+(|/)',    0, ('Calibration report',             'INFODIR' )),
+    (r'volumes/.*/data(|/\w*)',                                  0, ('Images grouped by SC clock',     'IMAGEDIR')),
+    (r'calibrated/.*_calib\.img',                                0, ('Calibrated image, VICAR',        'IMAGE'   )),
+    (r'calibrated/.*/data(|/\w+)',                               0, ('Calibrated images by SC clock',  'IMAGEDIR')),
+    (r'calibrated/\w+(|/\w+)',                                   0, ('Calibrated image collection',    'IMAGEDIR')),
+    (r'.*/thumbnail(/\w+)*',                                     0, ('Small browse images',            'BROWDIR' )),
+    (r'.*/thumbnail/.*\.(gif|jpg|jpeg|jpeg_small|tif|tiff|png)', 0, ('Small browse image',             'BROWSE'  )),
+    (r'.*/(tiff|full)(/\w+)*',                                   0, ('Full-size browse images',        'BROWDIR' )),
+    (r'.*/(tiff|full)/.*\.(tif|tiff|png)',                       0, ('Full-size browse image',         'BROWSE'  )),
+    (r'volumes/COISS_0xxx.*/COISS_0011/document/report',         0, ('&#11013; <b>ISS Calibration Report</b>',
+                                                                                                       'INFO')),
+    (r'(volumes/COISS_0xxx.*/COISS_0011/document/report/index.html)', 0,
+            ('&#11013; <b>CLICK "index.html"</b> to view the ISS Calibration Report', 'INFO')),
+    (r'volumes/COISS_0xxx.*/COISS_0011/document/.*user_guide.*\.pdf',
+                                                                 0, ('&#11013; <b>ISS User Guide</b>', 'INFO')),
+    (r'volumes/COISS_0xxx.*/COISS_0011/extras',                  0, ('CISSCAL calibration software',   'CODE')),
+    (r'volumes/COISS_0xxx.*/COISS_0011/extras/cisscal',          0, ('CISSCAL source code (IDL)',      'CODE')),
+    (r'volumes/COISS_0xxx.*/COISS_0011/extras/cisscal\.tar\.gz', 0, ('CISSCAL source code (download)', 'TARBALL')),
+])
+
+##########################################################################################
+# VIEWABLES
+##########################################################################################
+
+default_viewables = translator.TranslatorByRegex([
+    (r'.*/(uranus_occs_earthbased/uranus_occ_u.*/data/atmosphere/.*-v-.*)\.[a-z]{3}', 0,
+        [r'diagrams/\1_diagram_full.png',
+         r'diagrams/\1_diagram_med.png',
+         r'diagrams/\1_diagram_small.png',
+         r'diagrams/\1_diagram_thumb.png',
+    ]),
+    (r'.*/(uranus_occs_earthbased/uranus_occ_u.*/data/(rings|global))/(.*)_\d+m\.[a-z]{3}', 0,
+        [r'diagrams/\1/\3_diagram_full.png',
+         r'diagrams/\1/\3_diagram_med.png',
+         r'diagrams/\1/\3_diagram_small.png',
+         r'diagrams/\1/\3_diagram_thumb.png',
+    ]),
+])
+
+##########################################################################################
+# ASSOCIATIONS
+##########################################################################################
+
+associations_to_bundles = translator.TranslatorByRegex([
+    (r'.*/(uranus_occs_earthbased/uranus_occ_u.*)/(data|browse)(.*|_[a-z]*]/.*)\.[a-z]{3}', 0,
+        [r'bundles/\1/data\3.tab',
+         r'bundles/\1/data\3.xml',
+         r'bundles/\1/data\3.txt',
+         r'bundles/\1/data\3.pdf',
+         r'bundles/\1/browse\3.pdf',
+         r'bundles/\1/browse\3.xml',
+        ]),
+    (r'documents/uranus_occs_earthbased.*', 0,
+        r'bundles/uranus_occs_earthbased'),
+])
+
+associations_to_previews = translator.TranslatorByRegex([
+    (r'.*/(uranus_occs_earthbased/uranus_occ_u.*/(data|browse)/atmosphere/.*-v-.*)\.[a-z]{3}', 0,
+        [r'previews/\1_preview_full.png',
+         r'previews/\1_preview_med.png',
+         r'previews/\1_preview_small.png',
+         r'previews/\1_preview_thumb.png',
+    ]),
+    (r'.*/(uranus_occs_earthbased/uranus_occ_u.*/(data|browse)/(rings|global))/(.*)_\d+m\.[a-z]{3}', 0,
+        [r'previews/\1/\4_preview_full.png',
+         r'previews/\1/\4_preview_med.png',
+         r'previews/\1/\4_preview_small.png',
+         r'previews/\1/\4_preview_thumb.png',
+    ]),
+
+])
+
+associations_to_diagrams = translator.TranslatorByRegex([
+    (r'.*/(uranus_occs_earthbased/uranus_occ_u.*/(data|browse)/atmosphere/.*-v-.*)\.[a-z]{3}', 0,
+        [r'diagrams/\1_diagram_full.png',
+         r'diagrams/\1_diagram_med.png',
+         r'diagrams/\1_diagram_small.png',
+         r'diagrams/\1_diagram_thumb.png',
+    ]),
+    (r'.*/(uranus_occs_earthbased/uranus_occ_u.*/(data|browse)/(rings|global))/(.*)_\d+m\.[a-z]{3}', 0,
+        [r'diagrams/\1/\4_diagram_full.png',
+         r'diagrams/\1/\4_diagram_med.png',
+         r'diagrams/\1/\4_diagram_small.png',
+         r'diagrams/\1/\4_diagram_thumb.png',
+    ]),
+])
+
+associations_to_metadata = translator.TranslatorByRegex([
+    (r'.*/(uranus_occs_earthbased)/*', 0,
+        r'metadata/\1'),
+    (r'.*/(uranus_occs_earthbased/uranus_occ_u[a-z0-9\_]*)/*', 0,
+        r'metadata/\1'),
+    (r'.*/(uranus_occs_earthbased)/(uranus_occ_u[a-z0-9\_]*)/(data|browse)(.*|_[a-z]*])/(rings|global|atmos).*/(.*)\.[a-z]{3}', 0,
+        r'metadata/\1/\2/\2_\5_index.csv/\6'),
+])
+
+associations_to_documents = translator.TranslatorByRegex([
+    (r'bundles/uranus_occs_earthbased/.*', 0,
+        r'documents/uranus_occs_earthbased/*'),
+    (r'bundles/uranus_occs_earthbased', 0,
+        r'documents/uranus_occs_earthbased'),
+])
+
+##########################################################################################
+# VIEW_OPTIONS (grid_view_allowed, multipage_view_allowed, continuous_view_allowed)
+##########################################################################################
+
+view_options = translator.TranslatorByRegex([
+    (r'.*/COISS_[12].../(data|extras/w+)(|/\w+)',     0, (True, True,  True )),
+    (r'.*/COISS_3.../(data|extras/w+)/(images|maps)', 0, (True, False, False)),
+])
+
+##########################################################################################
+# NEIGHBORS
+##########################################################################################
+
+neighbors = translator.TranslatorByRegex([
+    (r'(.*)/COISS_[12]xxx(.*)/COISS_..../(data|extras/\w+)/\w+', 0, r'\1/COISS_[12]xxx\2/*/\3/*'),
+    (r'(.*)/COISS_[12]xxx(.*)/COISS_..../(data|extras/\w+)',     0, r'\1/COISS_[12]xxx\2/*/\3'),
+    (r'(.*)/COISS_[12]xxx(.*)/COISS_....',                       0, r'\1/COISS_[12]xxx\2/*'),
+
+    (r'volumes/COISS_0xxx(|_v[0-9\.]+)/COISS_..../data',               0, r'volumes/COISS_0xxx\1/*/data'),
+    (r'volumes/COISS_0xxx(|_v[0-9\.]+)/COISS_..../data/(\w+)',         0, r'volumes/COISS_0xxx\1/*/data/\2'),
+    (r'volumes/COISS_0xxx(|_v[0-9\.]+)/COISS_..../data/(\w+/\w+)',     0, r'volumes/COISS_0xxx\1/*/data/\2'),
+    (r'volumes/COISS_0xxx(|_v[0-9\.]+)/COISS_..../data/(\w+/\w+)/\w+', 0, r'volumes/COISS_0xxx\1/*/data/\2/*'),
+])
+
+##########################################################################################
+# SORT_KEY
+##########################################################################################
+
+sort_key = translator.TranslatorByRegex([
+
+    # Skips over N or W, placing files into chronological order
+    (r'([NW])([0-9]{10})(.*)_full.png',  0, r'\2\1\3_1full.jpg'),
+    (r'([NW])([0-9]{10})(.*)_med.jpg',   0, r'\2\1\3_2med.jpg'),
+    (r'([NW])([0-9]{10})(.*)_small.jpg', 0, r'\2\1\3_3small.jpg'),
+    (r'([NW])([0-9]{10})(.*)_thumb.jpg', 0, r'\2\1\3_4thumb.jpg'),
+    (r'([NW])([0-9]{10})(.*)', 0, r'\2\1\3'),
+
+    # Used inside COISS_0011/document/report
+    ('index.html', 0, '000index.html'),
+])
+
+##########################################################################################
+# OPUS_TYPE
+##########################################################################################
+
+opus_type = translator.TranslatorByRegex([
+    # Rings
+    (r'bundles/uranus_occs.*/.*/data/rings/.*_radius_.*_100m\.(tab|xml)',                      0, ('Uranus Earth-based Occultations', 10,  'ebur_occ_ring_0100', 'Occultation Ring Profile (100 m)', True)),
+    (r'bundles/uranus_occs.*/.*/data/rings/.*_radius_.*_500m\.(tab|xml)',                      0, ('Uranus Earth-based Occultations', 20,  'ebur_occ_ring_0500', 'Occultation Ring Profile (500 m)', True)),
+    (r'bundles/uranus_occs.*/.*/data/rings/.*_radius_.*_1000m\.(tab|xml)',                     0, ('Uranus Earth-based Occultations', 30,  'ebur_occ_ring_1000', 'Occultation Ring Profile (1 km)', True)),
+    (r'bundles/uranus_occs.*/.*/data/rings/.*_counts-v-time_rings_.*\.(tab|xml)',              0, ('Uranus Earth-based Occultations', 40,  'ebur_occ_ring_time', 'Occultation Ring Time Series', False)),
+    (r'bundles/uranus_occs.*/.*/data/ring_models/.*_ring_.*_sqw.*\.(pdf|tab|txt|xml)',         0, ('Uranus Earth-based Occultations', 50,  'ebur_occ_ring_sqw_model', 'Occultation Ring Model', False)),
+    (r'bundles/uranus_occs.*/.*/data/ring_models/.*(fitted|predicted)_.*\.(pdf|tab|xml|txt|)', 0, ('Uranus Earth-based Occultations', 50,  'ebur_occ_ring_sqw_model', 'Occultation Ring Model', False)),
+    (r'bundles/uranus_occs.*/.*/data/ring_models/.*_wavelengths\.(csv|xml)',                   0, ('Uranus Earth-based Occultations', 50,  'ebur_occ_ring_sqw_model', 'Occultation Ring Model', False)),
+
+    # Atmosphere
+    (r'bundles/uranus_occs.*/.*/data/atmosphere/.*_counts-v-time_atmos.*\.(tab|xml)',          0, ('Uranus Earth-based Occultations', 60,  'ebur_occ_atmos', 'Occultation Atmosphere Time Series', True)),
+
+    # Global
+    (r'bundles/uranus_occs.*/.*/data/global/.*_radius_equator_.*_100m\.(tab|xml)',             0, ('Uranus Earth-based Occultations', 70,  'ebur_occ_global_0100', 'Occultation Ring-Plane Profile (100 m)', True)),
+    (r'bundles/uranus_occs.*/.*/data/global/.*_radius_equator_.*_500m\.(tab|xml)',             0, ('Uranus Earth-based Occultations', 80,  'ebur_occ_global_0500', 'Occultation Ring-Plane Profile (500 m)', True)),
+    (r'bundles/uranus_occs.*/.*/data/global/.*_radius_equator_.*_1000m\.(tab|xml)',            0, ('Uranus Earth-based Occultations', 90,  'ebur_occ_global_1000', 'Occultation Ring-Plane Profile (1 km)', True)),
+    (r'bundles/uranus_occs.*/.*/data/global/.*_counts-v-time_occult.*\.(tab|xml)',             0, ('Uranus Earth-based Occultations', 100, 'ebur_occ_global_time', 'Occultation Ring-Plane Time Series', False)),
+
+    # Uranus occ support
+    (r'.*uranus_occ_support/data/.*_ring_fit_rfrench.*\.(csv|tab|txt|xml)',                    0, ('Uranus Earth-based Occultations', 110, 'ebur_occ_global_ring_fit', 'Global Ring Orbital Fit', False)),
+    (r'.*uranus_occ_support/document/supplemental_docs/uranus_occ.*_index\.(tab|xml)',         0, ('Uranus Earth-based Occultations', 120, 'ebur_occ_orig_index', 'Original Index', False)),
+    (r'.*uranus_occ_support/document/supplemental_docs/uranus_ringocc.*_rating\.(csv|xml)',    0, ('Uranus Earth-based Occultations', 130, 'ebur_occ_quality_rating', 'Quality Ratings', False)),
+    (r'.*uranus_occ_support/document/supplemental_docs/rings.*\.(txt|xml)',                    0, ('Uranus Earth-based Occultations', 140, 'ebur_occ_rings_definitions', 'Ring Dictionary Definitions', False)),
+    (r'.*uranus_occ_support/document/user_guide/.*occultation-user-guide\.(pdf|xml)',          0, ('Uranus Earth-based Occultations', 150, 'ebur_occ_documentation', 'Documentation', False)),
+    (r'.*uranus_occ_support/document/user_guide/.*\.(pro|py)',                                 0, ('Uranus Earth-based Occultations', 160, 'ebur_occ_software', 'Software', False)),
+    (r'.*uranus_occ_support/document/user_guide/plot.*\.pdf',                                  0, ('Uranus Earth-based Occultations', 160, 'ebur_occ_software', 'Software', False)),
+    (r'.*uranus_occ_support/spice_kernels/fk/.*\.(tf|xml)',                                    0, ('Uranus Earth-based Occultations', 170, 'ebur_occ_kernels', 'SPICE Kernels', False)),
+    (r'.*uranus_occ_support/spice_kernels/spk/.*\.(bsp|xml)',                                  0, ('Uranus Earth-based Occultations', 170, 'ebur_occ_kernels', 'SPICE Kernels', False)),
+
+    # rms_index
+    (r'metadata/uranus_occs.*/.*/.*_index.csv',                                                0, ('metadata', 5, 'rms_index', 'RMS Node Augmented Index',     False)),
+])
+
+##########################################################################################
+# OPUS_FORMAT
+##########################################################################################
+
+opus_format = translator.TranslatorByRegex([
+    (r'.*\.IMG',        0, ('Binary', 'VICAR')),
+    (r'.*\.jpeg_small', 0, ('Binary', 'JPEG')),
+])
+
+##########################################################################################
+# OPUS_PRODUCTS
+##########################################################################################
+# call .opus_products() on primary filespec
+opus_products = translator.TranslatorByRegex([
+    # Rings-specific products
+    (r'.*/(uranus_occs_earthbased/uranus_occ_([a-zA-Z0-9\_]+))/(data/rings)/.*_radius_(.*)_(egress|ingress)([\_0-9m]*)\.[a-z]{3}', 0,
+        [r'bundles/\1/\3/\2*_radius_\4_\5_*.tab',
+         r'bundles/\1/\3/\2*_radius_\4_\5_*.xml',
+         r'bundles/\1/\3/\2*_counts-v-time_rings_\5.tab',
+         r'bundles/\1/\3/\2*_counts-v-time_rings_\5.xml',
+         r'bundles/\1/data/ring_models/\2*_ring_\4_\5_sqw*.pdf',
+         r'bundles/\1/data/ring_models/\2*_ring_\4_\5_sqw*.tab',
+         r'bundles/\1/data/ring_models/\2*_ring_\4_\5_sqw*.txt',
+         r'bundles/\1/data/ring_models/\2*_ring_\4_\5_sqw*.xml',
+         r'bundles/\1/data/ring_models/\2*_fitted_*.pdf',
+         r'bundles/\1/data/ring_models/\2*_fitted_*.tab',
+         r'bundles/\1/data/ring_models/\2*_fitted_*.xml',
+         r'bundles/\1/data/ring_models/\2*_predicted_*.pdf',
+         r'bundles/\1/data/ring_models/\2*_predicted_*.tab',
+         r'bundles/\1/data/ring_models/\2*_predicted_*.xml',
+         r'bundles/\1/data/ring_models/\2*_wavelengths.csv',
+         r'bundles/\1/data/ring_models/\2*_wavelengths.xml',
+         r'metadata/\1/uranus_occ_\2_rings_index.csv',
+         ]
+    ),
+    # Atmosphere-specific products
+    (r'.*/(uranus_occs_earthbased/uranus_occ_([a-zA-Z0-9\_]+))/(data/atmosphere)/.*_counts-v-time_atmos_(egress|ingress)\.[a-z]{3}', 0,
+        [r'bundles/\1/\3/\2*_counts-v-time_atmos_\4.tab',
+         r'bundles/\1/\3/\2*_counts-v-time_atmos_\4.xml',
+         r'metadata/\1/uranus_occ_\2_atmos*_index.csv']
+    ),
+    # Global-specific products, include all "Occultation Ring Model" products
+    (r'.*/(uranus_occs_earthbased/uranus_occ_([a-zA-Z0-9\_]+))/data/global/.*(egress|ingress)([\_0-9m]*)\.[a-z]{3}', 0,
+        [r'bundles/\1/data/global/\2*_radius_equator_\3_*.tab',
+         r'bundles/\1/data/global/\2*_radius_equator_\3_*.xml',
+         r'bundles/\1/data/global/\2*_counts-v-time_occult.tab',
+         r'bundles/\1/data/global/\2*_counts-v-time_occult.xml',
+         r'metadata/\1/uranus_occ_\2_global_index.csv']
+    ),
+    # Uranus occ support
+    # Only available for rings & global occs
+    (r'.*/(uranus_occs_earthbased)/uranus_occ_.*/data/(rings|global)/.*\.[a-z]{3}', 0,
+        [r'bundles/\1/uranus_occ_support/data/*_ring_fit_rfrench*.csv',
+         r'bundles/\1/uranus_occ_support/data/*_ring_fit_rfrench*.tab',
+         r'bundles/\1/uranus_occ_support/data/*_ring_fit_rfrench*.txt',
+         r'bundles/\1/uranus_occ_support/data/*_ring_fit_rfrench*.xml',]
+    ),
+    # Available for all occs
+    (r'.*/(uranus_occs_earthbased)/uranus_occ_.*\.[a-z]{3}', 0,
+        [r'bundles/\1/uranus_occ_support/document/supplemental_docs/*_index.tab',
+         r'bundles/\1/uranus_occ_support/document/supplemental_docs/*_index.xml',
+         r'bundles/\1/uranus_occ_support/document/supplemental_docs/*_quality_rating.csv',
+         r'bundles/\1/uranus_occ_support/document/supplemental_docs/*_quality_rating.xml',
+         r'bundles/\1/uranus_occ_support/document/user_guide/*-user-guide.pdf',
+         r'bundles/\1/uranus_occ_support/document/user_guide/*-user-guide.xml',
+         r'bundles/\1/uranus_occ_support/document/user_guide/*.pro',
+         r'bundles/\1/uranus_occ_support/document/user_guide/*.py',
+         r'bundles/\1/uranus_occ_support/document/user_guide/plot*.pdf',
+         r'bundles/\1/uranus_occ_support/spice_kernels/fk/*.tf',
+         r'bundles/\1/uranus_occ_support/spice_kernels/fk/*.xml',
+         r'bundles/\1/uranus_occ_support/spice_kernels/spk/*.bsp',
+         r'bundles/\1/uranus_occ_support/spice_kernels/spk/*.xml']
+    ),
+    # Previews and diagrams
+    (r'.*/(uranus_occs_earthbased/uranus_occ_u.*/data/atmosphere/.*-v-.*)\.[a-z]{3}', 0,
+        [r'previews/\1_preview_full.png',
+         r'previews/\1_preview_med.png',
+         r'previews/\1_preview_small.png',
+         r'previews/\1_preview_thumb.png']
+    ),
+    (r'.*/(uranus_occs_earthbased/uranus_occ_u.*/data/(rings|global))/(.*)_\d+m\.[a-z]{3}', 0,
+        [r'previews/\1/\3_preview_full.png',
+         r'previews/\1/\3_preview_med.png',
+         r'previews/\1/\3_preview_small.png',
+         r'previews/\1/\3_preview_thumb.png']
+    ),
+    (r'.*/(uranus_occs_earthbased/uranus_occ_u.*/data/atmosphere/.*-v-.*)\.[a-z]{3}', 0,
+        [r'diagrams/\1_diagram_full.png',
+         r'diagrams/\1_diagram_med.png',
+         r'diagrams/\1_diagram_small.png',
+         r'diagrams/\1_diagram_thumb.png']
+    ),
+    (r'.*/(uranus_occs_earthbased/uranus_occ_u.*/data/(rings|global))/(.*)_\d+m\.[a-z]{3}', 0,
+        [r'diagrams/\1/\3_diagram_full.png',
+         r'diagrams/\1/\3_diagram_med.png',
+         r'diagrams/\1/\3_diagram_small.png',
+         r'diagrams/\1/\3_diagram_thumb.png']
+    ),
+])
+
+##########################################################################################
+# OPUS_ID
+##########################################################################################
+# OPUS ID Abbrev is based on the telescope name from the collection_context.csv
+# Detector:
+# 'ir':   'Generic IR High Speed Photometer'
+# 'vis':  'Generic Visual High Speed Photometer'
+# 'insb': 'Generic InSb High Speed Photometer'
+# 'gaas': 'Generic GaAs High Speed Photometer'
+# 'ccd': 'Generic CCD Camera'
+
+# prefix_mapping: (
+#   bundle prefix,
+#   opus id prefix for egress, under rings & global,
+#   opus id prefix for egress, under rings & global,
+#   opus id prefix for egress and ingress under atmosphere
+# )
+# if opus id prefix for ingress & atomsphere are None, it's the same as the opus id prefix
+# for egress (same start date) or None.
+prefix_mapping = {
+    ('u0_kao_91cm',         'kao0m91-vis-occ-1977-069-u0',       None,                               None),
+    ('u0201_palomar_508cm', 'pal5m08-insb-occ-2002-210-u0201',   None,                               None),
+    ('u2_teide_155cm',      'tei1m55-ir-occ-1977-357-u2',        None,                               None),
+    ('u5_lco_250cm',        'lascam2m5-insb-occ-1978-100-u5',    None,                               None),
+    ('u9_lco_250cm',        'lascam2m5-insb-occ-1979-161-u9',    None,                               None),
+    ('u11_ctio_400cm',      'ctio4m0-insb-occ-1980-080-u11',     None,                               None),
+    ('u12_ctio_400cm',      'ctio4m0-insb-occ-1980-229-u12',     'ctio4m0-insb-occ-1980-228-u12',    'ctio4m0-insb-occ-1980-228-u12'),
+    ('u12_eso_360cm',       'esosil3m6-insb-occ-1980-229-u12',   'esosil3m6-insb-occ-1980-228-u12',  'esosil3m6-insb-occ-1980-229-u12'),
+    ('u12_lco_250cm',       'lascam2m5-insb-occ-1980-229-u12',   'lascam2m5-insb-occ-1980-228-u12',  None),
+    ('u13_sso_390cm',       'sso3m9-insb-occ-1981-116-u13',      None,                               None),
+    ('u14_ctio_150cm',      'ctio1m50-insb-occ-1982-112-u14',    None,                               None),
+    ('u14_ctio_400cm',      'ctio4m0-ir-occ-1982-112-u14',       None,                               None),
+    ('u14_eso_104cm',       'esosil1m04-insb-occ-1982-112-u14',  None,                               None),
+    ('u14_lco_100cm',       'lascam1m0-ir-occ-1982-112-u14',     None,                               None),
+    ('u14_lco_250cm',       'lascam2m5-insb-occ-1982-112-u14',   None,                               None),
+    ('u14_opmt_106cm',      'pic1m06-gaas-occ-1982-112-u14',     None,                               None),
+    ('u14_opmt_200cm',      'pic2m0-insb-occ-1982-112-u14',      None,                               None),
+    ('u14_teide_155cm',     'tei1m55-ir-occ-1982-112-u14',       None,                               None),
+    ('u15_mso_190cm',       'mtstr1m9-insb-occ-1982-121-u15',    None,                               None),
+    ('u16_palomar_508cm',   'pal5m08-insb-occ-1982-155-u16',     None,                               None),
+    ('u17b_saao_188cm',     'saao1m88-insb-occ-1983-084-u17b',   None,                               None),
+    ('u23_ctio_400cm',      'ctio4m0-insb-occ-1985-124-u23',     None,                               None),
+    ('u23_mcdonald_270cm',  'mcd2m7-insb-occ-1985-124-u23',      None,                               None),
+    ('u23_teide_155cm',     'tei1m55-insb-occ-1985-124-u23',     None,                               None),
+    ('u25_ctio_400cm',      'ctio4m0-insb-occ-1985-144-u25',     None,                               None),
+    ('u25_mcdonald_270cm',  'mcd2m7-insb-occ-1985-144-u25',      None,                               None),
+    ('u25_palomar_508cm',   'pal5m08-insb-occ-1985-144-u25',     None,                               None),
+    ('u28_irtf_320cm',      'irtf3m2-insb-occ-1986-116-u28',     None,                               None),
+    ('u34_irtf_320cm',      'irtf3m2-insb-occ-1987-057-u34',     None,                               None),
+    ('u36_ctio_400cm',      'ctio4m0-insb-occ-1987-092-u36',     None,                               None),
+    ('u36_irtf_320cm',      'irtf3m2-insb-occ-1987-092-u36',     'irtf3m2-insb-occ-1987-089-u36',    None),
+    ('u36_maunakea_380cm',  'mk3m8-insb-occ-1987-092-u36',       'mk3m8-insb-occ-1987-089-u36',      None),
+    ('u36_sso_230cm',       'sso2m3-insb-occ-1987-092-u36',      None,                               None),
+    ('u36_sso_390cm',       'sso3m9-insb-occ-1987-092-u36',      None,                               None),
+    ('u65_irtf_320cm',      'irtf3m2-insb-occ-1990-172-u65',     None,                               None),
+    ('u83_irtf_320cm',      'irtf3m2-insb-occ-1991-176-u83',     None,                               None),
+    ('u84_irtf_320cm',      'irtf3m2-insb-occ-1991-179-u84',     None,                               None),
+    ('u102a_irtf_320cm',    'irtf3m2-insb-occ-1992-190-u102a',   None,                               None),
+    ('u102b_irtf_320cm',    'irtf3m2-insb-occ-1992-190-u102b',   None,                               None),
+    ('u103_eso_220cm',      'esosil2m2-insb-occ-1992-193-u103',  None,                               None),
+    ('u103_palomar_508cm',  'pal5m08-insb-occ-1992-193-u103',    None,                               None),
+    ('u134_saao_188cm',     'saao1m88-insb-occ-1995-252-u134',   None,                               None),
+    ('u137_hst_fos',        'hst-fos-occ-1996-076-u137',         None,                               None),
+    ('u137_irtf_320cm',     'irtf3m2-insb-occ-1996-076-u137',    None,                               None),
+    ('u138_hst_fos',        'hst-fos-occ-1996-101-u138',         None,                               None),
+    ('u138_palomar_508cm',  'pal5m08-insb-occ-1996-101-u138',    None,                               None),
+    ('u144_caha_123cm',     'caha1m23-nicmos-occ-1997-273-u144', None,                               None),
+    ('u144_saao_188cm',     'saao1m88-insb-occ-1997-273-u144',   None,                               None),
+    ('u149_irtf_320cm',     'irtf3m2-insb-occ-1998-310-u149',    None,                               None),
+    ('u149_lowell_180cm',   'low1m83-ccd-occ-1998-310-u149',     None,                               None),
+    ('u1052_irtf_320cm',    'irtf3m2-insb-occ-1988-133-u1052',   None,                               None),
+    ('u9539_ctio_400cm',    'ctio4m0-insb-occ-1993-181-u9539',   None,                               None),
+}
+opus_id_list = []
+for bundle_prefix, opus_id_prefix_e, opus_id_prefix_i, opus_id_prefix_a in prefix_mapping:
+    if opus_id_prefix_i is None:
+        opus_id_list += [
+            (rf'.*/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/atmosphere/{bundle_prefix}_\d+nm_counts-v-time_atmos_([ei])(gress|ngress)\.[a-z]{{3}}', 0, fr'{opus_id_prefix_e}-uranus-\1'),
+            (rf'.*/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/global/{bundle_prefix}_\d+nm_radius_equator_([ei])(gress|ngress)_\d{{3,4}}m\.[a-z]{{3}}', 0, rf'{opus_id_prefix_e}-ringpl-\1'),
+            (rf'.*/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/rings/{bundle_prefix}_\d+nm_radius_([a-z]+)_([ei])(gress|ngress)_\d{{3,4}}m\.[a-z]{{3}}', 0, rf'{opus_id_prefix_e}-\1-\2')
+        ]
+    else:
+        if opus_id_prefix_a is not None:
+            opus_id_list += [
+                (rf'.*/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/atmosphere/{bundle_prefix}_\d+nm_counts-v-time_atmos_([ei])(gress|ngress)\.[a-z]{{3}}', 0, fr'{opus_id_prefix_a}-uranus-\1'),
+            ]
+        opus_id_list += [
+            (rf'.*/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/global/{bundle_prefix}_\d+nm_radius_equator_(e)gress_\d{{3,4}}m\.[a-z]{{3}}', 0, rf'{opus_id_prefix_e}-ringpl-\1'),
+            (rf'.*/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/global/{bundle_prefix}_\d+nm_radius_equator_(i)ngress_\d{{3,4}}m\.[a-z]{{3}}', 0, rf'{opus_id_prefix_i}-ringpl-\1'),
+            (rf'.*/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/rings/{bundle_prefix}_\d+nm_radius_([a-z]+)_(e)gress_\d{{3,4}}m\.[a-z]{{3}}', 0, rf'{opus_id_prefix_e}-\1-\2'),
+            (rf'.*/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/rings/{bundle_prefix}_\d+nm_radius_([a-z]+)_(i)ngress_\d{{3,4}}m\.[a-z]{{3}}', 0, rf'{opus_id_prefix_i}-\1-\2')
+        ]
+opus_id = translator.TranslatorByRegex(opus_id_list)
+
+##########################################################################################
+# FILESPEC_TO_BUNDLESET
+##########################################################################################
+
+filespec_to_bundleset = translator.TranslatorByRegex([
+    (r'(uranus_occ)_.*', 0, r'\1s_earthbased'),
+])
+
+##########################################################################################
+# OPUS_ID_TO_PRIMARY_LOGICAL_PATH
+##########################################################################################
+# highest resolution is primary filespec
+opus_id_to_primary_filespec_list = []
+for bundle_prefix, opus_id_prefix_e, opus_id_prefix_i, opus_id_prefix_a in prefix_mapping:
+    if opus_id_prefix_i is None:
+        opus_id_to_primary_filespec_list += [
+            (rf'{opus_id_prefix_e}-uranus-([ei])', 0, rf'bundles/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/atmosphere/{bundle_prefix}_*nm_counts-v-time_atmos_\1*gress.xml'),
+            (rf'{opus_id_prefix_e}-ringpl-([ei])', 0, rf'bundles/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/global/{bundle_prefix}_*nm_radius_equator_\1*gress_100m.xml'),
+            (rf'{opus_id_prefix_e}-([a-z]*)-([ei])', 0, rf'bundles/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/rings/{bundle_prefix}_*nm_radius_\1_\2*_100m.xml'),
+        ]
+    else:
+        if opus_id_prefix_a is not None:
+            opus_id_to_primary_filespec_list += [
+                (rf'{opus_id_prefix_a}-uranus-([ei])', 0, rf'bundles/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/atmosphere/{bundle_prefix}_*nm_counts-v-time_atmos_\1*gress.xml'),
+            ]
+        opus_id_to_primary_filespec_list += [
+            (rf'{opus_id_prefix_e}-ringpl-(e)', 0, rf'bundles/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/global/{bundle_prefix}_*nm_radius_equator_\1*gress_100m.xml'),
+            (rf'{opus_id_prefix_i}-ringpl-(i)', 0, rf'bundles/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/global/{bundle_prefix}_*nm_radius_equator_\1*gress_100m.xml'),
+            (rf'{opus_id_prefix_e}-([a-z]*)-(e)', 0, rf'bundles/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/rings/{bundle_prefix}_*nm_radius_\1_\2*_100m.xml'),
+            (rf'{opus_id_prefix_i}-([a-z]*)-(i)', 0, rf'bundles/uranus_occs_earthbased/uranus_occ_{bundle_prefix}/data/rings/{bundle_prefix}_*nm_radius_\1_\2*_100m.xml'),
+        ]
+
+opus_id_to_primary_logical_path = translator.TranslatorByRegex(opus_id_to_primary_filespec_list)
+
+##########################################################################################
+# Archives
+##########################################################################################
+# Bundle layout:
+# - The uranus_occs_earthbased bundle set contains multiple individual bundles, each
+#   representing a unique Uranus occultation observation from a specific telescope
+#   and date (e.g., 'uranus_occ_u0_kao_91cm', 'uranus_occ_u12_ctio_400cm').
+# - Each individual bundle typically includes:
+#   - 'data/rings/': ring occultation profiles at various resolutions
+#   - 'data/atmosphere/': atmospheric occultation time series
+#   - 'data/global/': ring-plane occultation profiles
+#   - 'data/ring_models/': ring model files (SQW models, fitted/predicted data)
+#   - 'browse/': browse products (images, PDFs, XML)
+# - 'uranus_occ_support/' is a bundle too, and carries a bundle.xml like any other,
+#   but it holds supporting data (ring fits, SPICE kernels, documentation) rather
+#   than an observation, so it fits none of the naming shapes above and
+#   'Pds4File.BUNDLENAME_REGEX' names it outright.
+# - Two directories at the bundle-set level are not bundles at all:
+#   - 'checksums_uranus_occs_earthbased/': checksum files
+#   - 'superseded/': superseded copies of whole bundles, one directory per version.
+#
+# How archives are split:
+# - Rather than creating one archive per individual bundle, we now archive at the
+#   top-level bundle-set tree:
+#   - For each top-level directory 'uranus_occs_earthbased*' under a category
+#     (e.g., 'bundles/uranus_occs_earthbased', 'bundles/uranus_occs_earthbased_v2'),
+#     we create a single .tar.gz file that contains the entire tree below it.
+#   - Archive name: '{top_level_name}.tar.gz'
+#     e.g., 'archives-bundles/uranus_occs_earthbased/uranus_occs_earthbased.tar.gz'.
+#   - This single archive includes all individual observation bundles plus the
+#     shared collections (support, checksums, superseded) under that top-level tree.
+# - This design keeps the rules and maintenance simpler: any new observation bundle
+#   added under a given 'uranus_occs_earthbased*' tree is automatically included
+#   in that tree's archive, without needing additional archive rules.
+#
+# archive_paths: A TranslatorByRegex object that maps logical paths of bundle sets,
+# bundles, or bundle collections to a list containing the logical path of the
+# corresponding archive file name.
+# - For any category path whose bundle-set portion matches 'uranus_occs_earthbased*'
+#   (in bundles, metadata, previews, or diagrams), this translator returns a single
+#   archive path of the form:
+#       'archives-<category>/<bundle_set>/<bundle_set>.tar.gz'
+#   e.g., 'archives-bundles/uranus_occs_earthbased/uranus_occs_earthbased.tar.gz'.
+# - These archive paths are used by the archive_paths() method in Pds4File to
+#   determine which archive file is associated with a given uranus_occs_earthbased*
+#   bundle-set tree.
+archive_paths = translator.TranslatorByRegex([
+    # input is the uranus bundle set
+    (r'.*(bundles|metadata|previews|diagrams)/(uranus_occs_earthbased[^/]*)(|/)$', 0, [
+        r'archives-\1/\2/\2.tar.gz'
+    ]),
+])
+
+# archive_dirs: A TranslatorByRegex object that maps logical paths of archive files
+# to lists of logical paths of directories included in those archives.
+# - For an archive file path of the form
+#       'archives-<category>/uranus_occs_earthbased*/<name>.tar.gz'
+#   this translator returns the top-level bundle-set directory under the holdings
+#   tree that the archive is built from, e.g.:
+#       'bundles/uranus_occs_earthbased' or
+#       'bundles/uranus_occs_earthbased_v2' (if we have v2 in the future).
+# - The archive creation code then recursively includes everything under that
+#   directory in the tarball (all individual bundles plus shared collections).
+# - This mapping is used by the archive_dirs() method in Pds4File to determine which
+#   root directories should be walked when creating or validating each archive file.
+archive_dirs = translator.TranslatorByRegex([
+    (r'.*archives-(.*/uranus_occs_earthbased)/(.*).tar.gz', 0, [r'\1']),
+])
+
+##########################################################################################
+# Subclass definition
+##########################################################################################
+
+class uranus_occs_earthbased(pds4file.Pds4File):
+    """The ``Pds4File`` subclass for uranus_occs_earthbased.
+
+    The class body and the module tail install this module's rule tables on the class
+    attributes ``Pds4File`` reads. `pds4file/rules/__init__.py` sets out the routes a
+    table takes and which of them leaves the inherited rules in front. The class
+    is registered in ``Pds4File.SUBCLASSES`` under the key
+    "uranus_occs_earthbased".
+    The module docstring describes the bundle set and every table.
+
+    Its ``Pds4File.VOLSET_TRANSLATOR`` entries are built by looping over
+    ``prefix_mapping``. Those entries map a bundle name to the bundle set name,
+    which path resolution does not need, because the bundle set name is already a
+    ``Pds4File.SUBCLASSES`` key.
+    """
+
+    volset_list = []
+    for bundle_prefix, _, _, _ in prefix_mapping:
+        volset_list += [(f'uranus_occ_{bundle_prefix}', re.I, 'uranus_occs_earthbased')]
+    pds4file.Pds4File.VOLSET_TRANSLATOR = translator.TranslatorByRegex(volset_list) + \
+                                          pds4file.Pds4File.VOLSET_TRANSLATOR
+
+    DESCRIPTION_AND_ICON = description_and_icon_by_regex + \
+                           pds4file.Pds4File.DESCRIPTION_AND_ICON
+    VIEW_OPTIONS = view_options + pds4file.Pds4File.VIEW_OPTIONS
+    NEIGHBORS = neighbors + pds4file.Pds4File.NEIGHBORS
+    SORT_KEY = sort_key + pds4file.Pds4File.SORT_KEY
+
+    OPUS_TYPE = opus_type + pds4file.Pds4File.OPUS_TYPE
+    OPUS_FORMAT = opus_format + pds4file.Pds4File.OPUS_FORMAT
+    OPUS_PRODUCTS = opus_products + pds4file.Pds4File.OPUS_PRODUCTS
+    OPUS_ID = opus_id
+    OPUS_ID_TO_PRIMARY_LOGICAL_PATH = opus_id_to_primary_logical_path
+
+    VIEWABLES = {'default': default_viewables}
+
+    ASSOCIATIONS = pds4file.Pds4File.ASSOCIATIONS.copy()
+    ASSOCIATIONS['bundles']    += associations_to_bundles
+    ASSOCIATIONS['previews']   += associations_to_previews
+    ASSOCIATIONS['diagrams'] += associations_to_diagrams
+    ASSOCIATIONS['metadata']   += associations_to_metadata
+    ASSOCIATIONS['documents']  += associations_to_documents
+
+    ARCHIVE_PATHS = archive_paths + pds4file.Pds4File.ARCHIVE_PATHS
+    ARCHIVE_DIRS = archive_dirs + pds4file.Pds4File.ARCHIVE_DIRS
+
+    pds4file.Pds4File.FILESPEC_TO_BUNDLESET = filespec_to_bundleset + \
+                                              pds4file.Pds4File.FILESPEC_TO_BUNDLESET
+# Global attribute shared by all subclasses
+opus_id_to_subclass_set = set()
+for bundle_prefix, opus_id_prefix_e, opus_id_prefix_i, opus_id_prefix_a in prefix_mapping:
+    opus_id_to_subclass_set.add((rf'{opus_id_prefix_e}.*', 0, uranus_occs_earthbased))
+    if opus_id_prefix_i is not None:
+        opus_id_to_subclass_set.add((rf'{opus_id_prefix_i}.*', 0, uranus_occs_earthbased))
+    if opus_id_prefix_a is not None:
+        opus_id_to_subclass_set.add((rf'{opus_id_prefix_a}.*', 0, uranus_occs_earthbased))
+pds4file.Pds4File.OPUS_ID_TO_SUBCLASS = (
+    translator.TranslatorByRegex(list(opus_id_to_subclass_set)) +
+    pds4file.Pds4File.OPUS_ID_TO_SUBCLASS
+)
+
+##########################################################################################
+# Update the global dictionary of subclasses
+##########################################################################################
+
+pds4file.Pds4File.SUBCLASSES['uranus_occs_earthbased'] = uranus_occs_earthbased

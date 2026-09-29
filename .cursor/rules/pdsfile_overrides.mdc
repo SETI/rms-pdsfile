@@ -1,0 +1,342 @@
+---
+alwaysApply: true
+description: rms-pdsfile-specific deviations that take precedence over the repo_template rules. When a template rule conflicts with one of these, this file wins.
+---
+
+# rms-pdsfile Overrides
+
+These repo-specific decisions were locked with the owner and **take precedence
+over the template `.cursor/rules`**. When a template rule (`python.mdc`,
+`python_testing.mdc`, `dependency_management.mdc`, `filecache.mdc`, etc.)
+conflicts with a rule below, follow the rule below. See
+`plans/2026-07-25-modernization-plan.md` for the full rationale.
+
+1. **No inline type annotations and no mypy.** Do not add inline type hints and
+   do not run mypy. The public API is documented via a hand-written `.pyi` stub
+   only (added in a later phase). This overrides `python.mdc`'s "annotate
+   everything / run mypy" mandate.
+
+   **Field annotations on a `@dataclass` are permitted** (owner, 2026-08-05). A
+   dataclass declares its fields by annotation and cannot be written without one,
+   so the ban would have banned the construct; it does not. This is the one
+   exception: it does not reopen annotations on functions, variables or ordinary
+   class bodies, it does not bring mypy back, and `RUF012` stays permanently
+   excluded because `ClassVar` on a plain class body is not a dataclass field.
+2. **The public API is frozen.** The public surface reachable via
+   `import pdsfile` must not change. It is captured in
+   `tests/api/api_manifest.json` and enforced by `tests/api/test_api_freeze.py`.
+   Never edit the manifest, the allowlist, `scripts/dump_public_api.py`, or the
+   freeze test to make a diff vanish.
+3. **Module length is two limits, measured separately** (owner decision,
+   2026-08-07), which overrides `python.mdc`'s single "modules < 1000 lines".
+
+   - **Code lines must not exceed 1,000** — the complexity budget. Code lines are
+     total lines minus the lines occupied by module, class and function
+     docstrings, with the spans taken from the AST so that a string which is not
+     a docstring is not deducted. A docstring adds no complexity; it lowers the
+     cost of the complexity that is there.
+   - **Total lines must not exceed 2,000** — the ingestion budget. A long file is
+     harder to navigate and harder to read whole: attention over a long input
+     falls off in the middle, and standard file-reading tooling truncates around
+     this point. This limit is on what a reader has to get through, so a
+     docstring does count against it.
+
+   One limit could not carry both jobs. Documenting a module costs roughly
+   fourteen lines per function, which grew `pdscache.py` by 83% and
+   `pdsviewable.py` by 68% without changing a statement in either. Under a single
+   total-line limit, documenting a module is a reason to split it, which is
+   backwards.
+
+   The cost is not the same for every kind of module, and the spread is wide enough
+   that a projection has to be made per module rather than taken from an average.
+   Measured over the modules already documented, a function docstring runs 15.2
+   lines in the five public modules, 24.5 in the nine private ones and 18.6 across
+   `_properties.py`'s 68 members. What makes that last figure add up to 1,266 lines
+   is the count, not the length: a property's docstring has to say what the value is
+   before first access, which other slots reading it fills, what a non-existent file
+   yields, and whether a merged directory or an index row reaches the body at all,
+   and none of that is visible in a signature that takes no arguments and returns
+   one value.
+
+   `critiques/pr-29a/measure_module_lines.py` measures both, so this is checkable
+   rather than asserted. **No gate enforces it.** `run-all-checks.sh` has no
+   module-length check and neither does CI; wiring one up is a decision nobody has
+   taken, and the absence is deliberate here rather than an oversight.
+
+   The waiver list stays enumerated rather than described as a class, so that
+   adding a file to it is a visible decision. Measured over every `.py` file under
+   `src/`, four are over a limit, and **all four are waived** (owner, 2026-08-15).
+   Each carries a GitHub issue recording the split for later, so that a waiver is a
+   decision to defer the work rather than a decision to forget it:
+
+   | file | total | docstring | code | over | issue |
+   |---|---:|---:|---:|---|---|
+   | `src/pdsfile/pdsfile.py` | 2,469 | 815 | 1,654 | both | #141 |
+   | `src/pdsfile/_properties.py` | 2,817 | 1,427 | 1,390 | both | #142 |
+   | `src/pdsfile/holdings_maintenance/pds3/pdsdependency.py` | 1,520 | 385 | 1,135 | code | #143 |
+   | `src/pdsfile/pds3file/rules/VG_28xx.py` | 1,117 | 97 | 1,020 | code | #144 |
+
+   - `src/pdsfile/pdsfile.py` — **waived on both limits, and the split is
+     deferred** (owner, 2026-08-07). This is a code problem and not a
+     documentation one: the file is one class occupying 2,270 of its 2,469 lines,
+     37 methods holding 1,938 lines between them, against a module docstring of
+     97. There is no prose to relocate, and trimming docstrings would not bring
+     either number down far enough to matter. The available lever is a tenth
+     mixin; whether one exists is open. Issue #141 holds it.
+   - `src/pdsfile/_properties.py` — **waived on both limits** (owner, 2026-08-08),
+     and it is the first entry waived on total lines, which makes it the precedent
+     `pdsfile.py`'s deferred split will be argued against. The whole lazy-property
+     block lives in one mixin by owner decision (plan §8, settled decision 3), which
+     is the code-lines waiver; the total-lines waiver is what documenting 68
+     properties to the standard of the other twelve modules costs. Measured rather
+     than estimated: ten representative members were documented first, and the
+     per-function cost projected the file at about 2,720 total lines against a
+     ceiling of 2,000. Written out and reviewed, it landed at 2,817. Half the file is now
+     docstring, and its code lines went **down** by two, so nothing about the
+     complexity this limit exists to bound has changed.
+   - `src/pdsfile/holdings_maintenance/pds3/pdsdependency.py` — **waived on code
+     lines** (owner, 2026-08-15). It is the one over-limit file the Phase-6
+     consolidation was never going to reach: the other tools shrank by moving shared
+     pds3/pds4 logic into `_common.py` and its siblings, `pdslinkshelf.py` going from
+     1,730 lines to 471 that way, and this module has no PDS4 twin to be consolidated
+     against. The deferral that waited on Phase 6 therefore expired without the number
+     moving. Documenting it added 385 lines of docstring and left the code count at
+     exactly 1,135, which is the two limits behaving as intended. Issue #143 records
+     the split; the natural seam is the 67-line `TESTS` table against the driver.
+   - `src/pdsfile/pds3file/rules/VG_28xx.py` — **waived on code lines** (owner,
+     2026-08-15). It is 20 lines over, and what is over is data rather than logic: its
+     class body is 34 lines with no methods, and the file is 35 regular-expression
+     tables of which `opus_products` alone is 278 lines. Issue #144 records it, and
+     says that closing it as won't-fix is a legitimate outcome — a rule module is its
+     tables.
+
+     **The waiver is this file, not the class of rule modules.** An earlier draft
+     waived `src/pdsfile/pds{3,4}file/rules/*.py` as a class, which would have
+     exempted a future over-limit rule module without anyone deciding to. The
+     enumerated list is the point: a rule module that goes over gets its own row, its
+     own issue and its own decision.
+
+   `src/pdsfile/pdscache.py` **is no longer waived.** At 1,914 total and 937 code
+   it passes both limits, so its entry is retired; the list means less the longer
+   it gets.
+
+   Modules not covered above are held to both limits. Apart from
+   `pdsdependency.py`, which is waived above, the maintenance tools under
+   `src/pdsfile/holdings_maintenance/` are **not** waived: the Phase 6
+   consolidation brought every pds3/pds4 tool pair under the limit.
+4. **Rule modules and specific files carry permanent `ruff check` exemptions.**
+   Rule modules carry permanent per-file-ignores; core files and the subpackage
+   `__init__`s carry a smaller frozen set. (`ruff format` does not run at all —
+   see (11) — so the rule modules' former format-exclusion is moot.) The
+   freeze-/table-/typing-locked sets (derived from an actual `ruff check`, not
+   hardcoded on faith) are:
+
+   **`RUF005` is a permanent, owner-chosen style exclusion, repo-wide.**
+   `x + [y]` is the spelling this project uses; ruff's `[*x, y]` rewrite is not
+   wanted anywhere, in core or in the subpackages. It is a settled style
+   preference, not a residue awaiting cleanup, and PR-24 must not "fix" it either.
+
+   This is a rule about **ruff's rewrite of a concatenation**, not a claim that
+   no `[*x, y]` exists in the tree. Where an author wrote the unpacking form
+   directly there is no concatenation to preserve, and converting it to `x + [y]`
+   *manufactures* a `RUF005` — which a file with no `per-file-ignores` entry
+   cannot absorb without widening the ratchet.
+   `tests/holdings_maintenance/support.py:200` is such a site and is left alone
+   for exactly that reason.
+
+   **Core — the fifteen modules directly under `src/pdsfile/` (PR-23, 2026-08-03).**
+   Re-derived with the template select set and *no* per-file-ignores: 154
+   violations, of which 114 were fixed and **40 are permanent**. Four modules
+   (`_associations.py`, `_local_fs.py`, `_path_utils.py` and
+   `preload_and_cache.py`) need no entry at all. The permanent set, by file, code,
+   count and site (line numbers are at the merge commit):
+
+   | File | Codes | Why it can never be fixed |
+   |---|---|---|
+   | `__init__.py` `:10,:12,:13` | `F403` ×3 | the three star imports are what bind `Pds3File`, `Pds4File` and the rule modules onto the package; removing them shrinks the frozen surface and "correcting" the self-import grows it |
+   | `_derived_paths.py` `:264,:281,:297` | `A002` ×3 | the frozen `dir=` parameter of `log_path_for_*`, passed by keyword from the maintenance tools. PR-18 moved these methods, so this — not `pdsfile.py` — is `A002`'s home |
+   | `_index_rows.py` `:164` | `RUF005` ×1 | style exclusion |
+   | `_opus.py` `:246` | `RUF005` ×1 | style exclusion. `:268` is the same spelling on a subscript operand, which ruff does not flag; both now read alike |
+   | `_preload.py` `:325` | `RUF005` ×1 | style exclusion |
+   | `_properties.py` `:1058` | `RUF005` ×1 | style exclusion, and independently: `self._info[:4] + (shape,)` where `_info_filled` is a **list** on the merged-directory and index-row construction paths, so `list + tuple` would raise if the line were reached on one. It is not: the line runs only where the recorded shape has more than two elements, and both those paths pre-set a two-element shape. The hazard is latent rather than live, and `(*…, shape)` would convert it into a silent type change |
+   | `_shelves.py` `:172` | `B904` ×1 | `from err` and `from None` both change `__cause__`/`__suppress_context__`, and so the traceback |
+   | `_sorting.py` `:188,:196,:200,:205` | `RUF005` ×4 | style exclusion |
+   | `pdscache.py` `:622`, `:324` | `RUF015` ×1, `UP031` ×1 | `list(d)[0]` raises `IndexError` where `next(iter(d))` raises `StopIteration`; `'%d' % port` truncates a non-int where an f-string does not. Both sit inside `MemcachedCache`, which ground rule 9 protects and no test here exercises |
+   | `pdsfile.py` `:1418,:1824,:1874`, `:84`, class body | `B904` ×3, `I001` ×1, `RUF012` ×16 | tracebacks as above; ruff's isort rejects this repo's aligned-under-the-paren import style outright and rewrites it one name per line with a trailing comma, which is the layout change dropped by (11); `ClassVar` is forbidden by (1) |
+   | `pdsviewable.py` `:52,:114,:205` | `B006` ×3 | frozen public signatures — `PdsViewable.to_dict(exclude=[])`, `PdsViewSet.__init__(viewables=[])`, `PdsViewSet.to_dict(exclude=['abspath','alt'])`. "Fixing" `B006` here is a manifest break |
+
+   **Everything else — the rule modules, the subpackage `__init__`s, the
+   holdings-maintenance tools, the tools/scripts entry points and the test tree
+   (PR-24, 2026-08-04).** Re-derived the same way with *no* per-file-ignores:
+   **2,760 violations, of which 483 were fixed and 2,277 are permanent**, spread
+   over **59 entries** (184 code slots). Nineteen files came off the ratchet
+   entirely. `re_validate.py` kept its **whole** derived set: ground rule 7 and
+   deviation (6) froze that file when PR-24 ran, so none of its violations was
+   PR-24's to fix. That freeze was lifted on 2026-08-05, and PR-25a then cleaned
+   the entry down to `RUF005` and `UP031`.
+
+   PR-25 shrank that set by **nineteen**, to **2,258** over **58 entries** (179
+   code slots), measured the same way. Fourteen are `UP031`: the archives pair's
+   four sites each, and one version-number format string in each of the six
+   checksum and shelf tools, all in code that now lives one copy in
+   `holdings_maintenance/_common.py` written with concatenation or an f-string,
+   which ruff does not flag. Three are `N806`: the `LOGDIRS` locals, which are gone
+   along with the module-level lists they shadowed. One is `SIM115`: `pdschecksums`
+   held two copies of `hashfile`'s bare `open`, and the one copy that remains, in
+   `_common.py`, is the `with`-block spelling its pds4 twin already used.
+   One is `C405`: the `set([...])` around `re_validate.py`'s two log paths, which
+   went when that file's log-path pair was routed through `_common.log_paths_for`
+   for the log time-tag race. That last one is a **side effect of an authorized
+   code change, not ruff cleanup**; PR-25a is the PR that dropped the code, along
+   with seven others, when it gave that file a `main()`.
+   `pds4archives.py` came off the ratchet entirely and `_common.py` needs no entry.
+
+   PR-25a shrank it by a further **seventeen**, to **2,241** over the same **58
+   entries** (171 code slots), measured the same way. All seventeen are
+   `re_validate.py`'s, and all of them fell out of giving that file a `main()`
+   rather than out of a style pass: its findings went from 25 to 8 and its entry
+   from ten codes to `RUF005` and `UP031`. No entry was added or widened.
+
+   The permanent set, grouped by the code that locks it. **"Locked by" says what
+   holds each row: `frozen` and `aligned` are permanent; `behavior` rows are
+   locked because the fix would change what the code does, and where a later PR
+   already owns that change it is named.**
+
+   | Code | n | Where | Locked by | Why |
+   |---|---:|---|---|---|
+   | `E501` | 1638 | 41 files: every rule module with a table, plus `test_pds3file_blackbox{,_cached}.py`, `test_pds3file_whitebox.py`, `test_pds4file_blackbox.py`, `test_corss_8xxx.py`, `test_couvis_8xxx.py`, `test_nhxxxx_xxxx.py`, `tests/rules/pds4/test_uranus_occs_earthbased.py` | aligned | hand-aligned `TranslatorByRegex` and `parametrize` rows, and path/regex literals that cannot be split without breaking a semantic unit. Rewrapping is the layout change dropped by (11) |
+   | `W191` | 302 | `cassini_iss_fring_mosaics_rsfrench2025_primary_filespec.py` | aligned | the whole file is one tab-indented table; retabbing *is* the forbidden table rewrite |
+   | `UP031` | 124 | 10 maintenance tools, plus `COCIRS_xxxx.py` | behavior + aligned + frozen | 40 logging calls, 24 `file.write` calls emitting the frozen sidecar formats, 49 in hand-aligned blocks (37 of them in `pdsdependency.py`'s `PdsDependency(...)` argument tables, which contributes 38 to this group and 39 in all), 6 plain `%` expressions the conversion rule deliberately does not reach, and 5 in `re_validate.py` (it holds 6 `UP031` sites; the sixth is a `logger.info` call and is counted among the logging calls, and a seventh went with the hand-copied `--log` help text PR-25a replaced). A lazy rewrite of a logging call must pass `filepath=` explicitly, because `pdslogger` re-reads a lone positional argument as the filepath once the message has no `%` pattern; that conversion is a code change this style ratchet does not authorize |
+   | `RUF012` | 33 | 22 rule modules, both subpackage `__init__`s, `pdsdependency.py` | frozen | `ClassVar` is forbidden by (1) |
+   | `F401` | 31 | `pds3file/__init__.py` ×25, `pds4file/__init__.py` ×6 | frozen | the `from .rules import (…)` blocks bind names that are part of the frozen surface *and* carry the side effect that registers the rule subclasses |
+   | `N801` | 31 | every rule module with a rule class | frozen | the rule class names are the frozen public classes |
+   | `N999` | 25 | every pds3 rule module | frozen | the module names *are* the frozen volset identifiers |
+   | `B006` | 9 | `pdschecksums.py`, `pdsdependency.py` ×7, `pdsinfoshelf.py` | behavior | **not a manifest lock** — the manifest covers no `holdings_maintenance` module. Five of the nine defaults flow into `pdslogger`'s `open(limits=…, handler=…)`, so "the callee never mutates it" rests on a third-party library's behavior, and the None-sentinel rewrite changes the signature `inspect.signature` reports for a tool §2 freezes at the CLI |
+   | `PT017` | 7 | `test_pds3file_blackbox.py` ×2, `test_pds3file_whitebox.py` ×5 | behavior | rewriting as `pytest.raises` changes what the test asserts |
+   | `PT028` | 6 | `crlf.py` ×2, `pdsdependency.py` ×4 | frozen | `test_crlf()` and `test()` are tool functions, not pytest tests; `PT` fires only on the name. `pdsdependency.test()` is called by name from `re_validate.py`; that file is no longer frozen (6), so the rename is possible now, but it is a two-file change no PR has taken |
+   | `N802` | 5 | `COISS_xxxx`, `COUVIS_0xxx`, `COVIMS_0xxx` ×2, `RPX_xxxx` | frozen | frozen uppercase methods (`DATA_SET_ID`, `FILENAME_KEYLEN`) |
+   | `RUF005` | 4 | `pdsinfoshelf.py`, `pds4infoshelf.py`, `re_validate.py` ×2 | style | the repo-wide owner-chosen exclusion above |
+   | `I001` | 4 | `pds3file/__init__.py` ×2, `pds4file/__init__.py` ×2 | aligned | in the initializers, the rule-module import block is aligned under its opening parenthesis, and isort also reorders `from . import rules` against the other package imports in a module whose initialization order is load-bearing. `re_validate.py`'s went with PR-25a: its import order was checked and is not load-bearing |
+   | `SIM115` | 2 | `pdsarchives.py`, `pdschecksums.py` | behavior | a `with` block changes *when* the file closes, which these tools order against later reads and `tarfile` finalization |
+   | `RUF015` | 2 | `pdsinfoshelf.py`, `pds4infoshelf.py` | behavior | `list(d)[0]` raises `IndexError` where `next(iter(d))` raises `StopIteration`, and the dict is not proven non-empty |
+   | `A002` | 2 | `pds3file/__init__.py` | frozen | the frozen `dir=` parameter of `log_path_for_volset`/`log_path_for_volume` |
+   | `RUF022` | 2 | `pds3file/rules/__init__.py`, `pds4file/rules/__init__.py` | aligned | `__all__` is hand-aligned with padding before the commas; the sort rewrites the block |
+   | `PT015`, `B011` | 2 + 2 | `test_pds3file_blackbox.py` | behavior | the same two `assert False` lines, the unreachable arm of the `PT017` blocks |
+   | `RUF100` | 1 | `scripts/dump_public_api.py` | prohibited | that file may not be edited at all (2), so this entry is permanent **by prohibition**, not by freeze |
+   | `N805` | 1 | `COVIMS_0xxx.py` | frozen | `OPUS_ID_TO_PRIMARY_LOGICAL_PATH(opus_id)` takes no `self`; `@staticmethod` changes the manifest kind |
+   | `B007` | 1 | `uranus_occs_earthbased.py` | frozen | the loop runs at module level, so the control variable stays bound as a module attribute that is part of the frozen surface. `re_validate.py`'s two went with PR-25a |
+   | `PT012` | 1 | `test_pds3file_whitebox.py` | behavior | narrowing the `pytest.raises` block changes what is asserted |
+   | `PT014` | 1 | `test_pds4file_blackbox.py` | behavior — **a test-content PR owns it** | a duplicate parametrize case; dropping it removes a test id, which PR-24's own gate forbids (deferred observation 84) |
+
+   `RUF012` is repo-wide permanent because its only fix (`ClassVar`) is an inline
+   type annotation, forbidden by (1).
+
+   The ratchet in `pyproject.toml` is the enforced copy of this; the two must
+   agree. It was seeded by `scripts/gen_ruff_ratchet.py` and is hand-derived on
+   every shrink, because that script runs `ruff` with the project config and so
+   emits an empty block against a tree whose committed ignores already suppress
+   everything (deferred observation 33). No inline `noqa` is ever added.
+5. **No FCPath / rms-filecache.** Plain `os.path` handling stays. `filecache.mdc`
+   is deliberately not present in this repo's rules and must not be adopted.
+   `PdsLogger` still operates on `FCPath` internally but you should use standard
+   `pathlib.Path` objects when interacting with it.
+6. **The sync shell scripts are frozen** (document-only): do not refactor them,
+   only mechanical renames/moves with their package.
+
+   **The copy/setup scripts' usage guards exit 1 — owner, 2026-08-16**
+   (`plans/2026-08-16-addendum-owner-four-items.md`). The freeze was lifted for
+   exactly that change: the five copy/setup scripts' `exit -1` sites, every one
+   reachable only by an invalid invocation, became `exit 1` under the same
+   exit-code ruling that fixed `update_holdings_for_new_metadata.sh`. The
+   scripts otherwise remain document-only.
+
+   **`re_validate.py` is no longer frozen — owner, 2026-08-05.** It was frozen
+   here through PR-06 to PR-24 (document-only, then re-indented onto the 4-space
+   grid on 2026-08-04 so the indentation gate in (12) had no exemption). The
+   freeze is now lifted outright: its internals, including the email and batch
+   logic, may be changed like any other module, under the same gates.
+
+   PR-25a then modernized it: it has a `main(argv=None)` and a `__main__` guard,
+   importing it is inert, and `tests/holdings_maintenance/test_re_validate.py`
+   covers it. Its `per-file-ignores` entry is down from ten codes to `RUF005` and
+   `UP031`, which are the two that are permanent everywhere else in this file.
+7. **`pytest` `addopts` carries no `-n`/xdist or `--cov` flags** (unlike the
+   template). Worker count and coverage are chosen per invocation, because
+   `--update` runs and full-data runs must be serial.
+8. **The CI test matrix is split by what the runner has, not by OS.**
+   `.github/workflows/run-tests.yml` runs two jobs:
+   - a **self-hosted Linux** full-data matrix over Python 3.11, 3.12 and 3.13,
+     which is the only place the data-dependent suite can run (it needs the
+     real holdings tree, resolved from `PDS3_HOLDINGS_DIR`/`PDS4_HOLDINGS_DIR`);
+   - a **hosted `ubuntu-latest`** lint / no-holdings job over Python 3.11 and 3.13
+     (floor and ceiling only — the self-hosted matrix already covers all three
+     versions with data), which runs `scripts/run-all-checks.sh` with no
+     holdings env vars set. It runs whatever gates that script enables — the
+     script is the single source of truth (`environment.mdc`) — and its pytest
+     gate collects the whole tree, runs the holdings-free subset and skips the
+     rest.
+
+   The two jobs run different drivers, and only their union matches the script's
+   enabled set: the hosted job runs the script itself, while the self-hosted job
+   runs `scripts/automated_tests/pdsfile_main_test.sh`, which adds coverage and a
+   second, pds3-only `--mode s` pass that the script does not have.
+
+   Windows is not in the matrix (dropped because the package is not supported
+   there; its trove classifier is dropped to match). macOS is a supported
+   platform and keeps its classifier — its matrix entries are commented out in
+   the workflow, not deleted, and may be re-enabled. Testing on a stock hosted
+   runner is therefore lint-and-holdings-free only; a data run needs a machine
+   with holdings.
+9. **`logging.mdc`'s "never bare `print()`" is waived for
+   `holdings_maintenance/`.** The maintenance tools' console output is frozen
+   behavior.
+10. **The Python floor is 3.11**, and `pyproject.toml`'s
+    `requires-python = ">=3.11"` is the authority. This now agrees with
+    `python.mdc`'s "minimum 3.11", so nothing is overridden; the entry stays
+    because the floor follows `pyproject.toml`, not the template, and a future
+    move changes here what it changes there.
+11. **`ruff format` is not enforced anywhere in this repository** (owner
+    decision, 2026-08-03;
+    `plans/2026-08-03-addendum-pr23-24-owner-decisions.md`). The one-time
+    reformat the plan made conditional on an owner churn checkpoint was measured
+    — 14 of 15 core files, ~2,310 changed lines — and dropped. The change is a
+    house-style conflict rather than a cleanup: this codebase aligns continuation
+    lines under the opening parenthesis, and `ruff format` rewrites them as one
+    element per line with a trailing comma, which would churn the multi-line
+    signatures inside the nine modules Phase 5 established as byte-for-byte
+    unchanged. Consequences: `ENABLE_RUFF_FORMAT` stays `false`, no CI job runs
+    `ruff format --check`, and `# fmt: off` guards are unnecessary and should not
+    be added. `[tool.ruff.format]`'s settings are inert but harmless.
+
+12. **Indentation is enforced by its own `ruff check` invocation** (owner
+    decision, 2026-08-04). `python.mdc` requires 4-space indentation, but ruff's
+    `E1` rules are preview-gated and so were never in force. `run-all-checks.sh`
+    now runs a second pass, `ruff check --preview --select E111,E112,E113`, over
+    the same targets as the configured gate.
+
+    **Only the three rules that fire on code are selected.** `E114`, `E115` and
+    `E116` are their comment-line counterparts and `E117` fires on both. Where a
+    comment sits is the author's decision in this repository, and three of its
+    conventions all read worse pulled to the code grid: a trailing comment
+    continued on the next line under the column it started in (`pdsfile.py`'s
+    `__init__` attribute block, `pdslinkshelf.py`'s `LinkInfo`); an annotation
+    placed after the statement it describes rather than before it (the
+    `"if c.isdir" is False for volset level readme files` note in four tools);
+    and commented-out code parked at column 0 so it reads as disabled
+    (`pdsinfoshelf.py`, `pds4infoshelf.py`, `pdscache.py`).
+    This is the same house-style conflict that dropped `ruff format` in (11).
+
+    **It is a separate invocation rather than `preview = true` in
+    `pyproject.toml` because preview mode is not selective.** `preview` changes
+    the behaviour of the *stable* rules too, and `explicit-preview-rules` governs
+    only which preview rules are selected, not that. Measured against a tree the
+    configured gate reports clean: **5,687** findings, including 28 `F822`, and
+    `RUF012` 33 → 49, `B006` 9 → 12, `RUF005` 4 → 12. Absorbing those would mean
+    a large ratchet widen, which §6.4 forbids. Naming the seven codes explicitly
+    keeps the new surface to indentation alone.
+
+    The tree is clean under this gate with **no per-file exemption at all** —
+    including `re_validate.py`, see (6). `E111`, `E112` and `E113` all measure
+    **zero** across `src/pdsfile tests scripts`. Verified under both ruff 0.15.7
+    (the development venv) and 0.16.1 (what CI resolves `ruff>=0.8` to), because
+    a preview rule's behaviour can change between releases.

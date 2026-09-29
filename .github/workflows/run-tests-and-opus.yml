@@ -27,8 +27,7 @@ jobs:
             python-version: "3.13"
           # - os: self-hosted-macos
           #   python-version: "3.13"
-          # - os: self-hosted-windows
-          #   python-version: "3.13"
+          # Windows is no longer supported.
       fail-fast: true
     steps:
       - name: Checkout rms-pdsfile
@@ -62,11 +61,7 @@ jobs:
           echo
           rm -rf venv
           python -m venv venv
-          if [[ ${{ matrix.os }} == self-hosted-windows ]]; then
-            source venv/Scripts/activate
-          else
-            source venv/bin/activate
-          fi
+          source venv/bin/activate
           python -m pip install --upgrade pip
           python -m pip install wheel
           python -m pip install -r requirements.txt

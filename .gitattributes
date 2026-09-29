@@ -1,0 +1,31 @@
+# Line-ending policy.
+#
+# Program/source files are normalized to LF in the repository and forced to LF
+# on checkout on every platform. PDS3 data products (labels, tables, format
+# files, catalogs, images, cubes) are CRLF by the PDS3 standard and are
+# byte-format-sensitive -- their line endings must NEVER be normalized. Those
+# files arrive with the mini-holdings test fixtures, and their full
+# .gitattributes rules are added with them. This file therefore does NOT use a
+# blanket `* text=auto`, so any extension not listed below (e.g. a PDS3 .LBL /
+# .TAB / .FMT) is left byte-for-byte untouched by git.
+
+# --- Source / program files -> LF ---
+*.py            text eol=lf
+*.sh            text eol=lf
+*.toml          text eol=lf
+*.yml           text eol=lf
+*.yaml          text eol=lf
+*.json          text eol=lf
+*.md            text eol=lf
+*.mdc           text eol=lf
+*.cfg           text eol=lf
+*.ini           text eol=lf
+*.gitignore     text eol=lf
+*.gitattributes text eol=lf
+.gitignore      text eol=lf
+.gitattributes  text eol=lf
+
+# Repo golden test results are pprint dumps (not PDS3 data) -> LF. Scoped by
+# path so this never touches PDS3 `.txt` (which are CRLF) that land under the
+# fixtures later.
+tests/golden/**/*.txt text eol=lf
