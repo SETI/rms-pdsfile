@@ -257,10 +257,16 @@ def test_every_guard_exits_1_before_anything_is_deleted(tmp_path):
     survivor.parent.mkdir(parents=True)
     survivor.write_text('planted before the guard runs\n')
 
+    # BSD realpath (macOS) errors on a missing path and `set -e` exits before
+    # the `[[ ! -d ]]` guard; a regular file lets both BSD and GNU realpath
+    # resolve so the guard itself is what fires.
+    not_a_directory = tmp_path / 'not-a-directory'
+    not_a_directory.write_text('')
+
     invocations = [
         ([], 'Usage:'),
         ([str(holdings), 'not-a/volset'], 'Not a volume set name'),
-        ([str(tmp_path / 'missing'), SAMPLE_VOLSET], 'Directory does not exist'),
+        ([str(not_a_directory), SAMPLE_VOLSET], 'Directory does not exist'),
         ([str(holdings), SAMPLE_VOLSET], 'Directory does not exist'),
     ]
     for arguments, message in invocations:
