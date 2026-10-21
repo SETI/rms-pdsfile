@@ -46,11 +46,11 @@ jobs:
       contents: read
     strategy:
       matrix:
-        python-version: ["3.11", "3.13"]
+        python-version: ["3.11", "3.15"]
       fail-fast: true
     steps:
       - name: Checkout rms-pdsfile
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           # Nothing here pushes; leaving the token in .git/config would only
@@ -58,7 +58,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -92,6 +92,10 @@ jobs:
             python-version: "3.12"
           - os: self-hosted-linux
             python-version: "3.13"
+          - os: self-hosted-linux
+            python-version: "3.14"
+          - os: self-hosted-linux
+            python-version: "3.15"
           #- os: self-hosted-macos
           #  python-version: "3.11"
           #- os: self-hosted-macos
@@ -101,12 +105,12 @@ jobs:
       fail-fast: true
     steps:
       - name: Checkout rms-pdsfile
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -131,7 +135,7 @@ jobs:
           scripts/automated_tests/pdsfile_main_test.sh
 
       - name: Upload coverage report to codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v7
         if: matrix.os == 'self-hosted-linux' && matrix.python-version == '3.13'
         with:
           token: ${{ secrets.CODECOV_TOKEN }}

@@ -31,12 +31,12 @@ jobs:
       fail-fast: true
     steps:
       - name: Checkout rms-pdsfile
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Checkout rms-opus
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: SETI/rms-opus
           path: rms-opus
@@ -45,7 +45,7 @@ jobs:
           # We really need some way to specify a branch so that we can do
           # parallel inter-dependent development on PdsFile and OPUS.
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
 
