@@ -65,6 +65,10 @@ jobs:
       - name: Run all checks
         # run-all-checks.sh looks for the venv at ./venv and activates it itself.
         # Sequential mode streams each gate's output straight to the job log.
+        # pymarkdownlnt isn't installed on 3.15 (see pyproject.toml), so the
+        # Markdown scan runs only in the 3.11 job.
+        env:
+          ENABLE_PYMARKDOWN: ${{ matrix.python-version == '3.15' && 'false' || 'true' }}
         run: |
           rm -rf venv
           python -m venv venv
