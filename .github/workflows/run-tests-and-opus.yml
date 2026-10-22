@@ -40,6 +40,8 @@ jobs:
         with:
           repository: SETI/rms-opus
           path: rms-opus
+          # setuptools-scm reads tags, which a shallow clone does not fetch.
+          fetch-depth: 0
           # ref: rf240417_ring_names
           # Currently we just checkout the current master branch for OPUS.
           # We really need some way to specify a branch so that we can do
@@ -64,7 +66,9 @@ jobs:
           source venv/bin/activate
           python -m pip install --upgrade pip
           python -m pip install wheel
-          python -m pip install -r requirements.txt
+          # rms-opus no longer has a requirements.txt; install it with its dev
+          # extra, as its own integration workflow does.
+          /seti/newnav/capped-run.sh python -m pip install -e ".[dev]"
           python -m pip uninstall -y rms-pdsfile
           python -m pip install -e $GITHUB_WORKSPACE
           echo
