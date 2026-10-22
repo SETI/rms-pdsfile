@@ -68,7 +68,7 @@ jobs:
           python -m pip install wheel
           # rms-opus no longer has a requirements.txt; install it with its dev
           # extra, as its own integration workflow does.
-          /seti/newnav/capped-run.sh python -m pip install -e ".[dev]"
+          python -m pip install -e ".[dev]"
           python -m pip uninstall -y rms-pdsfile
           python -m pip install -e $GITHUB_WORKSPACE
           echo
