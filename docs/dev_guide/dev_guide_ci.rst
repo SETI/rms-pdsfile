@@ -55,13 +55,13 @@ The self-hosted data jobs
 ``.github/workflows/run-tests.yml`` runs on pull requests targeting ``rewrite``, on
 pushes to ``main``, nightly on a schedule, and on manual dispatch. Two jobs:
 
-* **Lint and holdings-free tests** (``ubuntu-latest``, Python 3.11 and 3.13): a
+* **Lint and holdings-free tests** (``ubuntu-latest``, Python 3.11 and 3.15): a
   stock hosted runner with no holdings tree. It builds a venv, installs
   ``-e ".[dev]"`` and runs ``scripts/run-all-checks.sh --sequential`` with no
   holdings variables, so its pytest gate collects everything, runs the
   holdings-free subset and skips the rest. Because it runs the script itself, its
   gate set cannot drift from the local one.
-* **Test pdsfile** (self-hosted Linux, Python 3.11, 3.12 and 3.13): the full-data
+* **Test pdsfile** (self-hosted Linux, Python 3.11 through 3.15): the full-data
   matrix, the only place the data suite can run in CI. It runs
   ``scripts/automated_tests/pdsfile_main_test.sh``, its own driver: the
   clean-install gate first, then one ``--mode ns`` pass under coverage over

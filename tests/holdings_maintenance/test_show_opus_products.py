@@ -259,7 +259,10 @@ def test_the_module_is_runnable_as_python_m(tmp_path):
         tmp_path)
     stdout = proc.stdout.decode('utf-8', errors='replace')
     assert proc.returncode == 0, proc.stderr.decode('utf-8', errors='replace')
-    assert 'usage: show_opus_products.py' in stdout, stdout
+    # From Python 3.14, argparse names a module run with -m "python -m <module>".
+    module = support.TOOL_MODULES['show_opus_products']
+    assert ('usage: show_opus_products.py' in stdout
+            or f'usage: python -m {module}' in stdout), stdout
     for flag in ('--paths', '--opus-types', '--narrow-table', '--debug'):
         assert flag in stdout, stdout
 

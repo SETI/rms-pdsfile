@@ -42,6 +42,8 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3.15",
   "Operating System :: MacOS :: MacOS X",
   "Operating System :: POSIX :: Linux"
 ]
@@ -62,7 +64,10 @@ dev = [
   # gate: ground rule 5 of the modernization plan waives inline typing and
   # ENABLE_MYPY stays false permanently.
   "mypy>=1.14",
-  "pymarkdownlnt>=0.9.35",
+  # pymarkdownlnt needs pyjson5, which has no Python 3.15 wheel yet and so must
+  # be compiled, and the self-hosted runners have no C++ compiler. The Markdown
+  # scan gives the same result on any version, so it runs only below 3.15.
+  "pymarkdownlnt>=0.9.35; python_version < '3.15'",
   "pyroma>=4.2",
   "pytest>=7.0",
   "pytest-cov>=4.0",
